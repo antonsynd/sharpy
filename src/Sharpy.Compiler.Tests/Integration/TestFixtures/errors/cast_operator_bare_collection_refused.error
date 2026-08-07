@@ -1,0 +1,3 @@
+'list' is a generic type, so it does not name a single type to test against @9:15
+nothing at this cast determines its type arguments
+list[...]

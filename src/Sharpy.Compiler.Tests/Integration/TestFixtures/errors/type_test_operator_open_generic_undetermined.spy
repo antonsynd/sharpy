@@ -1,0 +1,16 @@
+# #1235: the `is` sibling of isinstance_open_generic_undetermined. Nothing at this test
+# determines Box's type arguments — the subject is declared `object` — so the operand
+# names no runtime type and is refused, exactly as the isinstance spelling is. .NET
+# reifies generics; emitting the open name produced CS0305 behind SPY0908.
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def main() -> None:
+    o: object = Box[int](5)
+    if o is Box:
+        print("never")

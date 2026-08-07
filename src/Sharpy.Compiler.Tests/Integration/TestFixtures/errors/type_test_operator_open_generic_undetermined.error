@@ -1,0 +1,3 @@
+'Box' is a generic type, so it does not name a single type to test against @15:13
+nothing at this type test determines its type arguments
+Box[...]

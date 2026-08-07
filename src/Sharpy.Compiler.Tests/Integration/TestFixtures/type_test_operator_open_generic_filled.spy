@@ -1,0 +1,28 @@
+# #1235: `is` and `as?`/`as!` name a runtime type exactly as isinstance does, so a bare
+# generic name gets its argument vector filled from the tested value's own static type.
+# Before this, the written annotation was mapped straight through and emitted the
+# unspellable open generic `Box<T>` — CS0305 behind SPY0908, twice for `as?` (the type
+# pattern and the Optional<T> argument are both mapped from the same annotation).
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def main() -> None:
+    b: Box[int] = Box[int](42)
+
+    if b is Box:
+        print("is filled")
+
+    if b is Box[int]:
+        print("is closed")
+
+    c = b as? Box
+    if c is not None:
+        print("as? filled")
+
+    d = b as! Box[int]
+    print(d.value)

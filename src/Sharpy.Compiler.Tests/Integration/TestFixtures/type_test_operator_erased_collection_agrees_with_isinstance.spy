@@ -1,0 +1,20 @@
+# #1235/#912: `x is list` must mean what `isinstance(x, list)` means. An unparameterized
+# builtin collection cannot know its element types, so both erase to the non-generic
+# Sharpy protocol interface, which every closed instantiation implements via boxing
+# adapters. Testing against the closed instantiation would match only that one.
+#
+# The two spellings are pinned TOGETHER, in this file, on purpose: the point is not that
+# each works but that they AGREE. Before this, `is list` emitted the open `List<T>`
+# (CS0305 behind SPY0908) while `isinstance(x, list)` had erased correctly since #912 —
+# a disagreement between two spellings of one question.
+
+def main() -> None:
+    xs: object = [1, 2, 3]
+    ds: object = {"a": 1}
+    ss: object = {1, 2}
+
+    print(xs is list, isinstance(xs, list))
+    print(ds is dict, isinstance(ds, dict))
+    print(ss is set, isinstance(ss, set))
+
+    print(ds is list, isinstance(ds, list))

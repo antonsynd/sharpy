@@ -1,0 +1,15 @@
+# #1235: `as?` refuses the same open generic `is` does, and reports it ONCE. The failable
+# cast maps its target type in two places — the type pattern and the Optional<T> argument
+# — so before classification a single written operand leaked two identical SPY0908s.
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+def main() -> None:
+    o: object = Box[int](5)
+    c = o as? Box
+    print("never")

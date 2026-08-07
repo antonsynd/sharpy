@@ -1,0 +1,10 @@
+# #1235: a value-binding site may NOT erase a bare builtin collection the way a boolean
+# test does. `x is list` erases to Sharpy.IList because it only has to answer true/false;
+# `x as? list` has to hand back a value, and the erased interface is not the type the
+# checker gives this expression. So the bare spelling is filled from the source type or
+# refused — `x as? list[int]` is the spelling that works.
+
+def main() -> None:
+    x: object = [1, 2, 3]
+    c = x as? list
+    print("never")
