@@ -1,0 +1,34 @@
+# frozenset supports the set operators and the subset/superset comparisons (#1253).
+# Every expected value below is what python3 prints for the same program.
+
+def main():
+    a: frozenset[int] = frozenset([1, 2, 3])
+    b: frozenset[int] = frozenset([3, 4])
+
+    print(len(a | b))
+    print(len(a & b))
+    print(len(a - b))
+    print(len(a ^ b))
+
+    x: frozenset[int] = frozenset([1, 2])
+    y: frozenset[int] = frozenset([1, 2, 3])
+    z: frozenset[int] = frozenset([1, 2])
+
+    print(x < y)
+    print(x <= y)
+    print(y > x)
+    print(y >= x)
+
+    # Equal sets are subsets but not proper subsets.
+    print(x <= z)
+    print(x < z)
+    print(x >= z)
+    print(x > z)
+
+    print(a == b)
+    print(x == z)
+
+    # Augmented form rebinds an immutable value, as CPython does.
+    c: frozenset[int] = frozenset([1])
+    c |= frozenset([2])
+    print(len(c))
