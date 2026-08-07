@@ -787,6 +787,22 @@ internal partial class TypeChecker
                 span: coercion.Span);
         }
 
+        // Classify the target the same way a type test is classified: `as?`/`as!` name a runtime type
+        // just as `is` does, and a bare generic name denotes none (#1235). Erasure is DISALLOWED here
+        // because this site binds a VALUE — lowering `as? list` to the non-generic Sharpy.IList would
+        // hand back something other than the type this expression is given, so a bare collection name
+        // is filled from the source type or refused like any other open generic.
+        //
+        // The decided type also becomes the semantic result type below. Without that, filling
+        // `b as? Box` to `Box[int]` in codegen while the checker still said `Box` would put the two
+        // back into the disagreement this batch exists to remove.
+        var decidedTarget = ClassifyTypeTestAnnotation(
+            coercion.TargetType,
+            lodgeOn: coercion.TargetType,
+            subjectType: sourceType,
+            siteNoun: "cast",
+            erasure: CollectionErasure.Disallowed);
+
         // Resolve the target type. For the Null failure mode (`as?`) the operator supplies the
         // optionality, so the non-nullable target is promoted to T? here to form the result type.
         var targetAnnotation = coercion.TargetType;
@@ -794,7 +810,11 @@ internal partial class TypeChecker
         {
             targetAnnotation = targetAnnotation with { IsOptional = true };
         }
-        var targetType = _typeResolver.ResolveTypeAnnotation(targetAnnotation);
+        var targetType = decidedTarget != null
+            ? (coercion.Mode == CastFailureMode.Null
+                ? new OptionalType { UnderlyingType = decidedTarget }
+                : decidedTarget)
+            : _typeResolver.ResolveTypeAnnotation(targetAnnotation);
 
         // If either type is unknown, skip validation to avoid cascading errors
         if (sourceType is UnknownType || targetType is UnknownType)
@@ -1039,8 +1059,22 @@ internal partial class TypeChecker
 
     private SemanticType CheckTypeCheck(TypeCheck typeCheck)
     {
-        CheckExpression(typeCheck.Value);
+        var valueType = CheckExpression(typeCheck.Value);
         _typeResolver.ResolveTypeAnnotation(typeCheck.CheckType);
+
+        // `x is T` is a runtime type test, exactly like isinstance(x, T), so it answers to the same
+        // rule: the operand is classified once here and the emitter applies the decision, instead of
+        // mapping the written annotation and emitting an open generic (CS0305 behind SPY0908, #1235).
+        // Erasure is allowed because this site yields a boolean — `x is list` must mean what
+        // `isinstance(x, list)` means, and letting them differ is the disagreement
+        // TypeTestNarrowingAgreementTests exists to forbid.
+        ClassifyTypeTestAnnotation(
+            typeCheck.CheckType,
+            lodgeOn: typeCheck.CheckType,
+            subjectType: valueType,
+            siteNoun: "type test",
+            erasure: CollectionErasure.Allowed);
+
         return SemanticType.Bool;
     }
 

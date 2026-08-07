@@ -746,14 +746,18 @@ internal partial class RoslynEmitter
         if (coercion.Mode == CastFailureMode.Null)
         {
             // The `as?` form writes T non-nullable while `to T?` carries IsOptional; stripping
-            // IsOptional here yields the same base type T for both.
-            var baseType = new TypeAnnotation
-            {
-                Name = coercion.TargetType.Name,
-                TypeArguments = coercion.TargetType.TypeArguments,
-                IsOptional = false
-            };
-            var baseTypeSyntax = _typeMapper.MapType(baseType);
+            // IsOptional here yields the same base type T for both. When the checker classified the
+            // target (#1235) that decision wins, so a bare generic name is the closed type the source
+            // determined rather than an open one — CS0305, twice, since this syntax is used in both
+            // the type pattern and the Optional<T> argument below.
+            var baseTypeSyntax = _context.SemanticInfo?.GetTypeTestLowering(coercion.TargetType) is { } targetLowering
+                ? MapTypeTestTarget(targetLowering)
+                : _typeMapper.MapType(new TypeAnnotation
+                {
+                    Name = coercion.TargetType.Name,
+                    TypeArguments = coercion.TargetType.TypeArguments,
+                    IsOptional = false
+                });
 
             var numericLowering = _context.SemanticInfo?.GetTypeCoercionLowering(coercion);
             if (numericLowering != null)
@@ -812,22 +816,36 @@ internal partial class RoslynEmitter
         {
             // Throwing form: value to T / value as! T → (T)value. A user-defined __explicit__
             // conversion, if present, is invoked by this C# cast exactly as it is for `to`.
-            var targetType = _typeMapper.MapType(coercion.TargetType);
+            var targetType = MapClassifiedTypeOperand(coercion.TargetType);
             return CastExpression(targetType, value);
         }
     }
 
     private ExpressionSyntax GenerateTypeCheck(TypeCheck check)
     {
-        // value is Type → value is Type
+        // value is Type → value is Type, against the type the semantic phase decided the operand
+        // denotes. WHAT THE OPERAND DENOTES IS NOT DECIDED HERE (Critical Rule 2): mapping the written
+        // annotation is what emitted the unspellable open generic `Box<T>` for `x is Box` (CS0305 →
+        // SPY0908, #1235), and what made `x is list` disagree with `isinstance(x, list)`.
         var value = GenerateExpression(check.Value);
-        var checkType = _typeMapper.MapType(check.CheckType);
+        var checkType = MapClassifiedTypeOperand(check.CheckType);
 
         return BinaryExpression(
             SyntaxKind.IsExpression,
             value,
             checkType);
     }
+
+    /// <summary>
+    /// Renders a type operand written as a <see cref="TypeAnnotation"/>, applying the classification
+    /// the TypeChecker recorded for it. Falls back to mapping the annotation only when there is no
+    /// recorded decision — a synthesized node the checker never saw — mirroring the isinstance
+    /// reader's shape (#1235).
+    /// </summary>
+    private TypeSyntax MapClassifiedTypeOperand(TypeAnnotation annotation)
+        => _context.SemanticInfo?.GetTypeTestLowering(annotation) is { } lowering
+            ? MapTypeTestTarget(lowering)
+            : _typeMapper.MapType(annotation);
 
     /// <summary>
     /// Returns true if the type parameter has an IComparable constraint.
