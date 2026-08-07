@@ -504,8 +504,8 @@ deviations:
     category: types
     audience: python
     severity: error
-    python_behavior: "`isinstance(b, Box)` accepts a bare generic class (generics are erased at runtime), and `isinstance(b, Box[int])` raises TypeError."
-    sharpy_behavior: "Reversed, because .NET reifies generics. A bare generic name is accepted only when the subject's own static type determines the type arguments (a `Box[int]` tested against `Box` tests `Box[int]`); otherwise it is rejected, because there is no single runtime `Box` and a successful test could not narrow to a spellable type. The closed spelling `isinstance(x, Box[int])` is the supported form and does narrow."
+    python_behavior: "`isinstance(b, Box)` accepts a bare generic class (generics are erased at runtime), and `isinstance(b, Box[int])` raises TypeError. The same erasure makes `except MyError:` and `case Box():` accept bare generic names too."
+    sharpy_behavior: "Reversed, because .NET reifies generics. A bare generic name is accepted only when the SUBJECT's own static type determines the type arguments (a `Box[int]` tested against `Box` tests `Box[int]`); otherwise it is rejected, because there is no single runtime `Box` and a successful test could not narrow to a spellable type. The closed spelling `isinstance(x, Box[int])` is the supported form and does narrow. The rule covers every position that names a type to test against — `isinstance(x, T)`, `x is T`, `x as? T` / `x as! T`, a match class pattern `case T():`, and `except T:` — with the subject differing per site: the tested value for isinstance/is/as, the scrutinee for a match pattern, and nothing at all for an except clause, so a bare generic exception name is always rejected. A match pattern is the one site where the closed spelling is unavailable (the parser rejects type arguments in patterns, SPY0125), so its remedy is to bind the value to a typed local first or to match a non-generic base."
     spec_ref: docs/language_specification/builtin_functions.md
     existing_diagnostic: SPY0345
     planned_diagnostic: null

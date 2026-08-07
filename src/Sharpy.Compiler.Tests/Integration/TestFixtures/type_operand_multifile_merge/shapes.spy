@@ -1,0 +1,22 @@
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+
+class AppError(Exception):
+    code: int = 3
+
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
+class NotFound(AppError):
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
+class Denied(AppError):
+    def __init__(self, msg: str):
+        super().__init__(msg)

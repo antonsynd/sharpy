@@ -1,0 +1,50 @@
+# #1235: type-operand classifications are node-keyed facts in SemanticInfo, and every
+# compile goes through a per-file -> project MERGE before code generation reads them.
+# A fact recorded on a TypeAnnotation key that the merge did not carry would fail
+# SILENTLY: single-file fixtures would stay green while project builds quietly fell back
+# to the pre-classification path and re-emitted the open generic.
+#
+# Nothing exercised that merge with TypeAnnotation keys — the channel only ever held
+# Expression keys before this — so this fixture drives all three annotation-shaped sites
+# (`is`/`as?`, a match class pattern, an except clause) against types that live in a
+# SECOND file, so the classification and the emission are separated by the merge.
+
+from shapes import Box, NotFound, Denied
+
+
+def classify(b: Box[int]) -> str:
+    # Site 1: `is` and `as?` on a bare generic, filled from the value's static type.
+    if b is Box:
+        c = b as? Box
+        if c is not None:
+            return "box"
+    return "other"
+
+
+def match_it(b: Box[int]) -> str:
+    # Site 2: a match class pattern whose vector comes from the scrutinee.
+    match b:
+        case Box():
+            return "matched"
+        case _:
+            return "unmatched"
+
+
+def catch_it(which: int) -> str:
+    # Site 3: an except clause, including the tuple-with-binding form that binds at the
+    # alternatives' common base.
+    try:
+        if which == 0:
+            raise NotFound("nf")
+        else:
+            raise Denied("dn")
+    except (NotFound, Denied) as e:
+        return "caught " + str(e.code)
+
+
+def main() -> None:
+    b: Box[int] = Box[int](5)
+    print(classify(b))
+    print(match_it(b))
+    print(catch_it(0))
+    print(catch_it(1))
