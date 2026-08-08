@@ -336,33 +336,26 @@ internal partial class RoslynEmitter
 
             if (alias.AsName != null)
             {
+                var escapedAlias = CSharpKeywords.EscapeIfNeeded(alias.AsName);
                 if (isNetFramework)
                 {
-                    // import system.io as io -> using io = System.IO;
                     yield return UsingDirective(
-                        NameEquals(alias.AsName),
+                        NameEquals(escapedAlias),
                         ParseQualifiedName(namespaceName));
                 }
                 else if (IsStdlibModule(alias.Name))
                 {
-                    // import math as m -> using m = global::Sharpy.Math;
                     var ns = _context.SemanticBinding.GetNetModuleCSharpNamespace(alias.Name);
                     var className = _context.SemanticBinding.GetNetModuleCSharpClassName(alias.Name);
-                    // Modules whose [SharpyModule] class exports no functions or fields
-                    // (e.g. fractions) are not recorded in the overload index, so no class
-                    // name is discovered; their types are referenced by fully-qualified name.
-                    // Emitting the PascalCase fallback would target a non-existent class
-                    // (CS0234), so skip the alias. (#898)
                     if (className == null)
                         continue;
                     var fullModuleClass = ConvertNetModuleToFullyQualified(alias.Name, ns, className);
                     yield return UsingDirective(
-                        NameEquals(alias.AsName),
+                        NameEquals(escapedAlias),
                         ParseQualifiedName(fullModuleClass));
                 }
                 else
                 {
-                    // import module as alias -> using alias = ProjectNamespace.Module;
                     string fullModuleClass;
                     if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                     {
@@ -374,7 +367,7 @@ internal partial class RoslynEmitter
                     }
 
                     yield return UsingDirective(
-                        NameEquals(alias.AsName),
+                        NameEquals(escapedAlias),
                         ParseQualifiedName(fullModuleClass));
                 }
             }
