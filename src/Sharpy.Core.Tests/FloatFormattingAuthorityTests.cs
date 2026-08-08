@@ -38,6 +38,16 @@ namespace Sharpy.Core.Tests;
 /// folded double into <b>C# source text</b> for a literal token, which is a different job from
 /// rendering a value for a user to read.
 /// </para>
+///
+/// <para>
+/// <b>Measurement is a consumer too.</b> Since #1230, <c>PrettyPrinter.GetFormattedLength</c>
+/// measures floats at <c>Builtins.FormatFloat(...).Length</c> — the length of what will actually
+/// print — so measure==format is structural, not kept-in-sync. The scan above cannot see a
+/// measurement drift (a <c>ToString().Length</c> on a float matches none of the three patterns),
+/// so if this guard is ever widened, the measurement path is the known blind spot to cover; until
+/// then the <c>{5.0: [...]}</c> indent-column cells in
+/// <c>stdlib_pprint_cpython_layout_1230_1297</c> are what fails when the two diverge.
+/// </para>
 /// </summary>
 public class FloatFormattingAuthorityTests
 {
