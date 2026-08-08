@@ -593,12 +593,11 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Fills a generic type's argument vector from the type test's SUBJECT — <c>isinstance(b, Box)</c>
-    /// where <c>b: Box[int]</c> tests <c>Box[int]</c>. Only the subject's own instantiation is
-    /// consulted (through Optional/nullable wrappers): walking a base chain would need argument
-    /// substitution per level, and the rejection message names a spelling that always works, so a
-    /// subject typed by a generic BASE class gets an actionable error rather than a guess.
+    /// where <c>b: Box[int]</c> tests <c>Box[int]</c>. Consults the subject's own instantiation
+    /// first; on miss, walks the inheritance chain via <see cref="GenericInstantiationWalker"/>
+    /// so that a subject typed by a generic DERIVED class fills through substitution (#1308).
     /// </summary>
-    private static GenericType? FillTypeArgumentsFromSubject(TypeSymbol typeSymbol, SemanticType? subjectType)
+    private GenericType? FillTypeArgumentsFromSubject(TypeSymbol typeSymbol, SemanticType? subjectType)
     {
         var subject = subjectType switch
         {
@@ -607,11 +606,32 @@ internal partial class TypeChecker
             _ => subjectType
         };
 
-        return subject is GenericType generic
-            && generic.TypeArguments.Count == typeSymbol.TypeParameters.Count
-            && (ReferenceEquals(generic.GenericDefinition, typeSymbol) || generic.Name == typeSymbol.Name)
-                ? generic
-                : null;
+        if (subject is not GenericType generic)
+            return null;
+
+        // Identity match — the subject is already the target type
+        if (generic.TypeArguments.Count == typeSymbol.TypeParameters.Count
+            && (ReferenceEquals(generic.GenericDefinition, typeSymbol) || generic.Name == typeSymbol.Name))
+        {
+            return generic;
+        }
+
+        // Walk the inheritance chain to find the target as a supertype (#1308)
+        foreach (var supertype in GenericInstantiationWalker.EnumerateSupertypes(
+            generic, _symbolTable, SemanticBinding, _typeResolver))
+        {
+            if (TypeHierarchyService.IsSameType(supertype.Definition, typeSymbol))
+            {
+                return new GenericType
+                {
+                    Name = typeSymbol.Name,
+                    TypeArguments = supertype.TypeArguments.ToList(),
+                    GenericDefinition = typeSymbol
+                };
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

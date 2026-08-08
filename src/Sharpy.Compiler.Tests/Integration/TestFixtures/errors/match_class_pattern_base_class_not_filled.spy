@@ -1,30 +1,18 @@
-# #1235: the fill takes the vector from the scrutinee's OWN instantiation only. It does not
-# walk a base chain, and this fixture is what keeps it that way.
+# #1308: the fill WALKS the inheritance chain with per-level substitution.
 #
-# `Pair[T]` derives from `Box[list[T]]`, so a scrutinee of `Pair[int]` is a `Box[list[int]]`
-# — NOT a `Box[int]`. Filling `case Box():` by copying the scrutinee's type arguments
-# positionally would produce `Box[int]`: a pattern that compiles, runs, and matches the
-# wrong closed type, with no diagnostic anywhere, because the emitted test and the
-# expectation would be wrong together. Substituting correctly through the inheritance chain
-# needs per-level argument substitution, which the fill deliberately does not attempt.
-#
-# So a base-class pattern is REFUSED rather than guessed. A refusal is recoverable; a
-# silently wrong type test is not. The same rule and the same refusal apply to the
-# `isinstance(p, Box)` and `p is Box` spellings — all three were measured and agree.
-#
-# The remedy the message names does work for this shape: binding through
-# `v: Box[list[int]] = p as! Box[list[int]]` and matching `case Box():` on that prints
-# "matched via typed local".
+# `Pair[T]` derives from `Box[list[T]]`, so a scrutinee of `Pair[int]` is a
+# `Box[list[int]]` — and the fill produces `Box[list[int]]`, NOT `Box[int]`.
+# The match arm body entering proves the fill succeeded.
 
 class Box[T]:
     value: T
 
-    def __init__(self, value: T):
+    def __init__(self, value: T) -> None:
         self.value = value
 
 
 class Pair[T](Box[list[T]]):
-    def __init__(self, value: list[T]):
+    def __init__(self, value: list[T]) -> None:
         super().__init__(value)
 
 
@@ -32,6 +20,6 @@ def main() -> None:
     p: Pair[int] = Pair[int]([1, 2])
     match p:
         case Box():
-            print("never")
+            print("matched Box")
         case _:
             print("other")

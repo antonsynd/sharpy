@@ -1,0 +1,21 @@
+# #1308: isinstance fills through the inheritance chain.
+# Pair[int](Box[list[int]]) — isinstance(p, Box) fills Box[list[int]].
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+class Pair[T](Box[list[T]]):
+    def __init__(self, value: list[T]) -> None:
+        super().__init__(value)
+
+
+def main() -> None:
+    p: Pair[int] = Pair[int]([1, 2])
+    if isinstance(p, Box):
+        print("isinstance Box: True")
+    else:
+        print("isinstance Box: False")
