@@ -1,0 +1,23 @@
+# #1294 sub-case B: property reads on generic discovered receivers carry provenance.
+# Counter[str].keys resolves as list[str], so append works (was: Unknown, silent no-op).
+# The method call c.keys() must keep working — the emitter's zero-arg-call-onto-property
+# collapse handles it from codegen; the TypeChecker's _currentCallCallee guard prevents
+# SPY0201 by leaving call callees as Unknown.
+from collections import Counter
+
+
+def main() -> None:
+    c: Counter[str] = Counter[str](["a", "b", "a"])
+
+    # Property access — typed as list[str], append works
+    ys = c.keys
+    ys.append("c")
+    print(len(ys))
+
+    # Method call — still works
+    ys2 = c.keys()
+    print(len(ys2))
+
+    # Annotated target — materializes
+    ys3: list[str] = c.keys
+    print(len(ys3))

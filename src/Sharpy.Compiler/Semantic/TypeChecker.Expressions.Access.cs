@@ -572,33 +572,48 @@ internal partial class TypeChecker
 
         var member = memberAccess.Member;
 
-        // Resolve methods only — deliberately not properties/fields. Discovered generic classes
-        // (especially dict subclasses like Counter/defaultdict) expose CLR properties such as
-        // `Keys` that shadow the callable `keys()` method; resolving those here would make
-        // `d.keys()` appear to call a collection. Leaving non-method members to the existing
-        // codegen fallback preserves their established behavior, while methods are what #892 needs.
-        // Only resolve when there is exactly one overload: multiple overloads (default-parameter
-        // expansions like Counter.most_common) need full overload resolution against the call's
-        // arguments, and a self-referential generic return that collapsed to object (e.g.
-        // Counter.copy() -> Counter[T]) is left to codegen. Caution: bailing here means the
-        // member's type stays unrecorded, so a tuple-returning method that gains a second
-        // overload would silently reintroduce the #892 symptom (CS0021 on .ItemN lowering) —
-        // extend this to full overload resolution if that ever occurs.
+        // Resolve methods first, then properties. Only resolve methods when there is exactly
+        // one overload: multiple overloads (default-parameter expansions like Counter.most_common)
+        // need full overload resolution against the call's arguments, and a self-referential
+        // generic return that collapsed to object (e.g. Counter.copy() -> Counter[T]) is left
+        // to codegen. Caution: bailing here means the member's type stays unrecorded, so a
+        // tuple-returning method that gains a second overload would silently reintroduce the
+        // #892 symptom (CS0021 on .ItemN lowering) — extend this to full overload resolution
+        // if that ever occurs.
         var methods = genDef.Methods.Where(m => m.Name == member).ToList();
-        if (methods.Count != 1)
-            return null;
+        if (methods.Count == 1)
+        {
+            var method = methods[0];
+            var returnType = Substitute(method.ReturnType);
+            if (!IsObjectType(returnType))
+            {
+                var selfOffset = method.Parameters.Count > 0 && method.Parameters[0].Name == PythonNames.Self
+                    ? 1 : 0;
+                var substitutedParams = method.Parameters
+                    .Select(p => p with { Type = Substitute(p.Type) })
+                    .ToList();
+                return FunctionType.FromParameters(substitutedParams, returnType, skipLeading: selfOffset);
+            }
+        }
 
-        var method = methods[0];
-        var returnType = Substitute(method.ReturnType);
-        if (IsObjectType(returnType))
-            return null;
+        // Properties on generic discovered receivers (#1294 sub-case B): dict subclasses like
+        // Counter expose CLR properties (Keys, Values) whose types carry provenance after the
+        // ConvertTypeSignature stamp. Only resolve when the member access is NOT a call callee
+        // — resolving a property type for c.keys() would emit SPY0201 because list[str] is not
+        // callable (#555 hazard). The emitter's zero-arg-call-onto-property collapse handles
+        // c.keys() from the codegen side; the TypeChecker must leave that path as Unknown.
+        if (!ReferenceEquals(memberAccess, _currentCallCallee))
+        {
+            var prop = genDef.Properties.FirstOrDefault(p => p.Name == member);
+            if (prop != null)
+            {
+                var propType = Substitute(prop.Type);
+                if (!IsObjectType(propType))
+                    return propType;
+            }
+        }
 
-        var selfOffset = method.Parameters.Count > 0 && method.Parameters[0].Name == PythonNames.Self
-            ? 1 : 0;
-        var substitutedParams = method.Parameters
-            .Select(p => p with { Type = Substitute(p.Type) })
-            .ToList();
-        return FunctionType.FromParameters(substitutedParams, returnType, skipLeading: selfOffset);
+        return null;
     }
 
     /// <summary>
