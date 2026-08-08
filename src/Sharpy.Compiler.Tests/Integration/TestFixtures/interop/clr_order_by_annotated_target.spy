@@ -1,0 +1,14 @@
+# #1332 cell: IOrderedEnumerable<T> now maps to list[T] through the bridge arm, so
+# order_by at an annotated list target materializes correctly. Before the arm, the
+# return type mapped to object and the staging declined.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst: List[int] = List[int]()
+    lst.add(3)
+    lst.add(1)
+    lst.add(2)
+
+    result: list[int] = lst.order_by(lambda v: v)
+    print(result)

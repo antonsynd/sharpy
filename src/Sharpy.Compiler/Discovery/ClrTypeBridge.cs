@@ -59,6 +59,7 @@ internal class ClrTypeBridge
         internal const string SharpyDictFullName = CSharpTypeNames.SharpyDict + "`2";
         internal const string SharpySetFullName = CSharpTypeNames.SharpySet + "`1";
         internal const string SharpyFrozenSetFullName = CSharpTypeNames.SharpyFrozenSet + "`1";
+        internal const string SharpyFrozenDictFullName = CSharpTypeNames.SharpyFrozenDict + "`2";
         internal const string SharpyOptionalFullName = CSharpTypeNames.SharpyOptional + "`1";
         internal const string SharpyResultFullName = CSharpTypeNames.SharpyResult + "`2";
         internal const string SharpyNdArrayFullName = CSharpTypeNames.SharpyNdArray + "`1";
@@ -309,10 +310,11 @@ internal class ClrTypeBridge
         var genericDef = clrType.GetGenericTypeDefinition();
         var typeArgs = clrType.GetGenericArguments();
 
-        // Sharpy.List<T>, List<T>, or IList<T>
+        // Sharpy.List<T>, List<T>, IList<T>, or ICollection<T> (#1295)
         if (genericDef.FullName == SpecialCases.SharpyListFullName ||
             IsGenericTypeDefinition(genericDef, typeof(List<>)) ||
-            IsGenericTypeDefinition(genericDef, typeof(IList<>)))
+            IsGenericTypeDefinition(genericDef, typeof(IList<>)) ||
+            IsGenericTypeDefinition(genericDef, typeof(ICollection<>)))
         {
             return new GenericType
             {
@@ -368,6 +370,20 @@ internal class ClrTypeBridge
             };
         }
 
+        // Sharpy.FrozenDict<K, V> (#1310)
+        if (genericDef.FullName == SpecialCases.SharpyFrozenDictFullName)
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.FrozenDict,
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0]),
+                    MapClrTypeToSemanticType(typeArgs[1])
+                }
+            };
+        }
+
         // IReadOnlyList<T> or IReadOnlyCollection<T>
         if (IsGenericTypeDefinition(genericDef, typeof(IReadOnlyList<>)) ||
             IsGenericTypeDefinition(genericDef, typeof(IReadOnlyCollection<>)))
@@ -392,6 +408,20 @@ internal class ClrTypeBridge
                 {
                     MapClrTypeToSemanticType(typeArgs[0]),
                     MapClrTypeToSemanticType(typeArgs[1])
+                }
+            };
+        }
+
+        // IOrderedEnumerable<T> — sequence, mapped to list like IEnumerable (#1332).
+        // Must precede IEnumerable because IOrderedEnumerable extends IEnumerable.
+        if (IsGenericTypeDefinition(genericDef, typeof(IOrderedEnumerable<>)))
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.List,
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0])
                 }
             };
         }

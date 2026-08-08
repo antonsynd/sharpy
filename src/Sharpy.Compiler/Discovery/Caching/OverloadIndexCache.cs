@@ -20,11 +20,12 @@ internal class OverloadIndexCache
     // v17: closed-generic CLR type construction for NdArray operator resolution (#970, #971).
     // v18: TypeParameters changed from List<string> to List<TypeParameterInfo> with CLR constraints (#976).
     // v19: Sharpy.FrozenSet<T> maps to `frozenset` instead of degrading to `object` (#1253).
+    // v20: IOrderedEnumerable/ICollection/FrozenDict bridge arms (#1332, #1295, #1310).
     // Format version covers *shape* changes (field additions/removals/renames in the serialized
     // index). Compiler identity (AssemblyIdentity.CompilerVersion) covers *mapping* changes —
     // a rebuilt compiler automatically invalidates every index by construction (#1313), so
     // manual bumps for CLR-type-mapping fixes are no longer needed.
-    internal const int CurrentCacheFormatVersion = 19;
+    internal const int CurrentCacheFormatVersion = 20;
 
     // Process-lifetime in-memory layer over the on-disk index cache. Gunzip + JSON deserialize of
     // an overload index costs milliseconds per stdlib assembly and, before this, ran once per

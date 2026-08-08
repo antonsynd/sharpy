@@ -1,0 +1,11 @@
+# First frozendict operator fixture: same-type | must work now that the bridge arm
+# maps Sharpy.FrozenDict<K,V> to frozendict[K,V] (#1310). Before the arm, frozendict
+# degraded to object and same-type | drew SPY0402.
+def main() -> None:
+    a: frozendict[str, int] = frozendict({"x": 1, "y": 2})
+    b: frozendict[str, int] = frozendict({"y": 3, "z": 4})
+    c = a | b
+    print(len(c))
+    print(c["x"])
+    print(c["y"])
+    print(c["z"])

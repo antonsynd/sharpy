@@ -49,8 +49,10 @@ public class CoreGenericTypeMappingConformanceTests
         // `frozenset`, which is half of why frozenset refused every operator — so the arm is now
         // written and the mapping no longer degrades to object.
         //
-        // FrozenDict keeps its entry: it still has no static factory and gained no arm here.
-        ["FrozenDict"] = "Registered builtin type; has no static factory, so no CLR return reaches the mapping (#1210).",
+        // FrozenDict's entry was DRAINED by the IOrderedEnumerable/ICollection/FrozenDict batch
+        // (#1310): the SharpyFrozenDictFullName arm now maps Sharpy.FrozenDict<K,V> to frozendict[K,V],
+        // so the mapping no longer degrades to object. Same-type frozendict | frozendict is the first
+        // operator fixture.
 
         // IReverseEnumerable's entry was DRAINED by #1242: MapGenericType now maps Sharpy.Core's own
         // generic interfaces to a real GenericType with GenericDefinition set, so it no longer
@@ -148,7 +150,8 @@ public class CoreGenericTypeMappingConformanceTests
     /// </summary>
     private static readonly Dictionary<string, string> OperatorResolutionAllowlist = new(StringComparer.Ordinal)
     {
-        ["frozendict"] = "Sharpy.FrozenDict<K,V> declares 4 operators, discovery resolves none (#1310).",
+        // frozendict's entry was DRAINED by the name-map + bridge arm landing (#1310):
+        // discovery now resolves its operators through the frozendict → FrozenDict map entry.
 
         // Complex is the odd one: its Sharpy name and CLR name are identical, so the name-map
         // fallback should already find it. Whatever stops it is therefore NOT simply a missing
