@@ -731,27 +731,33 @@ internal partial class TypeChecker
     /// </summary>
     private bool? IsGenericAssignableWithVariance(GenericType source, GenericType target)
     {
-        if (source.Name == target.Name)
+        var sourceDef = GenericInstantiationWalker.ResolveDefinition(source, _symbolTable);
+        var targetDef = GenericInstantiationWalker.ResolveDefinition(target, _symbolTable);
+
+        // Same-type fast path: compare definitions by symbol identity (#1330)
+        if (sourceDef != null && targetDef != null && TypeHierarchyService.IsSameType(sourceDef, targetDef))
         {
             if (source.TypeArguments.Count != target.TypeArguments.Count)
                 return false;
 
-            var definition = GenericInstantiationWalker.ResolveDefinition(source, _symbolTable);
-            if (definition == null || definition.TypeParameters.Count != source.TypeArguments.Count)
+            if (sourceDef.TypeParameters.Count != source.TypeArguments.Count)
                 return null;
 
             return TypeArgumentsSatisfyVariance(
-                definition.TypeParameters, source.TypeArguments, target.TypeArguments);
+                sourceDef.TypeParameters, source.TypeArguments, target.TypeArguments);
         }
 
         // Interface or base-class assignment: find an instantiated supertype of the
-        // source matching the target's name and arity.
+        // source matching the target's definition by symbol identity (#1330).
+        // Name fallback for CLR types whose re-exported symbols carry DefiningModule
+        // while interface-reference Definitions do not (mixed-context false negative).
         var rejected = false;
         foreach (var supertype in GenericInstantiationWalker.EnumerateSupertypes(
                      source, _symbolTable, SemanticBinding, _typeResolver))
         {
-            if (supertype.Definition.Name != target.Name
-                || supertype.TypeArguments.Count != target.TypeArguments.Count)
+            var definitionsMatch = (targetDef != null && TypeHierarchyService.IsSameType(supertype.Definition, targetDef))
+                || supertype.Definition.Name == target.Name;
+            if (!definitionsMatch || supertype.TypeArguments.Count != target.TypeArguments.Count)
             {
                 continue;
             }

@@ -1133,8 +1133,12 @@ internal partial class TypeChecker
         // For generic types, check the base definition
         if (source is GenericType sourceGeneric && target is GenericType targetGeneric)
         {
-            // Same generic definition with potentially different type args
-            if (sourceGeneric.GenericDefinition?.Name == targetGeneric.GenericDefinition?.Name)
+            // Same generic definition with potentially different type args (#1330)
+            if (sourceGeneric.GenericDefinition != null && targetGeneric.GenericDefinition != null
+                && TypeHierarchyService.IsSameType(sourceGeneric.GenericDefinition, targetGeneric.GenericDefinition))
+                return true;
+            if (sourceGeneric.GenericDefinition == null && targetGeneric.GenericDefinition == null
+                && sourceGeneric.Name == targetGeneric.Name)
                 return true;
         }
 
