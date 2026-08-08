@@ -53,9 +53,7 @@ internal class InheritanceResolver
     {
         _logger.LogDebug("Resolving inheritance for imported types...");
 
-        var allTypes = _symbolTable.GlobalScope.GetAllSymbols()
-            .OfType<TypeSymbol>()
-            .ToList();
+        var allTypes = GetAllProjectTypeSymbols();
 
         foreach (var type in allTypes)
         {
@@ -65,7 +63,7 @@ internal class InheritanceResolver
             var resolvedBase = _semanticBinding.GetBaseType(type) ?? type.BaseType;
             if (resolvedBase == null && !string.IsNullOrEmpty(type.UnresolvedBaseName))
             {
-                var baseType = _symbolTable.LookupType(type.UnresolvedBaseName);
+                var baseType = LookupTypeInModuleScopes(type.UnresolvedBaseName);
                 if (baseType != null)
                 {
                     if (baseType.TypeKind == TypeKind.Interface)
@@ -91,7 +89,7 @@ internal class InheritanceResolver
             var resolvedInterfaces = TypeHierarchyService.GetAllInterfaces(type, _semanticBinding);
             foreach (var ifaceName in type.UnresolvedInterfaceNames)
             {
-                var ifaceType = _symbolTable.LookupType(ifaceName);
+                var ifaceType = LookupTypeInModuleScopes(ifaceName);
                 if (ifaceType != null && !resolvedInterfaces.Contains(ifaceType))
                 {
                     _semanticBinding.AddInterface(type, ifaceType);
@@ -119,14 +117,12 @@ internal class InheritanceResolver
         {
             bool addedNew = false;
 
-            var allTypes = _symbolTable.GlobalScope.GetAllSymbols()
-                .OfType<TypeSymbol>()
-                .ToList();
+            var allTypes = GetAllProjectTypeSymbols();
 
             foreach (var type in allTypes)
             {
                 // Check unresolved base class name
-                if (!string.IsNullOrEmpty(type.UnresolvedBaseName) && _symbolTable.LookupType(type.UnresolvedBaseName) == null)
+                if (!string.IsNullOrEmpty(type.UnresolvedBaseName) && LookupTypeInModuleScopes(type.UnresolvedBaseName) == null)
                 {
                     var found = importResolver.FindTypeInLoadedModules(type.UnresolvedBaseName);
                     if (found != null && _symbolTable.TryDefine(found))
@@ -139,7 +135,7 @@ internal class InheritanceResolver
                 // Check unresolved interface names
                 foreach (var ifaceName in type.UnresolvedInterfaceNames)
                 {
-                    if (_symbolTable.LookupType(ifaceName) == null)
+                    if (LookupTypeInModuleScopes(ifaceName) == null)
                     {
                         var found = importResolver.FindTypeInLoadedModules(ifaceName);
                         if (found != null && _symbolTable.TryDefine(found))
@@ -154,5 +150,30 @@ internal class InheritanceResolver
             if (!addedNew)
                 break;
         }
+    }
+
+    /// <summary>
+    /// Returns all <see cref="TypeSymbol"/>s from all module scopes AND the global scope.
+    /// In project compilation every user-defined symbol lives in a per-module child scope,
+    /// so <c>GlobalScope.GetAllSymbols()</c> alone (which is non-recursive) misses them (#1309).
+    /// </summary>
+    private List<TypeSymbol> GetAllProjectTypeSymbols()
+    {
+        var types = new List<TypeSymbol>();
+        types.AddRange(_symbolTable.GetAllModuleScopeSymbols().OfType<TypeSymbol>());
+        types.AddRange(_symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>());
+        return types;
+    }
+
+    /// <summary>
+    /// Looks up a type by name, searching module scopes first (where project symbols live)
+    /// and falling back to the global scope (where builtins and single-file types live).
+    /// </summary>
+    private TypeSymbol? LookupTypeInModuleScopes(string name)
+    {
+        var symbol = _symbolTable.LookupInModuleScopes(name);
+        if (symbol is TypeSymbol ts)
+            return ts;
+        return _symbolTable.LookupType(name);
     }
 }

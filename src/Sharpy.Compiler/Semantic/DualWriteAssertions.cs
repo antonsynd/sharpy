@@ -18,7 +18,10 @@ internal static class DualWriteAssertions
     /// </summary>
     internal static void AssertInheritanceConsistency(SymbolTable symbolTable, SemanticBinding semanticBinding)
     {
-        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>())
+        var allTypes = symbolTable.GetAllModuleScopeSymbols()
+            .Concat(symbolTable.GlobalScope.GetAllSymbols())
+            .OfType<TypeSymbol>();
+        foreach (var symbol in allTypes)
         {
             // Skip CLR types (from ModuleRegistry) - they don't go through the materialization path
             if (symbol.ClrType != null)
