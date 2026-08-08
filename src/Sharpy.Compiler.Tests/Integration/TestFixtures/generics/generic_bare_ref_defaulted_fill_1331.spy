@@ -1,0 +1,18 @@
+# #1331: bare references to generics with all-defaulted type parameters
+# route to the fill authority instead of leaking as a bare type.
+
+class BoxD[T = str]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+def main() -> None:
+    # Bare ref fills with defaults
+    b: BoxD = BoxD("hello")
+    print(b.value)
+
+    # Explicit args still work
+    b2: BoxD[int] = BoxD[int](42)
+    print(b2.value)

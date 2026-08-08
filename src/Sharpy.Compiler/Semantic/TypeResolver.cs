@@ -232,11 +232,23 @@ internal class TypeResolver
 
             if (typeSymbol != null)
             {
-                result = new UserDefinedType
+                // Bare reference to a fully-defaulted generic: dispatch to the fill authority (#1331).
+                // Only fires when EVERY type parameter has a default, so existing bare references
+                // to non-defaulted generics (match patterns, etc.) stay as UserDefinedType.
+                if (typeSymbol.IsGeneric
+                    && typeSymbol.TypeParameters.Count > 0
+                    && typeSymbol.TypeParameters.All(tp => tp.DefaultType != null))
                 {
-                    Name = annotation.Name,
-                    Symbol = typeSymbol
-                };
+                    result = ResolveGenericType(annotation);
+                }
+                else
+                {
+                    result = new UserDefinedType
+                    {
+                        Name = annotation.Name,
+                        Symbol = typeSymbol
+                    };
+                }
             }
             else
             {
