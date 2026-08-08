@@ -46,10 +46,36 @@ is_lock_stale() {
 
 acquire_lock() {
     local waited=0
+    local nodir_failures=0
     while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+        if [ ! -d "$LOCK_DIR" ]; then
+            # mkdir failed yet nothing holds the lock: this shell cannot write the
+            # lock path at all (sandboxed caller). Spinning would loop forever —
+            # fail fast instead. Allow a couple of retries for the race where the
+            # owner released between our mkdir and this check.
+            nodir_failures=$((nodir_failures + 1))
+            if [ "$nodir_failures" -ge 3 ]; then
+                echo "ERROR: cannot create $LOCK_DIR though no one holds it." >&2
+                echo "This shell cannot write the lock path — it is sandboxed." >&2
+                echo "Re-run this exact command with the sandbox disabled" >&2
+                echo "(dangerouslyDisableSandbox: true). Do NOT fall back to raw" >&2
+                echo "dotnet build/test: unserialized concurrent runs OOM the machine." >&2
+                exit 125
+            fi
+            sleep 1
+            continue
+        fi
+        nodir_failures=0
         if is_lock_stale; then
             echo "WARNING: Removing stale dotnet lock (owner PID gone)." >&2
             rm -rf "$LOCK_DIR" 2>/dev/null
+            if [ -d "$LOCK_DIR" ]; then
+                # Could not remove it. A sandboxed shell can neither signal-probe
+                # (kill -0 is denied, so a LIVE owner reads as gone) nor remove the
+                # lock — treat it as live and wait politely instead of hot-spinning.
+                sleep 2
+                waited=$((waited + 2))
+            fi
             continue
         fi
         if [ "$waited" -ge "$TIMEOUT" ]; then
