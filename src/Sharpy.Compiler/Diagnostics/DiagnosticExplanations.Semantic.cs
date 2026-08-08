@@ -49,6 +49,11 @@ public static partial class DiagnosticExplanations
             "def process() -> int !str:\n    try:\n        pass\n    finally:\n        val: int = get_value()?  # error",
             "Move the '?' expression outside the finally block:\ndef process() -> int !str:\n    val: int = get_value()?\n    try:\n        pass\n    finally:\n        cleanup()");
 
+        Add(dict, DiagnosticCodes.Semantic.IntegerLiteralOutOfRange, "Integer literal out of range", "Semantic",
+            "An integer literal exceeds the range of any Sharpy integer type (int, long, or unsigned variants). Sharpy integer types are fixed-width: int is 32-bit and long is 64-bit. Literals that exceed these ranges are caught at compile time.",
+            "x = 99999999999999999999999  # too large for any integer type",
+            "Use a smaller value, break the computation into parts, or use a float/double if approximate values are acceptable.");
+
         Add(dict, DiagnosticCodes.Semantic.BuiltinNameShadowed, "Builtin name shadowed", "Semantic",
             "A TYPE declaration used the bare spelling of a builtin type name. A type declaration enters the type namespace, so after it two different things answer to that name in annotation position and 'x: double' becomes genuinely ambiguous — Sharpy resolves annotations statically, so it cannot leave that unresolved. This extends the rule hard keywords already follow: bare 'class' is the keyword, '`class`' is your symbol. Only type declarations are affected. Bindings in VALUE position — variables, parameters, for-targets, and function declarations — may shadow a builtin freely, because they never enter the type namespace and so cannot make an annotation ambiguous; those draw a warning instead. Python differs here — CPython allows the rebinding, because annotations are not a static resolution surface there.",
             "class double:  # error: 'double' is a builtin type name\n    v: int",
