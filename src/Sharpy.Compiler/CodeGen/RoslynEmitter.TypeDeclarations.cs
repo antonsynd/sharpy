@@ -541,7 +541,8 @@ internal partial class RoslynEmitter
         }
 
         // For abstract classes implementing interfaces, generate abstract stubs for missing methods
-        if (_isInAbstractClass && classDef.BaseClasses.Length > 0)
+        var classTypeSymbol = _context.LookupSymbol(classDef.Name) as TypeSymbol;
+        if (classTypeSymbol?.IsAbstract == true && classDef.BaseClasses.Length > 0)
         {
             var interfaceMethods = CollectInterfaceMethodSymbols(classDef.BaseClasses);
             var definedMethods = GetDefinedMethodNames(classDef.Body);

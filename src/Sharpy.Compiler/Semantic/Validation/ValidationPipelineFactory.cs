@@ -26,6 +26,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new SourceGeneratorValidator())   // Order: 65 (validates @[Generator] usage and signatures)
             .AddValidator(new ConstructorOverloadValidator()) // Order: 140 (constructor overload validation)
             .AddValidator(new StructRulesValidator())       // Order: 145 (struct-specific rules)
+            .AddValidator(new AbstractMemberValidator())    // Order: 146 (abstract member in non-abstract class — SPY0493)
             .AddValidator(new EnumRulesValidator())         // Order: 147 (enum-specific rules)
             .AddValidator(new SignatureValidator())         // Order: 150 (early, validates dunder signatures)
             .AddValidator(new ConversionOperatorValidator()) // Order: 152 (conversion operator rules)

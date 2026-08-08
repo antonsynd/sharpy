@@ -718,6 +718,9 @@ public static class DiagnosticCodes
         // C# `using Foo = A.B;` alias resolves what two bare `using`s could not (#1324).
         public const string AmbiguousGlobImportOfBuiltin = "SPY0492";  // Active (#1324)
 
+        // Abstract member in non-abstract class (SPY0493, #1307)
+        public const string AbstractMemberInNonAbstractClass = "SPY0493"; // Active
+
         #endregion
     }
 

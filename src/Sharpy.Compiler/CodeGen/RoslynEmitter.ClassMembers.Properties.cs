@@ -128,10 +128,8 @@ internal partial class RoslynEmitter
         // Determine modifiers from the primary function's decorators
         var modifiers = GenerateMethodModifiers(primaryFunc.Name, primaryFunc.Decorators);
 
-        // Check if abstract
-        bool hasAbstractDecorator = primaryFunc.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(primaryFunc.Body);
-        bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
+        var indexerSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == primaryFunc.Name);
+        bool isAbstract = indexerSymbol?.IsAbstract ?? false;
 
         if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
         {
@@ -543,9 +541,9 @@ internal partial class RoslynEmitter
 
             var accessor = AccessorDeclaration(accessorKind);
 
-            bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(prop.Body);
-            bool isAbstract = prop.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
-                || (_isInAbstractClass && hasEllipsisBody);
+            var propSymbol = _currentTypeSymbol?.Properties.FirstOrDefault(p => p.Name == first.Name);
+            bool isAbstract = propSymbol?.IsAbstract
+                ?? prop.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
 
             if (isAbstract)
             {
@@ -895,10 +893,9 @@ internal partial class RoslynEmitter
             _variableVersions[baseName] = 0;
         }
 
-        // Check if this is an abstract property (body is single ellipsis)
-        bool hasAbstractDecorator = propDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(propDef.Body);
-        bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
+        var funcStylePropSymbol = _currentTypeSymbol?.Properties.FirstOrDefault(p => p.Name == propDef.Name);
+        bool isAbstract = funcStylePropSymbol?.IsAbstract
+            ?? propDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
 
         // Apply modifiers from decorators
         var modifiers = GenerateMethodModifiers(propDef.Name, propDef.Decorators);

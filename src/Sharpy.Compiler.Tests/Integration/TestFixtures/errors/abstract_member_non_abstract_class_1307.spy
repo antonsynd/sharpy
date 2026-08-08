@@ -1,0 +1,8 @@
+# #1307: @abstract member in a non-abstract class is refused with SPY0493.
+class Shape:
+    @abstract
+    def area(self) -> float:
+        ...
+
+def main() -> None:
+    pass

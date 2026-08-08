@@ -235,13 +235,8 @@ internal partial class RoslynEmitter
             _variableVersions[baseName] = 0;
         }
 
-        // Check if this is an abstract method:
-        // 1. Has @abstract decorator explicitly, OR
-        // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
-        bool hasAbstractDecorator = func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(func.Body);
-
-        bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
+        var methodSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == func.Name);
+        bool isAbstract = methodSymbol?.IsAbstract ?? false;
 
         // If method is abstract, ensure it has the abstract modifier in the token list
         if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
@@ -375,12 +370,8 @@ internal partial class RoslynEmitter
 
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
-        // Check if this is an abstract property:
-        // 1. Has @abstract decorator explicitly, OR
-        // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
-        bool hasAbstractDecorator = func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(func.Body);
-        bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
+        var boolPropSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == func.Name);
+        bool isAbstract = boolPropSymbol?.IsAbstract ?? false;
 
         // Apply modifiers from decorators (handles public/virtual/override/abstract)
         var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
@@ -432,12 +423,8 @@ internal partial class RoslynEmitter
 
         var returnType = PredefinedType(Token(SyntaxKind.IntKeyword));
 
-        // Check if this is an abstract property:
-        // 1. Has @abstract decorator explicitly, OR
-        // 2. Is in an abstract class AND has ellipsis body (implicit abstract)
-        bool hasAbstractDecorator = func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(func.Body);
-        bool isAbstract = hasAbstractDecorator || (_isInAbstractClass && hasEllipsisBody);
+        var lenPropSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == func.Name);
+        bool isAbstract = lenPropSymbol?.IsAbstract ?? false;
 
         // Apply modifiers from decorators (handles public/virtual/override/abstract)
         var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
