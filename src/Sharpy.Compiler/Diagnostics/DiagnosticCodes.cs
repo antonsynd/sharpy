@@ -575,7 +575,7 @@ public static class DiagnosticCodes
         public const string EventFieldNameConflict = "SPY0421";     // Active
         public const string EventMethodNameConflict = "SPY0422";    // Active
         public const string AbstractEventWithBody = "SPY0423";      // Active
-        // SPY0424: Reserved for future event validation errors
+        public const string EventAccessorAbstractnessDisagreement = "SPY0424"; // Active
 
         // Decorator argument validation (SPY0425-SPY0426)
         public const string NonConstantDecoratorArgument = "SPY0425"; // Active

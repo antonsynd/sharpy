@@ -1,0 +1,14 @@
+# #1264: Mixed abstract/concrete event accessors refuse with SPY0424.
+delegate SimpleHandler() -> None
+
+@abstract
+class Widget:
+    @abstract
+    event add on_click(self, handler: SimpleHandler):
+        ...
+
+    event remove on_click(self, handler: SimpleHandler):
+        pass
+
+def main() -> None:
+    pass

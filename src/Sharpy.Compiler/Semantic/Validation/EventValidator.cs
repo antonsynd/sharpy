@@ -91,22 +91,53 @@ internal class EventValidator : SemanticValidatorBase
             ValidateFinalNotWithAbstractOrVirtual(typeName, eventDef);
         }
 
-        // Check for unpaired function-style accessors
+        // Check for unpaired function-style accessors and abstractness agreement
         foreach (var (eventName, group) in eventGroups)
         {
             ValidateUnpairedAccessors(typeName, eventName, group);
+            ValidateAccessorAbstractnessAgreement(typeName, eventName, group);
         }
     }
 
     private void ValidateInterfaceEvents(string typeName, IReadOnlyList<Statement> body)
     {
-        // Interface events are simpler — only auto-events allowed
+        var fieldNames = new HashSet<string>();
+        var methodNames = new HashSet<string>();
+        var eventDefs = new List<EventDef>();
+        var eventGroups = new Dictionary<string, List<EventDef>>();
+
         foreach (var member in body)
         {
-            if (member is EventDef eventDef)
+            switch (member)
             {
-                ValidateAbstractEventBody(typeName, eventDef);
+                case VariableDeclaration varDecl:
+                    fieldNames.Add(varDecl.Name);
+                    break;
+                case FunctionDef funcDef:
+                    methodNames.Add(funcDef.Name);
+                    break;
+                case EventDef eventDef:
+                    eventDefs.Add(eventDef);
+                    if (!eventGroups.TryGetValue(eventDef.Name, out var group))
+                    {
+                        group = new List<EventDef>();
+                        eventGroups[eventDef.Name] = group;
+                    }
+                    group.Add(eventDef);
+                    break;
             }
+        }
+
+        foreach (var eventDef in eventDefs)
+        {
+            ValidateAbstractEventBody(typeName, eventDef);
+            ValidateEventAgainstFields(typeName, eventDef, fieldNames);
+            ValidateEventAgainstMethods(typeName, eventDef, methodNames);
+        }
+
+        foreach (var (eventName, group) in eventGroups)
+        {
+            ValidateUnpairedAccessors(typeName, eventName, group);
         }
     }
 
@@ -222,6 +253,41 @@ internal class EventValidator : SemanticValidatorBase
                 eventDef.LineStart, eventDef.ColumnStart,
                 code: DiagnosticCodes.Validation.FinalWithAbstractOrVirtual,
                 span: eventDef.Span);
+        }
+    }
+
+    /// <summary>
+    /// Rule 6: All function-style accessors of one event must agree about abstractness (#1264).
+    /// </summary>
+    private void ValidateAccessorAbstractnessAgreement(string typeName, string eventName, List<EventDef> group)
+    {
+        if (group.Count < 2 || !group.Any(e => e.IsFunctionStyle))
+            return;
+
+        var ownerSymbol = _context.SymbolTable.LookupType(typeName);
+        bool ownerIsAbstract = ownerSymbol?.IsAbstract == true;
+
+        bool hasAbstract = false;
+        bool hasConcrete = false;
+        foreach (var eventDef in group)
+        {
+            bool isAbstract = eventDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
+                || (ownerIsAbstract && AstHelper.IsEllipsisStubBody(eventDef.Body));
+            if (isAbstract)
+                hasAbstract = true;
+            else
+                hasConcrete = true;
+        }
+
+        if (hasAbstract && hasConcrete)
+        {
+            var first = group[0];
+            AddError(_context,
+                $"Event '{eventName}' in '{typeName}' has accessors that disagree about abstractness — "
+                + "all accessors must be abstract or all must be concrete",
+                first.LineStart, first.ColumnStart,
+                code: DiagnosticCodes.Validation.EventAccessorAbstractnessDisagreement,
+                span: first.Span);
         }
     }
 }

@@ -1,0 +1,9 @@
+# #1265: Interface events get the unpaired-accessor check.
+delegate SimpleHandler() -> None
+
+interface IObservable:
+    event add on_change(self, handler: SimpleHandler):
+        ...
+
+def main() -> None:
+    pass
