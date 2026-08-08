@@ -60,9 +60,23 @@ internal record CachedSymbol
     public string? TypeId { get; init; }
 
     /// <summary>
-    /// For TypeSymbol: base type ID (reference to another CachedSymbol)
+    /// For TypeSymbol: base type ID (reference to another CachedSymbol).
+    /// Only set for user-defined bases whose ID resolves within the project.
+    /// CLR bases (Exception, etc.) are carried via <see cref="UnresolvedBaseName"/> (#1309).
     /// </summary>
     public string? BaseTypeId { get; init; }
+
+    /// <summary>
+    /// For TypeSymbol: unresolved base type name (e.g., "Exception").
+    /// Set when the base is a CLR type or cannot be expressed as a registry ID.
+    /// The Phase 4b/4c inheritance machinery resolves it on restore (#1309).
+    /// </summary>
+    public string? UnresolvedBaseName { get; init; }
+
+    /// <summary>
+    /// For TypeSymbol: unresolved interface names that cannot be expressed as registry IDs.
+    /// </summary>
+    public List<string>? UnresolvedInterfaceNames { get; init; }
 
     /// <summary>
     /// For TypeSymbol: interface entries (symbol ID + type arg annotations)

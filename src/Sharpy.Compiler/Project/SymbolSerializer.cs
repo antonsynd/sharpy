@@ -118,9 +118,15 @@ internal static class SymbolSerializer
             TypeKind = ts.TypeKind.ToString(),
             IsAbstract = ts.IsAbstract,
             DefiningModule = ts.DefiningModule,
-            BaseTypeId = ts.BaseType != null ? ComputeSymbolId(ts.BaseType, ts.BaseType.DefiningFilePath ?? filePath) : null,
+            BaseTypeId = ts.BaseType is { ClrType: null } bt
+                ? ComputeSymbolId(bt, bt.DefiningFilePath ?? filePath) : null,
+            UnresolvedBaseName = !string.IsNullOrEmpty(ts.UnresolvedBaseName)
+                ? ts.UnresolvedBaseName
+                : ts.BaseType is { ClrType: not null } clrBase ? clrBase.Name : null,
+            UnresolvedInterfaceNames = ts.UnresolvedInterfaceNames.Count > 0
+                ? ts.UnresolvedInterfaceNames.ToList() : null,
             InterfaceEntries = ts.Interfaces.Count > 0
-                ? ts.Interfaces.Select(i => new CachedInterfaceEntry
+                ? ts.Interfaces.Where(i => i.Definition.ClrType == null).Select(i => new CachedInterfaceEntry
                 {
                     SymbolId = ComputeSymbolId(i.Definition, i.Definition.DefiningFilePath ?? filePath),
                     TypeArgs = i.TypeArgAnnotations.IsDefaultOrEmpty
@@ -461,8 +467,16 @@ internal static class SymbolSerializer
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
-            TypeParameters = DeserializeTypeParameters(cached.TypeParameters)
+            TypeParameters = DeserializeTypeParameters(cached.TypeParameters),
+            UnresolvedBaseName = cached.UnresolvedBaseName
         };
+
+        // Restore unresolved interface names so Phase 4b/4c resolves them (#1309)
+        if (cached.UnresolvedInterfaceNames is { Count: > 0 })
+        {
+            foreach (var name in cached.UnresolvedInterfaceNames)
+                symbol.UnresolvedInterfaceNames.Add(name);
+        }
 
         symbol.Documentation = cached.Documentation;
 
@@ -939,7 +953,8 @@ internal static class SymbolSerializer
     private static void ResolveTypeReferences(
         CachedSymbol cached, TypeSymbol ts, Dictionary<string, Symbol> symbolRegistry)
     {
-        // Resolve BaseType
+        // Resolve BaseType from registry; on miss, set the unresolved name so the
+        // Phase 4b/4c inheritance machinery can resolve it (#1309).
         if (cached.BaseTypeId != null && symbolRegistry.TryGetValue(cached.BaseTypeId, out var baseSymbol))
         {
             if (baseSymbol is TypeSymbol baseType)
@@ -947,8 +962,10 @@ internal static class SymbolSerializer
                 ts.BaseType = baseType;
             }
         }
+        // UnresolvedBaseName and UnresolvedInterfaceNames are set during construction
+        // (init-only properties); Phase 4b/4c resolves them (#1309).
 
-        // Resolve Interfaces
+        // Resolve Interfaces from registry
         if (cached.InterfaceEntries != null)
         {
             foreach (var entry in cached.InterfaceEntries)

@@ -82,6 +82,18 @@ internal partial class ProjectCompiler
                         {
                             SymbolTable.TryDefine(symbol);
 
+                            // Write resolved inheritance into SemanticBinding so Phase 4c's
+                            // MaterializeInheritance handles it — restore runs at Phase 2,
+                            // freeze at 4c, so this is pre-freeze and safe (#1309).
+                            if (typeSymbol.BaseType != null)
+                            {
+                                semanticBinding.SetBaseType(typeSymbol, typeSymbol.BaseType);
+                            }
+                            foreach (var iface in typeSymbol.Interfaces)
+                            {
+                                semanticBinding.AddInterface(typeSymbol, iface.Definition);
+                            }
+
                             // Register CodeGenInfo to maintain dual-write consistency
                             if (typeSymbol.CodeGenInfo != null)
                             {
