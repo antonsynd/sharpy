@@ -227,27 +227,29 @@ internal static class ClrExtensionMethodResolver
     internal static PartialResolution? TryResolveFromReceiver(
         Type receiverType, string memberName, IReadOnlyList<ExtensionArgumentShape> argumentShapes)
     {
-        if (!_byName.Value.TryGetValue(memberName, out var candidates))
-            return null;
+        var all = TryResolveAllFromReceiver(receiverType, memberName, argumentShapes);
+        return all.Count == 1 ? all[0] : null;
+    }
 
-        PartialResolution? resolved = null;
+    internal static IReadOnlyList<PartialResolution> TryResolveAllFromReceiver(
+        Type receiverType, string memberName, IReadOnlyList<ExtensionArgumentShape> argumentShapes)
+    {
+        if (!_byName.Value.TryGetValue(memberName, out var candidates))
+            return Array.Empty<PartialResolution>();
+
+        var resolved = new List<PartialResolution>();
         foreach (var candidate in candidates)
         {
             var next = TryBindCandidateFromReceiver(candidate, receiverType, argumentShapes);
             if (next == null)
                 continue;
 
-            if (resolved == null)
-            {
-                resolved = next;
-                continue;
-            }
-
             // Same name, same substituted signature and same open set is not ambiguity — it is two
-            // overloads that became indistinguishable once the receiver bound them. A genuine
-            // disagreement is un-computable and stays on the permissive channel.
-            if (!SamePartialResolution(resolved, next))
-                return null;
+            // overloads that became indistinguishable once the receiver bound them. Deduplicate.
+            if (resolved.Count > 0 && resolved.Any(r => SamePartialResolution(r, next)))
+                continue;
+
+            resolved.Add(next);
         }
 
         return resolved;

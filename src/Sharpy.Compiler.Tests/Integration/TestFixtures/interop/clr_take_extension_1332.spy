@@ -1,0 +1,22 @@
+# #1332: take at an annotated list target — same-arity extension overloads
+# (Take(int) vs Take(Range)) discriminate by argument type. Before the fix,
+# both candidates passed receiver binding but disagreed on parameter type,
+# so the staging declined and take stayed Unknown.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst: List[int] = List[int]()
+    lst.add(1)
+    lst.add(2)
+    lst.add(3)
+    lst.add(4)
+    lst.add(5)
+
+    # take(int) — discriminated from Take(Range)
+    result: list[int] = lst.take(3)
+    print(result)
+
+    # skip — single overload control
+    result2: list[int] = lst.skip(2)
+    print(result2)

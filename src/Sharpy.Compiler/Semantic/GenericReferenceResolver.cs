@@ -595,7 +595,10 @@ internal partial class TypeChecker
         MemberAccess Callee,
         SemanticType ReceiverType,
         Discovery.ClrExtensionMethodResolver.PartialResolution Partial,
-        FunctionSymbol Signature);
+        FunctionSymbol Signature)
+    {
+        internal IReadOnlyList<Discovery.ClrExtensionMethodResolver.PartialResolution>? AlternateCandidates { get; init; }
+    }
 
     /// <summary>
     /// Opens the staged path for <c>lst.select(f)</c> — an extension call written with NO type
@@ -669,15 +672,32 @@ internal partial class TypeChecker
                 : Discovery.ClrExtensionMethodResolver.ExtensionArgumentShape.Value;
         }
 
-        // 5. One candidate, closed as far as the receiver goes.
+        // 5. One candidate, closed as far as the receiver goes. When multiple same-arity
+        // candidates differ only in parameter types (e.g., Take(int) vs Take(Range)), stage
+        // all of them and let CompleteStagedExtensionCall pick by argument types (#1332).
         var partial = Discovery.ClrExtensionMethodResolver.TryResolveFromReceiver(
             receiverClrType, memberAccess.Member, shapes);
-        if (partial == null)
+        if (partial != null)
+        {
+            return new StagedExtensionCall(
+                memberAccess, receiverType, partial,
+                BuildStagedExtensionSymbol(memberAccess.Member, partial));
+        }
+
+        var allCandidates = Discovery.ClrExtensionMethodResolver.TryResolveAllFromReceiver(
+            receiverClrType, memberAccess.Member, shapes);
+        if (allCandidates.Count < 2)
             return null;
 
+        // Multiple same-arity candidates (e.g. Take(int) vs Take(Range)): build a permissive
+        // signature with Unknown parameters so argument checking doesn't reject any candidate
+        // prematurely. CompleteStagedExtensionCall picks the right one by argument types.
         return new StagedExtensionCall(
-            memberAccess, receiverType, partial,
-            BuildStagedExtensionSymbol(memberAccess.Member, partial));
+            memberAccess, receiverType, allCandidates[0],
+            BuildPermissiveStagedExtensionSymbol(memberAccess.Member, allCandidates[0]))
+        {
+            AlternateCandidates = allCandidates
+        };
     }
 
     /// <summary>
@@ -730,6 +750,35 @@ internal partial class TypeChecker
         };
     }
 
+    private FunctionSymbol BuildPermissiveStagedExtensionSymbol(
+        string memberName, Discovery.ClrExtensionMethodResolver.PartialResolution partial)
+    {
+        var clrParameters = partial.OpenMethod.GetParameters();
+        var parameters = new List<ParameterSymbol>(partial.ParameterTypes.Count);
+        for (int i = 0; i < partial.ParameterTypes.Count; i++)
+        {
+            parameters.Add(new ParameterSymbol
+            {
+                Name = clrParameters[i + 1].Name ?? $"arg{i}",
+                Type = SemanticType.Unknown
+            });
+        }
+
+        return new FunctionSymbol
+        {
+            Name = memberName,
+            Kind = SymbolKind.Function,
+            AccessLevel = AccessLevel.Public,
+            ClrMethodName = partial.ClrMethodName,
+            TypeParameters = partial.OpenTypeParameterNames
+                .Select(name => new Parser.Ast.TypeParameterDef { Name = name })
+                .ToList(),
+            Parameters = parameters,
+            ReturnType = SemanticType.Unknown,
+            IsStatic = false
+        };
+    }
+
     /// <summary>
     /// Closes a staged call once its arguments have been checked: unifies the synthesized formals
     /// against the actual argument types to bind the still-open type parameters, completes the CLR
@@ -753,6 +802,25 @@ internal partial class TypeChecker
     /// </summary>
     private void CompleteStagedExtensionCall(StagedExtensionCall staged, List<SemanticType> argTypes)
     {
+        // When multiple same-arity candidates were staged (#1332), try each one and pick
+        // the first that completes. This discriminates Take(int) from Take(Range) etc.
+        if (staged.AlternateCandidates != null)
+        {
+            foreach (var candidate in staged.AlternateCandidates)
+            {
+                var altStaged = staged with
+                {
+                    Partial = candidate,
+                    Signature = BuildStagedExtensionSymbol(staged.Callee.Member, candidate),
+                    AlternateCandidates = null
+                };
+                CompleteStagedExtensionCall(altStaged, argTypes);
+                if (_semanticInfo.GetExpressionType(staged.Callee) is not null and not UnknownType)
+                    return;
+            }
+            return;
+        }
+
         var parameters = staged.Signature.Parameters;
         var pairs = Math.Min(parameters.Count, argTypes.Count);
         var formals = new List<SemanticType>(pairs);
@@ -783,15 +851,24 @@ internal partial class TypeChecker
         if (resolution == null)
             return;
 
-        // A return type that maps to `object` means the bridge could not represent the real one —
-        // OrderBy's IOrderedEnumerable<TSource> is the case on this surface. Recording it would type the
-        // call `object`, which is strictly WORSE than the Unknown it has today: Unknown stays permissive
-        // and lets C# infer, `object` actively misinforms everything downstream. So record nothing, the
-        // same call the builtin and discovered-member arms already make for an object-collapsed return.
-        // The explicit spelling's existing behavior is deliberately untouched — it is shipped, and D2
-        // constrains only what this new path does.
+        // A return type that maps to `object` means the bridge could not represent the real one.
+        // Recording it would type the call `object`, which is strictly WORSE than Unknown.
         if (IsObjectType(_clrTypeBridge.Value.MapClrTypeToSemanticType(resolution.ClosedMethod.ReturnType)))
             return;
+
+        // Verify closed parameter types match actual arguments before recording (#1332).
+        // Without this, same-arity candidates (Take(int) vs Take(Range)) record the wrong
+        // fact and ValidateClosedExtensionArguments emits a false SPY0220.
+        var closedParams = resolution.ClosedMethod.GetParameters();
+        for (int i = 0; i < argTypes.Count && i + 1 < closedParams.Length; i++)
+        {
+            var closedParamType = _clrTypeBridge.Value.MapClrTypeToSemanticType(closedParams[i + 1].ParameterType);
+            if (argTypes[i] is not UnknownType && closedParamType is not UnknownType
+                && !IsAssignable(argTypes[i], closedParamType))
+            {
+                return;
+            }
+        }
 
         var loweredTypeArgs = new List<SemanticType>(resolution.TypeArguments.Count);
         foreach (var clrArg in resolution.TypeArguments)
