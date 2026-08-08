@@ -88,6 +88,10 @@ internal partial class ProjectCompiler
                             if (typeSymbol.BaseType != null)
                             {
                                 semanticBinding.SetBaseType(typeSymbol, typeSymbol.BaseType);
+                                if (typeSymbol.BaseTypeRef != null)
+                                {
+                                    semanticBinding.SetBaseTypeReference(typeSymbol, typeSymbol.BaseTypeRef);
+                                }
                             }
                             foreach (var iface in typeSymbol.Interfaces)
                             {

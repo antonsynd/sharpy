@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Reflection;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Discovery;
@@ -395,9 +396,19 @@ internal class ModuleRegistry
 
         // Resolve base type for classes (except System.Object)
         TypeSymbol? baseTypeSymbol = null;
+        BaseTypeReference? baseTypeRef = null;
         if (clrType.BaseType != null && clrType.BaseType != typeof(object))
         {
             baseTypeSymbol = CreateTypeSymbolFromClrType(clrType.BaseType);
+            if (baseTypeSymbol != null)
+            {
+                var resolvedArgs = MapClrBaseTypeArguments(clrType.BaseType, typeParameters);
+                baseTypeRef = new BaseTypeReference
+                {
+                    Definition = baseTypeSymbol,
+                    ResolvedTypeArguments = resolvedArgs
+                };
+            }
         }
 
         // Collect implemented interfaces (only directly implemented, not inherited)
@@ -451,6 +462,7 @@ internal class ModuleRegistry
             IsAbstract = clrType.IsAbstract && !clrType.IsInterface,
             AccessLevel = AccessLevel.Public,
             BaseType = baseTypeSymbol,
+            BaseTypeRef = baseTypeRef,
             Interfaces = interfaces,
             Constructors = ctorSymbols,
             TypeParameters = typeParameters,
@@ -458,6 +470,38 @@ internal class ModuleRegistry
         };
 
         return typeSymbol;
+    }
+
+    /// <summary>
+    /// Maps CLR base type generic arguments to SemanticType instances (#1287).
+    /// Type parameters of the declaring type become <see cref="TypeParameterType"/>;
+    /// concrete closed types are mapped through <see cref="ClrTypeBridge"/>.
+    /// </summary>
+    private static ImmutableArray<SemanticType> MapClrBaseTypeArguments(
+        Type clrBaseType, List<TypeParameterDef> declaringTypeParams)
+    {
+        if (!clrBaseType.IsGenericType)
+            return ImmutableArray<SemanticType>.Empty;
+
+        var args = clrBaseType.GetGenericArguments();
+        if (args.Length == 0)
+            return ImmutableArray<SemanticType>.Empty;
+
+        var bridge = new Discovery.ClrTypeBridge();
+        var builder = ImmutableArray.CreateBuilder<SemanticType>(args.Length);
+        foreach (var arg in args)
+        {
+            if (arg.IsGenericParameter)
+            {
+                builder.Add(new TypeParameterType { Name = arg.Name });
+            }
+            else
+            {
+                var mapped = bridge.MapClrTypeToSemanticType(arg);
+                builder.Add(mapped ?? SemanticType.Unknown);
+            }
+        }
+        return builder.MoveToImmutable();
     }
 
     /// <summary>

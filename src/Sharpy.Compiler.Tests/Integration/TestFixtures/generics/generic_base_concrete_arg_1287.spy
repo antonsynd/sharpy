@@ -1,0 +1,34 @@
+# #1287: base-class type arguments become representable.
+# Before the fix, the walker used a positional copy that lost the written
+# arguments — Box[list[int]] was refused and Box[int] was accepted (both wrong).
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+class Pair[T](Box[list[T]]):
+    def __init__(self, items: list[T]) -> None:
+        super().__init__(items)
+
+class IntBox(Box[int]):
+    def __init__(self, v: int) -> None:
+        super().__init__(v)
+
+class Derived[T](Box[T]):
+    def __init__(self, v: T) -> None:
+        super().__init__(v)
+
+def main() -> None:
+    # Row 1: identity substitution (Derived[T](Box[T]))
+    d: Box[int] = Derived[int](42)
+    print(d.value)
+
+    # Row 2: concrete base arg (IntBox(Box[int]))
+    b: Box[int] = IntBox(7)
+    print(b.value)
+
+    # Row 3: nested arg (Pair[T](Box[list[T]]))
+    p: Box[list[int]] = Pair[int]([1, 2, 3])
+    print(p.value)

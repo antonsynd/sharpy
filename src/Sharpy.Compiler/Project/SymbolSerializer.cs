@@ -120,6 +120,9 @@ internal static class SymbolSerializer
             DefiningModule = ts.DefiningModule,
             BaseTypeId = ts.BaseType is { ClrType: null } bt
                 ? ComputeSymbolId(bt, bt.DefiningFilePath ?? filePath) : null,
+            BaseTypeArgs = ts.BaseTypeRef is { TypeArgAnnotations: { IsDefaultOrEmpty: false } baseAnnots }
+                ? baseAnnots.Select(SerializeTypeAnnotation).ToList()
+                : null,
             UnresolvedBaseName = !string.IsNullOrEmpty(ts.UnresolvedBaseName)
                 ? ts.UnresolvedBaseName
                 : ts.BaseType is { ClrType: not null } clrBase ? clrBase.Name : null,
@@ -468,7 +471,10 @@ internal static class SymbolSerializer
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
             TypeParameters = DeserializeTypeParameters(cached.TypeParameters),
-            UnresolvedBaseName = cached.UnresolvedBaseName
+            UnresolvedBaseName = cached.UnresolvedBaseName,
+            UnresolvedBaseTypeArgs = cached.BaseTypeArgs != null && cached.BaseTypeArgs.Count > 0
+                ? cached.BaseTypeArgs.Select(DeserializeTypeAnnotation).ToImmutableArray()
+                : ImmutableArray<TypeAnnotation>.Empty
         };
 
         // Restore unresolved interface names so Phase 4b/4c resolves them (#1309)
@@ -960,6 +966,14 @@ internal static class SymbolSerializer
             if (baseSymbol is TypeSymbol baseType)
             {
                 ts.BaseType = baseType;
+                var baseTypeArgs = cached.BaseTypeArgs != null && cached.BaseTypeArgs.Count > 0
+                    ? cached.BaseTypeArgs.Select(DeserializeTypeAnnotation).ToImmutableArray()
+                    : ImmutableArray<TypeAnnotation>.Empty;
+                ts.BaseTypeRef = new BaseTypeReference
+                {
+                    Definition = baseType,
+                    TypeArgAnnotations = baseTypeArgs
+                };
             }
         }
         // UnresolvedBaseName and UnresolvedInterfaceNames are set during construction

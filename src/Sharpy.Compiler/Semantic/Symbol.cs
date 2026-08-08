@@ -339,6 +339,7 @@ public record TypeSymbol : Symbol
     /// Readers should prefer SemanticBinding.GetBaseType when available.
     /// </remarks>
     public TypeSymbol? BaseType { get; internal set; }
+    public BaseTypeReference? BaseTypeRef { get; internal set; }
     public List<InterfaceReference> Interfaces { get; init; } = new();
 
     /// <summary>
@@ -347,6 +348,13 @@ public record TypeSymbol : Symbol
     /// after all imports are registered in the symbol table.
     /// </summary>
     public string? UnresolvedBaseName { get; init; }
+
+    /// <summary>
+    /// Unresolved base class type arguments from AST, carried alongside
+    /// <see cref="UnresolvedBaseName"/> for deferred inheritance resolution (#1287).
+    /// </summary>
+    public ImmutableArray<TypeAnnotation> UnresolvedBaseTypeArgs { get; init; }
+        = ImmutableArray<TypeAnnotation>.Empty;
 
     /// <summary>
     /// Unresolved interface names from AST, used for deferred inheritance resolution.

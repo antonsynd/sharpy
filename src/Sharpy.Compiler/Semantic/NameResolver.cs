@@ -367,6 +367,11 @@ internal partial class NameResolver
                     continue;
                 }
                 _semanticBinding.SetBaseType(typeSymbol, baseSymbol);
+                _semanticBinding.SetBaseTypeReference(typeSymbol, new BaseTypeReference
+                {
+                    Definition = baseSymbol,
+                    TypeArgAnnotations = baseAnnot.TypeArguments
+                });
                 hasSetBaseType = true;
 
                 if (IsSourceGeneratorType(baseSymbol))

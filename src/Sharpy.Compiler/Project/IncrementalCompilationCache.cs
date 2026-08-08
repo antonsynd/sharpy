@@ -55,7 +55,9 @@ internal class IncrementalCompilationCache
     //      formals and silently revert the #1260/#1252 widening
     // v20: ExtractFileSymbols now walks module scopes — the cache serializes real symbols instead
     //      of always-empty lists (#1309)
-    internal const int CurrentSchemaVersion = 20;
+    // v21: BaseTypeArgs round-trip in CachedSymbol so generic base class arguments survive
+    //      a warm build (#1287)
+    internal const int CurrentSchemaVersion = 21;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

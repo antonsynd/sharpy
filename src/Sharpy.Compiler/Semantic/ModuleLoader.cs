@@ -360,6 +360,9 @@ internal class ModuleLoader
         bool isAbstract = classDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
 
         string? unresolvedBase = classDef.BaseClasses.Length > 0 ? classDef.BaseClasses[0].Name : null;
+        var unresolvedBaseTypeArgs = classDef.BaseClasses.Length > 0
+            ? classDef.BaseClasses[0].TypeArguments
+            : ImmutableArray<TypeAnnotation>.Empty;
         var unresolvedInterfaces = classDef.BaseClasses.Length > 1
             ? classDef.BaseClasses.Skip(1).Select(b => b.Name).ToList()
             : new List<string>();
@@ -422,6 +425,7 @@ internal class ModuleLoader
             DeclarationSpan = classDef.Span,
             DefiningModule = definingModulePath,
             UnresolvedBaseName = unresolvedBase,
+            UnresolvedBaseTypeArgs = unresolvedBaseTypeArgs,
             UnresolvedInterfaceNames = unresolvedInterfaces,
             Fields = fields,
             Methods = methods,
@@ -755,7 +759,8 @@ internal class ModuleLoader
         var properties = new List<PropertySymbol>();
         foreach (var stmt in body)
         {
-            if (stmt is not PropertyDef propDef) continue;
+            if (stmt is not PropertyDef propDef)
+                continue;
 
             var accessLevel = GetAccessLevel(propDef.Name);
             var explicitAccess = Shared.MemberClassification.GetExplicitAccessLevel(propDef.Decorators);
@@ -812,7 +817,8 @@ internal class ModuleLoader
         var events = new List<EventSymbol>();
         foreach (var stmt in body)
         {
-            if (stmt is not EventDef eventDef) continue;
+            if (stmt is not EventDef eventDef)
+                continue;
 
             var accessLevel = GetAccessLevel(eventDef.Name);
             var explicitAccess = Shared.MemberClassification.GetExplicitAccessLevel(eventDef.Decorators);

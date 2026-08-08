@@ -79,7 +79,7 @@ internal static class GenericInstantiationWalker
 
             // Walk the base class chain so types like `class MyList[T](list[T])`
             // expose list (and list's interfaces) as instantiated supertypes.
-            var baseSupertype = InstantiateBaseType(symbol, substitution, binding);
+            var baseSupertype = InstantiateBaseType(symbol, substitution, binding, typeResolver);
             if (baseSupertype == null)
                 continue;
 
@@ -96,17 +96,16 @@ internal static class GenericInstantiationWalker
     }
 
     /// <summary>
-    /// Instantiates a symbol's direct base class with the current substitution. Generic
-    /// base classes are instantiated by mapping the derived type's own type parameters
-    /// positionally onto the base's parameters (the dominant pattern, e.g.
-    /// <c>class MyList[T](list[T])</c>); base annotations with reordered or partially
-    /// concrete arguments are not yet representable on TypeSymbol, so mismatched arities
-    /// are skipped conservatively. Returns null when there is no walkable base.
+    /// Instantiates a symbol's direct base class with the current substitution (#1287).
+    /// Reads the base type's written or CLR-resolved arguments from
+    /// <see cref="BaseTypeReference"/> and substitutes through them, mirroring
+    /// the interface arm's shape. Returns null when there is no walkable base.
     /// </summary>
     private static InstantiatedSupertype? InstantiateBaseType(
         TypeSymbol symbol,
         Dictionary<string, SemanticType> substitution,
-        SemanticBinding? binding)
+        SemanticBinding? binding,
+        TypeResolver? typeResolver)
     {
         var baseSymbol = binding?.GetBaseType(symbol) ?? symbol.BaseType;
         if (baseSymbol == null || ReferenceEquals(baseSymbol, symbol))
@@ -115,18 +114,59 @@ internal static class GenericInstantiationWalker
         if (!baseSymbol.IsGeneric)
             return new InstantiatedSupertype(baseSymbol, Array.Empty<SemanticType>());
 
-        if (symbol.TypeParameters.Count != baseSymbol.TypeParameters.Count)
-            return null;
-
-        var baseArguments = new List<SemanticType>(symbol.TypeParameters.Count);
-        foreach (var typeParam in symbol.TypeParameters)
+        var baseRef = binding?.GetBaseTypeReference(symbol) ?? symbol.BaseTypeRef;
+        if (baseRef != null)
         {
-            baseArguments.Add(substitution.TryGetValue(typeParam.Name, out var bound)
-                ? bound
-                : new TypeParameterType { Name = typeParam.Name });
+            var rawArguments = ResolveBaseReferenceArguments(baseRef, symbol, typeResolver);
+            if (rawArguments != null && rawArguments.Count > 0)
+            {
+                var concreteArguments = rawArguments
+                    .Select(arg => TypeSubstitution.Apply(arg, substitution))
+                    .ToList();
+                return new InstantiatedSupertype(baseSymbol, concreteArguments);
+            }
         }
 
-        return new InstantiatedSupertype(baseSymbol, baseArguments);
+        // Fallback: positional copy for the common case where derived and base
+        // share the same type parameters (e.g. class MyList[T](list[T])) and
+        // no BaseTypeReference was populated (legacy/synthesized types).
+        if (symbol.TypeParameters.Count == baseSymbol.TypeParameters.Count)
+        {
+            var baseArguments = new List<SemanticType>(symbol.TypeParameters.Count);
+            foreach (var typeParam in symbol.TypeParameters)
+            {
+                baseArguments.Add(substitution.TryGetValue(typeParam.Name, out var bound)
+                    ? bound
+                    : new TypeParameterType { Name = typeParam.Name });
+            }
+            return new InstantiatedSupertype(baseSymbol, baseArguments);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves a base type reference's type arguments to SemanticTypes, mirroring
+    /// <see cref="ResolveReferenceArguments"/> for interfaces (#1287).
+    /// </summary>
+    private static IReadOnlyList<SemanticType>? ResolveBaseReferenceArguments(
+        BaseTypeReference baseRef, TypeSymbol declaringSymbol, TypeResolver? typeResolver)
+    {
+        if (!baseRef.ResolvedTypeArguments.IsDefaultOrEmpty)
+            return baseRef.ResolvedTypeArguments;
+
+        if (baseRef.TypeArgAnnotations.IsDefaultOrEmpty)
+            return null;
+
+        var result = new List<SemanticType>(baseRef.TypeArgAnnotations.Length);
+        foreach (var annotation in baseRef.TypeArgAnnotations)
+        {
+            var converted = ConvertAnnotation(annotation, declaringSymbol, typeResolver);
+            if (converted == null)
+                return null;
+            result.Add(converted);
+        }
+        return result;
     }
 
     /// <summary>

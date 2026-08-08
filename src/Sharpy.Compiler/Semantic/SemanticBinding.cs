@@ -65,6 +65,10 @@ public class SemanticBinding
     private readonly ConcurrentDictionary<TypeSymbol, TypeSymbol> _baseTypes =
         new(ReferenceEqualityComparer.Instance);
 
+    // Maps type symbols to their base type references (definition + type arguments) (#1287)
+    private readonly ConcurrentDictionary<TypeSymbol, BaseTypeReference> _baseTypeRefs =
+        new(ReferenceEqualityComparer.Instance);
+
     // Maps type symbols to their resolved interface lists (ConcurrentQueue preserves insertion order)
     private readonly ConcurrentDictionary<TypeSymbol, ConcurrentQueue<InterfaceReference>> _interfaces =
         new(ReferenceEqualityComparer.Instance);
@@ -247,6 +251,24 @@ public class SemanticBinding
     public TypeSymbol? GetBaseType(TypeSymbol symbol)
         => _baseTypes.TryGetValue(symbol, out var bt) ? bt : null;
 
+    /// <summary>
+    /// Sets the base type reference (definition + type arguments) for a type symbol (#1287).
+    /// </summary>
+    public void SetBaseTypeReference(TypeSymbol symbol, BaseTypeReference baseRef)
+    {
+        if (_inheritanceFrozen)
+        {
+            AssertNotFrozen("Inheritance", symbol.Name);
+        }
+        _baseTypeRefs[symbol] = baseRef;
+    }
+
+    /// <summary>
+    /// Gets the base type reference for a type symbol, or null if not set.
+    /// </summary>
+    public BaseTypeReference? GetBaseTypeReference(TypeSymbol symbol)
+        => _baseTypeRefs.TryGetValue(symbol, out var br) ? br : null;
+
     #endregion
 
     #region Interfaces
@@ -292,6 +314,8 @@ public class SemanticBinding
     {
         foreach (var (symbol, baseType) in _baseTypes)
             symbol.BaseType = baseType;
+        foreach (var (symbol, baseRef) in _baseTypeRefs)
+            symbol.BaseTypeRef = baseRef;
         foreach (var (symbol, queue) in _interfaces)
             foreach (var iface in queue)
                 if (!symbol.Interfaces.Any(i => ReferenceEquals(i, iface) || i.Definition.Name == iface.Definition.Name))

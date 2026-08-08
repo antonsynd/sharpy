@@ -67,6 +67,21 @@ internal static class DualWriteAssertions
                 }
             }
 
+            // BaseTypeRef consistency (#1287)
+            var sbBaseRef = semanticBinding.GetBaseTypeReference(symbol);
+            if (sbBaseRef != null && symbol.BaseTypeRef == null)
+            {
+                throw new InvalidOperationException(
+                    $"SemanticBinding has BaseTypeReference for '{symbol.Name}' but Symbol.BaseTypeRef is null (materialization missed). " +
+                    "This is a compiler bug - please report it.");
+            }
+            if (symbol.BaseTypeRef != null && sbBaseRef == null)
+            {
+                throw new InvalidOperationException(
+                    $"TypeSymbol '{symbol.Name}' has BaseTypeRef but SemanticBinding.GetBaseTypeReference() returned null (materialization inconsistency). " +
+                    "This is a compiler bug - please report it.");
+            }
+
             var sbInterfaceRefs = semanticBinding.GetInterfaces(symbol);
             if (sbInterfaceRefs != null && sbInterfaceRefs.Count > 0)
             {

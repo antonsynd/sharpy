@@ -76,6 +76,11 @@ internal class InheritanceResolver
                     else
                     {
                         _semanticBinding.SetBaseType(type, baseType);
+                        _semanticBinding.SetBaseTypeReference(type, new BaseTypeReference
+                        {
+                            Definition = baseType,
+                            TypeArgAnnotations = type.UnresolvedBaseTypeArgs
+                        });
                     }
                     _logger.LogDebug($"Resolved inheritance: {type.Name} : {baseType.Name}");
                 }

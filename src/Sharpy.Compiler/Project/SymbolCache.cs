@@ -67,6 +67,12 @@ internal record CachedSymbol
     public string? BaseTypeId { get; init; }
 
     /// <summary>
+    /// For TypeSymbol: serialized base-class type argument annotations (#1287).
+    /// Mirrors <see cref="CachedInterfaceEntry.TypeArgs"/>.
+    /// </summary>
+    public List<string>? BaseTypeArgs { get; init; }
+
+    /// <summary>
     /// For TypeSymbol: unresolved base type name (e.g., "Exception").
     /// Set when the base is a CLR type or cannot be expressed as a registry ID.
     /// The Phase 4b/4c inheritance machinery resolves it on restore (#1309).
