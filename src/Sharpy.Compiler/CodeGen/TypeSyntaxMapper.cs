@@ -681,6 +681,20 @@ internal class TypeSyntaxMapper
         }
         else
         {
+            // Nested types in the current file need their declaring chain.
+            if (typeSymbol.DeclaringType != null)
+            {
+                var parts = new List<string>();
+                var current = typeSymbol;
+                while (current != null)
+                {
+                    parts.Add(NameCasing.ResolveType(current.Name, current.IsNameBacktickEscaped));
+                    current = current.DeclaringType;
+                }
+                parts.Reverse();
+                return string.Join(".", parts);
+            }
+
             // Construction: type is in the current file. Reference: fallback that shouldn't happen.
             return NameCasing.ResolveType(sharpyTypeName, typeSymbol.IsNameBacktickEscaped);
         }

@@ -1,0 +1,15 @@
+# #1303: Nested types resolve as type operands in isinstance — no vacuous object.
+class Outer:
+    class Inner:
+        value: int = 42
+
+def check(x: object) -> None:
+    if isinstance(x, Outer.Inner):
+        print("is Inner")
+    else:
+        print("not Inner")
+
+def main() -> None:
+    i: Outer.Inner = Outer.Inner()
+    check(i)
+    check(99)

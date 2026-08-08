@@ -1,0 +1,15 @@
+# #1336: The spread-operand arm in DirectArgumentSetOf is reachable — pinned.
+class Multi:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+    def __init__(self):
+        self.x = 0
+
+def take(*args: Multi) -> None:
+    pass
+
+def main() -> None:
+    take(*Multi)

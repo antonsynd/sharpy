@@ -192,7 +192,8 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.IsAssignableFrom<");
+        code.Should().Contain("Xunit.Assert.IsAssignableFrom<Outer.Inner>");
+        code.Should().NotContain("IsAssignableFrom<object>");
         code.Should().NotContain("Builtins.Isinstance");
     }
 

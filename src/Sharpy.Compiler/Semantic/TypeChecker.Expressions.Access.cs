@@ -84,6 +84,27 @@ internal partial class TypeChecker
                 return resolved;
         }
 
+        // When the qualifier resolved to a UserDefinedType (e.g. from a nested-type arm above),
+        // try resolving the member as a nested type of that type (handles Outer.Middle.Inner chains).
+        // Generic nested types are left for the generic reference resolver.
+        if (objectType is UserDefinedType qualifierUdt
+            && memberAccess.Object is not Identifier)
+        {
+            var qualifierSym = qualifierUdt.Symbol ?? _symbolTable.LookupType(qualifierUdt.Name);
+            if (qualifierSym?.TypeKind is TypeKind.Class or TypeKind.Struct)
+            {
+                var nestedType = qualifierSym.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member);
+                if (nestedType != null && !nestedType.IsGeneric
+                    && !ReferenceEquals(memberAccess, _currentMemberAccessQualifier))
+                {
+                    var nestedUdt = new UserDefinedType { Name = nestedType.Name, Symbol = nestedType };
+                    _semanticInfo.SetExpressionType(memberAccess, nestedUdt);
+                    _semanticInfo.MarkTypeReference(memberAccess);
+                    return nestedUdt;
+                }
+            }
+        }
+
         if (objectType is UnknownType)
         {
             return SemanticType.Unknown;
@@ -1037,6 +1058,19 @@ internal partial class TypeChecker
                 var funcType = FunctionType.FromParameters(method.Parameters, method.ReturnType);
                 _semanticInfo.SetExpressionType(memberAccess, funcType);
                 return funcType;
+            }
+
+            // Check for non-generic nested type access (Outer.Inner). Generic nested types
+            // (Outer.Inner[int]) are left for the generic reference resolver which handles
+            // type argument filling and inference.
+            var nestedType = typeSym.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member);
+            if (nestedType != null && !nestedType.IsGeneric
+                && !ReferenceEquals(memberAccess, _currentMemberAccessQualifier))
+            {
+                var nestedUdt = new UserDefinedType { Name = nestedType.Name, Symbol = nestedType };
+                _semanticInfo.SetExpressionType(memberAccess, nestedUdt);
+                _semanticInfo.MarkTypeReference(memberAccess);
+                return nestedUdt;
             }
         }
 
