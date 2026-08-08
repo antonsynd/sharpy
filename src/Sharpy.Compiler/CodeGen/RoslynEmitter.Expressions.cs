@@ -395,6 +395,45 @@ internal partial class RoslynEmitter
     {
         var text = literal.Value.Replace("_", "", StringComparison.Ordinal);
 
+        // The semantic phase typed this literal by suffix + magnitude (#1314, #1320);
+        // read its decision and emit the matching C# literal form.
+        var semanticType = _context.SemanticInfo?.GetExpressionType(literal);
+        if (semanticType is BuiltinType bt)
+        {
+            try
+            {
+                var ulongVal = ParseIntegerText(text);
+                return bt.Name switch
+                {
+                    "int32" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)ulongVal)),
+                    "int64" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((long)ulongVal)),
+                    "uint32" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((uint)ulongVal)),
+                    "uint64" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(ulongVal)),
+                    _ => GenerateIntegerLiteralFallback(literal, text)
+                };
+            }
+            catch (OverflowException)
+            {
+                return GenerateIntegerLiteralFallback(literal, text);
+            }
+        }
+
+        return GenerateIntegerLiteralFallback(literal, text);
+    }
+
+    private static ulong ParseIntegerText(string text)
+    {
+        if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            return ulong.Parse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        if (text.StartsWith("0o", StringComparison.OrdinalIgnoreCase))
+            return Convert.ToUInt64(text[2..], 8);
+        if (text.StartsWith("0b", StringComparison.OrdinalIgnoreCase))
+            return Convert.ToUInt64(text[2..], 2);
+        return ulong.Parse(text, CultureInfo.InvariantCulture);
+    }
+
+    private ExpressionSyntax GenerateIntegerLiteralFallback(IntegerLiteral literal, string text)
+    {
         long value;
         try
         {
@@ -416,9 +455,6 @@ internal partial class RoslynEmitter
             return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
         }
 
-        // Honor the integer suffix (#921): without it, int-range values emit as C# int
-        // literals and box as int, so `object o = 42L` loses its declared width and
-        // Equals against a real long is false. Mirrors the float-suffix handling below.
         if (literal.Suffix != null)
         {
             if (literal.Suffix.Equals("l", StringComparison.OrdinalIgnoreCase))

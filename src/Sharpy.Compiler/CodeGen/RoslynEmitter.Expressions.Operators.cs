@@ -543,6 +543,37 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateUnaryOp(UnaryOp unaryOp)
     {
+        // Minus over an integer literal: emit a single literal token from the semantic type
+        // so -2147483648 is int.MinValue, not -(2147483648L) which is CS0266 (#1304).
+        if (unaryOp.Operator == UnaryOperator.Minus && unaryOp.Operand is IntegerLiteral il)
+        {
+            var semanticType = _context.SemanticInfo?.GetExpressionType(unaryOp);
+            if (semanticType is BuiltinType bt)
+            {
+                var text = il.Value.Replace("_", "", StringComparison.Ordinal);
+                try
+                {
+                    var ulongMagnitude = ParseIntegerText(text);
+                    if (bt.Name == "int32" && ulongMagnitude <= (ulong)int.MaxValue + 1)
+                    {
+                        return LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                            Literal(-(int)(long)ulongMagnitude));
+                    }
+                    if (bt.Name == "int64")
+                    {
+                        if (ulongMagnitude == (ulong)long.MaxValue + 1)
+                            return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(long.MinValue));
+                        return LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                            Literal(-(long)ulongMagnitude));
+                    }
+                }
+                catch (OverflowException)
+                {
+                    // Fall through to normal path
+                }
+            }
+        }
+
         var operand = GenerateExpression(unaryOp.Operand);
 
         var kind = unaryOp.Operator switch
