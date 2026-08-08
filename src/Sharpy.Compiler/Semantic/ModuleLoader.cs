@@ -391,23 +391,8 @@ internal class ModuleLoader
         {
             if (stmt is FunctionDef method)
             {
-                var methodSymbol = ExtractMethodSymbol(method, classDef.TypeParameters);
-
-                // A member of an `@abstract` class with an ellipsis body is implicitly abstract —
-                // the rule NameResolver.ResolveMethodDeclaration applies same-file
-                // (NameResolver.Members.cs:139). This arm applied no implicit rule at all;
-                // ExtractMethodSymbol reads only the `@abstract` decorator, so the same declaration
-                // classified abstract same-file and concrete when imported (#1266) — the mirror of
-                // #1258, by omission rather than by a wrong predicate, which is why a
-                // predicate-name sweep of this file comes back empty while the defect is present.
-                //
-                // The predicate is keyed to the OWNING TYPE KIND: a class member needs an ELLIPSIS
-                // body (`IsEllipsisStubBody`), and `pass` in an abstract class stays concrete on
-                // both sides. Using the interface predicate here would only rotate the bug.
-                if (isAbstract && !methodSymbol.IsAbstract && AstHelper.IsEllipsisStubBody(method.Body))
-                {
-                    methodSymbol = methodSymbol with { IsAbstract = true };
-                }
+                var methodSymbol = ExtractMethodSymbol(method, classDef.TypeParameters,
+                    ownerKind: TypeKind.Class, ownerIsAbstract: isAbstract);
 
                 methods.Add(methodSymbol);
                 if (method.Name == DunderNames.Init)
@@ -478,7 +463,8 @@ internal class ModuleLoader
         {
             if (stmt is FunctionDef method)
             {
-                var methodSymbol = ExtractMethodSymbol(method, structDef.TypeParameters);
+                var methodSymbol = ExtractMethodSymbol(method, structDef.TypeParameters,
+                    ownerKind: TypeKind.Struct, ownerIsAbstract: false);
                 methods.Add(methodSymbol);
                 if (method.Name == DunderNames.Init)
                     ctors.Add(methodSymbol);
@@ -517,21 +503,8 @@ internal class ModuleLoader
         {
             if (stmt is FunctionDef method)
             {
-                var methodSymbol = ExtractMethodSymbol(method, interfaceDef.TypeParameters);
-                // Interface members accept `...`, `(...)` AND `pass` as stub bodies — the same rule
-                // NameResolver.ResolveMethodDeclaration applies same-file (NameResolver.Members.cs:137).
-                // This site used the ellipsis-only predicate, so one declaration classified two ways
-                // depending on which side of an import it sat (#1258). The predicate is keyed to the
-                // OWNING TYPE KIND, not to the site: this method is interface-specific, so it takes
-                // the interface rule; abstract-CLASS members keep requiring an ellipsis body
-                // (IsEllipsisStubBody) and must not be switched to this predicate.
-                if (!methodSymbol.IsAbstract)
-                {
-                    if (AstHelper.IsAbstractStubBody(method.Body))
-                    {
-                        methodSymbol = methodSymbol with { IsAbstract = true };
-                    }
-                }
+                var methodSymbol = ExtractMethodSymbol(method, interfaceDef.TypeParameters,
+                    ownerKind: TypeKind.Interface, ownerIsAbstract: true);
                 methods.Add(methodSymbol);
             }
         }
@@ -586,9 +559,12 @@ internal class ModuleLoader
     /// Extract method symbol with parameter and return type information.
     /// </summary>
     internal FunctionSymbol ExtractMethodSymbol(
-        FunctionDef method, ImmutableArray<TypeParameterDef> enclosingTypeParameters = default)
+        FunctionDef method,
+        ImmutableArray<TypeParameterDef> enclosingTypeParameters = default,
+        TypeKind ownerKind = TypeKind.Class,
+        bool ownerIsAbstract = false)
     {
-        var accessLevel = GetAccessLevel(method.Name);
+        var classification = Shared.MemberClassification.Classify(method, ownerKind, ownerIsAbstract);
 
         // The type-parameter names in scope for this method's annotations: the declaring
         // class/struct/interface's, UNIONED with the method's own. Without them
@@ -598,12 +574,6 @@ internal class ModuleLoader
         // Module-level functions have threaded their own names since #1142 (:233); methods
         // threaded NEITHER set until now.
         var typeParamNames = CollectTypeParameterNames(enclosingTypeParameters, method.TypeParameters);
-
-        bool hasSelfParameter = method.Parameters.Any(p =>
-            string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
-        bool hasStaticDecorator = method.Decorators.Any(d =>
-            d.Name == DecoratorNames.Static);
-        bool isStatic = hasStaticDecorator || !hasSelfParameter;
 
         var parameters = method.Parameters.Select(p => new ParameterSymbol
         {
@@ -625,12 +595,12 @@ internal class ModuleLoader
             ReturnType = method.ReturnType != null
                 ? ConvertTypeAnnotationToSemanticType(method.ReturnType, typeParamNames)
                 : SemanticType.Void,
-            IsStatic = isStatic,
-            IsAbstract = method.Decorators.Any(d => d.Name == DecoratorNames.Abstract),
-            IsVirtual = method.Decorators.Any(d => d.Name == DecoratorNames.Virtual),
-            IsOverride = method.Decorators.Any(d => d.Name == DecoratorNames.Override),
+            IsStatic = classification.IsStatic,
+            IsAbstract = classification.IsAbstract,
+            IsVirtual = classification.IsVirtual,
+            IsOverride = classification.IsOverride,
             TypeParameters = method.TypeParameters.ToList(),
-            AccessLevel = accessLevel,
+            AccessLevel = classification.Access,
             DeclarationLine = method.LineStart,
             DeclarationColumn = method.ColumnStart,
             NameDeclarationLine = method.NameLineStart,
@@ -749,13 +719,7 @@ internal class ModuleLoader
     /// Determine access level based on naming convention.
     /// </summary>
     internal AccessLevel GetAccessLevel(string name)
-    {
-        if (name.StartsWith("__"))
-            return AccessLevel.Private;
-        if (name.StartsWith("_"))
-            return AccessLevel.Protected;
-        return AccessLevel.Public;
-    }
+        => Shared.AccessLevelConventions.FromName(name);
 
     /// <summary>
     /// Compute the canonical (fully-qualified) module name from a file path.

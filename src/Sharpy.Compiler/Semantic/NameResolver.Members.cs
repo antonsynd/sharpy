@@ -111,35 +111,12 @@ internal partial class NameResolver
     {
         _logger.LogDebug($"Resolving method declaration: {owningType.Name}.{method.Name}");
 
-        // Determine access level from name, with optional decorator override
-        var accessLevel = DetermineAccessLevel(method.Name);
-        var explicitAccess = GetExplicitAccessLevel(method.Decorators);
-        if (explicitAccess != null)
-            accessLevel = explicitAccess.Value;
-
-        // Check for special decorators
-        bool hasStaticDecorator = method.Decorators.Any(d => d.Name == DecoratorNames.Static);
-
-        // Primary mechanism: Method is static if it doesn't have 'self' parameter (Pythonic)
-        // @static decorator is valid but OPTIONAL/redundant
-        bool hasSelfParameter = method.Parameters.Any(p =>
-            string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
-
-        bool isStatic = hasStaticDecorator || !hasSelfParameter;
-
-        // Determine if method is abstract:
-        // 1. Has @abstract decorator explicitly, OR
-        // 2. Is in an @abstract class AND has ellipsis body (implicit abstract), OR
-        // 3. Is in an interface AND has ellipsis or pass body (implicit abstract)
-        bool hasAbstractDecorator = method.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(method.Body);
-        bool isInterfaceAbstract = owningType.TypeKind == TypeKind.Interface
-            && AstHelper.IsAbstractStubBody(method.Body);
-
-        bool isAbstract = hasAbstractDecorator || (owningType.IsAbstract && hasEllipsisBody) || isInterfaceAbstract;
-        bool isVirtual = method.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
-        bool isOverride = method.Decorators.Any(d => d.Name == DecoratorNames.Override)
-            || ProtocolRegistry.IsObjectOverrideDunder(method.Name);
+        var classification = Shared.MemberClassification.Classify(method, owningType.TypeKind, owningType.IsAbstract);
+        var accessLevel = classification.Access;
+        bool isStatic = classification.IsStatic;
+        bool isAbstract = classification.IsAbstract;
+        bool isVirtual = classification.IsVirtual;
+        bool isOverride = classification.IsOverride;
 
         // Add parameters to the method symbol (types will be resolved later by TypeChecker)
         var parameters = method.Parameters.Select(p => new ParameterSymbol
@@ -161,7 +138,7 @@ internal partial class NameResolver
             Kind = SymbolKind.Function,
             IsNameBacktickEscaped = method.IsNameBacktickEscaped,
             AccessLevel = accessLevel,
-            ExplicitAccessLevel = explicitAccess,
+            ExplicitAccessLevel = classification.ExplicitAccess,
             Parameters = parameters,
             TypeParameters = method.TypeParameters.ToList(),
             IsStatic = isStatic,

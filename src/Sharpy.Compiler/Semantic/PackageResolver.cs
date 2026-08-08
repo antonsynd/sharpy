@@ -298,17 +298,8 @@ internal class PackageResolver
         }
     }
 
-    /// <summary>
-    /// Determine access level based on naming convention.
-    /// </summary>
     private AccessLevel GetAccessLevel(string name)
-    {
-        if (name.StartsWith("__"))
-            return AccessLevel.Private;
-        if (name.StartsWith("_"))
-            return AccessLevel.Protected;
-        return AccessLevel.Public;
-    }
+        => Shared.AccessLevelConventions.FromName(name);
 
     /// <summary>
     /// Clear the package cache.
