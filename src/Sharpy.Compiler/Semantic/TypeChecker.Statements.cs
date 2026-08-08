@@ -1158,17 +1158,12 @@ internal partial class TypeChecker
     /// lowering and then <b>withdrawn</b> — it was removed because it is unsound, not because it was
     /// unwanted. Under <c>--incremental</c> a dependency served from the symbol cache comes back with
     /// its base chain missing (#1309), so the check refused <i>valid</i> user exception types on any
-    /// build where their defining file was cached: a clean build succeeded and the next incremental
-    /// build failed on identical source. The data needed to tell "not an exception" from "inheritance
-    /// unavailable" is simply absent after deserialization, so no refinement of the check is sound —
-    /// and gating it on cache provenance would only relocate the clean-vs-incremental divergence from
-    /// the outcome into the diagnostic.
+    /// build where their defining file was cached.
     /// </para>
     /// <para>
-    /// <b>Do not re-add it until #1309 is fixed</b>, at which point it becomes safe and is worth
-    /// restoring for diagnostic quality. The property Owner Decision 3 actually required —
-    /// <c>catch (object e)</c> can never be emitted — is unaffected: it is enforced by
-    /// <see cref="ClampToExceptionBase"/>, which needs no inheritance data to be correct.
+    /// <b>Restored</b> after #1309's fix: the incremental cache now serializes real symbols with
+    /// <c>UnresolvedBaseName</c>, so the Phase 4b/4c inheritance machinery resolves CLR bases like
+    /// <c>Exception</c> on warm builds. The check is sound and SPY0399 fires correctly.
     /// </para>
     /// </summary>
     private SemanticType? ClassifyExceptHandlerType(ExceptHandler handler, TypeAnnotation annotation)
@@ -1188,6 +1183,7 @@ internal partial class TypeChecker
                 if (resolvedElement == null)
                     return null;
 
+                RequireExceptionDerivation(element, resolvedElement, exceptionSymbol);
                 alternatives.Add(resolvedElement);
             }
 
@@ -1206,23 +1202,37 @@ internal partial class TypeChecker
             return commonBase;
         }
 
-        return ClassifyTypeTestAnnotation(
+        var resolved = ClassifyTypeTestAnnotation(
             annotation, lodgeOn: annotation, subjectType: null,
             siteNoun: "except clause", erasure: CollectionErasure.Disallowed);
+        if (resolved != null)
+            RequireExceptionDerivation(annotation, resolved, exceptionSymbol);
+        return resolved;
+    }
+
+    /// <summary>
+    /// Requires an <c>except</c> clause's type to derive from <c>Exception</c>.
+    /// Fails open when <c>Exception</c> cannot be resolved, matching <c>try[E]</c>.
+    /// Withdrawn in <c>6bd193925</c> because #1309 made inherited types invisible under warm
+    /// caches — restored now that the incremental cache serializes real symbols (SPY0399).
+    /// </summary>
+    private void RequireExceptionDerivation(TypeAnnotation at, SemanticType resolved, TypeSymbol? exceptionSymbol)
+    {
+        if (exceptionSymbol == null || resolved is UnknownType || IsExceptionSubtype(resolved, exceptionSymbol))
+            return;
+
+        AddError(
+            $"Type '{at.Name}' in an 'except' clause must be a subclass of 'Exception'",
+            at.LineStart, at.ColumnStart,
+            code: DiagnosticCodes.Semantic.TryExceptionTypeNotException,
+            span: at.Span);
     }
 
     /// <summary>
     /// Belt-and-braces guard on the alternation's catch type: a common base that is not an
     /// <c>Exception</c> subtype becomes <c>Exception</c>, so <c>catch (object e)</c> — which is not
-    /// legal C# — is unreachable.
-    /// <para>
-    /// This is now the <b>only</b> guard on the catch type. A semantic derivation check was tried and
-    /// removed: the inheritance information it needs does not survive the incremental symbol cache, so
-    /// it refused valid user exception types on any build where their defining file was served from
-    /// cache — a clean build succeeded and the next incremental build failed on identical source. The
-    /// clamp needs no inheritance data to be safe, because forcing <c>Exception</c> is correct for any
-    /// input; it can only ever widen the binding, never make it illegal. See #1309.
-    /// </para>
+    /// legal C# — is unreachable. <see cref="RequireExceptionDerivation"/> enforces this at type-check
+    /// time; this clamp is the codegen-time backstop that needs no inheritance data to be safe.
     /// </summary>
     private static SemanticType ClampToExceptionBase(SemanticType candidate, TypeSymbol? exceptionSymbol)
         => exceptionSymbol != null && !IsExceptionSubtype(candidate, exceptionSymbol)
