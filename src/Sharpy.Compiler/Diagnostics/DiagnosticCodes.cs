@@ -227,8 +227,9 @@ public static class DiagnosticCodes
         public const string InvalidTypeAlias = "SPY0209";           // Active
         // Question mark operator in finally (SPY0211)
         public const string QuestionMarkInFinally = "SPY0211";           // Active
-        // SPY0210: Unclaimed gap — no recorded owner or tombstone. Left unallocated pending an
-        // explanation; do not reuse without establishing it was never issued.
+        // SPY0210: Integer literal out of range for its type (#1314). Never previously issued —
+        // established via full-history pickaxe (3 comment-only commits: e98b3d7c4, 4738b9265, 5b40df995).
+        public const string IntegerLiteralOutOfRange = "SPY0210";       // Active
         // Claims the SPY0212 reservation made for round-8 batch D. The bare spelling of a builtin
         // name always denotes the builtin — types and functions uniformly — so a user symbol with
         // that spelling must be backtick-escaped. Extends the rule hard keywords already follow

@@ -28,7 +28,7 @@ internal partial class TypeChecker
 
         SemanticType type = expr switch
         {
-            IntegerLiteral => SemanticType.Int,
+            IntegerLiteral il => ClassifyIntegerLiteral(il),
             FloatLiteral fl => fl.Suffix?.ToUpperInvariant() switch
             {
                 "F" => SemanticType.Float32,
@@ -192,6 +192,20 @@ internal partial class TypeChecker
             DiagnosticCodes.Semantic.UnrecognizedExpressionType,
             expr.Span);
         return SemanticType.Unknown;
+    }
+
+    private SemanticType ClassifyIntegerLiteral(IntegerLiteral il)
+    {
+        var result = Shared.IntegerLiteralClassifier.Classify(il.Value, il.Suffix);
+        if (result.IsError)
+        {
+            AddError(result.ErrorMessage!,
+                il.LineStart, il.ColumnStart,
+                code: DiagnosticCodes.Semantic.IntegerLiteralOutOfRange,
+                span: il.Span);
+            return result.Type;
+        }
+        return result.Type;
     }
 
     private SemanticType CheckModifiedArgument(ModifiedArgument modArg)

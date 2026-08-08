@@ -750,8 +750,8 @@ internal partial class TypeChecker
     {
         return expr switch
         {
-            IntegerLiteral => BuiltinType.Int,
-            FloatLiteral => BuiltinType.Double,
+            IntegerLiteral il => Shared.IntegerLiteralClassifier.Classify(il.Value, il.Suffix).Type,
+            FloatLiteral fl => fl.Suffix?.ToUpperInvariant() == "F" ? BuiltinType.Float32 : BuiltinType.Double,
             StringLiteral => BuiltinType.Str,
             BooleanLiteral => BuiltinType.Bool,
             Identifier id => (_symbolTable.Lookup(id.Name) as VariableSymbol)?.Type,
