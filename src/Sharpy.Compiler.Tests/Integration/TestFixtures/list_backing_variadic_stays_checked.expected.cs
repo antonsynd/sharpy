@@ -11,7 +11,7 @@ public static partial class ListBackingVariadicStaysChecked
     public static void Show(params Sharpy.List<int>[] rows)
     {
 #line (5, 5) - (5, 19) 8 "list_backing_variadic_stays_checked.spy"
-        global::Sharpy.Builtins.Print(rows[0]);
+        global::Sharpy.Builtins.Print(global::Sharpy.ArrayHelpers.GetItem(rows, 0));
 #line hidden
     }
 

@@ -1,0 +1,8 @@
+# #1292: *args binds as array[T] — len/index/slice/iteration work.
+
+def show_args(*args: int) -> None:
+    print(len(args))
+    print(args[0])
+
+def main() -> None:
+    show_args(1, 2, 3)

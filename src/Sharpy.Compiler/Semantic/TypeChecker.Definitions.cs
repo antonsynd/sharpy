@@ -615,11 +615,18 @@ internal partial class TypeChecker
                 }
             }
 
+            // Variadic *args: T binds as array[T] inside the function body (#1292).
+            // The element type is the user-declared annotation; the outer array is the
+            // spec's promise (function_variadic_arguments.md:9) — matches params T[] backing.
+            var effectiveType = param.IsVariadic && paramType is not UnknownType
+                ? new GenericType { Name = BuiltinNames.Array, TypeArguments = new List<SemanticType> { paramType } }
+                : paramType;
+
             var paramSymbol = new VariableSymbol
             {
                 Name = param.Name,
                 Kind = SymbolKind.Parameter,
-                Type = paramType,
+                Type = effectiveType,
                 IsParameter = true,
                 ParameterModifier = param.Modifier,
                 DeclarationLine = null,
@@ -628,15 +635,13 @@ internal partial class TypeChecker
                 NameDeclarationColumn = null
             };
             _symbolTable.Define(paramSymbol);
-            SemanticBinding.SetVariableType(paramSymbol, paramType);
+            SemanticBinding.SetVariableType(paramSymbol, effectiveType);
 
-            // A non-variadic list[T] parameter emits as a concrete Sharpy.List<T>, so it is eligible
-            // for the non-negative index fast path (#1052). A *args variadic list[T] parameter emits
-            // as a CLR array (no GetItemUnchecked), so it is recorded as the negative fact ClrArray.
-            if (paramType is GenericType { Name: BuiltinNames.List })
-                _listBackingKinds[paramSymbol] = param.IsVariadic
-                    ? ListBackingKind.ClrArray
-                    : ListBackingKind.SharpyList;
+            // The CLR array backing applies to the outer sequence (#1292), not the element.
+            if (param.IsVariadic)
+                _listBackingKinds[paramSymbol] = ListBackingKind.ClrArray;
+            else if (paramType is GenericType { Name: BuiltinNames.List })
+                _listBackingKinds[paramSymbol] = ListBackingKind.SharpyList;
 
             // Update the function symbol's parameter type
             if (functionSymbol != null && i < functionSymbol.Parameters.Count)
