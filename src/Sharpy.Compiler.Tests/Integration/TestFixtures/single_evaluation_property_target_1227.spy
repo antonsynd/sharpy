@@ -1,0 +1,50 @@
+# #1227's property face, found live by the Batch C verification audit: IsRepeatableTargetOperand
+# treated ANY member access with a repeatable receiver as repeatable, but a function-style
+# property getter runs a body — so `xs[b.idx] += 1` called the counting getter TWICE while
+# printing the right sum (the silent correct-value/wrong-count signature this class always
+# wears). A member read is now repeatable only when it is a plain field on a known type; a
+# property read hoists into a temp like any other side-effecting suboperand. Both shapes from
+# the audit's repro are pinned: the getter as the INDEX, and the getter as the write RECEIVER.
+# Counts verified against python3 (@property analog): 1 and 1.
+class Box:
+    calls: int
+
+    def __init__(self):
+        self.calls = 0
+
+    property get idx(self) -> int:
+        self.calls = self.calls + 1
+        return 0
+
+
+class Inner:
+    v: int
+
+    def __init__(self):
+        self.v = 5
+
+
+class Holder:
+    calls: int
+    _inner: Inner
+
+    def __init__(self):
+        self.calls = 0
+        self._inner = Inner()
+
+    property get inner(self) -> Inner:
+        self.calls = self.calls + 1
+        return self._inner
+
+
+def main() -> None:
+    xs: list[int] = [10, 20]
+    b: Box = Box()
+    xs[b.idx] += 1
+    print(b.calls)
+    print(xs[0])
+
+    h: Holder = Holder()
+    h.inner.v += 1
+    print(h.calls)
+    print(h.inner.v)

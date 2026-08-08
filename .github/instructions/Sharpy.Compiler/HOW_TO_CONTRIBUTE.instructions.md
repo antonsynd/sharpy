@@ -120,8 +120,15 @@ Two traps:
   when the two use sites are mutually exclusive ternary arms (#1228). Reuse or capture the
   already-generated syntax instead.
 
-Known open violations, all filed: #1226 (integer `//`), #1227 (augmented-assignment targets),
-#1228 (`**`).
+The historical violations are fixed: #1226 (integer `//`) and #1228 (`**`) each emit one
+Core-helper invocation splicing every operand once, and #1227 hoists augmented-assignment
+targets (calls AND property reads — a member read is repeatable only when it is a plain
+field, `MemberReadIsPlainField`). The standing guards are the evaluation-count fixtures
+(`single_evaluation_*.spy`) and the enum-driven
+`AugmentedAssignmentSingleEvaluationTests`, which forces every new `AssignmentOperator` to
+declare its single-evaluation story; a GENERAL `GenerateExpression` re-entry tripwire over
+the snapshot corpus is designed but not built — see the issue filed from the round-8
+verification before assuming this class is structurally guarded elsewhere.
 
 ## Semantic Analysis Pipeline
 

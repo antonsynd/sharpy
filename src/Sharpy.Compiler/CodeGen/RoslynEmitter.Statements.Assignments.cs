@@ -537,17 +537,45 @@ internal partial class RoslynEmitter
     /// snapshot fixtures pin.
     /// </para>
     /// </summary>
-    private static bool IsRepeatableTargetOperand(Expression expr) => expr switch
+    private bool IsRepeatableTargetOperand(Expression expr) => expr switch
     {
         Parser.Ast.Identifier or SuperExpression or NoneLiteral or BooleanLiteral
             or IntegerLiteral or FloatLiteral or StringLiteral => true,
         Parenthesized paren => IsRepeatableTargetOperand(paren.Expression),
-        MemberAccess member => IsRepeatableTargetOperand(member.Object),
+        MemberAccess member => IsRepeatableTargetOperand(member.Object)
+                               && MemberReadIsPlainField(member),
         UnaryOp unary => IsRepeatableTargetOperand(unary.Operand),
         BinaryOp binary => IsRepeatableTargetOperand(binary.Left)
                            && IsRepeatableTargetOperand(binary.Right),
         _ => false
     };
+
+    /// <summary>
+    /// A member read is repeatable only when it is a plain FIELD on a known type: a property
+    /// read runs a getter, and a function-style getter can carry arbitrary side effects, so
+    /// repeating it is the #1227 defect wearing a member access (found live: `xs[b.idx] += 1`
+    /// ran a counting getter twice while printing the right sum). Everything unknown — an
+    /// unresolved receiver, a member found on neither list, an inherited member this symbol
+    /// does not own — declines and hoists instead, which trades nothing: the hoist is
+    /// byte-neutral in behavior for a pure read and correcting for an impure one. Only the
+    /// KNOWN-field case may keep the no-hoist fast path the snapshots pin.
+    /// </summary>
+    private bool MemberReadIsPlainField(MemberAccess member)
+    {
+        var receiverSymbol = GetExpressionSemanticType(member.Object) switch
+        {
+            UserDefinedType { Symbol: { } s } => s,
+            GenericType { GenericDefinition: { } d } => d,
+            _ => null
+        };
+        if (receiverSymbol == null)
+            return false;
+
+        if (receiverSymbol.Properties.Any(p => p.Name == member.Member))
+            return false;
+
+        return receiverSymbol.Fields.Any(f => f.Name == member.Member);
+    }
 
     /// <summary>
     /// True when a temp holding this expression's value still designates the same storage the
