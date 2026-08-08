@@ -397,17 +397,12 @@ public record TryStatement : Statement
 public record ExceptHandler
 {
     public TypeAnnotation? ExceptionType { get; init; }
-    public string? Name { get; init; }  // except Exception as e:
+    public string? Name { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
     public ImmutableArray<Statement> Body { get; init; } = ImmutableArray<Statement>.Empty;
 
-    /// <summary>
-    /// Whether this is an except* handler (PEP 654 ExceptionGroup handling).
-    /// </summary>
     public bool IsExceptStar { get; init; }
 
-    /// <summary>
-    /// Optional filter expression for catch-when semantics (except Type as e when expr:).
-    /// </summary>
     public Expression? Filter { get; init; }
 
     public int NameLineStart { get; init; }
@@ -489,7 +484,8 @@ public record DeferStatement : Statement
 public record WithItem
 {
     public Expression ContextExpression { get; init; } = null!;
-    public string? Name { get; init; }  // The "as name" binding
+    public string? Name { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
 

@@ -354,11 +354,14 @@ public partial class Parser
 
             string? name = null;
             int nameLineStart = 0, nameColumnStart = 0;
+            bool nameEscaped = false;
             if (Current.Type == TokenType.As)
             {
                 Advance();
-                nameLineStart = Current.Line;
-                nameColumnStart = Current.Column;
+                var nameToken = Current;
+                nameLineStart = nameToken.Line;
+                nameColumnStart = nameToken.Column;
+                nameEscaped = nameToken.IsBacktickEscaped;
                 name = ExpectIdentifier();
             }
 
@@ -369,6 +372,7 @@ public partial class Parser
             {
                 ContextExpression = contextExpr,
                 Name = name,
+                IsNameBacktickEscaped = nameEscaped,
                 NameLineStart = nameLineStart,
                 NameColumnStart = nameColumnStart,
                 LineStart = itemStartLine,
@@ -482,6 +486,7 @@ public partial class Parser
 
             TypeAnnotation? exceptionType = null;
             string? name = null;
+            bool nameEscaped = false;
             int nameLineStart = 0;
             int nameColumnStart = 0;
 
@@ -545,13 +550,14 @@ public partial class Parser
                 else if (Current.Type == TokenType.As)
                 {
                     Advance();
+                    var exceptNameToken = Current;
                     name = ExpectIdentifier();
-                    nameLineStart = Previous.Line;
-                    nameColumnStart = Previous.Column;
+                    nameEscaped = exceptNameToken.IsBacktickEscaped;
+                    nameLineStart = exceptNameToken.Line;
+                    nameColumnStart = exceptNameToken.Column;
                 }
             }
 
-            // Parse optional 'when' filter clause (soft keyword)
             Expression? filter = null;
             if (Current.Type == TokenType.Identifier && Current.Value == "when")
             {
@@ -565,7 +571,7 @@ public partial class Parser
                         span: CurrentSpan
                     );
                 }
-                Advance(); // consume 'when'
+                Advance();
                 filter = ParseExpression();
             }
 
@@ -582,6 +588,7 @@ public partial class Parser
             {
                 ExceptionType = exceptionType,
                 Name = name,
+                IsNameBacktickEscaped = nameEscaped,
                 NameLineStart = nameLineStart,
                 NameColumnStart = nameColumnStart,
                 IsExceptStar = isExceptStar,

@@ -26,9 +26,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// than refused: it makes no annotation ambiguous, since <c>len</c> was never a type, but the class
 /// is unconstructible by its bare spelling.</para>
 ///
-/// <para><strong>Not yet covered:</strong> <c>with ... as name</c> and <c>except ... as name</c>.
-/// Both bind in value position, but neither <c>WithItem</c> nor <c>ExceptHandler</c> carries
-/// <c>IsNameBacktickEscaped</c> yet (#1279). Walrus expressions also lack the flag; the warning
+/// <para>Walrus expressions lack <c>IsNameBacktickEscaped</c> on the AST node; the warning
 /// passes <c>false</c> until the AST is plumbed.</para>
 /// </remarks>
 internal sealed class BuiltinNameShadowingValidator : ValidatingAstWalker
@@ -147,6 +145,34 @@ internal sealed class BuiltinNameShadowingValidator : ValidatingAstWalker
         }
 
         base.VisitForClause(node);
+    }
+
+    public override void VisitWithStatement(WithStatement node)
+    {
+        foreach (var item in node.Items)
+        {
+            if (item.Name != null)
+            {
+                Warn(item.Name, item.IsNameBacktickEscaped, item.NameLineStart, item.NameColumnStart,
+                    item.Span, isTypeDeclaration: false);
+            }
+        }
+
+        base.VisitWithStatement(node);
+    }
+
+    public override void VisitTryStatement(TryStatement node)
+    {
+        foreach (var handler in node.Handlers)
+        {
+            if (handler.Name != null)
+            {
+                Warn(handler.Name, handler.IsNameBacktickEscaped, handler.NameLineStart,
+                    handler.NameColumnStart, handler.Span, isTypeDeclaration: false);
+            }
+        }
+
+        base.VisitTryStatement(node);
     }
 
     private void VisitTypeDeclaration(Statement node, string name, bool isNameBacktickEscaped,

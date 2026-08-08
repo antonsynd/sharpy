@@ -1067,6 +1067,7 @@ internal partial class TypeChecker
                 {
                     Name = handler.Name,
                     Kind = SymbolKind.Variable,
+                    IsNameBacktickEscaped = handler.IsNameBacktickEscaped,
                     Type = exceptionType,
                     AccessLevel = AccessLevel.Public,
                     DeclarationLine = handler.LineStart,
@@ -1081,9 +1082,6 @@ internal partial class TypeChecker
                 {
                     _symbolTable.Define(varSymbol);
                     SemanticBinding.SetVariableType(varSymbol, exceptionType);
-                    // Keyed on the handler node so the binding is reachable from the declaration
-                    // even when the handler body never reads it (#1232) — the except scope is gone
-                    // by the time an LSP handler asks.
                     _semanticInfo.SetExceptHandlerSymbol(handler, varSymbol);
                 }
             }
@@ -1262,6 +1260,7 @@ internal partial class TypeChecker
             {
                 Name = item.Name!,
                 Kind = SymbolKind.Variable,
+                IsNameBacktickEscaped = item.IsNameBacktickEscaped,
                 Type = exceptionType,
                 AccessLevel = AccessLevel.Public,
                 DeclarationLine = item.LineStart,
@@ -1323,6 +1322,7 @@ internal partial class TypeChecker
                 {
                     Name = item.Name,
                     Kind = SymbolKind.Variable,
+                    IsNameBacktickEscaped = item.IsNameBacktickEscaped,
                     Type = asVarType,
                     AccessLevel = AccessLevel.Public,
                     DeclarationLine = item.LineStart,
