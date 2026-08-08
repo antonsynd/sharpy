@@ -63,10 +63,18 @@ internal partial class ProjectCompiler
 
             try
             {
+                // Snapshot keys before restoring this file's symbols so we only
+                // define the newly-added ones — the old code iterated the accumulated
+                // _restoredSymbols.Values, re-TryDefine-ing earlier files' symbols
+                // into every later file's module scope (#1309).
+                var keysBefore = new HashSet<string>(_restoredSymbols.Keys);
                 if (_incrementalCache.RestoreSymbols(filePath, _restoredSymbols))
                 {
-                    // Register the restored symbols in the symbol table
-                    foreach (var symbol in _restoredSymbols.Values)
+                    var newSymbols = _restoredSymbols
+                        .Where(kv => !keysBefore.Contains(kv.Key))
+                        .Select(kv => kv.Value)
+                        .ToList();
+                    foreach (var symbol in newSymbols)
                     {
                         // Only register top-level symbols (types, functions, variables)
                         // Skip parameters and other nested symbols

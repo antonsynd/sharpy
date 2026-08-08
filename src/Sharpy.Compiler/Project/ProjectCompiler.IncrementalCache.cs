@@ -76,14 +76,17 @@ internal partial class ProjectCompiler
     private List<Symbol> ExtractFileSymbols(string filePath)
     {
         var symbols = new List<Symbol>();
+        var normalizedPath = PathNormalizer.Normalize(filePath);
 
-        // Get all symbols from the global scope that were declared in this file
-        foreach (var symbol in SymbolTable.GlobalScope.GetAllSymbols())
+        // Search both module scopes (where project symbols live) and the global scope
+        // (builtins, single-file). Previously only searched GlobalScope, which is non-recursive
+        // and missed every module-scoped symbol — the cache serialized zero symbols per file (#1309).
+        foreach (var symbol in SymbolTable.GetAllModuleScopeSymbols()
+            .Concat(SymbolTable.GlobalScope.GetAllSymbols()))
         {
-            // Check if the symbol was declared in this file
             var symbolFilePath = GetSymbolFilePath(symbol);
             if (symbolFilePath != null &&
-                string.Equals(PathNormalizer.Normalize(symbolFilePath), PathNormalizer.Normalize(filePath), StringComparison.OrdinalIgnoreCase))
+                string.Equals(PathNormalizer.Normalize(symbolFilePath), normalizedPath, StringComparison.OrdinalIgnoreCase))
             {
                 symbols.Add(symbol);
             }
