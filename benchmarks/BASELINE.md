@@ -5,6 +5,15 @@
 > **Machine:** (Update with your machine specs when running)
 > **Runtime:** .NET 10.0
 
+> **Measurement hygiene (read before trusting any delta in this file):** run POSITION alone
+> swings wall-clock 7–10% on this corpus — whatever runs second appears faster, with
+> non-overlapping 99.9% confidence intervals in both directions (#1318). Before reading a
+> before/after wall-clock comparison as a code effect, run the order-swapped control or
+> interleave; allocations are immune to the artifact and are the load-bearing metric when the
+> change's mechanism predicts an allocation move. Also note: CI (`benchmarks.yml`) executes
+> only the `CompilerBenchmarks` class — every other row in this file is recorded manually, and
+> its corpus guard fires only on manual runs (#1337).
+
 ## D4 Sharpy.Core Hot-Path Results (#1051)
 
 > **Recorded:** 2026-07-12

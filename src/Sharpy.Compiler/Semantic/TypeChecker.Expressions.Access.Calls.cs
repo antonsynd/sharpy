@@ -3719,7 +3719,10 @@ internal partial class TypeChecker
     /// <summary>
     /// The call's direct argument expressions, unwrapped through parentheses, for
     /// <c>_currentCallArguments</c>. Spread values count: <c>f(*args)</c> passes the spread operand
-    /// itself into the argument position (#1182).
+    /// itself into the argument position (#1182). The spread-operand entry appears unreachable —
+    /// no fixture reaches a membership query against it, and doing so needs a bare builtin type
+    /// name in spread position (<c>f(*int)</c>), not a meaningful spelling. #1336 owns deciding
+    /// its reachability; do not "simplify" it away or spend an afternoon trying to cover it here.
     /// </summary>
     private static HashSet<Expression> DirectArgumentSetOf(FunctionCall call)
     {
