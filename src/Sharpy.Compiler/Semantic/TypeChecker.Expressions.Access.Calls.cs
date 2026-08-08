@@ -1427,8 +1427,12 @@ internal partial class TypeChecker
 
         // Identity decides: ANY non-builtin symbol answering Lookup shadows the builtin,
         // regardless of symbol kind. The old `as FunctionSymbol` let a VariableSymbol shadow
-        // fall through (funcSymbol == null → builtin wins silently, #1326).
+        // fall through (funcSymbol == null → builtin wins silently, #1326). The escape filter
+        // is critical: a lookup for bare `str` may answer the user's escaped `class \`str\`` —
+        // that is not a shadow, it's a different namespace (#1241).
         var lookupSymbol = _symbolTable.Lookup(id.Name);
+        if (lookupSymbol != null && id.IsNameBacktickEscaped != lookupSymbol.IsNameBacktickEscaped)
+            lookupSymbol = null;
         if (lookupSymbol != null && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(lookupSymbol))
             return null;
 

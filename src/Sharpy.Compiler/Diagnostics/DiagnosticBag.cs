@@ -90,12 +90,13 @@ public class DiagnosticBag
     private int _hintCount;
 
     /// <summary>
-    /// Tracks diagnostics that have already been added, using (Code, Line, Column, Message?, SpanStart, SpanLength) as the key.
+    /// Tracks diagnostics that have already been added, using (Code, Line, Column, Message?, SpanStart, SpanLength, FilePath) as the key.
     /// This prevents duplicate diagnostics from being shown to the user when multiple validators
     /// catch the same issue, while still allowing distinct diagnostics that share code+line+column
-    /// but differ in TextSpan (i.e., different AST nodes on the same line).
+    /// but differ in TextSpan (i.e., different AST nodes on the same line). FilePath is included
+    /// so identical diagnostics at the same position in different files are not collapsed (#1323).
     /// </summary>
-    private readonly HashSet<(string?, int?, int?, string?, int?, int?)> _seenDiagnostics = new();
+    private readonly HashSet<(string?, int?, int?, string?, int?, int?, string?)> _seenDiagnostics = new();
 
     /// <summary>
     /// Tracks identifiers that are root causes of errors.
@@ -325,16 +326,15 @@ public class DiagnosticBag
     /// Including span information prevents false deduplication when two distinct AST nodes
     /// on the same line produce the same diagnostic code.
     /// </summary>
-    private static (string?, int?, int?, string?, int?, int?) GetDeduplicationKey(CompilerDiagnostic diagnostic)
+    private static (string?, int?, int?, string?, int?, int?, string?) GetDeduplicationKey(CompilerDiagnostic diagnostic)
     {
         if (string.IsNullOrEmpty(diagnostic.Code))
         {
-            // No code - use message as fallback for uniqueness
             return (null, diagnostic.Line, diagnostic.Column, diagnostic.Message,
-                diagnostic.Span?.Start, diagnostic.Span?.Length);
+                diagnostic.Span?.Start, diagnostic.Span?.Length, diagnostic.FilePath);
         }
         return (diagnostic.Code, diagnostic.Line, diagnostic.Column, null,
-            diagnostic.Span?.Start, diagnostic.Span?.Length);
+            diagnostic.Span?.Start, diagnostic.Span?.Length, diagnostic.FilePath);
     }
 
     public void AddError(string message, int? line = null, int? column = null, string? filePath = null,

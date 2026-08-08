@@ -148,6 +148,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.Variable,
                 Type = inferredType,
                 IsConstant = false,
+                IsNameBacktickEscaped = targetId.IsNameBacktickEscaped,
                 DeclarationLine = assignment.LineStart,
                 DeclarationColumn = assignment.ColumnStart,
                 NameDeclarationLine = targetId.LineStart,
@@ -498,13 +499,13 @@ internal partial class TypeChecker
             // The Scope.Define will replace the existing symbol
         }
 
-        // Create new variable symbol (or redefine existing non-const variable)
         var newSymbol = new VariableSymbol
         {
             Name = varDecl.Name,
             Kind = SymbolKind.Variable,
             Type = declaredType,
-            IsConstant = false,  // Non-const variable
+            IsConstant = false,
+            IsNameBacktickEscaped = varDecl.IsNameBacktickEscaped,
             DeclarationLine = varDecl.LineStart,
             DeclarationColumn = varDecl.ColumnStart,
             NameDeclarationLine = varDecl.NameLineStart,
@@ -789,6 +790,7 @@ internal partial class TypeChecker
                 Name = id.Name,
                 Kind = SymbolKind.Variable,
                 Type = elementType,
+                IsNameBacktickEscaped = id.IsNameBacktickEscaped,
                 AccessLevel = AccessLevel.Public,
                 DeclarationLine = id.LineStart,
                 DeclarationColumn = id.ColumnStart,
@@ -798,15 +800,12 @@ internal partial class TypeChecker
                 DeclaringFilePath = _currentFilePath
             };
 
-            // Check if already defined in this scope
             if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
             {
                 _symbolTable.Define(loopVarSymbol);
                 SemanticBinding.SetVariableType(loopVarSymbol, elementType);
                 _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
 
-                // Mark the induction variable as provably non-negative for the body's duration when
-                // it iterates a non-negative range(...) and is never reassigned in the body (#1052).
                 if (RangeYieldsNonNegativeInts(forStmt.Iterator)
                     && !IsNameReassignedIn(id.Name, forStmt.Body))
                 {

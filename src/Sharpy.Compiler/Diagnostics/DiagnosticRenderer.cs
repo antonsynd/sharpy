@@ -88,8 +88,14 @@ internal class DiagnosticRenderer
         int? column = diagnostic.Column;
         string? filePath = diagnostic.FilePath;
 
-        // If we have a span and source text, derive line/column from span
-        if (diagnostic.Span.HasValue && sourceText != null)
+        // If we have a span and source text, derive line/column from span — but ONLY when
+        // the source text belongs to the same file as the diagnostic. In multi-file compilation
+        // the caller may pass the entry file's buffer for every diagnostic; re-deriving offsets
+        // against a mismatched file produces wrong line/column (#1323).
+        if (diagnostic.Span.HasValue && sourceText != null
+            && (string.IsNullOrEmpty(diagnostic.FilePath)
+                || string.IsNullOrEmpty(sourceText.FilePath)
+                || string.Equals(diagnostic.FilePath, sourceText.FilePath, StringComparison.Ordinal)))
         {
             var span = diagnostic.Span.Value;
             if (span.Start >= 0 && span.Start <= sourceText.Length)
