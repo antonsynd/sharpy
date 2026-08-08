@@ -24,7 +24,7 @@ internal sealed partial class UnparseVisitor
         }
         else
         {
-            _w.Write(type.Name);
+            WriteName(type.Name, type.IsNameBacktickEscaped);
             if (!type.TypeArguments.IsEmpty)
             {
                 _w.Write("[");
