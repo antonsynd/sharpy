@@ -8,7 +8,7 @@ class Base:
         self.value = value
 
     def __eq__(self, other: object) -> bool:
-        if other is Base:
+        if isinstance(other, Base):
             return self.value == (other as! Base).value
         return False
 
@@ -24,7 +24,7 @@ class Derived(Base):
 
     # Overrides __eq__ locally — __hash__ is inherited from Base, so no error
     def __eq__(self, other: object) -> bool:
-        if other is Derived:
+        if isinstance(other, Derived):
             return self.value == (other as! Derived).value and self.label == (other as! Derived).label
         return False
 

@@ -133,20 +133,10 @@ def f(x: object) -> int:
             $"the {shape} narrowing and its emitted type test must come from one resolved type");
     }
 
-    /// <summary>
-    /// The agreement contract on the <c>is</c>-operator path (#1235): the operator's
-    /// <see cref="TypeAnnotation"/> operand and the <c>isinstance</c> spelling of the SAME test on
-    /// the SAME subject must classify to the same resolved type — one classifier, two spellings,
-    /// one answer. Each probe contains both spellings so the assertion compares lowerings from one
-    /// analysis of one program.
-    /// <para>
-    /// This deliberately does NOT assert a narrowed read on the <c>is</c> branch: the CFG condition
-    /// recognizer (<c>NarrowingFlowAnalysis.RecognizeLeaf</c>) has never produced a fact for a
-    /// <c>TypeCheck</c> condition, so <c>if a is Dog:</c> narrows nothing today. That gap is tracked
-    /// separately (#1333); when it is closed, this theory should grow the cast-agreement half its
-    /// isinstance sibling has.
-    /// </para>
-    /// </summary>
+    // RETIRED (#1298): `x is TypeName` is no longer a type test — `is` means reference identity
+    // only. The isinstance halves of the agreement contract stay (above). The refusal is pinned
+    // by the type_test_operator_erased_collection_agrees_with_isinstance.error fixture.
+#if false
     public static TheoryData<string, string> IsOperatorTwinShapes() => new()
     {
         {
@@ -231,6 +221,7 @@ def f(x: object) -> bool:
             isinstanceTests[0].Kind,
             $"the {shape} test's lowering kind must not depend on the spelling");
     }
+#endif
 
     [Fact]
     public void EquivalentTypeTestsOnBothBranchesSurviveTheMergePoint()

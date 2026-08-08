@@ -50,11 +50,10 @@ public class CsLeakRegressionCorpusTests
 
             def main() -> None:
                 b: Box[int] = Box[int](42)
-                if b is Box:
-                    c = b as? Box
-                    if c is not None:
-                        d = b as! Box
-                        print(d.value)
+                c = b as? Box
+                if c is not None:
+                    d = b as! Box
+                    print(d.value)
             """);
 
         // #1235 site 2 — class patterns with a bare generic type emitted the open generic

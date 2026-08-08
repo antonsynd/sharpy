@@ -783,6 +783,19 @@ public static partial class DiagnosticExplanations
             "(a: long = 3794; print(a * 1973 * 948)). If the value genuinely exceeds 64 bits, " +
             "restructure the computation.");
 
+        Add(dict, DiagnosticCodes.Semantic.IsTypeTestRetired,
+            "'is' used as a type test (retired)",
+            "Semantic",
+            "'is' compares references (identity), not types. In CPython, 'a is Dog' is False " +
+            "(identity comparison), not a type test — Sharpy's previous type-test reading was a " +
+            "silent Python divergence. To test whether a value has a given type, use isinstance: " +
+            "'isinstance(x, Dog)'. The negated form 'x is not TypeName' was never a type test in " +
+            "Sharpy (it is parsed as an identity comparison against a bare type reference, which " +
+            "draws its own diagnostic). 'x is None' and 'x is not None' are unaffected — None is " +
+            "not a type name.",
+            "if x is Dog:  # error: 'is' compares references, not types\n    print(x.name)",
+            "Use isinstance to test types:\nif isinstance(x, Dog):\n    print(x.name)");
+
         Add(dict, DiagnosticCodes.Semantic.VoidComparisonOperand,
             "Void-returning call used as a comparison operand",
             "Semantic",

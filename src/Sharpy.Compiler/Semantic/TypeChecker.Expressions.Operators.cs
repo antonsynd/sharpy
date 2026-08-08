@@ -1177,21 +1177,20 @@ internal partial class TypeChecker
 
     private SemanticType CheckTypeCheck(TypeCheck typeCheck)
     {
-        var valueType = CheckExpression(typeCheck.Value);
-        _typeResolver.ResolveTypeAnnotation(typeCheck.CheckType);
+        CheckExpression(typeCheck.Value);
 
-        // `x is T` is a runtime type test, exactly like isinstance(x, T), so it answers to the same
-        // rule: the operand is classified once here and the emitter applies the decision, instead of
-        // mapping the written annotation and emitting an open generic (CS0305 behind SPY0908, #1235).
-        // Erasure is allowed because this site yields a boolean — `x is list` must mean what
-        // `isinstance(x, list)` means, and letting them differ is the disagreement
-        // TypeTestNarrowingAgreementTests exists to forbid.
-        ClassifyTypeTestAnnotation(
-            typeCheck.CheckType,
-            lodgeOn: typeCheck.CheckType,
-            subjectType: valueType,
-            siteNoun: "type test",
-            erasure: CollectionErasure.Allowed);
+        // #1298 (owner decision 2026-08-08): `x is TypeName` is retired as a type test.
+        // `is` means reference identity only; the type-test spelling is isinstance.
+        // The parser still produces a TypeCheck node (tooling sees the shape), but the
+        // semantic phase refuses it. The emitter arm (GenerateTypeCheck) is kept as
+        // defence-in-depth but never reached.
+        var valueName = typeCheck.Value is Identifier id ? id.Name : "value";
+        AddError(
+            $"'is' compares references, not types. " +
+            $"Use 'isinstance({valueName}, {typeCheck.CheckType.Name})' to test a value's type.",
+            typeCheck.LineStart, typeCheck.ColumnStart,
+            code: DiagnosticCodes.Semantic.IsTypeTestRetired,
+            span: typeCheck.Span);
 
         return SemanticType.Bool;
     }

@@ -13,11 +13,11 @@ from shapes import Box, NotFound, Denied
 
 
 def classify(b: Box[int]) -> str:
-    # Site 1: `is` and `as?` on a bare generic, filled from the value's static type.
-    if b is Box:
-        c = b as? Box
-        if c is not None:
-            return "box"
+    # Site 1: `as?` on a bare generic, filled from the value's static type.
+    # `is` type test retired (#1298); isinstance + as? keeps the coverage.
+    c = b as? Box
+    if c is not None:
+        return "box"
     return "other"
 
 

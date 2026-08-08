@@ -392,10 +392,11 @@ public static class DiagnosticCodes
         //            whose exact result exceeds the expression's result type. Sibling of SPY0328
         //            (IntegerPowerOverflow), which has no free slot beside it; declared next to
         //            SPY0328 in the region above so the two read together.
-        //   SPY0349: the last free slot in this reserve. The semantic band SPY0200-SPY0399 is now
-        //            effectively exhausted — every other gap is earmarked to a specific family. The
-        //            next family needing space requires a structural decision (a new band, or a
-        //            documented general-overflow region), not another borrow.
+        //   SPY0349: TAKEN — IsTypeTestRetired (#1298). `x is TypeName` retired as a type test;
+        //            `is` is reference identity only; the remedy is isinstance. This was the last
+        //            free slot in the semantic reserve. The next family needing space requires a
+        //            structural decision (a new band, or a documented general-overflow region).
+        public const string IsTypeTestRetired = "SPY0349";              // Active
 
         #endregion
 
