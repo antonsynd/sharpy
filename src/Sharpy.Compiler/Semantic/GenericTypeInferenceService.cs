@@ -734,19 +734,15 @@ internal class GenericTypeInferenceService
     }
 
     /// <summary>
-    /// Check if a type satisfies a constraint (implements interface or extends class).
+    /// Check if a type satisfies a constraint (#1289).
+    /// Resolves the constraint to a TypeSymbol and checks identity or inheritance —
+    /// self, subclass, and interface all fall out of the same comparator.
+    /// Falls back to string matching when the constraint cannot be resolved.
     /// </summary>
     private bool TypeSatisfiesConstraint(SemanticType type, string constraintTypeName)
     {
-        // For now, accept all constraints as satisfied for primitive types
-        // This is a simplification - full constraint checking requires looking up the constraint type
-        // and checking interface implementation
         if (type is BuiltinType)
-        {
-            // Primitive types satisfy common constraints like IComparable
-            // A more complete implementation would check the actual interface implementation
             return true;
-        }
 
         if (type is TypeParameterType tpt)
         {
@@ -769,24 +765,38 @@ internal class GenericTypeInferenceService
 
         if (type is UserDefinedType udt && udt.Symbol != null)
         {
-            // Check if the type implements the constraint interface
-            // Look for the constraint type name in the symbol's interfaces
-            foreach (var iface in TypeHierarchyService.GetAllInterfaces(udt.Symbol, SemanticBinding))
+            // Resolve the constraint type by symbol lookup (#1289)
+            var constraintSymbol = ResolveConstraintType(constraintTypeName);
+            if (constraintSymbol != null)
             {
-                if (InterfaceMatchesConstraint(iface, constraintTypeName))
-                {
+                // Self: the inferred type IS the constraint type
+                if (TypeHierarchyService.IsSameType(udt.Symbol, constraintSymbol))
                     return true;
+
+                // Subclass or interface: inherits from or implements the constraint
+                if (TypeHierarchyService.InheritsFrom(udt.Symbol, constraintSymbol, SemanticBinding))
+                    return true;
+
+                foreach (var iface in TypeHierarchyService.GetAllInterfaces(udt.Symbol, SemanticBinding))
+                {
+                    if (TypeHierarchyService.IsSameType(iface, constraintSymbol))
+                        return true;
                 }
+
+                return false;
             }
 
-            // Check base types
+            // Fallback: string-based matching when resolution fails
+            foreach (var iface in TypeHierarchyService.GetAllInterfaces(udt.Symbol, SemanticBinding))
+            {
+                if (iface.Name == constraintTypeName)
+                    return true;
+            }
+
             foreach (var baseSymbol in TypeHierarchyService.GetAllBaseTypes(udt.Symbol, SemanticBinding))
             {
-                var baseType = new UserDefinedType { Symbol = baseSymbol, Name = baseSymbol.Name };
-                if (TypeSatisfiesConstraint(baseType, constraintTypeName))
-                {
+                if (baseSymbol.Name == constraintTypeName)
                     return true;
-                }
             }
         }
 
@@ -794,24 +804,14 @@ internal class GenericTypeInferenceService
     }
 
     /// <summary>
-    /// Check if an interface matches a constraint name (possibly with type arguments).
+    /// Resolves a constraint type name to its TypeSymbol (#1289).
     /// </summary>
-    private bool InterfaceMatchesConstraint(TypeSymbol iface, string constraintTypeName)
+    private TypeSymbol? ResolveConstraintType(string constraintTypeName)
     {
-        // Simple name match
-        if (iface.Name == constraintTypeName)
-            return true;
-
-        // Check for generic constraint like IComparable[int]
-        // Parse out the base name from IComparable[int] -> IComparable
         var bracketIndex = constraintTypeName.IndexOf('[', StringComparison.Ordinal);
-        if (bracketIndex > 0)
-        {
-            var baseName = constraintTypeName.Substring(0, bracketIndex);
-            if (iface.Name == baseName)
-                return true;
-        }
+        var baseName = bracketIndex > 0 ? constraintTypeName.Substring(0, bracketIndex) : constraintTypeName;
 
-        return false;
+        return _symbolTable.BuiltinRegistry.GetType(baseName)
+            ?? _symbolTable.LookupType(baseName);
     }
 }

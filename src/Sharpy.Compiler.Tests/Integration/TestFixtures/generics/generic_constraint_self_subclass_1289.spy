@@ -1,0 +1,26 @@
+# #1289: type-parameter constraints compare resolved symbols.
+# Before the fix, TypeSatisfiesConstraint excluded self from GetAllBaseTypes
+# so T: Shape with T=Shape failed, and T: Shape with T=Circle(Shape) also failed
+# because the base-type arm was name-based and cross-module spellings diverged.
+
+class Shape:
+    sides: int
+
+    def __init__(self, sides: int) -> None:
+        self.sides = sides
+
+
+class Circle(Shape):
+    def __init__(self) -> None:
+        super().__init__(0)
+
+
+def describe[T: Shape](shape: T) -> int:
+    return shape.sides
+
+
+def main() -> None:
+    s: Shape = Shape(4)
+    c: Circle = Circle()
+    print(describe(s))
+    print(describe(c))
