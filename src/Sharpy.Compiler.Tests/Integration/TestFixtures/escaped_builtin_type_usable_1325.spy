@@ -1,0 +1,57 @@
+# #1325: SPY0212's own escape must work — a backtick-escaped builtin type name is a fully
+# usable user type. The defect class was ONE erased fact (type position dropped the token's
+# backtick flag: TypeAnnotation carried no such field) surfacing at every name-keyed
+# resolution site; the rule everywhere is the checker's expression rule: the escape decides
+# which namespace a spelling denotes, BOTH ways. Cells, each against its bare control:
+#   annotated local / parameter / return            -> user type;  y: int stays builtin
+#   base list (class Sub(`int`)) + polymorphism     -> user type as C# base @int
+#   generic argument (list[`int`])                  -> List<@int>
+#   isinstance(obj, `int`) vs isinstance(obj, int)  -> True / False on a Sub instance
+#   isinstance narrowing                            -> member access on narrowed value
+#   cast (obj as? `int`)                            -> Optional of the USER type
+#   match property pattern (case `int`(n=m))        -> m typed str, not object
+class `int`:
+    n: str
+
+    def __init__(self, n: str):
+        self.n = n
+
+
+class Sub(`int`):
+    def __init__(self, n: str):
+        super().__init__(n)
+
+
+def tag(v: `int`) -> `int`:
+    return `int`(v.n + "!")
+
+
+def main() -> None:
+    x: `int` = `int`("hi")
+    print(x.n)
+    y: int = 5
+    print(y + 1)
+    print(tag(x).n)
+    w = int("42")
+    print(w + 1)
+
+    xs: list[`int`] = [`int`("a"), Sub("b")]
+    print(len(xs))
+    for v in xs:
+        print(v.n)
+
+    obj: object = Sub("c")
+    print(isinstance(obj, `int`))
+    print(isinstance(obj, int))
+    if isinstance(obj, `int`):
+        print(obj.n)
+
+    c = obj as? `int`
+    if c is not None:
+        print(c.n + "?")
+
+    match obj:
+        case `int`(n=m):
+            print(m + "*")
+        case _:
+            print("no")

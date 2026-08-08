@@ -285,7 +285,7 @@ internal class TypeSyntaxMapper
         // Handle T !E → Result<T, E>
         if (type.IsResult)
         {
-            var okType = MapType(new TypeAnnotation { Name = type.Name, TypeArguments = type.TypeArguments });
+            var okType = MapType(new TypeAnnotation { Name = type.Name, IsNameBacktickEscaped = type.IsNameBacktickEscaped, TypeArguments = type.TypeArguments });
             var errType = MapType(type.ErrorType);
             return GenericName(Identifier("Result"))
                 .WithTypeArgumentList(
@@ -341,8 +341,10 @@ internal class TypeSyntaxMapper
                 return WrapOptionalOrNullable(MapSemanticType(selfType), type);
         }
 
-        // Get base type name
-        var baseTypeName = GetMappedTypeName(type.Name);
+        // Get base type name. The annotation's own escape flag rides along (#1325): base lists
+        // reach here with no recorded SemanticInfo resolution, and without the flag a
+        // `` class Sub(`int`) `` base spelled the C# primitive instead of the user's @int.
+        var baseTypeName = GetMappedTypeName(type.Name, type.IsNameBacktickEscaped);
 
         // Handle named tuple type annotations: tuple[x: float, y: float] -> (double x, double y)
         if (type.Name == BuiltinNames.Tuple && !type.TupleElementNames.IsEmpty && type.TypeArguments.Length >= 2)
@@ -485,7 +487,10 @@ internal class TypeSyntaxMapper
     {
         // Check if it's a built-in type. Name resolution (primitives + collections) is owned
         // by ClrTypeBridge — the single source for the Sharpy-name -> C# type-name mapping.
-        var csharpType = ClrTypeBridge.TryGetCSharpTypeName(sharpyTypeName);
+        // The builtin claim belongs to the BARE spelling only (#1325): an escaped name never
+        // denotes the builtin, so a `` `int` ``-declared class maps through the user-symbol
+        // path below (emitting @int), not to the C# primitive.
+        var csharpType = isBacktickEscaped ? null : ClrTypeBridge.TryGetCSharpTypeName(sharpyTypeName);
         if (csharpType != null)
         {
             return csharpType;
@@ -978,8 +983,9 @@ internal class TypeSyntaxMapper
     {
         if (expr is Identifier id)
         {
-            // Create a type annotation from the identifier and map it
-            var annotation = new TypeAnnotation { Name = id.Name };
+            // Create a type annotation from the identifier and map it. The identifier's escape
+            // flag rides along (#1325) — the sibling IndexAccess arm below already passes it.
+            var annotation = new TypeAnnotation { Name = id.Name, IsNameBacktickEscaped = id.IsNameBacktickEscaped };
             return MapType(annotation);
         }
 

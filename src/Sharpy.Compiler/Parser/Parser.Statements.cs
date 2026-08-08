@@ -1613,6 +1613,7 @@ public partial class Parser
         var typeAnnotation = new Ast.TypeAnnotation
         {
             Name = typeToken.Value,
+            IsNameBacktickEscaped = typeToken.IsBacktickEscaped,
             LineStart = typeToken.Line,
             ColumnStart = typeToken.Column,
             LineEnd = typeToken.Line,

@@ -197,13 +197,27 @@ internal partial class TypeChecker
             return spelled;
         }
 
-        if (ResolveBuiltinPrimitiveTypeName(annotation.Name) is { } primitive)
+        // The escape decides the namespace both ways (#1325), same as the expression-shaped twin
+        // (ClassifyBareTypeNameOperand): the primitive claim belongs to the bare spelling only,
+        // and symbol acceptance is by identity — escaped never binds the registry's own symbol,
+        // bare never binds an escape-declared one, quoting a bare-declared import stands.
+        if (!annotation.IsNameBacktickEscaped
+            && ResolveBuiltinPrimitiveTypeName(annotation.Name) is { } primitive)
         {
             _semanticInfo.SetTypeTestLowering(lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, primitive));
             return primitive;
         }
 
-        if (_symbolTable.Lookup(annotation.Name) is not TypeSymbol typeSymbol)
+        var operandSymbol = _symbolTable.Lookup(annotation.Name);
+        if (operandSymbol != null)
+        {
+            if (annotation.IsNameBacktickEscaped && _symbolTable.BuiltinRegistry.IsBuiltinSymbol(operandSymbol))
+                operandSymbol = null;
+            else if (!annotation.IsNameBacktickEscaped && operandSymbol.IsNameBacktickEscaped)
+                operandSymbol = _symbolTable.BuiltinRegistry.GetType(annotation.Name);
+        }
+
+        if (operandSymbol is not TypeSymbol typeSymbol)
             return null;
 
         // list/set/dict written without type arguments: the test cannot know the element types, so a

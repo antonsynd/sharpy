@@ -32,6 +32,19 @@ namespace Sharpy.Compiler.Parser.Ast;
 public record TypeAnnotation : Node
 {
     public string Name { get; init; } = "";
+
+    /// <summary>
+    /// True when the name was written backtick-escaped (<c>`int`</c>). The escape decides which
+    /// namespace a spelling denotes, and it decides it BOTH ways — the same rule the checker
+    /// applies to expression identifiers (TypeChecker.Expressions.Access.Calls.cs): a bare
+    /// spelling is claimed by builtin/name-keyed resolution; an escaped spelling resolves only
+    /// to a user symbol declared with the escape. Without this flag the escape was erased at
+    /// parse time in type position, so <c>x: `int`</c> resolved to the builtin and the escaped
+    /// class SPY0212's own message recommends was unusable (#1325). Always false for dotted
+    /// names — <c>builtins.int</c> is the qualified escape and does not compose with backticks.
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
+
     public ImmutableArray<TypeAnnotation> TypeArguments { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
 
     /// <summary>

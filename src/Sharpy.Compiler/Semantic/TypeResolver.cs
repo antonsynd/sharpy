@@ -80,8 +80,17 @@ internal class TypeResolver
 
         SemanticType result;
 
+        // The escape decides which namespace a spelling denotes, both ways (#1325): every
+        // name-keyed claim below — the special names, the primitive/builtin map, the CLR
+        // fallback — belongs to the BARE spelling only. Symbol acceptance is by IDENTITY, not
+        // flag equality: an escaped reference must never bind the registry's own symbol, and a
+        // bare reference must never bind an escape-DECLARED symbol — but an escaped reference
+        // binding a bare-declared user/import symbol is plain quoting and legal, which is what
+        // keeps #713's `from `System.Collections.Generic` import `LinkedList`` spelling usable.
+        bool escaped = annotation.IsNameBacktickEscaped;
+
         // Handle 'auto' keyword for type inference
-        if (annotation.Name == "auto")
+        if (!escaped && annotation.Name == "auto")
         {
             result = SemanticType.Unknown;
             _semanticInfo.SetTypeAnnotation(annotation, result);
@@ -89,7 +98,7 @@ internal class TypeResolver
         }
 
         // Handle 'Self' type — resolves to the enclosing class/struct/interface
-        if (annotation.Name == BuiltinNames.Self)
+        if (!escaped && annotation.Name == BuiltinNames.Self)
         {
             if (_currentTypeContext == null)
             {
@@ -114,7 +123,7 @@ internal class TypeResolver
         }
 
         // Handle LiteralString compile-time type (PEP 675)
-        if (annotation.Name == "LiteralString")
+        if (!escaped && annotation.Name == "LiteralString")
         {
             result = LiteralStringType.Instance;
             _semanticInfo.SetTypeAnnotation(annotation, result);
@@ -122,7 +131,7 @@ internal class TypeResolver
         }
 
         // Handle Template type annotation (PEP 750)
-        if (annotation.Name == BuiltinNames.Template)
+        if (!escaped && annotation.Name == BuiltinNames.Template)
         {
             result = TemplateType.Instance;
             _semanticInfo.SetTypeAnnotation(annotation, result);
@@ -149,12 +158,13 @@ internal class TypeResolver
         }
 
         // Try builtin types first
-        if (TryResolveBuiltinType(annotation.Name, out var builtinType))
+        if (!escaped && TryResolveBuiltinType(annotation.Name, out var builtinType))
         {
             result = builtinType;
         }
         // Check for type alias and expand it
-        else if (_symbolTable.LookupTypeAlias(annotation.Name) is TypeAliasSymbol aliasSymbol)
+        else if (_symbolTable.LookupTypeAlias(annotation.Name) is TypeAliasSymbol aliasSymbol
+                 && (escaped || !aliasSymbol.IsNameBacktickEscaped))
         {
             if (aliasSymbol.TypeParameters.Count > 0)
             {
@@ -190,7 +200,8 @@ internal class TypeResolver
             result = ResolveGenericType(annotation);
         }
         // Check for type parameter (e.g., T in class Box[T])
-        else if (_symbolTable.Lookup(annotation.Name) is TypeParameterSymbol typeParamSymbol)
+        else if (_symbolTable.Lookup(annotation.Name) is TypeParameterSymbol typeParamSymbol
+                 && (escaped || !typeParamSymbol.IsNameBacktickEscaped))
         {
             result = new TypeParameterType
             {
@@ -207,6 +218,18 @@ internal class TypeResolver
                 ?? LookupNestedType(annotation.Name)
                 ?? LookupModuleQualifiedType(annotation.Name);
 
+            // Identity, not flag equality: an escaped reference never binds the registry's own
+            // symbol (that is the namespace the escape exists to escape), a bare reference never
+            // binds an escape-declared symbol — and an escaped reference binding a bare-declared
+            // user/import symbol is quoting (#713) and stands.
+            if (typeSymbol != null)
+            {
+                if (escaped && _symbolTable.BuiltinRegistry.IsBuiltinSymbol(typeSymbol))
+                    typeSymbol = null;
+                else if (!escaped && typeSymbol.IsNameBacktickEscaped)
+                    typeSymbol = null;
+            }
+
             if (typeSymbol != null)
             {
                 result = new UserDefinedType
@@ -217,8 +240,9 @@ internal class TypeResolver
             }
             else
             {
-                // Try CLR type fallback for .NET interop types (Exception, etc.)
-                var clrTypeSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
+                // Try CLR type fallback for .NET interop types (Exception, etc.) — a bare-name
+                // claim, so an escaped spelling never reaches it.
+                var clrTypeSymbol = escaped ? null : _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
                 if (clrTypeSymbol != null)
                 {
                     result = new UserDefinedType
@@ -441,15 +465,20 @@ internal class TypeResolver
 
     private SemanticType ResolveGenericType(TypeAnnotation annotation)
     {
+        // Same escape discipline as ResolveTypeAnnotation (#1325): the name-special forms
+        // below are bare-spelling claims; an escaped name resolves only to a user symbol
+        // declared with the escape.
+        bool escaped = annotation.IsNameBacktickEscaped;
+
         // Handle explicit Optional[T] syntax
-        if (annotation.Name == "Optional" && annotation.TypeArguments.Length == 1)
+        if (!escaped && annotation.Name == "Optional" && annotation.TypeArguments.Length == 1)
         {
             var underlyingType = ResolveTypeAnnotation(annotation.TypeArguments[0]);
             return new OptionalType { UnderlyingType = underlyingType };
         }
 
         // Handle explicit Result[T, E] syntax
-        if (annotation.Name == "Result" && annotation.TypeArguments.Length == 2)
+        if (!escaped && annotation.Name == "Result" && annotation.TypeArguments.Length == 2)
         {
             var okType = ResolveTypeAnnotation(annotation.TypeArguments[0]);
             var errorType = ResolveTypeAnnotation(annotation.TypeArguments[1]);
@@ -457,7 +486,7 @@ internal class TypeResolver
         }
 
         // Special handling for array types - array[T] maps to .NET T[]
-        if (annotation.Name == BuiltinNames.Array)
+        if (!escaped && annotation.Name == BuiltinNames.Array)
         {
             if (annotation.TypeArguments.Length != 1)
             {
@@ -476,7 +505,7 @@ internal class TypeResolver
         }
 
         // Special handling for tuple types - they have variable arity (tuple[int], tuple[int, str], etc.)
-        if (annotation.Name == BuiltinNames.Tuple)
+        if (!escaped && annotation.Name == BuiltinNames.Tuple)
         {
             var elementTypes = annotation.TypeArguments
                 .Select(ResolveTypeAnnotation)
@@ -495,7 +524,7 @@ internal class TypeResolver
 
         // Special handling for function types - (T, U) -> V parsed as "function" with type args
         // TypeArguments contain [param types..., return type] where return type is the last element
-        if (annotation.Name == "function")
+        if (!escaped && annotation.Name == "function")
         {
             if (annotation.TypeArguments.Length == 0)
             {
@@ -519,19 +548,32 @@ internal class TypeResolver
         var typeSymbol = _symbolTable.LookupType(annotation.Name)
             ?? LookupNestedType(annotation.Name);
 
+        // Identity rule (#1325): an escaped spelling never binds the registry's own builtin; a
+        // bare spelling whose lookup answered an escape-declared user type (e.g. `list[int]`
+        // while a `` class `list`[T] `` shadows the name) falls back to the registry. An escaped
+        // spelling binding a bare-declared user/import symbol is quoting (#713) and stands.
+        if (typeSymbol != null)
+        {
+            if (escaped && _symbolTable.BuiltinRegistry.IsBuiltinSymbol(typeSymbol))
+                typeSymbol = null;
+            else if (!escaped && typeSymbol.IsNameBacktickEscaped)
+                typeSymbol = _symbolTable.BuiltinRegistry.GetType(annotation.Name);
+        }
+
         // Module-qualified generic type (e.g. difflib.SequenceMatcher[str], geometry.Box[int]).
         // Track this so the GenericType name can be normalized to the bare type name below —
         // the dotted annotation name would otherwise mismatch the bare name produced by
         // generic instantiation (Box[int]) and emit a false assignment error.
         var isModuleQualified = false;
-        if (typeSymbol == null)
+        if (typeSymbol == null && !escaped)
         {
             typeSymbol = LookupModuleQualifiedType(annotation.Name);
             if (typeSymbol != null)
                 isModuleQualified = true;
         }
 
-        typeSymbol ??= _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
+        if (!escaped)
+            typeSymbol ??= _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
 
         // #1134: A builtin collection that also ships a non-generic static factory companion
         // shadows its real generic type in the CLR fallback above. `Sharpy.Dict` (the

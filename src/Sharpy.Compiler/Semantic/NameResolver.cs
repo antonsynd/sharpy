@@ -332,9 +332,7 @@ internal partial class NameResolver
 
         foreach (var baseAnnot in classDef.BaseClasses)
         {
-            var rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
-            var baseSymbol = rawSymbol as TypeSymbol
-                ?? LookupModuleQualifiedType(baseAnnot.Name);
+            var baseSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol);
             if (baseSymbol == null)
             {
                 // Check if this is an error recovery symbol (from a failed import).
@@ -400,9 +398,7 @@ internal partial class NameResolver
         // Structs can only implement interfaces
         foreach (var baseAnnot in structDef.BaseClasses)
         {
-            var rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
-            var interfaceSymbol = rawSymbol as TypeSymbol
-                ?? LookupModuleQualifiedType(baseAnnot.Name);
+            var interfaceSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol);
             if (interfaceSymbol == null)
             {
                 // Check if this is an error recovery symbol (from a failed import).
@@ -447,9 +443,7 @@ internal partial class NameResolver
         // Interfaces can extend other interfaces
         foreach (var baseAnnot in interfaceDef.BaseInterfaces)
         {
-            var rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
-            var baseInterfaceSymbol = rawSymbol as TypeSymbol
-                ?? LookupModuleQualifiedType(baseAnnot.Name);
+            var baseInterfaceSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol);
             if (baseInterfaceSymbol == null)
             {
                 // Check if this is an error recovery symbol (from a failed import).
@@ -483,6 +477,28 @@ internal partial class NameResolver
 
         // Propagate inherited methods from base interfaces
         PropagateInterfaceMethods(typeSymbol);
+    }
+
+    /// <summary>
+    /// Resolves a base-list reference to its symbol, honoring the backtick escape both ways
+    /// (#1325) by IDENTITY, not flag equality: an escaped spelling never binds the registry's
+    /// own builtin symbol, and a bare spelling never binds an escape-DECLARED user type (it
+    /// falls back to the registry instead). An escaped spelling binding a bare-declared
+    /// user/import symbol is quoting (#713's interop imports) and stands.
+    /// </summary>
+    private TypeSymbol? ResolveBaseReference(TypeAnnotation baseAnnot, out Symbol? rawSymbol)
+    {
+        rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
+        if (rawSymbol != null)
+        {
+            if (baseAnnot.IsNameBacktickEscaped && _symbolTable.BuiltinRegistry.IsBuiltinSymbol(rawSymbol))
+                rawSymbol = null;
+            else if (!baseAnnot.IsNameBacktickEscaped && rawSymbol.IsNameBacktickEscaped)
+                rawSymbol = _symbolTable.BuiltinRegistry.GetType(baseAnnot.Name);
+        }
+
+        return rawSymbol as TypeSymbol
+            ?? (baseAnnot.IsNameBacktickEscaped ? null : LookupModuleQualifiedType(baseAnnot.Name));
     }
 
     /// <summary>

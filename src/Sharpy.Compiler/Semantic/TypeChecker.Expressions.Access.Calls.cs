@@ -528,13 +528,27 @@ internal partial class TypeChecker
     private void ClassifyBareTypeNameOperand(
         FunctionCall call, Expression operandNode, Identifier typeId, SemanticType? subjectType)
     {
-        if (ResolveBuiltinPrimitiveTypeName(typeId.Name) is { } primitive)
+        // The escape decides the namespace both ways (#1325): the primitive claim below belongs
+        // to the bare spelling only — `isinstance(x, `int`)` tests the user's escaped class,
+        // never the builtin, while a bare `int` stays the builtin even when an escaped class
+        // shadows it. Symbol acceptance is by identity: escaped never binds the registry's own
+        // symbol, bare never binds an escape-declared one, quoting a bare-declared import stands.
+        if (!typeId.IsNameBacktickEscaped && ResolveBuiltinPrimitiveTypeName(typeId.Name) is { } primitive)
         {
             _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, primitive));
             return;
         }
 
-        if (_symbolTable.Lookup(typeId.Name) is not TypeSymbol typeSymbol)
+        var operandSymbol = _symbolTable.Lookup(typeId.Name);
+        if (operandSymbol != null)
+        {
+            if (typeId.IsNameBacktickEscaped && _symbolTable.BuiltinRegistry.IsBuiltinSymbol(operandSymbol))
+                operandSymbol = null;
+            else if (!typeId.IsNameBacktickEscaped && operandSymbol.IsNameBacktickEscaped)
+                operandSymbol = _symbolTable.BuiltinRegistry.GetType(typeId.Name);
+        }
+
+        if (operandSymbol is not TypeSymbol typeSymbol)
             return;
 
         // list/set/dict written without type arguments: the test cannot know the element types, so it

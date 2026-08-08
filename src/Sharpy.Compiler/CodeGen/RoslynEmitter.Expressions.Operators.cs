@@ -722,6 +722,7 @@ internal partial class RoslynEmitter
                 : _typeMapper.MapType(new TypeAnnotation
                 {
                     Name = coercion.TargetType.Name,
+                    IsNameBacktickEscaped = coercion.TargetType.IsNameBacktickEscaped,
                     TypeArguments = coercion.TargetType.TypeArguments,
                     IsOptional = false
                 });
