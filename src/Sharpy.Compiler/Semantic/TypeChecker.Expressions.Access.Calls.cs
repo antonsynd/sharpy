@@ -1075,7 +1075,7 @@ internal partial class TypeChecker
     /// </remarks>
     private static bool IsBuiltinsModule(ModuleSymbol moduleSymbol) =>
         moduleSymbol.IsNetModule
-        && string.Equals(moduleSymbol.Name, "builtins", StringComparison.Ordinal);
+        && string.Equals(moduleSymbol.CanonicalModuleName, "builtins", StringComparison.Ordinal);
 
     /// <summary>
     /// The overload set an imported module exports under <paramref name="memberName"/>, trying the

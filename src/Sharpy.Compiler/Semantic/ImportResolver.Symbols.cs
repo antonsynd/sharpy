@@ -104,6 +104,12 @@ internal partial class ImportResolver
     {
         var effectiveName = newName ?? originalSymbol.Name;
 
+        // For the builtins module, preserve the registry's own symbol so
+        // BuiltinRegistry.IsBuiltinSymbol stays true via reference identity (#1322).
+        if (string.Equals(effectiveName, originalSymbol.Name, StringComparison.Ordinal)
+            && string.Equals(fromImport.Module, "builtins", StringComparison.Ordinal))
+            return originalSymbol;
+
         var result = originalSymbol switch
         {
             FunctionSymbol func => func with

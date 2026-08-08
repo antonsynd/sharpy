@@ -346,17 +346,21 @@ internal class TypeResolver
     /// </remarks>
     private bool TryStripBuiltinsQualifier(string name, out string bareName)
     {
-        const string prefix = "builtins.";
         bareName = string.Empty;
 
-        if (!name.StartsWith(prefix, StringComparison.Ordinal))
+        var dotIndex = name.IndexOf('.', StringComparison.Ordinal);
+        if (dotIndex <= 0 || dotIndex == name.Length - 1)
             return false;
 
-        if (_symbolTable.Lookup("builtins") is not ModuleSymbol { IsNetModule: true })
+        var qualifier = name[..dotIndex];
+        var tail = name[(dotIndex + 1)..];
+
+        if (tail.Contains('.', StringComparison.Ordinal))
             return false;
 
-        var tail = name[prefix.Length..];
-        if (tail.Length == 0 || tail.Contains('.', StringComparison.Ordinal))
+        // Key off CanonicalModuleName so `import builtins as b` works (#1321).
+        if (_symbolTable.Lookup(qualifier) is not ModuleSymbol { IsNetModule: true } mod
+            || mod.CanonicalModuleName != "builtins")
             return false;
 
         bareName = tail;
