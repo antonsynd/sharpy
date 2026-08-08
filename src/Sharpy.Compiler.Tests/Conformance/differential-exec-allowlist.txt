@@ -47,6 +47,16 @@ fixture::integer_power_runtime_checked
 # deviations.yaml: int-overflow-checked, int-power-negative-exponent. Permanent.
 fixture::augmented_power
 
+# The side-effecting-exponent form of the same two rows (round-8 #1228 remediation):
+# what the fixture pins is evaluation COUNT (each exponent function called exactly
+# once through the checked-power path), but its observable values ride the same two
+# designed deviations — `1000003 ** big_exp()` raises OverflowError where CPython
+# computes the 241-digit exact integer, and `2 ** neg_exp()` is `0` where CPython
+# gives the float `0.5`. The divergence is the payload's, not the pin's; the header
+# comment in the fixture declares both.
+# deviations.yaml: int-overflow-checked, int-power-negative-exponent. Permanent.
+fixture::power_side_effecting_exponent_1228
+
 # A parameterized generic is a legal `isinstance` type operand because .NET reifies
 # generics — `isinstance(x, list[int])` names a real runtime type and narrows to it.
 # CPython erases generics and refuses the same spelling outright ("isinstance()
