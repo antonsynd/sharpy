@@ -7,6 +7,11 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-07
+
+### Changed
+- Bumped two npm dependencies (dependabot). No other extension-package changes; version bumped in lockstep with the toolchain. Toolchain-side, the bundled language server gained the round-8 fixes visible in-editor: rename now works from an unreferenced declaration (#1232), the server honors the client's log level so per-stage analysis attribution is reachable (#1225), and diagnostics reflect the round's semantic changes — builtin type names are refused in type declarations (#1240, #1241) and unpinned constructor aliases draw SPY0342 with tier-3 guidance (#1248).
+
 ## [0.11.0] - 2026-08-05
 
 ### Changed
