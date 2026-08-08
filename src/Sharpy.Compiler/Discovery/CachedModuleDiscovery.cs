@@ -853,7 +853,10 @@ internal class CachedModuleDiscovery
                 TypeArguments = signature.TypeArguments
                     .Select(ta => ConvertTypeSignature(ta, sharedTypeParams))
                     .ToList(),
-                GenericDefinition = genDef
+                GenericDefinition = genDef,
+                ClrOriginTypeName = !string.IsNullOrEmpty(signature.ClrTypeName)
+                    ? ClrNameHelper.ToFullClrName(signature.ClrTypeName)
+                    : null
             };
         }
 

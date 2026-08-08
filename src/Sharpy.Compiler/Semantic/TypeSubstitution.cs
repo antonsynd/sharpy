@@ -36,7 +36,8 @@ internal static class TypeSubstitution
             {
                 Name = gt.Name,
                 TypeArguments = gt.TypeArguments.Select(t => Apply(t, substitutions, substituteNamedUserTypes)).ToList(),
-                GenericDefinition = gt.GenericDefinition
+                GenericDefinition = gt.GenericDefinition,
+                ClrOriginTypeName = gt.ClrOriginTypeName
             },
             NullableType nt => new NullableType
             {
