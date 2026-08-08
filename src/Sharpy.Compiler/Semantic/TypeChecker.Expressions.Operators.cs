@@ -164,6 +164,7 @@ internal partial class TypeChecker
         // compile time in checked mode") and surfaced as an SPY0908 internal error — a compiler
         // bug report for what is really a user-program fact.
         if (binOp.Operator is BinaryOperator.Add or BinaryOperator.Subtract or BinaryOperator.Multiply
+                or BinaryOperator.LeftShift or BinaryOperator.RightShift
             && TypeUtils.IsInteger(leftType) && TypeUtils.IsInteger(rightType))
         {
             CheckConstantIntegerOverflow(binOp, resultType);

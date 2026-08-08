@@ -48,11 +48,24 @@ internal static class IntegerConstantEvaluator
             case BinaryOp
             {
                 Operator: BinaryOperator.Add or BinaryOperator.Subtract or BinaryOperator.Multiply
+                    or BinaryOperator.LeftShift or BinaryOperator.RightShift
             } binary:
                 if (!TryGetConstantInteger(binary.Left, out var left)
                     || !TryGetConstantInteger(binary.Right, out var right))
                 {
                     return false;
+                }
+                if (binary.Operator is BinaryOperator.LeftShift or BinaryOperator.RightShift)
+                {
+                    if (right < 0)
+                    {
+                        value = default;
+                        return false;
+                    }
+                    value = binary.Operator == BinaryOperator.LeftShift
+                        ? left << (int)right
+                        : left >> (int)right;
+                    return true;
                 }
                 value = binary.Operator switch
                 {

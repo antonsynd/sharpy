@@ -275,16 +275,22 @@ internal class TypeInferenceService
 
     private SemanticType? TryInferBuiltinBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
     {
-        // Integer types for bitwise operations
+        // Shift operators: result type = promoted left operand alone; the count (right)
+        // must be an integer but does not widen the result (#1315).
+        if (TypeUtils.IsInteger(left) && TypeUtils.IsInteger(right)
+            && op is BinaryOperator.LeftShift or BinaryOperator.RightShift)
+        {
+            return InferNumericResultType(left, left);
+        }
+
+        // Bitwise operators (non-shift): promote both operands
         if (TypeUtils.IsInteger(left) && TypeUtils.IsInteger(right))
         {
             var bitwiseResult = op switch
             {
                 BinaryOperator.BitwiseAnd or
                 BinaryOperator.BitwiseOr or
-                BinaryOperator.BitwiseXor or
-                BinaryOperator.LeftShift or
-                BinaryOperator.RightShift => InferNumericResultType(left, right),
+                BinaryOperator.BitwiseXor => InferNumericResultType(left, right),
                 _ => (SemanticType?)null
             };
 

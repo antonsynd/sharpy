@@ -424,6 +424,19 @@ internal partial class RoslynEmitter
             }
         }
 
+        // Shift operators: C# requires the count to be int. When the semantic type of the
+        // right operand is wider (long), emit an explicit cast (#1315).
+        if (kind is SyntaxKind.LeftShiftExpression or SyntaxKind.RightShiftExpression)
+        {
+            var rightType = _context.SemanticInfo?.GetExpressionType(binOp.Right);
+            if (rightType is BuiltinType { Name: not "int32" })
+            {
+                right = CastExpression(
+                    PredefinedType(Token(SyntaxKind.IntKeyword)),
+                    ParenthesizedExpression(right));
+            }
+        }
+
         return BinaryExpression(kind, left, right);
     }
 
