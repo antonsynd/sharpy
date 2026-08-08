@@ -58,12 +58,16 @@ big: long = 4611686018427387905L   # 2**62 + 1
 print(big // 3L)                   # 1537228672809129301 — exact, matches CPython
 ```
 
-One boundary is deliberately a runtime error: `int.MinValue // -1` (and the
-`long` equivalent) raises `OverflowError`. The mathematically correct quotient
+One boundary is deliberately a runtime error: dividing an **`int`-typed**
+`int.MinValue` by an `int`-typed `-1` (and the `long` equivalent at
+`long.MinValue`) raises `OverflowError`. The mathematically correct quotient
 (`2147483648`) does not fit the result type, and .NET traps this division even
 in unchecked code, so the helper surfaces it as the ordinary Sharpy overflow
 error rather than an unexplained crash. CPython, with arbitrary-precision
-integers, computes `2147483648` — a documented divergence.
+integers, computes `2147483648` — a documented divergence. Note the bare
+literal spelling `(-2147483648) // -1` does NOT hit this boundary: the literal
+`2147483648` is long-width by magnitude (#1320), so that spelling computes
+`2147483648` in `long` arithmetic.
 
 ### Float floor division is not `Math.Floor(a / b)`
 
