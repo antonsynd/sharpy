@@ -1,0 +1,5 @@
+class Box[T]:
+    t: T
+
+    def __init__(self, t: T):
+        self.t = t

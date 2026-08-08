@@ -392,6 +392,11 @@ internal class CodeGenInfoComputer
     {
         var seen = new Dictionary<string, string>(); // CSharpName → originalName
 
+        foreach (var tp in typeSymbol.TypeParameters)
+        {
+            seen[tp.Name] = tp.Name;
+        }
+
         foreach (var symbol in typeSymbol.Fields.Cast<Symbol>().Concat(typeSymbol.Methods))
         {
             var info = _semanticBinding.GetCodeGenInfo(symbol);
@@ -400,12 +405,11 @@ internal class CodeGenInfoComputer
 
             if (seen.TryGetValue(info.CSharpName, out var existingOriginal))
             {
-                // Find the AST node for the colliding symbol to get location info
                 var line = FindMemberLine(body, symbol.Name);
 
                 _diagnostics.AddError(
                     $"Name collision: '{symbol.Name}' and '{existingOriginal}' both compile to " +
-                    $"'{info.CSharpName}'. Rename one of the conflicting symbols.",
+                    $"'{info.CSharpName}'. Rename one, or backtick-escape the name you need to keep.",
                     line: line,
                     code: DiagnosticCodes.CodeGen.MemberNameCollision,
                     phase: CompilerPhase.CodeGeneration);
@@ -539,6 +543,10 @@ internal class CodeGenInfoComputer
                     symbolName = enumDef.Name;
                     stmtLine = enumDef.LineStart;
                     break;
+                case DelegateDef delegateDef:
+                    symbolName = delegateDef.Name;
+                    stmtLine = delegateDef.LineStart;
+                    break;
             }
 
             if (symbolName == null)
@@ -549,10 +557,13 @@ internal class CodeGenInfoComputer
                 continue;
 
             var info = _semanticBinding.GetCodeGenInfo(symbol);
-            if (info == null)
+            var csharpName = info?.CSharpName;
+            if (csharpName == null && symbol is TypeSymbol { TypeKind: TypeKind.Delegate })
+                csharpName = NameCasing.ResolveType(symbolName, symbol.IsNameBacktickEscaped);
+            if (csharpName == null)
                 continue;
 
-            if (seen.TryGetValue(info.CSharpName, out var existing))
+            if (seen.TryGetValue(csharpName, out var existing))
             {
                 // Overloads of the same module-level function share an identical
                 // Python name and intentionally compile to the same C# name — this
@@ -560,16 +571,17 @@ internal class CodeGenInfoComputer
                 if (symbolName == existing.originalName)
                     continue;
 
+                var firstPos = existing.line.HasValue ? $" (line {existing.line})" : "";
                 _diagnostics.AddError(
-                    $"Name collision: '{symbolName}' and '{existing.originalName}' both compile to " +
-                    $"'{info.CSharpName}'. Rename one of the conflicting symbols.",
+                    $"Name collision: '{symbolName}' and '{existing.originalName}'{firstPos} both compile to " +
+                    $"'{csharpName}'. Rename one, or backtick-escape the name you need to keep.",
                     line: stmtLine,
                     code: DiagnosticCodes.CodeGen.MemberNameCollision,
                     phase: CompilerPhase.CodeGeneration);
             }
             else
             {
-                seen[info.CSharpName] = (symbolName, stmtLine);
+                seen[csharpName] = (symbolName, stmtLine);
             }
         }
     }

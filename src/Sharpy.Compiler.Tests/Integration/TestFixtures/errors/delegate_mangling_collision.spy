@@ -1,0 +1,4 @@
+delegate h(x: int) -> int
+
+def H(x: int) -> int:
+    return x * 2
