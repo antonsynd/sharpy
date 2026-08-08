@@ -194,21 +194,21 @@ internal partial class RoslynEmitter
                 case ClassDef nestedClass:
                     var nestedClassDecl = GenerateClassDeclaration(nestedClass);
                     if (!HasExplicitAccessDecorator(nestedClass.Decorators))
-                        nestedClassDecl = ReplaceAccessModifier(nestedClassDecl, SyntaxKind.PrivateKeyword);
+                        nestedClassDecl = ReplaceAccessModifier(nestedClassDecl, GetAccessModifierFromNameConvention(nestedClass.Name));
                     members.Add(nestedClassDecl);
                     break;
 
                 case StructDef nestedStruct:
                     var nestedStructDecl = GenerateStructDeclaration(nestedStruct);
                     if (!HasExplicitAccessDecorator(nestedStruct.Decorators))
-                        nestedStructDecl = ReplaceAccessModifier(nestedStructDecl, SyntaxKind.PrivateKeyword);
+                        nestedStructDecl = ReplaceAccessModifier(nestedStructDecl, GetAccessModifierFromNameConvention(nestedStruct.Name));
                     members.Add(nestedStructDecl);
                     break;
 
                 case InterfaceDef nestedInterface:
                     var nestedInterfaceDecl = GenerateInterfaceDeclaration(nestedInterface);
                     if (!HasExplicitAccessDecorator(nestedInterface.Decorators))
-                        nestedInterfaceDecl = ReplaceAccessModifier(nestedInterfaceDecl, SyntaxKind.PrivateKeyword);
+                        nestedInterfaceDecl = ReplaceAccessModifier(nestedInterfaceDecl, GetAccessModifierFromNameConvention(nestedInterface.Name));
                     members.Add(nestedInterfaceDecl);
                     break;
 
@@ -217,7 +217,7 @@ internal partial class RoslynEmitter
                     if (nestedEnumNode is MemberDeclarationSyntax nestedEnumMember)
                     {
                         if (!HasExplicitAccessDecorator(nestedEnum.Decorators))
-                            nestedEnumMember = ReplaceAccessModifier(nestedEnumMember, SyntaxKind.PrivateKeyword);
+                            nestedEnumMember = ReplaceAccessModifier(nestedEnumMember, GetAccessModifierFromNameConvention(nestedEnum.Name));
                         members.Add(nestedEnumMember);
                     }
                     break;

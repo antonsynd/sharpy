@@ -620,7 +620,10 @@ internal partial class NameResolver
         if (nestedName != null && _symbolTable.Lookup(nestedName) is TypeSymbol nestedSymbol)
         {
             nestedSymbol.DeclaringType = enclosingType;
-            nestedSymbol.AccessLevel = GetAccessLevel(statement) ?? AccessLevel.Private;
+            var explicitAccess = GetAccessLevel(statement);
+            nestedSymbol.AccessLevel = explicitAccess ?? AccessLevelConventions.FromName(nestedName);
+            if (explicitAccess != null)
+                nestedSymbol.ExplicitAccessLevel = explicitAccess;
             enclosingType.NestedTypes.Add(nestedSymbol);
         }
     }

@@ -69,7 +69,7 @@ public abstract record Symbol
     /// The access level explicitly set via decorator (@public, @protected, @private, @internal).
     /// When non-null, this overrides the name-based access level convention.
     /// </summary>
-    public AccessLevel? ExplicitAccessLevel { get; init; }
+    public AccessLevel? ExplicitAccessLevel { get; internal set; }
 
     /// <summary>
     /// If non-null, this symbol is deprecated and this is the deprecation message.

@@ -1,0 +1,8 @@
+# #1259: _Name nested types are protected — external access refused.
+class Container:
+    class _Secret:
+        value: int = 42
+
+def main() -> None:
+    s: Container._Secret = Container._Secret()
+    print(s.value)

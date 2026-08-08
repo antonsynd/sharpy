@@ -60,14 +60,16 @@ internal class AccessValidator : ValidatingAstWalker
     {
         // Get the type of the object being accessed
         var objectType = Context.SemanticInfo.GetExpressionType(memberAccess.Object);
-        if (objectType == null)
-            return;
 
         // Get the owning type symbol
         TypeSymbol? owningType = null;
         if (objectType is UserDefinedType udt)
         {
             owningType = udt.Symbol ?? Context.SymbolTable.LookupType(udt.Name);
+        }
+        else if (memberAccess.Object is Identifier objectId)
+        {
+            owningType = Context.SymbolTable.LookupType(objectId.Name);
         }
 
         if (owningType == null)
@@ -140,8 +142,10 @@ internal class AccessValidator : ValidatingAstWalker
         if (field != null)
             return field;
 
-        // Properties and events don't inherit from Symbol, so they can't have ExplicitAccessLevel.
-        // They already handle access level overrides in NameResolver.Members.cs directly.
+        // Check nested types
+        var nestedType = owningType.NestedTypes.FirstOrDefault(n => n.Name == memberName);
+        if (nestedType != null)
+            return nestedType;
 
         return null;
     }

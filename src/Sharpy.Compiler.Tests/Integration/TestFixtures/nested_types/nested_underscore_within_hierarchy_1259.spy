@@ -1,0 +1,22 @@
+# #1259: _Name nested types are accessible from within the class hierarchy.
+class Base:
+    class _Helper:
+        value: int
+
+        def __init__(self, v: int):
+            self.value = v
+
+    def make_helper(self) -> int:
+        h: Base._Helper = Base._Helper(99)
+        return h.value
+
+class Child(Base):
+    def use_helper(self) -> int:
+        h: Base._Helper = Base._Helper(77)
+        return h.value
+
+def main() -> None:
+    b: Base = Base()
+    print(b.make_helper())
+    c: Child = Child()
+    print(c.use_helper())
