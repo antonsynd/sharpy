@@ -1,7 +1,22 @@
+using Sharpy.Compiler.Diagnostics;
+
 namespace Sharpy.Compiler.Project;
 
 internal partial class ProjectCompiler
 {
+    /// <summary>
+    /// Forwards diagnostics wholesale into both the project-level and per-compilation bags,
+    /// preserving Span, Phase, and all other record fields (#1280, #1077).
+    /// </summary>
+    private void ForwardDiagnostics(IEnumerable<CompilerDiagnostic> diagnostics)
+    {
+        foreach (var diagnostic in diagnostics)
+        {
+            _projectModel!.GlobalDiagnostics.Add(diagnostic);
+            _diagnostics.Add(diagnostic);
+        }
+    }
+
     /// <summary>
     /// Determine if a file is the entry point for validation and code generation.
     /// Used during type checking and code generation phases.

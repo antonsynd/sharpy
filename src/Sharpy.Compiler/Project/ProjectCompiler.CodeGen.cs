@@ -40,7 +40,7 @@ internal partial class ProjectCompiler
 
         var generatedCSharp = new Dictionary<string, string>();
         var generatedTrees = new Dictionary<string, SyntaxTree>();
-        var builtinRegistry = new BuiltinRegistry(_logger);
+        var builtinRegistry = SymbolTable.BuiltinRegistry;
 
         foreach (var (_, unit) in _projectModel!.Units)
         {

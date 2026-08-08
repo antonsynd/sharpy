@@ -96,18 +96,9 @@ internal partial class ProjectCompiler
             unit.ModuleScope = SymbolTable.GetModuleScope(unit.ModulePath);
             unit.FileSymbolTable = null; // Clear per-file table after merge
 
-            // Collect per-file declaration errors. Forward each diagnostic record wholesale so its
-            // Span (and any future fields) survives the per-file → project reconstruction — the name
-            // resolver already stamps CompilerPhase.NameResolution and the originating span, so the
-            // span-less line/column reconstruction dropped location fidelity (SPY0204 parity, #1077).
-            if (fileResolver.Diagnostics.HasErrors)
-            {
-                foreach (var error in fileResolver.Diagnostics.GetErrors())
-                {
-                    _projectModel!.GlobalDiagnostics.Add(error);
-                    _diagnostics.Add(error);
-                }
-            }
+            // Forward all per-file name-resolution diagnostics (errors AND warnings) wholesale so
+            // their Span and all other fields survive the per-file → project merge (#1280, #1077).
+            ForwardDiagnostics(fileResolver.Diagnostics.GetAll());
         }
 
         // Create aggregated NameResolver for inheritance resolution (Phase 4b)
@@ -138,19 +129,15 @@ internal partial class ProjectCompiler
 
         _logger.LogInfo("Phase 4b: Resolving inheritance across all files");
 
-        // Track previous error count so we only collect new inheritance errors
-        // (declaration errors were already collected in Phase 3)
-        var previousErrorCount = _sharedNameResolver.Diagnostics.ErrorCount;
+        // Snapshot the diagnostic count before inheritance resolution so we forward only
+        // new diagnostics (declaration diagnostics were already forwarded in Phase 3).
+        var previousDiagnosticCount = _sharedNameResolver.Diagnostics.GetAll().Count;
 
         _sharedNameResolver.ResolveInheritance(cancellationToken);
 
-        // Collect only new inheritance errors (skip already collected declaration errors)
-        var newErrors = _sharedNameResolver.Diagnostics.GetErrors().Skip(previousErrorCount);
-        foreach (var error in newErrors)
-        {
-            _projectModel!.GlobalDiagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code);
-            _diagnostics.AddError(error.Message, error.Line, error.Column, code: error.Code, phase: CompilerPhase.NameResolution);
-        }
+        // Forward new inheritance diagnostics (errors + warnings) wholesale, preserving
+        // spans — the old reconstruction dropped location fidelity (#1280, #1077).
+        ForwardDiagnostics(_sharedNameResolver.Diagnostics.GetAll().Skip(previousDiagnosticCount));
     }
 
     /// <summary>
@@ -711,8 +698,9 @@ internal partial class ProjectCompiler
                 // so a crash in the first file's type check would otherwise be mis-attributed
                 // (#1083).
                 using var typeCheckPhaseScope = _diagnostics.BeginPhaseScope(CompilerPhase.TypeChecking);
+                var typeCheckFilePath = IsNullPathEntryFile(config, unit) ? null : unit.FilePath;
                 var typeCheckResult = compilationPipeline.TypeCheck(
-                    unit.Ast, unit.FilePath, isEntryPoint, _maxErrors, _diagnostics,
+                    unit.Ast, typeCheckFilePath, isEntryPoint, _maxErrors, _diagnostics,
                     computeCodeGenInfo: config.UsePrecomputedCodeGenInfo,
                     cancellationToken: cancellationToken,
                     fileSemanticInfo: localSemanticInfo,

@@ -63,7 +63,9 @@ public class RenameTests
 
     /// <summary>
     /// Regression test for #597: Module-level non-const VariableDeclaration sets
-    /// DeclarationSpan and DeclaringFilePath on the VariableSymbol.
+    /// DeclarationSpan on the VariableSymbol. DeclaringFilePath is null in single-file
+    /// analyze (#1262 — all entry-file symbols agree on null; RenameHandler falls back to
+    /// the request document URI).
     /// </summary>
     [Fact]
     public void ModuleLevelVariable_HasDeclarationSpanAndFilePath()
@@ -76,7 +78,7 @@ public class RenameTests
         symbol.Should().NotBeNull();
         symbol.Should().BeOfType<VariableSymbol>();
         symbol!.DeclarationSpan.Should().NotBeNull("Phase 1 of #597 sets DeclarationSpan");
-        symbol!.DeclaringFilePath.Should().NotBeNull("Phase 1 of #597 sets DeclaringFilePath");
+        symbol!.DeclaringFilePath.Should().BeNull("single-file analyze strips the entry path (#1262)");
     }
 
     /// <summary>
@@ -100,7 +102,8 @@ public class RenameTests
 
     /// <summary>
     /// Regression test for #597: Assignment variable in function body sets
-    /// DeclarationSpan and DeclaringFilePath.
+    /// DeclarationSpan. DeclaringFilePath is null in single-file analyze — consistent
+    /// with module-level symbols (#1262).
     /// </summary>
     [Fact]
     public void AssignmentVariable_HasDeclarationSpanAndFilePath()
@@ -113,6 +116,6 @@ public class RenameTests
         symbol.Should().NotBeNull("TypeChecker creates VariableSymbol for assignment");
         symbol.Should().BeOfType<VariableSymbol>();
         symbol!.DeclarationSpan.Should().NotBeNull("Phase 1 of #597 sets DeclarationSpan");
-        symbol!.DeclaringFilePath.Should().NotBeNull("Phase 1 of #597 sets DeclaringFilePath");
+        symbol!.DeclaringFilePath.Should().BeNull("single-file analyze strips the entry path (#1262)");
     }
 }

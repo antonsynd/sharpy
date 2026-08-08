@@ -96,7 +96,7 @@ internal class FileCompilationPipeline
     /// </returns>
     public TypeCheckResult TypeCheck(
         Module module,
-        string filePath,
+        string? filePath,
         bool isEntryPoint,
         int maxErrors,
         DiagnosticBag existingDiagnostics,

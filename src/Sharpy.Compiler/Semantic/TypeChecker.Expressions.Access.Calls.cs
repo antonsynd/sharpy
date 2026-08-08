@@ -1834,7 +1834,7 @@ internal partial class TypeChecker
 
         // Only handle overloads declared in the current file. Imported overloads
         // (different DeclaringFilePath) are resolved by ResolveImportedFunctionOverload.
-        if (_currentFilePath == null || overloads[0].DeclaringFilePath != _currentFilePath)
+        if (_currentFilePath != overloads[0].DeclaringFilePath)
             return null;
 
         var kwNames = ExtractKeywordArgNames(call);

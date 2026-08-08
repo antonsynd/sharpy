@@ -105,7 +105,7 @@ internal partial class ProjectCompiler
         // by the same path as generatorCSharp. Files served from cached text (below) have no
         // tree and are reparsed when the generator assembly is compiled.
         var generatorTrees = new Dictionary<string, SyntaxTree>();
-        var builtinRegistry = new BuiltinRegistry(_logger);
+        var builtinRegistry = SymbolTable.BuiltinRegistry;
 
         foreach (var filePath in partition.GeneratorFiles)
         {
