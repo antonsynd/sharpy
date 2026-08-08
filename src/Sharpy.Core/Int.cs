@@ -41,7 +41,7 @@ namespace Sharpy
         {
             if (l < int.MinValue || l > int.MaxValue)
             {
-                throw new OverflowException($"Value {l} is out of range for int");
+                throw new OverflowError($"Value {l} is out of range for int");
             }
             return (int)l;
         }
@@ -57,11 +57,11 @@ namespace Sharpy
             }
             if (float.IsPositiveInfinity(f) || float.IsNegativeInfinity(f))
             {
-                throw new OverflowException($"Value {f} is out of range for int");
+                throw new OverflowError($"Value {f} is out of range for int");
             }
             if (f < int.MinValue || f > int.MaxValue)
             {
-                throw new OverflowException($"Value {f} is out of range for int");
+                throw new OverflowError($"Value {f} is out of range for int");
             }
             return (int)f;
         }
@@ -77,7 +77,7 @@ namespace Sharpy
             }
             if (double.IsInfinity(d) || d < int.MinValue || d > int.MaxValue)
             {
-                throw new OverflowException($"Value {d} is out of range for int");
+                throw new OverflowError($"Value {d} is out of range for int");
             }
             return (int)d;
         }
@@ -89,7 +89,7 @@ namespace Sharpy
         {
             if (m < int.MinValue || m > int.MaxValue)
             {
-                throw new OverflowException($"Value {m} is out of range for int");
+                throw new OverflowError($"Value {m} is out of range for int");
             }
             return (int)m;
         }
@@ -153,7 +153,7 @@ namespace Sharpy
         {
             if (u > int.MaxValue)
             {
-                throw new OverflowException($"Value {u} is out of range for int");
+                throw new OverflowError($"Value {u} is out of range for int");
             }
             return (int)u;
         }
@@ -165,7 +165,7 @@ namespace Sharpy
         {
             if (ul > (ulong)int.MaxValue)
             {
-                throw new OverflowException($"Value {ul} is out of range for int");
+                throw new OverflowError($"Value {ul} is out of range for int");
             }
             return (int)ul;
         }
