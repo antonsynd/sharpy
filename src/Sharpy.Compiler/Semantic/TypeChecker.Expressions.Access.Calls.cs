@@ -216,6 +216,9 @@ internal partial class TypeChecker
             var shadowsBuiltin = symbol != null
                 && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(symbol);
 
+            if (shadowsBuiltin && _semanticInfo != null)
+                _semanticInfo.SetCalleeRouting(call, CalleeRouting.UserSymbol);
+
             // Data-driven builtin function return type inference (len, hash, reversed, sorted, min, max)
             if (!id.IsNameBacktickEscaped && !shadowsBuiltin)
             {
@@ -1417,16 +1420,16 @@ internal partial class TypeChecker
     private SemanticType? ResolveBuiltinOverload(
         Identifier id, List<SemanticType> argTypes, int totalArgCount, FunctionCall call)
     {
-        // When there are multiple overloads, we need to perform overload resolution to find the right one.
-        // The funcSymbol from Lookup is just the first overload, which may not match the call.
-        // Only use builtin overloads if there's no user-defined function shadowing the builtin.
         var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
         var isBuiltinWithOverloads = overloads != null && overloads.Count > 1;
-        var funcSymbol = _symbolTable.Lookup(id.Name) as FunctionSymbol;
-        // If funcSymbol was found in symbol table AND it's one of the builtin overloads, use overload resolution
-        var needsOverloadResolution = isBuiltinWithOverloads &&
-            (funcSymbol == null || overloads!.Contains(funcSymbol));
-        if (!needsOverloadResolution)
+        if (!isBuiltinWithOverloads)
+            return null;
+
+        // Identity decides: ANY non-builtin symbol answering Lookup shadows the builtin,
+        // regardless of symbol kind. The old `as FunctionSymbol` let a VariableSymbol shadow
+        // fall through (funcSymbol == null → builtin wins silently, #1326).
+        var lookupSymbol = _symbolTable.Lookup(id.Name);
+        if (lookupSymbol != null && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(lookupSymbol))
             return null;
 
         var kwNames = ExtractKeywordArgNames(call);

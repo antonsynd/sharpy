@@ -273,6 +273,13 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, StaticExtensionDispatch> _staticExtensionDispatches =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map function calls by Identifier callee to whether the call resolves to a builtin or a user
+    // symbol. Recorded by the TypeChecker while scopes are live so the emitter (scope-collapsed at
+    // codegen time) applies the routing verbatim instead of re-deriving it from a lookup that can
+    // only see the global builtin (#1326, Critical Rule 2 pattern (b)).
+    private readonly ConcurrentDictionary<FunctionCall, CalleeRouting> _calleeRoutings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map declarations to their source generator bindings (bracket attributes that resolve to SourceGenerator subclasses)
     private readonly ConcurrentDictionary<Statement, List<GeneratorBinding>> _generatorBindings =
         new(ReferenceEqualityComparer.Instance);
@@ -347,6 +354,16 @@ public class SemanticInfo : ISemanticQuery
     public FunctionSymbol? GetCallTarget(FunctionCall call)
     {
         return _callTargets.TryGetValue(call, out var target) ? target : null;
+    }
+
+    public void SetCalleeRouting(FunctionCall call, CalleeRouting routing)
+    {
+        _calleeRoutings[call] = routing;
+    }
+
+    public CalleeRouting? GetCalleeRouting(FunctionCall call)
+    {
+        return _calleeRoutings.TryGetValue(call, out var routing) ? routing : null;
     }
 
     public void SetTypeAnnotation(TypeAnnotation annotation, SemanticType type)
@@ -1048,6 +1065,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._generatedStatements)
             _generatedStatements.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._calleeRoutings)
+            _calleeRoutings.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var (symbol, refs) in other._symbolReferences)
         {
             var bag = _symbolReferences.GetOrAdd(symbol, static _ => new ConcurrentBag<SymbolReference>());
@@ -1454,4 +1474,15 @@ public enum IndexAccessLowering
     /// <c>range(...)</c>-loop induction variable that is not reassigned in the loop body (#1052).
     /// </summary>
     NativeUnchecked
+}
+
+/// <summary>
+/// Whether a function call by Identifier resolves to a builtin or a user-defined symbol.
+/// Recorded by the TypeChecker (scope live) so the emitter (scope collapsed) applies it
+/// verbatim (#1326, Critical Rule 2 pattern (b)).
+/// </summary>
+public enum CalleeRouting
+{
+    Builtin,
+    UserSymbol
 }

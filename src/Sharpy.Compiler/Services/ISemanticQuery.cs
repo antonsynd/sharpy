@@ -37,6 +37,8 @@ public interface ISemanticQuery
     /// </summary>
     FunctionSymbol? GetCallTarget(FunctionCall call);
 
+    CalleeRouting? GetCalleeRouting(FunctionCall call);
+
     /// <summary>
     /// Gets the resolved semantic type of a type annotation.
     /// </summary>

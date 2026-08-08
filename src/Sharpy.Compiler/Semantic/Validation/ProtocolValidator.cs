@@ -215,10 +215,11 @@ internal class ProtocolValidator : ValidatingAstWalker
         {
             // A BARE `len` can also be the user's own: value-position shadowing is legal (SPY0483),
             // so `def len(x: int)` followed by `len(4)` calls that function and the builtin's sized
-            // requirement has nothing to do with it. The TypeChecker already resolved the callee and
-            // left its answer on the call, so this reads that decision rather than re-deriving one —
-            // re-deriving is how the validator reported "int does not support len()" against a
-            // user function that takes an int (#1241).
+            // requirement has nothing to do with it. The callee routing (recorded by the TypeChecker
+            // while scopes are live) is the authoritative answer — it covers variable bindings that
+            // have no FunctionSymbol and were invisible to the old GetCallTarget guard (#1326).
+            if (Context.SemanticInfo.GetCalleeRouting(call) == CalleeRouting.UserSymbol)
+                return;
             var callTarget = Context.SemanticInfo.GetCallTarget(call);
             if (callTarget != null && !Context.Builtins.IsBuiltinSymbol(callTarget))
                 return;

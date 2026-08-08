@@ -26,11 +26,10 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// than refused: it makes no annotation ambiguous, since <c>len</c> was never a type, but the class
 /// is unconstructible by its bare spelling.</para>
 ///
-/// <para><strong>Not covered:</strong> <c>with ... as name</c> and <c>except ... as name</c>. Both
-/// bind in value position, but neither <c>WithItem</c> nor <c>ExceptHandler</c> carries
-/// <c>IsNameBacktickEscaped</c> — the escape parses there and is then dropped — so this warning
-/// would advise a fix that silently does nothing. Same reasoning that keeps <c>type</c> aliases out
-/// of SPY0212 (#1275); tracked as #1279.</para>
+/// <para><strong>Not yet covered:</strong> <c>with ... as name</c> and <c>except ... as name</c>.
+/// Both bind in value position, but neither <c>WithItem</c> nor <c>ExceptHandler</c> carries
+/// <c>IsNameBacktickEscaped</c> yet (#1279). Walrus expressions also lack the flag; the warning
+/// passes <c>false</c> until the AST is plumbed.</para>
 /// </remarks>
 internal sealed class BuiltinNameShadowingValidator : ValidatingAstWalker
 {
@@ -129,6 +128,25 @@ internal sealed class BuiltinNameShadowingValidator : ValidatingAstWalker
         }
 
         base.VisitForStatement(node);
+    }
+
+    public override void VisitWalrusExpression(WalrusExpression node)
+    {
+        Warn(node.Target, false, node.LineStart, node.ColumnStart,
+            node.Span, isTypeDeclaration: false);
+
+        base.VisitWalrusExpression(node);
+    }
+
+    public override void VisitForClause(ForClause node)
+    {
+        if (node.Target is Identifier target)
+        {
+            Warn(target.Name, target.IsNameBacktickEscaped, target.LineStart, target.ColumnStart,
+                target.Span, isTypeDeclaration: false);
+        }
+
+        base.VisitForClause(node);
     }
 
     private void VisitTypeDeclaration(Statement node, string name, bool isNameBacktickEscaped,

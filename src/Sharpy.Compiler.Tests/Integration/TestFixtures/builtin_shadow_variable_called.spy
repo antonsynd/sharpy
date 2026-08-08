@@ -1,0 +1,6 @@
+def twice(x: int) -> int:
+    return x * 2
+
+def main():
+    int = twice
+    print(int(21))
