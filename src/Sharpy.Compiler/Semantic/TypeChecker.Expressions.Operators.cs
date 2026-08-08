@@ -257,26 +257,12 @@ internal partial class TypeChecker
     /// </summary>
     private void CheckConstantIntegerOverflow(BinaryOp binOp, SemanticType resultType)
     {
-        // A suffixed integer literal (3794L) is honoured by CODEGEN but IGNORED by type inference
-        // today (#1314): `a: int = 3794L` still fails with CS0266 as an SPY0908, because the checker types
-        // the literal 'int' while the emitter writes a C# 'long'. So when a suffix appears anywhere
-        // in the constant subtree, the Sharpy result type is not the width Roslyn will compute in,
-        // and this check — whose entire job is to predict CS0220 — must use the emitted width
-        // instead. Without it, `3794L * 1973 * 948` (which compiles and prints 7096312776 today)
-        // would be refused by a diagnostic whose own remedy sentence recommends exactly that
-        // spelling. An unsigned suffix declines outright rather than guessing at its width.
-        var suffix = GetConstantSuffixWidth(binOp);
-        if (suffix == ConstantSuffixWidth.Unsigned)
-            return;
-
+        // With literal typing correct (#1314, #1320), the expression's result type IS the
+        // width the emitter will use — no workaround scan needed.
         System.Numerics.BigInteger min;
         System.Numerics.BigInteger max;
-        // The name reported must be the width actually checked, NOT resultType's display name.
-        // When a suffix or a literal's magnitude widens the emitted expression to 64 bits, the
-        // Sharpy result type is still 'int', and naming it would send the user to the remedy they
-        // have already applied ("annotate an operand as long" — they did; that IS why it widened).
         string widthName;
-        if (suffix == ConstantSuffixWidth.Long || resultType == SemanticType.Long)
+        if (resultType == SemanticType.Long)
         {
             min = long.MinValue;
             max = long.MaxValue;
@@ -299,10 +285,6 @@ internal partial class TypeChecker
         if (value >= min && value <= max)
             return;
 
-        // Report only at the FIRST level that overflows. `a * b * c * d` is checked bottom-up, so
-        // once `a * b * c` has its own diagnostic every enclosing node would repeat it. An operand
-        // that is not itself a foldable operation (a bare out-of-range literal) never had a chance
-        // to report, so it must not suppress this one.
         if (OverflowedOperandAlreadyReported(binOp.Left, min, max)
             || OverflowedOperandAlreadyReported(binOp.Right, min, max))
         {
@@ -321,67 +303,6 @@ internal partial class TypeChecker
             binOp.ColumnStart,
             code: DiagnosticCodes.Semantic.ConstantIntegerOverflow,
             span: binOp.Span);
-    }
-
-    /// <summary>
-    /// The integer width the EMITTED C# will compute a constant subtree in, as far as literal
-    /// suffixes reveal it. See <see cref="CheckConstantIntegerOverflow"/> for why the Sharpy result
-    /// type is not enough. This whole scan is a workaround for #1314 (inference ignores the
-    /// suffix); delete it, and the call site's widening, when that is fixed.
-    /// </summary>
-    private enum ConstantSuffixWidth
-    {
-        /// <summary>No suffixed literal in the subtree — the Sharpy result type's width applies.</summary>
-        None,
-        /// <summary>A 64-bit suffix (L). C# propagates long upward through +, -, *.</summary>
-        Long,
-        /// <summary>An unsigned suffix (U/UL) — width not modelled here; the check declines.</summary>
-        Unsigned
-    }
-
-    private static ConstantSuffixWidth GetConstantSuffixWidth(Expression expr)
-    {
-        switch (expr)
-        {
-            case IntegerLiteral { Suffix: { Length: > 0 } suffix }:
-                if (suffix.Contains("u", System.StringComparison.OrdinalIgnoreCase))
-                    return ConstantSuffixWidth.Unsigned;
-                return suffix.Contains("l", System.StringComparison.OrdinalIgnoreCase)
-                    ? ConstantSuffixWidth.Long
-                    : ConstantSuffixWidth.None;
-
-            // Codegen widens by MAGNITUDE as well as by suffix: a bare literal too large for int
-            // is emitted as a C# long (`4294967296` -> `4294967296L`), so the emitted expression
-            // computes in 64 bits with no suffix written anywhere. Inference still types it 'int'
-            // (#1320 — the same split as #1314, reached the other way), so reading the Sharpy
-            // result type here would refuse `4294967296 + 1`, a program that compiles today and
-            // prints 4294967297 (CPython agrees). Predicting CS0220 means predicting the width
-            // Roslyn will actually compute in, and that is this one. Delete this arm and the
-            // suffix one together when #1320 types literals by magnitude at inference time.
-            case IntegerLiteral bare:
-                return IntegerConstantEvaluator.TryGetConstantInteger(bare, out var literalValue)
-                       && (literalValue < int.MinValue || literalValue > int.MaxValue)
-                    ? ConstantSuffixWidth.Long
-                    : ConstantSuffixWidth.None;
-
-            case Parenthesized paren:
-                return GetConstantSuffixWidth(paren.Expression);
-
-            case UnaryOp unary:
-                return GetConstantSuffixWidth(unary.Operand);
-
-            case BinaryOp binary:
-                var left = GetConstantSuffixWidth(binary.Left);
-                var right = GetConstantSuffixWidth(binary.Right);
-                if (left == ConstantSuffixWidth.Unsigned || right == ConstantSuffixWidth.Unsigned)
-                    return ConstantSuffixWidth.Unsigned;
-                return left == ConstantSuffixWidth.Long || right == ConstantSuffixWidth.Long
-                    ? ConstantSuffixWidth.Long
-                    : ConstantSuffixWidth.None;
-
-            default:
-                return ConstantSuffixWidth.None;
-        }
     }
 
     /// <summary>
