@@ -20,12 +20,10 @@ internal class OverloadIndexCache
     // v17: closed-generic CLR type construction for NdArray operator resolution (#970, #971).
     // v18: TypeParameters changed from List<string> to List<TypeParameterInfo> with CLR constraints (#976).
     // v19: Sharpy.FrozenSet<T> maps to `frozenset` instead of degrading to `object` (#1253).
-    //      This bump is load-bearing, not housekeeping: the cache key is the *target assembly's*
-    //      content hash (AssemblyIdentity.ContentHash over e.g. Sharpy.Core.dll), so a change to
-    //      how the COMPILER maps CLR types does not invalidate anything. Without the bump the
-    //      corrected mapping is inert on every machine that has compiled once — the index keeps
-    //      serving `object` parameter types and the fix silently does nothing.
-    //      Any future change to ClrTypeBridge.MapClrTypeToSemanticType must bump this.
+    // Format version covers *shape* changes (field additions/removals/renames in the serialized
+    // index). Compiler identity (AssemblyIdentity.CompilerVersion) covers *mapping* changes —
+    // a rebuilt compiler automatically invalidates every index by construction (#1313), so
+    // manual bumps for CLR-type-mapping fixes are no longer needed.
     internal const int CurrentCacheFormatVersion = 19;
 
     // Process-lifetime in-memory layer over the on-disk index cache. Gunzip + JSON deserialize of

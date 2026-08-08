@@ -14,6 +14,11 @@ internal class AssemblyIdentity
     public string Version { get; set; } = string.Empty;
     public string ContentHash { get; set; } = string.Empty;
     public string FilePath { get; set; } = string.Empty;
+    /// <summary>
+    /// Identity of the compiler that built the index. A changed compiler invalidates the
+    /// cache by construction — no manual <c>CurrentCacheFormatVersion</c> bump needed (#1313).
+    /// </summary>
+    public string CompilerVersion { get; set; } = string.Empty;
 
     /// <summary>
     /// Create an identity from an assembly file path.
@@ -28,7 +33,8 @@ internal class AssemblyIdentity
             Name = assemblyName.Name ?? Path.GetFileNameWithoutExtension(assemblyPath),
             Version = assemblyName.Version?.ToString() ?? "1.0.0",
             ContentHash = ComputeFileHash(assemblyPath),
-            FilePath = assemblyPath
+            FilePath = assemblyPath,
+            CompilerVersion = Shared.CompilerIdentity.Version
         };
     }
 
@@ -45,18 +51,22 @@ internal class AssemblyIdentity
             Name = assemblyName.Name ?? "Unknown",
             Version = assemblyName.Version?.ToString() ?? "1.0.0",
             ContentHash = string.IsNullOrEmpty(location) ? string.Empty : ComputeFileHash(location),
-            FilePath = location
+            FilePath = location,
+            CompilerVersion = Shared.CompilerIdentity.Version
         };
     }
 
     /// <summary>
     /// Generate a cache key for this assembly.
-    /// Format: {name}-{version}-{hash}.json.gz
+    /// Format: {name}-{version}-{hash}-c{compilerHash}.json.gz
+    /// The compiler component is APPENDED so <c>CleanupOldCaches</c>' glob
+    /// <c>{name}-*.json.gz</c> keeps matching (#1313).
     /// </summary>
     public string ToCacheKey()
     {
         var hash = string.IsNullOrEmpty(ContentHash) ? "no-hash" : (ContentHash.Length > 12 ? ContentHash[..12] : ContentHash);
-        return $"{Name.ToLowerInvariant()}-{Version}-{hash}.json.gz";
+        var compilerTag = string.IsNullOrEmpty(CompilerVersion) ? "c0" : $"c{CompilerVersion}";
+        return $"{Name.ToLowerInvariant()}-{Version}-{hash}-{compilerTag}.json.gz";
     }
 
     private static string ComputeFileHash(string filePath)
@@ -77,11 +87,12 @@ internal class AssemblyIdentity
 
         return Name == other.Name &&
                Version == other.Version &&
-               ContentHash == other.ContentHash;
+               ContentHash == other.ContentHash &&
+               CompilerVersion == other.CompilerVersion;
     }
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(Name, Version, ContentHash);
+        return HashCode.Combine(Name, Version, ContentHash, CompilerVersion);
     }
 }

@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis.Emit;
 using Sharpy.Compiler;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
@@ -26,6 +27,15 @@ namespace Sharpy.TestInfrastructure.Integration;
 public abstract class IntegrationTestBase
 {
     protected readonly ITestOutputHelper Output;
+
+    private static readonly Lazy<string> SharedTestCacheDir = new(() =>
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"sharpy-test-cache-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        { try { Directory.Delete(dir, recursive: true); } catch { } };
+        return dir;
+    });
 
     private static readonly Lazy<(IReadOnlyList<MetadataReference> References, string? RuntimePath)> SharedReferences =
         new(BuildSharedReferences);
@@ -567,8 +577,9 @@ public abstract class IntegrationTestBase
                 TargetFramework = "net10.0"
             };
 
-            // Set up module registry so stdlib modules are discoverable
-            var moduleRegistry = new ModuleRegistry(logger);
+            // Set up module registry with an isolated test cache so the fixture suite never
+            // reads or writes the developer's ~/.sharpy/cache/overload-index (#1313).
+            var moduleRegistry = new ModuleRegistry(logger, new OverloadIndexCache(SharedTestCacheDir.Value));
             moduleRegistry.LoadReference(SharpyCoreReference.Location);
             foreach (var additionalPath in GetAdditionalReferenceAssemblyPaths())
                 moduleRegistry.LoadReference(additionalPath);

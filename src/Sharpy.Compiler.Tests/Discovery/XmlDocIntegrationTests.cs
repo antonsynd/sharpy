@@ -10,15 +10,23 @@ namespace Sharpy.Compiler.Tests.Discovery;
 /// Integration tests verifying that XML documentation from Sharpy.Core assemblies
 /// is extracted during discovery and propagated to symbols.
 /// </summary>
-public class XmlDocIntegrationTests
+public class XmlDocIntegrationTests : IDisposable
 {
     private readonly CachedModuleDiscovery _discovery;
+    private readonly string _tempCacheDir;
 
     public XmlDocIntegrationTests()
     {
-        // Use a fresh discovery instance with no disk cache to force rebuild from assembly
-        _discovery = new CachedModuleDiscovery(new OverloadIndexCache(null));
+        _tempCacheDir = Path.Combine(Path.GetTempPath(), $"sharpy-test-cache-{Guid.NewGuid():N}");
+        _discovery = new CachedModuleDiscovery(new OverloadIndexCache(_tempCacheDir));
         _discovery.LoadAssembly(SharpyCoreReference.Assembly);
+    }
+
+    public void Dispose()
+    {
+        try
+        { Directory.Delete(_tempCacheDir, recursive: true); }
+        catch { }
     }
 
     [Fact]

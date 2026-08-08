@@ -53,7 +53,9 @@ internal class IncrementalCompilationCache
     // v19: GenericType round-trips ClrOriginTypeName, so a formal mapped from CLR metadata keeps its
     //      provenance across a warm build; without the bump a v18 cache would restore provenance-less
     //      formals and silently revert the #1260/#1252 widening
-    internal const int CurrentSchemaVersion = 19;
+    // v20: ExtractFileSymbols now walks module scopes — the cache serializes real symbols instead
+    //      of always-empty lists (#1309)
+    internal const int CurrentSchemaVersion = 20;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
@@ -745,32 +747,10 @@ internal class IncrementalCompilationCache
 
     /// <summary>
     /// Gets the current compiler version string for cache invalidation.
-    /// Includes assembly version and a hash of the assembly content for development builds.
+    /// Delegates to the shared memoized <see cref="Shared.CompilerIdentity"/> so that
+    /// both this cache and the overload index cache read the assembly exactly once (#1313).
     /// </summary>
-    internal static string GetCompilerVersion()
-    {
-        var assembly = typeof(IncrementalCompilationCache).Assembly;
-        var version = assembly.GetName().Version?.ToString() ?? "0.0.0";
-
-        // Include assembly content hash for debug builds where version doesn't change
-        // This ensures cache invalidation during development
-        var assemblyPath = assembly.Location;
-        if (!string.IsNullOrEmpty(assemblyPath) && File.Exists(assemblyPath))
-        {
-            try
-            {
-                var bytes = File.ReadAllBytes(assemblyPath);
-                var hash = Convert.ToHexStringLower(SHA256.HashData(bytes)[..8]);
-                return $"{version}-{hash}";
-            }
-            catch
-            {
-                // If we can't read the assembly, just use the version
-            }
-        }
-
-        return version;
-    }
+    internal static string GetCompilerVersion() => Shared.CompilerIdentity.Version;
 
     #endregion
 }
