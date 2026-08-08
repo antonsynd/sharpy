@@ -3,7 +3,10 @@
 # semantic analysis typed as `object` and died in codegen as SPY0908. Each must be
 # refused at semantic time as SPY0222 — never an internal error. The three pairings are
 # the exact cells the fix names (set|list, set|frozenset, frozenset|set); operand types
-# differ per cell so each @line:col anchor matches a unique message.
+# differ per cell so each @line:col anchor matches a unique message. set|list is an
+# error in CPython too and stays one; the two set/frozenset cells pin the CURRENT
+# deliberate refusal — #1312 tracks adopting CPython's left-operand rule, and its
+# implementation updates this fixture as part of that behavioral change.
 def main() -> None:
     s: set[int] = {1, 2}
     fs: frozenset[int] = frozenset([1, 2])
