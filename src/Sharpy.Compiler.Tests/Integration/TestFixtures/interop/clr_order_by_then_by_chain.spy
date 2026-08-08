@@ -1,0 +1,22 @@
+# Pin: the unslotted order_by/then_by chain must survive the IOrderedEnumerable bridge
+# arm (#1332). IOrderedEnumerable<T> maps to list[T] at the Sharpy level, but in the
+# emitted C# the chain is a single expression where OrderBy returns IOrderedEnumerable<T>
+# and ThenBy extends it — no materialization intervenes.
+#
+# The slotted variant (xs = lst.order_by(f); xs.then_by(g)) is an accepted casualty of
+# the materialization contract (dotnet_interop.md:162): binding the result to a variable
+# materializes it into a Sharpy list, which loses IOrderedEnumerable<T>. The chain-before-
+# binding remedy is pinned here; the slotted refusal is tested separately.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst: List[int] = List[int]()
+    lst.add(3)
+    lst.add(1)
+    lst.add(2)
+    lst.add(1)
+
+    # Unslotted chain — must keep working
+    for x in lst.order_by(lambda v: v).then_by(lambda v: -v):
+        print(x)
