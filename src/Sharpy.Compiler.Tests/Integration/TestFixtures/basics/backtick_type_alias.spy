@@ -1,0 +1,6 @@
+type `int` = str
+
+def main():
+    x: `int` = "hello"
+    print(x)
+    print(int(42))

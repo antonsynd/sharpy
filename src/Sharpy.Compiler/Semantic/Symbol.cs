@@ -538,6 +538,7 @@ public record TypeAliasSymbol : Symbol
     {
         Name = typeAlias.Name,
         Kind = SymbolKind.TypeAlias,
+        IsNameBacktickEscaped = typeAlias.IsNameBacktickEscaped,
         AccessLevel = AccessLevel.Public,
         TypeAnnotation = typeAlias.Type,
         FunctionType = typeAlias.FunctionType,

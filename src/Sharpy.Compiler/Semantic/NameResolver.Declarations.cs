@@ -76,10 +76,6 @@ internal partial class NameResolver
     /// </remarks>
     private void RefuseBuiltinTypeNameShadowing(Statement statement)
     {
-        // TypeAlias is deliberately absent: its AST node carries no IsNameBacktickEscaped, so the
-        // escape the refusal points at is unrepresentable for it. Refusing `type int = ...` would
-        // demand an escape that does not exist — the one thing the phase ordering forbids. Covering
-        // it needs the parser change tracked in #1275, not a case here.
         (string? Name, bool Escaped, int Line, int Column) d = statement switch
         {
             ClassDef s => (s.Name, s.IsNameBacktickEscaped, s.NameLineStart, s.NameColumnStart),
@@ -88,6 +84,7 @@ internal partial class NameResolver
             EnumDef s => (s.Name, s.IsNameBacktickEscaped, s.NameLineStart, s.NameColumnStart),
             UnionDef s => (s.Name, s.IsNameBacktickEscaped, s.NameLineStart, s.NameColumnStart),
             DelegateDef s => (s.Name, s.IsNameBacktickEscaped, s.NameLineStart, s.NameColumnStart),
+            TypeAlias s => (s.Name, s.IsNameBacktickEscaped, s.NameLineStart, s.NameColumnStart),
             _ => (null, false, 0, 0)
         };
         var (name, escaped, line, column) = d;

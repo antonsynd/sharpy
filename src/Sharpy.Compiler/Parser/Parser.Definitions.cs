@@ -1246,6 +1246,7 @@ public partial class Parser
             Name = name,
             NameLineStart = nameToken.Line,
             NameColumnStart = nameToken.Column,
+            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams.ToImmutableArray(),
             Type = type,
             FunctionType = functionType,
