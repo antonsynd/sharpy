@@ -400,6 +400,12 @@ internal class ModuleLoader
             }
         }
 
+        // Extract properties and events so imported types carry them — without this,
+        // TypeChecker.Utilities resolves event/property access by walking TypeSymbol.Events
+        // and .Properties, so imported types with these members silently dropped them (#1267).
+        var properties = ExtractProperties(classDef.Body, TypeKind.Class, isAbstract);
+        var events = ExtractEvents(classDef.Body, TypeKind.Class, isAbstract);
+
         var classSymbol = new TypeSymbol
         {
             Name = classDef.Name,
@@ -407,17 +413,21 @@ internal class ModuleLoader
             TypeKind = TypeKind.Class,
             AccessLevel = accessLevel,
             IsAbstract = isAbstract,
+            IsNameBacktickEscaped = classDef.IsNameBacktickEscaped,
             TypeParameters = classDef.TypeParameters.ToList(),
             DeclarationLine = classDef.LineStart,
             DeclarationColumn = classDef.ColumnStart,
             NameDeclarationLine = classDef.NameLineStart,
             NameDeclarationColumn = classDef.NameColumnStart,
+            DeclarationSpan = classDef.Span,
             DefiningModule = definingModulePath,
             UnresolvedBaseName = unresolvedBase,
             UnresolvedInterfaceNames = unresolvedInterfaces,
             Fields = fields,
             Methods = methods,
             Constructors = ctors,
+            Properties = properties,
+            Events = events,
             MethodOverloads = TypeSymbol.BuildMethodOverloads(methods)
         };
 
@@ -471,22 +481,29 @@ internal class ModuleLoader
             }
         }
 
+        var properties = ExtractProperties(structDef.Body, TypeKind.Struct, false);
+        var events = ExtractEvents(structDef.Body, TypeKind.Struct, false);
+
         return new TypeSymbol
         {
             Name = structDef.Name,
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Struct,
             AccessLevel = accessLevel,
+            IsNameBacktickEscaped = structDef.IsNameBacktickEscaped,
             TypeParameters = structDef.TypeParameters.ToList(),
             DeclarationLine = structDef.LineStart,
             DeclarationColumn = structDef.ColumnStart,
             NameDeclarationLine = structDef.NameLineStart,
             NameDeclarationColumn = structDef.NameColumnStart,
+            DeclarationSpan = structDef.Span,
             DefiningModule = definingModulePath,
             UnresolvedInterfaceNames = structDef.BaseClasses.Select(b => b.Name).ToList(),
             Fields = fields,
             Methods = methods,
             Constructors = ctors,
+            Properties = properties,
+            Events = events,
             MethodOverloads = TypeSymbol.BuildMethodOverloads(methods)
         };
     }
@@ -509,20 +526,27 @@ internal class ModuleLoader
             }
         }
 
+        var properties = ExtractProperties(interfaceDef.Body, TypeKind.Interface, true);
+        var events = ExtractEvents(interfaceDef.Body, TypeKind.Interface, true);
+
         return new TypeSymbol
         {
             Name = interfaceDef.Name,
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Interface,
             AccessLevel = accessLevel,
+            IsNameBacktickEscaped = interfaceDef.IsNameBacktickEscaped,
             TypeParameters = interfaceDef.TypeParameters.ToList(),
             DeclarationLine = interfaceDef.LineStart,
             DeclarationColumn = interfaceDef.ColumnStart,
             NameDeclarationLine = interfaceDef.NameLineStart,
             NameDeclarationColumn = interfaceDef.NameColumnStart,
+            DeclarationSpan = interfaceDef.Span,
             DefiningModule = definingModulePath,
             UnresolvedInterfaceNames = interfaceDef.BaseInterfaces.Select(b => b.Name).ToList(),
-            Methods = methods
+            Methods = methods,
+            Properties = properties,
+            Events = events
         };
     }
 
@@ -720,6 +744,122 @@ internal class ModuleLoader
     /// </summary>
     internal AccessLevel GetAccessLevel(string name)
         => Shared.AccessLevelConventions.FromName(name);
+
+    /// <summary>
+    /// Extracts <see cref="PropertySymbol"/>s from a type body so imported types carry them (#1267).
+    /// Handles accessor merging (getter + setter defined separately).
+    /// </summary>
+    private List<PropertySymbol> ExtractProperties(
+        ImmutableArray<Statement> body, TypeKind ownerKind, bool ownerIsAbstract)
+    {
+        var properties = new List<PropertySymbol>();
+        foreach (var stmt in body)
+        {
+            if (stmt is not PropertyDef propDef) continue;
+
+            var accessLevel = GetAccessLevel(propDef.Name);
+            var explicitAccess = Shared.MemberClassification.GetExplicitAccessLevel(propDef.Decorators);
+            if (explicitAccess != null)
+                accessLevel = explicitAccess.Value;
+
+            bool isAbstract = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+            bool hasGetter = propDef.Accessor == PropertyAccessor.Get || propDef.Accessor == PropertyAccessor.None;
+            bool hasSetter = propDef.Accessor == PropertyAccessor.Set;
+            bool hasInit = propDef.Accessor == PropertyAccessor.Init;
+
+            var existing = properties.FirstOrDefault(p => p.Name == propDef.Name);
+            if (existing != null)
+            {
+                var merged = existing with
+                {
+                    HasGetter = existing.HasGetter || hasGetter,
+                    HasSetter = existing.HasSetter || hasSetter,
+                    HasInit = existing.HasInit || hasInit,
+                    SetterAccess = hasSetter || hasInit ? accessLevel : existing.SetterAccess,
+                };
+                properties[properties.IndexOf(existing)] = merged;
+            }
+            else
+            {
+                properties.Add(new PropertySymbol
+                {
+                    Name = propDef.Name,
+                    HasGetter = hasGetter,
+                    HasSetter = hasSetter,
+                    HasInit = hasInit,
+                    IsStatic = propDef.Decorators.Any(d => d.Name == DecoratorNames.Static),
+                    IsVirtual = propDef.Decorators.Any(d => d.Name == DecoratorNames.Virtual),
+                    IsAbstract = isAbstract,
+                    IsOverride = propDef.Decorators.Any(d => d.Name == DecoratorNames.Override),
+                    IsFinal = propDef.Decorators.Any(d => d.Name == DecoratorNames.Final),
+                    GetterAccess = hasGetter ? accessLevel : AccessLevel.Public,
+                    SetterAccess = hasSetter || hasInit ? accessLevel : AccessLevel.Public,
+                    ExplicitInterface = propDef.ExplicitInterface,
+                    Observers = propDef.Observers,
+                });
+            }
+        }
+        return properties;
+    }
+
+    /// <summary>
+    /// Extracts <see cref="EventSymbol"/>s from a type body so imported types carry them (#1267).
+    /// Handles accessor merging (add + remove defined separately).
+    /// </summary>
+    private List<EventSymbol> ExtractEvents(
+        ImmutableArray<Statement> body, TypeKind ownerKind, bool ownerIsAbstract)
+    {
+        var events = new List<EventSymbol>();
+        foreach (var stmt in body)
+        {
+            if (stmt is not EventDef eventDef) continue;
+
+            var accessLevel = GetAccessLevel(eventDef.Name);
+            var explicitAccess = Shared.MemberClassification.GetExplicitAccessLevel(eventDef.Decorators);
+            if (explicitAccess != null)
+                accessLevel = explicitAccess.Value;
+
+            bool isAbstract = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+            bool hasAdd = eventDef.Accessor == EventAccessor.Add;
+            bool hasRemove = eventDef.Accessor == EventAccessor.Remove;
+            if (!eventDef.IsFunctionStyle)
+            {
+                hasAdd = true;
+                hasRemove = true;
+            }
+
+            var existing = events.FirstOrDefault(e => e.Name == eventDef.Name);
+            if (existing != null)
+            {
+                var merged = existing with
+                {
+                    HasAdd = existing.HasAdd || hasAdd,
+                    HasRemove = existing.HasRemove || hasRemove,
+                    AddAccessLevel = hasAdd ? accessLevel : existing.AddAccessLevel,
+                    RemoveAccessLevel = hasRemove ? accessLevel : existing.RemoveAccessLevel,
+                };
+                events[events.IndexOf(existing)] = merged;
+            }
+            else
+            {
+                events.Add(new EventSymbol
+                {
+                    Name = eventDef.Name,
+                    HasAdd = hasAdd,
+                    HasRemove = hasRemove,
+                    IsStatic = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Static),
+                    IsVirtual = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Virtual),
+                    IsAbstract = isAbstract,
+                    IsOverride = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Override),
+                    IsFinal = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Final),
+                    AccessLevel = accessLevel,
+                    AddAccessLevel = hasAdd ? accessLevel : AccessLevel.Public,
+                    RemoveAccessLevel = hasRemove ? accessLevel : AccessLevel.Public,
+                });
+            }
+        }
+        return events;
+    }
 
     /// <summary>
     /// Compute the canonical (fully-qualified) module name from a file path.
