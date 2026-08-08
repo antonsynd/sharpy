@@ -827,6 +827,22 @@ internal partial class TypeChecker
 
     private SemanticType CheckUnaryOp(UnaryOp unOp)
     {
+        // Constant unary minus over an integer literal: classify by the negated magnitude
+        // so -2147483648 is int and -9223372036854775808 is long (#1304).
+        if (unOp.Operator == UnaryOperator.Minus && unOp.Operand is IntegerLiteral il)
+        {
+            var result = Shared.IntegerLiteralClassifier.ClassifyNegated(il.Value, il.Suffix);
+            if (result.IsError)
+            {
+                AddError(result.ErrorMessage!,
+                    unOp.LineStart, unOp.ColumnStart,
+                    code: DiagnosticCodes.Semantic.IntegerLiteralOutOfRange,
+                    span: unOp.Span);
+            }
+            _semanticInfo.SetExpressionType(unOp.Operand, result.Type);
+            return result.Type;
+        }
+
         var operandType = CheckExpression(unOp.Operand);
 
         // If operand is Unknown, return Unknown to avoid cascading errors
