@@ -36,10 +36,24 @@ internal static class AssertRaisesForm
         => expression is FunctionCall call && IsCall(call);
 
     /// <summary>Whether a call targets <c>assert_raises</c>, bare or qualified.</summary>
-    internal static bool IsCall(FunctionCall call)
-        => call.Function switch
+    internal static bool IsCall(FunctionCall call) => NamesTheMarker(call.Function);
+
+    /// <summary>
+    /// Whether a callee expression names the marker, through any number of redundant parentheses.
+    ///
+    /// <para>
+    /// Separate from <see cref="IsCall(Expression?)"/> on purpose. The unwrap used to recurse into
+    /// that overload, which asks whether the expression is a <em>call</em> — so
+    /// <c>with (assert_raises)(ValueError):</c> answered "no", every layer skipped the rewrite, and
+    /// the marker's bare name reached codegen as CS0119: the precise failure #1283 set out to make
+    /// impossible, reintroduced through the parenthesized spelling. The metamorphic sweep's
+    /// ParensWrapCallee transform found it once the stdlib corpus entered its scope (#1338).
+    /// </para>
+    /// </summary>
+    private static bool NamesTheMarker(Expression? callee)
+        => callee switch
         {
-            Parenthesized paren => IsCall(paren.Expression),
+            Parenthesized paren => NamesTheMarker(paren.Expression),
             Identifier { Name: Name } => true,
             MemberAccess { Member: Name } => true,
             _ => false

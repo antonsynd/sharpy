@@ -1,0 +1,26 @@
+# The assert_raises marker is recognised through redundant parentheses on its callee.
+#
+# AssertRaisesForm.IsCall unwrapped Parenthesized by recursing into the overload that asks
+# "is this expression a CALL", which an Identifier never is — so the unwrap could not
+# return true and `with (assert_raises)(E):` skipped the rewrite at all three gates. The
+# marker's bare name then reached codegen as CS0119, which is exactly the failure #1283
+# set out to make impossible. Found by the metamorphic sweep's ParensWrapCallee transform
+# once #1338 widened its corpus to these fixtures.
+from unittest import assert_raises
+
+
+@test
+def test_parenthesized_marker():
+    with (assert_raises)(ValueError):
+        raise ValueError("boom")
+
+
+@test
+def test_parenthesized_marker_capture():
+    with (assert_raises)(ValueError) as exc:
+        raise ValueError("captured")
+    assert "captured" in str(exc)
+
+
+def main():
+    print("ok")

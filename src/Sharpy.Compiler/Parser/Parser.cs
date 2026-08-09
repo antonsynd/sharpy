@@ -141,18 +141,43 @@ public partial class Parser
             return false;
 
         int depth = 1;
-        for (int i = 2; ; i++)
+        int i = 2;
+        for (; ; i++)
         {
             var type = Peek(i).Type;
             if (type == TokenType.Eof)
                 return true;
             if (type == TokenType.LeftParen)
                 depth++;
-            else if (type == TokenType.RightParen)
+            else if (type == TokenType.RightParen && --depth == 0)
+                break;
+        }
+
+        // A match STATEMENT's header ends in ':' at bracket depth zero; a call statement's does
+        // not. Testing the token immediately after the closing ')' was too eager — it made the
+        // subject's parentheses exclusive with any trailing syntax, so `match (x) as! int:`,
+        // `match (b.get)():` and `match (x)[0]:` all fell through to expression-statement parsing
+        // and surfaced as SPY0107 on the colon (#1349). Scanning the rest of the logical line
+        // keeps `match(a, b)` a call while letting a parenthesized subject be a subject.
+        for (i++; ; i++)
+        {
+            switch (Peek(i).Type)
             {
-                depth--;
-                if (depth == 0)
-                    return Peek(i + 1).Type != TokenType.Colon;
+                case TokenType.Eof:
+                case TokenType.Newline:
+                    return true;
+                case TokenType.Colon when depth == 0:
+                    return false;
+                case TokenType.LeftParen:
+                case TokenType.LeftBracket:
+                case TokenType.LeftBrace:
+                    depth++;
+                    break;
+                case TokenType.RightParen:
+                case TokenType.RightBracket:
+                case TokenType.RightBrace:
+                    depth--;
+                    break;
             }
         }
     }

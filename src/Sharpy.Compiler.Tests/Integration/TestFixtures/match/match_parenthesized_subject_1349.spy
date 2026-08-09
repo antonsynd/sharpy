@@ -1,0 +1,48 @@
+# #1349: a parenthesized match subject may carry trailing syntax. The soft-keyword
+# disambiguation used to test the token right after the subject's closing ')', so parens
+# were exclusive with `as!`, member access, or a call — each fell through to
+# expression-statement parsing and reported SPY0107 on the colon.
+#
+# A statement-level call to a user function named `match` must still parse as a call: that
+# is the ambiguity the disambiguation exists for, and it is what the rewritten scan (to a
+# depth-zero ':' on the logical line) has to keep answering correctly.
+
+
+class Box:
+    def get(self) -> object:
+        return 42
+
+
+def match(x: int) -> None:
+    print("called match(" + str(x) + ")")
+
+
+def main() -> None:
+    match(7)
+
+    b = Box()
+    x: object = b.get()
+
+    match (x) as! int:
+        case int() as n:
+            print("paren subject: " + str(n))
+        case _:
+            print("no")
+
+    match (b.get)() as! int:
+        case int() as n:
+            print("paren callee: " + str(n))
+        case _:
+            print("no")
+
+    match (b).get() as! int:
+        case int() as n:
+            print("paren receiver: " + str(n))
+        case _:
+            print("no")
+
+    match (x):
+        case int() as n:
+            print("paren only: " + str(n))
+        case _:
+            print("no")

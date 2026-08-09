@@ -39,6 +39,12 @@ namespace Sharpy.Compiler.Tests.Properties.Metamorphic;
 /// <c>ok</c> / <c>notApplicable</c> (the transform left the source byte-identical) / <c>diagRegression</c>
 /// / <c>ice</c> / <c>csLeak</c> / <c>crash</c>.</para>
 ///
+/// <para><b>Corpus.</b> Both declared fixture roots (#1338): the language corpus in
+/// Sharpy.Compiler.Tests and the stdlib corpus in Sharpy.Stdlib.Tests, whose fixtures are compiled
+/// with a Sharpy.Stdlib reference so their imports resolve and carry a <c>stdlib-tests/</c> name
+/// prefix. Before the roots became explicit, discovery was anchored on the host assembly and this
+/// sweep could only ever see its own project's fixtures.</para>
+///
 /// <para><b>Scope.</b> Single-file fixtures with an <c>.expected</c> file — i.e. valid, executing
 /// programs. Error and warning-only fixtures are excluded by design: a transform is only guaranteed
 /// semantics-preserving on a valid program, and "does a rewrite preserve a diagnostic" is a
@@ -73,13 +79,23 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
     {
         var stopwatch = Stopwatch.StartNew();
 
-        var corePath = ResolveAssemblyPath("Sharpy.Core.dll");
-        Assert.True(File.Exists(corePath), $"Sharpy.Core.dll not found at {corePath}");
-        var api = new CompilerApi(NullLogger.Instance, new[] { corePath });
+        var toolchains = BuildToolchains();
         var csharpBase = BuildCSharpBaseCompilation();
 
         var (fixtures, droppedByLimit, limit) = SelectFixtures();
         Assert.True(fixtures.Count > 0, "Metamorphic corpus sweep enumerated zero fixtures.");
+
+        // Vacuity guard for the #1338 widening. The stdlib corpus is reachable only through its
+        // declared root; if discovery ever regresses to a single root the sweep would go back to
+        // covering one corpus while still reporting a healthy cell count. Skipped under
+        // subsampling, which is allowed to drop any fixture.
+        if (limit == 0)
+        {
+            Assert.True(
+                fixtures.Any(f => f.RootLabel == FixtureRoots.StdlibTests.Label),
+                "Metamorphic corpus sweep enumerated no Stdlib.Tests fixtures — the corpus has "
+                + "silently narrowed back to one root (#1338).");
+        }
 
         var dop = Math.Max(1, ReadIntEnv("METAMORPHIC_SWEEP_DOP", Math.Min(8, Environment.ProcessorCount)));
         var cells = new ConcurrentBag<CellResult>();
@@ -98,10 +114,12 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
                 ? FeatureFlags.None
                 : FeatureFlags.None.Enable(fixture.Features);
 
+            var toolchain = toolchains[fixture.RootLabel];
+
             CompileOutcome baseline;
             try
             {
-                baseline = Compile(api, csharpBase, fixture, source, fileName, features);
+                baseline = Compile(toolchain, csharpBase, fixture, source, fileName, features);
             }
             catch (Exception ex)
             {
@@ -144,7 +162,7 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
                     continue;
                 }
 
-                cells.Add(Evaluate(api, csharpBase, key, transform, fixture, baseline, transformed, fileName, features));
+                cells.Add(Evaluate(toolchain, csharpBase, key, transform, fixture, baseline, transformed, fileName, features));
             }
         });
 
@@ -189,6 +207,10 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
                 fixturesEligible = fixtures.Count + droppedByLimit,
                 fixturesSwept = fixtures.Count,
                 multiFileFixturesSwept = fixtures.Count(f => f.IsMultiFile),
+                fixturesSweptByRoot = fixtures
+                    .GroupBy(f => f.RootLabel.Length == 0 ? "compiler-tests" : f.RootLabel)
+                    .OrderBy(g => g.Key, StringComparer.Ordinal)
+                    .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal),
                 fixturesDroppedByLimit = droppedByLimit,
                 fixtureLimit = limit,
                 baselineNotCompiling = baselineFailures.Count,
@@ -210,7 +232,7 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
             ratchetMode = Allowlist.FileExists(),
             scopeNotes = new[]
             {
-                "Corpus: every fixture with an .expected sidecar (valid executing programs), .features threaded exactly as FileBasedIntegrationTests threads them. Multi-file fixtures participate through their ENTRY file only — the transform rewrites main.spy and the whole project is compiled around it; a transform has no defined meaning across module boundaries. .error/.warning-only fixtures are excluded by design — transforms are only guaranteed semantics-preserving on valid programs.",
+                "Corpus: BOTH declared roots (#1338) — Sharpy.Compiler.Tests fixtures (unprefixed names) and Sharpy.Stdlib.Tests fixtures (names prefixed 'stdlib-tests/', compiled with a Sharpy.Stdlib reference so their imports resolve). Every fixture with an .expected sidecar (valid executing programs), .features threaded exactly as FileBasedIntegrationTests threads them. Multi-file fixtures participate through their ENTRY file only — the transform rewrites main.spy and the whole project is compiled around it; a transform has no defined meaning across module boundaries. .error/.warning-only fixtures are excluded by design — transforms are only guaranteed semantics-preserving on valid programs.",
                 "Cells compile in library-equivalent mode (no execution, no assembly emit); the output-invariance property lives in MetamorphicCorpusInvarianceTests (Category=RandomProperty).",
                 "Comparison is over ERROR+WARNING diagnostic codes. A code present in the transformed compile and absent from the baseline is a regression unless the transform's allowed-delta entry lists it.",
                 "Outcomes: ok; notApplicable (transform returned the source byte-identical); diagRegression (new diagnostic code, or the transformed program stopped compiling); ice (SPY09xx internal error); csLeak (Sharpy accepted the program but the generated C# fails to bind while the baseline's bound clean); crash (transform or compiler threw).",
@@ -275,16 +297,23 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
     /// sidecar — the valid, executing programs the transforms are defined on. Used by the execution
     /// half (<see cref="MetamorphicCorpusInvarianceTests"/>), which runs one program per pair and so
     /// stays single-file; the compile-clean sweep itself covers multi-file fixtures too.
+    ///
+    /// <para>Language corpus only, deliberately: the execution half runs its programs through
+    /// <see cref="IntegrationTestBase"/>, which deploys Sharpy.Core and nothing else. A stdlib
+    /// fixture there would fail on its import rather than on a transform, so the stdlib widening
+    /// (#1338) covers the compile-clean sweep and stops at the executing half's reference set.</para>
     /// </summary>
     internal static List<TestFixtureInfo> EligibleFixtures()
-        => AllEligibleFixtures().Where(fx => !fx.IsMultiFile).ToList();
+        => AllEligibleFixtures()
+            .Where(fx => !fx.IsMultiFile && fx.RootLabel == FixtureRoots.CompilerTests.Label)
+            .ToList();
 
     /// <summary>
     /// Every eligible fixture, single- and multi-file. Multi-file fixtures participate through their
     /// entry file (see the sweep loop); the same <c>.expected</c>-and-no-<c>.error</c> rule applies.
     /// </summary>
     private static List<TestFixtureInfo> AllEligibleFixtures()
-        => FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests)
+        => FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests, FixtureRoots.StdlibTests)
             .Where(fx => fx.ExpectedFile is not null
                       && fx.ErrorFile is null
                       && fx.RuntimeErrorFile is null)
@@ -318,14 +347,14 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
     // ----------------------------------------------------------------------------------------- //
 
     private CellResult Evaluate(
-        CompilerApi api, CSharpCompilation csharpBase, string key, IAstTransform transform,
+        CorpusToolchain toolchain, CSharpCompilation csharpBase, string key, IAstTransform transform,
         TestFixtureInfo fixture, CompileOutcome baseline, string transformed, string fileName,
         FeatureFlags features)
     {
         CompileOutcome result;
         try
         {
-            result = Compile(api, csharpBase, fixture, transformed, fileName, features);
+            result = Compile(toolchain, csharpBase, fixture, transformed, fileName, features);
         }
         catch (Exception ex)
         {
@@ -381,7 +410,7 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
     /// project compile walks it.</para>
     /// </summary>
     private static CompileOutcome Compile(
-        CompilerApi api, CSharpCompilation csharpBase, TestFixtureInfo fixture, string source,
+        CorpusToolchain toolchain, CSharpCompilation csharpBase, TestFixtureInfo fixture, string source,
         string fileName, FeatureFlags features)
     {
         var dir = Path.Combine(Path.GetTempPath(), $"sharpy_metamorphic_{Guid.NewGuid():N}");
@@ -394,13 +423,13 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
             {
                 CopyDirectory(fixture.SpyFilePath, dir);
                 File.WriteAllText(Path.Combine(dir, fileName), source);
-                return CompileProject(csharpBase, dir, fileName, features);
+                return CompileProject(toolchain, csharpBase, dir, fileName, features);
             }
             else
             {
                 var path = Path.Combine(dir, fileName);
                 File.WriteAllText(path, source);
-                result = api.Compile(source, options, path);
+                result = toolchain.Api.Compile(source, options, path);
             }
         }
         finally
@@ -447,7 +476,8 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
     /// fixed. Entry-point agreement is the front-end parity harness's contract (#1144), not this one's.
     /// </summary>
     private static CompileOutcome CompileProject(
-        CSharpCompilation csharpBase, string projectDir, string entryFile, FeatureFlags features)
+        CorpusToolchain toolchain, CSharpCompilation csharpBase, string projectDir, string entryFile,
+        FeatureFlags features)
     {
         var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
             .OrderBy(f => f, StringComparer.Ordinal)
@@ -466,7 +496,8 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
         };
 
         var registry = new ModuleRegistry(NullLogger.Instance);
-        registry.LoadReference(ResolveAssemblyPath("Sharpy.Core.dll"));
+        foreach (var reference in toolchain.References)
+            registry.LoadReference(reference);
         var compiler = new ProjectCompiler(
             NullLogger.Instance, registry, ProjectCompilerOptions.Default with { Features = features });
         var result = compiler.Compile(config);
@@ -518,6 +549,41 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
             .Distinct(StringComparer.Ordinal)
             .Take(6)
             .ToList();
+    }
+
+    /// <summary>
+    /// What a corpus needs to compile: its <see cref="CompilerApi"/> and the assembly references
+    /// its fixtures' imports resolve against.
+    /// </summary>
+    private sealed record CorpusToolchain(CompilerApi Api, IReadOnlyList<string> References);
+
+    /// <summary>
+    /// One toolchain per corpus, keyed by <see cref="TestFixtureInfo.RootLabel"/>.
+    ///
+    /// <para>Two, not one widened toolchain: handing the language corpus a Sharpy.Stdlib reference
+    /// would change what <c>import</c> resolves to across ~2,500 fixtures whose baselines this
+    /// sweep diffs against. The widening is supposed to add stdlib cells, not perturb the cells
+    /// that already exist.</para>
+    /// </summary>
+    private static Dictionary<string, CorpusToolchain> BuildToolchains()
+    {
+        var corePath = ResolveAssemblyPath("Sharpy.Core.dll");
+        var stdlibPath = ResolveAssemblyPath("Sharpy.Stdlib.dll");
+        Assert.True(File.Exists(corePath), $"Sharpy.Core.dll not found at {corePath}");
+        Assert.True(File.Exists(stdlibPath),
+            $"Sharpy.Stdlib.dll not found at {stdlibPath} — the stdlib corpus cannot be swept "
+            + "without it, and every stdlib fixture would land in baselineNotCompiling rather "
+            + "than failing loudly (#1338).");
+
+        var core = new[] { corePath };
+        var coreAndStdlib = new[] { corePath, stdlibPath };
+        return new Dictionary<string, CorpusToolchain>(StringComparer.Ordinal)
+        {
+            [FixtureRoots.CompilerTests.Label] =
+                new(new CompilerApi(NullLogger.Instance, core), core),
+            [FixtureRoots.StdlibTests.Label] =
+                new(new CompilerApi(NullLogger.Instance, coreAndStdlib), coreAndStdlib),
+        };
     }
 
     private static CSharpCompilation BuildCSharpBaseCompilation()

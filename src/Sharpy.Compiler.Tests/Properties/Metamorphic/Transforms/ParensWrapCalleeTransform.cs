@@ -93,6 +93,9 @@ internal sealed class ParensWrapCalleeTransform : IAstTransform
                 if (close < 0)
                     continue;
 
+                if (IsZeroArgMemberCall(chain, codeLine, j, close))
+                    continue;
+
                 insertions.Add((chainStart, "("));
                 insertions.Add((j, ")"));
             }
@@ -113,6 +116,36 @@ internal sealed class ParensWrapCalleeTransform : IAstTransform
         }
 
         return string.Join('\n', lines);
+    }
+
+    /// <summary>
+    /// Whether <c>recv.member()</c> takes no arguments — the one call shape where parenthesizing
+    /// the callee is not semantics-preserving, so the transform must leave it alone.
+    /// </summary>
+    /// <remarks>
+    /// A CLR-discovered member can be a property whose zero-argument call Sharpy collapses onto
+    /// the property read: <c>Counter[str].keys</c> is a <c>list[str]</c> property, and
+    /// <c>c.keys()</c> works because the TypeChecker leaves a <em>call callee</em> unresolved for
+    /// the emitter to collapse. Parenthesizing takes the member out of callee position, so
+    /// <c>(c.keys)()</c> means "call this list" — correctly SPY0201. The rewrite changed which
+    /// entity the source denotes, which is the one thing a metamorphic transform may not do; the
+    /// property and the method are spelled identically, so no text-level rule can tell them apart.
+    /// Calls WITH arguments are unaffected (a property holding a delegate invokes the same either
+    /// way), and bare-name calls have no receiver to read a property from — the #1147 shape this
+    /// transform exists for stays covered.
+    /// </remarks>
+    private static bool IsZeroArgMemberCall(string chain, string maskedLine, int openIndex, int closeIndex)
+    {
+        if (!chain.Contains('.', StringComparison.Ordinal))
+            return false;
+
+        for (int k = openIndex + 1; k < closeIndex; k++)
+        {
+            if (!char.IsWhiteSpace(maskedLine[k]))
+                return false;
+        }
+
+        return true;
     }
 
     private static string FirstWord(string head)
