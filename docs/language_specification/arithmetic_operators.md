@@ -222,27 +222,57 @@ silently saturates or loses precision:
 
 ## Constant Integer Arithmetic
 
-Sharpy folds constant integer `+`, `-` (binary and unary) and `*` at compile
-time, exactly. A constant result that does not fit the width the compiler
-emits is a **compile error, SPY0348** (`ConstantIntegerOverflow`) — never a
-silently wrong value, and never a leaked C# error (Roslyn folds constants in a
-checked context, so an unfolded overflowing tree would surface as CS0220):
+Sharpy folds constant integer `+`, `-` (binary and unary), `*` and `<<` at
+compile time, exactly. A constant result that does not fit the width the
+compiler emits is a **compile error, SPY0348** (`ConstantIntegerOverflow`) —
+never a silently wrong value, and never a leaked C# error (Roslyn folds
+constants in a checked context, so an unfolded overflowing tree would surface
+as CS0220):
 
 ```python
 print(3794 * 1973 * 948)    # ERROR (SPY0348): 7096312776 does not fit int
 print(3794L * 1973 * 948)   # OK: 7096312776 — a long operand makes the expression long
 print(4294967296 + 1)       # OK: 4294967297 — the literal itself is long-width by magnitude
+print(1 << 40)              # ERROR (SPY0348): 1099511627776 does not fit int
+print(1L << 40)             # OK: 1099511627776 — the left operand carries the width
 ```
+
+`<<` is in this list for a specific reason: without the check, .NET's count
+masking made the wrong answer *quiet*. `1 << 40` on an `int` is `1 << 8`, so
+the program printed `256` where Python prints `1099511627776`. See
+[Bitwise Operators](bitwise_operators.md) for shift typing and the runtime
+masking that remains.
+
+### Why constant `**` widens and constant `+ - * <<` do not
+
+Constant `**` widens `int` → `long` when the result needs it, and only errors
+past 64 bits (SPY0328). Constant `+ - * <<` do not widen: they are checked at
+the expression's own width and error there (SPY0348). The contrast is sharpest
+between two values of similar size:
+
+```python
+print(2 ** 40)              # OK: 1099511627776 — widened to long
+print(1099511 * 1000000)    # ERROR (SPY0348): 1099511000000 does not fit int
+```
+
+The rule behind the split is that **a constant must not type differently from
+the same expression written with variables.** `int * int` is `int` at runtime,
+so a constant `int * int` is `int` too — widening it would mean `a * b` and
+`1099511 * 1000000` had different types, and a refactor that introduced a
+variable would silently change a program's arithmetic. `**` is exempt because
+it has no native C# operator: its result type is not inherited from anything,
+it is Sharpy's to define, and defining it as "the smallest of int/long that
+fits" costs nothing at runtime (the non-constant path already routes through
+`CheckedIntPow`, which returns `long`).
+
+Both halves are Axiom-1 consistent — C# applies exactly this reasoning to its
+own constant expressions, and neither half lets a wrong value through.
 
 Two deliberate asymmetries, both Axiom-1 (they are C#'s own rules for
 constants):
 
-- **Constant `+ - *` does not widen, unlike constant `**`.** A constant
-  `int * int` stays `int` (erroring if the product does not fit), because the
-  same expression with variables is `int` at runtime — constants must not type
-  differently than the code they abbreviate. Constant `**` widens `int` →
-  `long` when needed (SPY0328's rule) because `**` has no native C# operator
-  and its result type is Sharpy's to define.
+- **Constant `+ - * <<` does not widen, unlike constant `**`** — the rule
+  above.
 - **Constant overflow errors; runtime overflow wraps.** Non-constant integer
   `+ - *` runs unchecked in the generated C# and wraps silently
   (`n + 1` at `int.MaxValue` is `int.MinValue`). Loud-at-compile-time,

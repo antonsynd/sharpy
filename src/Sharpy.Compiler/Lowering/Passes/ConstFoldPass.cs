@@ -174,7 +174,17 @@ internal sealed class ConstFoldPass : IrTreeRewriter, IIrPass
 
     private static bool IsNumeric(IrConstant c) => c.Value is long or double;
 
-    /// <summary>Wraps a folded integer to its mapped C# width (int32 for <c>int</c>, int64 for <c>long</c>).</summary>
+    /// <summary>
+    /// Wraps a folded integer to its mapped C# width (int32 for <c>int</c>, int64 for <c>long</c>).
+    /// </summary>
+    /// <remarks>
+    /// <b>Unreachable for integer constants, kept deliberately (#1319).</b> An integer constant whose
+    /// exact value does not fit the expression's width is refused by SPY0348 during type checking, so
+    /// nothing that would actually wrap survives to be folded here. The arm stays as defence in depth:
+    /// it is the pass's only guarantee that a fold can never widen a value silently, and it costs one
+    /// cast. Removing it would make correctness depend on SPY0348 having no gaps, which is a stronger
+    /// claim than this pass needs to make. Float folding is unaffected — it has no width to wrap to.
+    /// </remarks>
     private static long WrapInt(long value, SemanticType? type) => type == SemanticType.Long ? value : unchecked((int)value);
 
     private static bool TryDouble(IrConstant c, out double value)

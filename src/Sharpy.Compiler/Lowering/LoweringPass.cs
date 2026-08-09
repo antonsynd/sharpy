@@ -127,6 +127,15 @@ internal sealed partial class LoweringPass
         {
             // Constant-folded integer exponentiation lowers to a leaf constant: the operands are
             // folded away, so they are not lowered or indexed (E2 #1056, migrates _foldedIntegerConstants).
+            //
+            // WHY ONLY `**` FOLDS UNCONDITIONALLY (#1335). This is not the first step of a general
+            // constant-folding policy — it exists because `**` has no C# operator, so an unfolded
+            // constant power would have to emit a `CheckedIntPow` call for a value already known at
+            // compile time. `+ - *` deliberately ride Roslyn's own constant folding instead: SPY0348
+            // guarantees no overflowing constant reaches the emitter, so `print(2 + 3)` emits `2 + 3`
+            // and the C# compiler folds it. Sharpy-side folding of those operators happens only under
+            // the opt-in `opt_const_fold` pass (ConstFoldPass). Emitting fewer decisions here keeps the
+            // generated C# readable and keeps one folding authority per operator family.
             BinaryOp binOp when TryLowerFoldedPower(binOp, semanticInfo) is { } folded => folded,
             // Equality (==/!=) carries its lowering strategy on the IR node (E2 #1056, migrates
             // _binaryOpLowerings).
