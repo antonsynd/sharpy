@@ -27,11 +27,11 @@ The return type depends on the operand type:
 ```python
 # C# nullable propagates C# nullable
 raw: str | None = dotnet_api()
-length = raw?.len()              # length is int | None
+where = raw?.find("x")           # where is int | None
 
 # Optional propagates Optional
 safe: str? = get_name()
-length = safe?.len()             # length is int?
+where = safe?.find("x")          # where is int?
 ```
 
 *Implementation*
@@ -47,8 +47,12 @@ maybe_str: str? = Some("HELLO")
 val = maybe_str?.lower()  # val is str? = Some("hello")
 
 maybe_str = None()
-maybe_val = maybe_str?.len()  # maybe_val is int? = None()
+maybe_val = maybe_str?.find("L")  # maybe_val is int? = None()
 ```
+
+> `len` is a builtin **function**, not a method — `s.len()` is not valid Sharpy any more than it is
+> valid Python. Use `len(s)` on an unwrapped value; for the null-propagating shape, reach for a real
+> method as above.
 
 In this situation, the return type is `U?` where `U` is the expected type of the entire expression if it had evaluated.
 

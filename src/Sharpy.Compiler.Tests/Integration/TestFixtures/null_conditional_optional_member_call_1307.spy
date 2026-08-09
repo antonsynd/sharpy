@@ -1,0 +1,10 @@
+# #1307 item 1: the spec's null-conditional Optional example, corrected and executed. The
+# original spelled `maybe_str?.len()`; `len` is a builtin function, not a method (CPython:
+# AttributeError), and nothing refused the spelling — see #1344.
+def main() -> None:
+    maybe_str: str? = Some("HELLO")
+    val = maybe_str?.lower()
+    print(val)
+    maybe_str = None()
+    maybe_val = maybe_str?.find("L")
+    print(maybe_val)
