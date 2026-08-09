@@ -59,3 +59,28 @@ m: str = """multi"""       # System.String
 ```
 
 > **Historical note:** Sharpy previously supported native string literals (`n"..."`) to produce `System.String` instead of `Sharpy.Str`. Since `str` now maps directly to `System.String`, native string literals are no longer needed and have been removed. See [SRP-0007](../rejected_proposals/SRP-0007-str-wrapper-type.md).
+
+## No Implicit Concatenation
+
+Python joins adjacent string literals at parse time — `"hello " "world"` is the single string
+`hello world`. **Sharpy refuses the form** (SPY0103, *"Expected end of statement, got String"*), in
+every position: statement, expression, and the docstring slot.
+
+```python
+s: str = "hello " "world"       # ERROR SPY0103
+s: str = "hello " + "world"     # explicit join
+name: str = "world"
+s: str = f"hello {name}"        # interpolation
+```
+
+This is a deliberate refusal, not an unimplemented feature (#1269). The cost of the convenience is
+the missing-comma footgun: a dropped comma in a list of strings silently concatenates two elements
+into one, and the list comes out short with no diagnostic anywhere.
+
+```python
+xs = ["a", "b" "c"]     # Python: ['a', 'bc'] — two elements, silently
+```
+
+Axiom precedence: type safety (3) > Python syntax (2). Catalogued in `docs/deviations.yaml` as
+`no-implicit-string-concat`.
+

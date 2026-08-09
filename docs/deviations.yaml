@@ -86,7 +86,7 @@ deviations:
     audience: python
     severity: error
     python_behavior: "`int | str` and `Union[int, str]` are first-class union types in Python typing."
-    sharpy_behavior: "Free unions are rejected. Use `T?` (Nullable/Optional), tagged unions (`union` declaration), or interfaces."
+    sharpy_behavior: "Free unions are rejected, deliberately and permanently (#992, closed as not planned). A free union is an untagged set of possibilities the compiler must narrow at every use; Sharpy's three sanctioned shapes each make the discrimination explicit — `T?` when the second case is absence, a `union` declaration when the cases are named alternatives, and `Result[T, E]` when one alternative is a failure. Axiom precedence: type safety (3) > Python (2)."
     spec_ref: docs/language_specification/tagged_unions.md
     existing_diagnostic: SPY0113
     planned_diagnostic: null
@@ -94,11 +94,17 @@ deviations:
       python: |
         def parse(x: int | str) -> int: ...
       sharpy: |
-        # ERROR SPY0113: free union types are not supported
-        # Use a tagged union or a common interface instead.
-        union IntOrStr:
+        # ERROR SPY0113: free union types are not supported.
+        # The three sanctioned shapes, by what the second case MEANS:
+        union IntOrStr:              # named alternatives
             case AsInt(value: int)
             case AsStr(value: str)
+
+        def find(k: str) -> int?:    # absence
+            return None
+
+        def parse(s: str) -> int !ValueError:   # failure
+            return Ok(0)
 
   - id: dict-spread-in-call
     code: SPY0123
@@ -1290,3 +1296,86 @@ deviations:
         class B(A):
             def __init__(self) -> None:
                 super().__init__()   # OK
+
+  - id: pow-returns-float
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`pow(int, int)` with a non-negative exponent returns an **int**: `pow(2, 40)` is `1099511627776`, `pow(2, 3)` is `8` (verified with python3 3.12)."
+    sharpy_behavior: "`pow(x, y)` maps to `Math.Pow`, which returns `double`, so an all-integer call prints with a `.0`: `pow(2, 40)` is `1099511627776.0` and `pow(2, 3)` is `8.0`. Intentional and specified — `builtin_functions.md` documents the `Math.Pow` mapping and `Sharpy.Core/Pow.cs` declares `double Pow(int, int)` — but silent and user-visible, which is why it is catalogued (#1317). The `**` OPERATOR is a different rule with its own entry (`int-power-negative-exponent`): `2 ** 3` is the int `8`. Use `**` when you want Python's integer result."
+    spec_ref: docs/language_specification/builtin_functions.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        print(pow(2, 40))   # 1099511627776
+        print(pow(2, 3))    # 8
+      sharpy: |
+        print(pow(2, 40))   # 1099511627776.0
+        print(pow(2, 3))    # 8.0
+        print(2 ** 3)       # 8    — the operator stays int
+
+  - id: no-implicit-string-concat
+    code: SPY0103
+    category: syntax
+    audience: python
+    severity: error
+    python_behavior: "Adjacent string literals are joined at parse time: `\"hello \" \"world\"` is the single string `hello world`. The join is invisible and applies across line breaks inside brackets."
+    sharpy_behavior: "Adjacent string literals are a parse error (SPY0103, 'Expected end of statement, got String'). Refused deliberately, not unimplemented (#1269): the feature's cost is the missing-comma footgun — a dropped comma in a list of strings silently concatenates two elements into one instead of failing, and the resulting list is short by one with no diagnostic anywhere. Use `+` for an explicit join, or an f-string when interpolating. Axiom precedence: type safety (3) > Python (2)."
+    spec_ref: docs/language_specification/string_literals.md
+    existing_diagnostic: SPY0103
+    planned_diagnostic: null
+    example:
+      python: |
+        s = "hello " "world"        # 'hello world'
+        xs = ["a", "b" "c"]         # ['a', 'bc'] — the missing comma is silent
+      sharpy: |
+        # ERROR SPY0103: Expected end of statement, got String
+        # s: str = "hello " "world"
+        s: str = "hello " + "world"     # explicit
+        name: str = "world"
+        greeting: str = f"hello {name}"  # interpolating
+
+  - id: paramspec-unsupported
+    code: SPY0310
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`typing.ParamSpec` captures a callable's whole parameter list so a decorator can be typed as preserving it: `Callable[P, T] -> Callable[P, T]`."
+    sharpy_behavior: "Not supported, closed as not planned (#996). Importing `typing` is itself refused (SPY0310) — Sharpy's type constructs are native syntax, and there is no ParamSpec among them. A signature-preserving wrapper is written with an explicit delegate type or generic parameters; Sharpy decorators are compile-time and do not re-type the function they decorate, so the problem ParamSpec solves does not arise in the same form."
+    spec_ref: docs/language_specification/generics.md
+    existing_diagnostic: SPY0310
+    planned_diagnostic: null
+    example:
+      python: |
+        from typing import ParamSpec, TypeVar, Callable
+        P = ParamSpec("P")
+        R = TypeVar("R")
+        def log(f: Callable[P, R]) -> Callable[P, R]: ...
+      sharpy: |
+        # ERROR SPY0310: The 'typing' module is not needed in Sharpy.
+        # A concrete callable type states the signature it preserves:
+        def apply(f: (int) -> int, x: int) -> int:
+            return f(x)
+
+  - id: typevartuple-unsupported
+    code: SPY0310
+    category: types
+    audience: python
+    severity: error
+    python_behavior: "`typing.TypeVarTuple` is a variadic type variable, so a generic can be parameterised by an arbitrary-length sequence of types (`Array[*Ts]`)."
+    sharpy_behavior: "Not supported, closed as not planned (#997). Importing `typing` is refused (SPY0310), and variadic generics have no native spelling: .NET generics are fixed-arity, so a variadic type parameter has nothing to lower to (Axiom 1). Use a fixed arity, a tuple type, or a common interface."
+    spec_ref: docs/language_specification/generics.md
+    existing_diagnostic: SPY0310
+    planned_diagnostic: null
+    example:
+      python: |
+        from typing import TypeVarTuple, Generic
+        Ts = TypeVarTuple("Ts")
+        class Array(Generic[*Ts]): ...
+      sharpy: |
+        # ERROR SPY0310: The 'typing' module is not needed in Sharpy.
+        # Fixed arity, or a tuple when the shape is the point:
+        def pair_of(a: int, b: str) -> tuple[int, str]:
+            return (a, b)

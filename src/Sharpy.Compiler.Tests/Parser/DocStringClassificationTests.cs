@@ -29,7 +29,8 @@ namespace Sharpy.Compiler.Tests.Parser;
 /// suite kind — the defect existed once per suite, so a fix proven on one proves nothing about the
 /// other six.</para>
 ///
-/// <para>The one deliberate divergence is implicit concatenation: CPython joins <c>"a" "b"</c> to
+/// <para>The one deliberate divergence is implicit concatenation, refused by decision (#1269):
+/// CPython joins <c>"a" "b"</c> to
 /// <c>'ab'</c> before the docstring rule sees it, but Sharpy has no implicit concatenation in any
 /// position, so the form is a parse error. It is pinned below precisely because the peeks used to
 /// accept it here and only here, yielding docstring <c>'a'</c> plus a stray <c>"b"</c> statement.</para>
@@ -280,8 +281,14 @@ public class DocStringClassificationTests
     /// CPython joins adjacent string literals (<c>"a" "b"</c> → <c>'ab'</c>) before the docstring
     /// rule applies. Sharpy has no such production, so the form is SPY0103 in every position —
     /// including this one, where the peek used to accept it as docstring <c>'a'</c> plus a stray
-    /// <c>"b"</c> statement. The parse error is the honest outcome of a missing feature; pinning it
-    /// here means the day implicit concatenation is implemented, this test fails and says so.
+    /// <c>"b"</c> statement.
+    ///
+    /// <para>This pins a DELIBERATE REFUSAL, not a missing feature (#1269, decided). The
+    /// convenience costs the missing-comma footgun: a dropped comma in a list of strings silently
+    /// concatenates two elements into one and the list comes out short, with no diagnostic
+    /// anywhere. Catalogued as <c>no-implicit-string-concat</c> in <c>docs/deviations.yaml</c> and
+    /// documented in <c>string_literals.md</c>. If this test ever fails, the question is not
+    /// "did we finally implement it" but "who reintroduced it".</para>
     /// </summary>
     [Theory]
     [InlineData("def f() -> None:\n    \"a\" \"b\"\n    pass\n")]

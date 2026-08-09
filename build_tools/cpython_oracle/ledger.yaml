@@ -365,6 +365,14 @@ deviations:
   spec_ref: docs/language_specification/generators.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: no-implicit-string-concat
+  category: syntax
+  audience: python
+  severity: error
+  code: SPY0103
+  spec_ref: docs/language_specification/string_literals.md
+  existing_diagnostic: SPY0103
+  planned_diagnostic: null
 - id: no-metaclasses
   category: types
   audience: python
@@ -437,6 +445,22 @@ deviations:
   spec_ref: docs/language_specification/null_conditional_access.md
   existing_diagnostic: SPY0236
   planned_diagnostic: null
+- id: paramspec-unsupported
+  category: types
+  audience: python
+  severity: error
+  code: SPY0310
+  spec_ref: docs/language_specification/generics.md
+  existing_diagnostic: SPY0310
+  planned_diagnostic: null
+- id: pow-returns-float
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/builtin_functions.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: raise-from
   category: syntax
   audience: python
@@ -484,6 +508,14 @@ deviations:
   code: null
   spec_ref: docs/language_specification/type_narrowing.md
   existing_diagnostic: null
+  planned_diagnostic: null
+- id: typevartuple-unsupported
+  category: types
+  audience: python
+  severity: error
+  code: SPY0310
+  spec_ref: docs/language_specification/generics.md
+  existing_diagnostic: SPY0310
   planned_diagnostic: null
 - id: unknown-dunder-rejected
   category: semantics
