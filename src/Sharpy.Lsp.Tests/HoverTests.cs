@@ -48,6 +48,30 @@ public class HoverTests : IDisposable
     }
 
     [Fact]
+    public async Task Hover_OverBareBuiltinCall_ResolvesTheBuiltin_NotTheEscapedUserSymbol()
+    {
+        // #1281: the escape decides which namespace a spelling belongs to, and a BARE `len` is the
+        // builtin even in a file that declares `` class `len` ``. The program agrees — the callee
+        // classifier routes the bare call to the builtin — but the recorded identifier symbol was
+        // the user class, so hover named something the program does not call.
+        var source = "class `len`:\n    n: int\n\n    def __init__(self, n: int):\n        self.n = n\n\n"
+            + "def main() -> None:\n    xs: list[int] = [1, 2, 3]\n    print(len(xs))";
+        _workspace.OpenDocument("file:///escaped.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///escaped.spy");
+        analysis.Should().NotBeNull();
+
+        // Line 9 (1-based), the bare `len` inside print(...).
+        var node = _api.FindNodeAtPosition(analysis!.Ast!, 9, 11);
+        node.Should().BeOfType<Identifier>("the cursor is on the bare `len` callee");
+
+        var symbol = analysis.SemanticQuery?.GetIdentifierSymbol((Identifier)node!);
+        symbol.Should().NotBeNull("a bare builtin spelling must resolve to something");
+        symbol!.IsNameBacktickEscaped.Should().BeFalse(
+            "the bare spelling denotes the BUILTIN len, not the escape-declared user class");
+    }
+
+    [Fact]
     public async Task Hover_OverFunction_ShowsSignature()
     {
         var source = "def greet(name: str) -> str:\n    return \"hi \" + name\ndef main():\n    greet(\"world\")";

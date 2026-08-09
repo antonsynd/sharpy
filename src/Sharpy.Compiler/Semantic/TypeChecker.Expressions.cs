@@ -354,13 +354,29 @@ internal partial class TypeChecker
         // is nowhere to land: the lookup bound the escape-declared symbol and emission mangled it,
         // so `` class `zed` `` plus a bare `zed()` compiled to `Zed()` against a type emitted as
         // `zed` — CS0103 behind SPY0908, the compiler reporting its own bug for a user error.
-        var escapeDeclaredShadow = symbol != null
-            && !id.IsNameBacktickEscaped
-            && symbol.IsNameBacktickEscaped
-            && !_symbolTable.BuiltinRegistry.IsReservedBuiltinName(id.Name);
-        if (escapeDeclaredShadow)
+        var escapeDeclaredShadow = false;
+        if (symbol != null && !id.IsNameBacktickEscaped && symbol.IsNameBacktickEscaped)
         {
-            symbol = null;
+            // When the name IS a builtin's, the bare spelling means the BUILTIN — so hand back the
+            // registry's own symbol rather than the user's (#1281). The program already behaved this
+            // way (the call classifier routes `len(xs)` to the builtin), but the RECORDED symbol was
+            // the user class, so every reader of that map — hover, go-to-definition, rename,
+            // highlight, 13 handlers in all — named something the program does not call.
+            Symbol? builtinSymbol = _symbolTable.BuiltinRegistry.GetType(id.Name)
+                ?? (Symbol?)_symbolTable.BuiltinRegistry.GetFunction(id.Name);
+
+            if (builtinSymbol != null)
+            {
+                symbol = builtinSymbol;
+            }
+            else if (!_symbolTable.BuiltinRegistry.IsReservedBuiltinName(id.Name))
+            {
+                // No builtin to land on: the bare spelling names nothing. Reported below rather
+                // than bound, because binding it made emission mangle the name — `` class `zed` ``
+                // plus a bare `zed()` was CS0103 behind SPY0908 (#1328).
+                symbol = null;
+                escapeDeclaredShadow = true;
+            }
         }
 
         if (symbol == null)
