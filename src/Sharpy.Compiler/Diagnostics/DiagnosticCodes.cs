@@ -701,7 +701,13 @@ public static class DiagnosticCodes
         // builtin, C#-style), so this is a warning and not the SPY0212 refusal: only a TYPE
         // declaration can make an annotation ambiguous, and only that is refused.
         public const string BuiltinNameShadowedInValuePosition = "SPY0483";  // Active (#1241)
-        // SPY0484-SPY0489: Reserved for future validation warnings
+        // An EXPLICIT `from M import len` rebinding a builtin name in the consumer's file. The
+        // star-import form of the same collision is refused at the use site (SPY0492); naming the
+        // import is the statement of intent that resolves the ambiguity, so this is a warning —
+        // but the rebinding is still worth saying out loud in the file where it takes effect,
+        // because SPY0483 fires in the DECLARING file, which the consumer may never open (#1324).
+        public const string BuiltinRebornByExplicitImport = "SPY0484";  // Active (#1324)
+        // SPY0485-SPY0489: Reserved for future validation warnings
 
         #endregion
 

@@ -736,6 +736,22 @@ public static partial class DiagnosticExplanations
             "intent that resolves the ambiguity:\n    from numpy import sum\n\nOr reach the " +
             "builtin:\n    import builtins\n    print(builtins.sum(xs))");
 
+        Add(dict, DiagnosticCodes.Validation.BuiltinRebornByExplicitImport,
+            "An explicit import rebinds a builtin name in this file",
+            "Validation",
+            "A 'from M import name' names something that is also a builtin, so within this file the " +
+            "bare spelling now means the imported symbol. That is legal and honoured — naming the " +
+            "import is the statement of intent the star-import form lacks, which is why that form " +
+            "is refused at the use site (SPY0492) and this one is only a warning. It is said here, " +
+            "at the import, rather than only at the declaration (SPY0483), because the declaration " +
+            "lives in the LIBRARY's file: a library and its consumer are by definition two files, " +
+            "and the consumer is the one whose 'len(xs)' now calls something else.",
+            "from shadowlib import len\n\ndef main() -> None:\n    xs: list[int] = [1, 2, 3]\n    print(len(xs))  # shadowlib.len, not the builtin",
+            "If the rebinding is what you want, nothing needs to change — this is a warning, not a " +
+            "refusal. To keep both names, import under an alias:\n    from shadowlib import len as " +
+            "list_len\n\nOr reach the builtin explicitly, which needs the module in scope:\n    " +
+            "import builtins\n    print(builtins.len(xs))");
+
         // ── Property observer validation (SPY0490-SPY0491, #416) ──────────
 
         Add(dict, DiagnosticCodes.Validation.PropertyObserverInvalidTarget,

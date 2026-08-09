@@ -328,8 +328,9 @@ internal partial class TypeChecker
             AddError(
                 $"'{id.Name}' is an ambiguous reference between '{globModule}.{id.Name}' (bound by "
                 + $"'from {globModule} import *') and the builtin '{id.Name}'. Qualify it as "
-                + $"'{globModule}.{id.Name}' or 'builtins.{id.Name}', or import it explicitly with "
-                + $"'from {globModule} import {id.Name}' to state which one you mean",
+                + $"'{globModule}.{id.Name}', or reach the builtin as 'builtins.{id.Name}' (which "
+                + "needs 'import builtins' — the module is not implicitly in scope), or import it "
+                + $"explicitly with 'from {globModule} import {id.Name}' to state which one you mean",
                 id.LineStart, id.ColumnStart,
                 code: DiagnosticCodes.Validation.AmbiguousGlobImportOfBuiltin,
                 span: id.Span);

@@ -320,6 +320,30 @@ internal partial class ProjectCompiler
                                 {
                                     var lookupName = importAlias.Name;
                                     var symbolName = importAlias.AsName ?? importAlias.Name;
+
+                                    // Say the rebinding in the file where it takes effect (#1324).
+                                    // SPY0483 fires at the DECLARATION, which lives in the library's
+                                    // file — and a library and its consumer are by definition two
+                                    // files, so the consumer may never see it. Emitted on this path
+                                    // for the same reason the star-import recording above is: this
+                                    // is the loop multi-file compilation actually runs.
+                                    if (BuiltinNameShadowing.ShadowsBuiltin(SymbolTable.BuiltinRegistry, symbolName))
+                                    {
+                                        _diagnostics.AddWarning(
+                                            $"'{symbolName}' is a builtin name; this import rebinds it "
+                                            + $"in this file, so a bare '{symbolName}' here calls "
+                                            + $"'{fromImport.Module}.{symbolName}' and not the builtin. "
+                                            + $"The builtin stays reachable as 'builtins.{symbolName}' "
+                                            + "(add 'import builtins'), or import under an alias to "
+                                            + "keep both.",
+                                            importAlias.Span,
+                                            importAlias.LineStart,
+                                            importAlias.ColumnStart,
+                                            unit.FilePath,
+                                            code: DiagnosticCodes.Validation.BuiltinRebornByExplicitImport,
+                                            phase: CompilerPhase.ImportResolution);
+                                    }
+
                                     if (symbolsToImport.TryGetValue(lookupName, out var symbol) ||
                                         (lookupName != symbolName && symbolsToImport.TryGetValue(symbolName, out symbol)))
                                     {

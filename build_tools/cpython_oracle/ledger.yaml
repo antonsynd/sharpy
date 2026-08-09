@@ -477,6 +477,14 @@ deviations:
   spec_ref: docs/language_specification/bitwise_operators.md
   existing_diagnostic: SPY0348
   planned_diagnostic: null
+- id: star-import-builtin-rebinding
+  category: scoping
+  audience: python
+  severity: error
+  code: SPY0492
+  spec_ref: docs/language_specification/imports.md
+  existing_diagnostic: SPY0492
+  planned_diagnostic: null
 - id: string-indexing-utf16
   category: stdlib
   audience: python

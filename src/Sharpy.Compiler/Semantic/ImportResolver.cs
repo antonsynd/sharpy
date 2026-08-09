@@ -142,6 +142,13 @@ internal partial class ImportResolver
         _moduleResolver.SetCurrentModulePath(modulePath);
     }
 
+    private void AddWarning(string message, int? line, int? column, string? code = null,
+        Text.TextSpan? span = null)
+    {
+        _diagnostics.AddWarning(message, span, line, column, _currentModulePath,
+            phase: CompilerPhase.ImportResolution, code: code);
+    }
+
     private void AddError(string message, int? line, int? column, string? code = null,
         Text.TextSpan? span = null)
     {

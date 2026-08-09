@@ -1401,3 +1401,27 @@ deviations:
         # Fixed arity, or a tuple when the shape is the point:
         def pair_of(a: int, b: str) -> tuple[int, str]:
             return (a, b)
+
+  - id: star-import-builtin-rebinding
+    code: SPY0492
+    category: scoping
+    audience: python
+    severity: error
+    python_behavior: "`from M import *` silently rebinds any name it supplies, including builtins. With a module exporting `len`, `from shadowlib import *` then `len([1,2,3])` prints `999`, not `3` — verified with python3. Nothing is reported at the import or at the use."
+    sharpy_behavior: "The star-import is accepted, but an unqualified USE of a name it displaced from the builtin namespace is refused with SPY0492. Sharpy is deliberately stricter than CPython here and follows C# instead: CS0104 lets two `using` directives supply the same name and refuses only the ambiguous reference, which is the same rule scoped to the same place. The star-import itself stays legal, so `from numpy import *` in a file that never calls `sum` compiles. An EXPLICIT `from M import len` is the statement of intent that resolves the ambiguity — it is honoured, and warns (SPY0484) in the file where the rebinding takes effect, since the SPY0483 declaration-site warning lives in the library's file. Axiom precedence: type safety (3) > Python (2)."
+    spec_ref: docs/language_specification/imports.md
+    existing_diagnostic: SPY0492
+    planned_diagnostic: null
+    example:
+      python: |
+        # shadowlib.py exports `def len(x): return 999`
+        from shadowlib import *
+        print(len([1, 2, 3]))   # 999 — silently the library's
+      sharpy: |
+        # Every line below was executed against the compiler.
+        from shadowlib import *
+        print(len(xs))          # SPY0492 — ambiguous, refused at the USE
+        # Say which one you mean:
+        from shadowlib import len   # warning SPY0484, then 999
+        import builtins
+        print(builtins.len(xs))     # 3 — 'import builtins' is required

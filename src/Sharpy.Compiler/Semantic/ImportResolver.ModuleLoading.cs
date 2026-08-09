@@ -171,6 +171,24 @@ internal partial class ImportResolver
                         {
                             var lookupName = importAlias.Name;
                             var registerName = importAlias.AsName ?? importAlias.Name;
+
+                            // Say it in the file where the rebinding takes effect (#1324). SPY0483
+                            // already warns at the DECLARATION, but that is the library's file,
+                            // which the consumer may never open — and the consumer is the one whose
+                            // `len(xs)` now means something else.
+                            if (BuiltinNameShadowing.ShadowsBuiltin(symbolTable.BuiltinRegistry, registerName))
+                            {
+                                AddWarning(
+                                    $"'{registerName}' is a builtin name; this import rebinds it in "
+                                    + $"this file, so a bare '{registerName}' here calls "
+                                    + $"'{fromImport.Module}.{registerName}' and not the builtin. The "
+                                    + $"builtin stays reachable as 'builtins.{registerName}' (add "
+                                    + "'import builtins'), or import under an alias to keep both.",
+                                    importAlias.LineStart, importAlias.ColumnStart,
+                                    code: DiagnosticCodes.Validation.BuiltinRebornByExplicitImport,
+                                    span: importAlias.Span);
+                            }
+
                             if (reExportedSymbols.TryGetValue(lookupName, out var symbol))
                             {
                                 _logger.LogDebug($"  Defining imported symbol: {lookupName} as {registerName} ({symbol.Kind})");
