@@ -1,0 +1,15 @@
+# #1272: frozenset, frozendict, object and decimal have constructor-reference families, so an
+# annotated target pins them the way `list` has always pinned. bytes (#1347) and
+# Iterator/DictKeyView (#1346) stay unfamilied — their blockers are recorded on those issues.
+def main() -> None:
+    mkfs: () -> frozenset[int] = frozenset
+    print(len(mkfs()))
+
+    mkfd: () -> frozendict[str, int] = frozendict
+    print(len(mkfd()))
+
+    mko: () -> object = object
+    print(str(mko()) != "")
+
+    mkd: (str) -> decimal = decimal
+    print(mkd("1.5"))

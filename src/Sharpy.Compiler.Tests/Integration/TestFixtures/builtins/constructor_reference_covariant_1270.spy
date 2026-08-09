@@ -1,0 +1,35 @@
+# #1270: constructor-reference pinning is return-covariant for non-generic bases — the `f: () ->
+# Animal = Cat; if flag: f = Dog` idiom. The lambda must construct the REFERENCED class, not the
+# target's return type; getting that wrong is a silently wrong value, not a type error.
+class Animal:
+    @virtual
+    def speak(self) -> str:
+        return "..."
+
+
+class Cat(Animal):
+    @override
+    def speak(self) -> str:
+        return "meow"
+
+
+class Dog(Animal):
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @override
+    def speak(self) -> str:
+        return "woof " + self.name
+
+
+def main() -> None:
+    f: () -> Animal = Cat
+    print(f().speak())
+
+    g: (str) -> Animal = Dog
+    print(g("rex").speak())
+
+    exact: () -> Cat = Cat
+    print(exact().speak())

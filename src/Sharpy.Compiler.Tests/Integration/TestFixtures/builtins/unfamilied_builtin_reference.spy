@@ -1,15 +1,15 @@
-# #1272 (first half): a builtin type that CONSTRUCTS but has no constructor-reference family.
-# `ConstructorReferenceFamilyOf` returns null for object/bytes/decimal/frozenset/frozendict/
-# Iterator/the view types, so a reference to one fell through every rule and reached codegen as a
-# bare type name — CS0119 or CS0305 behind SPY0908.
+# #1272: a builtin type reference in a value position that supplies no signature. Every one of
+# these constructs — the regression fixture next door pins that — so the refusal is SPY0342 ("no
+# signature is available to pin"), never SPY0346 ("cannot be constructed"), which would be false
+# and would send a reader to fix the wrong thing.
 #
-# SPY0342 rather than SPY0346: these are not non-constructible. object(), bytes(), decimal(),
-# frozenset() and frozendict() all construct and run — the regression fixture next door pins that.
-# The reason is that no signature is available to pin, which is exactly what SPY0342 says.
-#
-# The OTHER half of #1272 stays open by design: giving these types families, so that
-# `mk: () -> frozenset[int] = frozenset` pins the way `list` already does, is a language ADDITION
-# and belongs to its own decision rather than falling out of a batch whose mandate is a reduction.
+# The second half of #1272 landed: object, decimal, frozenset and frozendict now HAVE
+# families, so `mk: () -> frozenset[int] = frozenset` pins the way `list` does. Unpinned, they draw
+# the FAMILIED wording — an overload set, or generic arguments unknown here — with an annotation
+# that would work. Iterator and DictKeyView keep the unfamilied wording: their registry entries are
+# `typeof(object)` placeholders, so a family would emit `new object()` (#1346); `bytes` keeps it
+# too, because a `Sharpy.Builtins.Bytes` overload set shadows the TYPE in a static-member
+# qualifier (`bytes.fromhex(...)` -> CS0119) — #1347.
 def main():
     # A plain binding, one per leak shape: CS0119 for the non-generic ones...
     a = object

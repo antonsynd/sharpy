@@ -1,0 +1,1 @@
+class 'Cat' has no constructor signature matching '() -> Fish' @16:21

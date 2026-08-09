@@ -1,0 +1,17 @@
+# #1270: covariance widens to the base chain and no further — an unrelated return type still
+# refuses.
+class Animal:
+    pass
+
+
+class Cat(Animal):
+    pass
+
+
+class Fish:
+    pass
+
+
+def main() -> None:
+    f: () -> Fish = Cat
+    print(str(f()))

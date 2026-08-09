@@ -795,7 +795,8 @@ internal partial class TypeChecker
     private ConstructorReferenceFamily? ConstructorReferenceFamilyOf(TypeSymbol typeSymbol)
     {
         // Exactly the set whose reference synthesizes a signature today (SynthesizePrimitiveFunctionType):
-        // a primitive backed by a Sharpy.Builtins overload set.
+        // a primitive backed by a Sharpy.Builtins overload set. `object` and `decimal` join it here
+        // because Core now carries their overloads (#1272); `bytes` does NOT — see #1347.
         if (PrimitiveCatalog.IsPrimitive(typeSymbol.Name)
             && _symbolTable.BuiltinRegistry.GetFunctionOverloads(typeSymbol.Name) is { Count: > 0 })
         {
@@ -804,7 +805,10 @@ internal partial class TypeChecker
 
         return typeSymbol.Name switch
         {
-            BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set or BuiltinNames.Tuple =>
+            // frozenset/frozendict construct exactly like set/dict — real zero-arg and copy
+            // constructors returning a GenericType — so they take the same family (#1272).
+            BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set or BuiltinNames.Tuple
+                or BuiltinNames.FrozenSet or BuiltinNames.FrozenDict =>
                 ConstructorReferenceFamily.Collection,
             _ => null
         };
@@ -898,10 +902,21 @@ internal partial class TypeChecker
         if (!pinnable)
             return false;
 
+        // The lambda must construct the REFERENCED class, which stopped being the target's return
+        // type once pinning became return-covariant: `f: () -> Animal = Cat` emitting
+        // `() => new Animal()` is a silently wrong VALUE, not a type error (#1270). A generic
+        // construction keeps the target's return, which the substitution arm has already proven is
+        // a construction of this very class.
+        var constructedType = constructorReference.Family == ConstructorReferenceFamily.UserType
+                && target.ReturnType is UserDefinedType targetReturn
+                && !ReferenceEquals(targetReturn.Symbol, constructorReference.Symbol)
+            ? new UserDefinedType { Name = constructorReference.Name, Symbol = constructorReference.Symbol }
+            : target.ReturnType;
+
         _semanticInfo.SetConstructorReferenceLowering(reference,
             new ConstructorReferenceLowering(
                 constructorReference.Family, constructorReference.Name,
-                target.ReturnType, target.ParameterTypes.Count));
+                constructedType, target.ParameterTypes.Count));
         return true;
     }
 
@@ -969,8 +984,21 @@ internal partial class TypeChecker
     {
         var typeSymbol = constructorReference.Symbol;
 
-        if (returnType is UserDefinedType returned && ReferenceEquals(returned.Symbol, typeSymbol))
+        if (returnType is UserDefinedType returned
+            && (ReferenceEquals(returned.Symbol, typeSymbol)
+                // Return covariance (#1270): a reference to Cat satisfies a `() -> Animal` slot,
+                // because constructing a Cat produces an Animal. This is the `f: () -> Animal = Cat;
+                // if flag: f = Dog` idiom, and it is what `SignatureSatisfiesTarget` — already
+                // return-covariant — never got to judge, since the exactness test here ran first.
+                // Only NON-generic bases: a generic base needs its arguments substituted from the
+                // target, which the arm below does by identity and cannot do across a hierarchy
+                // (#1345). Interfaces count, via InheritsFrom's interface walk.
+                || (typeSymbol.TypeParameters.Count == 0
+                    && returned.Symbol is { TypeParameters.Count: 0 }
+                    && TypeHierarchyService.InheritsFrom(typeSymbol, returned.Symbol, SemanticBinding))))
+        {
             return static t => t;
+        }
 
         if (returnType is GenericType generic
             && typeSymbol.TypeParameters.Count == generic.TypeArguments.Count
