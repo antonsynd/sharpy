@@ -52,6 +52,38 @@ class Vector:
         return Vector(self.x + other.x, self.y + other.y)
 ```
 
+- `Self` in a **field** annotation resolves the same way, and keeps its `?`:
+
+```python
+class Node:
+    label: str
+    next_node: Self?
+```
+
+- `Self` in an **interface** member means "the implementing type". The interface's own contract
+  is written in terms of the interface, and each implementing class states its own type; the
+  compiler generates the explicit-interface forwarding member that connects the two, so both
+  spellings work at once:
+
+```python
+interface IComparable:
+    def compare_to(self, other: Self) -> int:
+        ...
+
+
+class Num(IComparable):
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+    def compare_to(self, other: Self) -> int:
+        return self.v - other.v
+```
+
+  A `Self` nested inside a type argument (`list[Self]`) and a generic declaring interface
+  (`IBuilder[T]`) are not yet connected this way — see #1342.
+
 - `__init__` return type is implicitly `None` and can be omitted or explicitly declared
 
 ```python

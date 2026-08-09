@@ -1,0 +1,19 @@
+# #1285: `Self` as an interface method's RETURN type. The interface contract returns the
+# interface; the class returns itself, so the bridge forwards without a cast.
+interface ICloneable:
+    def duplicate(self) -> Self:
+        ...
+
+
+class Num(ICloneable):
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+    def duplicate(self) -> Self:
+        return Num(self.v)
+
+
+def main() -> None:
+    print(Num(3).duplicate().v)

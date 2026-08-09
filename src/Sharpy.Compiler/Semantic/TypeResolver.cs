@@ -117,6 +117,14 @@ internal class TypeResolver
             else
             {
                 result = new SelfType { DeclaringType = _currentTypeContext };
+
+                // This arm returns early, so it must apply the `T?` / `T | None` modifiers the
+                // shared tail below would have applied — otherwise `Self?` silently resolved to a
+                // non-optional Self and the annotation's `?` did nothing (#1285).
+                if (annotation.IsOptional)
+                    result = new OptionalType { UnderlyingType = result };
+                if (annotation.IsCSharpNullable)
+                    result = new NullableType { UnderlyingType = result };
             }
             _semanticInfo.SetTypeAnnotation(annotation, result);
             return result;

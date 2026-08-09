@@ -1016,6 +1016,15 @@ internal partial class TypeChecker
             _symbolTable.Define(nestedType);
         }
 
+        // Set current class for method type checking (used for self parameter typing and Self
+        // type resolution). This must precede EVERY annotation resolution below — field types,
+        // property types, event types and the method-signature pre-pass all resolve `Self`
+        // against this context, and each annotation's result is cached the first time it is
+        // resolved, so a later assignment cannot repair it (#1285).
+        var previousClass = _currentClass;
+        _currentClass = classSymbol;
+        _typeResolver.SetCurrentTypeContext(classSymbol);
+
         // Resolve field types first (before checking methods that might reference them)
         for (int i = 0; i < classSymbol.Fields.Count; i++)
         {
@@ -1047,11 +1056,6 @@ internal partial class TypeChecker
 
         // Resolve event types (before checking methods that might reference them)
         ResolveEventTypes(classSymbol, classDef.Body);
-
-        // Set current class for method type checking (used for self parameter typing and Self type resolution)
-        var previousClass = _currentClass;
-        _currentClass = classSymbol;
-        _typeResolver.SetCurrentTypeContext(classSymbol);
 
         // Pre-pass: resolve method signatures so forward references between methods
         // (e.g., __init__ calling a method declared later) see resolved return types.
@@ -1122,6 +1126,12 @@ internal partial class TypeChecker
             _symbolTable.Define(nestedType);
         }
 
+        // Set current struct before any annotation resolution — same cached-resolution
+        // discipline as the class path (#1285).
+        var previousClass = _currentClass;
+        _currentClass = structSymbol;
+        _typeResolver.SetCurrentTypeContext(structSymbol);
+
         // Detect bracket attributes that are source generators
         DetectGeneratorAttributes(structDef);
 
@@ -1150,11 +1160,6 @@ internal partial class TypeChecker
 
         // Resolve event types (before checking methods that might reference them)
         ResolveEventTypes(structSymbol, structDef.Body);
-
-        // Set current class for method type checking (structs behave like classes for self parameter)
-        var previousClass = _currentClass;
-        _currentClass = structSymbol;
-        _typeResolver.SetCurrentTypeContext(structSymbol);
 
         // Pre-pass: resolve method signatures so forward references between methods
         // (e.g., a method calling another declared later) see resolved return types.
@@ -1216,6 +1221,14 @@ internal partial class TypeChecker
             _symbolTable.Define(nestedType);
         }
 
+        // Set _currentClass/Self context BEFORE signature, property and event resolution so
+        // `Self` in an abstract interface method resolves to the interface instead of drawing
+        // SPY0384 — whose own message names interfaces as a legal context (#1285). Annotation
+        // resolutions are cached, so the context has to be right on this first pass.
+        var previousClass = _currentClass;
+        _currentClass = interfaceSymbol;
+        _typeResolver.SetCurrentTypeContext(interfaceSymbol);
+
         // Resolve method parameter types and return types
         // Interface methods are registered in NameResolver but with Unknown types
         // We need to resolve them here using the TypeResolver
@@ -1258,6 +1271,15 @@ internal partial class TypeChecker
                         }
                     }
 
+                    // Mirror ResolveFunctionSignatureInto's static-context computation so a
+                    // static interface method using `Self` still draws SPY0385 rather than
+                    // silently resolving now that the type context is set (#1285).
+                    bool isStaticMethod =
+                        method.Decorators.Any(d => d.Name == DecoratorNames.Static) ||
+                        method.Parameters.Length == 0 ||
+                        method.Parameters[0].Name != PythonNames.Self;
+                    _typeResolver.SetIsStaticContext(isStaticMethod);
+
                     // Resolve return type
                     var returnType = _typeResolver.ResolveTypeAnnotation(method.ReturnType);
                     if (returnType == SemanticType.Unknown && method.ReturnType == null)
@@ -1297,6 +1319,8 @@ internal partial class TypeChecker
                         });
                     }
 
+                    _typeResolver.SetIsStaticContext(false);
+
                     // Update the method symbol with resolved types
                     interfaceSymbol.Methods[methodIndex] = methodSymbol with
                     {
@@ -1318,12 +1342,8 @@ internal partial class TypeChecker
         // Resolve event types
         ResolveEventTypes(interfaceSymbol, interfaceDef.Body);
 
-        // Type-check default method bodies (methods with real implementations)
-        // Set _currentClass to the interface symbol so CheckFunction resolves self correctly
-        var previousClass = _currentClass;
-        _currentClass = interfaceSymbol;
-        _typeResolver.SetCurrentTypeContext(interfaceSymbol);
-
+        // Type-check default method bodies (methods with real implementations).
+        // _currentClass / the Self context were established above, before signature resolution.
         foreach (var statement in interfaceDef.Body)
         {
             if (statement is FunctionDef method && !IsAbstractBody(method))

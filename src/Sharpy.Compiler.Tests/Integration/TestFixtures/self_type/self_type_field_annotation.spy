@@ -1,0 +1,27 @@
+# #1285: field, property and event annotations resolve BEFORE the member-checking pass, so the
+# Self context has to be established ahead of them — and `Self?` must keep its optionality
+# (the Self arm used to return before the shared `?` handling ran).
+class Node:
+    label: str
+    next_node: Self?
+
+    def __init__(self, label: str):
+        self.label = label
+        self.next_node = None
+
+    def link(self, other: Self) -> Self:
+        self.next_node = other
+        return self
+
+    def tail_label(self) -> str:
+        n = self.next_node
+        if n is None:
+            return self.label
+        return n.label
+
+
+def main() -> None:
+    a = Node("a")
+    print(a.tail_label())
+    a.link(Node("b"))
+    print(a.tail_label())

@@ -1,0 +1,10 @@
+# #1285: setting the interface's Self context before signature resolution must not loosen
+# the static rule — a static interface method using `Self` still draws SPY0385.
+interface IShape:
+    @static
+    def make() -> Self:
+        ...
+
+
+def main() -> None:
+    pass

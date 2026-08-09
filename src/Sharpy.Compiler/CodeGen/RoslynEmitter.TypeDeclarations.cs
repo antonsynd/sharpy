@@ -567,6 +567,14 @@ internal partial class RoslynEmitter
             }
         }
 
+        // `Self` in an interface member names the interface; in the implementing class it names
+        // the class — the two C# signatures cannot bind directly (#1285).
+        var selfBridges = GenerateSelfInterfaceBridges(classDef, classTypeSymbol);
+        if (selfBridges.Count > 0)
+        {
+            members = members.Concat(selfBridges).ToList();
+        }
+
         // NOTE: Default interface methods are handled at the call site by
         // TryGetDefaultMethodInterface() in RoslynEmitter.Expressions.Access.cs,
         // which emits ((IInterface)obj).Method() casts. Forwarding stubs were removed
@@ -818,6 +826,146 @@ internal partial class RoslynEmitter
     /// Uses the semantic model (FunctionSymbol) for type information, which works for both
     /// same-module and cross-module interfaces.
     /// </summary>
+    /// <summary>
+    /// `Self` in an interface member resolves to the interface; in the implementing class the same
+    /// annotation resolves to the class. C# has no way to express that correspondence directly, so
+    /// the implementation never binds to the contract (CS0535 for a `Self` parameter, CS0738 for a
+    /// `Self` return). Emit the explicit-interface bridge a C# author writes by hand: the
+    /// interface's exact signature, forwarding to the class's own member with a downcast at each
+    /// `Self` parameter position. Only top-level `Self` is bridged — a `Self` nested in a type
+    /// argument (`list[Self]`) or a generic declaring interface needs substitution machinery this
+    /// does not have, and is left to fail loudly (#1342).
+    /// </summary>
+    private List<MemberDeclarationSyntax> GenerateSelfInterfaceBridges(ClassDef classDef, TypeSymbol? classSymbol)
+    {
+        var bridges = new List<MemberDeclarationSyntax>();
+        if (classSymbol == null || classDef.BaseClasses.Length == 0)
+            return bridges;
+
+        foreach (var (interfaceSymbol, method) in CollectInterfaceMethodsWithDeclarer(classDef.BaseClasses))
+        {
+            // A generic declaring interface would need its specifier substituted with the
+            // implementing base annotation's arguments — out of scope (#1342).
+            if (interfaceSymbol.TypeParameters.Count > 0)
+                continue;
+
+            var ifaceParams = method.Parameters.Where(p => p.Name != PythonNames.Self).ToList();
+            if (method.ReturnType is not SelfType && !ifaceParams.Any(p => p.Type is SelfType))
+                continue;
+
+            var impl = classSymbol.Methods.FirstOrDefault(m => m.Name == method.Name
+                && m.Parameters.Count(p => p.Name != PythonNames.Self) == ifaceParams.Count);
+            if (impl == null)
+                continue;
+
+            var implParams = impl.Parameters.Where(p => p.Name != PythonNames.Self).ToList();
+
+            // If the class spells the interface's own types, C# binds directly — no bridge.
+            if (MappedTypeText(method.ReturnType) == MappedTypeText(impl.ReturnType)
+                && ifaceParams.Zip(implParams, (a, b) => MappedTypeText(a.Type) == MappedTypeText(b.Type)).All(x => x))
+            {
+                continue;
+            }
+
+            var specifier = _typeMapper.MapSemanticType(
+                new UserDefinedType { Name = interfaceSymbol.Name, Symbol = interfaceSymbol });
+            if (specifier is not NameSyntax interfaceName)
+                continue;
+
+            var mangledName = DunderMapping.ResolveCSharpName(method.Name)
+                ?? NameMangler.Transform(method.Name, NameContext.Method);
+
+            TypeSyntax returnType = method.ReturnType is VoidType or UnknownType or null
+                ? PredefinedType(Token(SyntaxKind.VoidKeyword))
+                : _typeMapper.MapSemanticType(method.ReturnType);
+
+            // Both sides declare the same logical parameters, so the C#-ordering permutation is
+            // the same on both — reorder the interface's list and index the class's by position.
+            var ordered = ReorderParameterSymbolsForCSharp(ifaceParams).ToList();
+            var parameters = new List<ParameterSyntax>();
+            var arguments = new List<ArgumentSyntax>();
+
+            foreach (var p in ordered)
+            {
+                var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                TypeSyntax paramType = p.Type is UnknownType or null
+                    ? PredefinedType(Token(SyntaxKind.ObjectKeyword))
+                    : _typeMapper.MapSemanticType(p.Type);
+                if (p.IsVariadic)
+                    paramType = VariadicArrayType(paramType);
+
+                var parameter = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
+                if (p.IsVariadic)
+                    parameter = parameter.WithModifiers(TokenList(Token(SyntaxKind.ParamsKeyword)));
+                parameters.Add(parameter);
+
+                ExpressionSyntax argument = EscapedIdentifierName(paramName);
+                var implParam = implParams[ifaceParams.IndexOf(p)];
+                var implText = MappedTypeText(implParam.Type);
+                if (implText != null && implText != MappedTypeText(p.Type))
+                {
+                    argument = CastExpression(_typeMapper.MapSemanticType(implParam.Type),
+                        ParenthesizedExpression(argument));
+                }
+                arguments.Add(Argument(argument));
+            }
+
+            var forward = InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        ThisExpression(), EscapedIdentifierName(mangledName)))
+                .WithArgumentList(ArgumentList(SeparatedList(arguments)));
+
+            bridges.Add(MethodDeclaration(returnType, EscapedIdentifier(mangledName))
+                .WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifier(interfaceName))
+                .WithParameterList(ParameterList(SeparatedList(parameters)))
+                .WithExpressionBody(ArrowExpressionClause(forward))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+        }
+
+        return bridges;
+    }
+
+    /// <summary>Rendered C# text of a mapped semantic type, or null when there is nothing to map.</summary>
+    private string? MappedTypeText(SemanticType? type)
+        => type is null or UnknownType ? null : _typeMapper.MapSemanticType(type).ToString();
+
+    /// <summary>
+    /// Interface methods reachable from a class's base list, each paired with the interface that
+    /// declares it (an explicit implementation must name the declaring interface).
+    /// </summary>
+    private List<(TypeSymbol Interface, FunctionSymbol Method)> CollectInterfaceMethodsWithDeclarer(
+        IReadOnlyList<TypeAnnotation> baseTypes)
+    {
+        var result = new List<(TypeSymbol, FunctionSymbol)>();
+        var visited = new HashSet<string>();
+
+        void Walk(TypeSymbol interfaceSymbol)
+        {
+            if (!visited.Add(interfaceSymbol.Name))
+                return;
+
+            foreach (var method in interfaceSymbol.Methods)
+                result.Add((interfaceSymbol, method));
+
+            foreach (var baseInterface in interfaceSymbol.Interfaces)
+            {
+                if (baseInterface.Definition?.TypeKind == Semantic.TypeKind.Interface)
+                    Walk(baseInterface.Definition);
+            }
+        }
+
+        foreach (var baseType in baseTypes)
+        {
+            if (string.IsNullOrEmpty(baseType.Name))
+                continue;
+            var typeSymbol = _context.SymbolTable.LookupType(baseType.Name);
+            if (typeSymbol?.TypeKind == Semantic.TypeKind.Interface)
+                Walk(typeSymbol);
+        }
+
+        return result;
+    }
+
     private MethodDeclarationSyntax GenerateAbstractMethodStub(FunctionSymbol method)
     {
         var mangledName = DunderMapping.ResolveCSharpName(method.Name)

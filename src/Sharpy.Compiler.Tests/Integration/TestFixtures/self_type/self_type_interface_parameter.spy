@@ -1,0 +1,21 @@
+# #1285: `Self` in an interface method signature resolves to the interface — the diagnostic
+# that used to fire (SPY0384) named interfaces as a legal context. The implementing class
+# spells its own type, so the emitter bridges the two with an explicit implementation.
+interface IComparable:
+    def compare_to(self, other: Self) -> int:
+        ...
+
+
+class Num(IComparable):
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+    def compare_to(self, other: Self) -> int:
+        return self.v - other.v
+
+
+def main() -> None:
+    print(Num(3).compare_to(Num(1)))
+    print(Num(1).compare_to(Num(3)))
