@@ -1,0 +1,13 @@
+# A member reflection can PROVE absent on a CLR receiver is refused, not deferred (#1290).
+#
+# `sb.no_such_method_xyz()` used to reach Roslyn and come back as CS1061 behind SPY0908 — a
+# compiler-bug report for a typo. The absence proof (#1141) already existed, memoized and with an
+# edit-distance suggestion; it was wired only into the generic-reference path, so the ordinary
+# member seam never asked it.
+
+from system.text import StringBuilder
+
+
+def main() -> None:
+    sb: StringBuilder = StringBuilder()
+    sb.no_such_method_xyz()

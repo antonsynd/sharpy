@@ -1,0 +1,21 @@
+# The false-positive guard for #1290's absence refusal. The proof is deliberately hard to satisfy —
+# a discovered symbol member, ANY mangling candidate on the reflected surface, a reachable extension
+# method, or reflection failing to answer all keep the permissive channel open — and this fixture is
+# what says so in the corpus: every call below must keep binding.
+
+from system.text import StringBuilder
+from system.collections.generic import List
+
+
+def main() -> None:
+    sb: StringBuilder = StringBuilder()
+    sb.append("a")
+    sb.append_line("b")
+    print(sb.to_string().strip())
+    print(sb.length)
+
+    xs: List[int] = List[int]()
+    xs.add(1)
+    xs.add(2)
+    print(xs.count)
+    print(xs.contains(2))

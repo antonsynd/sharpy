@@ -255,6 +255,28 @@ internal partial class TypeChecker
                 if (clrField != null)
                     return GetVariableType(clrField);
 
+                // Reflection can sometimes PROVE the member does not exist, and when it can, falling
+                // back to codegen only defers the failure into an internal error: `sb.no_such_xyz()`
+                // reached Roslyn and came back as CS1061 behind SPY0908, a compiler-bug report for a
+                // typo (#1290). The proof (#1141) is deliberately hard to satisfy — a discovered
+                // symbol member, any mangling candidate on the reflected surface, a reachable
+                // extension method, or reflection failing to answer all keep the permissive channel
+                // — so it fires only where codegen was certain to fail too.
+                if (ClrReflectionProvesMemberAbsent(memberLookupType, memberAccess.Member, out var clrSuggestion))
+                {
+                    var absentMessage =
+                        $"Type '{udt.Symbol.Name}' has no member '{memberAccess.Member}'";
+                    if (clrSuggestion != null)
+                        absentMessage += $". Did you mean '{clrSuggestion}'?";
+
+                    AddError(absentMessage,
+                        memberAccess.LineStart, memberAccess.ColumnStart,
+                        code: DiagnosticCodes.Semantic.UndefinedMember,
+                        span: memberAccess.Span,
+                        data: SuggestionData(clrSuggestion));
+                    return SemanticType.Unknown;
+                }
+
                 // Member not found on CLR type — fall back to codegen rather than
                 // emitting an error, since the TypeSymbol may be a CLR shadow of a
                 // user-defined type with different members.
