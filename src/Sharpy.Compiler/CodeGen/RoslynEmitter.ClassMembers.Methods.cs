@@ -236,7 +236,8 @@ internal partial class RoslynEmitter
         }
 
         var methodSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == func.Name);
-        bool isAbstract = methodSymbol?.IsAbstract ?? false;
+        bool isAbstract = methodSymbol?.IsAbstract
+            ?? func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
 
         // If method is abstract, ensure it has the abstract modifier in the token list
         if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
@@ -371,7 +372,8 @@ internal partial class RoslynEmitter
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
         var boolPropSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == func.Name);
-        bool isAbstract = boolPropSymbol?.IsAbstract ?? false;
+        bool isAbstract = boolPropSymbol?.IsAbstract
+            ?? func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
 
         // Apply modifiers from decorators (handles public/virtual/override/abstract)
         var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
@@ -424,7 +426,8 @@ internal partial class RoslynEmitter
         var returnType = PredefinedType(Token(SyntaxKind.IntKeyword));
 
         var lenPropSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == func.Name);
-        bool isAbstract = lenPropSymbol?.IsAbstract ?? false;
+        bool isAbstract = lenPropSymbol?.IsAbstract
+            ?? func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
 
         // Apply modifiers from decorators (handles public/virtual/override/abstract)
         var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);

@@ -758,5 +758,31 @@ public static partial class DiagnosticExplanations
             "before-store and one after-store body.",
             "property health: int\n    before_set(a):\n        pass\n    before_set(b):    # SPY0491 — second before_set\n        pass",
             "Merge the two clauses into a single 'before_set' (or 'after_set') suite.");
+
+        Add(dict, DiagnosticCodes.Validation.EventAccessorAbstractnessDisagreement,
+            "Event accessors disagree about abstractness",
+            "Validation",
+            "A function-style event's 'add' and 'remove' accessors are one C# event between them, so " +
+            "they cannot differ in abstractness: either both are abstract stubs or both have bodies. " +
+            "An accessor counts as abstract when it carries @abstract, or when it is an ellipsis stub " +
+            "inside an @abstract class. Mixing them produces C# that never compiles — CS8712 when the " +
+            "event is abstract but an accessor has a body, CS0073 when it is not abstract but an " +
+            "accessor has none — and which of the two you get depends only on where the decorator sits.",
+            "@abstract\nclass Button:\n    @abstract\n    event add on_click(self, handler: Handler):\n        ...\n\n    event remove on_click(self, handler: Handler):   # SPY0424 — concrete half\n        self._handlers.remove(handler)",
+            "Make both accessors abstract stubs (ellipsis body, or @abstract on the event), or give " +
+            "both real bodies.");
+
+        Add(dict, DiagnosticCodes.Validation.AbstractMemberInNonAbstractClass,
+            "@abstract member in a class that is not abstract",
+            "Validation",
+            "An @abstract method, property or event declares that the containing type does not supply " +
+            "an implementation — which only means something if the type itself cannot be instantiated. " +
+            "C# refuses the combination outright (CS0513), so a class that keeps an abstract member " +
+            "without being abstract emits code that does not build. Sharpy refuses it here instead, " +
+            "and refuses rather than silently making the class abstract: a member decorator that " +
+            "changes its container's kind would be exactly the kind of action-at-a-distance the " +
+            "language avoids.",
+            "class Shape:            # SPY0493 — 'area' is abstract, 'Shape' is not\n    @abstract\n    def area(self) -> float:\n        ...",
+            "Declare the container abstract:\n@abstract\nclass Shape:\n    @abstract\n    def area(self) -> float:\n        ...\n\nOr give the member a real implementation and drop @abstract.");
     }
 }
