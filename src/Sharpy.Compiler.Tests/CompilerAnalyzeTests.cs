@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Parser.Ast;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -530,5 +531,101 @@ public class CompilerAnalyzeImportClosureTests : IDisposable
         helperFn!.DeclaringFilePath.Should().NotBeNull(
             "imported closure files keep their real path identity");
         Path.GetFileName(helperFn.DeclaringFilePath).Should().Be("helpers.spy");
+    }
+}
+
+/// <summary>
+/// #1262: in single-file analyze the entry buffer has no path identity, and EVERY symbol the
+/// entry file produces has to agree on that. Name resolution nulled the entry path, but type
+/// checking kept receiving the synthetic entry path (<c>"&lt;source&gt;"</c> for
+/// <see cref="CompilerApi.Analyze(string, CancellationToken)"/>), so symbols the TypeChecker
+/// creates — function locals, assignment variables — carried a path their module-level
+/// neighbours did not, so anything comparing the two paths read two symbols from one buffer as
+/// living in different files.
+/// </summary>
+public class CompilerAnalyzeSymbolPathIdentityTests
+{
+    [Fact]
+    public void Analyze_FunctionLocalSymbol_AgreesWithModuleLevelSymbolsOnNullPath()
+    {
+        const string source = """
+def helper() -> int:
+    local_value: int = 41
+    return local_value + 1
+""";
+        var api = new CompilerApi();
+        var result = api.Analyze(source);
+
+        result.Success.Should().BeTrue(because: FormatDiagnostics(result));
+
+        var helper = result.Ast!.Body.OfType<FunctionDef>().Single(f => f.Name == "helper");
+        var declaration = helper.Body.OfType<VariableDeclaration>().Single(v => v.Name == "local_value");
+
+        var localSymbol = result.SemanticInfo!.GetDeclarationSymbol(declaration);
+        localSymbol.Should().NotBeNull("the TypeChecker records a symbol for a local declaration");
+        localSymbol!.DeclaringFilePath.Should().BeNull(
+            "the analyze entry file has no path identity — a local must not carry the synthetic "
+            + "'<source>' path its enclosing function does not have (#1262)");
+
+        var moduleLevelSymbol = result.SymbolTable!.Lookup("helper");
+        moduleLevelSymbol.Should().NotBeNull();
+        moduleLevelSymbol!.DeclaringFilePath.Should().Be(localSymbol.DeclaringFilePath,
+            "name resolution and type checking must agree about the entry file's path identity");
+    }
+
+    /// <summary>
+    /// Overloads declared in a pathless analyze buffer resolve, and the winner is recorded as the
+    /// call's target.
+    /// <para>
+    /// Scope note, because #1262 also made the same-file overload guard null-tolerant
+    /// (<c>_currentFilePath != overloads[0].DeclaringFilePath</c>, both-null = same file): this
+    /// test does NOT discriminate that hunk, and nothing can. Mutation-verified by reverting the
+    /// guard, and by reverting the entire pre-#1262 state (guard plus the synthetic
+    /// <c>"&lt;source&gt;"</c> type-check path) — this test passes either way, because
+    /// <c>ResolveImportedFunctionOverload</c> runs immediately after and resolves the same
+    /// overload set identically: its shadow check is inert exactly when the overloads' declaring
+    /// path is null, which is the only case the guard change affects. So the guard hunk is a
+    /// correctness tidy-up with no observable behaviour, and this test pins the end-to-end
+    /// contract instead: whichever resolver runs, an analyzed buffer's own overloads must resolve.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Analyze_SameFileOverloads_ResolveAgainstThePathlessEntryFile()
+    {
+        const string source = """
+def pick(x: int) -> str:
+    return "from int"
+
+def pick(x: str) -> int:
+    return 42
+
+def use() -> int:
+    return pick("hello")
+""";
+        var api = new CompilerApi();
+        var result = api.Analyze(source);
+
+        result.Success.Should().BeTrue(because: FormatDiagnostics(result));
+
+        var use = result.Ast!.Body.OfType<FunctionDef>().Single(f => f.Name == "use");
+        var call = use.Body.OfType<ReturnStatement>().Single().Value as FunctionCall;
+        call.Should().NotBeNull("the return value is a call to pick");
+
+        var target = result.SemanticInfo!.GetCallTarget(call!);
+        target.Should().NotBeNull(
+            "the same-file overload path records the resolved target; a null-path bail-out "
+            + "leaves it unrecorded (#1262)");
+        target!.Parameters.Should().ContainSingle();
+        target.Parameters[0].Type.GetDisplayName().Should().Be("str",
+            "pick(\"hello\") selects the str overload, not the first-declared int one");
+        target.ReturnType.GetDisplayName().Should().Be("int");
+    }
+
+    private static string FormatDiagnostics(SemanticResult result)
+    {
+        var errors = result.Diagnostics.Where(d => d.IsError).ToList();
+        return errors.Count == 0
+            ? "no errors"
+            : string.Join("; ", errors.Select(d => $"[{d.Code}] {d.Message}"));
     }
 }
