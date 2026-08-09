@@ -99,6 +99,11 @@ fixture::basics/ellipsis_concrete_method
 
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
 
-# (empty — the full-pool re-derivation found no undesigned divergence. Every cell
-# above is a registered deviation with a deviations.yaml id; a cell that stops
-# diverging must have its entry deleted so the oracle re-asserts agreement.)
+# math.floor / math.ceil return double; CPython returns int, so these print 3.0/4.0
+# where CPython prints 3/4. The first parity finding from the stdlib-corpus widening
+# (#1338) — both fixtures pin the float spelling in their .expected files, so nothing
+# in the suite could have objected. Type choice (int vs long vs documented deviation)
+# is open; Batch K.
+# #1350. Delete both when it lands.
+fixture::stdlib-tests/stdlib_math
+fixture::stdlib-tests/stdlib_from_math

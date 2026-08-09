@@ -36,8 +36,9 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 ///
 /// <para>Corpus (three arms): (1) hand-picked programs targeting the historical divergence surface,
 /// each verified against <c>python3</c> by hand; (2) <b>every</b> eligible single-file
-/// <c>.spy</c>+<c>.expected</c> fixture (via <see cref="FixtureDiscoveryHelper"/>) whose top level is
-/// functions-only-with-<c>main</c> and which passes the shared-subset AST filter; (3) generated
+/// <c>.spy</c>+<c>.expected</c> fixture from <b>both</b> declared roots — the language corpus and
+/// the stdlib corpus (#1338) — whose top level is functions-only-with-<c>main</c> (module-level
+/// imports allowed) and which passes the shared-subset AST filter; (3) generated
 /// well-typed programs reusing <see cref="GenTyped"/>. The Sharpy arm runs each through the
 /// production <see cref="IntegrationTestBase.CompileAndExecute"/> path. The Python arm batches the
 /// whole corpus through ONE <c>python3</c> that drives
@@ -100,6 +101,19 @@ public class DifferentialExecutionTests : IntegrationTestBase
 
     public DifferentialExecutionTests(ITestOutputHelper output) : base(output) { }
 
+    /// <summary>
+    /// Set immediately before each <see cref="IntegrationTestBase.CompileAndExecute"/> call; read
+    /// back by the override below. The Sharpy arm is a sequential loop over one test instance, so
+    /// a field is the whole mechanism.
+    /// </summary>
+    private bool _currentProgramNeedsStdlib;
+
+    protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
+    {
+        if (_currentProgramNeedsStdlib)
+            yield return SharpyStdlibReference.Location;
+    }
+
     [Fact]
     public void DifferentialExecution_SharedSubset_MatchesCPython()
     {
@@ -121,6 +135,11 @@ public class DifferentialExecutionTests : IntegrationTestBase
         var sharpy = new Dictionary<string, ArmOutcome>(StringComparer.Ordinal);
         foreach (var p in programs)
         {
+            // Referenced (and therefore deployed) per program rather than for the whole arm: the
+            // stdlib closure is a dozen assemblies including MathNet and the SQLite provider, and
+            // copying it into ~550 temp execution directories that never import anything would
+            // dominate the sweep's wall clock.
+            _currentProgramNeedsStdlib = p.NeedsStdlib;
             var r = CompileAndExecute(p.Source, "diff_exec.spy", executionTimeoutMs: SharpyExecTimeoutMs);
             sharpy[p.Key] = new ArmOutcome(
                 Ok: r.Success && !r.TimedOut,
@@ -194,6 +213,19 @@ public class DifferentialExecutionTests : IntegrationTestBase
 
         // Enumeration sanity — a corpus that shrank to nothing is itself a regression.
         Assert.True(results.Count > 0, "No programs were compared.");
+
+        // Vacuity guard for the #1338 widening. The stdlib corpus reaches the oracle only if BOTH
+        // halves hold: the Stdlib root is discovered, and ExecSubsetFilter admits its imports.
+        // Either one regressing puts the count back to zero while every other number stays healthy.
+        if (limit <= FullPool)
+        {
+            Assert.True(
+                pool.Selected.Any(prog =>
+                    prog.Key.StartsWith("fixture::stdlib-tests/", StringComparison.Ordinal)),
+                "No Stdlib.Tests fixture reached the CPython oracle. Either fixture discovery "
+                + "narrowed back to one root or ExecSubsetFilter stopped admitting the "
+                + "CPython-available modules — both make the widening vacuous (#1338).");
+        }
 
         // Ratchet: the allowlist file's presence engages it. Any non-allowlisted divergence fails.
         if (Allowlist.FileExists())
@@ -456,7 +488,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
             }
         }
 
-        foreach (var fx in FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests))
+        foreach (var fx in FixtureDiscoveryHelper.DiscoverFixturesFrom(
+                     FixtureRoots.CompilerTests, FixtureRoots.StdlibTests))
         {
             discovered++;
             if (fx.IsMultiFile || fx.ExpectedFile is null || fx.ErrorFile is not null
@@ -506,7 +539,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 continue;
             }
 
-            eligible.Add(new Program($"fixture::{fx.TestName}", source));
+            eligible.Add(new Program(
+                $"fixture::{fx.TestName}", source, NeedsStdlib: ImportsAStdlibModule(module)));
         }
 
         var selected = target <= 0
@@ -785,6 +819,14 @@ public class DifferentialExecutionTests : IntegrationTestBase
     /// simply shadows the first — a designed deviation, not a runtime bug) — leaving a program the
     /// Python arm can drive by appending a single <c>main()</c> call.
     /// </summary>
+    /// <summary>
+    /// Whether the program imports anything. By the time a fixture is eligible every surviving
+    /// import names a module on <c>ExecSubsetFilter</c>'s CPython-available whitelist, and each of
+    /// those is a Sharpy stdlib module — so "has an import" and "needs Sharpy.Stdlib" coincide.
+    /// </summary>
+    private static bool ImportsAStdlibModule(Module module)
+        => module.Body.Any(s => s is ImportStatement or FromImportStatement);
+
     private static bool IsFunctionsOnlyWithMain(Module module)
     {
         if (module.Body.Length == 0)
@@ -793,6 +835,11 @@ public class DifferentialExecutionTests : IntegrationTestBase
         var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var stmt in module.Body)
         {
+            // Module-level imports are top-level statements in both arms and mean the same thing:
+            // Sharpy hoists them, CPython executes them before the appended main() call. Which
+            // modules may appear is ExecSubsetFilter's decision, not this one's.
+            if (stmt is ImportStatement or FromImportStatement)
+                continue;
             if (stmt is not FunctionDef fn)
                 return false;
             if (!names.Add(fn.Name))
@@ -841,6 +888,38 @@ public class DifferentialExecutionTests : IntegrationTestBase
         /// </summary>
         private static readonly HashSet<string> NonSubscriptableInCPython =
             new(StringComparer.Ordinal) { "map", "zip", "filter", "array", "frozendict" };
+
+        /// <summary>
+        /// Modules where <c>import X</c> denotes the same library in both arms: present in a stock
+        /// CPython 3.12 <em>and</em> implemented in Sharpy's stdlib under the same name, so the
+        /// shared program text means one thing.
+        ///
+        /// <para>This is the list the #1338 widening turns on. Without it, adding the Stdlib.Tests
+        /// root would have been vacuous — the filter rejected <em>every</em> import outright, so a
+        /// corpus of stdlib fixtures would have been excluded to the last cell while the report
+        /// showed a larger discovered count. A Sharpy-only module (or one CPython does not ship,
+        /// like numpy) is excluded by name here, visibly, rather than allowlisted after diverging.</para>
+        ///
+        /// <para>Grows one module at a time: each addition puts a new corpus in front of the
+        /// oracle, and the divergences it finds are the deliverable.</para>
+        /// </summary>
+        private static readonly HashSet<string> CPythonAvailableModules = new(StringComparer.Ordinal)
+        {
+            "json", "math", "pprint", "re", "string",
+        };
+
+        /// <summary>
+        /// Member spellings Sharpy's stdlib exposes under a different name than CPython's: naming
+        /// convention, not runtime semantics. Comparing a program that reads one tells us only
+        /// that the two libraries spell an API differently, so they leave the shared subset by
+        /// name — attributably, rather than arriving as a divergence whose triage ends in
+        /// "different spelling" (#1338).
+        /// </summary>
+        private static readonly HashSet<string> SharpyOnlyMemberSpellings = new(StringComparer.Ordinal)
+        {
+            "Error",        // re.Error — CPython spells the module's exception re.error
+            "pattern_str",  // re.Pattern.pattern_str — CPython spells it .pattern
+        };
 
         private string? _rejection;
         private readonly HashSet<string> _exceptAliases = new(StringComparer.Ordinal);
@@ -899,9 +978,24 @@ public class DifferentialExecutionTests : IntegrationTestBase
         public override void VisitTypeAlias(TypeAlias node) => Reject(node);
         public override void VisitDecoratedStatement(DecoratedStatement node) => Reject(node);
 
-        // Imports pull in stdlib/interop whose semantics are compared elsewhere.
-        public override void VisitImportStatement(ImportStatement node) => Reject(node);
-        public override void VisitFromImportStatement(FromImportStatement node) => Reject(node);
+        // Imports: a module whose name resolves to the SAME library in both arms keeps the program
+        // in the shared subset — that is the whole point of comparing stdlib fixtures against
+        // CPython (#1338). Anything else leaves it, attributably by module name.
+        public override void VisitImportStatement(ImportStatement node)
+        {
+            foreach (var alias in node.Names)
+                RejectUnlessCPythonAvailable(alias.Name);
+        }
+
+        public override void VisitFromImportStatement(FromImportStatement node)
+            => RejectUnlessCPythonAvailable(node.Module);
+
+        private void RejectUnlessCPythonAvailable(string moduleName)
+        {
+            var root = moduleName.Split('.')[0];
+            if (!CPythonAvailableModules.Contains(root))
+                Reject("sharpy-only-import:" + root);
+        }
 
         // Divergence-prone / Sharpy-only compound statements.
         public override void VisitMatchStatement(MatchStatement node) => Reject(node);
@@ -935,6 +1029,12 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 return;
             }
 
+            if (SharpyOnlyMemberSpellings.Contains(node.Member))
+            {
+                Reject("sharpy-only-member:" + node.Member);
+                return;
+            }
+
             DefaultVisit(node);
         }
 
@@ -944,6 +1044,17 @@ public class DifferentialExecutionTests : IntegrationTestBase
             {
                 if (!string.IsNullOrEmpty(handler.Name))
                     _exceptAliases.Add(handler.Name);
+
+                // An except clause's exception type is a TypeAnnotation, not an expression, so a
+                // Sharpy-only spelling there never reaches VisitMemberAccess. `except re.Error:`
+                // is CPython's `re.error`, and the mismatch surfaces as an AttributeError at the
+                // handler rather than as anything about runtime semantics.
+                var lastSegment = handler.ExceptionType?.Name.Split('.')[^1];
+                if (lastSegment is not null && SharpyOnlyMemberSpellings.Contains(lastSegment))
+                {
+                    Reject("sharpy-only-member:" + lastSegment);
+                    return;
+                }
             }
             DefaultVisit(node);
         }
@@ -962,6 +1073,17 @@ public class DifferentialExecutionTests : IntegrationTestBase
                     || NonSubscriptableInCPython.Contains(subscripted.Name)))
             {
                 Reject("sharpy-only-call:explicit-type-arguments");
+                return;
+            }
+
+            // The same form on a QUALIFIED callee: `json.loads[dict[str, int]](text)`. A CPython
+            // module-level function is a plain function object and never implements
+            // __class_getitem__, so subscripting one is a TypeError there whatever the module is.
+            // The unqualified rule above could not see these, which is how a typed-loads fixture
+            // reached the oracle as a divergence once the stdlib corpus entered scope (#1338).
+            if (callee is IndexAccess qualified && Unwrap(qualified.Object) is MemberAccess)
+            {
+                Reject("sharpy-only-call:explicit-type-arguments-qualified");
                 return;
             }
 
@@ -1357,6 +1479,15 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 fixturesEligible = pool.Eligible,
                 fixturesRun = pool.Selected.Count,
                 fixtureCoveragePercent = FixtureCoveragePercent(pool),
+                // Per-root, because the #1338 widening is only real if the stdlib root actually
+                // contributes cells: a pool that is 100%-covered and 0%-stdlib is the vacuous
+                // widening the ExecSubsetFilter's blanket import rejection would have produced.
+                fixturesRunByRoot = pool.Selected
+                    .GroupBy(prog => prog.Key.StartsWith("fixture::stdlib-tests/", StringComparison.Ordinal)
+                        ? "stdlib-tests"
+                        : "compiler-tests", StringComparer.Ordinal)
+                    .OrderBy(g => g.Key, StringComparer.Ordinal)
+                    .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal),
                 fixtureExclusionsByShape = pool.Exclusions,
                 skipsByClass = skips
                     .GroupBy(r => r.SkipClass.Length == 0 ? "unclassified" : r.SkipClass, StringComparer.Ordinal)
@@ -1452,7 +1583,11 @@ public class DifferentialExecutionTests : IntegrationTestBase
         PythonOkSharpyError,
     }
 
-    private sealed record Program(string Key, string Source);
+    /// <summary>
+    /// One corpus program. <paramref name="NeedsStdlib"/> is set for the fixtures that import a
+    /// stdlib module: their compile needs Sharpy.Stdlib referenced and their run needs it deployed.
+    /// </summary>
+    private sealed record Program(string Key, string Source, bool NeedsStdlib = false);
 
     /// <summary>
     /// The fixture arm's own coverage statement: how many fixtures the discovery walk saw, how many
