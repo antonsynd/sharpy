@@ -219,6 +219,8 @@ public partial class Parser
                     if (identToken.IsBacktickEscaped && name.Contains('.', StringComparison.Ordinal))
                     {
                         var segments = name.Split('.');
+                        // Token.Length includes both backticks (SourceLength); Value.Length
+                        // would leave the extent 2 columns short for escaped names (#1380).
                         Expression expr = new Identifier
                         {
                             Name = segments[0],
@@ -226,7 +228,7 @@ public partial class Parser
                             LineStart = startLine,
                             ColumnStart = startColumn,
                             LineEnd = Previous.Line,
-                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            ColumnEnd = Previous.Column + Previous.Length,
                             Span = GetSpanFromToken(identToken)
                         };
 
@@ -240,7 +242,7 @@ public partial class Parser
                                 LineStart = startLine,
                                 ColumnStart = startColumn,
                                 LineEnd = Previous.Line,
-                                ColumnEnd = Previous.Column + Previous.Value.Length,
+                                ColumnEnd = Previous.Column + Previous.Length,
                                 Span = GetSpanFromToken(identToken)
                             };
                         }
@@ -255,7 +257,7 @@ public partial class Parser
                         LineStart = startLine,
                         ColumnStart = startColumn,
                         LineEnd = Previous.Line,
-                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        ColumnEnd = Previous.Column + Previous.Length,
                         Span = GetSpanFromToken(identToken)
                     };
                 }

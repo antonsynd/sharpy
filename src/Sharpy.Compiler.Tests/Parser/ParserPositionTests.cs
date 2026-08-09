@@ -73,6 +73,52 @@ public class ParserPositionTests
         ident.ColumnStart.Should().Be(1);
     }
 
+    // A backtick-escaped identifier's AST extent must cover both backticks, or position
+    // hit-testing misses the last two characters of the reference (#1380).
+    [Theory]
+    [InlineData("`zed`")]
+    [InlineData("`int`")]
+    [InlineData("`pass`")]
+    public void Position_BacktickEscapedIdentifier_EndSpansClosingBacktick(string source)
+    {
+        var module = Parse(source);
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var ident = exprStmt.Expression.Should().BeOfType<Identifier>().Subject;
+
+        ident.IsNameBacktickEscaped.Should().BeTrue();
+        ident.ColumnStart.Should().Be(1);
+        ident.ColumnEnd.Should().Be(1 + source.Length);
+    }
+
+    [Fact]
+    public void Position_BacktickEscapedDottedName_ChainEndsSpanClosingBacktick()
+    {
+        // A dotted escaped name splits into Identifier + MemberAccess segments (#713);
+        // every node in the chain represents the single source token, so each end
+        // position is the token's full extent including both backticks (#1380).
+        const string source = "`System.IO`";
+        var module = Parse(source);
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var access = exprStmt.Expression.Should().BeOfType<MemberAccess>().Subject;
+        var root = access.Object.Should().BeOfType<Identifier>().Subject;
+
+        access.ColumnEnd.Should().Be(1 + source.Length);
+        root.ColumnEnd.Should().Be(1 + source.Length);
+    }
+
+    [Fact]
+    public void Position_BareIdentifier_EndIsUnchangedByEscapeFix()
+    {
+        // Control for the escaped-extent rule: Token.Length falls back to Value.Length
+        // for unescaped tokens, so the bare extent must stay exactly name-width.
+        var module = Parse("zed");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var ident = exprStmt.Expression.Should().BeOfType<Identifier>().Subject;
+
+        ident.IsNameBacktickEscaped.Should().BeFalse();
+        ident.ColumnEnd.Should().Be(4);
+    }
+
     [Fact]
     public void Position_BinaryOperation_TrackedCorrectly()
     {
