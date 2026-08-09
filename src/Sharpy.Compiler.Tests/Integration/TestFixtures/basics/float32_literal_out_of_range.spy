@@ -1,0 +1,6 @@
+# The literal-narrowing allowance (#1301) stops at float32's range. An `f`-suffixed C# literal
+# outside that range is CS0594, so admitting this value would trade a diagnostic for an ICE.
+
+def main() -> None:
+    over: float32 = 1e40
+    print(over)

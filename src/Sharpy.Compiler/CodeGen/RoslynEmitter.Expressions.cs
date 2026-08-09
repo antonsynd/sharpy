@@ -498,6 +498,20 @@ internal partial class RoslynEmitter
             }
         }
 
+        // An unsuffixed literal is float64 unless the semantic phase narrowed it — which it does for
+        // `x: float32 = 0.1` (#1301). Emitting the double form there is CS0664, so the suffix has to
+        // follow the recorded decision rather than the written text.
+        if (_context.SemanticInfo?.GetExpressionType(literal) is BuiltinType { Name: "float32" })
+        {
+            var float32Text = literal.Value.Contains('.', StringComparison.Ordinal)
+                || literal.Value.Contains('e', StringComparison.Ordinal)
+                || literal.Value.Contains('E', StringComparison.Ordinal)
+                ? literal.Value + "f"
+                : literal.Value + ".0f";
+            return LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                Literal(float32Text, (float)value));
+        }
+
         // Append 'd' suffix to force Roslyn to preserve double literal semantics.
         // Without it, Roslyn may normalize whole-number doubles (e.g., 5.0 -> 5).
         var literalText = literal.Value.Contains('.', StringComparison.Ordinal) || literal.Value.Contains('e', StringComparison.Ordinal)

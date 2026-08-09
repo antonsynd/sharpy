@@ -1,0 +1,22 @@
+# An unsuffixed float literal narrows to a float32 annotation (#1301).
+#
+# The allowance existed in the type checker from the start and had never once fired: it compared
+# BuiltinType.Name against "float", but an unsuffixed literal types as the OTHER double-backed
+# singleton, "float64". Two BuiltinType records with the same ClrType and different names are never
+# equal, so the guard was dead and `x: float32 = 0.1` was SPY0220.
+#
+# Making the guard live is only half of it — C# has no implicit double->float literal conversion, so
+# the literal node itself must be narrowed for emission to write `0.1f` instead of `0.1d`.
+
+def main() -> None:
+    x: float32 = 0.1
+    print(x)
+
+    y: float32 = 3.14f
+    print(y)
+
+    z: float32 = 2.0
+    print(z)
+
+    # Arithmetic on the narrowed value stays float32.
+    print(x + z)

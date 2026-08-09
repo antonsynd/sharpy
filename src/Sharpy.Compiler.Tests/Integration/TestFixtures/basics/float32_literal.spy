@@ -1,5 +1,6 @@
-# Test float32 literal with f suffix - type inference only
-# NOTE: Explicit annotation (x: float32 = 3.14f) fails due to #280
+# Test float32 literal with f suffix - type inference only.
+# The annotated forms live in float32_literal_annotation.spy: `x: float32 = 3.14f` works (#280 fixed)
+# and the unsuffixed `x: float32 = 0.1` narrows (#1301).
 def main():
     x = 3.14f
     print(x)

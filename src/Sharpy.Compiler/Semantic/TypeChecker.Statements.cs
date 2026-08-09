@@ -141,6 +141,39 @@ internal partial class TypeChecker
             RecordSequenceMaterialization(assignment.Value, inferredType, boundType);
             inferredType = boundType;
 
+            // A rebinding may not change the variable's type to one the existing binding cannot hold
+            // (#1301). The comment above promises "Python-like behavior where variables can be
+            // reassigned to different types", but the emitter assigns to the SAME C# local — it only
+            // versions on redeclaration (`x: T = ...` twice), not on plain assignment. So every
+            // type-changing rebinding produced uncompilable C#: `z: float32 = 1.0f; z = w` was CS0266
+            // and `z = "hello"` was CS0029, both surfacing as SPY0908 internal errors. A diagnostic at
+            // the assignment is the honest report of what the compiler can actually do.
+            if (existingSymbol is VariableSymbol boundSymbol)
+            {
+                var boundExisting = GetVariableType(boundSymbol);
+                if (boundExisting is not UnknownType
+                    && inferredType is not UnknownType
+                    && !IsAssignable(inferredType, boundExisting))
+                {
+                    if (IsFloat32LiteralNarrowing(boundExisting, inferredType, assignment.Value))
+                    {
+                        // Parity with the declaration position: `z: float32 = 1.0f; z = 0.25` narrows.
+                        _semanticInfo.SetExpressionType(assignment.Value, SemanticType.Float32);
+                        inferredType = SemanticType.Float32;
+                    }
+                    else
+                    {
+                        AddError(
+                            $"Cannot assign type '{inferredType.GetDisplayName()}' to variable of type "
+                            + $"'{boundExisting.GetDisplayName()}'",
+                            assignment.LineStart, assignment.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeMismatch,
+                            span: assignment.Span);
+                        return;
+                    }
+                }
+            }
+
             // Create a new variable symbol with the inferred type (or redefine existing)
             var newSymbol = new VariableSymbol
             {
@@ -411,11 +444,13 @@ internal partial class TypeChecker
             }
             else if (!IsAssignable(initType, declaredType))
             {
-                // Allow implicit narrowing of double literals to float32 (matches C# behavior)
-                if (declaredType is BuiltinType { Name: "float32" } && initType is BuiltinType { Name: "float" }
-                    && varDecl.InitialValue is FloatLiteral)
+                // Allow implicit narrowing of a double-valued float LITERAL to float32 (#1301).
+                if (IsFloat32LiteralNarrowing(declaredType, initType, varDecl.InitialValue))
                 {
-                    // Literal narrowing is safe — no runtime data loss risk
+                    // Narrow the literal node itself so emission produces `0.1f`. C# has no implicit
+                    // double→float literal conversion, so recording nothing here would only move the
+                    // failure: SPY0220 becomes CS0664, an ICE instead of a diagnostic.
+                    _semanticInfo.SetExpressionType(varDecl.InitialValue!, SemanticType.Float32);
                 }
                 else if (initType is VoidType && declaredType is not NullableType and not OptionalType)
                 {
@@ -1721,5 +1756,46 @@ internal partial class TypeChecker
                 CheckExpression(targetElem);
             }
         }
+    }
+
+    /// <summary>
+    /// Whether an unsuffixed float literal initializing a <c>float32</c> annotation may narrow
+    /// implicitly (#1301) — <c>x: float32 = 0.1</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Compared by CLR type, not by <see cref="BuiltinType.Name"/>. Sharpy has TWO double-backed
+    /// builtin singletons — <c>float</c> and <c>float64</c> — and <see cref="BuiltinType"/> is a record
+    /// whose equality includes the name, so the original name test could only ever match one of them.
+    /// Unsuffixed literals type as the other, which is why the allowance never fired once in its life.
+    /// </para>
+    /// <para>
+    /// Out-of-range values are excluded: an <c>f</c>-suffixed C# literal outside float's range is
+    /// CS0594, so admitting <c>x: float32 = 1e40</c> would trade a diagnostic for an ICE. Precision
+    /// loss within range is accepted — that is what the allowance is for.
+    /// </para>
+    /// </remarks>
+    private static bool IsFloat32LiteralNarrowing(
+        SemanticType declaredType,
+        SemanticType initType,
+        Expression? initialValue)
+    {
+        if (initialValue is not FloatLiteral { Suffix: null } literal)
+        {
+            return false;
+        }
+
+        if (Registry.PrimitiveCatalog.GetPrimitiveInfo(declaredType)?.ClrType != typeof(float)
+            || Registry.PrimitiveCatalog.GetPrimitiveInfo(initType)?.ClrType != typeof(double))
+        {
+            return false;
+        }
+
+        return double.TryParse(
+                literal.Value,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var value)
+            && !double.IsInfinity((double)(float)value);
     }
 }

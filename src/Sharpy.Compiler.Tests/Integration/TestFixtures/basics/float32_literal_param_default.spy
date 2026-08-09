@@ -1,0 +1,8 @@
+# The other half of the #1301 scope boundary: a parameter default is part of the signature, so the
+# literal-narrowing allowance does not reach it. Write `0.1f`.
+
+def takes(x: float32 = 0.1) -> None:
+    print(x)
+
+def main() -> None:
+    takes()
