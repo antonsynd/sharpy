@@ -1,1 +1,3 @@
 The '@classmethod' decorator is not supported in Sharpy
+a method without a 'self' parameter is already static
+Remove it (and the 'self' parameter, if the method has one)
