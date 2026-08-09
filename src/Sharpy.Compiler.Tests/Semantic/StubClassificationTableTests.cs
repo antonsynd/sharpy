@@ -226,17 +226,14 @@ public class StubClassificationTableTests : IDisposable
     /// The other ten cells of the table above: every imported property/event whose abstractness
     /// comes from the <em>implicit stub</em> rule rather than an <c>@abstract</c> decorator.
     ///
-    /// <para>They fail at HEAD, all for one reason (#1368). #1267 collapsed <em>method</em>
+    /// <para>These cells reddened when first written (#1368): #1267 collapsed <em>method</em>
     /// classification onto <c>Shared.MemberClassification</c>, and 4a5013941 gave
     /// <c>NameResolver</c>'s property and event paths the implicit-stub rule — but
-    /// <c>ModuleLoader.ExtractProperties</c>/<c>ExtractEvents</c> stayed decorator-only. Both take
-    /// <c>ownerKind</c> and <c>ownerIsAbstract</c> and read neither, which is why nothing warned.
-    /// The expectations here are the correct ones and are deliberately left as written: delete this
-    /// attribute's <c>Skip</c> when #1368 lands.</para>
+    /// <c>ModuleLoader.ExtractProperties</c>/<c>ExtractEvents</c> stayed decorator-only, taking
+    /// <c>ownerKind</c> and <c>ownerIsAbstract</c> and reading neither. Fixed by f9d442c7e,
+    /// which mirrors the implicit-stub arms into both extractors.</para>
     /// </summary>
-    [Theory(Skip = "#1368: ModuleLoader.ExtractProperties/ExtractEvents are decorator-only, so "
-                 + "imported implicit stubs classify concrete. Expectations here are correct; "
-                 + "remove this Skip when the fix lands.")]
+    [Theory]
     // member,  owner,         body,    site,     expected
     [InlineData(Property, Interface, "...", Imported, Abstract)]
     [InlineData(Property, Interface, "(...)", Imported, Abstract)]
@@ -277,9 +274,9 @@ public class StubClassificationTableTests : IDisposable
             ownerKind, memberKind, body);
     }
 
-    /// <summary>#1368: the same invariant for the spellings the implicit rule decides.</summary>
-    [Theory(Skip = "#1368: imported property/event implicit stubs classify concrete while the "
-                 + "same declaration classifies abstract same-file. Remove this Skip with the fix.")]
+    /// <summary>#1368 (fixed by f9d442c7e): the same invariant for the spellings the implicit
+    /// rule decides.</summary>
+    [Theory]
     [InlineData(Property, Interface, "...")]
     [InlineData(Property, Interface, "(...)")]
     [InlineData(Property, Interface, "pass")]
@@ -318,13 +315,12 @@ public class StubClassificationTableTests : IDisposable
     }
 
     /// <summary>
-    /// #1368 again, at the merged-accessor shape: the imported merge loses the abstractness the
-    /// same-file merge keeps. Worth its own cell because the merge branch discards the second
-    /// accessor's classification entirely, so a fix that only touched the first-declaration path
-    /// would leave this shape wrong.
+    /// #1368 (fixed by f9d442c7e) at the merged-accessor shape: the imported merge used to lose
+    /// the abstractness the same-file merge keeps. Worth its own cell because the merge branch
+    /// discards the second accessor's classification entirely, so a fix that only touched the
+    /// first-declaration path would leave this shape wrong.
     /// </summary>
-    [Theory(Skip = "#1368: the imported merge classifies concrete because ModuleLoader never "
-                 + "applies the implicit-stub rule. Remove this Skip with the fix.")]
+    [Theory]
     [InlineData(Property, Imported)]
     [InlineData(Event, Imported)]
     public void MergedAccessorStub_ImportedIsOneAbstractMember(string memberKind, string site)
