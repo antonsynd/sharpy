@@ -784,5 +784,19 @@ public static partial class DiagnosticExplanations
             "language avoids.",
             "class Shape:            # SPY0493 — 'area' is abstract, 'Shape' is not\n    @abstract\n    def area(self) -> float:\n        ...",
             "Declare the container abstract:\n@abstract\nclass Shape:\n    @abstract\n    def area(self) -> float:\n        ...\n\nOr give the member a real implementation and drop @abstract.");
+
+        Add(dict, DiagnosticCodes.Validation.AssertRaisesOutsideTest,
+            "assert_raises outside a @test function",
+            "Validation",
+            "'assert_raises' looks like a context manager but is a compiler MARKER: " +
+            "'Unittest.AssertRaises' throws NotSupportedException and its 'Dispose' is empty by " +
+            "design. What makes 'with assert_raises(E):' work is a rewrite into " +
+            "'Xunit.Assert.Throws<E>(() => { ... })', and that rewrite fires only inside a '@test' " +
+            "function. Outside one nothing rewrites it, and the marker's bare name reaches the " +
+            "generated C# as an error blamed on the compiler.",
+            "def main() -> None:\n    with assert_raises(ValueError):   # SPY0494 — not a @test function\n        parse(\"x\")",
+            "Move the check into a '@test' function:\n@test\ndef parse_rejects_junk() -> None:\n    " +
+            "with assert_raises(ValueError):\n        parse(\"x\")\n\nOr assert the failure with " +
+            "try/except where you are:\ntry:\n    parse(\"x\")\n    assert False\nexcept ValueError:\n    pass");
     }
 }

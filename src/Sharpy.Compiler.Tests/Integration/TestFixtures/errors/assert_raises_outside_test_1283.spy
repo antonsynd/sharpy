@@ -1,0 +1,11 @@
+# #1283: `assert_raises` is a marker the compiler rewrites inside a @test function, not a context
+# manager with a runtime — Unittest.AssertRaises throws NotSupportedException and its Dispose is
+# empty by design. Outside a @test nothing rewrote it and the bare name reached codegen as CS0119
+# behind SPY0908. The in-@test uses live in the Sharpy.Stdlib.Tests harness (281 of them), which
+# is where the Xunit reference the rewrite needs exists.
+from unittest import assert_raises
+
+
+def main() -> None:
+    with assert_raises(ValueError):
+        raise ValueError("boom")

@@ -1,0 +1,1 @@
+'assert_raises' is only available inside a '@test' function @10:5

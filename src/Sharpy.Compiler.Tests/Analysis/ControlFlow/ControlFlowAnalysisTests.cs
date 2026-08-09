@@ -86,9 +86,15 @@ public class ControlFlowAnalysisTests
         // with assert_raises(E): raise ... compiles to Xunit.Assert.Throws
         // wrapping the body, so the raised exception is caught and the
         // statement after the with-block is reachable (#840).
+        //
+        // The @test decorator is load-bearing: the emitter's rewrite is gated on it, and since
+        // #1283 the CFG is gated on the same condition — modelling a lowering that will not be
+        // emitted is the divergence that unification removed. The counterpart below pins the
+        // other side.
         var func = new FunctionDef
         {
             Name = "test_raises",
+            Decorators = ImmutableArray.Create(new Decorator { QualifiedParts = ImmutableArray.Create("test") }),
             Body = ImmutableArray.Create<Statement>(
                 new WithStatement
                 {
@@ -114,6 +120,43 @@ public class ControlFlowAnalysisTests
         var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
 
         Assert.Empty(unreachable);
+    }
+
+    [Fact]
+    public void FindUnreachableCode_AssertRaisesOutsideTestFunction_NotEmpty()
+    {
+        // #1283: outside a @test function nothing rewrites `with assert_raises(...)` — the
+        // semantic layer refuses it (SPY0494) — so the CFG must NOT pretend the body's raise is
+        // caught. Before the three gates were unified, the CFG tested the name alone and modelled
+        // a catch-all edge for a lowering that would never be emitted.
+        var func = new FunctionDef
+        {
+            Name = "not_a_test",
+            Body = ImmutableArray.Create<Statement>(
+                new WithStatement
+                {
+                    Items = ImmutableArray.Create(new WithItem
+                    {
+                        ContextExpression = new FunctionCall
+                        {
+                            Function = Id("assert_raises"),
+                            Arguments = ImmutableArray.Create<Expression>(Id("ValueError"))
+                        }
+                    }),
+                    Body = ImmutableArray.Create<Statement>(
+                        new RaiseStatement
+                        {
+                            Exception = new FunctionCall { Function = Id("ValueError") }
+                        })
+                },
+                new ExpressionStatement { Expression = Id("x") }
+            )
+        };
+
+        var cfg = _builder.Build(func);
+        var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
+
+        Assert.NotEmpty(unreachable);
     }
 
     [Fact]

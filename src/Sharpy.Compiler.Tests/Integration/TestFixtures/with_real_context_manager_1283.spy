@@ -1,0 +1,19 @@
+# #1283 control: a `with` over a real context manager outside a @test function is untouched by
+# the assert_raises gate — only the assert_raises spelling is refused there.
+class Tracker:
+    label: str
+
+    def __init__(self, label: str):
+        self.label = label
+
+    def __enter__(self) -> Self:
+        print("enter " + self.label)
+        return self
+
+    def __exit__(self) -> None:
+        print("exit " + self.label)
+
+
+def main() -> None:
+    with Tracker("a") as t:
+        print("body " + t.label)

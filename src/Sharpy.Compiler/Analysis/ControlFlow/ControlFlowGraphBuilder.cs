@@ -27,6 +27,13 @@ internal class ControlFlowGraphBuilder
     // Exception handler tracking for re-raise
     private readonly Stack<BasicBlock> _handlerStack = new();
 
+    /// <summary>
+    /// Whether the function being built is a <c>@test</c> — the condition the emitter's
+    /// <c>assert_raises</c> rewrite is gated on, mirrored here so the CFG models only lowerings
+    /// that will actually be emitted (#1283). Module-level bodies are never test functions.
+    /// </summary>
+    private bool _inTestFunction;
+
     public ControlFlowGraphBuilder() : this((HashSet<MatchStatement>?)null) { }
 
     public ControlFlowGraphBuilder(HashSet<MatchStatement>? exhaustiveMatches)
@@ -49,6 +56,7 @@ internal class ControlFlowGraphBuilder
     public ControlFlowGraph Build(FunctionDef function)
     {
         Reset();
+        _inTestFunction = AssertRaisesForm.IsTestFunction(function.Decorators);
 
         _entry = CreateBlock("entry");
         _exit = CreateBlock("exit");
@@ -102,6 +110,7 @@ internal class ControlFlowGraphBuilder
         _loopStack.Clear();
         _handlerStack.Clear();
         _currentBlock = null!;
+        _inTestFunction = false;
     }
 
     private BasicBlock CreateBlock(string label = "")
@@ -818,21 +827,13 @@ internal class ControlFlowGraphBuilder
     }
 
     /// <summary>
-    /// Returns true if the with statement's single context manager is a call to
-    /// unittest's assert_raises (bare or qualified). Mirrors the detection used
-    /// by the emitter (RoslynEmitter.IsAssertRaisesCall).
+    /// Returns true if this <c>with</c> is the <c>assert_raises</c> form the emitter will rewrite
+    /// into <c>Xunit.Assert.Throws</c>. Asks the shared authority, and — unlike the copy this
+    /// replaces — honors the <c>@test</c> condition: outside a test function nothing is rewritten,
+    /// so modelling the catch-all edge would describe a lowering that never happens (#1283).
     /// </summary>
-    private static bool IsAssertRaisesWith(WithStatement stmt)
-    {
-        if (stmt.Items.Length != 1)
-            return false;
-
-        return stmt.Items[0].ContextExpression is FunctionCall
-        {
-            Function: Identifier { Name: "assert_raises" }
-                or MemberAccess { Member: "assert_raises" }
-        };
-    }
+    private bool IsAssertRaisesWith(WithStatement stmt)
+        => AssertRaisesForm.IsRewritten(stmt, _inTestFunction);
 
     private void BuildMatch(MatchStatement stmt)
     {

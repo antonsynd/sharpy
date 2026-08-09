@@ -721,6 +721,9 @@ public static class DiagnosticCodes
         // Abstract member in non-abstract class (SPY0493, #1307)
         public const string AbstractMemberInNonAbstractClass = "SPY0493"; // Active
 
+        // assert_raises used outside a @test function (SPY0494, #1283)
+        public const string AssertRaisesOutsideTest = "SPY0494"; // Active
+
         #endregion
     }
 

@@ -851,14 +851,7 @@ internal partial class RoslynEmitter
     /// Returns true if the given call targets unittest.assert_raises (bare or qualified).
     /// </summary>
     private static bool IsAssertRaisesCall(FunctionCall call)
-    {
-        return call.Function switch
-        {
-            Identifier { Name: "assert_raises" } => true,
-            MemberAccess { Member: "assert_raises" } => true,
-            _ => false
-        };
-    }
+        => AssertRaisesForm.IsCall(call);
 
     /// <summary>
     /// If the statement is <c>with assert_raises(E, match=...) [as exc]:</c> inside a @test
