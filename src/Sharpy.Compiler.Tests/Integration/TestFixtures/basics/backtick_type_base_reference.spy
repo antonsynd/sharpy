@@ -6,10 +6,9 @@
 #
 # A NEUTRAL name is what pins this: the defect has nothing to do with builtins or C# keywords, so
 # covering it only through keyword names would make the coverage incidental to a different rule.
-# A keyword row is deliberately ABSENT — the unparser does not emit backticks in a base-list
-# position, so `class D(`class`)` round-trips to `class D(class)` and fails to re-parse. That is a
-# separate pre-existing gap in Pretty/Unparser.cs, not a codegen one, and pinning it here would
-# have coupled this fixture to an unrelated fix.
+# The keyword row below was restored once 178f7983b made the unparser emit backticks in every
+# type-reference position (#1274) — the round-trip suite now pins base-list escapes for keyword
+# names too.
 class `zed`:
     def go(self) -> int:
         return 1
@@ -19,9 +18,22 @@ class DerivedZed(`zed`):
     pass
 
 
+# The keyword row: an escaped C# keyword as a base-list reference (#1274).
+class `pass`:
+    def go2(self) -> int:
+        return 2
+
+
+class DerivedPass(`pass`):
+    pass
+
+
 def main():
     a: `zed` = DerivedZed()
     print(a.go())
 
     b = `zed`()
     print(b.go())
+
+    c: `pass` = DerivedPass()
+    print(c.go2())
