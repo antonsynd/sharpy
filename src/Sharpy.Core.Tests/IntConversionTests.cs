@@ -34,9 +34,9 @@ public class IntConversionTests
     }
 
     [Fact]
-    public void Int_FromLong_OutOfRange_ThrowsOverflowException()
+    public void Int_FromLong_OutOfRange_ThrowsOverflowError()
     {
-        Assert.Throws<OverflowException>(() => Builtins.Int(long.MaxValue));
+        Assert.Throws<OverflowError>(() => Builtins.Int(long.MaxValue));
     }
 
     [Fact]
@@ -53,15 +53,15 @@ public class IntConversionTests
     }
 
     [Fact]
-    public void Int_FromFloat_PositiveInfinity_ThrowsOverflowException()
+    public void Int_FromFloat_PositiveInfinity_ThrowsOverflowError()
     {
-        Assert.Throws<OverflowException>(() => Builtins.Int(float.PositiveInfinity));
+        Assert.Throws<OverflowError>(() => Builtins.Int(float.PositiveInfinity));
     }
 
     [Fact]
-    public void Int_FromFloat_NegativeInfinity_ThrowsOverflowException()
+    public void Int_FromFloat_NegativeInfinity_ThrowsOverflowError()
     {
-        Assert.Throws<OverflowException>(() => Builtins.Int(float.NegativeInfinity));
+        Assert.Throws<OverflowError>(() => Builtins.Int(float.NegativeInfinity));
     }
 
     [Fact]
@@ -78,15 +78,15 @@ public class IntConversionTests
     }
 
     [Fact]
-    public void Int_FromDouble_PositiveInfinity_ThrowsOverflowException()
+    public void Int_FromDouble_PositiveInfinity_ThrowsOverflowError()
     {
-        Assert.Throws<OverflowException>(() => Builtins.Int(double.PositiveInfinity));
+        Assert.Throws<OverflowError>(() => Builtins.Int(double.PositiveInfinity));
     }
 
     [Fact]
-    public void Int_FromDouble_NegativeInfinity_ThrowsOverflowException()
+    public void Int_FromDouble_NegativeInfinity_ThrowsOverflowError()
     {
-        Assert.Throws<OverflowException>(() => Builtins.Int(double.NegativeInfinity));
+        Assert.Throws<OverflowError>(() => Builtins.Int(double.NegativeInfinity));
     }
 
     [Fact]
@@ -155,8 +155,8 @@ public class IntConversionTests
     }
 
     [Fact]
-    public void Int_FromUInt_OutOfRange_ThrowsOverflowException()
+    public void Int_FromUInt_OutOfRange_ThrowsOverflowError()
     {
-        Assert.Throws<OverflowException>(() => Builtins.Int(uint.MaxValue));
+        Assert.Throws<OverflowError>(() => Builtins.Int(uint.MaxValue));
     }
 }
