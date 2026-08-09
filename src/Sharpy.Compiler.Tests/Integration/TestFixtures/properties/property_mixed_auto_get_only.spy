@@ -1,0 +1,15 @@
+# #1307 collateral: the auto half's declared accessor is honored. `property get label: str`
+# beside a function-style getter is a get-only property — it used to gain a silent auto-setter
+# writing a backing field the author never exposed.
+class Item:
+    property get label: str
+
+    property get label(self) -> str:
+        return self._label.upper()
+
+    def __init__(self, label: str):
+        self._label = label
+
+
+def main() -> None:
+    print(Item("hello").label)

@@ -82,13 +82,17 @@ class Temperature:
             raise ValueError("Temperature below absolute zero")
         self._celsius = value
 
-    # Cannot combine with auto getter
-    property get celsius: float # ERROR: no auto backing field with function-style!
+    # The auto half supplies the storage — do NOT also declare `_celsius`
+    property celsius: float = 0.0
 ```
 
-It is possible to have both a function-style getter and setter. However, function-style getter/setters cannot coexist with an auto-property for the same property name since there is no way to retrieve the backing field.
+It is possible to have both a function-style getter and setter. A function-style accessor may also be paired with an **auto-property of the same name** supplying the complementary half: the auto half declares the type and the default, and it synthesizes the backing field, which the function-style accessors reach by its underscored snake_case spelling (`self._celsius` for `property celsius`).
 
-**Important:** Function-style accessors do **not** generate a backing field. You must provide your own storage.
+Because the auto half owns that field, declaring a field whose name mangles to the same C# identifier is refused (SPY0405 family, code SPY0407) rather than emitting a duplicate member. Drop the declaration and move its default onto the property.
+
+**Important:** Function-style accessors on their own do **not** generate a backing field. Either pair them with an auto-property of the same name, as above, or provide your own storage under a different name.
+
+The auto half's declared accessor is honored: `property get celsius: float` beside a function-style *getter* is a get-only property, and gains no setter.
 
 **Type Consistency:** The type must be the same across all accessors (get/set/init) for a property.
 

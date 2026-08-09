@@ -1,0 +1,16 @@
+# #1307: the remedy the collision diagnostic names — drop the field, move the default onto the
+# auto half, keep writing the underscored spelling in the accessor.
+class Temperature:
+    property celsius: float = 0.0
+
+    property set celsius(self, value: float):
+        if value < -273.15:
+            raise ValueError("Temperature below absolute zero")
+        self._celsius = value
+
+
+def main() -> None:
+    t = Temperature()
+    print(t.celsius)
+    t.celsius = 21.5
+    print(t.celsius)

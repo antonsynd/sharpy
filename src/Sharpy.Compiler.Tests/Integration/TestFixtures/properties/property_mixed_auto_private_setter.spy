@@ -1,0 +1,21 @@
+# #1307 collateral: the mixed auto/function-style path read decorators from the auto half only,
+# so @private on the function-style setter was dropped and the setter emitted public.
+class Person:
+    property name: str
+
+    @private
+    property set name(self, value: str):
+        self._name = value
+
+    def __init__(self, name: str):
+        self._name = name
+
+    def rename(self, value: str) -> None:
+        self.name = value
+
+
+def main() -> None:
+    p = Person("Alice")
+    print(p.name)
+    p.rename("Bob")
+    print(p.name)

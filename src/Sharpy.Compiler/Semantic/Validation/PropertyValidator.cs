@@ -62,6 +62,7 @@ internal class PropertyValidator : SemanticValidatorBase
     {
         // Collect fields, methods, and properties from the body
         var fieldNames = new HashSet<string>();
+        var fieldDecls = new List<VariableDeclaration>();
         var methodNames = new HashSet<string>();
         var propertyDefs = new List<PropertyDef>();
 
@@ -71,6 +72,7 @@ internal class PropertyValidator : SemanticValidatorBase
             {
                 case VariableDeclaration varDecl:
                     fieldNames.Add(varDecl.Name);
+                    fieldDecls.Add(varDecl);
                     break;
                 case FunctionDef funcDef:
                     methodNames.Add(funcDef.Name);
@@ -112,6 +114,7 @@ internal class PropertyValidator : SemanticValidatorBase
         foreach (var (propName, group) in propertyGroups)
         {
             ValidateMixedPropertyStyle(typeName, propName, group);
+            ValidateBackingFieldCollision(typeName, propName, group, fieldDecls);
         }
 
         // Check that init properties without defaults are assigned in constructors
@@ -208,6 +211,38 @@ internal class PropertyValidator : SemanticValidatorBase
         }
 
         // Otherwise: auto + complementary custom accessors is allowed
+    }
+
+    /// <summary>
+    /// Rule 3b: the auto + function-style form synthesizes a named backing field, and that name
+    /// must be free. The spec's own function-style-setter example declares <c>_celsius</c> beside a
+    /// <c>celsius</c> auto getter and hits CS0102/CS0229 on the duplicate <c>_Celsius</c> (#1307) —
+    /// the storage is what the mixed form supplies, so declaring it again is the error.
+    /// </summary>
+    private void ValidateBackingFieldCollision(string typeName, string propName,
+        List<PropertyDef> group, List<VariableDeclaration> fieldDecls)
+    {
+        // Only the mixed form emits a NAMED backing field; a pure auto-property gets C#'s
+        // compiler-generated one, and pure function-style properties get none at all.
+        var autoDef = group.FirstOrDefault(p => !p.IsFunctionStyle);
+        if (autoDef == null || !group.Any(p => p.IsFunctionStyle))
+            return;
+
+        var backingField = "_" + NameCasing.ResolveField(autoDef.Name, autoDef.IsNameBacktickEscaped);
+        var collision = fieldDecls.FirstOrDefault(f =>
+            NameCasing.ResolveField(f.Name, f.IsNameBacktickEscaped) == backingField);
+        if (collision == null)
+            return;
+
+        AddError(_context,
+            $"Property '{propName}' in '{typeName}' synthesizes the backing field '{backingField}', "
+            + $"which the declared field '{collision.Name}' already occupies. The mixed "
+            + "auto/function-style form supplies the storage — drop the field declaration and move "
+            + $"its default onto the property ('property {propName}: ... = ...'); the accessors go "
+            + $"on writing 'self.{collision.Name}'",
+            collision.LineStart, collision.ColumnStart,
+            code: DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty,
+            span: collision.Span);
     }
 
     /// <summary>

@@ -373,6 +373,23 @@ internal partial class RoslynEmitter
         var customGetter = customDefs.FirstOrDefault(p => p.Accessor == PropertyAccessor.Get);
         var customSetter = customDefs.FirstOrDefault(p => p.Accessor == PropertyAccessor.Set);
 
+        // Apply modifiers from decorators on the auto-property (needed before the accessors so an
+        // accessor-level modifier can be compared against the property's own).
+        var modifiers = GenerateMethodModifiers(autoProp.Name, autoProp.Decorators);
+        var propertyAccess = GetAccessModifier(modifiers);
+
+        // The auto half's declared accessor decides which halves exist; a custom accessor always
+        // contributes its own. `property get x: T` beside a custom GETTER is get-only and used to
+        // gain a silent auto-setter, writing a backing field the author never asked to expose
+        // (#1307). `property init x: T` contributes an init accessor, not a set.
+        bool emitGetter = customGetter != null
+            || autoProp.Accessor is PropertyAccessor.None or PropertyAccessor.Get or PropertyAccessor.Init;
+        bool emitSetter = customSetter != null
+            || autoProp.Accessor is PropertyAccessor.None or PropertyAccessor.Set or PropertyAccessor.Init;
+        var autoSetterKind = autoProp.Accessor == PropertyAccessor.Init
+            ? SyntaxKind.InitAccessorDeclaration
+            : SyntaxKind.SetAccessorDeclaration;
+
         // Build accessors
         var accessors = new List<AccessorDeclarationSyntax>();
 
@@ -393,10 +410,11 @@ internal partial class RoslynEmitter
             }
 
             var bodyStatements = GenerateSuite(customGetter.Body);
-            accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                .WithBody(Block(bodyStatements)));
+            accessors.Add(WithAccessorAccess(
+                AccessorDeclaration(SyntaxKind.GetAccessorDeclaration).WithBody(Block(bodyStatements)),
+                customGetter, propertyAccess));
         }
-        else
+        else if (emitGetter)
         {
             // Auto-getter: return _name;
             accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
@@ -424,22 +442,20 @@ internal partial class RoslynEmitter
             _variableVersions["value"] = 0;
 
             var bodyStatements = GenerateSuite(customSetter.Body);
-            accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                .WithBody(Block(bodyStatements)));
+            accessors.Add(WithAccessorAccess(
+                AccessorDeclaration(SyntaxKind.SetAccessorDeclaration).WithBody(Block(bodyStatements)),
+                customSetter, propertyAccess));
         }
-        else
+        else if (emitSetter)
         {
             // Auto-setter: _name = value;
-            accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+            accessors.Add(AccessorDeclaration(autoSetterKind)
                 .WithBody(Block(ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         IdentifierName(backingFieldName),
                         IdentifierName("value"))))));
         }
-
-        // Apply modifiers from decorators on the auto-property
-        var modifiers = GenerateMethodModifiers(autoProp.Name, autoProp.Decorators);
 
         var property = PropertyDeclaration(propertyType, propertyName)
             .WithModifiers(modifiers)
@@ -614,6 +630,21 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Gets the access modifier from a token list, or null if none.
     /// </summary>
+    /// <summary>
+    /// Carries a custom accessor's own access modifier onto the accessor when it is narrower than
+    /// the property's — the mixed auto/function-style path used to read decorators from the auto
+    /// half only, silently dropping a `@private` on the setter (#1307). Mirrors the combined
+    /// function-style path.
+    /// </summary>
+    private AccessorDeclarationSyntax WithAccessorAccess(
+        AccessorDeclarationSyntax accessor, PropertyDef accessorDef, SyntaxKind? propertyAccess)
+    {
+        var accessorAccess = GetAccessModifier(GenerateMethodModifiers(accessorDef.Name, accessorDef.Decorators));
+        return accessorAccess != null && accessorAccess != propertyAccess
+            ? accessor.WithModifiers(TokenList(Token(accessorAccess.Value)))
+            : accessor;
+    }
+
     private static SyntaxKind? GetAccessModifier(SyntaxTokenList modifiers)
     {
         if (modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword)))
