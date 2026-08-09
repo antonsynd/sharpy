@@ -162,34 +162,6 @@ namespace Sharpy
         public FrozenDict<TKey, TValue> Copy() => this;
 
         /// <summary>
-        /// Merge with a dict. The LEFT operand decides the result type, by analogy with
-        /// set/frozenset (#1312): a frozendict on the left yields a frozendict. Keys on the right
-        /// win, matching this type's own <c>|</c>.
-        /// </summary>
-        public static FrozenDict<TKey, TValue> operator |(
-            FrozenDict<TKey, TValue> left,
-            Dict<TKey, TValue> right)
-        {
-            if (left is null)
-            {
-                throw new ArgumentNullException(nameof(left));
-            }
-
-            if (right is null)
-            {
-                throw new ArgumentNullException(nameof(right));
-            }
-
-            var builder = left._dict.ToBuilder();
-            foreach (var key in right.Keys())
-            {
-                builder[key] = right[key];
-            }
-
-            return new FrozenDict<TKey, TValue>(builder.ToImmutable());
-        }
-
-        /// <summary>
         /// Return a new frozendict with the merged contents of <paramref name="right"/>,
         /// where keys in <paramref name="right"/> overwrite keys from <paramref name="left"/>.
         /// </summary>
