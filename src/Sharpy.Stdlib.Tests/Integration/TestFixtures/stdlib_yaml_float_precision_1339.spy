@@ -1,0 +1,28 @@
+# yaml scalars resolve at double precision (#1339).
+#
+# safe_load used to route plain scalars through YamlDotNet's float-before-double convenience,
+# so every plain float took a single-precision detour: safe_load("0.1") was 0.10000000149011612.
+# Widening back to double in NormalizeScalar preserved the error rather than removing it.
+#
+# Every expected value below is what PyYAML produces for the same text, verified with
+# python3 -c "import yaml; print(yaml.safe_load(...))" (PyYAML on CPython 3.12.13). The values
+# are deliberately NOT float32-exact — that is the property the old assertions could not see.
+import yaml
+
+
+def main() -> None:
+    print(yaml.safe_load("0.1"))
+    print(yaml.safe_load("3.141592653589793"))
+    print(yaml.safe_load("2.718281828459045"))
+    print(yaml.safe_load("1.0e+20"))
+    print(yaml.safe_load("[0.1, 0.2, 0.3]"))
+
+    # The round-trip property PyYAML holds and Sharpy did not.
+    print(yaml.safe_load(yaml.safe_dump(0.1)))
+    print(yaml.safe_load(yaml.safe_dump(3.141592653589793)))
+
+    # Quoting still wins: a quoted scalar is a string, so it must not be resolved.
+    print(yaml.safe_load("'0.1'"))
+
+    # An explicit tag is the author saying what they meant.
+    print(yaml.safe_load("!!str 0.1"))

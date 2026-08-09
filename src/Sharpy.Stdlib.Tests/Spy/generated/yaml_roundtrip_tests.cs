@@ -143,7 +143,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     case global::Sharpy.CommentedMap m:
 #line (71, 13) - (71, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                        var keys = m.Keys;
+                        var keys = new Sharpy.List<string>(m.Keys);
 #line (72, 13) - (72, 39) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                         Xunit.Assert.Equal("zebra", keys[0]);
 #line (73, 13) - (73, 39) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
@@ -474,7 +474,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (222, 5) - (222, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 m.Add("m", 3);
 #line (223, 5) - (223, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
-                var keys = m.Keys;
+                var keys = new Sharpy.List<string>(m.Keys);
 #line (224, 5) - (224, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 Xunit.Assert.Equal("z", keys[0]);
 #line (225, 5) - (225, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"

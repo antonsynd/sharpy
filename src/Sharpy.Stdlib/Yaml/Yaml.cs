@@ -180,10 +180,20 @@ namespace Sharpy
             return builder.ToString();
         }
 
+        /// <summary>
+        /// The untyped loader. Plain scalars resolve through <see cref="YamlScalarResolver"/>
+        /// rather than YamlDotNet's <c>WithAttemptingUnquotedStringTypeDeserialization()</c>,
+        /// which tried <c>float</c> before <c>double</c> and so put every plain float through a
+        /// single-precision detour — <c>safe_load("0.1")</c> came back
+        /// <c>0.10000000149011612</c> (#1339). Registered <c>OnTop</c> so it sees untagged
+        /// scalars before the built-in deserializers do.
+        /// </summary>
         private static IDeserializer CreateDeserializer()
         {
             return new DeserializerBuilder()
-                .WithAttemptingUnquotedStringTypeDeserialization()
+                .WithNodeDeserializer(
+                    new PlainScalarNodeDeserializer(),
+                    selection => selection.OnTop())
                 .Build();
         }
 
@@ -375,6 +385,49 @@ namespace Sharpy
             // Plain style: every spelling this produces (1.0, 1.0e+20, .inf, .nan) is a valid plain
             // YAML scalar that reloads as a float, so quoting would break the round-trip.
             emitter.Emit(new Scalar(AnchorName.Empty, TagName.Empty, text, ScalarStyle.Plain, true, false));
+        }
+    }
+
+    /// <summary>
+    /// Resolves untagged PLAIN scalars for the untyped loader, at double precision (#1339).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Style is the whole gate. A quoted scalar is a string by YAML's own rules, so only
+    /// <see cref="ScalarStyle.Plain"/> is resolved and everything else falls through to the
+    /// built-in deserializers — <c>safe_load("\"0.1\"")</c> must stay the string "0.1". A
+    /// scalar carrying an explicit tag also falls through: the tag is the author saying what
+    /// they meant.
+    /// </para>
+    /// <para>
+    /// Only for <c>object</c>-typed requests. The typed path (<c>SafeLoadTyped&lt;T&gt;</c>)
+    /// builds its own deserializer and never sees this, but a target type of <c>string</c>
+    /// inside an untyped document must still get its string.
+    /// </para>
+    /// </remarks>
+    internal sealed class PlainScalarNodeDeserializer : INodeDeserializer
+    {
+        /// <inheritdoc />
+        public bool Deserialize(
+            IParser reader,
+            Type expectedType,
+            Func<IParser, Type, object?> nestedObjectDeserializer,
+            out object? value,
+            ObjectDeserializer rootDeserializer)
+        {
+            if (expectedType == typeof(object)
+                && reader.Accept<Scalar>(out Scalar? scalar)
+                && scalar != null
+                && scalar.Style == ScalarStyle.Plain
+                && scalar.Tag.IsEmpty)
+            {
+                reader.MoveNext();
+                value = YamlScalarResolver.Resolve(scalar.Value);
+                return true;
+            }
+
+            value = null;
+            return false;
         }
     }
 

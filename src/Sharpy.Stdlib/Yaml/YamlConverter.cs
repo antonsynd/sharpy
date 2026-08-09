@@ -172,6 +172,12 @@ namespace Sharpy
                 case double:
                     return value;
 
+                // Unreachable today, kept deliberately. Measured after #1339: with the float arm
+                // throwing, all 89 yaml tests pass — plain scalars now resolve through
+                // YamlScalarResolver (double) and YamlDotNet's `!!float` tag also yields double,
+                // so nothing produces a Single on either ToSharpy call site. Deleting the arm
+                // would not be free: a Single arriving from a future YamlDotNet would fall to
+                // `default:` and reach Sharpy code as a .NET float rather than a double.
                 case float f:
                     return (double)f;
 

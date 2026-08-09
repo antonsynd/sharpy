@@ -235,72 +235,11 @@ namespace Sharpy
             return ResolvePlainScalar(scalar.Value);
         }
 
-        private static object? ResolvePlainScalar(string value)
-        {
-            if (value.Length == 0 || value == "~" ||
-                value == "null" || value == "Null" || value == "NULL")
-            {
-                return null;
-            }
-
-            if (value == "true" || value == "True" || value == "TRUE")
-            {
-                return true;
-            }
-            if (value == "false" || value == "False" || value == "FALSE")
-            {
-                return false;
-            }
-
-            if (long.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long longValue))
-            {
-                if (longValue >= int.MinValue && longValue <= int.MaxValue)
-                {
-                    return (int)longValue;
-                }
-                return longValue;
-            }
-
-            if (value == ".inf" || value == ".Inf" || value == ".INF" || value == "+.inf")
-            {
-                return double.PositiveInfinity;
-            }
-            if (value == "-.inf" || value == "-.Inf" || value == "-.INF")
-            {
-                return double.NegativeInfinity;
-            }
-            if (value == ".nan" || value == ".NaN" || value == ".NAN")
-            {
-                return double.NaN;
-            }
-
-            // Only treat as float when it actually looks like one, so that values such as
-            // hexadecimal-looking strings are not silently coerced.
-            if (LooksLikeFloat(value) &&
-                double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double doubleValue))
-            {
-                return doubleValue;
-            }
-
-            return value;
-        }
-
-        private static bool LooksLikeFloat(string value)
-        {
-            bool hasDigit = false;
-            foreach (char c in value)
-            {
-                if (c >= '0' && c <= '9')
-                {
-                    hasDigit = true;
-                }
-                else if (c != '.' && c != 'e' && c != 'E' && c != '+' && c != '-')
-                {
-                    return false;
-                }
-            }
-            return hasDigit && (value.IndexOf('.') >= 0 || value.IndexOf('e') >= 0 || value.IndexOf('E') >= 0);
-        }
+        /// <summary>
+        /// Delegates to <see cref="YamlScalarResolver"/>, which is where these rules now live so
+        /// that <c>safe_load</c> resolves scalars exactly as the roundtrip loader does (#1339).
+        /// </summary>
+        private static object? ResolvePlainScalar(string value) => YamlScalarResolver.Resolve(value);
 
         // ---------------------------------------------------------------------
         // Dumping
