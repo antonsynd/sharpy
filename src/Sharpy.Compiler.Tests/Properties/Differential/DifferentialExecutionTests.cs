@@ -921,6 +921,17 @@ public class DifferentialExecutionTests : IntegrationTestBase
             "pattern_str",  // re.Pattern.pattern_str — CPython spells it .pattern
             "Inf",          // math.Inf — CPython spells it math.inf
             "Nan",          // math.Nan — CPython spells it math.nan
+
+            // Raw BCL members reached on a builtin receiver by reverse-mangling (#1291). These are
+            // .NET's API, not Python's — CPython has len(s), s.upper(), s.strip() — so a fixture
+            // exercising them is Sharpy-only by construction and has no CPython counterpart to
+            // agree with. The oracle caught interop/bcl_member_on_builtin_receiver_typed on exactly
+            // this, which is the filter working: the fixture is out of the shared subset, not wrong.
+            "length",       // str.length — CPython spells it len(s)
+            "to_upper",     // System.String.ToUpper — CPython spells it s.upper()
+            "to_lower",     // System.String.ToLower — CPython spells it s.lower()
+            "trim",         // System.String.Trim — CPython spells it s.strip()
+            "clone",        // System.String.Clone — no CPython counterpart
         };
 
         private string? _rejection;

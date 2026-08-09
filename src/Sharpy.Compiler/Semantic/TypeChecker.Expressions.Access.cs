@@ -527,11 +527,98 @@ internal partial class TypeChecker
         }
 
         // Intentional Unknown without error for non-UserDefinedType member access:
+        // A RAW BCL member on a builtin receiver is typed from its reflected signature (#1291).
+        // `s.to_upper()` is not part of Sharpy's str API — it is System.String.ToUpper reached by
+        // reverse-mangling — so it never resolves above, fell through to Unknown, and Unknown is
+        // assignable to anything: `b: bool = s.to_upper()` was accepted in silence. (The Sharpy
+        // spelling `s.upper()` resolves earlier and has always been typed; that contrast is what
+        // makes this a hole rather than a policy.)
+        if (BclMemberTypeOnBuiltinReceiver(memberAccess, memberLookupType) is { } bclType)
+        {
+            return bclType;
+        }
+
         // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
         // are resolved by the codegen layer through CLR member discovery, not the
         // type checker. Mark as error recovery to suppress SPY0907 false positives.
         MarkExpressionAsErrorRecovery(memberAccess);
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// The semantic type of a raw BCL member reached on a builtin receiver, or <c>null</c> when the
+    /// receiver is not a builtin with a CLR type or the member does not reflect (#1291).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Deliberately narrow. Only a <see cref="BuiltinType"/> receiver is considered: a
+    /// <see cref="GenericType"/> receiver (<c>list[T].append</c>) is resolved by codegen through a
+    /// different discovery path, and typing it here would be a guess about machinery this method
+    /// does not own.
+    /// </para>
+    /// <para>
+    /// Only the PRESENT case is answered. A member that reflects nothing keeps today's Unknown
+    /// rather than drawing a refusal — a bogus member is still an ICE at emission (CS1061 behind
+    /// SPY0908), which is worth fixing, but refusing here would also refuse anything codegen can
+    /// resolve by a route this method does not know about, and a false refusal is worse than the
+    /// ICE it replaces.
+    /// </para>
+    /// </remarks>
+    private SemanticType? BclMemberTypeOnBuiltinReceiver(MemberAccess memberAccess, SemanticType receiverType)
+    {
+        if (receiverType is not BuiltinType { ClrType: { } clrType })
+        {
+            return null;
+        }
+
+        var methodName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member);
+        if (methodName != null)
+        {
+            var methods = clrType.GetMethods(System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.Static)
+                .Where(m => m.Name == methodName && !m.IsGenericMethodDefinition)
+                .ToList();
+
+            // A METHOD member is a callable, so its type is a FunctionType — returning the return
+            // type directly would make `s.to_upper()` report "'str' is not callable". Only an
+            // unambiguous signature is described: with several overloads, which one applies is a
+            // call-site decision this method does not make.
+            if (methods.Count != 1)
+            {
+                return null;
+            }
+
+            var returnType = _bclGenericMethodBridge.MapClrTypeToSemanticType(methods[0].ReturnType);
+            if (returnType is UnknownType)
+            {
+                return null;
+            }
+
+            var parameterTypes = new List<SemanticType>();
+            foreach (var parameter in methods[0].GetParameters())
+            {
+                var mapped = _bclGenericMethodBridge.MapClrTypeToSemanticType(parameter.ParameterType);
+                if (mapped is UnknownType)
+                {
+                    return null;
+                }
+
+                parameterTypes.Add(mapped);
+            }
+
+            return new FunctionType { ParameterTypes = parameterTypes, ReturnType = returnType };
+        }
+
+        var propertyName = Discovery.ClrTypeHelper.ResolveClrPropertyName(clrType, memberAccess.Member);
+        if (propertyName != null
+            && clrType.GetProperty(propertyName) is { } property)
+        {
+            var propertyType = _bclGenericMethodBridge.MapClrTypeToSemanticType(property.PropertyType);
+            return propertyType is UnknownType ? null : propertyType;
+        }
+
+        return null;
     }
 
     /// <summary>

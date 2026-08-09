@@ -1,0 +1,18 @@
+# A raw BCL member reached on a builtin receiver is typed from its reflected signature (#1291).
+#
+# `s.length` and `s.clone()` are not part of Sharpy's str API — they are System.String.Length and
+# .Clone() reached by reverse-mangling. They resolved at emission but were never typed, so the
+# checker saw Unknown, which is assignable to anything: `b: bool = s.length` was accepted in
+# silence. The Sharpy spellings (`s.upper()`) always typed correctly; that contrast is what made
+# this a hole rather than a policy.
+
+def main() -> None:
+    s: str = "abc"
+
+    n: int = s.length
+    print(n)
+
+    # Still runs exactly as before — this is a typing fix, not a lowering change.
+    print(s.to_upper())
+    print(s.trim())
+    print(s.upper())

@@ -1,0 +1,7 @@
+# The refusal half of #1291: a reflected BCL property has a type, and assigning it to the wrong
+# one is now an error instead of silence.
+
+def main() -> None:
+    s: str = "abc"
+    wrong: bool = s.length
+    print(wrong)
