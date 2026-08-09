@@ -232,7 +232,7 @@ internal partial class RoslynEmitter
             }
             // Also track in version map so assignments to parameters work correctly
             var baseName = NameMangler.ToCamelCase(param.Name);
-            _variableVersions[baseName] = 0;
+            RegisterLocalSlot(baseName, param.Name);
         }
 
         var methodSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == func.Name);
@@ -658,7 +658,7 @@ internal partial class RoslynEmitter
                 var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                 _declaredVariables.Add(paramName);
                 var baseName = NameMangler.ToCamelCase(param.Name);
-                _variableVersions[baseName] = 0;
+                RegisterLocalSlot(baseName, param.Name);
             }
 
             var bodyStatements = GenerateSuite(func.Body);

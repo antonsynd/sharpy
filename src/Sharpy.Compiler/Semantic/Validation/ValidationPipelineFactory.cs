@@ -21,6 +21,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new NamingConventionValidator())  // Order: 55 (naming convention warnings)
             .AddValidator(new TransitionWarningValidator()) // Order: 56 (Python/C# transition hints — SPY0470+)
             .AddValidator(new BuiltinNameShadowingValidator()) // Order: 57 (value-position builtin shadowing — SPY0483)
+            .AddValidator(new LocalNameCollisionValidator()) // Order: 58 (locals colliding after mangling — SPY0522)
             .AddValidator(new DecoratorValidator())         // Order: 60 (validates decorator usage)
             .AddValidator(new BodylessSyntaxValidator())    // Order: 62 (deprecation warnings for body-less methods)
             .AddValidator(new SourceGeneratorValidator())   // Order: 65 (validates @[Generator] usage and signatures)

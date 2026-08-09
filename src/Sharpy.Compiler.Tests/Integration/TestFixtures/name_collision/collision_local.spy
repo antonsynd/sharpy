@@ -1,0 +1,10 @@
+# Two distinct local spellings that compile to the same C# local are refused (#1276).
+# Before this, the emitter keyed its slot table on the mangled base, so `Zed` was emitted as a
+# plain assignment into `zed`'s storage and the program printed `7 7` where CPython prints `6 7`.
+# Only SPY0453 (naming convention) fired — a style warning standing in for a correctness refusal.
+
+def main() -> None:
+    zed: int = 6
+    Zed: int = 7
+    print(zed)
+    print(Zed)

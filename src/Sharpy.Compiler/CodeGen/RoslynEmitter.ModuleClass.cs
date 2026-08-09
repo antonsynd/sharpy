@@ -166,6 +166,7 @@ internal partial class RoslynEmitter
                 _pendingFixtures.Add(fixtureFunc);
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
+                _slotSpellings.Clear();
                 _constVariables.Clear();
                 continue;
             }
@@ -179,6 +180,7 @@ internal partial class RoslynEmitter
                 _pendingTestFunctions.Add(testFunc);
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
+                _slotSpellings.Clear();
                 _constVariables.Clear();
                 continue;
             }
@@ -191,6 +193,7 @@ internal partial class RoslynEmitter
                 moduleDeclarations.AddRange(GenerateLruCacheWrappedFunction(cachedFunc, isModuleLevel: true));
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
+                _slotSpellings.Clear();
                 _constVariables.Clear();
                 continue;
             }
@@ -210,6 +213,7 @@ internal partial class RoslynEmitter
                 }
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
+                _slotSpellings.Clear();
                 _constVariables.Clear();
                 continue;
             }
@@ -222,6 +226,7 @@ internal partial class RoslynEmitter
             {
                 _declaredVariables.Clear();
                 _variableVersions.Clear();
+                _slotSpellings.Clear();
                 _constVariables.Clear();
             }
 
@@ -943,6 +948,7 @@ internal partial class RoslynEmitter
 
             _declaredVariables.Clear();
             _variableVersions.Clear();
+            _slotSpellings.Clear();
             _constVariables.Clear();
         }
 

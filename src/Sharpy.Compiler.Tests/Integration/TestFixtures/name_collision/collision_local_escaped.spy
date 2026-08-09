@@ -1,0 +1,10 @@
+# A backtick-escaped LOCAL is still mangled at emission (#1357), so it collides with its
+# case-differing twin exactly as a bare name would — `zed` and `Zed` both emit `zed`, and the
+# generated C# would be CS0128. The refusal says so rather than pointing at a remedy that does not
+# work for locals; for TYPES the escape does preserve the spelling.
+
+def main() -> None:
+    zed: int = 6
+    `Zed`: int = 7
+    print(zed)
+    print(`Zed`)

@@ -48,6 +48,28 @@ internal partial class RoslynEmitter : ICodeEmitter
     private readonly Dictionary<string, int> _variableVersions = new();
 
     /// <summary>
+    /// Slot base name → the SOURCE spelling that claimed it, for slots whose spelling is known
+    /// (#1276).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="_variableVersions"/> is keyed on the mangled base, which collapses case: a local
+    /// <c>zed</c> and a class <c>Zed</c> both key on <c>zed</c>, so the REFERENCE <c>Zed.make()</c>
+    /// found the local's slot and emitted member access on an <c>int</c> (CS1061 → SPY0908). That
+    /// pairing is legal in both Python and C#; the defect is the lossy lookup, not the program.
+    /// </para>
+    /// <para>
+    /// A slot whose spelling is recorded here answers only that spelling; a reference spelled
+    /// differently falls through to type and module resolution. Slots seeded by paths that do not
+    /// record a spelling keep the old case-collapsing behavior, so this map only ever makes the
+    /// lookup more precise. Two DISTINCT local spellings can no longer share a slot — SPY0522
+    /// refuses that (LocalNameCollisionValidator) — so a mismatch here always means the reference
+    /// is not a local.
+    /// </para>
+    /// </remarks>
+    private readonly Dictionary<string, string> _slotSpellings = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// Tracks all source variable names (C# camelCase) declared in the current function scope.
     /// Used to avoid generating versioned names (x_1, x_2) that collide with user-declared variables.
     /// Pre-populated by scanning the function body before emission.
@@ -234,7 +256,8 @@ internal partial class RoslynEmitter : ICodeEmitter
     private record ScopeSnapshot(
         HashSet<string> DeclaredVariables,
         Dictionary<string, int> VariableVersions,
-        HashSet<string> ConstVariables);
+        HashSet<string> ConstVariables,
+        Dictionary<string, string> SlotSpellings);
 
     /// <summary>
     /// Saves a snapshot of the current local scope state.
@@ -246,7 +269,8 @@ internal partial class RoslynEmitter : ICodeEmitter
         return new ScopeSnapshot(
             new HashSet<string>(_declaredVariables),
             new Dictionary<string, int>(_variableVersions),
-            new HashSet<string>(_constVariables));
+            new HashSet<string>(_constVariables),
+            new Dictionary<string, string>(_slotSpellings, StringComparer.Ordinal));
     }
 
     /// <summary>
@@ -257,6 +281,7 @@ internal partial class RoslynEmitter : ICodeEmitter
     {
         _declaredVariables.Clear();
         _variableVersions.Clear();
+        _slotSpellings.Clear();
         _constVariables.Clear();
         _sourceVariableNames.Clear();
         _localFunctionNames.Clear();
@@ -419,6 +444,9 @@ internal partial class RoslynEmitter : ICodeEmitter
         _variableVersions.Clear();
         foreach (var (k, v) in snapshot.VariableVersions)
             _variableVersions[k] = v;
+        _slotSpellings.Clear();
+        foreach (var (k, v) in snapshot.SlotSpellings)
+            _slotSpellings[k] = v;
         _constVariables.Clear();
         _constVariables.UnionWith(snapshot.ConstVariables);
     }
@@ -617,8 +645,10 @@ internal partial class RoslynEmitter : ICodeEmitter
 
         // FIRST: Check if this is a local variable (including parameters)
         // Local variables take precedence over module-level variables and CodeGenInfo
-        // This handles parameter shadowing correctly (parameter x shadows global x)
-        if (_variableVersions.ContainsKey(baseName))
+        // This handles parameter shadowing correctly (parameter x shadows global x).
+        // The slot must belong to THIS spelling: mangling collapses case, so without the check a
+        // reference to the class `Zed` was answered by a local `zed`'s slot (#1276).
+        if (_variableVersions.ContainsKey(baseName) && SlotAnswersSpelling(baseName, name))
         {
             // There's a local variable with this name - use local resolution via service
             var resolvedName = _nameResolutionService.ResolveLocalName(
@@ -697,7 +727,7 @@ internal partial class RoslynEmitter : ICodeEmitter
         if (isNewDeclaration)
         {
             // First declaration of this local variable
-            _variableVersions[baseName] = 0;
+            RegisterLocalSlot(baseName, name);
             return baseName;
         }
         else
@@ -707,6 +737,25 @@ internal partial class RoslynEmitter : ICodeEmitter
             return baseName;
         }
     }
+
+    /// <summary>
+    /// Records a local slot together with the source spelling that claimed it (#1276), so a
+    /// reference spelled differently is not answered by this slot.
+    /// </summary>
+    private void RegisterLocalSlot(string baseName, string sourceSpelling)
+    {
+        _variableVersions[baseName] = 0;
+        _slotSpellings[baseName] = sourceSpelling;
+    }
+
+    /// <summary>
+    /// Whether the slot named <paramref name="baseName"/> belongs to <paramref name="spelling"/>.
+    /// Slots whose spelling was never recorded answer any spelling, preserving the pre-#1276
+    /// behavior for seeding paths this map does not cover.
+    /// </summary>
+    private bool SlotAnswersSpelling(string baseName, string spelling)
+        => !_slotSpellings.TryGetValue(baseName, out var owner)
+            || string.Equals(owner, spelling, StringComparison.Ordinal);
 
     /// <summary>
     /// Pre-scans statements to collect all variable names that will be declared.

@@ -1,0 +1,8 @@
+# Parameters share the local slot table, so the same collision is refused there (#1276).
+
+def takes(zed: int, Zed: int) -> None:
+    print(zed)
+    print(Zed)
+
+def main() -> None:
+    takes(6, 7)

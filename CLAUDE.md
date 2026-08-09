@@ -145,6 +145,8 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 52**: `CircularImportUsageValidator` — Circular import usage detection
 - **Order 55**: `NamingConventionValidator` — Naming convention checks
 - **Order 56**: `TransitionWarningValidator` — Transition hint diagnostics for Python/C# behavioral differences
+- **Order 57**: `BuiltinNameShadowingValidator` — Value-position builtin shadowing (SPY0483)
+- **Order 58**: `LocalNameCollisionValidator` — Locals colliding after mangling (SPY0522)
 - **Order 60**: `DecoratorValidator` — Decorator validation
 - **Order 62**: `BodylessSyntaxValidator` — Deprecation warnings for body-less method syntax
 - **Order 65**: `SourceGeneratorValidator` — Source generator attribute validation

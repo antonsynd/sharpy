@@ -59,7 +59,7 @@ internal partial class RoslynEmitter
             _declaredVariables.Add(paramName);
             // Also track in version map so assignments to parameters work correctly
             var baseName = NameMangler.ToCamelCase(param.Name);
-            _variableVersions[baseName] = 0;
+            RegisterLocalSlot(baseName, param.Name);
         }
 
         // Find super().__init__() or self.__init__() anywhere in the body and convert to

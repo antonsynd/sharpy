@@ -269,6 +269,7 @@ internal partial class RoslynEmitter
         // Save all enclosing scope state
         var savedDeclaredVars = new HashSet<string>(_declaredVariables);
         var savedVersions = new Dictionary<string, int>(_variableVersions);
+        var savedSlotSpellings = new Dictionary<string, string>(_slotSpellings, StringComparer.Ordinal);
         var savedConsts = new HashSet<string>(_constVariables);
         var savedSourceNames = new HashSet<string>(_sourceVariableNames);
         var savedLocalFuncs = new Dictionary<string, string>(_localFunctionNames);
@@ -276,6 +277,7 @@ internal partial class RoslynEmitter
         // Clear scope for the local function
         _declaredVariables.Clear();
         _variableVersions.Clear();
+        _slotSpellings.Clear();
         _constVariables.Clear();
         _sourceVariableNames.Clear();
 
@@ -368,6 +370,9 @@ internal partial class RoslynEmitter
         _variableVersions.Clear();
         foreach (var (k, v) in savedVersions)
             _variableVersions[k] = v;
+        _slotSpellings.Clear();
+        foreach (var (k, v) in savedSlotSpellings)
+            _slotSpellings[k] = v;
         _constVariables.Clear();
         _constVariables.UnionWith(savedConsts);
         _sourceVariableNames.Clear();

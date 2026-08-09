@@ -1,0 +1,12 @@
+# A local `zed` and a class `Zed` are legal in both Python and C#, and must stay legal here (#1276).
+# The emitter used to answer the REFERENCE `Zed` from the local's slot — mangling collapses case —
+# and emitted member access on an int: CS1061, surfacing as SPY0908.
+
+class Zed:
+    def make() -> int:
+        return 99
+
+def main() -> None:
+    zed: int = 6
+    print(zed)
+    print(Zed.make())
