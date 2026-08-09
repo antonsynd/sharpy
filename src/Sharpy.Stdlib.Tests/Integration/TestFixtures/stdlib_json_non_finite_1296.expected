@@ -1,0 +1,7 @@
+Infinity
+-Infinity
+NaN
+[1.0, Infinity, NaN]
+[1.0, Infinity, NaN]
+[inf, nan, -inf]
+refused

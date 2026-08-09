@@ -919,6 +919,8 @@ public class DifferentialExecutionTests : IntegrationTestBase
         {
             "Error",        // re.Error — CPython spells the module's exception re.error
             "pattern_str",  // re.Pattern.pattern_str — CPython spells it .pattern
+            "Inf",          // math.Inf — CPython spells it math.inf
+            "Nan",          // math.Nan — CPython spells it math.nan
         };
 
         private string? _rejection;

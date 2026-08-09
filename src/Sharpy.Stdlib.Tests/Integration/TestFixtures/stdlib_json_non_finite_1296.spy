@@ -1,0 +1,35 @@
+# json emits and accepts CPython's non-finite tokens (#1296).
+#
+# Infinity/-Infinity/NaN are CPython's own extension to JSON — strict JSON has no such tokens —
+# and they are its DEFAULT on both sides: dumps writes them, loads reads them. Sharpy threw
+# unconditionally while borrowing CPython's allow_nan=False message word for word, which is what
+# showed the inversion was accidental rather than a decision.
+#
+# Every expected line was produced by the equivalent CPython 3.12.13:
+#   python3 -c "import json; print(json.dumps(...))"
+#
+# The differential oracle excludes this fixture by name: Sharpy spells the constants math.Inf and
+# math.Nan where CPython spells them math.inf and math.nan, which takes the program out of the
+# shared subset (a naming divergence, not a semantic one). The expectations below are hand-verified
+# against CPython instead — that is what an excluded cell costs and why the exclusion is by name.
+import json
+import math
+
+
+def main() -> None:
+    print(json.dumps(math.Inf))
+    print(json.dumps(-math.Inf))
+    print(json.dumps(math.Nan))
+
+    xs: list[float] = [1.0, math.Inf, math.Nan]
+    print(json.dumps(xs))
+
+    # The parser accepts what the serializer writes, so the round trip is closed.
+    print(json.dumps(json.loads(json.dumps(xs))))
+    print(json.loads("[Infinity, NaN, -Infinity]"))
+
+    # allow_nan=False keeps the strict branch, with CPython's message including the value.
+    try:
+        print(json.dumps(math.Inf, allowNan=False))
+    except ValueError:
+        print("refused")

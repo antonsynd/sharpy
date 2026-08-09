@@ -44,6 +44,10 @@ namespace Sharpy
         /// compatibility (kwarg <c>default=</c>).</param>
         /// <param name="cls">Optional <see cref="JSONEncoder"/> instance. When provided,
         /// delegates serialization to <c>cls.Encode(obj)</c>.</param>
+        /// <param name="allowNan">When <c>true</c> (CPython's default), <c>Infinity</c>,
+        /// <c>-Infinity</c> and <c>NaN</c> are emitted as those literal tokens — CPython's own
+        /// extension to JSON, which its parser also accepts. When <c>false</c>, a non-finite
+        /// float raises <c>ValueError</c> (#1296).</param>
         /// <returns>A JSON string representation of <paramref name="obj"/>.</returns>
         public static string Dumps(
             object? obj,
@@ -52,7 +56,8 @@ namespace Sharpy
             bool ensureAscii = true,
             (string, string)? separators = null,
             Func<object, object?>? @default = null,
-            JSONEncoder? cls = null)
+            JSONEncoder? cls = null,
+            bool allowNan = true)
         {
             if (cls != null)
             {
@@ -68,7 +73,7 @@ namespace Sharpy
                 keySep = separators.Value.Item2;
             }
 
-            return JsonSerializer.Serialize(obj, indent, sortKeys, ensureAscii, itemSep, keySep, @default);
+            return JsonSerializer.Serialize(obj, indent, sortKeys, ensureAscii, itemSep, keySep, @default, allowNan);
         }
 
         /// <summary>
@@ -135,6 +140,9 @@ namespace Sharpy
         /// <param name="default">Optional callback invoked for any value that is not natively
         /// JSON-serializable. See <see cref="Dumps(object?, int, bool, bool, ValueTuple{string, string}?, Func{object, object?}?)"/>.</param>
         /// <param name="cls">Optional <see cref="JSONEncoder"/> instance for custom encoding.</param>
+        /// <param name="allowNan">When <c>true</c> (CPython's default), non-finite floats are
+        /// emitted as <c>Infinity</c>/<c>-Infinity</c>/<c>NaN</c>; when <c>false</c> they raise
+        /// <c>ValueError</c> (#1296).</param>
         public static void Dump(
             object? obj,
             TextFile fp,
@@ -143,14 +151,15 @@ namespace Sharpy
             bool ensureAscii = true,
             (string, string)? separators = null,
             Func<object, object?>? @default = null,
-            JSONEncoder? cls = null)
+            JSONEncoder? cls = null,
+            bool allowNan = true)
         {
             if (fp == null)
             {
                 throw new TypeError("expected TextFile, got NoneType");
             }
 
-            string json = Dumps(obj, indent, sortKeys, ensureAscii, separators, @default, cls);
+            string json = Dumps(obj, indent, sortKeys, ensureAscii, separators, @default, cls, allowNan);
             fp.Write(json);
         }
 

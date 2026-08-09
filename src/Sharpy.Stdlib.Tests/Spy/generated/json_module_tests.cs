@@ -36,57 +36,57 @@ namespace Sharpy.Stdlib.Tests.Spy
 
             public static object StampToString(object obj)
             {
-#line (834, 5) - (836, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (875, 5) - (877, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 if (obj is Stamp)
 #line hidden
                 {
-#line (835, 9) - (835, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (876, 9) - (876, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     return "2026-01-15";
 #line hidden
                 }
 
-#line (836, 5) - (836, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (877, 5) - (877, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 return obj;
 #line hidden
             }
 
             public static object StampToDict(object obj)
             {
-#line (840, 5) - (846, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (881, 5) - (887, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 if (obj is Stamp)
 #line hidden
                 {
-#line (841, 9) - (841, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (882, 9) - (882, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                     {
                     };
-#line (842, 9) - (842, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (883, 9) - (883, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     d["year"] = ((Stamp)obj!).Year;
-#line (843, 9) - (843, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (884, 9) - (884, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     d["month"] = ((Stamp)obj!).Month;
-#line (844, 9) - (844, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (885, 9) - (885, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     d["day"] = ((Stamp)obj!).Day;
-#line (845, 9) - (845, 18) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (886, 9) - (886, 18) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     return d;
 #line hidden
                 }
 
-#line (846, 5) - (846, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (887, 5) - (887, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 return obj;
 #line hidden
             }
 
             public static object FallbackCallback(object obj)
             {
-#line (850, 5) - (850, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (891, 5) - (891, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 return "fallback";
 #line hidden
             }
 
             public static object IdentityCallback(object obj)
             {
-#line (854, 5) - (854, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (895, 5) - (895, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 return obj;
 #line hidden
             }
@@ -414,39 +414,117 @@ namespace Sharpy.Stdlib.Tests.Spy
             }
 
             [Xunit.FactAttribute]
-            public void TestDumpsInfinityThrowsValueError()
+            public void TestDumpsInfinityEmitsCpythonToken()
             {
-#line (159, 5) - (162, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (165, 5) - (165, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Xunit.Assert.Equal("Infinity", json.Dumps(math.Inf));
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
+            public void TestDumpsNegativeInfinityEmitsCpythonToken()
+            {
+#line (169, 5) - (169, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Xunit.Assert.Equal("-Infinity", json.Dumps(-math.Inf));
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
+            public void TestDumpsNanEmitsCpythonToken()
+            {
+#line (173, 5) - (173, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Xunit.Assert.Equal("NaN", json.Dumps(math.Nan));
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
+            public void TestDumpsNonFiniteInsideAListEmitsTokens()
+            {
+#line (177, 5) - (177, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Sharpy.List<double> xs = new Sharpy.List<double>()
+#line hidden
+                {
+                    1.0d,
+                    math.Inf,
+                    math.Nan
+                };
+#line (178, 5) - (178, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Xunit.Assert.Equal("[1.0, Infinity, NaN]", json.Dumps(xs));
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
+            public void TestDumpsInfinityWithAllowNanFalseThrowsValueError()
+            {
+#line (182, 5) - (185, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (160, 9) - (160, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                    json.Dumps(math.Inf);
+#line (183, 9) - (183, 45) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                    json.Dumps(math.Inf, allowNan: false);
 #line hidden
                 }));
             }
 
             [Xunit.FactAttribute]
-            public void TestDumpsNanThrowsValueError()
+            public void TestDumpsNanWithAllowNanFalseThrowsValueError()
             {
-#line (164, 5) - (167, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (187, 5) - (190, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (165, 9) - (165, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                    json.Dumps(math.Nan);
+#line (188, 9) - (188, 45) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                    json.Dumps(math.Nan, allowNan: false);
 #line hidden
                 }));
+            }
+
+            [Xunit.FactAttribute]
+            public void TestLoadsAcceptsTheThreeExtendedTokens()
+            {
+#line (194, 5) - (194, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                object parsed = json.Loads("[Infinity, NaN, -Infinity]");
+#line (195, 5) - (201, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                switch (parsed)
+#line hidden
+                {
+                    case global::Sharpy.IList xs:
+#line (197, 13) - (197, 33) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                        Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(xs));
+#line hidden
+                        break;
+                    default:
+#line (199, 13) - (199, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                        Xunit.Assert.True(false);
+#line hidden
+                        break;
+                }
+            }
+
+            [Xunit.FactAttribute]
+            public void TestNonFiniteRoundTripHolds()
+            {
+#line (203, 5) - (203, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Sharpy.List<double> xs = new Sharpy.List<double>()
+#line hidden
+                {
+                    1.0d,
+                    math.Inf,
+                    -math.Inf
+                };
+#line (204, 5) - (204, 83) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+                Xunit.Assert.Equal("[1.0, Infinity, -Infinity]", json.Dumps(json.Loads(json.Dumps(xs))));
+#line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestDumpsNonSerializableTypeThrowsTypeError()
             {
-#line (169, 5) - (174, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (210, 5) - (215, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (170, 9) - (170, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (211, 9) - (211, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Dumps(new Unserializable());
 #line hidden
                 }));
@@ -455,9 +533,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsNullReturnsNull()
             {
-#line (176, 5) - (176, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (217, 5) - (217, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("null");
-#line (177, 5) - (177, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (218, 5) - (218, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Null(r);
 #line hidden
             }
@@ -465,9 +543,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsTrueReturnsTrue()
             {
-#line (181, 5) - (181, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (222, 5) - (222, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("true");
-#line (182, 5) - (182, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (223, 5) - (223, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, true));
 #line hidden
             }
@@ -475,9 +553,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsFalseReturnsFalse()
             {
-#line (186, 5) - (186, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (227, 5) - (227, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("false");
-#line (187, 5) - (187, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (228, 5) - (228, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, false));
 #line hidden
             }
@@ -485,11 +563,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsIntReturnsInt()
             {
-#line (191, 5) - (191, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (232, 5) - (232, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("42");
-#line (192, 5) - (192, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (233, 5) - (233, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<int>(r);
-#line (193, 5) - (193, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (234, 5) - (234, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(((int)r!), 42));
 #line hidden
             }
@@ -497,11 +575,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsNegativeIntReturnsInt()
             {
-#line (197, 5) - (197, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (238, 5) - (238, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("-7");
-#line (198, 5) - (198, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (239, 5) - (239, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<int>(r);
-#line (199, 5) - (199, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (240, 5) - (240, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(((int)r!), -7));
 #line hidden
             }
@@ -509,13 +587,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsLargeIntReturnsLong()
             {
-#line (203, 5) - (203, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (244, 5) - (244, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("9999999999");
-#line (204, 5) - (204, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (245, 5) - (245, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<long>(r);
-#line (205, 5) - (205, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (246, 5) - (246, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 long value = 9999999999L;
-#line (206, 5) - (206, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (247, 5) - (247, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(((long)r!), value));
 #line hidden
             }
@@ -523,11 +601,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsFloatReturnsDouble()
             {
-#line (210, 5) - (210, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (251, 5) - (251, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("3.14");
-#line (211, 5) - (211, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (252, 5) - (252, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<double>(r);
-#line (212, 5) - (212, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (253, 5) - (253, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(((double)r!), 3.14d));
 #line hidden
             }
@@ -535,11 +613,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsScientificReturnsDouble()
             {
-#line (216, 5) - (216, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (257, 5) - (257, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("1.5e10");
-#line (217, 5) - (217, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (258, 5) - (258, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<double>(r);
-#line (218, 5) - (218, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (259, 5) - (259, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(((double)r!), 1.5e10d));
 #line hidden
             }
@@ -547,11 +625,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsZeroReturnsInt()
             {
-#line (222, 5) - (222, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (263, 5) - (263, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("0");
-#line (223, 5) - (223, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (264, 5) - (264, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<int>(r);
-#line (224, 5) - (224, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (265, 5) - (265, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(((int)r!), 0));
 #line hidden
             }
@@ -559,9 +637,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsStringReturnsString()
             {
-#line (228, 5) - (228, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (269, 5) - (269, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("\"hello\"");
-#line (229, 5) - (229, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (270, 5) - (270, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, "hello"));
 #line hidden
             }
@@ -569,9 +647,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsEmptyStringReturnsEmptyString()
             {
-#line (233, 5) - (233, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (274, 5) - (274, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("\"\"");
-#line (234, 5) - (234, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (275, 5) - (275, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, ""));
 #line hidden
             }
@@ -579,9 +657,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsEscapedQuoteParsesCorrectly()
             {
-#line (240, 5) - (240, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (281, 5) - (281, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("\"say \\\"hi\\\"\"");
-#line (241, 5) - (241, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (282, 5) - (282, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, "say \"hi\""));
 #line hidden
             }
@@ -589,9 +667,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsEscapedBackslashParsesCorrectly()
             {
-#line (245, 5) - (245, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (286, 5) - (286, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("\"a\\\\b\"");
-#line (246, 5) - (246, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (287, 5) - (287, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, "a\\b"));
 #line hidden
             }
@@ -599,9 +677,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsEscapedNewlineParsesCorrectly()
             {
-#line (250, 5) - (250, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (291, 5) - (291, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("\"a\\nb\"");
-#line (251, 5) - (251, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (292, 5) - (292, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, "a\nb"));
 #line hidden
             }
@@ -609,9 +687,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsUnicodeEscapeParsesCorrectly()
             {
-#line (255, 5) - (255, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (296, 5) - (296, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("\"caf\\u00e9\"");
-#line (256, 5) - (256, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (297, 5) - (297, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, "café"));
 #line hidden
             }
@@ -619,15 +697,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsAllEscapesParsesCorrectly()
             {
-#line (260, 5) - (260, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (301, 5) - (301, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(json.Loads("\"\\/\""), "/"));
-#line (261, 5) - (261, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (302, 5) - (302, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(json.Loads("\"\\b\""), "\b"));
-#line (262, 5) - (262, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (303, 5) - (303, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(json.Loads("\"\\f\""), "\f"));
-#line (263, 5) - (263, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (304, 5) - (304, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(json.Loads("\"\\r\""), "\r"));
-#line (264, 5) - (264, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (305, 5) - (305, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(json.Loads("\"\\t\""), "\t"));
 #line hidden
             }
@@ -635,19 +713,19 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsEmptyObjectReturnsEmptyDict()
             {
-#line (270, 5) - (270, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (311, 5) - (311, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("{}");
-#line (271, 5) - (277, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (312, 5) - (318, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (r)
 #line hidden
                 {
                     case global::Sharpy.IDict d:
-#line (273, 13) - (273, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (314, 13) - (314, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(d));
 #line hidden
                         break;
                     default:
-#line (275, 13) - (275, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (316, 13) - (316, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -657,21 +735,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsSimpleObjectReturnsDict()
             {
-#line (279, 5) - (279, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (320, 5) - (320, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("{\"a\": 1, \"b\": \"two\"}");
-#line (280, 5) - (287, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (321, 5) - (328, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (r)
 #line hidden
                 {
                     case global::Sharpy.IDict d:
-#line (282, 13) - (282, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (323, 13) - (323, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["a"], 1));
-#line (283, 13) - (283, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (324, 13) - (324, 47) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["b"], "two"));
 #line hidden
                         break;
                     default:
-#line (285, 13) - (285, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (326, 13) - (326, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -681,24 +759,24 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsNestedObjectReturnsNestedDict()
             {
-#line (289, 5) - (289, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (330, 5) - (330, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("{\"outer\": {\"inner\": 42}}");
-#line (290, 5) - (302, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (331, 5) - (343, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (r)
 #line hidden
                 {
                     case global::Sharpy.IDict d:
-#line (292, 13) - (297, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (333, 13) - (338, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         switch (d["outer"])
 #line hidden
                         {
                             case global::Sharpy.IDict inner:
-#line (294, 21) - (294, 60) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (335, 21) - (335, 60) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 Xunit.Assert.True(@operator.Eq(inner["inner"], 42));
 #line hidden
                                 break;
                             default:
-#line (296, 21) - (296, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (337, 21) - (337, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 Xunit.Assert.True(false);
 #line hidden
                                 break;
@@ -706,7 +784,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                         break;
                     default:
-#line (298, 13) - (298, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (339, 13) - (339, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -716,19 +794,19 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsEmptyArrayReturnsEmptyList()
             {
-#line (304, 5) - (304, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (345, 5) - (345, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("[]");
-#line (305, 5) - (311, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (346, 5) - (352, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (r)
 #line hidden
                 {
                     case global::Sharpy.IList l:
-#line (307, 13) - (307, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (348, 13) - (348, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(l));
 #line hidden
                         break;
                     default:
-#line (309, 13) - (309, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (350, 13) - (350, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -738,25 +816,25 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsSimpleArrayReturnsList()
             {
-#line (313, 5) - (313, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (354, 5) - (354, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("[1, 2, 3]");
-#line (314, 5) - (323, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (355, 5) - (364, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (r)
 #line hidden
                 {
                     case global::Sharpy.IList l:
-#line (316, 13) - (316, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (357, 13) - (357, 32) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(l));
-#line (317, 13) - (317, 41) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (358, 13) - (358, 41) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(l[0], 1));
-#line (318, 13) - (318, 41) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (359, 13) - (359, 41) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(l[1], 2));
-#line (319, 13) - (319, 41) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (360, 13) - (360, 41) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(l[2], 3));
 #line hidden
                         break;
                     default:
-#line (321, 13) - (321, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (362, 13) - (362, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -766,25 +844,25 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsMixedArrayReturnsList()
             {
-#line (325, 5) - (325, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (366, 5) - (366, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("[1, \"two\", true, null]");
-#line (326, 5) - (335, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (367, 5) - (376, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (r)
 #line hidden
                 {
                     case global::Sharpy.IList l:
-#line (328, 13) - (328, 41) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (369, 13) - (369, 41) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(l[0], 1));
-#line (329, 13) - (329, 45) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (370, 13) - (370, 45) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(l[1], "two"));
-#line (330, 13) - (330, 44) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (371, 13) - (371, 44) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(l[2], true));
-#line (331, 13) - (331, 33) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (372, 13) - (372, 33) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.Null(l[3]);
 #line hidden
                         break;
                     default:
-#line (333, 13) - (333, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (374, 13) - (374, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -794,26 +872,26 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsNestedArrayReturnsList()
             {
-#line (337, 5) - (337, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (378, 5) - (378, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("[[1, 2], [3, 4]]");
-#line (338, 5) - (351, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (379, 5) - (392, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (r)
 #line hidden
                 {
                     case global::Sharpy.IList l:
-#line (340, 13) - (346, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (381, 13) - (387, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         switch (l[0])
 #line hidden
                         {
                             case global::Sharpy.IList inner1:
-#line (342, 21) - (342, 54) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (383, 21) - (383, 54) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 Xunit.Assert.True(@operator.Eq(inner1[0], 1));
-#line (343, 21) - (343, 54) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (384, 21) - (384, 54) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 Xunit.Assert.True(@operator.Eq(inner1[1], 2));
 #line hidden
                                 break;
                             default:
-#line (345, 21) - (345, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (386, 21) - (386, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 Xunit.Assert.True(false);
 #line hidden
                                 break;
@@ -821,7 +899,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                         break;
                     default:
-#line (347, 13) - (347, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (388, 13) - (388, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -831,9 +909,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsWithLeadingWhitespaceParses()
             {
-#line (353, 5) - (353, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (394, 5) - (394, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("  42");
-#line (354, 5) - (354, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (395, 5) - (395, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, 42));
 #line hidden
             }
@@ -841,9 +919,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsWithTrailingWhitespaceParses()
             {
-#line (358, 5) - (358, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (399, 5) - (399, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("42  ");
-#line (359, 5) - (359, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (400, 5) - (400, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, 42));
 #line hidden
             }
@@ -851,19 +929,19 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsPrettyPrintedJsonParses()
             {
-#line (363, 5) - (363, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (404, 5) - (404, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("{\n  \"a\": 1,\n  \"b\": [\n    2,\n    3\n  ]\n}");
-#line (364, 5) - (372, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (405, 5) - (413, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (r)
 #line hidden
                 {
                     case global::Sharpy.IDict d:
-#line (366, 13) - (366, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (407, 13) - (407, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["a"], 1));
 #line hidden
                         break;
                     default:
-#line (368, 13) - (368, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (409, 13) - (409, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -873,11 +951,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsEmptyStringThrowsJsonDecodeError()
             {
-#line (374, 5) - (377, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (415, 5) - (418, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (375, 9) - (375, 23) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (416, 9) - (416, 23) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("");
 #line hidden
                 }));
@@ -886,11 +964,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsInvalidJsonThrowsJsonDecodeError()
             {
-#line (379, 5) - (382, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (420, 5) - (423, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (380, 9) - (380, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (421, 9) - (421, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("invalid");
 #line hidden
                 }));
@@ -899,11 +977,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsTrailingCommaInObjectThrowsJsonDecodeError()
             {
-#line (384, 5) - (387, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (425, 5) - (428, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (385, 9) - (385, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (426, 9) - (426, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("{\"a\": 1,}");
 #line hidden
                 }));
@@ -912,11 +990,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsTrailingCommaInArrayThrowsJsonDecodeError()
             {
-#line (389, 5) - (392, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (430, 5) - (433, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (390, 9) - (390, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (431, 9) - (431, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("[1, 2,]");
 #line hidden
                 }));
@@ -925,11 +1003,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsExtraDataThrowsJsonDecodeError()
             {
-#line (394, 5) - (397, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (435, 5) - (438, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (395, 9) - (395, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (436, 9) - (436, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("1 2");
 #line hidden
                 }));
@@ -938,11 +1016,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsUnclosedStringThrowsJsonDecodeError()
             {
-#line (399, 5) - (402, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (440, 5) - (443, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (400, 9) - (400, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (441, 9) - (441, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("\"unclosed");
 #line hidden
                 }));
@@ -951,11 +1029,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsUnclosedObjectThrowsJsonDecodeError()
             {
-#line (404, 5) - (407, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (445, 5) - (448, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (405, 9) - (405, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (446, 9) - (446, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("{\"a\": 1");
 #line hidden
                 }));
@@ -964,11 +1042,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsUnclosedArrayThrowsJsonDecodeError()
             {
-#line (409, 5) - (412, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (450, 5) - (453, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (410, 9) - (410, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (451, 9) - (451, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("[1, 2");
 #line hidden
                 }));
@@ -977,15 +1055,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestJsonDecodeErrorIsValueError()
             {
-#line (414, 5) - (416, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (455, 5) - (457, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var ex = Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (415, 9) - (415, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (456, 9) - (456, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("invalid");
 #line hidden
                 }));
-#line (416, 5) - (416, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (457, 5) - (457, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<global::Sharpy.ValueError>(ex);
 #line hidden
             }
@@ -993,21 +1071,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestJsonDecodeErrorHasPositionInfo()
             {
-#line (420, 5) - (422, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (461, 5) - (463, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var ex = Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (421, 9) - (421, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (462, 9) - (462, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("invalid");
 #line hidden
                 }));
-#line (422, 5) - (422, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (463, 5) - (463, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("invalid", ex.Doc);
-#line (423, 5) - (423, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (464, 5) - (464, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal(0, ex.Pos);
-#line (424, 5) - (424, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (465, 5) - (465, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Contains("line 1", global::Sharpy.Builtins.Str(ex));
-#line (425, 5) - (425, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (466, 5) - (466, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Contains("column 1", global::Sharpy.Builtins.Str(ex));
 #line hidden
             }
@@ -1015,38 +1093,38 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRoundTripDictPreservesData()
             {
-#line (431, 5) - (431, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (472, 5) - (472, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (432, 5) - (432, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (473, 5) - (473, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["name"] = "test";
-#line (433, 5) - (433, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (474, 5) - (474, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["value"] = 42;
-#line (434, 5) - (434, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (475, 5) - (475, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["active"] = true;
-#line (435, 5) - (435, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (476, 5) - (476, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["nothing"] = null;
-#line (436, 5) - (436, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (477, 5) - (477, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object parsed = json.Loads(json.Dumps(d));
-#line (437, 5) - (446, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (478, 5) - (487, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (parsed)
 #line hidden
                 {
                     case global::Sharpy.IDict result:
-#line (439, 13) - (439, 56) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (480, 13) - (480, 56) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result["name"], "test"));
-#line (440, 13) - (440, 53) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (481, 13) - (481, 53) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result["value"], 42));
-#line (441, 13) - (441, 56) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (482, 13) - (482, 56) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result["active"], true));
-#line (442, 13) - (442, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (483, 13) - (483, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.Null(result["nothing"]);
 #line hidden
                         break;
                     default:
-#line (444, 13) - (444, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (485, 13) - (485, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -1056,42 +1134,42 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRoundTripListPreservesData()
             {
-#line (448, 5) - (448, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (489, 5) - (489, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<object> l = new Sharpy.List<object>()
 #line hidden
                 {
                 };
-#line (449, 5) - (449, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (490, 5) - (490, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 l.Append(1);
-#line (450, 5) - (450, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (491, 5) - (491, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 l.Append("two");
-#line (451, 5) - (451, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (492, 5) - (492, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 l.Append(3.0d);
-#line (452, 5) - (452, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (493, 5) - (493, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 l.Append(false);
-#line (453, 5) - (453, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (494, 5) - (494, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 l.Append(null);
-#line (454, 5) - (454, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (495, 5) - (495, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object parsed = json.Loads(json.Dumps(l));
-#line (455, 5) - (465, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (496, 5) - (506, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (parsed)
 #line hidden
                 {
                     case global::Sharpy.IList result:
-#line (457, 13) - (457, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (498, 13) - (498, 46) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result[0], 1));
-#line (458, 13) - (458, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (499, 13) - (499, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result[1], "two"));
-#line (459, 13) - (459, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (500, 13) - (500, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result[2], 3.0d));
-#line (460, 13) - (460, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (501, 13) - (501, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result[3], false));
-#line (461, 13) - (461, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (502, 13) - (502, 38) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.Null(result[4]);
 #line hidden
                         break;
                     default:
-#line (463, 13) - (463, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (504, 13) - (504, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -1101,69 +1179,69 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRoundTripNestedComplexPreservesData()
             {
-#line (467, 5) - (467, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (508, 5) - (508, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> item1 = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (468, 5) - (468, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (509, 5) - (509, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 item1["id"] = 1;
-#line (469, 5) - (469, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (510, 5) - (510, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 item1["name"] = "alpha";
-#line (470, 5) - (470, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (511, 5) - (511, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> item2 = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (471, 5) - (471, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (512, 5) - (512, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 item2["id"] = 2;
-#line (472, 5) - (472, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (513, 5) - (513, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 item2["name"] = "beta";
-#line (473, 5) - (473, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (514, 5) - (514, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<object> items = new Sharpy.List<object>()
 #line hidden
                 {
                 };
-#line (474, 5) - (474, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (515, 5) - (515, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 items.Append(item1);
-#line (475, 5) - (475, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (516, 5) - (516, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 items.Append(item2);
-#line (476, 5) - (476, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (517, 5) - (517, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> root = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (477, 5) - (477, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (518, 5) - (518, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 root["items"] = items;
-#line (478, 5) - (478, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (519, 5) - (519, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 root["count"] = 2;
-#line (479, 5) - (479, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (520, 5) - (520, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object parsed = json.Loads(json.Dumps(root));
-#line (480, 5) - (496, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (521, 5) - (537, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (parsed)
 #line hidden
                 {
                     case global::Sharpy.IDict result:
-#line (482, 13) - (482, 52) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (523, 13) - (523, 52) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(result["count"], 2));
-#line (483, 13) - (493, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (524, 13) - (534, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         switch (result["items"])
 #line hidden
                         {
                             case global::Sharpy.IList resultItems:
-#line (485, 21) - (491, 1) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (526, 21) - (532, 1) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 switch (resultItems[0])
 #line hidden
                                 {
                                     case global::Sharpy.IDict first:
-#line (487, 29) - (487, 64) 40 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (528, 29) - (528, 64) 40 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                         Xunit.Assert.True(@operator.Eq(first["id"], 1));
-#line (488, 29) - (488, 72) 40 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (529, 29) - (529, 72) 40 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                         Xunit.Assert.True(@operator.Eq(first["name"], "alpha"));
 #line hidden
                                         break;
                                     default:
-#line (490, 29) - (490, 42) 40 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (531, 29) - (531, 42) 40 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                         Xunit.Assert.True(false);
 #line hidden
                                         break;
@@ -1171,7 +1249,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                                 break;
                             default:
-#line (492, 21) - (492, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (533, 21) - (533, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 Xunit.Assert.True(false);
 #line hidden
                                 break;
@@ -1179,7 +1257,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                         break;
                     default:
-#line (494, 13) - (494, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (535, 13) - (535, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -1189,11 +1267,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRoundTripStringWithEscapesPreservesData()
             {
-#line (498, 5) - (498, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (539, 5) - (539, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var original = "line1\nline2\ttab \"quoted\" back\\slash";
-#line (499, 5) - (499, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (540, 5) - (540, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads(json.Dumps(original));
-#line (500, 5) - (500, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (541, 5) - (541, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, original));
 #line hidden
             }
@@ -1201,11 +1279,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRoundTripUnicodeStringPreservesData()
             {
-#line (504, 5) - (504, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (545, 5) - (545, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var original = "café üñîçöðé";
-#line (505, 5) - (505, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (546, 5) - (546, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads(json.Dumps(original));
-#line (506, 5) - (506, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (547, 5) - (547, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(r, original));
 #line hidden
             }
@@ -1213,38 +1291,38 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsDeeplyNestedHandlesRecursion()
             {
-#line (513, 5) - (513, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (554, 5) - (554, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var s = global::Sharpy.StringHelpers.Repeat("[", 20) + "1" + global::Sharpy.StringHelpers.Repeat("]", 20);
-#line (514, 5) - (514, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (555, 5) - (555, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object current = json.Loads(s);
-#line (515, 5) - (515, 10) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (556, 5) - (556, 10) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var i = 0;
-#line (516, 5) - (523, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (557, 5) - (564, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 while (i < 20)
 #line hidden
                 {
-#line (517, 9) - (522, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (558, 9) - (563, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     switch (current)
 #line hidden
                     {
                         case global::Sharpy.IList l:
-#line (519, 17) - (519, 31) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (560, 17) - (560, 31) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                             current = l[0];
 #line hidden
                             break;
                         default:
-#line (521, 17) - (521, 30) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (562, 17) - (562, 30) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                             Xunit.Assert.True(false);
 #line hidden
                             break;
                     }
 
-#line (522, 9) - (522, 18) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (563, 9) - (563, 18) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     i = i + 1;
 #line hidden
                 }
 
-#line (523, 5) - (523, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (564, 5) - (564, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.True(@operator.Eq(current, 1));
 #line hidden
             }
@@ -1252,19 +1330,19 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsObjectWithDuplicateKeysLastWins()
             {
-#line (527, 5) - (527, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (568, 5) - (568, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("{\"a\": 1, \"a\": 2}");
-#line (528, 5) - (534, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (569, 5) - (575, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (r)
 #line hidden
                 {
                     case global::Sharpy.IDict d:
-#line (530, 13) - (530, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (571, 13) - (571, 43) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(@operator.Eq(d["a"], 2));
 #line hidden
                         break;
                     default:
-#line (532, 13) - (532, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (573, 13) - (573, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -1274,40 +1352,40 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsEmptyObjectAndArrayInArray()
             {
-#line (536, 5) - (536, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (577, 5) - (577, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 object r = json.Loads("[{}, []]");
-#line (537, 5) - (552, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (578, 5) - (593, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 switch (r)
 #line hidden
                 {
                     case global::Sharpy.IList l:
-#line (539, 13) - (544, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (580, 13) - (585, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         switch (l[0])
 #line hidden
                         {
                             case global::Sharpy.IDict _:
-#line (541, 21) - (541, 26) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (582, 21) - (582, 26) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 ;
 #line hidden
                                 break;
                             default:
-#line (543, 21) - (543, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (584, 21) - (584, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 Xunit.Assert.True(false);
 #line hidden
                                 break;
                         }
 
-#line (544, 13) - (549, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (585, 13) - (590, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         switch (l[1])
 #line hidden
                         {
                             case global::Sharpy.IList _:
-#line (546, 21) - (546, 26) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (587, 21) - (587, 26) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 ;
 #line hidden
                                 break;
                             default:
-#line (548, 21) - (548, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (589, 21) - (589, 34) 32 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                 Xunit.Assert.True(false);
 #line hidden
                                 break;
@@ -1315,7 +1393,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                         break;
                     default:
-#line (550, 13) - (550, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (591, 13) - (591, 26) 24 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                         Xunit.Assert.True(false);
 #line hidden
                         break;
@@ -1325,14 +1403,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsNullValueInDictSerializesAsNull()
             {
-#line (554, 5) - (554, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (595, 5) - (595, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (555, 5) - (555, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (596, 5) - (596, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["key"] = null;
-#line (556, 5) - (556, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (597, 5) - (597, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"key\": null}", json.Dumps(d));
 #line hidden
             }
@@ -1340,14 +1418,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsNullInListSerializesAsNull()
             {
-#line (560, 5) - (560, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (601, 5) - (601, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<object> l = new Sharpy.List<object>()
 #line hidden
                 {
                 };
-#line (561, 5) - (561, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (602, 5) - (602, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 l.Append(null);
-#line (562, 5) - (562, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (603, 5) - (603, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("[null]", json.Dumps(l));
 #line hidden
             }
@@ -1355,16 +1433,16 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDictStringKeyReturnsJsonObject()
             {
-#line (568, 5) - (568, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (609, 5) - (609, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (569, 5) - (569, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (610, 5) - (610, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["a"] = 1;
-#line (570, 5) - (570, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (611, 5) - (611, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["b"] = 2;
-#line (571, 5) - (571, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (612, 5) - (612, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"a\": 1, \"b\": 2}", json.Dumps(d));
 #line hidden
             }
@@ -1372,7 +1450,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDictStringKeyIntReturnsJsonObject()
             {
-#line (575, 5) - (575, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (616, 5) - (616, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
 #line hidden
                 {
@@ -1385,7 +1463,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                         20
                     }
                 };
-#line (576, 5) - (576, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (617, 5) - (617, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"x\": 10, \"y\": 20}", json.Dumps(d));
 #line hidden
             }
@@ -1393,7 +1471,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsNestedDictStringKeyReturnsNestedObject()
             {
-#line (580, 5) - (580, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (621, 5) - (621, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, int> inner = new Sharpy.Dict<string, int>()
 #line hidden
                 {
@@ -1402,14 +1480,14 @@ namespace Sharpy.Stdlib.Tests.Spy
                         1
                     }
                 };
-#line (581, 5) - (581, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (622, 5) - (622, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> outer = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (582, 5) - (582, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (623, 5) - (623, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 outer["inner"] = inner;
-#line (583, 5) - (583, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (624, 5) - (624, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"inner\": {\"x\": 1}}", json.Dumps(outer));
 #line hidden
             }
@@ -1417,18 +1495,18 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDictStringKeyWithSortKeysSortsKeys()
             {
-#line (587, 5) - (587, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (628, 5) - (628, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (588, 5) - (588, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (629, 5) - (629, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["c"] = 3;
-#line (589, 5) - (589, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (630, 5) - (630, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["a"] = 1;
-#line (590, 5) - (590, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (631, 5) - (631, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["b"] = 2;
-#line (591, 5) - (591, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (632, 5) - (632, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"a\": 1, \"b\": 2, \"c\": 3}", json.Dumps(d, sortKeys: true));
 #line hidden
             }
@@ -1436,16 +1514,16 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDictStringKeyWithIndentPrettyPrints()
             {
-#line (595, 5) - (595, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (636, 5) - (636, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (596, 5) - (596, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (637, 5) - (637, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["a"] = 1;
-#line (597, 5) - (597, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (638, 5) - (638, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["b"] = 2;
-#line (598, 5) - (598, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (639, 5) - (639, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\n  \"a\": 1,\n  \"b\": 2\n}", json.Dumps(d, indent: 2));
 #line hidden
             }
@@ -1453,7 +1531,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDictStringKeyNestedDictStringKeyDictReturnsNestedObjects()
             {
-#line (602, 5) - (602, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (643, 5) - (643, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, int> leaf = new Sharpy.Dict<string, int>()
 #line hidden
                 {
@@ -1462,14 +1540,14 @@ namespace Sharpy.Stdlib.Tests.Spy
                         42
                     }
                 };
-#line (603, 5) - (603, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (644, 5) - (644, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, Sharpy.Dict<string, int>> inner = new Sharpy.Dict<string, Sharpy.Dict<string, int>>()
 #line hidden
                 {
                 };
-#line (604, 5) - (604, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (645, 5) - (645, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 inner["mid"] = leaf;
-#line (605, 5) - (605, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (646, 5) - (646, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"mid\": {\"val\": 42}}", json.Dumps(inner));
 #line hidden
             }
@@ -1477,7 +1555,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsListOfIntReturnsArray()
             {
-#line (611, 5) - (611, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (652, 5) - (652, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<int> l = new Sharpy.List<int>()
 #line hidden
                 {
@@ -1485,7 +1563,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     2,
                     3
                 };
-#line (612, 5) - (612, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (653, 5) - (653, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("[1, 2, 3]", json.Dumps(l));
 #line hidden
             }
@@ -1493,12 +1571,12 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsEmptyListOfIntReturnsEmptyArray()
             {
-#line (616, 5) - (616, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (657, 5) - (657, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<int> l = new Sharpy.List<int>()
 #line hidden
                 {
                 };
-#line (617, 5) - (617, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (658, 5) - (658, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("[]", json.Dumps(l));
 #line hidden
             }
@@ -1506,13 +1584,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsSetOfStringReturnsArray()
             {
-#line (621, 5) - (621, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (662, 5) - (662, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Set<string> s = new Sharpy.Set<string>()
 #line hidden
                 {
                     "hello"
                 };
-#line (622, 5) - (622, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (663, 5) - (663, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("[\"hello\"]", json.Dumps(s));
 #line hidden
             }
@@ -1520,14 +1598,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsListOfDoubleReturnsArray()
             {
-#line (626, 5) - (626, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (667, 5) - (667, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<double> l = new Sharpy.List<double>()
 #line hidden
                 {
                     1.5d,
                     2.5d
                 };
-#line (627, 5) - (627, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (668, 5) - (668, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("[1.5, 2.5]", json.Dumps(l));
 #line hidden
             }
@@ -1535,14 +1613,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsListOfBoolReturnsArray()
             {
-#line (631, 5) - (631, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (672, 5) - (672, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<bool> l = new Sharpy.List<bool>()
 #line hidden
                 {
                     true,
                     false
                 };
-#line (632, 5) - (632, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (673, 5) - (673, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("[true, false]", json.Dumps(l));
 #line hidden
             }
@@ -1550,21 +1628,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsNestedListOfIntInDictSerializes()
             {
-#line (636, 5) - (636, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (677, 5) - (677, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<int> inner = new Sharpy.List<int>()
 #line hidden
                 {
                     10,
                     20
                 };
-#line (637, 5) - (637, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (678, 5) - (678, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (638, 5) - (638, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (679, 5) - (679, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["nums"] = inner;
-#line (639, 5) - (639, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (680, 5) - (680, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"nums\": [10, 20]}", json.Dumps(d));
 #line hidden
             }
@@ -1572,14 +1650,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsListOfIntWithIndentPrettyPrints()
             {
-#line (643, 5) - (643, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (684, 5) - (684, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<int> l = new Sharpy.List<int>()
 #line hidden
                 {
                     1,
                     2
                 };
-#line (644, 5) - (644, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (685, 5) - (685, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("[\n  1,\n  2\n]", json.Dumps(l, indent: 2));
 #line hidden
             }
@@ -1587,16 +1665,16 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDictWithCompactSeparatorsOmitsWhitespace()
             {
-#line (650, 5) - (650, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (691, 5) - (691, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (651, 5) - (651, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (692, 5) - (692, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["a"] = 1;
-#line (652, 5) - (652, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (693, 5) - (693, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["b"] = 2;
-#line (653, 5) - (653, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (694, 5) - (694, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"a\":1,\"b\":2}", json.Dumps(d, separators: (",", ":")));
 #line hidden
             }
@@ -1604,16 +1682,16 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDictWithCustomSeparatorsUsesGivenStrings()
             {
-#line (657, 5) - (657, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (698, 5) - (698, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (658, 5) - (658, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (699, 5) - (699, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["a"] = 1;
-#line (659, 5) - (659, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (700, 5) - (700, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["b"] = 2;
-#line (660, 5) - (660, 82) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (701, 5) - (701, 82) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"a\" = 1 ; \"b\" = 2}", json.Dumps(d, separators: (" ; ", " = ")));
 #line hidden
             }
@@ -1621,7 +1699,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsListWithCompactSeparatorsOmitsWhitespace()
             {
-#line (664, 5) - (664, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (705, 5) - (705, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<int> l = new Sharpy.List<int>()
 #line hidden
                 {
@@ -1629,7 +1707,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     2,
                     3
                 };
-#line (665, 5) - (665, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (706, 5) - (706, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("[1,2,3]", json.Dumps(l, separators: (",", ":")));
 #line hidden
             }
@@ -1637,22 +1715,22 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsNullSeparatorsProducesDefaultOutput()
             {
-#line (669, 5) - (669, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (710, 5) - (710, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (670, 5) - (670, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (711, 5) - (711, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["a"] = 1;
-#line (671, 5) - (671, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (712, 5) - (712, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["b"] = 2;
-#line (672, 5) - (672, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (713, 5) - (713, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var explicitNull = json.Dumps(d, separators: null);
-#line (673, 5) - (673, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (714, 5) - (714, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var defaultCall = json.Dumps(d);
-#line (674, 5) - (674, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (715, 5) - (715, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal(defaultCall, explicitNull);
-#line (675, 5) - (675, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (716, 5) - (716, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"a\": 1, \"b\": 2}", explicitNull);
 #line hidden
             }
@@ -1660,16 +1738,16 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsSeparatorsWithIndentUsesNewlineForStructureAndKeySeparator()
             {
-#line (679, 5) - (679, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (720, 5) - (720, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (680, 5) - (680, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (721, 5) - (721, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["a"] = 1;
-#line (681, 5) - (681, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (722, 5) - (722, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["b"] = 2;
-#line (682, 5) - (682, 95) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (723, 5) - (723, 95) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\n  \"a\": 1,\n  \"b\": 2\n}", json.Dumps(d, indent: 2, separators: (",", ": ")));
 #line hidden
             }
@@ -1677,25 +1755,25 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsNestedDictWithCompactSeparatorsAppliesRecursively()
             {
-#line (686, 5) - (686, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (727, 5) - (727, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> inner = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (687, 5) - (687, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (728, 5) - (728, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 inner["x"] = 1;
-#line (688, 5) - (688, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (729, 5) - (729, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 inner["y"] = 2;
-#line (689, 5) - (689, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (730, 5) - (730, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> outer = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (690, 5) - (690, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (731, 5) - (731, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 outer["point"] = inner;
-#line (691, 5) - (691, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (732, 5) - (732, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 outer["count"] = 3;
-#line (692, 5) - (692, 100) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (733, 5) - (733, 100) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"point\":{\"x\":1,\"y\":2},\"count\":3}", json.Dumps(outer, separators: (",", ":")));
 #line hidden
             }
@@ -1703,30 +1781,30 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsNestedListWithCompactSeparatorsAppliesRecursively()
             {
-#line (696, 5) - (696, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (737, 5) - (737, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<int> inner1 = new Sharpy.List<int>()
 #line hidden
                 {
                     1,
                     2
                 };
-#line (697, 5) - (697, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (738, 5) - (738, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<int> inner2 = new Sharpy.List<int>()
 #line hidden
                 {
                     3,
                     4
                 };
-#line (698, 5) - (698, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (739, 5) - (739, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<object> outer = new Sharpy.List<object>()
 #line hidden
                 {
                 };
-#line (699, 5) - (699, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (740, 5) - (740, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 outer.Append(inner1);
-#line (700, 5) - (700, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (741, 5) - (741, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 outer.Append(inner2);
-#line (701, 5) - (701, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (742, 5) - (742, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("[[1,2],[3,4]]", json.Dumps(outer, separators: (",", ":")));
 #line hidden
             }
@@ -1734,7 +1812,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsStrKeyDictWithCompactSeparatorsOmitsWhitespace()
             {
-#line (705, 5) - (705, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (746, 5) - (746, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, int> d = new Sharpy.Dict<string, int>()
 #line hidden
                 {
@@ -1747,7 +1825,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                         2
                     }
                 };
-#line (706, 5) - (706, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (747, 5) - (747, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"a\":1,\"b\":2}", json.Dumps(d, separators: (",", ":")));
 #line hidden
             }
@@ -1755,9 +1833,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDefaultCallbackConvertsCustomTypeToString()
             {
-#line (714, 5) - (714, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (755, 5) - (755, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var stamp = new Stamp();
-#line (715, 5) - (715, 75) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (756, 5) - (756, 75) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("\"2026-01-15\"", json.Dumps(stamp, @default: StampToString!));
 #line hidden
             }
@@ -1765,9 +1843,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDefaultCallbackConvertsCustomTypeToDict()
             {
-#line (719, 5) - (719, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (760, 5) - (760, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var stamp = new Stamp();
-#line (720, 5) - (720, 102) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (761, 5) - (761, 102) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"year\": 2026, \"month\": 1, \"day\": 15}", json.Dumps(stamp, @default: StampToDict!));
 #line hidden
             }
@@ -1775,7 +1853,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDefaultCallbackNotInvokedForNull()
             {
-#line (725, 5) - (725, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (766, 5) - (766, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("null", json.Dumps(null, @default: FallbackCallback!));
 #line hidden
             }
@@ -1783,7 +1861,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDefaultCallbackNotInvokedForNativelySerializableTypes()
             {
-#line (729, 5) - (729, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (770, 5) - (770, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("42", json.Dumps(42, @default: FallbackCallback!));
 #line hidden
             }
@@ -1791,13 +1869,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDefaultCallbackReturningSameObjectRaisesTypeError()
             {
-#line (733, 5) - (733, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (774, 5) - (774, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var stamp = new Stamp();
-#line (734, 5) - (737, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (775, 5) - (778, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (735, 9) - (735, 53) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (776, 9) - (776, 53) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Dumps(stamp, @default: IdentityCallback!);
 #line hidden
                 }));
@@ -1806,13 +1884,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsNoDefaultCallbackNonSerializableTypeRaisesTypeError()
             {
-#line (739, 5) - (739, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (780, 5) - (780, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var stamp = new Stamp();
-#line (740, 5) - (743, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (781, 5) - (784, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
 #line hidden
                 {
-#line (741, 9) - (741, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (782, 9) - (782, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Dumps(stamp);
 #line hidden
                 }));
@@ -1821,18 +1899,18 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDefaultCallbackNestedInDictIsInvokedForValue()
             {
-#line (745, 5) - (745, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (786, 5) - (786, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var stamp = new Stamp();
-#line (746, 5) - (746, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (787, 5) - (787, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (747, 5) - (747, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (788, 5) - (788, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["when"] = stamp;
-#line (748, 5) - (748, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (789, 5) - (789, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["count"] = 5;
-#line (749, 5) - (749, 97) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (790, 5) - (790, 97) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"when\": \"2026-01-15\", \"count\": 5}", json.Dumps(d, @default: StampToString!));
 #line hidden
             }
@@ -1840,18 +1918,18 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDefaultCallbackNestedInListIsInvokedForElement()
             {
-#line (753, 5) - (753, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (794, 5) - (794, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var stamp = new Stamp();
-#line (754, 5) - (754, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (795, 5) - (795, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<object> l = new Sharpy.List<object>()
 #line hidden
                 {
                 };
-#line (755, 5) - (755, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (796, 5) - (796, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 l.Append(stamp);
-#line (756, 5) - (756, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (797, 5) - (797, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 l.Append(1);
-#line (757, 5) - (757, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (798, 5) - (798, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("[\"2026-01-15\", 1]", json.Dumps(l, @default: StampToString!));
 #line hidden
             }
@@ -1859,18 +1937,18 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsDefaultAndSeparatorsCombinedCorrectly()
             {
-#line (761, 5) - (761, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (802, 5) - (802, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var stamp = new Stamp();
-#line (762, 5) - (762, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (803, 5) - (803, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (763, 5) - (763, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (804, 5) - (804, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["when"] = stamp;
-#line (764, 5) - (764, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (805, 5) - (805, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 d["count"] = 5;
-#line (765, 5) - (765, 117) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (806, 5) - (806, 117) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"when\":\"2026-01-15\",\"count\":5}", json.Dumps(d, separators: (",", ":"), @default: StampToString!));
 #line hidden
             }
@@ -1879,36 +1957,36 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDumpWritesJsonToFile()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (772, 5) - (772, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (813, 5) - (813, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var path = tmpPath + "/data.json";
-#line (773, 5) - (773, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (814, 5) - (814, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> data = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (774, 5) - (774, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (815, 5) - (815, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 data["key"] = "value";
-#line (775, 5) - (777, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (816, 5) - (818, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 using (var fp = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
-#line (776, 9) - (776, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (817, 9) - (817, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Dump(data, fp);
 #line hidden
                 }
 
-#line (777, 5) - (777, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (818, 5) - (818, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 string content = "";
-#line (778, 5) - (780, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (819, 5) - (821, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 using (var fp2 = global::Sharpy.Builtins.Open(path, "r"))
 #line hidden
                 {
-#line (779, 9) - (779, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (820, 9) - (820, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     content = fp2.Read();
 #line hidden
                 }
 
-#line (780, 5) - (780, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (821, 5) - (821, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("{\"key\": \"value\"}", content);
 #line hidden
             }
@@ -1917,34 +1995,34 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadReadsJsonFromFile()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (784, 5) - (784, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (825, 5) - (825, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var path = tmpPath + "/data.json";
-#line (785, 5) - (787, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (826, 5) - (828, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 using (var fp = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
-#line (786, 9) - (786, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (827, 9) - (827, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     fp.Write("{\"key\": \"value\"}");
 #line hidden
                 }
 
-#line (787, 5) - (795, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (828, 5) - (836, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 using (var fp2 = global::Sharpy.Builtins.Open(path, "r"))
 #line hidden
                 {
-#line (788, 9) - (788, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (829, 9) - (829, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     object result = json.Load(fp2);
-#line (789, 9) - (795, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (830, 9) - (836, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     switch (result)
 #line hidden
                     {
                         case global::Sharpy.IDict d:
-#line (791, 17) - (791, 55) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (832, 17) - (832, 55) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                             Xunit.Assert.True(@operator.Eq(d["key"], "value"));
 #line hidden
                             break;
                         default:
-#line (793, 17) - (793, 30) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (834, 17) - (834, 30) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                             Xunit.Assert.True(false);
 #line hidden
                             break;
@@ -1956,61 +2034,61 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDumpLoadRoundTripThroughFile()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (797, 5) - (797, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (838, 5) - (838, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var path = tmpPath + "/data.json";
-#line (798, 5) - (798, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (839, 5) - (839, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.Dict<string, object> data = new Sharpy.Dict<string, object>()
 #line hidden
                 {
                 };
-#line (799, 5) - (799, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (840, 5) - (840, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 data["name"] = "test";
-#line (800, 5) - (800, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (841, 5) - (841, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Sharpy.List<object> values = new Sharpy.List<object>()
 #line hidden
                 {
                 };
-#line (801, 5) - (801, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (842, 5) - (842, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 values.Append(1);
-#line (802, 5) - (802, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (843, 5) - (843, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 values.Append(2);
-#line (803, 5) - (803, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (844, 5) - (844, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 values.Append(3);
-#line (804, 5) - (804, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (845, 5) - (845, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 data["values"] = values;
-#line (805, 5) - (807, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (846, 5) - (848, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 using (var fp = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
-#line (806, 9) - (806, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (847, 9) - (847, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Dump(data, fp, indent: 2);
 #line hidden
                 }
 
-#line (807, 5) - (823, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (848, 5) - (864, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 using (var fp2 = global::Sharpy.Builtins.Open(path, "r"))
 #line hidden
                 {
-#line (808, 9) - (808, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (849, 9) - (849, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     object result = json.Load(fp2);
-#line (809, 9) - (823, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (850, 9) - (864, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     switch (result)
 #line hidden
                     {
                         case global::Sharpy.IDict d:
-#line (811, 17) - (811, 55) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (852, 17) - (852, 55) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                             Xunit.Assert.True(@operator.Eq(d["name"], "test"));
-#line (812, 17) - (817, 1) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (853, 17) - (858, 1) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                             switch (d["values"])
 #line hidden
                             {
                                 case global::Sharpy.IList vals:
-#line (814, 25) - (814, 47) 36 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (855, 25) - (855, 47) 36 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                     Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(vals));
 #line hidden
                                     break;
                                 default:
-#line (816, 25) - (816, 38) 36 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (857, 25) - (857, 38) 36 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                                     Xunit.Assert.True(false);
 #line hidden
                                     break;
@@ -2018,7 +2096,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                             break;
                         default:
-#line (818, 17) - (818, 30) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (859, 17) - (859, 30) 28 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                             Xunit.Assert.True(false);
 #line hidden
                             break;
@@ -2029,17 +2107,17 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsFloat32UsesSinglePrecisionDigits()
             {
-#line (872, 5) - (872, 13) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (913, 5) - (913, 13) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var a = 0.1f;
-#line (873, 5) - (873, 13) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (914, 5) - (914, 13) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var b = 1.1f;
-#line (874, 5) - (874, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (915, 5) - (915, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var c = 3.14159f;
-#line (875, 5) - (875, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (916, 5) - (916, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("0.1", json.Dumps(a));
-#line (876, 5) - (876, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (917, 5) - (917, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("1.1", json.Dumps(b));
-#line (877, 5) - (877, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (918, 5) - (918, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("3.14159", json.Dumps(c));
 #line hidden
             }
@@ -2047,13 +2125,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsFloat32AgreesWithStr()
             {
-#line (883, 5) - (883, 13) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (924, 5) - (924, 13) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var a = 0.1f;
-#line (884, 5) - (884, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (925, 5) - (925, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var c = 3.14159f;
-#line (885, 5) - (885, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (926, 5) - (926, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal(global::Sharpy.Builtins.Str(a), json.Dumps(a));
-#line (886, 5) - (886, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
+#line (927, 5) - (927, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal(global::Sharpy.Builtins.Str(c), json.Dumps(c));
 #line hidden
             }

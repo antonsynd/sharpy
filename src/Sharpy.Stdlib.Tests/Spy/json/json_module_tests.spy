@@ -152,17 +152,58 @@ def test_dumps_nested_indent_indents_correctly():
     outer["inner"] = inner
     assert json.dumps(outer, indent=2) == "{\n  \"inner\": {\n    \"x\": 1\n  }\n}"
 
+# --- Non-finite floats: CPython's tokens by default, strict on request (#1296) ---
+#
+# ORACLE: CPython 3.12.13. Infinity/-Infinity/NaN are CPython's own extension to JSON — strict
+# JSON has no such tokens — and they are its DEFAULT for dumps AND accepted by its loads.
+# Sharpy used to throw unconditionally while borrowing CPython's allow_nan=False message verbatim,
+# which is how the inversion showed: the module emitted the strict path's diagnostic from the
+# default path.
+
+@test
+def test_dumps_infinity_emits_cpython_token():
+    assert json.dumps(math.Inf) == "Infinity"
+
+@test
+def test_dumps_negative_infinity_emits_cpython_token():
+    assert json.dumps(-math.Inf) == "-Infinity"
+
+@test
+def test_dumps_nan_emits_cpython_token():
+    assert json.dumps(math.Nan) == "NaN"
+
+@test
+def test_dumps_non_finite_inside_a_list_emits_tokens():
+    xs: list[float] = [1.0, math.Inf, math.Nan]
+    assert json.dumps(xs) == "[1.0, Infinity, NaN]"
+
+@test
+def test_dumps_infinity_with_allow_nan_false_throws_value_error():
+    with assert_raises(ValueError):
+        json.dumps(math.Inf, allowNan=False)
+
+@test
+def test_dumps_nan_with_allow_nan_false_throws_value_error():
+    with assert_raises(ValueError):
+        json.dumps(math.Nan, allowNan=False)
+
+@test
+def test_loads_accepts_the_three_extended_tokens():
+    # The other half of the parity: a serializer emitting tokens its own parser rejects would be
+    # a new asymmetry, so both sides move together.
+    parsed: object = json.loads("[Infinity, NaN, -Infinity]")
+    match parsed:
+        case list() as xs:
+            assert len(xs) == 3
+        case _:
+            assert False
+
+@test
+def test_non_finite_round_trip_holds():
+    xs: list[float] = [1.0, math.Inf, -math.Inf]
+    assert json.dumps(json.loads(json.dumps(xs))) == "[1.0, Infinity, -Infinity]"
+
 # --- Dumps - Error Cases ---
-
-@test
-def test_dumps_infinity_throws_value_error():
-    with assert_raises(ValueError):
-        json.dumps(math.Inf)
-
-@test
-def test_dumps_nan_throws_value_error():
-    with assert_raises(ValueError):
-        json.dumps(math.Nan)
 
 @test
 def test_dumps_non_serializable_type_throws_type_error():

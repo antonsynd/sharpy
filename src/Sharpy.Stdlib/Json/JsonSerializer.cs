@@ -22,10 +22,11 @@ namespace Sharpy
             bool ensureAscii = true,
             string? itemSeparator = null,
             string? keySeparator = null,
-            Func<object, object?>? defaultFunc = null)
+            Func<object, object?>? defaultFunc = null,
+            bool allowNan = true)
         {
             var sb = new StringBuilder();
-            SerializeValue(sb, obj, indent, sortKeys, ensureAscii, 0, itemSeparator, keySeparator, defaultFunc);
+            SerializeValue(sb, obj, indent, sortKeys, ensureAscii, 0, itemSeparator, keySeparator, defaultFunc, allowNan);
             return sb.ToString();
         }
 
@@ -38,7 +39,8 @@ namespace Sharpy
             int currentIndent,
             string? itemSeparator,
             string? keySeparator,
-            Func<object, object?>? defaultFunc)
+            Func<object, object?>? defaultFunc,
+            bool allowNan)
         {
             if (value == null)
             {
@@ -72,26 +74,26 @@ namespace Sharpy
 
             if (value is double d)
             {
-                SerializeDouble(sb, d);
+                SerializeDouble(sb, d, allowNan);
                 return;
             }
 
             if (value is float f)
             {
-                SerializeSingle(sb, f);
+                SerializeSingle(sb, f, allowNan);
                 return;
             }
 
             // Handle Dict<string, object?> and Dict<string, object>
             if (value is IDictionary<string, object?> dictNullable)
             {
-                SerializeDict(sb, dictNullable, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc);
+                SerializeDict(sb, dictNullable, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc, allowNan);
                 return;
             }
 
             if (value is IDictionary<string, object> dictNonNull)
             {
-                SerializeDictNonNull(sb, dictNonNull, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc);
+                SerializeDictNonNull(sb, dictNonNull, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc, allowNan);
                 return;
             }
 
@@ -99,14 +101,14 @@ namespace Sharpy
             // interface (compile-time dispatch; no reflection).
             if (value is IStrKeyDictionary strKeyDict)
             {
-                SerializeStrKeyDict(sb, strKeyDict, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc);
+                SerializeStrKeyDict(sb, strKeyDict, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc, allowNan);
                 return;
             }
 
             // Handle List<object?> and other IEnumerable<object?>
             if (value is IEnumerable<object?> enumerable && !(value is string))
             {
-                SerializeEnumerable(sb, enumerable, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc);
+                SerializeEnumerable(sb, enumerable, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc, allowNan);
                 return;
             }
 
@@ -115,7 +117,7 @@ namespace Sharpy
             // Must come after IDictionary checks to avoid serializing dicts as arrays.
             if (value is IEnumerable nonGenericEnumerable && !(value is string))
             {
-                SerializeNonGenericEnumerable(sb, nonGenericEnumerable, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc);
+                SerializeNonGenericEnumerable(sb, nonGenericEnumerable, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, defaultFunc, allowNan);
                 return;
             }
 
@@ -135,7 +137,7 @@ namespace Sharpy
 
                 // Pass null as defaultFunc to prevent unbounded recursion on
                 // values the callback returns that are themselves non-serializable.
-                SerializeValue(sb, replacement, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, null);
+                SerializeValue(sb, replacement, indent, sortKeys, ensureAscii, currentIndent, itemSeparator, keySeparator, null, allowNan);
                 return;
             }
 
@@ -216,17 +218,16 @@ namespace Sharpy
         /// </para>
         ///
         /// <para>
-        /// Infinity and NaN still throw. That divergence from CPython (which emits
-        /// <c>Infinity</c>/<c>NaN</c> by default) is pre-existing, separate from float spelling, and
-        /// tracked by #1296 — deliberately untouched here.
+        /// Infinity and NaN emit CPython's <c>Infinity</c>/<c>-Infinity</c>/<c>NaN</c> tokens, its
+        /// default; <c>allowNan: false</c> restores the throwing branch (#1296).
         /// </para>
         /// </remarks>
-        private static void SerializeDouble(StringBuilder sb, double d)
+        private static void SerializeDouble(StringBuilder sb, double d, bool allowNan)
         {
             if (double.IsInfinity(d) || double.IsNaN(d))
             {
-                throw new ValueError(
-                    "Out of range float values are not JSON compliant");
+                sb.Append(NonFiniteToken(d, allowNan));
+                return;
             }
 
             sb.Append(Builtins.FormatFloat(d));
@@ -241,15 +242,46 @@ namespace Sharpy
         /// than letting the value widen at the call. A <c>float32</c> therefore serializes as the text
         /// Sharpy's own <c>str()</c> would produce for it.
         /// </remarks>
-        private static void SerializeSingle(StringBuilder sb, float f)
+        private static void SerializeSingle(StringBuilder sb, float f, bool allowNan)
         {
             if (float.IsInfinity(f) || float.IsNaN(f))
             {
-                throw new ValueError(
-                    "Out of range float values are not JSON compliant");
+                sb.Append(NonFiniteToken(f, allowNan));
+                return;
             }
 
             sb.Append(Builtins.FormatFloat(f));
+        }
+
+        /// <summary>
+        /// CPython's spelling for a non-finite float, or its <c>allow_nan=False</c> error (#1296).
+        /// </summary>
+        /// <remarks>
+        /// <c>Infinity</c>/<c>-Infinity</c>/<c>NaN</c> are CPython's own extension to JSON — strict
+        /// JSON has no such tokens — and they are its DEFAULT. Sharpy threw unconditionally while
+        /// borrowing CPython's <c>allow_nan=False</c> message verbatim, which is what showed the
+        /// inversion was accidental rather than a decision: the module was emitting the strict
+        /// path's diagnostic from the default path.
+        ///
+        /// <para>The message now carries the value, as CPython's does
+        /// (<c>Out of range float values are not JSON compliant: inf</c>) — a caller that opted
+        /// into strictness is told which value tripped it.</para>
+        /// </remarks>
+        private static string NonFiniteToken(double value, bool allowNan)
+        {
+            if (!allowNan)
+            {
+                throw new ValueError(
+                    "Out of range float values are not JSON compliant: "
+                    + Builtins.Repr(value));
+            }
+
+            if (double.IsNaN(value))
+            {
+                return "NaN";
+            }
+
+            return double.IsPositiveInfinity(value) ? "Infinity" : "-Infinity";
         }
 
         private static void SerializeDict(
@@ -261,7 +293,8 @@ namespace Sharpy
             int currentIndent,
             string? itemSeparator,
             string? keySeparator,
-            Func<object, object?>? defaultFunc)
+            Func<object, object?>? defaultFunc,
+            bool allowNan)
         {
             var keys = new System.Collections.Generic.List<string>(dict.Keys);
 
@@ -307,7 +340,7 @@ namespace Sharpy
                 SerializeString(sb, key, ensureAscii);
                 sb.Append(keySeparator ?? ": ");
 
-                SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc);
+                SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc, allowNan);
             }
 
             if (pretty)
@@ -328,7 +361,8 @@ namespace Sharpy
             int currentIndent,
             string? itemSeparator,
             string? keySeparator,
-            Func<object, object?>? defaultFunc)
+            Func<object, object?>? defaultFunc,
+            bool allowNan)
         {
             var keys = new System.Collections.Generic.List<string>(dict.Keys);
 
@@ -374,7 +408,7 @@ namespace Sharpy
                 SerializeString(sb, key, ensureAscii);
                 sb.Append(keySeparator ?? ": ");
 
-                SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc);
+                SerializeValue(sb, dict[key], indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc, allowNan);
             }
 
             if (pretty)
@@ -395,7 +429,8 @@ namespace Sharpy
             int currentIndent,
             string? itemSeparator,
             string? keySeparator,
-            Func<object, object?>? defaultFunc)
+            Func<object, object?>? defaultFunc,
+            bool allowNan)
         {
             bool pretty = indent >= 0;
             int nextIndent = currentIndent + (pretty ? indent : 0);
@@ -425,7 +460,7 @@ namespace Sharpy
                     sb.Append(' ', nextIndent);
                 }
 
-                SerializeValue(sb, item, indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc);
+                SerializeValue(sb, item, indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc, allowNan);
             }
 
             if (first)
@@ -453,7 +488,8 @@ namespace Sharpy
             int currentIndent,
             string? itemSeparator,
             string? keySeparator,
-            Func<object, object?>? defaultFunc)
+            Func<object, object?>? defaultFunc,
+            bool allowNan)
         {
             bool pretty = indent >= 0;
             int nextIndent = currentIndent + (pretty ? indent : 0);
@@ -483,7 +519,7 @@ namespace Sharpy
                     sb.Append(' ', nextIndent);
                 }
 
-                SerializeValue(sb, item, indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc);
+                SerializeValue(sb, item, indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc, allowNan);
             }
 
             if (first)
@@ -511,7 +547,8 @@ namespace Sharpy
             int currentIndent,
             string? itemSeparator,
             string? keySeparator,
-            Func<object, object?>? defaultFunc)
+            Func<object, object?>? defaultFunc,
+            bool allowNan)
         {
             var entries = new System.Collections.Generic.List<KeyValuePair<string, object?>>(
                 strKeyDict.GetStringKeyEntries());
@@ -558,7 +595,7 @@ namespace Sharpy
                 SerializeString(sb, entry.Key, ensureAscii);
                 sb.Append(keySeparator ?? ": ");
 
-                SerializeValue(sb, entry.Value, indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc);
+                SerializeValue(sb, entry.Value, indent, sortKeys, ensureAscii, nextIndent, itemSeparator, keySeparator, defaultFunc, allowNan);
             }
 
             if (pretty)

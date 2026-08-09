@@ -88,6 +88,25 @@ namespace Sharpy
                 return ParseLiteral(json, ref index, "null", null);
             }
 
+            // CPython's json accepts Infinity/-Infinity/NaN by default (they are its own
+            // extension — strict JSON has no such tokens), and its dumps emits them, so a parser
+            // that rejected them could not read what the serializer wrote (#1296). Case-sensitive
+            // and exact, matching CPython: `infinity` and `nan` are still errors.
+            if (c == 'I')
+            {
+                return ParseLiteral(json, ref index, "Infinity", double.PositiveInfinity);
+            }
+
+            if (c == 'N')
+            {
+                return ParseLiteral(json, ref index, "NaN", double.NaN);
+            }
+
+            if (c == '-' && index + 1 < json.Length && json[index + 1] == 'I')
+            {
+                return ParseLiteral(json, ref index, "-Infinity", double.NegativeInfinity);
+            }
+
             if (c == '-' || (c >= '0' && c <= '9'))
             {
                 return ParseNumber(json, ref index);
