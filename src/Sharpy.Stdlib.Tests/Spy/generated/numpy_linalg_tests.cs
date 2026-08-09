@@ -61,9 +61,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (33, 5) - (33, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var result = global::Sharpy.NumpyLinalg.Dot(a, b);
 #line (34, 5) - (34, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(2, result.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(result.Shape, 0));
 #line (35, 5) - (35, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(2, result.Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(result.Shape, 1));
 #line (36, 5) - (36, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 Xunit.Assert.Equal(19.0d, result[0, 0], 7);
 #line (37, 5) - (37, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
@@ -85,7 +85,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (45, 5) - (45, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var result = global::Sharpy.NumpyLinalg.Dot(m, v);
 #line (46, 5) - (46, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(2, result.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(result.Shape, 0));
 #line (47, 5) - (47, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 Xunit.Assert.Equal(17.0d, result[0], 7);
 #line (48, 5) - (48, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
@@ -103,7 +103,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (54, 5) - (54, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var result = global::Sharpy.NumpyLinalg.Dot(v, m);
 #line (55, 5) - (55, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(2, result.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(result.Shape, 0));
 #line (56, 5) - (56, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 Xunit.Assert.Equal(13.0d, result[0], 7);
 #line (57, 5) - (57, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
@@ -234,9 +234,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (117, 5) - (117, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var inv = global::Sharpy.NumpyLinalg.Inv(a);
 #line (118, 5) - (118, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(2, inv.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(inv.Shape, 0));
 #line (119, 5) - (119, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(2, inv.Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(inv.Shape, 1));
 #line (120, 5) - (120, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 Xunit.Assert.Equal(-2.0d, inv[0, 0], 7);
 #line (121, 5) - (121, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
@@ -366,11 +366,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (181, 5) - (181, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var (values, vectors) = global::Sharpy.NumpyLinalg.Eig(a);
 #line (182, 5) - (182, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(2, values.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(values.Shape, 0));
 #line (183, 5) - (183, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(2, vectors.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(vectors.Shape, 0));
 #line (184, 5) - (184, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(2, vectors.Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(vectors.Shape, 1));
 #line (185, 5) - (185, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var sortedVals = np.Sort(values);
 #line (186, 5) - (186, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
@@ -419,9 +419,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (208, 5) - (208, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var (u, s, vh) = global::Sharpy.NumpyLinalg.Svd(a);
 #line (209, 5) - (209, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(3, u.Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(u.Shape, 0));
 #line (210, 5) - (210, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(2, vh.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(vh.Shape, 0));
 #line (211, 5) - (211, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 Xunit.Assert.True(s[0] >= 0.0d);
 #line (212, 5) - (212, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
@@ -441,7 +441,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (221, 5) - (221, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var x = global::Sharpy.NumpyLinalg.Solve(a, b);
 #line (222, 5) - (222, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Equal(2, x.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(x.Shape, 0));
 #line (223, 5) - (223, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 Xunit.Assert.Equal(1.0d, x[0], 7);
 #line (224, 5) - (224, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"

@@ -69,7 +69,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (41, 5) - (41, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 var freqs = global::Sharpy.NumpyFft.Fftfreq(0);
 #line (42, 5) - (42, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
-                Xunit.Assert.Equal(0, freqs.Shape[0]);
+                Xunit.Assert.Equal(0, global::Sharpy.ArrayHelpers.GetItem(freqs.Shape, 0));
 #line (43, 5) - (43, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.Equal(0, freqs.Size);
 #line hidden
@@ -94,7 +94,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (52, 5) - (52, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 var freqs = global::Sharpy.NumpyFft.Fftfreq(1);
 #line (53, 5) - (53, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
-                Xunit.Assert.Equal(1, freqs.Shape[0]);
+                Xunit.Assert.Equal(1, global::Sharpy.ArrayHelpers.GetItem(freqs.Shape, 0));
 #line (54, 5) - (54, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 Xunit.Assert.True(global::Sharpy.Builtins.Abs(freqs[0]) < 1e-12d);
 #line hidden

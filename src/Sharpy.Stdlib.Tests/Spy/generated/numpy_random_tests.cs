@@ -51,7 +51,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (33, 5) - (33, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
                 var arr = global::Sharpy.NumpyRandom.Rand(100);
 #line (34, 5) - (34, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
-                Xunit.Assert.Equal(100, arr.Shape[0]);
+                Xunit.Assert.Equal(100, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
 #line (35, 5) - (35, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
                 Xunit.Assert.True(arr[0] >= 0.0d);
 #line (36, 5) - (36, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
@@ -71,11 +71,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (43, 5) - (43, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
                 var arr = global::Sharpy.NumpyRandom.Rand(2, 3, 4);
 #line (44, 5) - (44, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
-                Xunit.Assert.Equal(2, arr.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 0));
 #line (45, 5) - (45, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
-                Xunit.Assert.Equal(3, arr.Shape[1]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 1));
 #line (46, 5) - (46, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
-                Xunit.Assert.Equal(4, arr.Shape[2]);
+                Xunit.Assert.Equal(4, global::Sharpy.ArrayHelpers.GetItem(arr.Shape, 2));
 #line (47, 5) - (47, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
                 Xunit.Assert.Equal(24, arr.Size);
 #line hidden

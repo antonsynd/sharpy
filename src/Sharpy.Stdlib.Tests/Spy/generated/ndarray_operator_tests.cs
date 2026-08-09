@@ -169,9 +169,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (95, 5) - (95, 11) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
                 var r = -a;
 #line (96, 5) - (96, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (97, 5) - (97, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[1]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 1));
 #line hidden
             }
 

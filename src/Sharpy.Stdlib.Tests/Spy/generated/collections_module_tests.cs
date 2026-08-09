@@ -915,7 +915,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (428, 5) - (428, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["b"] = 2;
 #line (429, 5) - (429, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.Dict<string, int> plain = dd.ToDictionary();
+                Sharpy.Dict<string, int> plain = new Sharpy.Dict<string, int>(dd.ToDictionary());
 #line (430, 5) - (430, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.True(dd.ContainsKey("a"));
 #line (431, 5) - (431, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"

@@ -35,9 +35,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (31, 5) - (31, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var reshaped = arr.Reshape(2, 3);
 #line (32, 5) - (32, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(2, reshaped.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(reshaped.Shape, 0));
 #line (33, 5) - (33, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(3, reshaped.Shape[1]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(reshaped.Shape, 1));
 #line (34, 5) - (34, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.Equal(1.0d, reshaped[0, 0]);
 #line (35, 5) - (35, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
@@ -59,7 +59,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (43, 5) - (43, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var reshaped = arr.Reshape(4);
 #line (44, 5) - (44, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(4, reshaped.Shape[0]);
+                Xunit.Assert.Equal(4, global::Sharpy.ArrayHelpers.GetItem(reshaped.Shape, 0));
 #line (45, 5) - (45, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.Equal(1.0d, reshaped[0]);
 #line (46, 5) - (46, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
@@ -75,9 +75,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (51, 5) - (51, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var reshaped = arr.Reshape(-1, 3);
 #line (52, 5) - (52, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(2, reshaped.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(reshaped.Shape, 0));
 #line (53, 5) - (53, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(3, reshaped.Shape[1]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(reshaped.Shape, 1));
 #line hidden
             }
 
@@ -89,9 +89,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (58, 5) - (58, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var reshaped = arr.Reshape(2, -1);
 #line (59, 5) - (59, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(2, reshaped.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(reshaped.Shape, 0));
 #line (60, 5) - (60, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(3, reshaped.Shape[1]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(reshaped.Shape, 1));
 #line hidden
             }
 
@@ -148,9 +148,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (88, 5) - (88, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var t = arr.Transpose();
 #line (89, 5) - (89, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(3, t.Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(t.Shape, 0));
 #line (90, 5) - (90, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(2, t.Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(t.Shape, 1));
 #line (91, 5) - (91, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.Equal(1.0d, t[0, 0]);
 #line (92, 5) - (92, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
@@ -174,11 +174,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (101, 5) - (101, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var t = arr.Transpose();
 #line (102, 5) - (102, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(4, t.Shape[0]);
+                Xunit.Assert.Equal(4, global::Sharpy.ArrayHelpers.GetItem(t.Shape, 0));
 #line (103, 5) - (103, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(3, t.Shape[1]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(t.Shape, 1));
 #line (104, 5) - (104, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(2, t.Shape[2]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(t.Shape, 2));
 #line hidden
             }
 
@@ -190,7 +190,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (109, 5) - (109, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var t = arr.Transpose();
 #line (110, 5) - (110, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(3, t.Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(t.Shape, 0));
 #line (111, 5) - (111, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.Equal(1.0d, t[0]);
 #line (112, 5) - (112, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
@@ -208,7 +208,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (120, 5) - (120, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.Equal(1, flat.Ndim);
 #line (121, 5) - (121, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(6, flat.Shape[0]);
+                Xunit.Assert.Equal(6, global::Sharpy.ArrayHelpers.GetItem(flat.Shape, 0));
 #line (122, 5) - (122, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.True(np.Allclose(flat, np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d })));
 #line hidden
@@ -222,7 +222,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (127, 5) - (127, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var flat = arr.Transpose().Flatten();
 #line (130, 5) - (130, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(6, flat.Shape[0]);
+                Xunit.Assert.Equal(6, global::Sharpy.ArrayHelpers.GetItem(flat.Shape, 0));
 #line (131, 5) - (131, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.True(np.Allclose(flat, np.Array(new Sharpy.List<double>() { 1.0d, 4.0d, 2.0d, 5.0d, 3.0d, 6.0d })));
 #line hidden
@@ -238,7 +238,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (139, 5) - (139, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.Equal(1, rav.Ndim);
 #line (140, 5) - (140, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(4, rav.Shape[0]);
+                Xunit.Assert.Equal(4, global::Sharpy.ArrayHelpers.GetItem(rav.Shape, 0));
 #line (141, 5) - (141, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.True(np.Allclose(rav, np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d })));
 #line hidden
@@ -252,7 +252,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (146, 5) - (146, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var rav = arr.Transpose().Ravel();
 #line (147, 5) - (147, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(6, rav.Shape[0]);
+                Xunit.Assert.Equal(6, global::Sharpy.ArrayHelpers.GetItem(rav.Shape, 0));
 #line (149, 5) - (149, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.True(np.Allclose(rav, np.Array(new Sharpy.List<double>() { 1.0d, 4.0d, 2.0d, 5.0d, 3.0d, 6.0d })));
 #line hidden
@@ -266,9 +266,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (156, 5) - (156, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var c = arr.Copy();
 #line (157, 5) - (157, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(2, c.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(c.Shape, 0));
 #line (158, 5) - (158, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(2, c.Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(c.Shape, 1));
 #line (159, 5) - (159, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.Equal(1.0d, c[0, 0]);
 #line (160, 5) - (160, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
@@ -284,9 +284,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (165, 5) - (165, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var c = arr.Transpose().Copy();
 #line (166, 5) - (166, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(3, c.Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(c.Shape, 0));
 #line (167, 5) - (167, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Equal(2, c.Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(c.Shape, 1));
 #line (168, 5) - (168, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 Xunit.Assert.Equal(1.0d, c[0, 0]);
 #line (169, 5) - (169, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
