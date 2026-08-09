@@ -42,13 +42,8 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         if (analysis?.Ast == null || analysis.SemanticQuery == null)
             return null;
 
-        var newName = request.NewName;
-
-        // Validate new name
-        if (string.IsNullOrWhiteSpace(newName) || Lexer.KeywordNames.Contains(newName))
-            return null;
-
-        if (!IsValidIdentifier(newName))
+        var newText = ResolveNewNameText(request.NewName);
+        if (newText == null)
             return null;
 
         var (line, col) = PositionConverter.ToCompiler(request.Position);
@@ -61,7 +56,13 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         if (symbol == null)
             return null;
 
-        // Don't rename builtins
+        // A builtin is not the user's to rename. Identity, not spelling: a user symbol that
+        // shadows `len` is a different symbol wearing the same name, and it renames normally.
+        if (analysis.SymbolTable?.BuiltinRegistry.IsBuiltinSymbol(symbol) == true)
+            return null;
+
+        // Anything else with no source location — a member discovered from a .NET assembly —
+        // has no declaration any edit could reach either.
         if (symbol.DeclaringFilePath == null && symbol.DeclarationSpan == null)
             return null;
 
@@ -77,12 +78,12 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
             var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
 
             AddEdit(edits, seen, ToDocumentUri(symbol.DeclaringFilePath, uri),
-                declLine, declCol, symbol.Name.Length, newName);
+                declLine, declCol, NameExtentLength(symbol), newText);
         }
 
         // Edit all references in current file
         var references = analysis.SemanticQuery.GetReferences(symbol);
-        AddReferenceEdits(edits, seen, references, symbol.Name, uri, newName);
+        AddReferenceEdits(edits, seen, references, symbol.Name, uri, newText);
 
         // Edit references in other workspace files
         var allUris = _workspace.GetAllDocumentUris();
@@ -110,7 +111,7 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
 
                     var crossRefs = otherAnalysis.SemanticQuery.FindReferencesBySymbolIdentity(
                         symbol.Name, symbol.DeclaringFilePath);
-                    AddReferenceEdits(edits, seen, crossRefs, symbol.Name, otherUri, newName);
+                    AddReferenceEdits(edits, seen, crossRefs, symbol.Name, otherUri, newText);
                 }
                 catch (OperationCanceledException)
                 {
@@ -140,7 +141,8 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         // binds the declaration, so a function-local nothing references still renames — the
         // name-and-position scan below cannot see one (#1232, the #1222 template).
         if (node is VariableDeclaration varDecl
-            && IsOnName(line, col, varDecl.NameLineStart, varDecl.NameColumnStart, varDecl.Name.Length))
+            && IsOnName(line, col, varDecl.NameLineStart, varDecl.NameColumnStart, varDecl.Name.Length,
+                varDecl.IsNameBacktickEscaped))
         {
             var bound = query.GetDeclarationSymbol(varDecl);
             if (bound != null)
@@ -160,7 +162,8 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         // A function definition, likewise: a nested def nothing calls is in no reference collection
         // and not in module scope, so only the node-keyed map can answer for it (#1232).
         if (node is FunctionDef funcDef
-            && IsOnName(line, col, funcDef.NameLineStart, funcDef.NameColumnStart, funcDef.Name.Length))
+            && IsOnName(line, col, funcDef.NameLineStart, funcDef.NameColumnStart, funcDef.Name.Length,
+                funcDef.IsNameBacktickEscaped))
         {
             var bound = query.GetFunctionDeclarationSymbol(funcDef);
             if (bound != null)
@@ -187,13 +190,17 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         // Handle declaration nodes where the name is a string property, not an Identifier child
         (string name, int nameLine, int nameCol)? decl = node switch
         {
-            ClassDef c when IsOnName(line, col, c.NameLineStart, c.NameColumnStart, c.Name.Length)
+            ClassDef c when IsOnName(line, col, c.NameLineStart, c.NameColumnStart, c.Name.Length,
+                c.IsNameBacktickEscaped)
                 => (c.Name, c.LineStart, c.ColumnStart),
-            StructDef s when IsOnName(line, col, s.NameLineStart, s.NameColumnStart, s.Name.Length)
+            StructDef s when IsOnName(line, col, s.NameLineStart, s.NameColumnStart, s.Name.Length,
+                s.IsNameBacktickEscaped)
                 => (s.Name, s.LineStart, s.ColumnStart),
-            InterfaceDef i when IsOnName(line, col, i.NameLineStart, i.NameColumnStart, i.Name.Length)
+            InterfaceDef i when IsOnName(line, col, i.NameLineStart, i.NameColumnStart, i.Name.Length,
+                i.IsNameBacktickEscaped)
                 => (i.Name, i.LineStart, i.ColumnStart),
-            EnumDef e when IsOnName(line, col, e.NameLineStart, e.NameColumnStart, e.Name.Length)
+            EnumDef e when IsOnName(line, col, e.NameLineStart, e.NameColumnStart, e.Name.Length,
+                e.IsNameBacktickEscaped)
                 => (e.Name, e.LineStart, e.ColumnStart),
             _ => null
         };
@@ -209,7 +216,8 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         foreach (var handler in t.Handlers)
         {
             if (handler.Name == null
-                || !IsOnName(line, col, handler.NameLineStart, handler.NameColumnStart, handler.Name.Length))
+                || !IsOnName(line, col, handler.NameLineStart, handler.NameColumnStart, handler.Name.Length,
+                    handler.IsNameBacktickEscaped))
             {
                 continue;
             }
@@ -234,7 +242,8 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         foreach (var item in w.Items)
         {
             if (item.Name == null
-                || !IsOnName(line, col, item.NameLineStart, item.NameColumnStart, item.Name.Length))
+                || !IsOnName(line, col, item.NameLineStart, item.NameColumnStart, item.Name.Length,
+                    item.IsNameBacktickEscaped))
             {
                 continue;
             }
@@ -254,11 +263,48 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         return null;
     }
 
-    private static bool IsOnName(int cursorLine, int cursorCol, int nameLineStart, int nameColStart, int nameLength)
+    /// <summary>
+    /// Whether the cursor sits on a declaration's name. <paramref name="escaped"/> names occupy
+    /// two more columns than their text — the name starts at the opening backtick — so the last
+    /// characters of <c>`event`</c> are on the name too (#1281).
+    /// </summary>
+    private static bool IsOnName(
+        int cursorLine, int cursorCol, int nameLineStart, int nameColStart, int nameLength, bool escaped)
     {
         return cursorLine == nameLineStart
             && cursorCol >= nameColStart
-            && cursorCol < nameColStart + nameLength;
+            && cursorCol < nameColStart + nameLength + (escaped ? BacktickPairLength : 0);
+    }
+
+    /// <summary>The two backticks an escaped spelling adds to the name's source extent.</summary>
+    private const int BacktickPairLength = 2;
+
+    /// <summary>
+    /// How many characters this symbol's name occupies at its declaration. An escaped declaration
+    /// spans its backticks too, and an edit sized to <c>Name.Length</c> replaces all but the last
+    /// two characters — leaving backtick debris behind in the renamed source (#1281).
+    /// </summary>
+    private static int NameExtentLength(Symbol symbol) =>
+        symbol.Name.Length + (symbol.IsNameBacktickEscaped ? BacktickPairLength : 0);
+
+    /// <summary>
+    /// How many characters one reference occupies. The recorded span is the identifier token's,
+    /// which since #1281 covers both backticks of an escaped spelling — so each occurrence is
+    /// replaced as it is written, whether or not the declaration was escaped.
+    /// </summary>
+    /// <remarks>
+    /// A span matching neither spelling of the name is not this reference's extent: the root of a
+    /// dotted escape (<c>`System.IO.Path`</c>, #713) carries the whole token's span on a segment
+    /// symbol. Editing to the bare name there is the conservative choice — it under-reaches
+    /// rather than eating the following segments.
+    /// </remarks>
+    private static int ReferenceExtentLength(Compiler.Semantic.SymbolReference reference, string symbolName)
+    {
+        var spanLength = reference.Span.Length;
+
+        return spanLength == symbolName.Length || spanLength == symbolName.Length + BacktickPairLength
+            ? spanLength
+            : symbolName.Length;
     }
 
     private static void AddReferenceEdits(
@@ -267,7 +313,7 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         IReadOnlyList<Compiler.Semantic.SymbolReference> references,
         string symbolName,
         string fallbackUri,
-        string newName)
+        string newText)
     {
         foreach (var refLoc in references)
         {
@@ -275,7 +321,7 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
             var refCol = System.Math.Max(0, refLoc.Column - 1);
 
             AddEdit(edits, seen, ToDocumentUri(refLoc.FilePath, fallbackUri),
-                refLine, refCol, symbolName.Length, newName);
+                refLine, refCol, ReferenceExtentLength(refLoc, symbolName), newText);
         }
     }
 
@@ -342,6 +388,36 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
             return parsed.LocalPath;
 
         return System.IO.Path.IsPathRooted(uri) ? uri : null;
+    }
+
+    /// <summary>
+    /// The text a rename writes for the requested name, or null when the request names nothing
+    /// Sharpy can spell.
+    /// </summary>
+    /// <remarks>
+    /// The backticks are not part of a name — they are how a spelling the lexer would otherwise
+    /// claim reaches the identifier namespace — so the request's two halves are judged separately.
+    /// The core must be a legal identifier. The written spelling is escaped when the core is a
+    /// keyword (the only way to write it at all) or when the request escaped it explicitly, which
+    /// is how a user asks to shadow a builtin deliberately. Everything else is written bare, so
+    /// renaming <c>`event`</c> to an ordinary name drops the backticks instead of carrying them
+    /// along (#1281).
+    /// </remarks>
+    private static string? ResolveNewNameText(string newName)
+    {
+        if (string.IsNullOrWhiteSpace(newName))
+            return null;
+
+        var explicitlyEscaped = newName.Length >= 3 && newName[0] == '`' && newName[^1] == '`';
+        var core = explicitlyEscaped ? newName[1..^1] : newName;
+
+        // Rejects stray or unbalanced backticks along with every other non-identifier character.
+        if (!IsValidIdentifier(core))
+            return null;
+
+        return explicitlyEscaped || Lexer.KeywordNames.Contains(core)
+            ? $"`{core}`"
+            : core;
     }
 
     private static bool IsValidIdentifier(string name)
