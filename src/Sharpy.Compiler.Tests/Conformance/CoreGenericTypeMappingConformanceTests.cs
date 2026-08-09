@@ -150,14 +150,52 @@ public class CoreGenericTypeMappingConformanceTests
     /// </summary>
     private static readonly Dictionary<string, string> OperatorResolutionAllowlist = new(StringComparer.Ordinal)
     {
-        // frozendict's entry was DRAINED by the name-map + bridge arm landing (#1310):
-        // discovery now resolves its operators through the frozendict → FrozenDict map entry.
-
-        // Complex is the odd one: its Sharpy name and CLR name are identical, so the name-map
-        // fallback should already find it. Whatever stops it is therefore NOT simply a missing
-        // entry, which is why #1253 did not fix it by pattern-matching frozenset's remedy onto it.
-        ["Complex"] = "Sharpy.Complex declares 2 operators, discovery resolves none; cause is not a missing name-map entry (#1310).",
+        // EMPTY, and both entries were drained rather than re-explained (#1310).
+        //
+        // frozendict's went with the name-map + bridge arm: discovery resolves its operators
+        // through the frozendict → FrozenDict entry.
+        //
+        // Complex's turned out not to be a gap at all. It "declared 2 operators and resolved none"
+        // because the guard counted every op_ method a type declares — and Complex's two are both
+        // `implicit operator` conversions (op_Implicit), which ClrOperatorToDunder has no mapping
+        // for and discovery never attempts. Counting only dunder-mappable operators drops Complex
+        // legitimately; the measurement was wrong, not the pipeline.
     };
+
+    /// <summary>
+    /// The operator allowlist must not rot either — the check its sibling had and it did not
+    /// (#1310). An entry that outlives its cause hides the next lost operator behind the same name,
+    /// which is precisely how Complex's entry survived: nobody re-measured whether it was still a
+    /// gap, and it never had been.
+    /// </summary>
+    [Fact]
+    public void OperatorResolutionAllowlist_HasNoStaleEntries()
+    {
+        var registry = new BuiltinRegistry();
+        var stillUnresolved = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var (sharpyName, symbol) in registry.RegisteredTypes)
+        {
+            var clrType = symbol.ClrType;
+            if (clrType?.Namespace is not ClrTypeBridge.SpecialCases.SharpyNamespace)
+                continue;
+
+            var declared = clrType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                .Count(m => m.IsSpecialName
+                    && m.Name.StartsWith("op_", StringComparison.Ordinal)
+                    && global::Sharpy.Compiler.Discovery.Caching.OverloadIndexBuilder.IsDunderMappableOperator(m.Name));
+
+            if (declared > 0 && symbol.OperatorMethods.Count == 0)
+                stillUnresolved.Add(sharpyName);
+        }
+
+        var stale = OperatorResolutionAllowlist.Keys.Where(k => !stillUnresolved.Contains(k)).ToList();
+
+        stale.Should().BeEmpty(
+            "each operator-allowlist entry must name a registered builtin that STILL declares "
+            + "dunder-mappable CLR operators and still resolves none; delete entries whose cause is "
+            + "gone.\nStale:\n" + string.Join("\n", stale));
+    }
 
     [Fact]
     public void EveryRegisteredBuiltinTypeResolvesItsClrOperators()
@@ -180,9 +218,13 @@ public class CoreGenericTypeMappingConformanceTests
             if (clrType.Namespace is not ClrTypeBridge.SpecialCases.SharpyNamespace)
                 continue;
 
-            // Only types whose CLR side actually declares operators can lose them.
+            // Only operators discovery can MAP to a dunder can be "lost". Conversion operators
+            // (op_Implicit / op_Explicit) have no dunder, so counting them made the guard report a
+            // gap for a type that had none — see the allowlist note (#1310).
             var declared = clrType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-                .Count(m => m.IsSpecialName && m.Name.StartsWith("op_", StringComparison.Ordinal));
+                .Count(m => m.IsSpecialName
+                    && m.Name.StartsWith("op_", StringComparison.Ordinal)
+                    && global::Sharpy.Compiler.Discovery.Caching.OverloadIndexBuilder.IsDunderMappableOperator(m.Name));
             if (declared == 0)
                 continue;
 

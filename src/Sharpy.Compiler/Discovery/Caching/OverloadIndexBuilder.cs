@@ -255,6 +255,20 @@ internal class OverloadIndexBuilder
     };
 
     /// <summary>
+    /// Whether a CLR operator method name is one discovery can turn into a dunder — i.e. whether
+    /// failing to resolve it is a GAP rather than a category the pipeline never claimed.
+    /// </summary>
+    /// <remarks>
+    /// Exposed for the operator-resolution conformance guard (#1310), which counted every
+    /// <c>op_</c> method a type declares and therefore reported <c>Sharpy.Complex</c> as losing two
+    /// operators — both of them <c>op_Implicit</c> conversions, which have no dunder and were never
+    /// going to resolve. Sharing the map keeps the guard measuring what discovery actually attempts,
+    /// so adding a mapping widens the guard automatically instead of silently leaving it behind.
+    /// </remarks>
+    internal static bool IsDunderMappableOperator(string clrOperatorName) =>
+        ClrOperatorToDunder.ContainsKey(clrOperatorName);
+
+    /// <summary>
     /// Discovers public instance methods on a type and stores them as FunctionSignatures.
     /// Filters out property accessors, operator methods, and inherited Object methods.
     /// </summary>
