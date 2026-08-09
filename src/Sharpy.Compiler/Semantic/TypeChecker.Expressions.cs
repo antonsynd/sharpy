@@ -337,6 +337,31 @@ internal partial class TypeChecker
         }
 
         var symbol = _symbolTable.Lookup(id.Name);
+
+        // The identity rule at the value seam (#1325's rule, #1328's remaining half): a BARE
+        // spelling never binds an escape-DECLARED symbol. Without this the lookup succeeded and
+        // emission mangled the name — `` class `zed` `` followed by a bare `zed()` compiled to
+        // `Zed()` against a type emitted as `zed`, i.e. CS0103 behind SPY0908. Falling through to
+        // the undefined path reports the user's mistake instead of the compiler's.
+        // (The converse — an escaped spelling binding a bare-declared symbol — is quoting and
+        // stands, which is what keeps #713's escaped-import spellings usable.)
+        // The identity rule at the value seam, for the one case the downstream classifiers cannot
+        // cover (#1328). A bare spelling never means an escape-DECLARED symbol — but when the name
+        // IS a builtin's, the bare spelling has somewhere to land and the call/member classifiers
+        // already route it there (`str(7)` reaches the builtin in a file declaring `` class `str` ``,
+        // pinned by basics/backtick_escaped_name_resolution). When it is NOT a builtin's name there
+        // is nowhere to land: the lookup bound the escape-declared symbol and emission mangled it,
+        // so `` class `zed` `` plus a bare `zed()` compiled to `Zed()` against a type emitted as
+        // `zed` — CS0103 behind SPY0908, the compiler reporting its own bug for a user error.
+        var escapeDeclaredShadow = symbol != null
+            && !id.IsNameBacktickEscaped
+            && symbol.IsNameBacktickEscaped
+            && !_symbolTable.BuiltinRegistry.IsReservedBuiltinName(id.Name);
+        if (escapeDeclaredShadow)
+        {
+            symbol = null;
+        }
+
         if (symbol == null)
         {
             // Don't error on tagged union constructors — they're handled by CheckFunctionCall
@@ -373,6 +398,22 @@ internal partial class TypeChecker
                 AddError("'_' placeholder can only be used inside function call arguments for partial application (e.g., f(_, 2)). "
                     + "If you intended a throwaway variable, assign it first: _ = ...",
                     id.LineStart, id.ColumnStart, code: DiagnosticCodes.Parser.PlaceholderOutsideCallOrOperator,
+                    span: id.Span);
+                return SemanticType.Unknown;
+            }
+
+            // The name exists — escape-declared — and the bare spelling found no builtin to fall
+            // back to (#1328). Say that, instead of an edit-distance guess: the declaration is
+            // usually a few lines up, and the only thing wrong is the missing escape.
+            if (escapeDeclaredShadow)
+            {
+                AddError(
+                    $"'{id.Name}' is declared with a backtick escape (`{id.Name}`), which makes the "
+                    + $"escaped spelling its name. Write `{id.Name}` to refer to it — a bare "
+                    + $"'{id.Name}' denotes the builtin namespace the escape steps out of, and no "
+                    + "builtin has that name.",
+                    id.LineStart, id.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UndefinedVariable,
                     span: id.Span);
                 return SemanticType.Unknown;
             }

@@ -124,6 +124,7 @@ internal partial class ImportResolver
             VariableSymbol var => new VariableSymbol
             {
                 Name = effectiveName,
+                IsNameBacktickEscaped = var.IsNameBacktickEscaped,
                 Kind = var.Kind,
                 Type = var.Type,
                 IsConstant = var.IsConstant,
@@ -160,6 +161,10 @@ internal partial class ImportResolver
         var reExported = new TypeSymbol
         {
             Name = effectiveName,
+            // The escape is part of what the name DENOTES, so a hand-built copy that drops it
+            // silently changes the symbol's identity across the import (#1328): the emitted
+            // reference reverted to the mangled spelling and the program was CS0103.
+            IsNameBacktickEscaped = originalType.IsNameBacktickEscaped,
             Kind = originalType.Kind,
             TypeKind = originalType.TypeKind,
             AccessLevel = originalType.AccessLevel,

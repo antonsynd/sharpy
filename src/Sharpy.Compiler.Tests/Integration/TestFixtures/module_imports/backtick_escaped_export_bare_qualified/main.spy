@@ -1,0 +1,10 @@
+# The identity rule fires across the module seam (#1328): a BARE spelling never binds an
+# escape-DECLARED export, so `libz.zed` cannot answer `` class `zed` ``. Before this the bare
+# spelling resolved happily, which made the escape decorative rather than part of the name.
+
+import libz
+
+
+def main() -> None:
+    e = libz.zed(7)
+    print(e.get())

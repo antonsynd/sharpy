@@ -1,0 +1,11 @@
+# The same rule at the VALUE seam: a bare reference does not bind an escape-declared symbol. It used
+# to bind it and then emit the mangled name, which was CS0103 behind SPY0908 — the compiler
+# reporting its own bug for a user error. The message names the remedy instead of guessing at a
+# misspelling.
+
+from libz import `zed`
+
+
+def main() -> None:
+    e = zed(7)
+    print(e.get())

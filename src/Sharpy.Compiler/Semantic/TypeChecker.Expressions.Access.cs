@@ -164,7 +164,13 @@ internal partial class TypeChecker
                     memberName = pascalName;
             }
 
-            if (moduleSymbol.Exports.TryGetValue(memberName, out var exportedSymbol))
+            // The identity rule at the module-export seam (#1328, the cross-module half of #1325's
+            // rule): a BARE spelling never binds an escape-DECLARED export, so `lib.zed` cannot
+            // answer `` class `zed` `` — it falls through to the "no member" report below. The
+            // converse direction is quoting and stands: an escaped spelling binding a bare-declared
+            // export is how #713's CLR-namespace imports are written.
+            if (moduleSymbol.Exports.TryGetValue(memberName, out var exportedSymbol)
+                && !(exportedSymbol.IsNameBacktickEscaped && !memberAccess.IsMemberBacktickEscaped))
             {
                 var exportedType = exportedSymbol switch
                 {

@@ -1,0 +1,16 @@
+# An escaped export keeps its escape across the import (#1328).
+#
+# The re-export copy was hand-built and never copied IsNameBacktickEscaped, so the flag was re-zeroed
+# at the module boundary: the reference emitted the mangled spelling against a type emitted verbatim,
+# and the program was CS0103 behind SPY0908.
+
+import libz
+from libz import `zed`
+
+
+def main() -> None:
+    qualified = libz.`zed`(7)
+    print(qualified.get())
+
+    imported = `zed`(9)
+    print(imported.get())
