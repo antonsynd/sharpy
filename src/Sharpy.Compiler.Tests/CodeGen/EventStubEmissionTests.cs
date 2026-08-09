@@ -87,6 +87,69 @@ public class EventStubEmissionTests
             "an interface event carries no accessors");
     }
 
+    /// <summary>
+    /// An undecorated ellipsis-bodied accessor pair in an abstract class is abstract by the
+    /// implicit-stub rule, and codegen now takes that answer from the merged <c>EventSymbol</c>
+    /// rather than re-deriving it (#1267). No fixture carries this shape — every event stub fixture
+    /// spells <c>@abstract</c> — so this is the only place the symbol's implicit arm is pinned at
+    /// emission. The concrete twin differs only in the owner's <c>@abstract</c>, which is what makes
+    /// the abstract assertion mean something: an emitter that answered "abstract" unconditionally,
+    /// or never, fails one half or the other.
+    /// </summary>
+    [Fact]
+    public void ImplicitlyAbstractEventPair_EmitsBareAbstractEvent_OnlyWhenTheOwnerIsAbstract()
+    {
+        const string abstractOwner = """
+            delegate SimpleHandler() -> None
+
+
+            @abstract
+            class Base:
+                event add on_action(self, handler: SimpleHandler):
+                    ...
+
+                event remove on_action(self, handler: SimpleHandler):
+                    ...
+            """;
+
+        const string concreteOwner = """
+            delegate SimpleHandler() -> None
+
+
+            class Base:
+                event add on_action(self, handler: SimpleHandler):
+                    ...
+
+                event remove on_action(self, handler: SimpleHandler):
+                    ...
+            """;
+
+        // The two sources must differ only in the owner's abstractness, or the contrast below
+        // measures something other than the implicit-stub rule.
+        abstractOwner.Should().Contain("@abstract", "the abstract twin carries the class-level decorator");
+        concreteOwner.Should().NotContain("@abstract", "the concrete twin carries no decorator at all");
+        Tokens(abstractOwner.Replace("@abstract", "")).Should().Be(Tokens(concreteOwner),
+            "the twins differ in exactly one token — the class-level @abstract");
+
+        var abstractBase = ClassNamed(EmitUnit(abstractOwner), "Base");
+        var abstractEvents = abstractBase.Members.OfType<EventFieldDeclarationSyntax>()
+            .Where(e => e.Declaration.Variables.Any(v => v.Identifier.Text == "OnAction"))
+            .ToList();
+        abstractEvents.Should().ContainSingle(
+            "an implicitly abstract pair lowers to one bare event field declaration, as the decorated pair does");
+        abstractEvents[0].Modifiers.Should().Contain(m => m.IsKind(SyntaxKind.AbstractKeyword),
+            "the merged EventSymbol classifies an ellipsis-bodied accessor in an abstract class as abstract");
+        abstractBase.Members.OfType<EventDeclarationSyntax>()
+            .Should().BeEmpty("C# rejects accessor syntax on an abstract event (CS8712)");
+
+        var concreteBase = ClassNamed(EmitUnit(concreteOwner), "Base");
+        concreteBase.Members.OfType<EventFieldDeclarationSyntax>()
+            .Should().BeEmpty("the same pair in a concrete class is a real implementation, not a declaration");
+        concreteBase.Members.OfType<EventDeclarationSyntax>()
+            .Should().ContainSingle(e => e.Identifier.Text == "OnAction",
+                "a concrete function-style event keeps its add/remove accessor list");
+    }
+
     [Fact]
     public void AbstractEventStub_BothSpellings_EmitIdenticalCSharp()
         => AssertSpellingTwinsEmitIdenticalCSharp(AbstractStubFixture, AbstractStubParenFixture);
@@ -155,6 +218,20 @@ public class EventStubEmissionTests
         plainCode.Should().Contain("OnAction",
             "an emission that dropped the event entirely would compare equal for the wrong reason");
         parenCode.Should().Be(plainCode);
+    }
+
+    /// <summary>Whitespace-insensitive view of a source, so the twin guard survives line-ending and
+    /// blank-line differences that carry no meaning.</summary>
+    private static string Tokens(string source)
+        => string.Join(" ", source.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    private static ClassDeclarationSyntax ClassNamed(CompilationUnitSyntax unit, string name)
+    {
+        var declaration = unit.DescendantNodes().OfType<ClassDeclarationSyntax>()
+            .SingleOrDefault(c => c.Identifier.Text == name);
+        declaration.Should().NotBeNull(
+            $"the source declares class '{name}'; without it every assertion about it is vacuous");
+        return declaration!;
     }
 
     private static string ReadFixture(string fileName)
