@@ -11,8 +11,25 @@
 > before/after wall-clock comparison as a code effect, run the order-swapped control or
 > interleave; allocations are immune to the artifact and are the load-bearing metric when the
 > change's mechanism predicts an allocation move. Also note: CI (`benchmarks.yml`) executes
-> only the `CompilerBenchmarks` class — every other row in this file is recorded manually, and
-> its corpus guard fires only on manual runs (#1337).
+> only the `CompilerBenchmarks` class — every other row in this file is recorded manually.
+>
+> **Corpus compilability is CI-enforced** (#1337): `BenchmarkCorpusCompilesTests` in
+> `Sharpy.Compiler.Tests` compiles every `src/Sharpy.Compiler.Benchmarks/Corpus/*.spy` on every
+> PR, glob-discovered so a new corpus file is covered the moment it lands. That closes the hole
+> the `CorpusGuard` setup assertions left: they are the right check in the right place, but they
+> only fire when their benchmark runs, so a member used solely by one of the 13 non-CI rows could
+> rot unobserved. **Still manual:** the 13 non-CI rows' *numbers*. Running them all in CI was
+> considered and not taken — the corpus-rot risk is what the guard addresses, and paying those CI
+> minutes on every PR to re-measure rows nobody reads between releases buys little. Revisit if a
+> row's regression is ever found late.
+>
+> **How to compare two revisions** (#1318): `python3 -m build_tools.bench_ab <refA> <refB>
+> --rounds 4`. It interleaves the arms, pools by position, and reports a delta only when both
+> positions agree in sign. A **single-sequence before/after delta under ~15% is unmeasured** —
+> that is inside the range run position alone produces, so it is neither a regression nor a win.
+> Every wall-clock number recorded in this file before the orchestrator existed is
+> position-uncontrolled and should be read as an order of magnitude, not a measurement; the
+> allocation figures are unaffected.
 
 ## D4 Sharpy.Core Hot-Path Results (#1051)
 
