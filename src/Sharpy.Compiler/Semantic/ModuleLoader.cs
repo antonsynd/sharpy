@@ -770,7 +770,11 @@ internal class ModuleLoader
             if (explicitAccess != null)
                 accessLevel = explicitAccess.Value;
 
-            bool isAbstract = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+            // Mirror of NameResolver.ResolvePropertyDeclaration's abstractness rule (#1267):
+            // explicit decorator, or implicit stub in an abstract/interface owner.
+            bool isAbstract = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract)
+                || (ownerIsAbstract && propDef.IsFunctionStyle && Shared.AstHelper.IsEllipsisStubBody(propDef.Body))
+                || (ownerKind == TypeKind.Interface && propDef.IsFunctionStyle && Shared.AstHelper.IsAbstractStubBody(propDef.Body));
             bool hasGetter = propDef.Accessor == PropertyAccessor.Get || propDef.Accessor == PropertyAccessor.None;
             bool hasSetter = propDef.Accessor == PropertyAccessor.Set;
             bool hasInit = propDef.Accessor == PropertyAccessor.Init;
@@ -828,7 +832,11 @@ internal class ModuleLoader
             if (explicitAccess != null)
                 accessLevel = explicitAccess.Value;
 
-            bool isAbstract = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+            // Mirror of NameResolver.ResolveEventDeclaration's abstractness rule (#1267):
+            // explicit decorator, or implicit stub in an abstract/interface owner.
+            bool isAbstract = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract)
+                || (ownerIsAbstract && eventDef.IsFunctionStyle && Shared.AstHelper.IsEllipsisStubBody(eventDef.Body))
+                || (ownerKind == TypeKind.Interface && eventDef.IsFunctionStyle && Shared.AstHelper.IsAbstractStubBody(eventDef.Body));
             bool hasAdd = eventDef.Accessor == EventAccessor.Add;
             bool hasRemove = eventDef.Accessor == EventAccessor.Remove;
             if (!eventDef.IsFunctionStyle)
