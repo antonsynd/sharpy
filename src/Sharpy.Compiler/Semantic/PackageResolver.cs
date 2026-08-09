@@ -180,6 +180,10 @@ internal class PackageResolver
     /// Extract exported symbols from a top-level statement.
     /// Mirrors the logic in ImportResolver.ExtractExportedSymbol.
     /// </summary>
+    /// <remarks>
+    /// TODO(#1364): this is a third, thinner extraction — package-re-exported types carry
+    /// no methods, fields, properties/events, or IsAbstract; collapse onto ModuleLoader's.
+    /// </remarks>
     private void ExtractSymbolFromStatement(Statement statement, ModuleInfo moduleInfo)
     {
         switch (statement)

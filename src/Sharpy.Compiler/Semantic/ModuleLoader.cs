@@ -406,6 +406,9 @@ internal class ModuleLoader
         // Extract properties and events so imported types carry them — without this,
         // TypeChecker.Utilities resolves event/property access by walking TypeSymbol.Events
         // and .Properties, so imported types with these members silently dropped them (#1267).
+        // TODO(#1363): nested types and TypeAlias declarations are still dropped here.
+        // TODO(#1365): SignatureKey/Documentation/DeprecationMessage/IsMustUse and field
+        // IsFinal/HasDefaultValue are not threaded through the import boundary.
         var properties = ExtractProperties(classDef.Body, TypeKind.Class, isAbstract);
         var events = ExtractEvents(classDef.Body, TypeKind.Class, isAbstract);
 
