@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Logging;
@@ -18,7 +19,7 @@ public class ProjectCompilationHelper : IDisposable
 {
     private readonly string _tempDir;
     private readonly ITestOutputHelper? _output;
-    private readonly ICompilerLogger _logger;
+    private readonly CapturingCompilerLogger _logger;
     private readonly List<string> _sourceFiles = new();
     private string? _projectFilePath;
     private bool _disposed;
@@ -54,6 +55,13 @@ public class ProjectCompilationHelper : IDisposable
     public bool Incremental { get; set; }
 
     /// <summary>
+    /// The result of the most recent <see cref="Compile()"/> — including the one
+    /// <see cref="CompileAndExecute"/> performs internally, so a test can assert on both the
+    /// program's output and the build's incremental behaviour without compiling a third time.
+    /// </summary>
+    public ProjectCompilationResult? LastCompilationResult { get; private set; }
+
+    /// <summary>
     /// Feature flags to supply on the CLI side (via <see cref="CompilerOptions.Features"/>),
     /// to be merged with the project's &lt;Features&gt;. Mirrors <c>--enable-feature</c>.
     /// </summary>
@@ -63,7 +71,8 @@ public class ProjectCompilationHelper : IDisposable
     {
         _tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
         _output = output;
-        _logger = output != null ? new TestHelpers.OutputTestLogger(output) : NullLogger.Instance;
+        _logger = new CapturingCompilerLogger(
+            output != null ? new TestHelpers.OutputTestLogger(output) : NullLogger.Instance);
 
         Directory.CreateDirectory(_tempDir);
         ProjectDirectory = _tempDir;
@@ -381,10 +390,14 @@ public class ProjectCompilationHelper : IDisposable
         };
         var compiler = new Compiler(compilerOptions, _logger);
 
+        // Each Compile() is one build; AssertIncrementalSkipped reads the most recent one.
+        _logger.Clear();
+
         _output?.WriteLine($"Compiling project: {config.RootNamespace} (incremental={Incremental})");
         _output?.WriteLine($"Source files: {string.Join(", ", config.SourceFiles.Select(Path.GetFileName))}");
 
         var result = compiler.CompileProject(config);
+        LastCompilationResult = result;
 
         if (!result.Success)
         {
@@ -543,6 +556,97 @@ public class ProjectCompilationHelper : IDisposable
     }
 
     /// <summary>
+    /// Asserts that a build ran in incremental mode and reused the cache for exactly
+    /// <paramref name="skippedFiles"/> — i.e. that this was a genuine <b>warm-cache</b> build.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This helper, together with the two-build pattern it is used in — build once to populate
+    /// <c>obj/{Configuration}/.sharpy-symbols</c>, make a <b>real content edit</b> to one file
+    /// (never a touch/no-op edit, which the SHA-256 hash cache ignores), then build again — is the
+    /// warm-cache harness defined by plan-058a93 Phase 5.4 and referenced by #1287 (Batch E).
+    /// Use it whenever a fact must hold on a build where a dependency's symbols come from the cache
+    /// rather than from a fresh parse: a test that only compiles twice proves nothing unless it also
+    /// proves the second build actually skipped the file it claims was cache-served.
+    /// </para>
+    /// <para>
+    /// Two independent channels are checked, because either alone can pass vacuously: the
+    /// <c>"Incremental mode: N file(s) to compile, M skipped (unchanged)"</c> line the compiler logs
+    /// (captured via <see cref="CapturingCompilerLogger"/>) gives the counts, and
+    /// <c>result.Metrics.SkippedFiles</c> gives the identities.
+    /// </para>
+    /// </remarks>
+    /// <param name="result">The result of the warm build (the second <see cref="Compile()"/> call).</param>
+    /// <param name="skippedFiles">
+    /// File names (e.g. <c>"lib.spy"</c>) expected to have been served from the cache. The count is
+    /// asserted too, so passing none asserts that nothing was skipped.
+    /// </param>
+    public ProjectCompilationResult AssertIncrementalSkipped(
+        ProjectCompilationResult result,
+        params string[] skippedFiles)
+    {
+        AssertCompilationSucceeded(result);
+
+        if (!Incremental)
+        {
+            throw new Xunit.Sdk.XunitException(
+                "AssertIncrementalSkipped requires incremental mode; call WithIncremental() before Compile().");
+        }
+
+        var modeLine = _logger.InfoMessages
+            .LastOrDefault(m => m.StartsWith("Incremental mode:", StringComparison.Ordinal));
+
+        if (modeLine == null)
+        {
+            throw new Xunit.Sdk.XunitException(
+                "The build did not report an incremental mode line, so no file could have been " +
+                "cache-served. Captured info messages:\n  " +
+                string.Join("\n  ", _logger.InfoMessages));
+        }
+
+        var match = Regex.Match(
+            modeLine,
+            @"^Incremental mode: (?<compiled>\d+) file\(s\) to compile, (?<skipped>\d+) skipped");
+        if (!match.Success)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Could not parse the incremental mode line: '{modeLine}'. The helper and " +
+                "ProjectCompiler's log format have drifted apart.");
+        }
+
+        var reportedSkipped = int.Parse(match.Groups["skipped"].Value);
+        if (reportedSkipped != skippedFiles.Length)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"Expected {skippedFiles.Length} skipped file(s) ({string.Join(", ", skippedFiles)}), " +
+                $"but the build reported: '{modeLine}'.");
+        }
+
+        var actualSkipped = (result.Metrics?.SkippedFiles ?? Array.Empty<string>())
+            .Select(Path.GetFileName)
+            .ToList();
+
+        if (actualSkipped.Count != skippedFiles.Length)
+        {
+            throw new Xunit.Sdk.XunitException(
+                $"The mode line reported {reportedSkipped} skipped file(s) but metrics recorded " +
+                $"{actualSkipped.Count} ({string.Join(", ", actualSkipped)}).");
+        }
+
+        foreach (var expected in skippedFiles)
+        {
+            if (!actualSkipped.Contains(expected, StringComparer.OrdinalIgnoreCase))
+            {
+                throw new Xunit.Sdk.XunitException(
+                    $"Expected '{expected}' to be served from the incremental cache, but the " +
+                    $"skipped set was: {string.Join(", ", actualSkipped)}.");
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Asserts that the compilation failed with expected errors.
     /// </summary>
     public ProjectCompilationResult AssertCompilationFailed(ProjectCompilationResult result, string? expectedErrorPattern = null)
@@ -585,6 +689,80 @@ public class ProjectCompilationHelper : IDisposable
 
         _disposed = true;
     }
+}
+
+/// <summary>
+/// Wraps another <see cref="ICompilerLogger"/> and records the info-level messages the compiler
+/// emits, forwarding them to the inner logger only at the verbosity the inner logger asked for.
+/// </summary>
+/// <remarks>
+/// The incremental skip decision is not on <see cref="ProjectCompilationResult"/>'s public surface
+/// beyond the metrics counts — the authoritative "Incremental mode: N file(s) to compile, M skipped
+/// (unchanged)" report is logged, so a test that wants to prove a build was warm has to capture the
+/// log. Used by <see cref="ProjectCompilationHelper.AssertIncrementalSkipped"/> and by the two-build
+/// tests in <c>IncrementalCompilationTests</c>.
+/// </remarks>
+public sealed class CapturingCompilerLogger : ICompilerLogger
+{
+    private readonly ICompilerLogger _inner;
+    private readonly List<string> _infoMessages = new();
+
+    public CapturingCompilerLogger(ICompilerLogger? inner = null)
+    {
+        _inner = inner ?? NullLogger.Instance;
+    }
+
+    /// <summary>
+    /// Info messages logged since construction or the last <see cref="Clear"/>, in order.
+    /// </summary>
+    public IReadOnlyList<string> InfoMessages => _infoMessages;
+
+    /// <summary>
+    /// Drops captured messages so a subsequent build's log can be read on its own.
+    /// </summary>
+    public void Clear() => _infoMessages.Clear();
+
+    public void LogInfo(string message)
+    {
+        _infoMessages.Add(message);
+        if (_inner.IsEnabled(CompilerLogLevel.Info))
+        {
+            _inner.LogInfo(message);
+        }
+    }
+
+    public void LogError(string message, int line, int column) => _inner.LogError(message, line, column);
+    public void LogWarning(string message, int line, int column) => _inner.LogWarning(message, line, column);
+    public void LogTokenRead(string tokenType, int line, int column, string value)
+        => _inner.LogTokenRead(tokenType, line, column, value);
+    public void LogIndentChange(int oldLevel, int newLevel) => _inner.LogIndentChange(oldLevel, newLevel);
+    public void LogParseEnter(string rule, int tokenPosition) => _inner.LogParseEnter(rule, tokenPosition);
+    public void LogParseExit(string rule, bool success) => _inner.LogParseExit(rule, success);
+    public void LogMetrics(string metricsOutput) => _inner.LogMetrics(metricsOutput);
+
+    public void LogDebug(string message)
+    {
+        if (_inner.IsEnabled(CompilerLogLevel.Debug))
+        {
+            _inner.LogDebug(message);
+        }
+    }
+
+    public void LogTrace(string message)
+    {
+        if (_inner.IsEnabled(CompilerLogLevel.Trace))
+        {
+            _inner.LogTrace(message);
+        }
+    }
+
+    /// <summary>
+    /// Info messages are always produced (that is the point of this logger); everything else
+    /// follows the inner logger, so wrapping a <see cref="NullLogger"/> does not turn on
+    /// trace-level work.
+    /// </summary>
+    public bool IsEnabled(CompilerLogLevel level)
+        => level <= CompilerLogLevel.Info || _inner.IsEnabled(level);
 }
 
 /// <summary>

@@ -1,0 +1,22 @@
+# #1309: a member inherited from a base class must resolve through a MODULE-QUALIFIED reference,
+# not just through `from lib import Child`. Inheritance resolution used to walk the global scope
+# only, where module-scoped symbols like lib's Base and Child do not live, so `lib.Child().greet()`
+# failed with SPY0203 even on a cold build — the one shape in the #1309 table that never needed an
+# incremental cache to reproduce.
+
+import lib
+
+
+def main():
+    print(lib.Child().greet())
+
+    c: lib.Child = lib.Child()
+    print(c.greet())
+
+    # The override still wins over the inherited definition when both exist.
+    print(c.describe())
+
+    # And the base class itself is reachable by the same qualified spelling.
+    b: lib.Base = lib.Base()
+    print(b.greet())
+    print(b.describe())

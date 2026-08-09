@@ -1,0 +1,7 @@
+#1366: a member inherited from a base class is invisible through a module-qualified reference —
+`import lib` + `lib.Child().greet()` reports SPY0203 "Type 'Child' has no member 'greet'" on a
+COLD build. `lib.Child().describe()` (Child's own member) and `from lib import Child` both work,
+so the type reached through `ModuleSymbol.Exports` is the one arriving without its base chain.
+
+This fixture is written to pass once #1366 is fixed; delete this file then. It was authored as the
+cold-build half of #1309's plain-import leg (plan-058a93 Phase 4), which that fix did not reach.

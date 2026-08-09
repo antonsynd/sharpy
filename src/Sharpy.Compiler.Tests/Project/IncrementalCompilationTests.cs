@@ -1,9 +1,11 @@
 using System.Collections.Immutable;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
+using Sharpy.Compiler.Tests.Helpers;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -1336,18 +1338,27 @@ def main():
     p = Point(1, 2)
     print(p.x)
 ");
-        var symbolCachePath = Path.Combine(config.ProjectDirectory, "obj", config.Configuration, ".sharpy-symbols");
-
         var options = new CompilerOptions { Incremental = true };
         var compiler = new Compiler(options, NullLogger.Instance);
 
         var result = compiler.CompileProject(config);
         Assert.True(result.Success, string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message)));
 
-        // Check symbol cache contains the Point class
-        Assert.True(File.Exists(symbolCachePath));
-        var json = File.ReadAllText(symbolCachePath);
-        Assert.Contains("Point", json);
+        // The envelope — not the raw text — has to carry the class. `Assert.Contains("Point", json)`
+        // was satisfied by the GeneratedCSharp payload alone, so it stayed green through the whole
+        // period when ExtractFileSymbols serialized an empty symbol list for every file (#1309).
+        var entry = LoadCachedEntry(config, config.SourceFiles[0]);
+        Assert.NotEmpty(entry.Symbols);
+
+        var point = Assert.Single(entry.Symbols, s => s.Kind == "Type" && s.Name == "Point");
+        Assert.Equal("Class", point.TypeKind);
+        Assert.EndsWith(":Type:Point", point.Id);
+
+        // The class's members round-trip with it, and the module-level function is cached too —
+        // both are module-scope symbols, which is the scope the extractor used to miss entirely.
+        Assert.NotNull(point.Fields);
+        Assert.Equal(new[] { "x", "y" }, point.Fields!.Select(f => f.Name).OrderBy(n => n, StringComparer.Ordinal));
+        Assert.Contains(entry.Symbols, s => s.Kind == "Function" && s.Name == "main");
     }
 
     [Fact]
@@ -1399,6 +1410,14 @@ def main():
         Assert.True(result2.Success,
             "Second build must resolve the cache-reloaded generic export: " +
             string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // Success alone does not prove the cache carried `identity` — the ModuleLoader path can
+        // re-read genlib.spy and make this pass with an envelope full of nothing. Assert the
+        // envelope holds the generic export whose round-trip this test is named for.
+        var libEntry = LoadCachedEntry(config, libFile);
+        var identity = Assert.Single(libEntry.Symbols, s => s.Kind == "Function" && s.Name == "identity");
+        Assert.NotNull(identity.TypeParameters);
+        Assert.Equal(new[] { "T" }, identity.TypeParameters!.Select(tp => tp.Name));
     }
 
     [Fact]
@@ -1463,6 +1482,35 @@ def main():
         Assert.True(result2.Success,
             "Warm-cache build must still unify through the CLR-origin formal: " +
             string.Join("; ", result2.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // As above: prove the library really was cache-served rather than re-read, by asserting the
+        // envelope carries seqhelpers' export. Without this the test passes on an empty cache.
+        var libEntry = LoadCachedEntry(config, libFile);
+        var label = Assert.Single(libEntry.Symbols, s => s.Kind == "Function" && s.Name == "label");
+        Assert.NotNull(label.Parameters);
+        Assert.Equal(new[] { "n" }, label.Parameters!.Select(p => p.Name));
+    }
+
+    /// <summary>
+    /// Reads back what the production serializer wrote to <c>.sharpy-symbols</c>, through the
+    /// production loader — a fresh <see cref="IncrementalCompilationCache"/> over the same project,
+    /// which is exactly how a warm build reaches the cache. Fails loudly when the file is missing or
+    /// the entry is absent/stale, so callers can assert on the entry without null checks.
+    /// </summary>
+    private static FileCacheEntry LoadCachedEntry(ProjectConfig config, string sourceFile)
+    {
+        var symbolCachePath = Path.Combine(
+            config.ProjectDirectory, "obj", config.Configuration, ".sharpy-symbols");
+        Assert.True(File.Exists(symbolCachePath), $"No symbol cache was written to {symbolCachePath}.");
+
+        var reloaded = new IncrementalCompilationCache(config, NullLogger.Instance);
+        reloaded.LoadAllCaches();
+
+        var entry = reloaded.GetFileCache(sourceFile);
+        Assert.True(entry != null,
+            $"The symbol cache holds no valid entry for {Path.GetFileName(sourceFile)}; " +
+            "the file was never cached, or its content changed after the build being asserted.");
+        return entry!;
     }
 
     [Fact]
@@ -3076,6 +3124,369 @@ def some_function() -> int:
 
         Assert.False(isValid);
         Assert.Null(cachedSource);
+    }
+
+    #endregion
+
+    #region Warm-Cache Inheritance Characterization (#1309)
+
+    // These four shapes are the characterization table from plan-058a93 Phase 4.2. Each one
+    // compiled cold and failed on the *second* build — the one where the library file is served
+    // from the symbol cache — because inheritance resolution walked the global scope only and
+    // never saw module-scoped symbols (#1309). Shape 4 failed cold as well.
+    //
+    // The harness: build once so the library's symbols land in `.sharpy-symbols`, make a REAL
+    // content edit to the entry file (a touch or an inert edit leaves the SHA-256 hash unchanged
+    // and silently produces a second COLD build, which is how a test in this shape passes without
+    // testing anything), build again. Every test asserts the mode line, so "1 skipped" is proven
+    // rather than assumed.
+
+    private const string BaseChildLibrary = @"
+class Base:
+    def greet(self) -> str:
+        return 'hello from Base'
+
+
+class Child(Base):
+    pass
+";
+
+    /// <summary>
+    /// Asserts the compiler reported the expected incremental split for the build whose log
+    /// <paramref name="logger"/> captured. This is the raw-<see cref="ProjectConfig"/> counterpart
+    /// of <see cref="ProjectCompilationHelper.AssertIncrementalSkipped"/>.
+    /// </summary>
+    private static void AssertIncrementalSplit(CapturingCompilerLogger logger, int compiled, int skipped)
+    {
+        var modeLine = logger.InfoMessages
+            .LastOrDefault(m => m.StartsWith("Incremental mode:", StringComparison.Ordinal));
+
+        Assert.True(modeLine != null,
+            "The build reported no incremental mode line, so nothing was cache-served. Captured: "
+            + string.Join(" | ", logger.InfoMessages));
+        Assert.Equal(
+            $"Incremental mode: {compiled} file(s) to compile, {skipped} skipped (unchanged)",
+            modeLine);
+    }
+
+    [Fact]
+    public void IncrementalMode_WarmCache_InheritedMethodOnImportedSubclass_Resolves()
+    {
+        // Shape 1: `class Child(Base)` in a cached file, `Child().greet()` in the edited one.
+        // Pre-fix the warm build failed with SPY0203 — Child came back from the cache with no base,
+        // so the inherited member did not exist. Uses ProjectCompilationHelper's warm-cache harness
+        // and executes, so a silently wrong resolution (e.g. binding to something else named greet)
+        // shows up in the output too.
+        using var helper = new ProjectCompilationHelper(_output);
+
+        helper
+            .WithRootNamespace("WarmInherit")
+            .WithIncremental()
+            .WithEntryPoint("main.spy")
+            .AddSourceFile("lib.spy", BaseChildLibrary)
+            .AddSourceFile("main.spy", @"
+from lib import Child
+
+
+def main():
+    c: Child = Child()
+    print(c.greet())
+")
+            .CreateProjectFile();
+
+        var cold = helper.Compile();
+        helper.AssertCompilationSucceeded(cold);
+
+        helper.UpdateSourceFile("main.spy", @"
+from lib import Child
+
+
+def main():
+    c: Child = Child()
+    print(c.greet())
+    print(c.greet())
+");
+
+        var warm = helper.CompileAndExecute();
+
+        Assert.True(warm.Success, string.Join("; ", warm.CompilationErrors));
+        helper.AssertIncrementalSkipped(helper.LastCompilationResult!, "lib.spy");
+        Assert.Equal("hello from Base\nhello from Base\n", warm.StandardOutput);
+    }
+
+    [Fact]
+    public void IncrementalMode_WarmCache_FieldOnCachedExceptionSubclass_Resolves()
+    {
+        // Shape 2 (#1309's own repro): a user exception whose defining file is cache-served, caught
+        // and read through `e.code`. Pre-fix the warm build reported SPY0203 on `e.code`.
+        var libFile = CreateTempFile("lib.spy", @"
+class AppError(Exception):
+    code: int = 0
+
+    def __init__(self, msg: str, code: int):
+        super().__init__(msg)
+        self.code = code
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from lib import AppError
+
+
+def main():
+    try:
+        raise AppError('boom', 42)
+    except AppError as e:
+        print(e.code)
+");
+
+        var config = CreateConfigFor(mainFile, libFile);
+        var logger = new CapturingCompilerLogger();
+        var compiler = new Compiler(new CompilerOptions { Incremental = true }, logger);
+
+        var cold = compiler.CompileProject(config);
+        Assert.True(cold.Success,
+            "Cold build: " + string.Join("; ", cold.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        File.WriteAllText(mainFile, @"
+from lib import AppError
+
+
+def main():
+    try:
+        raise AppError('boom', 42)
+    except AppError as e:
+        print(e.code)
+        print(e.code + 1)
+");
+
+        logger.Clear();
+        var warm = compiler.CompileProject(config);
+
+        Assert.True(warm.Success,
+            "Warm build must resolve a field on the cache-served exception subclass: "
+            + string.Join("; ", warm.Diagnostics.GetErrors().Select(e => e.Message)));
+        AssertIncrementalSplit(logger, compiled: 1, skipped: 1);
+    }
+
+    [Fact]
+    public void IncrementalMode_WarmCache_SubclassAssignedToBaseAnnotation_IsAccepted()
+    {
+        // Shape 3: `b: Base = Child()` where both types come from a cache-served file. Pre-fix the
+        // warm build reported SPY0220 — with Child's base lost, Child was not a Base.
+        var libFile = CreateTempFile("lib.spy", BaseChildLibrary);
+        var mainFile = CreateTempFile("main.spy", @"
+from lib import Base, Child
+
+
+def main():
+    b: Base = Child()
+    print(b.greet())
+");
+
+        var config = CreateConfigFor(mainFile, libFile);
+        var logger = new CapturingCompilerLogger();
+        var compiler = new Compiler(new CompilerOptions { Incremental = true }, logger);
+
+        var cold = compiler.CompileProject(config);
+        Assert.True(cold.Success,
+            "Cold build: " + string.Join("; ", cold.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        File.WriteAllText(mainFile, @"
+from lib import Base, Child
+
+
+def main():
+    b: Base = Child()
+    print(b.greet())
+    other: Base = Child()
+    print(other.greet())
+");
+
+        logger.Clear();
+        var warm = compiler.CompileProject(config);
+
+        Assert.True(warm.Success,
+            "Warm build must accept the cache-served subclass where its base is required: "
+            + string.Join("; ", warm.Diagnostics.GetErrors().Select(e => e.Message)));
+        AssertIncrementalSplit(logger, compiled: 1, skipped: 1);
+    }
+
+    [Fact(Skip = "#1366: `lib.Child().greet()` still reports SPY0203 on a COLD build — the type " +
+        "reached through ModuleSymbol.Exports arrives without its base chain, so only INHERITED " +
+        "members go missing. #1309's fix did not reach this path. Written to pass once #1366 is fixed.")]
+    public void IncrementalMode_PlainImport_InheritedMemberResolves_ColdAndWarm()
+    {
+        // Shape 4: module-qualified `lib.Child().greet()`. This one is cache-independent — it failed
+        // on the COLD build too, because the same wrong-scope iteration ran there. Both builds are
+        // asserted; the fixture `plain_import_inherited_member` covers the cold half end to end.
+        //
+        // Measured at e32ff6e34 (4-cell probe, all cold builds): `lib.Child().greet()` and
+        // `c: lib.Child = lib.Child(); c.greet()` fail with SPY0203, while `lib.Child().describe()`
+        // (Child's own member) and `lib.Base().greet()` (the base's own member) pass — as does
+        // `from lib import Child` + `Child().greet()`, which is why shapes 1 and 3 above are green.
+        var libFile = CreateTempFile("lib.spy", BaseChildLibrary);
+        var mainFile = CreateTempFile("main.spy", @"
+import lib
+
+
+def main():
+    print(lib.Child().greet())
+");
+
+        var config = CreateConfigFor(mainFile, libFile);
+        var logger = new CapturingCompilerLogger();
+        var compiler = new Compiler(new CompilerOptions { Incremental = true }, logger);
+
+        var cold = compiler.CompileProject(config);
+        Assert.True(cold.Success,
+            "Cold build of the plain-import shape: "
+            + string.Join("; ", cold.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        File.WriteAllText(mainFile, @"
+import lib
+
+
+def main():
+    print(lib.Child().greet())
+    print(lib.Child().greet())
+");
+
+        logger.Clear();
+        var warm = compiler.CompileProject(config);
+
+        Assert.True(warm.Success,
+            "Warm build of the plain-import shape: "
+            + string.Join("; ", warm.Diagnostics.GetErrors().Select(e => e.Message)));
+        AssertIncrementalSplit(logger, compiled: 1, skipped: 1);
+    }
+
+    [Fact]
+    public void IncrementalMode_WarmCache_ExceptOnCachedExceptionSubclass_DoesNotReportSpy0399()
+    {
+        // The exact shape that forced the except-derivation check's withdrawal in 6bd193925: a warm
+        // build where AppError's defining file is cache-served. With the base chain lost, the check
+        // refused a VALID user exception type. Restored in Phase 6 now that the cache carries real
+        // symbols — this test is the guard on that. Its positive control is the test below; without
+        // one, this assertion would also pass with the check deleted.
+        var libFile = CreateTempFile("lib.spy", @"
+class AppError(Exception):
+    pass
+");
+        // Nothing raises AppError here: the derivation check is on the handler's TYPE, and the
+        // bare `class AppError(Exception): pass` cannot be constructed with a message at all
+        // today (#1367 — `raise AppError('boom')` is an ICE, CS1729 behind SPY0908). Keeping the
+        // library class bare is the point: that is the shape that forced the withdrawal.
+        var mainFile = CreateTempFile("main.spy", @"
+from lib import AppError
+
+
+def main():
+    try:
+        print('body')
+    except AppError as e:
+        print('caught')
+");
+
+        var config = CreateConfigFor(mainFile, libFile);
+        var logger = new CapturingCompilerLogger();
+        var compiler = new Compiler(new CompilerOptions { Incremental = true }, logger);
+
+        var cold = compiler.CompileProject(config);
+        Assert.True(cold.Success,
+            "Cold build: " + string.Join("; ", cold.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        File.WriteAllText(mainFile, @"
+from lib import AppError
+
+
+def main():
+    try:
+        print('body')
+    except AppError as e:
+        print('caught')
+        print('again')
+");
+
+        logger.Clear();
+        var warm = compiler.CompileProject(config);
+
+        AssertIncrementalSplit(logger, compiled: 1, skipped: 1);
+        Assert.DoesNotContain(
+            warm.Diagnostics.GetErrors(),
+            d => d.Code == DiagnosticCodes.Semantic.TryExceptionTypeNotException);
+        Assert.True(warm.Success,
+            "Warm build: " + string.Join("; ", warm.Diagnostics.GetErrors().Select(e => e.Message)));
+    }
+
+    [Fact]
+    public void IncrementalMode_WarmCache_ExceptOnCachedNonExceptionType_ReportsSpy0399()
+    {
+        // Positive control for the test above: same warm-cache harness, same cache-served library,
+        // but the caught type does not derive from Exception. SPY0399 must still fire on a build
+        // where the type came from the cache — that is what makes the absence assertion above mean
+        // "the type was accepted" rather than "the check never ran".
+        var libFile = CreateTempFile("lib.spy", @"
+class NotAnError:
+    x: int = 1
+");
+        var mainFile = CreateTempFile("main.spy", @"
+from lib import NotAnError
+
+
+def main():
+    n: NotAnError = NotAnError()
+    print(n.x)
+");
+
+        var config = CreateConfigFor(mainFile, libFile);
+        var logger = new CapturingCompilerLogger();
+        var compiler = new Compiler(new CompilerOptions { Incremental = true }, logger);
+
+        var cold = compiler.CompileProject(config);
+        Assert.True(cold.Success,
+            "Cold build: " + string.Join("; ", cold.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // The edit introduces the bad handler, so the library stays cached while main recompiles.
+        File.WriteAllText(mainFile, @"
+from lib import NotAnError
+
+
+def main():
+    n: NotAnError = NotAnError()
+    print(n.x)
+    try:
+        print('try')
+    except NotAnError:
+        print('never')
+");
+
+        logger.Clear();
+        var warm = compiler.CompileProject(config);
+
+        AssertIncrementalSplit(logger, compiled: 1, skipped: 1);
+        Assert.False(warm.Success, "A non-Exception except clause must be refused on warm builds too.");
+        Assert.Contains(
+            warm.Diagnostics.GetErrors(),
+            d => d.Code == DiagnosticCodes.Semantic.TryExceptionTypeNotException
+                && d.Message.Contains("must be a subclass of 'Exception'"));
+    }
+
+    /// <summary>
+    /// A two-file project config over <see cref="_tempDir"/>, entry file first — the layout every
+    /// warm-cache shape in this region uses.
+    /// </summary>
+    private ProjectConfig CreateConfigFor(string entryFile, params string[] otherFiles)
+    {
+        var sourceFiles = new List<string> { entryFile };
+        sourceFiles.AddRange(otherFiles);
+
+        return new ProjectConfig
+        {
+            ProjectFilePath = Path.Combine(_tempDir, "test.spyproj"),
+            ProjectDirectory = _tempDir,
+            RootNamespace = "Test",
+            SourceFiles = sourceFiles,
+            Configuration = "Debug"
+        };
     }
 
     #endregion

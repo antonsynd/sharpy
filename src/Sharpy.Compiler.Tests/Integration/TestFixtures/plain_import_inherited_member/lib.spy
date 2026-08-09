@@ -1,0 +1,14 @@
+# #1309: the library half of the plain-import shape. Child inherits greet() from Base and
+# declares nothing of its own, so every call below has to travel the base chain.
+
+class Base:
+    def greet(self) -> str:
+        return "hello from Base"
+
+    def describe(self) -> str:
+        return "Base"
+
+
+class Child(Base):
+    def describe(self) -> str:
+        return "Child"
