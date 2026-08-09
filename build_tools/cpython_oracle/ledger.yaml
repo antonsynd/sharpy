@@ -469,6 +469,14 @@ deviations:
   spec_ref: docs/language_specification/exception_handling.md
   existing_diagnostic: SPY0122
   planned_diagnostic: null
+- id: shift-count-masked
+  category: operators
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/bitwise_operators.md
+  existing_diagnostic: SPY0348
+  planned_diagnostic: null
 - id: string-indexing-utf16
   category: stdlib
   audience: python

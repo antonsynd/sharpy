@@ -1,0 +1,6 @@
+# A constant negative shift count is refused (#1315). CPython raises ValueError; .NET masks the
+# count to the operand's width, so `1 << -1` is really `1 << 31` and evaluates to -2147483648.
+# The compiler can see a constant, so it says so instead of emitting the masked computation.
+
+def main() -> None:
+    print(1 << -1)

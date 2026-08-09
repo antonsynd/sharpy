@@ -1,0 +1,26 @@
+# Shift semantics (#1315).
+#
+# The result type is the promoted type of the LEFT operand alone — the count is not part of the
+# promotion, it converts to int at emission, which is what the .NET shift operators take. Before
+# this, shifts shared the bitwise arm and promoted both operands, so `1 << 2L` inferred long,
+# emitted `1 << 2L` and died as CS0019.
+#
+# A constant shift whose exact value does not fit the expression's own width is refused (SPY0348),
+# so the 5-bit masking that made `1 << 40` print 256 cannot reach a constant. A runtime count still
+# masks — that is .NET's operator and Axiom 1 keeps it, catalogued in docs/deviations.yaml.
+
+def main() -> None:
+    print(1 << 2)
+    print(1L << 2)
+    print(1 << 2L)
+
+    wide: long = 1L << 62
+    print(wide)
+
+    # Runtime count: .NET masks it to 5 bits for an int left operand, so this is `1 << 8` = 256.
+    # CPython would print 1099511627776.
+    n: int = 1
+    s: int = 40
+    print(n << s)
+
+    print(256 >> 2)

@@ -235,7 +235,13 @@ public static class DiagnosticCodes
         // that spelling must be backtick-escaped. Extends the rule hard keywords already follow
         // (bare `class` is the keyword; `` `class` `` is your symbol) to the builtin namespace.
         public const string BuiltinNameShadowed = "SPY0212";         // Active
-        // SPY0213-SPY0219: Reserved for future name resolution diagnostics
+        // SPY0213 is borrowed from this reserve by the shift family (#1315), whose own operator band
+        // (SPY0320-SPY0326) and the module-level reserve (SPY0340-SPY0349) are both fully allocated —
+        // the same borrowing SPY0348 documents. A constant negative shift count: CPython raises
+        // ValueError, C# masks the count to 5/6 bits and computes a silently different value
+        // (`1 << -1` is -2147483648). Runtime negative counts keep .NET's masking (Axiom 1).
+        public const string NegativeConstantShiftCount = "SPY0213";  // Active
+        // SPY0214-SPY0219: Reserved for future name resolution diagnostics
 
         #endregion
 

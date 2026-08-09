@@ -783,6 +783,21 @@ public static partial class DiagnosticExplanations
             "(a: long = 3794; print(a * 1973 * 948)). If the value genuinely exceeds 64 bits, " +
             "restructure the computation.");
 
+        Add(dict, DiagnosticCodes.Semantic.NegativeConstantShiftCount,
+            "Shift count is a negative constant",
+            "Semantic",
+            "A '<<' or '>>' was written with a constant negative count. The two languages disagree " +
+            "about what that means and neither answer is the obvious one: CPython raises " +
+            "ValueError, while .NET masks the count to the left operand's width — 5 bits for int, " +
+            "6 for long — so '1 << -1' is really '1 << 31' and evaluates to -2147483648, and " +
+            "'256 >> -1' is 0. Because the count is a constant, the compiler can see the mistake " +
+            "and says so instead of emitting a silently different computation. A count that is only " +
+            "known at runtime keeps .NET's masking (Axiom 1) and is catalogued in " +
+            "docs/deviations.yaml.",
+            "def main() -> None:\n    print(1 << -1)  # masks to '1 << 31' -> -2147483648",
+            "Shift the other way with a positive count: '256 >> 1' instead of '256 << -1'. If the " +
+            "count is computed, check its sign before shifting.");
+
         Add(dict, DiagnosticCodes.Semantic.IsTypeTestRetired,
             "'is' used as a type test (retired)",
             "Semantic",

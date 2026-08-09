@@ -1190,7 +1190,29 @@ deviations:
         print(2 ** 40)          # 1099511627776 — a constant '**' widens int -> long
         print(2 ** e)           # e: int = 40 -> raises OverflowError (checked)
         print(2 ** 100)         # SPY0328 — past 64 bits, refused
-        x: long = 1L << 62      # use 'long' for 64-bit (a bare 1 << 62 is int — #1315)
+        x: long = 1L << 62      # use 'long' for 64-bit (a bare 1 << 62 is SPY0348 — #1315)
+
+  - id: shift-count-masked
+    code: null
+    category: operators
+    audience: python
+    severity: none
+    python_behavior: "Python integers are arbitrary precision and the shift count is used as written: `1 << 40` is `1099511627776`, `1 << 62` is `4611686018427387904`. A negative count raises `ValueError: negative shift count` (verified with python3)."
+    sharpy_behavior: "A shift emits the .NET operator, which **masks the count** to the left operand's width — 5 bits for `int`, 6 for `long`. With a runtime count, `n << 40` on an `int` computes `n << 8`. Sharpy closes the compile-time half of the hole: a CONSTANT shift whose exact value does not fit the expression's width is refused with SPY0348, and a CONSTANT negative count is refused with SPY0213 (#1315), so the silent cases that remain are exactly those where the count is only known at runtime. The result type follows the left operand alone, so `1L << 62` is the 64-bit spelling — annotating the destination variable does not widen the shift. Axiom precedence: .NET (1) > Python (2)."
+    spec_ref: docs/language_specification/bitwise_operators.md
+    existing_diagnostic: SPY0348
+    planned_diagnostic: null
+    example:
+      python: |
+        print(1 << 40)          # 1099511627776, exact
+        print(1 << -1)          # ValueError: negative shift count
+      sharpy: |
+        # Every line below was executed against the compiler.
+        print(1 << 40)          # SPY0348 — the constant does not fit int, refused
+        print(1L << 40)         # 1099511627776 — a long left operand
+        print(n << s)           # n: int = 1, s: int = 40 -> 256 (count masks to 8)
+        print(1 << -1)          # SPY0213 — a constant negative count is refused
+        print(1 << k)           # k: int = -1 -> -2147483648 (runtime count, masks to 31)
 
   - id: int-power-negative-exponent
     code: null

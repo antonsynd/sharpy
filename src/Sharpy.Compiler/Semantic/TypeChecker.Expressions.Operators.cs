@@ -178,6 +178,7 @@ internal partial class TypeChecker
                 or BinaryOperator.LeftShift or BinaryOperator.RightShift
             && TypeUtils.IsInteger(leftType) && TypeUtils.IsInteger(rightType))
         {
+            CheckNegativeConstantShiftCount(binOp);
             CheckConstantIntegerOverflow(binOp, resultType);
         }
 
@@ -267,6 +268,41 @@ internal partial class TypeChecker
     /// (CS0220 is an error while the runtime wraps), so Axiom 1 settles it.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Refuses a shift whose count is a negative constant (#1315).
+    /// </summary>
+    /// <remarks>
+    /// CPython raises <c>ValueError: negative shift count</c>. C# masks the count to the left
+    /// operand's width — 5 bits for <c>int</c>, 6 for <c>long</c> — so <c>1 &lt;&lt; -1</c> is
+    /// <c>1 &lt;&lt; 31</c> = −2147483648 and <c>256 &gt;&gt; -1</c> is 0. Both are silently wrong
+    /// answers to a question the author cannot have meant, and both are visible at compile time.
+    /// A <b>runtime</b> negative count keeps .NET's masking (Axiom 1) and is catalogued in
+    /// <c>deviations.yaml</c> — this refusal is only for the constant case, where there is a value
+    /// to inspect.
+    /// </remarks>
+    private void CheckNegativeConstantShiftCount(BinaryOp binOp)
+    {
+        if (binOp.Operator is not (BinaryOperator.LeftShift or BinaryOperator.RightShift))
+        {
+            return;
+        }
+
+        if (!IntegerConstantEvaluator.TryGetConstantInteger(binOp.Right, out var count) || count >= 0)
+        {
+            return;
+        }
+
+        var op = binOp.Operator == BinaryOperator.LeftShift ? "<<" : ">>";
+        AddError(
+            $"Shift count {count} is negative. Python raises ValueError; .NET masks the count to the "
+            + $"operand's width, so '{op} {count}' would compute a different value silently. "
+            + $"Use the opposite operator with a positive count.",
+            binOp.Right.LineStart,
+            binOp.Right.ColumnStart,
+            code: DiagnosticCodes.Semantic.NegativeConstantShiftCount,
+            span: binOp.Right.Span);
+    }
+
     private void CheckConstantIntegerOverflow(BinaryOp binOp, SemanticType resultType)
     {
         // With literal typing correct (#1314, #1320), the expression's result type IS the
