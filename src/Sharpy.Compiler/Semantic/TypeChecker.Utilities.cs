@@ -859,7 +859,38 @@ internal partial class TypeChecker
         // that into CS1061. Recording nothing keeps the permissive channel, which is the same call
         // CompleteStagedExtensionCall already makes for an object-collapsed return (#1206 D2) —
         // `object` there is "strictly WORSE than the Unknown it has today", and it is worse here too.
-        return !mapped.TypeArguments.Any(IsObjectType);
+        //
+        // So is a collection whose element the bridge RE-REPRESENTS: materializing emits
+        // `new Sharpy.List<T'>(source)`, whose constructor takes `IEnumerable<T'>` — and a source
+        // yielding the CLR `T` is not that. `IEnumerable<KeyValuePair<K,V>>` (element mapped to a
+        // tuple) and `IEnumerable<List<T>>` (element mapped to `Sharpy.List<T>`) are both this
+        // shape, and both turn a would-be copy into CS1503 at the constructor call (#1343).
+        return mapped.TypeArguments.All(IsMaterializableElement);
+    }
+
+    /// <summary>
+    /// Whether a mapped collection's element has the same CLR representation on both sides of the
+    /// materializing constructor. Excluded: <c>object</c> (a degradation — see
+    /// <see cref="IsUnmaterializedClrSequence"/>), a tuple (the bridge's <c>KeyValuePair</c> form),
+    /// and a nested CLR-backed collection whose origin is not already the Sharpy wrapper.
+    /// </summary>
+    private static bool IsMaterializableElement(SemanticType element)
+    {
+        if (IsObjectType(element) || element is TupleType)
+            return false;
+
+        if (element is not GenericType { ClrOriginTypeName: { Length: > 0 } origin } nested)
+            return true;
+
+        var sharpyWrapper = nested.Name switch
+        {
+            BuiltinNames.List => Discovery.ClrTypeBridge.SpecialCases.SharpyListFullName,
+            BuiltinNames.Dict => Discovery.ClrTypeBridge.SpecialCases.SharpyDictFullName,
+            BuiltinNames.Set => Discovery.ClrTypeBridge.SpecialCases.SharpySetFullName,
+            _ => null
+        };
+
+        return origin == sharpyWrapper;
     }
 
     /// <summary>
