@@ -840,6 +840,13 @@ internal class ControlFlowGraphBuilder
         var mergeBlock = CreateBlock("match_merge");
         var condBlock = _currentBlock;
 
+        // The subject is evaluated at the end of this block, after its statements — exactly where an
+        // `if` condition is evaluated. Recording it lets the narrowing analysis freeze the block's
+        // out-set for the subject, so `if isinstance(o, Box[int]): match o:` sees the narrowed type
+        // (#1299). Without it the match statement was untracked and the subject read the pre-branch
+        // fact set.
+        condBlock.MatchSubject = stmt.Scrutinee;
+
         foreach (var matchCase in stmt.Cases)
         {
             var caseBlock = CreateBlock("match_case");

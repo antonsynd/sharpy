@@ -1,0 +1,50 @@
+# isinstance narrowing reaches a match statement's SUBJECT (#1299 defect 2).
+#
+# The CFG builder never tracked the match statement — no statement entry, no conditional-branch
+# terminator — so the subject inherited the pre-branch fact set and `match o:` under an isinstance
+# guard still saw a bare `object`. The match EXPRESSION form worked, because its subject is checked
+# inside a tracked statement; that asymmetry was the tell.
+#
+# The order coupling matters: before defect 1 was fixed, fixing this one alone would have routed the
+# collection case into SPY0361. Both shapes are pinned here.
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+def narrowed_user_generic(o: object) -> None:
+    if isinstance(o, Box[int]):
+        match o:
+            case Box(value=v):
+                print(v)
+            case _:
+                print("other")
+    else:
+        print("not a box")
+
+def narrowed_collection(o: object) -> None:
+    if isinstance(o, list[int]):
+        match o:
+            case list():
+                print("coupled-list")
+            case _:
+                print("other")
+    else:
+        print("not a list")
+
+def narrowed_optional(x: str?) -> None:
+    # The Optional shape: the unwrap lowering applies at the subject read. Without narrowing this
+    # is still an ICE (#1358) — the guard is what makes it work.
+    if x is not None:
+        match x:
+            case str() as s:
+                print(s)
+            case _:
+                print("other")
+
+def main() -> None:
+    narrowed_user_generic(Box[int](42))
+    narrowed_collection([9])
+    narrowed_optional("hi")

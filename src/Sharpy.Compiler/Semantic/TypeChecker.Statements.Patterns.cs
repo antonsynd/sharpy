@@ -29,6 +29,13 @@ internal partial class TypeChecker
 
     private void CheckMatch(MatchStatement matchStmt)
     {
+        // Resolve the subject against the facts in effect at the dispatch point, exactly as CheckIf
+        // does for a condition (#1299). The CFG never tracked the match statement, so the subject
+        // read the pre-branch fact set and `if isinstance(o, Box[int]): match o:` saw a bare object.
+        // The `??` is load-bearing: with no flow analysis (module body) the current facts stand.
+        // CheckStatement's finally restores _currentFacts.
+        _currentFacts = _narrowingFlow?.FactsBeforeBranch(matchStmt.Scrutinee) ?? _currentFacts;
+
         var scrutineeType = CheckExpression(matchStmt.Scrutinee);
 
         foreach (var matchCase in matchStmt.Cases)
@@ -588,14 +595,16 @@ internal partial class TypeChecker
     /// </summary>
     private void ReportOpenGenericPatternType(TypeAnnotation patternType, TypeSymbol typeSymbol, Text.TextSpan? fallbackSpan)
     {
-        // Both suggestions below are executed as fixtures, not assumed: an `isinstance` guard around
-        // the match does NOT help, because the narrowed type does not reach the scrutinee, so
-        // suggesting it would send the user in a circle.
+        // Both suggestions below are executed as fixtures, not assumed. The isinstance guard used to
+        // be excluded here — the narrowed type did not reach the scrutinee, so suggesting it would
+        // have sent the user in a circle — and #1299 fixed exactly that, which makes it the first
+        // remedy to offer: it is the one that keeps the match reading like the code you wrote.
         var name = patternType.Name;
         var placeholders = OpenGenericPlaceholders(typeSymbol);
         ReportOpenGenericTypeOperand(
             patternType, name, siteNoun: "match pattern",
-            remedy: "Match on a value whose static type supplies them — for example bind it first with "
+            remedy: "Match on a value whose static type supplies them — guard the match with "
+                + $"`if isinstance(x, {name}[{placeholders}]):`, or bind it first with "
                 + $"`v: {name}[{placeholders}] = x as! {name}[{placeholders}]` — or match against a "
                 + "non-generic base type. A pattern cannot name type arguments itself.",
             fallbackSpan: fallbackSpan);
@@ -606,20 +615,34 @@ internal partial class TypeChecker
     /// (type, property, positional — the batch originally wired only the type-pattern arm, and the
     /// other two leaked the open <c>Box&lt;T&gt;</c> as CS0305 behind SPY0908). .NET reifies generics,
     /// so a bare <c>Box</c> names no runtime type: fill the argument vector from the scrutinee's own
-    /// static type and record the decision as the pattern's type for the emitter, or refuse with
-    /// SPY0345. Builtin collections are excluded — their erasure is the #912 rule, already expressed
-    /// by the type-pattern arm and the emitter, and routing them through here would add a copy.
+    /// static type and record the decision as the pattern's type for the emitter.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>One rule for user generics and builtin collections; erasure is the fill's fallback</b>
+    /// (#1299). Collections used to be excluded before the fill, on the reasoning that their
+    /// erasure was the #912 rule and routing them here would add a copy. The residue of that
+    /// boundary was that <c>case list():</c> was REFUSED against a <c>list[int]</c> scrutinee
+    /// (SPY0361) while being accepted against <c>object</c> — a pattern rejected by the very type
+    /// it matches, and the opposite of CPython, where <c>case list():</c> matches a plain list.
+    /// </para>
+    /// <para>
+    /// Moving the exclusion after the fill keeps erasure exactly where it belongs: a non-generic
+    /// scrutinee (<c>object</c>) fills nothing, and for an erasable collection that null fill means
+    /// "erase", not "refuse". Only user generics reach <see cref="ReportOpenGenericPatternType"/>,
+    /// because for them an unfillable bare name genuinely names no runtime type.
+    /// </para>
+    /// </remarks>
     /// <returns>
     /// The filled type (recorded on the pattern), <paramref name="resolvedType"/> unchanged when the
-    /// rule does not apply, or <c>null</c> when the pattern was refused and checking should stop.
+    /// rule does not apply or the collection erases, or <c>null</c> when the pattern was refused and
+    /// checking should stop.
     /// </returns>
     private SemanticType? ApplyBareGenericPatternRule(
         Pattern pattern, TypeAnnotation patternType, SemanticType resolvedType, SemanticType scrutineeType)
     {
         if (patternType.TypeArguments.Length != 0
-            || _symbolTable.Lookup(patternType.Name) is not TypeSymbol { IsGeneric: true } genericPatternType
-            || BuiltinNames.IsErasableCollection(genericPatternType.Name))
+            || _symbolTable.Lookup(patternType.Name) is not TypeSymbol { IsGeneric: true } genericPatternType)
         {
             return resolvedType;
         }
@@ -628,6 +651,13 @@ internal partial class TypeChecker
         {
             _semanticInfo.SetPatternType(pattern, filledPatternType);
             return filledPatternType;
+        }
+
+        if (BuiltinNames.IsErasableCollection(genericPatternType.Name))
+        {
+            // Nothing to fill from (an object scrutinee): the #912 erasure applies and the
+            // type-pattern arm and the emitter express it.
+            return resolvedType;
         }
 
         ReportOpenGenericPatternType(patternType, genericPatternType, pattern.Span);

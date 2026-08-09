@@ -6,8 +6,9 @@
 # usual "write the closed spelling" advice would name something the compiler rejects. Both
 # suggestions in this message are executed as fixtures — binding to a typed local is
 # match_class_pattern_open_generic_filled, and a non-generic base match works because the
-# base names one runtime type. An `isinstance` guard around the match does NOT work: the
-# narrowed type does not reach the scrutinee, which is why it is not suggested.
+# base names one runtime type. The `isinstance` guard is now the FIRST remedy offered: it did
+# not use to work (the narrowed type never reached the scrutinee), and #1299 fixed that —
+# match_scrutinee_isinstance_narrowed is the fixture that pins it.
 
 class Box[T]:
     value: T

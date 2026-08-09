@@ -61,6 +61,20 @@ internal sealed class BasicBlock
     public BlockTerminator? Terminator { get; internal set; }
 
     /// <summary>
+    /// The subject expression of a <c>match</c> statement whose dispatch ends this block, or null
+    /// (#1299).
+    /// </summary>
+    /// <remarks>
+    /// A match dispatches to N case blocks, so it cannot wear a two-target
+    /// <see cref="ConditionalBranchTerminator"/> without changing the graph's shape for every other
+    /// analysis. It still needs what that terminator provides for narrowing: the expression whose
+    /// facts are the block's out-set. Recording the subject here lets the flow analysis freeze the
+    /// same fact set it freezes for an <c>if</c> condition, and leaves reachability and
+    /// missing-return analysis looking at exactly the graph they looked at before.
+    /// </remarks>
+    public Parser.Ast.Expression? MatchSubject { get; internal set; }
+
+    /// <summary>
     /// For async analysis: true if any statement in this block contains an await expression.
     /// Set during CFG construction by scanning for AwaitExpression nodes.
     /// </summary>

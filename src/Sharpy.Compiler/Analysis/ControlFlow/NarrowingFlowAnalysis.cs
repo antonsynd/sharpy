@@ -396,6 +396,13 @@ internal static class NarrowingFlowAnalysis
             // branch facts apply — that is exactly the block out-set.
             if (block.Terminator is ConditionalBranchTerminator branch)
                 branchConditionFacts[branch.Condition] = Freeze(outSet);
+
+            // A match subject sits in the same position as an `if` condition: evaluated after the
+            // block's statements, before any arm is entered (#1299). It cannot ride a
+            // ConditionalBranchTerminator because a match has N targets, so the builder records it
+            // on the block instead.
+            if (block.MatchSubject is { } subject)
+                branchConditionFacts[subject] = Freeze(outSet);
         }
 
         return new NarrowingFlowResult(blockEntryFacts, statementFacts, branchConditionFacts);
