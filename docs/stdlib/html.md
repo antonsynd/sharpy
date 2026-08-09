@@ -22,7 +22,7 @@ When *quote* is True (default), characters '"' and '\'' are also translated.
 
 ### `html.unescape(s: str) -> str`
 
-Convert all named and numeric character references (e.g. &gt;, &#62;,
+Convert all named and numeric character references (e.g. >, &#62;,
 &#x3e;) in the string to the corresponding Unicode characters.
 
 **Parameters:**
@@ -100,7 +100,7 @@ Called when an HTML comment <!-- ... --> is encountered.
 
 ### `handle_entityref(name: str)`
 
-Called when a named character reference like &amp; is encountered
+Called when a named character reference like & is encountered
 (only when convertCharrefs is False).
 
 **Parameters:**

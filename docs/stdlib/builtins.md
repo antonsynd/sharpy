@@ -300,6 +300,94 @@ chr(97)     # "a"
 
 - `ValueError` -- Thrown when i is out of range
 
+### `decimal() -> decimal`
+
+Construct zero, matching CPython's `Decimal()`.
+
+**Returns:** 0
+
+### `decimal(m: decimal) -> decimal`
+
+Convert a decimal to decimal (identity).
+
+**Parameters:**
+
+- `m` (decimal) -- The decimal value
+
+**Returns:** The same decimal value
+
+### `decimal(b: bool) -> decimal`
+
+Convert a bool to decimal. True is 1, False is 0.
+
+**Parameters:**
+
+- `b` (bool) -- The bool value
+
+**Returns:** 1 for True, 0 for False
+
+### `decimal(i: int) -> decimal`
+
+Convert an int to decimal.
+
+**Parameters:**
+
+- `i` (int) -- The int value
+
+**Returns:** The value as a decimal
+
+### `decimal(l: long) -> decimal`
+
+Convert a long to decimal.
+
+**Parameters:**
+
+- `l` (long) -- The long value
+
+**Returns:** The value as a decimal
+
+### `decimal(f: float32) -> decimal`
+
+Convert a float to decimal.
+
+**Parameters:**
+
+- `f` (float32) -- The float value
+
+**Returns:** The value as a decimal
+
+**Raises:**
+
+- `OverflowError` -- Value is out of range for decimal
+
+### `decimal(d: float) -> decimal`
+
+Convert a double to decimal.
+
+**Parameters:**
+
+- `d` (float) -- The double value
+
+**Returns:** The value as a decimal
+
+**Raises:**
+
+- `OverflowError` -- Value is out of range for decimal
+
+### `decimal(s: str) -> decimal`
+
+Parse a string as a decimal.
+
+**Parameters:**
+
+- `s` (str) -- The string to parse
+
+**Returns:** The parsed decimal
+
+**Raises:**
+
+- `ValueError` -- The string is not a valid decimal literal
+
 ### `decimal_floor_div(x: decimal, y: decimal) -> decimal`
 
 Returns the truncated quotient of *x* divided by
@@ -1120,11 +1208,11 @@ Convert list to list (copy)
 ### `list_from_str(s: str) -> list[str]`
 
 Builds a list of single-character strings from a string, matching Python's
-`list("abc")` -&gt; `['a', 'b', 'c']` and `list("")` -&gt; `[]`.
+`list("abc")` -> `['a', 'b', 'c']` and `list("")` -> `[]`.
 Iterates by UTF-16 code unit (Axiom 1), consistent with
 `StringHelpers.Iterate`: `list("abc")` selects this overload because
-C# would otherwise bind `list(string)` to `List&lt;char&gt;`
-(`string` is `IEnumerable&lt;char&gt;`), diverging from Python (#1067).
+C# would otherwise bind `list(string)` to `List<char>`
+(`string` is `IEnumerable<char>`), diverging from Python (#1067).
 
 ### `long(b: bool) -> long`
 
@@ -1274,7 +1362,7 @@ max(5, 2, 8, 1)  # 8
 !!! note
     The `key=` form of this variadic value call (e.g. `max(a, b, key=f)`) is
     supported: the compiler lowers it to the iterable+key overload
-    `Max&lt;T, TKey&gt;(IEnumerable&lt;T&gt;, Func&lt;T, TKey&gt;)` by wrapping the
+    `Max<T, TKey>(IEnumerable<T>, Func<T, TKey>)` by wrapping the
     positional values in an array, because a C# `params` parameter must come last and
     cannot coexist with a by-keyword `key` (#1012).
 
@@ -1341,7 +1429,7 @@ min(5, 2, 8, 1)  # 1
 !!! note
     The `key=` form of this variadic value call (e.g. `min(a, b, key=f)`) is
     supported: the compiler lowers it to the iterable+key overload
-    `Min&lt;T, TKey&gt;(IEnumerable&lt;T&gt;, Func&lt;T, TKey&gt;)` by wrapping the
+    `Min<T, TKey>(IEnumerable<T>, Func<T, TKey>)` by wrapping the
     positional values in an array, because a C# `params` parameter must come last and
     cannot coexist with a by-keyword `key` (#1012).
 
@@ -1383,6 +1471,16 @@ it = iter([1])
 next(it)          # 1
 next(it, "done")  # "done"
 ```
+
+### `object() -> object`
+
+Construct a bare object, matching CPython's `object()`, which takes no arguments.
+
+**Returns:** A new object instance
+
+!!! note
+    This exists so a reference to the builtin type `object` has an overload set to pin
+    against — the constructor-reference Conversion family's precondition (#1272).
 
 ### `oct(x: int) -> str`
 
@@ -1876,9 +1974,9 @@ Whole-number values get a trailing `.0`.
     The digits come from .NET's shortest-round-trip formatter (`"R"`), which is
     correct, but the positional-vs-exponential layout is Sharpy's own decision,
     ported from CPython's `format_float_short`: writing a value as
-    `0.d1…dn × 10^decpt`, render positionally when `-4 &lt; decpt &lt;= 16`
+    `0.d1…dn × 10^decpt`, render positionally when `-4 < decpt <= 16`
     and exponentially otherwise. .NET stays positional one decade longer
-    (`decpt &lt;= 17`), which is the `[1e16, 1e17)` divergence band of #1204.
+    (`decpt <= 17`), which is the `[1e16, 1e17)` divergence band of #1204.
     
     
     Re-rendering from the digits, rather than patching the one divergent band, keeps
@@ -1893,7 +1991,7 @@ Overload to avoid float→double widening precision issues.
     Shares `RenderShortestRoundTrip` with `FormatFloat(double)`
     — the two overloads share a renderer, not a threshold.
     
-    The single switches to exponential at `decpt &gt; 9`, not the double's 16.
+    The single switches to exponential at `decpt > 9`, not the double's 16.
     That is a deliberate Sharpy decision rather than CPython parity, because CPython
     has no `float32` and therefore has no answer to copy. The derivation mirrors
     CPython's: its 16 tracks the ≤17 significant digits a double's shortest

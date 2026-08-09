@@ -14,10 +14,12 @@ from build_tools.generate_stdlib_docs import (
     _collect_doc_lines,
     _count_code_braces,
     _find_nonpublic_class_ranges,
+    _fixup_prose,
     _parse_params,
     _parse_xml_doc,
     _replace_child_block,
     _split_generic_args,
+    _strip_xml_tags,
     build_nav_blocks,
     check_docs,
     compute_mkdocs_nav,
@@ -1570,3 +1572,39 @@ class TestCheckDocs:
         for p, content in snapshot.items():
             assert p.read_text(encoding="utf-8") == content
         assert mkdocs.read_text(encoding="utf-8") == mk_before
+
+
+class TestXmlEntitiesAndKeywordScoping:
+    """
+    #1305 — two artifacts of the extraction pipeline, both untested before this.
+
+    Neither is cosmetic. An entity left raw renders as literal `&lt;` in the published page, so
+    every generic mentioned in prose read as `List&lt;char&gt;`. And a keyword mapping applied to
+    running English silently edits documentation: `true` and `null` are ordinary words.
+    """
+
+    def test_entities_are_unescaped_after_tags_are_stripped(self):
+        # Order matters: unescaping first would turn `&lt;c&gt;` into a tag for the stripper to eat.
+        assert _strip_xml_tags("A <c>List&lt;char&gt;</c> of things") == "A `List<char>` of things"
+
+    def test_ampersand_entity_is_unescaped(self):
+        assert _strip_xml_tags("this &amp; that") == "this & that"
+
+    def test_nested_generics_survive(self):
+        assert _strip_xml_tags(
+            "<c>Dict&lt;str, List&lt;int&gt;&gt;</c>") == "`Dict<str, List<int>>`"
+
+    def test_keyword_mapping_applies_to_all_prose_deliberately(self):
+        # NOT scoped to code spans, and measured rather than assumed (#1305). The source is C#
+        # XML doc comments: `true` and `null` in running prose mean the literal far more often
+        # than the English word, so scoping regressed real sentences —
+        #   "Return True if all elements of the iterable are True" -> "... are true"
+        #   "Returns False if the string is None or empty"         -> "... is null or empty"
+        # — while protecting a hazard a full regeneration sweep found zero live instances of.
+        assert _fixup_prose("`x is true`") == "`x is True`"
+        assert _fixup_prose("returns true when empty") == "returns True when empty"
+        assert _fixup_prose("the value is null") == "the value is None"
+
+    def test_global_prefix_is_stripped_everywhere(self):
+        assert _fixup_prose("see global::Sharpy.List") == "see Sharpy.List"
+        assert _fixup_prose("`global::Sharpy.List`") == "`Sharpy.List`"

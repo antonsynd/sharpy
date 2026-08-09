@@ -1,6 +1,6 @@
 # numpy
 
-Interface implementations for `NdArray{T}` — `IEnumerable&lt;T&gt;`,
+Interface implementations for `NdArray{T}` — `IEnumerable<T>`,
 `ISized`, structural equality, and conversion helpers.
 
 ```python
@@ -67,9 +67,9 @@ for the same indices/axis.
 
 ### `numpy.tolist() -> object`
 
-Convert this array to a nested `List&lt;...&gt;` mirror — the equivalent of NumPy's
-`ndarray.tolist()`. The result type depends on rank: 1-D → `List&lt;T&gt;`,
-2-D → `List&lt;List&lt;T&gt;&gt;`, etc. Returned as `object` because the static
+Convert this array to a nested `List<...>` mirror — the equivalent of NumPy's
+`ndarray.tolist()`. The result type depends on rank: 1-D → `List<T>`,
+2-D → `List<List<T>>`, etc. Returned as `object` because the static
 nesting depth depends on the runtime rank.
 
 ### `numpy.to_array() -> list[T]`
@@ -220,19 +220,19 @@ Elementwise `a != b` with broadcasting.
 
 ### `numpy.less(a: NdArray[T], b: NdArray[T]) -> NdArray[bool]`
 
-Elementwise `a &lt; b` with broadcasting.
+Elementwise `a < b` with broadcasting.
 
 ### `numpy.less_equal(a: NdArray[T], b: NdArray[T]) -> NdArray[bool]`
 
-Elementwise `a &lt;= b` with broadcasting.
+Elementwise `a <= b` with broadcasting.
 
 ### `numpy.greater(a: NdArray[T], b: NdArray[T]) -> NdArray[bool]`
 
-Elementwise `a &gt; b` with broadcasting.
+Elementwise `a > b` with broadcasting.
 
 ### `numpy.greater_equal(a: NdArray[T], b: NdArray[T]) -> NdArray[bool]`
 
-Elementwise `a &gt;= b` with broadcasting.
+Elementwise `a >= b` with broadcasting.
 
 ### `numpy.concatenate(arrays: list[NdArray[float]], axis: int = 0) -> NdArray[float]`
 
@@ -504,7 +504,7 @@ convention (the first valid insertion point).
 
 True if every pair of elements in *a* and *b* is
 close, using NumPy's mixed absolute/relative tolerance:
-`|a - b| &lt;= atol + rtol * |b|`.
+`|a - b| <= atol + rtol * |b|`.
 
 ### `numpy.isnan(a: NdArray[float]) -> NdArray[bool]`
 
@@ -824,7 +824,7 @@ When `false`, *size* must not exceed `a.Size`.
 **Raises:**
 
 - `ValueError` -- Thrown when *a* is not 1-D, when *size* is negative,
-when *a* is empty and *size* &gt; 0, or when sampling without replacement and
+when *a* is empty and *size* > 0, or when sampling without replacement and
 *size* exceeds the source length.
 
 ### `numpy.shuffle(a: NdArray[T])`

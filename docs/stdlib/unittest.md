@@ -27,7 +27,7 @@ Return the text captured so far, mirroring `io.StringIO.getvalue()`.
 
 Marker for assert_raises context manager. The compiler transforms
 `with assert_raises(ExceptionType): body` into
-`Xunit.Assert.Throws&lt;ExceptionType&gt;(() =&gt; { body })`.
+`Xunit.Assert.Throws<ExceptionType>(() => { body })`.
 
 **Parameters:**
 
@@ -35,7 +35,7 @@ Marker for assert_raises context manager. The compiler transforms
 - `match` (str | None) -- Optional regular expression applied to the exception message with
 `re.search` semantics. When provided, the compiler appends a
 `Xunit.Assert.Matches(match, exception.Message)` check after the
-`Xunit.Assert.Throws&lt;ExceptionType&gt;` call.
+`Xunit.Assert.Throws<ExceptionType>` call.
 
 !!! note
     This method exists for type resolution only. It should never be called at runtime.
@@ -113,12 +113,12 @@ Marker for assert_is_not_none. The compiler transforms calls to
 ### `unittest.assert_greater(a: object, b: object)`
 
 Marker for assert_greater. The compiler transforms calls to
-`Xunit.Assert.True(a &gt; b, ...)`.
+`Xunit.Assert.True(a > b, ...)`.
 
 ### `unittest.assert_less(a: object, b: object)`
 
 Marker for assert_less. The compiler transforms calls to
-`Xunit.Assert.True(a &lt; b, ...)`.
+`Xunit.Assert.True(a < b, ...)`.
 
 ### `unittest.assert_in(item: object, collection: object)`
 

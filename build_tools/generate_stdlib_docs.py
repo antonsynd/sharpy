@@ -201,7 +201,24 @@ def _normalize_cs_type(cs_type: str) -> str:
 
 
 def _fixup_prose(text: str) -> str:
-    """Replace C# literal keywords with Sharpy equivalents in prose text."""
+    """
+    Render extracted doc text for markdown: C# literal keywords become their Sharpy spellings,
+    and `global::` is stripped.
+
+    The mapping is applied to ALL prose, not scoped to code spans, and that is a measured
+    decision rather than an oversight (#1305). Scoping it was tried: the source is C# XML doc
+    comments written by C# authors, where `true` and `null` in running prose overwhelmingly mean
+    the literal, so restricting the mapping regressed real sentences —
+
+        "Return True if all elements of the iterable are True"  ->  "... are true"
+        "Returns False if the string is None or empty"          ->  "... is null or empty"
+
+    — in exchange for protecting a hazard that does not occur in this corpus: the English senses
+    of the words. A regeneration sweep found no live instance ("the truncated or floored
+    quotient" is intact), so the trade was all cost. Revisit if a real English-sense collision
+    ever appears; the fix then is to reword that one doc comment, which is cheaper than teaching
+    the generator to tell the registers apart.
+    """
     if not text:
         return text
     text = re.sub(r'\btrue\b', 'True', text)
@@ -334,6 +351,11 @@ def _strip_xml_tags(text: str) -> str:
     text = re.sub(r"<paramref\s+name=\"([^\"]+)\"\s*/>", r"*\1*", text)
     text = re.sub(r"<c>([^<]*)</c>", r"`\1`", text)
     text = re.sub(r"</?[a-zA-Z][^>]*>", "", text)
+    # Unescape AFTER tag stripping, never before: a doc comment writes `List&lt;char&gt;` because
+    # a bare `<` would be a tag, and unescaping first would turn it into one for the regex above to
+    # eat. Every generic mentioned in prose came out as `List&lt;char&gt;` in the rendered markdown
+    # until this ran (#1305).
+    text = text.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
     text = text.strip()
     # Strip global:: and common System. namespace prefixes from prose
     text = text.replace('global::', '')

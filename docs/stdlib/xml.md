@@ -84,7 +84,7 @@ When serializing, registered prefixes will be used instead of auto-generated one
 ### `xml.comment(text: str) -> Element`
 
 Create a comment element with the given text.
-Serialized as `&lt;!-- text --&gt;` by `Tostring`.
+Serialized as `<!-- text -->` by `Tostring`.
 
 **Parameters:**
 
@@ -95,7 +95,7 @@ Serialized as `&lt;!-- text --&gt;` by `Tostring`.
 ### `xml.processing_instruction(target: str, text: str | None = None) -> Element`
 
 Create a processing instruction element.
-Serialized as `&lt;?target text?&gt;` by `Tostring`.
+Serialized as `<?target text?>` by `Tostring`.
 
 **Parameters:**
 

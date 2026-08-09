@@ -23,7 +23,7 @@ json.dumps({"key": "value"})    # '{"key": "value"}'
 json.dumps([1, 2, 3])           # '[1, 2, 3]'
 ```
 
-### `json.dumps(obj: object | None, indent: int = -1, sort_keys: bool = False, ensure_ascii: bool = True, separators: tuple[str, str] | None = None, @default: (object) -> object | None | None = None, cls: JSONEncoder | None = None) -> str`
+### `json.dumps(obj: object | None, indent: int = -1, sort_keys: bool = False, ensure_ascii: bool = True, separators: tuple[str, str] | None = None, @default: (object) -> object | None | None = None, cls: JSONEncoder | None = None, allow_nan: bool = True) -> str`
 
 Serialize obj to a JSON formatted string with formatting options.
 
@@ -39,6 +39,7 @@ defaults. When `None`, defaults to `(", ", ": ")` in compact mode and
 - `@default` ((object) -> object | None | None)
 - `cls` (JSONEncoder | None) -- Optional `JSONEncoder` instance. When provided,
 delegates serialization to `cls.Encode(obj)`.
+- `allow_nan` (bool)
 
 **Returns:** A JSON string representation of *obj*.
 
@@ -76,7 +77,7 @@ json.dump({"key": "value"}, f)
 f.close()
 ```
 
-### `json.dump(obj: object | None, fp: TextFile, indent: int = -1, sort_keys: bool = False, ensure_ascii: bool = True, separators: tuple[str, str] | None = None, @default: (object) -> object | None | None = None, cls: JSONEncoder | None = None)`
+### `json.dump(obj: object | None, fp: TextFile, indent: int = -1, sort_keys: bool = False, ensure_ascii: bool = True, separators: tuple[str, str] | None = None, @default: (object) -> object | None | None = None, cls: JSONEncoder | None = None, allow_nan: bool = True)`
 
 Serialize obj as a JSON formatted stream to a file with formatting options.
 
@@ -91,6 +92,7 @@ Serialize obj as a JSON formatted stream to a file with formatting options.
 defaults. See `Dumps(object?, int, bool, bool, ValueTuple{string, string}?, Func{object, object?}?)`.
 - `@default` ((object) -> object | None | None)
 - `cls` (JSONEncoder | None) -- Optional `JSONEncoder` instance for custom encoding.
+- `allow_nan` (bool)
 
 ### `json.load(fp: TextFile, cls: JSONDecoder | None = None, object_hook: (dict[str, object | None]) -> object | None | None = None) -> object | None`
 
