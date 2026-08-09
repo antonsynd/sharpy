@@ -107,6 +107,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "Type",
             Name = ts.Name,
+            IsNameBacktickEscaped = ts.IsNameBacktickEscaped,
             FilePath = PathNormalizer.Normalize(filePath),
             AccessLevel = ts.AccessLevel.ToString(),
             DeclarationLine = ts.DeclarationLine,
@@ -157,6 +158,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "Function",
             Name = fs.Name,
+            IsNameBacktickEscaped = fs.IsNameBacktickEscaped,
             FilePath = PathNormalizer.Normalize(filePath),
             AccessLevel = fs.AccessLevel.ToString(),
             DeclarationLine = fs.DeclarationLine,
@@ -187,6 +189,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "Variable",
             Name = vs.Name,
+            IsNameBacktickEscaped = vs.IsNameBacktickEscaped,
             FilePath = PathNormalizer.Normalize(filePath),
             AccessLevel = vs.AccessLevel.ToString(),
             DeclarationLine = vs.DeclarationLine,
@@ -219,6 +222,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "Module",
             Name = ms.Name,
+            IsNameBacktickEscaped = ms.IsNameBacktickEscaped,
             FilePath = PathNormalizer.Normalize(ms.FilePath),
             AccessLevel = ms.AccessLevel.ToString(),
             DeclarationLine = ms.DeclarationLine,
@@ -250,6 +254,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "TypeAlias",
             Name = tas.Name,
+            IsNameBacktickEscaped = tas.IsNameBacktickEscaped,
             FilePath = PathNormalizer.Normalize(filePath),
             AccessLevel = tas.AccessLevel.ToString(),
             DeclarationLine = tas.DeclarationLine,
@@ -273,6 +278,7 @@ internal static class SymbolSerializer
             Id = id,
             Kind = "TypeParameter",
             Name = tps.Name,
+            IsNameBacktickEscaped = tps.IsNameBacktickEscaped,
             FilePath = PathNormalizer.Normalize(filePath),
             AccessLevel = tps.AccessLevel.ToString(),
             DeclarationLine = tps.DeclarationLine,
@@ -452,6 +458,7 @@ internal static class SymbolSerializer
         var symbol = new TypeSymbol
         {
             Name = cached.Name,
+            IsNameBacktickEscaped = cached.IsNameBacktickEscaped,
             Kind = SymbolKind.Type,
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,
@@ -510,6 +517,7 @@ internal static class SymbolSerializer
         var symbol = new FunctionSymbol
         {
             Name = cached.Name,
+            IsNameBacktickEscaped = cached.IsNameBacktickEscaped,
             Kind = SymbolKind.Function,
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,
@@ -544,6 +552,7 @@ internal static class SymbolSerializer
         var symbol = new VariableSymbol
         {
             Name = cached.Name,
+            IsNameBacktickEscaped = cached.IsNameBacktickEscaped,
             Kind = SymbolKind.Variable,
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,
@@ -595,6 +604,7 @@ internal static class SymbolSerializer
         var symbol = new ModuleSymbol
         {
             Name = cached.Name,
+            IsNameBacktickEscaped = cached.IsNameBacktickEscaped,
             Kind = SymbolKind.Module,
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,
@@ -623,6 +633,7 @@ internal static class SymbolSerializer
         var symbol = new TypeAliasSymbol
         {
             Name = cached.Name,
+            IsNameBacktickEscaped = cached.IsNameBacktickEscaped,
             Kind = SymbolKind.TypeAlias,
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,
@@ -649,6 +660,7 @@ internal static class SymbolSerializer
         var symbol = new TypeParameterSymbol
         {
             Name = cached.Name,
+            IsNameBacktickEscaped = cached.IsNameBacktickEscaped,
             Kind = SymbolKind.TypeParameter,
             AccessLevel = accessLevel,
             DeclarationLine = cached.DeclarationLine,

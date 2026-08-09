@@ -22,6 +22,19 @@ internal record CachedSymbol
     public required string Name { get; init; }
 
     /// <summary>
+    /// Whether the name was declared backtick-escaped (<c>class `int`</c>).
+    /// </summary>
+    /// <remarks>
+    /// Part of what the name DENOTES, not a formatting detail: an escaped declaration and a bare
+    /// one with the same spelling are different symbols in different namespaces, and every binding
+    /// seam decides between them by comparing this flag (#1325's identity rule). A cache that drops
+    /// it restores a stranger — the warm build would bind the escaped declaration to bare
+    /// references and emit the mangled spelling, giving CS0103 where the cold build compiles
+    /// (#1275, #1328). Hence schema v23.
+    /// </remarks>
+    public bool IsNameBacktickEscaped { get; init; }
+
+    /// <summary>
     /// File path where the symbol is defined
     /// </summary>
     public required string FilePath { get; init; }

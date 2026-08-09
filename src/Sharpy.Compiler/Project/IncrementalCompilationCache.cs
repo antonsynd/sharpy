@@ -60,7 +60,12 @@ internal class IncrementalCompilationCache
     // v22: TypeSymbol.IsStringEnum round-trips — a string-backed enum now emits singleton
     //      instances with an implicit string conversion, so restoring it as an int-backed enum
     //      would emit a different type from a cold build (#1284)
-    internal const int CurrentSchemaVersion = 22;
+    // v23: Symbol.IsNameBacktickEscaped round-trips for every serialized kind. The flag is part of
+    //      what a name denotes — every binding seam compares it to decide whether a reference means
+    //      the escaped declaration or the bare one — so a warm build that restored it as false bound
+    //      escaped declarations to bare references and emitted the mangled spelling: CS0103 where a
+    //      cold build compiles (#1275, #1328)
+    internal const int CurrentSchemaVersion = 23;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
