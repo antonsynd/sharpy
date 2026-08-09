@@ -88,14 +88,17 @@ internal class DiagnosticRenderer
         int? column = diagnostic.Column;
         string? filePath = diagnostic.FilePath;
 
-        // If we have a span and source text, derive line/column from span — but ONLY when
-        // the source text belongs to the same file as the diagnostic. In multi-file compilation
-        // the caller may pass the entry file's buffer for every diagnostic; re-deriving offsets
-        // against a mismatched file produces wrong line/column (#1323).
-        if (diagnostic.Span.HasValue && sourceText != null
+        // Whether the buffer we were handed is the file this diagnostic names. In multi-file
+        // compilation the caller may pass the entry file's buffer for every diagnostic, and reading
+        // ANYTHING positional out of a mismatched buffer is wrong (#1323).
+        var sourceIsDiagnosticFile = sourceText != null
             && (string.IsNullOrEmpty(diagnostic.FilePath)
                 || string.IsNullOrEmpty(sourceText.FilePath)
-                || string.Equals(diagnostic.FilePath, sourceText.FilePath, StringComparison.Ordinal)))
+                || string.Equals(diagnostic.FilePath, sourceText.FilePath, StringComparison.Ordinal));
+
+        // If we have a span and source text, derive line/column from span — but only from the
+        // right buffer.
+        if (diagnostic.Span.HasValue && sourceIsDiagnosticFile && sourceText != null)
         {
             var span = diagnostic.Span.Value;
             if (span.Start >= 0 && span.Start <= sourceText.Length)
@@ -128,8 +131,13 @@ internal class DiagnosticRenderer
             return string.Join(Environment.NewLine, lines);
         }
 
-        // Source context: only if we have a line number
-        if (line.HasValue && sourceText != null && line.Value >= 1 && line.Value <= sourceText.LineCount)
+        // Source context: only if we have a line number AND the buffer is the file we just named.
+        // Without the second condition the snippet is drawn from a different file at the same line
+        // number — the location said `shadowlib.spy:4` while the caret underlined main.spy's line 4,
+        // which reads as the compiler pointing at a line that does not say what it claims (#1323).
+        // Skipping the snippet loses context but never asserts something false.
+        if (line.HasValue && sourceText != null && sourceIsDiagnosticFile
+            && line.Value >= 1 && line.Value <= sourceText.LineCount)
         {
             var lineNumberWidth = line.Value.ToString(CultureInfo.InvariantCulture).Length;
             // Ensure at least 2 chars for gutter width for visual consistency
