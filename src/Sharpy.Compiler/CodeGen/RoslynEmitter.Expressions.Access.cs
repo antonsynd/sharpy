@@ -134,8 +134,12 @@ internal partial class RoslynEmitter
                 directCallTarget = ResolveConstructorForCall(callTypeSymbol, call)
                     ?? _context.SemanticInfo?.GetCallTarget(call);
             }
-            var allArgs = GenerateReorderedCallArguments(call, directCallTarget);
-
+            // Decided BEFORE the generic argument generation: this lowering builds its own
+            // argument list from the same AST nodes, so generating them here first produced every
+            // argument and the key expression twice and discarded one set. GenerateExpression is
+            // not pure — it can push into `_hoistedStatements`, which are flushed unconditionally
+            // — so a speculative generation is a duplicated side effect waiting for the right
+            // argument (#1228's rule, found live by the re-entry tripwire, #1334).
             if (isBuiltinFunc)
             {
                 // Variadic value form of min()/max() with key= → route to the iterable+key
@@ -143,7 +147,12 @@ internal partial class RoslynEmitter
                 var minMaxValueFormWithKey = TryGenerateMinMaxValueFormWithKey(call, funcName);
                 if (minMaxValueFormWithKey != null)
                     return minMaxValueFormWithKey;
+            }
 
+            var allArgs = GenerateReorderedCallArguments(call, directCallTarget);
+
+            if (isBuiltinFunc)
+            {
                 // Generic builtins need explicit type arguments
                 if (funcName.Name is BuiltinNames.Reversed or BuiltinNames.Sorted)
                 {

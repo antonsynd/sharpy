@@ -18,6 +18,11 @@ internal partial class RoslynEmitter
 {
     private ExpressionSyntax GenerateExpression(Sharpy.Compiler.Parser.Ast.Expression expr)
     {
+        // Re-entry tripwire (#1334). Null in production — one null check, no state, no allocation.
+        // Installed only by a test-side ICodeEmitterFactory, which is what makes double generation
+        // a structural property rather than something each shape has to be tested for.
+        _generationRecorder?.OnGenerate(expr);
+
         var generated = GenerateExpressionCore(expr);
 
         // Sequence materialization (#1251): the TypeChecker decided this expression yields a CLR

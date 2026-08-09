@@ -126,9 +126,24 @@ targets (calls AND property reads — a member read is repeatable only when it i
 field, `MemberReadIsPlainField`). The standing guards are the evaluation-count fixtures
 (`single_evaluation_*.spy`) and the enum-driven
 `AugmentedAssignmentSingleEvaluationTests`, which forces every new `AssignmentOperator` to
-declare its single-evaluation story; a GENERAL `GenerateExpression` re-entry tripwire over
-the snapshot corpus is designed but not built — see the issue filed from the round-8
-verification before assuming this class is structurally guarded elsewhere.
+declare its single-evaluation story.
+
+The general guard now exists (#1334): `GenerateExpressionReentryTests` counts, per Sharpy
+statement, how often each AST node passes through `GenerateExpression` — the one wrapper
+every expression goes through — and fails on any node reached twice. It sweeps the whole
+executing single-file corpus (~1,720 fixtures, ~9s). So a new double-generation does not
+need anyone to have guessed the shape: it fails on whichever fixture contains it. The
+recorder is installed by a test-side `ICodeEmitterFactory` (`IExpressionGenerationRecorder`);
+production emit holds a null field and pays one null check.
+
+Note what the guard does NOT cover, measured rather than assumed (#1351): it sees
+**re-generation**, not **re-splicing**. `HoistAugmentedTargetOperand` takes an
+already-generated `ExpressionSyntax` and the caller splices the same syntax into the read
+and the write, so `GenerateExpression` runs once — inverting `MemberReadIsPlainField` to
+reintroduce `abc5bf4b0` leaves the sweep green. Both historical instances of this class
+were re-splicing. `single_evaluation_*.spy` and `AugmentedAssignmentSingleEvaluationTests`
+are what cover that half; neither mechanism subsumes the other. Reuse-or-capture is still
+the rule.
 
 ## Semantic Analysis Pipeline
 

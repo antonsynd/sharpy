@@ -152,6 +152,11 @@ internal partial class RoslynEmitter
     {
         _cancellationToken.ThrowIfCancellationRequested();
 
+        // The re-entry tripwire's scope boundary (#1334) sits exactly where the hoist accumulator's
+        // does, and for the same reason: this is where one Sharpy statement's expression generation
+        // begins and ends. Nested statements nest their scopes.
+        using var generationScope = _generationRecorder?.BeginStatementScope();
+
         // @suppress wrapper (#1024): decorators are compile-time-only and emit nothing — unwrap and
         // emit the inner statement (which keeps, e.g., the import/type-alias no-emit allowlist below).
         if (stmt is DecoratedStatement decorated)

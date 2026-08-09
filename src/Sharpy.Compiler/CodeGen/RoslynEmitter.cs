@@ -109,6 +109,16 @@ internal partial class RoslynEmitter : ICodeEmitter
     private int _tempVarCounter = 0;
 
     /// <summary>
+    /// Set only by a test-side <see cref="ICodeEmitterFactory"/>; null in every production compile
+    /// (#1334). See <see cref="IExpressionGenerationRecorder"/>.
+    /// </summary>
+    private IExpressionGenerationRecorder? _generationRecorder;
+
+    /// <summary>Installs the re-entry recorder. Test seam; see <see cref="IExpressionGenerationRecorder"/>.</summary>
+    internal void SetGenerationRecorder(IExpressionGenerationRecorder recorder)
+        => _generationRecorder = recorder;
+
+    /// <summary>
     /// Tracks statements that need to be hoisted before the containing statement.
     /// Used by walrus operator (:=) for variable declarations and by multi-for
     /// comprehensions for imperative loop codegen. Populated during expression

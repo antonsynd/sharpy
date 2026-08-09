@@ -36,6 +36,19 @@ internal partial class RoslynEmitter
         // (e.g. `x is not None and f(x)`, `isinstance(a, Dog) and a.bark()`) is materialized
         // per-read-node by the TypeChecker and applied at the read sites (#1081) — the emitter
         // no longer re-derives which variables the left operand narrows.
+        //
+        // Pipe-forward is decided BEFORE the operands are generated: its lowering re-generates
+        // the left operand itself (the piped value becomes a call argument), so generating it
+        // here first produced the value twice and discarded one. GenerateExpression is not pure —
+        // it can push into `_hoistedStatements`, which are flushed unconditionally — so a
+        // speculative generation is a duplicated side effect waiting for the right operand
+        // (#1228's rule, found live by the re-entry tripwire, #1334).
+        if (binOp.Operator == BinaryOperator.PipeForward)
+        {
+            // x |> f → f(x); x |> f(y) → f(x, y) (prepend to argument list)
+            return GeneratePipeForward(binOp.Left, binOp.Right);
+        }
+
         var left = GenerateExpression(binOp.Left);
         var right = GenerateExpression(binOp.Right);
 
@@ -249,10 +262,6 @@ internal partial class RoslynEmitter
                     break;
                 }
 
-            case BinaryOperator.PipeForward:
-                // x |> f → f(x)
-                // x |> f(y) → f(x, y) (prepend to argument list)
-                return GeneratePipeForward(binOp.Left, binOp.Right);
         }
 
         // Standard binary operators
