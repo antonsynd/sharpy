@@ -64,6 +64,15 @@ public class StubClassificationTableTests : IDisposable
     private const string Abstract = "abstract";
     private const string Concrete = "concrete";
 
+    private const string Property = "property";
+    private const string Event = "event";
+
+    /// <summary>
+    /// A body spelling that stands for "an <c>@abstract</c> decorator over a <c>pass</c> body" —
+    /// the decorator paired with the one body the implicit rule would not have made abstract.
+    /// </summary>
+    private const string AbstractDecorator = "@abstract";
+
     private readonly string _testDir;
 
     public StubClassificationTableTests()
@@ -161,6 +170,166 @@ public class StubClassificationTableTests : IDisposable
             + "method '…' must have '...' as its body\")");
     }
 
+    // --- The same table for properties and events (#1267) --------------------------------------
+
+    /// <summary>
+    /// 22 cells. <see cref="PropertySymbol.IsAbstract"/> and <see cref="EventSymbol.IsAbstract"/>
+    /// answer the same question the method table asks, and must answer it the same way: an
+    /// <c>@abstract</c> decorator always wins; an ellipsis stub body is implicitly abstract in an
+    /// <c>@abstract</c> class or an interface; a <c>pass</c> body is a stub for interface members
+    /// only. And, as for methods, the answer cannot depend on which side of an import the
+    /// declaration sits.
+    ///
+    /// <para>The <c>@abstract</c> cells deliberately pair the decorator with a <c>pass</c> body,
+    /// which is the one spelling the implicit rule would classify <em>concrete</em> in a class — so
+    /// in the abstract-class rows the decorator is genuinely doing the work rather than being
+    /// confirmed by a body that would have sufficed alone.</para>
+    ///
+    /// <para>The ten imported cells where the implicit rule (rather than the decorator) decides
+    /// live in <see cref="MemberStubClassification_ImportedImplicitStub"/>; they fail today, for
+    /// one reason, tracked as #1368.</para>
+    /// </summary>
+    [Theory]
+    // member,  owner,         body,        site,     expected
+    [InlineData(Property, Interface, AbstractDecorator, SameFile, Abstract)]
+    [InlineData(Property, Interface, AbstractDecorator, Imported, Abstract)]
+    [InlineData(Property, Interface, "...", SameFile, Abstract)]
+    [InlineData(Property, Interface, "(...)", SameFile, Abstract)]
+    [InlineData(Property, Interface, "pass", SameFile, Abstract)]
+    [InlineData(Property, AbstractClass, AbstractDecorator, SameFile, Abstract)]
+    [InlineData(Property, AbstractClass, AbstractDecorator, Imported, Abstract)]
+    [InlineData(Property, AbstractClass, "...", SameFile, Abstract)]
+    [InlineData(Property, AbstractClass, "(...)", SameFile, Abstract)]
+    [InlineData(Property, AbstractClass, "pass", SameFile, Concrete)]
+    [InlineData(Property, AbstractClass, "pass", Imported, Concrete)]
+    [InlineData(Event, Interface, AbstractDecorator, SameFile, Abstract)]
+    [InlineData(Event, Interface, AbstractDecorator, Imported, Abstract)]
+    [InlineData(Event, Interface, "...", SameFile, Abstract)]
+    [InlineData(Event, Interface, "(...)", SameFile, Abstract)]
+    [InlineData(Event, Interface, "pass", SameFile, Abstract)]
+    [InlineData(Event, AbstractClass, AbstractDecorator, SameFile, Abstract)]
+    [InlineData(Event, AbstractClass, AbstractDecorator, Imported, Abstract)]
+    [InlineData(Event, AbstractClass, "...", SameFile, Abstract)]
+    [InlineData(Event, AbstractClass, "(...)", SameFile, Abstract)]
+    [InlineData(Event, AbstractClass, "pass", SameFile, Concrete)]
+    [InlineData(Event, AbstractClass, "pass", Imported, Concrete)]
+    public void MemberStubClassification(
+        string memberKind, string ownerKind, string body, string site, string expected)
+    {
+        ClassifyMember(memberKind, ownerKind, body, site).Should().Be(
+            expected,
+            "a {0} {1} with a `{2}` body must classify {3} when {4}",
+            ownerKind, memberKind, body, expected, site);
+    }
+
+    /// <summary>
+    /// The other ten cells of the table above: every imported property/event whose abstractness
+    /// comes from the <em>implicit stub</em> rule rather than an <c>@abstract</c> decorator.
+    ///
+    /// <para>They fail at HEAD, all for one reason (#1368). #1267 collapsed <em>method</em>
+    /// classification onto <c>Shared.MemberClassification</c>, and 4a5013941 gave
+    /// <c>NameResolver</c>'s property and event paths the implicit-stub rule — but
+    /// <c>ModuleLoader.ExtractProperties</c>/<c>ExtractEvents</c> stayed decorator-only. Both take
+    /// <c>ownerKind</c> and <c>ownerIsAbstract</c> and read neither, which is why nothing warned.
+    /// The expectations here are the correct ones and are deliberately left as written: delete this
+    /// attribute's <c>Skip</c> when #1368 lands.</para>
+    /// </summary>
+    [Theory(Skip = "#1368: ModuleLoader.ExtractProperties/ExtractEvents are decorator-only, so "
+                 + "imported implicit stubs classify concrete. Expectations here are correct; "
+                 + "remove this Skip when the fix lands.")]
+    // member,  owner,         body,    site,     expected
+    [InlineData(Property, Interface, "...", Imported, Abstract)]
+    [InlineData(Property, Interface, "(...)", Imported, Abstract)]
+    [InlineData(Property, Interface, "pass", Imported, Abstract)]
+    [InlineData(Property, AbstractClass, "...", Imported, Abstract)]
+    [InlineData(Property, AbstractClass, "(...)", Imported, Abstract)]
+    [InlineData(Event, Interface, "...", Imported, Abstract)]
+    [InlineData(Event, Interface, "(...)", Imported, Abstract)]
+    [InlineData(Event, Interface, "pass", Imported, Abstract)]
+    [InlineData(Event, AbstractClass, "...", Imported, Abstract)]
+    [InlineData(Event, AbstractClass, "(...)", Imported, Abstract)]
+    public void MemberStubClassification_ImportedImplicitStub(
+        string memberKind, string ownerKind, string body, string site, string expected)
+        => MemberStubClassification(memberKind, ownerKind, body, site, expected);
+
+    /// <summary>
+    /// The import-invariance assertion stated directly for properties and events, so a failure
+    /// names the divergence rather than one arbitrary cell of it. <c>NameResolver</c>'s
+    /// <c>ResolvePropertyDeclaration</c>/<c>ResolveEventDeclaration</c> and <c>ModuleLoader</c>'s
+    /// <c>ExtractProperties</c>/<c>ExtractEvents</c> classify the same declaration and must agree.
+    ///
+    /// <para>Only the two spellings that agree today are live; the rest are in
+    /// <see cref="MemberStub_ImportedImplicitStubClassifiesTheSameOnBothSides"/> under #1368.</para>
+    /// </summary>
+    [Theory]
+    [InlineData(Property, AbstractClass, "pass")]
+    [InlineData(Event, AbstractClass, "pass")]
+    public void MemberStub_ClassifiesTheSameOnBothSidesOfAnImport(
+        string memberKind, string ownerKind, string body)
+    {
+        var sameFile = ClassifyMember(memberKind, ownerKind, body, SameFile);
+        var imported = ClassifyMember(memberKind, ownerKind, body, Imported);
+
+        imported.Should().Be(
+            sameFile,
+            "a {0} {1} with a `{2}` body is one declaration with one classification; the "
+            + "same-file resolver and ModuleLoader's extraction must reach the same answer (#1267)",
+            ownerKind, memberKind, body);
+    }
+
+    /// <summary>#1368: the same invariant for the spellings the implicit rule decides.</summary>
+    [Theory(Skip = "#1368: imported property/event implicit stubs classify concrete while the "
+                 + "same declaration classifies abstract same-file. Remove this Skip with the fix.")]
+    [InlineData(Property, Interface, "...")]
+    [InlineData(Property, Interface, "(...)")]
+    [InlineData(Property, Interface, "pass")]
+    [InlineData(Property, AbstractClass, "...")]
+    [InlineData(Property, AbstractClass, "(...)")]
+    [InlineData(Event, Interface, "...")]
+    [InlineData(Event, Interface, "(...)")]
+    [InlineData(Event, Interface, "pass")]
+    [InlineData(Event, AbstractClass, "...")]
+    [InlineData(Event, AbstractClass, "(...)")]
+    public void MemberStub_ImportedImplicitStubClassifiesTheSameOnBothSides(
+        string memberKind, string ownerKind, string body)
+        => MemberStub_ClassifiesTheSameOnBothSidesOfAnImport(memberKind, ownerKind, body);
+
+    /// <summary>
+    /// A property or event written as two accessors is still one member, and the merge must not
+    /// lose its abstractness. Both accessors are stubs here — the disagreeing shape is a diagnostic
+    /// (SPY0424 for events), not a classification question — so the merged symbol is abstract.
+    /// </summary>
+    [Theory]
+    [InlineData(Property, SameFile)]
+    [InlineData(Event, SameFile)]
+    public void MergedAccessorStub_IsOneAbstractMember(string memberKind, string site)
+    {
+        var owner = MergedAccessorOwner(memberKind, site);
+
+        // The merge itself: two declarations, one symbol. If they did not merge, the "exactly one
+        // member named 'm'" check below fails and the abstractness assertion never runs on a
+        // half-built member.
+        var classification = MemberClassificationOf(owner, AbstractClass, memberKind);
+
+        classification.Should().Be(
+            Abstract,
+            "both accessors of the {0} are ellipsis stubs in an @abstract class, so the one member "
+            + "they merge into is abstract — {1} (#1267)", memberKind, site);
+    }
+
+    /// <summary>
+    /// #1368 again, at the merged-accessor shape: the imported merge loses the abstractness the
+    /// same-file merge keeps. Worth its own cell because the merge branch discards the second
+    /// accessor's classification entirely, so a fix that only touched the first-declaration path
+    /// would leave this shape wrong.
+    /// </summary>
+    [Theory(Skip = "#1368: the imported merge classifies concrete because ModuleLoader never "
+                 + "applies the implicit-stub rule. Remove this Skip with the fix.")]
+    [InlineData(Property, Imported)]
+    [InlineData(Event, Imported)]
+    public void MergedAccessorStub_ImportedIsOneAbstractMember(string memberKind, string site)
+        => MergedAccessorStub_IsOneAbstractMember(memberKind, site);
+
     // --- Arrangement ---------------------------------------------------------------------------
 
     private static string OwnerSource(string ownerKind, string body) => ownerKind switch
@@ -181,19 +350,7 @@ public class StubClassificationTableTests : IDisposable
     private static string ClassifySameFile(string ownerKind, string body)
     {
         var module = ParseOwner(ownerKind, body);
-
-        var symbolTable = new SymbolTable(new BuiltinRegistry());
-        var resolver = new NameResolver(symbolTable);
-        resolver.ResolveDeclarations(module);
-        if (resolver.Diagnostics.HasErrors)
-            throw new InvalidOperationException(
-                "arrangement failed: name resolution reported errors — "
-                + string.Join("; ", resolver.Diagnostics.GetErrors().Select(d => d.Message)));
-
-        var owner = symbolTable.LookupType("Owner")
-            ?? throw new InvalidOperationException("arrangement failed: no 'Owner' type in the symbol table");
-
-        return Classification(owner, ownerKind);
+        return Classification(ResolveOwner(module), ownerKind);
     }
 
     /// <summary>
@@ -206,8 +363,29 @@ public class StubClassificationTableTests : IDisposable
         // regression fails here identically to the same-file half rather than only on one side.
         ParseOwner(ownerKind, body);
 
+        return Classification(ExtractOwner(OwnerSource(ownerKind, body)), ownerKind);
+    }
+
+    /// <summary>Runs <c>NameResolver</c> over a parsed module and returns its <c>Owner</c>.</summary>
+    private static TypeSymbol ResolveOwner(Module module)
+    {
+        var symbolTable = new SymbolTable(new BuiltinRegistry());
+        var resolver = new NameResolver(symbolTable);
+        resolver.ResolveDeclarations(module);
+        if (resolver.Diagnostics.HasErrors)
+            throw new InvalidOperationException(
+                "arrangement failed: name resolution reported errors — "
+                + string.Join("; ", resolver.Diagnostics.GetErrors().Select(d => d.Message)));
+
+        return symbolTable.LookupType("Owner")
+            ?? throw new InvalidOperationException("arrangement failed: no 'Owner' type in the symbol table");
+    }
+
+    /// <summary>Loads a source as a module and returns the <c>Owner</c> it exports.</summary>
+    private TypeSymbol ExtractOwner(string source)
+    {
         var path = Path.Combine(_testDir, $"owner_{Guid.NewGuid():N}.spy");
-        File.WriteAllText(path, OwnerSource(ownerKind, body));
+        File.WriteAllText(path, source);
 
         var loader = new ModuleLoader();
         var moduleInfo = loader.LoadModule(path, 1, 1)
@@ -225,7 +403,7 @@ public class StubClassificationTableTests : IDisposable
             throw new InvalidOperationException(
                 $"arrangement failed: exported 'Owner' is {exported.GetType().Name}, not a TypeSymbol");
 
-        return Classification(owner, ownerKind);
+        return owner;
     }
 
     /// <summary>
@@ -236,16 +414,7 @@ public class StubClassificationTableTests : IDisposable
     /// </summary>
     private static string Classification(TypeSymbol owner, string ownerKind)
     {
-        switch (ownerKind)
-        {
-            case Interface when owner.TypeKind != TypeKind.Interface:
-                throw new InvalidOperationException(
-                    $"arrangement failed: 'Owner' resolved as {owner.TypeKind}, not an interface");
-            case AbstractClass when owner.TypeKind != TypeKind.Class || !owner.IsAbstract:
-                throw new InvalidOperationException(
-                    $"arrangement failed: 'Owner' resolved as {owner.TypeKind} "
-                    + $"(IsAbstract={owner.IsAbstract}), not an @abstract class");
-        }
+        AssertOwnerKind(owner, ownerKind);
 
         var methods = owner.Methods.Where(m => m.Name == "m").ToList();
         if (methods.Count != 1)
@@ -324,4 +493,220 @@ public class StubClassificationTableTests : IDisposable
         ExpressionStatement expr => $"ExpressionStatement({expr.Expression.GetType().Name})",
         _ => stmt.GetType().Name,
     };
+
+    private static void AssertOwnerKind(TypeSymbol owner, string ownerKind)
+    {
+        switch (ownerKind)
+        {
+            case Interface when owner.TypeKind != TypeKind.Interface:
+                throw new InvalidOperationException(
+                    $"arrangement failed: 'Owner' resolved as {owner.TypeKind}, not an interface");
+            case AbstractClass when owner.TypeKind != TypeKind.Class || !owner.IsAbstract:
+                throw new InvalidOperationException(
+                    $"arrangement failed: 'Owner' resolved as {owner.TypeKind} "
+                    + $"(IsAbstract={owner.IsAbstract}), not an @abstract class");
+        }
+    }
+
+    // --- Arrangement: properties and events ----------------------------------------------------
+
+    /// <summary>
+    /// The property/event member the cell declares. An event needs a delegate type in scope, hence
+    /// the prelude; the <c>@abstract</c> spelling is the decorator over a <c>pass</c> body.
+    /// </summary>
+    private static string MemberOwnerSource(string memberKind, string ownerKind, string body)
+    {
+        var decorator = body == AbstractDecorator ? "    @abstract\n" : "";
+        var memberBody = body == AbstractDecorator ? "pass" : body;
+
+        var member = memberKind switch
+        {
+            Property => $"{decorator}    property get m(self) -> int:\n        {memberBody}\n",
+            Event => $"{decorator}    event add m(self, handler: Handler):\n        {memberBody}\n",
+            _ => throw new ArgumentOutOfRangeException(nameof(memberKind), memberKind, "unknown member kind"),
+        };
+
+        return OwnerWrapping(memberKind, ownerKind, member);
+    }
+
+    /// <summary>Two accessors of one member, both ellipsis stubs, in an <c>@abstract</c> class.</summary>
+    private static string MergedAccessorOwnerSource(string memberKind)
+    {
+        var members = memberKind switch
+        {
+            Property =>
+                "    property get m(self) -> int:\n        ...\n\n"
+                + "    property set m(self, value: int) -> None:\n        ...\n",
+            Event =>
+                "    event add m(self, handler: Handler):\n        ...\n\n"
+                + "    event remove m(self, handler: Handler):\n        ...\n",
+            _ => throw new ArgumentOutOfRangeException(nameof(memberKind), memberKind, "unknown member kind"),
+        };
+
+        return OwnerWrapping(memberKind, AbstractClass, members);
+    }
+
+    private static string OwnerWrapping(string memberKind, string ownerKind, string members)
+    {
+        var prelude = memberKind == Event ? "delegate Handler() -> None\n\n\n" : "";
+
+        return ownerKind switch
+        {
+            Interface => $"{prelude}interface Owner:\n{members}",
+            AbstractClass => $"{prelude}@abstract\nclass Owner:\n{members}",
+            _ => throw new ArgumentOutOfRangeException(nameof(ownerKind), ownerKind, "unknown owner kind"),
+        };
+    }
+
+    private string ClassifyMember(string memberKind, string ownerKind, string body, string site)
+    {
+        var source = MemberOwnerSource(memberKind, ownerKind, body);
+        var module = ParseMemberOwner(source, memberKind, body);
+
+        var owner = site switch
+        {
+            SameFile => ResolveOwner(module),
+            // Parse the imported half through the same shape checks first, so a parse or shape
+            // regression fails on both sides rather than turning one side into a silent constant.
+            Imported => ExtractOwner(source),
+            _ => throw new ArgumentOutOfRangeException(nameof(site), site, "unknown site"),
+        };
+
+        return MemberClassificationOf(owner, ownerKind, memberKind);
+    }
+
+    private TypeSymbol MergedAccessorOwner(string memberKind, string site)
+    {
+        var source = MergedAccessorOwnerSource(memberKind);
+        var module = ParseMergedAccessorOwner(source, memberKind);
+
+        return site switch
+        {
+            SameFile => ResolveOwner(module),
+            Imported => ExtractOwner(source),
+            _ => throw new ArgumentOutOfRangeException(nameof(site), site, "unknown site"),
+        };
+    }
+
+    /// <summary>
+    /// Reads <c>IsAbstract</c> off the one property/event named <c>m</c>, after confirming the
+    /// owner is the kind the cell names. "Exactly one" is what makes the merged-accessor cells
+    /// meaningful: two symbols named <c>m</c> would mean the accessors never merged.
+    /// </summary>
+    private static string MemberClassificationOf(TypeSymbol owner, string ownerKind, string memberKind)
+    {
+        AssertOwnerKind(owner, ownerKind);
+
+        switch (memberKind)
+        {
+            case Property:
+                var properties = owner.Properties.Where(p => p.Name == "m").ToList();
+                if (properties.Count != 1)
+                    throw new InvalidOperationException(
+                        "arrangement failed: expected exactly one property named 'm' on 'Owner', found "
+                        + $"{properties.Count} (all: {string.Join(", ", owner.Properties.Select(p => p.Name))})");
+                return properties[0].IsAbstract ? Abstract : Concrete;
+
+            case Event:
+                var events = owner.Events.Where(e => e.Name == "m").ToList();
+                if (events.Count != 1)
+                    throw new InvalidOperationException(
+                        "arrangement failed: expected exactly one event named 'm' on 'Owner', found "
+                        + $"{events.Count} (all: {string.Join(", ", owner.Events.Select(e => e.Name))})");
+                return events[0].IsAbstract ? Abstract : Concrete;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(memberKind), memberKind, "unknown member kind");
+        }
+    }
+
+    /// <summary>
+    /// The property/event counterpart of <see cref="ParseOwner"/>: the declaration must parse, be
+    /// the single member named <c>m</c>, carry a function-style body (the implicit-stub rule is
+    /// keyed to <c>IsFunctionStyle</c>, so an auto-property cell would measure a different rule),
+    /// carry the decorator exactly when the cell names one, and have the body shape it names.
+    /// </summary>
+    private static Module ParseMemberOwner(string source, string memberKind, string body)
+    {
+        var module = ParseOrThrow(source, body);
+        var (name, isFunctionStyle, decorators, parsedBody) =
+            OwnerMembers(module, memberKind).SingleOrDefault(m => m.Name == "m");
+
+        if (name == null)
+            throw new InvalidOperationException(
+                $"arrangement failed: the parsed module has no single {memberKind} 'm' on 'Owner'");
+        if (!isFunctionStyle)
+            throw new InvalidOperationException(
+                $"arrangement failed: the {memberKind} 'm' parsed as auto-style, not function-style — "
+                + "the implicit-stub rule only applies to function-style members, so this cell would "
+                + "measure a different rule than the one it names");
+
+        bool hasAbstractDecorator = decorators.Any(
+            d => d.Name == global::Sharpy.Compiler.Shared.DecoratorNames.Abstract);
+        if (hasAbstractDecorator != (body == AbstractDecorator))
+            throw new InvalidOperationException(
+                $"arrangement failed: the {memberKind} 'm' {(hasAbstractDecorator ? "carries" : "lacks")} "
+                + $"an @abstract decorator, but the cell names `{body}`");
+
+        AssertBodyShape(parsedBody, body == AbstractDecorator ? "pass" : body);
+        return module;
+    }
+
+    /// <summary>
+    /// The merged-accessor arrangement's shape guard: the source really declares TWO accessor
+    /// members that share one name, so "exactly one symbol named 'm'" downstream measures a merge
+    /// and not a single declaration.
+    /// </summary>
+    private static Module ParseMergedAccessorOwner(string source, string memberKind)
+    {
+        var module = ParseOrThrow(source, "...");
+        var accessors = OwnerMembers(module, memberKind).Where(m => m.Name == "m").ToList();
+
+        if (accessors.Count != 2)
+            throw new InvalidOperationException(
+                $"arrangement failed: expected two {memberKind} accessors named 'm', found {accessors.Count} "
+                + "— without two declarations there is no merge to measure");
+        foreach (var accessor in accessors)
+            AssertBodyShape(accessor.Body, "...");
+
+        return module;
+    }
+
+    private static Module ParseOrThrow(string source, string body)
+    {
+        var parser = new ParserNs.Parser(new LexerNs.Lexer(source).TokenizeAll());
+        var module = parser.ParseModule();
+        if (parser.Diagnostics.HasErrors)
+            throw new InvalidOperationException(
+                $"arrangement failed: `{body}` body did not parse — "
+                + string.Join("; ", parser.Diagnostics.GetErrors().Select(d => d.Message)));
+        return module;
+    }
+
+    private static IEnumerable<(string? Name, bool IsFunctionStyle, ImmutableArray<Decorator> Decorators, ImmutableArray<Statement> Body)>
+        OwnerMembers(Module module, string memberKind)
+    {
+        foreach (var stmt in module.Body)
+        {
+            var members = stmt switch
+            {
+                InterfaceDef iface when iface.Name == "Owner" => iface.Body,
+                ClassDef cls when cls.Name == "Owner" => cls.Body,
+                _ => ImmutableArray<Statement>.Empty,
+            };
+
+            foreach (var member in members)
+            {
+                switch (member)
+                {
+                    case PropertyDef prop when memberKind == Property:
+                        yield return (prop.Name, prop.IsFunctionStyle, prop.Decorators, prop.Body);
+                        break;
+                    case EventDef evt when memberKind == Event:
+                        yield return (evt.Name, evt.IsFunctionStyle, evt.Decorators, evt.Body);
+                        break;
+                }
+            }
+        }
+    }
 }

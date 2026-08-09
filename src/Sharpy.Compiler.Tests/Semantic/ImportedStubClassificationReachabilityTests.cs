@@ -1,8 +1,10 @@
+using System;
 using System.IO;
 using System.Linq;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Project;
+using Sharpy.Compiler.Semantic;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -120,7 +122,204 @@ def main():
             + "legal — the same answer NameResolver gives same-file (#1266)", body);
     }
 
+    // --- The two escapes that survive a module BEING a compilation unit ------------------------
+
+    private const string LibInterfaceStub = @"interface Logger:
+    def log(self, message: str) -> None:
+        pass
+";
+
+    private const string MainAliasedFromImport = @"from lib import Logger as Log
+
+
+class Broken(Log):
+    def unrelated(self) -> None:
+        print(""nothing"")
+
+
+def main():
+    lg: Log = Broken()
+    print(""built"")
+";
+
+    private const string MainPlainFromImport = @"from lib import Logger
+
+
+class Broken(Logger):
+    def unrelated(self) -> None:
+        print(""nothing"")
+
+
+def main():
+    lg: Logger = Broken()
+    print(""built"")
+";
+
+    private const string LibClassWithProperty = @"class Config:
+    _name: str
+
+    def __init__(self, name: str):
+        self._name = name
+
+    property get name(self) -> str:
+        return self._name
+";
+
+    private const string MainPlainImport = @"import lib
+
+
+def main():
+    c = lib.Config(""prod"")
+    print(c.name)
+";
+
+    /// <summary>
+    /// Escape 1 — an <em>aliased</em> from-import. <c>ProjectCompiler.Phases.cs:351-353</c> reads
+    /// <c>importAlias.AsName == null ? ResolveImportSymbol(...) : symbol</c>: the alias arm skips
+    /// <see cref="ProjectCompiler"/>'s "prefer the Phase 3 original" lookup entirely and binds the
+    /// symbol that came out of <c>ModuleLoader</c>. So unlike the ordinary import — where #1087's
+    /// synthetic project name-resolves every unit and <c>ModuleLoader</c>'s extraction is shadowed
+    /// (#1267) — three characters of <c>as</c> put the extracted symbol back in charge even though
+    /// <c>lib.spy</c> is a first-class compilation unit here.
+    ///
+    /// <para>The plain from-import of the same declaration is carried alongside as the positive
+    /// control: it must bind the <em>same instance</em> the module scope holds. Without that half,
+    /// "the aliased binding differs" could mean the module scope was empty, the file never compiled,
+    /// or the name never bound at all.</para>
+    /// </summary>
+    [Fact]
+    public void AliasedFromImport_BindsTheExtractedSymbol_NotTheProjectDeclaration()
+    {
+        var plain = AnalyzeWithLibInSourceSet(LibInterfaceStub, MainPlainFromImport);
+        var aliased = AnalyzeWithLibInSourceSet(LibInterfaceStub, MainAliasedFromImport);
+
+        // Control: the non-aliased arm goes through ResolveImportSymbol and finds the original.
+        ImportedBinding(plain, "Logger").Should().BeSameAs(
+            LibDeclaration(plain, "Logger"),
+            "a plain from-import runs ResolveImportSymbol, which prefers the Phase 3 declaration in "
+            + "the source module's scope — if this is not the same instance, the arrangement never "
+            + "reached the branch the assertion below is about");
+
+        // The escape: the alias arm never calls ResolveImportSymbol.
+        ImportedBinding(aliased, "Log").Should().NotBeSameAs(
+            LibDeclaration(aliased, "Logger"),
+            "`as` short-circuits ResolveImportSymbol (Phases.cs:351-353), so the alias binds the "
+            + "ModuleLoader-extracted symbol even though lib.spy is a compilation unit (#1267)");
+
+        // ...and the behavior that rides on it: the extracted symbol's classification governs.
+        ErrorCodes(aliased.Diagnostics).Should().Contain(
+            DiagnosticCodes.Semantic.InterfaceMethodNotImplemented,
+            "the aliased interface's `pass`-bodied method is abstract, so 'Broken' must be reported "
+            + "for not implementing it — on this path that answer comes from "
+            + "ModuleLoader.ExtractFullInterfaceSymbol (#1258)");
+    }
+
+    /// <summary>
+    /// Escape 2 — a plain <c>import lib</c>. The <see cref="ModuleSymbol"/> built at
+    /// <c>Phases.cs:215-228</c> (and :192-205 for <c>import lib as l</c>) takes its
+    /// <c>Exports</c> straight from <c>moduleInfo.ExportedSymbols</c>, so every <c>lib.X</c> member
+    /// access reads a <c>ModuleLoader</c>-extracted symbol — again regardless of <c>lib.spy</c>
+    /// being name-resolved as a compilation unit.
+    ///
+    /// <para>The behavior half is a13cf602e's fix: before it, <c>ExtractFullClassSymbol</c> carried
+    /// methods but no properties, so <c>c.name</c> on a module-qualified type could not resolve. The
+    /// module scope's own declaration is asserted present first, so "the exported symbol is a
+    /// different instance" cannot pass because the module scope was empty.</para>
+    /// </summary>
+    [Fact]
+    public void PlainImport_ModuleExportsComeFromTheExtractedSymbols_NotTheProjectDeclarations()
+    {
+        var result = AnalyzeWithLibInSourceSet(LibClassWithProperty, MainPlainImport);
+
+        var declared = LibDeclaration(result, "Config");
+        var module = ImportedBinding(result, "lib").Should().BeOfType<ModuleSymbol>(
+            "`import lib` binds a ModuleSymbol in the importing file's module scope").Subject;
+
+        module.Exports.TryGetValue("Config", out var exported).Should().BeTrue(
+            "the module's exports are built from moduleInfo.ExportedSymbols, which must carry 'Config'");
+        exported.Should().NotBeSameAs(
+            declared,
+            "ModuleSymbol.Exports is a copy of ModuleLoader's ExportedSymbols (Phases.cs:220) and "
+            + "never consults the module scope, so `lib.Config` reads the extracted symbol (#1267)");
+
+        // The behavior that rides on it: the extracted symbol has to carry properties, not just
+        // methods, or `c.name` cannot resolve through a module-qualified type (#1267/a13cf602e).
+        ErrorCodes(result.Diagnostics).Should().BeEmpty(
+            "reading a function-style property off a plainly-imported type must analyze cleanly — "
+            + "if ExtractFullClassSymbol stopped extracting properties, 'name' would go unresolved");
+        ((TypeSymbol)exported!).Properties.Should().Contain(
+            p => p.Name == "name",
+            "the exported TypeSymbol itself must carry the property — an empty Properties list with "
+            + "no diagnostic would mean the member resolved somewhere other than this escape");
+    }
+
     // --- Arrangement ---------------------------------------------------------------------------
+
+    /// <summary>
+    /// The ordinary multi-file arrangement: <c>lib.spy</c> and <c>main.spy</c> are both compilation
+    /// units under <c>src/</c>. Asserts that, so a test about an escape from the source set cannot
+    /// be confused with one about an escape that survives <em>inside</em> it.
+    /// </summary>
+    private ProjectAnalysisResult AnalyzeWithLibInSourceSet(string libSource, string mainSource)
+    {
+        using var helper = new Helpers.ProjectCompilationHelper(_output)
+            .WithRootNamespace("StubEscapeInSourceSet")
+            .WithOutputType("exe")
+            .WithEntryPoint("main.spy");
+
+        helper.AddSourceFile("lib.spy", libSource);
+        helper.AddSourceFile("main.spy", mainSource);
+        helper.CreateProjectFile();
+
+        var config = ProjectFileParser.Load(
+            Path.Combine(helper.ProjectDirectory, "StubEscapeInSourceSet.spyproj"));
+
+        config.SourceFiles.Should().Contain(
+            f => Path.GetFileName(f) == "lib.spy",
+            "these tests are about escapes that survive the module being a compilation unit; if "
+            + "lib.spy fell out of the source set they would silently become copies of the "
+            + "outside-the-source-set tests above");
+
+        var result = new CompilerApi().AnalyzeProject(config);
+        foreach (var diag in result.Diagnostics.GetAll())
+            _output.WriteLine($"  {diag.Code} {diag.Message}");
+
+        return result;
+    }
+
+    /// <summary>
+    /// The symbol an import bound in <c>main.spy</c>'s module scope. Imports register in the
+    /// <em>importing</em> file's scope (<c>ResolveImports</c> enters it per unit), not the global
+    /// one, so a global lookup would find nothing and every comparison below would be vacuous.
+    /// </summary>
+    private static Symbol ImportedBinding(ProjectAnalysisResult result, string name)
+        => ModuleScopeOf(result, "main.spy").Lookup(name, searchParent: false)
+            ?? throw new InvalidOperationException(
+                $"arrangement failed: '{name}' is not bound in main.spy's module scope — the import "
+                + "never registered anything, so there is nothing to compare");
+
+    /// <summary>The Phase 3 declaration <c>NameResolver</c> put in <c>lib.spy</c>'s module scope.</summary>
+    private static Symbol LibDeclaration(ProjectAnalysisResult result, string name)
+        => ModuleScopeOf(result, "lib.spy").Lookup(name, searchParent: false)
+            ?? throw new InvalidOperationException(
+                $"arrangement failed: '{name}' was never declared in lib.spy's module scope — "
+                + "NameResolver did not run over the module, so 'the import bound something else' "
+                + "would be true for the wrong reason");
+
+    private static Scope ModuleScopeOf(ProjectAnalysisResult result, string fileName)
+    {
+        var table = result.ProjectModel.GlobalSymbols
+            ?? throw new InvalidOperationException("arrangement failed: analysis produced no symbol table");
+        var unit = result.ProjectModel.Units.Values
+            .SingleOrDefault(u => Path.GetFileName(u.FilePath) == fileName)
+            ?? throw new InvalidOperationException(
+                $"arrangement failed: '{fileName}' is not a compilation unit — units were "
+                + string.Join(", ", result.ProjectModel.Units.Values.Select(u => Path.GetFileName(u.FilePath))));
+
+        return table.GetModuleScope(unit.ModulePath)
+            ?? throw new InvalidOperationException(
+                $"arrangement failed: no module scope for '{unit.ModulePath}'");
+    }
 
     /// <summary>
     /// Builds a project whose sources are <c>src/**/*.spy</c> and drops <c>lib.spy</c> beside the
