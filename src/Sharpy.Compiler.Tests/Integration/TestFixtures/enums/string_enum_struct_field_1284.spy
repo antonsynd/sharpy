@@ -1,0 +1,20 @@
+# #1284 direction 2: the declared enum type in a struct field and constructor parameter. The
+# reference used to emit the string while the parameter emitted the class (CS1503 as SPY0908).
+enum LogLevel:
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+
+
+struct LogEntry:
+    level: LogLevel
+    message: str
+
+    def __init__(self, level: LogLevel, message: str):
+        self.level = level
+        self.message = message
+
+
+def main() -> None:
+    e = LogEntry(LogLevel.INFO, "started")
+    print(e.level.name)
+    print(str(e.level) + ": " + e.message)

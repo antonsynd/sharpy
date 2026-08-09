@@ -498,14 +498,7 @@ internal partial class RoslynEmitter
         // Enum iteration: `for c in Color:` → `foreach (var c in Enum.GetValues<Color>())`
         if (iteratorType is Semantic.UserDefinedType { Symbol.TypeKind: Semantic.TypeKind.Enum } enumUdt)
         {
-            var enumTypeSyntax = _typeMapper.MapSemanticType(enumUdt);
-            iterator = InvocationExpression(
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName("Enum"),
-                    GenericName(Identifier("GetValues"))
-                        .WithTypeArgumentList(TypeArgumentList(
-                            SingletonSeparatedList(enumTypeSyntax)))));
+            iterator = GenerateEnumValuesIterator(enumUdt);
         }
 
         // If there's no else clause, generate simple foreach loop

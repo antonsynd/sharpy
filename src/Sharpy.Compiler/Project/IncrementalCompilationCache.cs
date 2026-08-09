@@ -57,7 +57,10 @@ internal class IncrementalCompilationCache
     //      of always-empty lists (#1309)
     // v21: BaseTypeArgs round-trip in CachedSymbol so generic base class arguments survive
     //      a warm build (#1287)
-    internal const int CurrentSchemaVersion = 21;
+    // v22: TypeSymbol.IsStringEnum round-trips — a string-backed enum now emits singleton
+    //      instances with an implicit string conversion, so restoring it as an int-backed enum
+    //      would emit a different type from a cold build (#1284)
+    internal const int CurrentSchemaVersion = 22;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

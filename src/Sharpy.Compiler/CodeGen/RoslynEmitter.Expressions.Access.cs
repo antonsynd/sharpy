@@ -1427,6 +1427,17 @@ internal partial class RoslynEmitter
         // Handle special .value and .name properties for enum instances.
         if (memberAccess.Member is "value" or "name" && IsEnumInstance(memberAccess.Object))
         {
+            // A string-backed enum is a class of singletons carrying both halves as properties,
+            // so both reads are plain member accesses — `(int)` would not even compile (#1284).
+            if (GetExpressionSemanticType(memberAccess.Object) is Semantic.UserDefinedType
+                { Symbol: { } strEnumSymbol } && IsStringEnumSymbol(strEnumSymbol))
+            {
+                return MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    obj,
+                    IdentifierName(memberAccess.Member == "value" ? "Value" : "Name"));
+            }
+
             if (memberAccess.Member == "value")
             {
                 // enum_instance.value -> (int)enum_instance

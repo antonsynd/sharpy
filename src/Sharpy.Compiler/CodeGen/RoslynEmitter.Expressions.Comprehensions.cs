@@ -154,14 +154,7 @@ internal partial class RoslynEmitter
         if (GetExpressionSemanticType(iterator) is Semantic.UserDefinedType
             { Symbol.TypeKind: Semantic.TypeKind.Enum } enumUdt)
         {
-            var enumTypeSyntax = _typeMapper.MapSemanticType(enumUdt);
-            iterExpr = InvocationExpression(
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName("Enum"),
-                    GenericName(Identifier("GetValues"))
-                        .WithTypeArgumentList(TypeArgumentList(
-                            SingletonSeparatedList(enumTypeSyntax)))));
+            iterExpr = GenerateEnumValuesIterator(enumUdt);
         }
 
         return iterExpr;

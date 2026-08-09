@@ -264,7 +264,7 @@ internal partial class TypeChecker
                 if (effectiveMember == "name")
                     return SemanticType.Str;
                 if (effectiveMember == "value")
-                    return SemanticType.Int;
+                    return udt.Symbol.IsStringEnum ? SemanticType.Str : SemanticType.Int;
             }
 
             // Look for field or property (including inherited fields)

@@ -1,0 +1,27 @@
+# #1284: a string-backed enum is CPython's StrEnum shape — a member is its own type AND its
+# backing string. Every row of the issue's table, executed. Verified against python3's
+# enum.StrEnum: RED/red/red/True/False/True/True/<green>/green/RED=red,GREEN=green/['RED','GREEN'].
+enum Color:
+    RED = "red"
+    GREEN = "green"
+
+
+def describe(c: str) -> str:
+    return "<" + c + ">"
+
+
+def main() -> None:
+    c: Color = Color.RED
+    print(c.name)
+    print(c.value)
+    print(str(c))
+    print(c == Color.RED)
+    print(c == Color.GREEN)
+    print(c == "red")
+    print(c != "green")
+    print(describe(Color.GREEN))
+    s: str = Color.GREEN
+    print(s)
+    for x in Color:
+        print(x.name + "=" + x.value)
+    print([x.name for x in Color])

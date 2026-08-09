@@ -264,6 +264,15 @@ public record TypeSymbol : Symbol
     public bool IsMustUse { get; internal set; }
 
     /// <summary>
+    /// Whether this enum's members carry string values (#1284). A string-backed enum is emitted as
+    /// a sealed class of singleton instances with an implicit conversion to <c>string</c>, not as a
+    /// C# enum, so the checker's own rules — <c>.value</c> typing, str assignability, iteration —
+    /// have to branch on it. Known from Pass 1, unlike <c>CodeGenInfo.IsStringEnum</c> which is
+    /// materialized only after type checking. Always false for non-enums.
+    /// </summary>
+    public bool IsStringEnum { get; init; }
+
+    /// <summary>
     /// Whether this type is a @dataclass.
     /// </summary>
     public bool IsDataclass { get; internal set; }

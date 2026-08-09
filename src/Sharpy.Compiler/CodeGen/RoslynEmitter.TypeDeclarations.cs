@@ -1221,30 +1221,53 @@ internal partial class RoslynEmitter
         }
     }
 
+    /// <summary>The generated name of a string enum's all-members list (#1284).</summary>
+    internal const string StringEnumValuesMember = "Values";
+
     /// <summary>
-    /// Determines if an enum is a string enum (has at least one string literal value)
+    /// The C# expression `for x in SomeEnum` iterates. An int-backed enum is a real C# enum and
+    /// uses <c>Enum.GetValues&lt;T&gt;()</c>; a string-backed enum is a class of singletons, for
+    /// which that call does not even bind (CS0453 — not a value type), so it reads the generated
+    /// <c>Values</c> list instead (#1284).
     /// </summary>
-    private bool IsStringEnum(EnumDef enumDef)
+    private ExpressionSyntax GenerateEnumValuesIterator(Semantic.UserDefinedType enumUdt)
     {
-        // Check if any member has a string value
-        foreach (var member in enumDef.Members)
+        var enumTypeSyntax = _typeMapper.MapSemanticType(enumUdt);
+
+        if (enumUdt.Symbol is { } enumSymbol && IsStringEnumSymbol(enumSymbol))
         {
-            if (member.Value is StringLiteral)
-            {
-                return true;
-            }
+            return MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                enumTypeSyntax,
+                IdentifierName(StringEnumValuesMember));
         }
-        return false;
+
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("Enum"),
+                GenericName(Identifier("GetValues"))
+                    .WithTypeArgumentList(TypeArgumentList(
+                        SingletonSeparatedList(enumTypeSyntax)))));
     }
 
     /// <summary>
-    /// Checks if a TypeSymbol represents a string enum using CodeGenInfo.
-    /// String enums are detected during semantic analysis and stored in CodeGenInfo.IsStringEnum.
+    /// Whether an enum declaration is string-backed. Reads the semantic fact rather than
+    /// re-deriving it from the AST — the emitter had a second copy of the rule here, which is
+    /// exactly the duplication the pure-translator contract exists to prevent (#1284).
+    /// </summary>
+    private bool IsStringEnum(EnumDef enumDef)
+        => _context.LookupSymbol(enumDef.Name) is TypeSymbol { TypeKind: Semantic.TypeKind.Enum } sym
+            ? IsStringEnumSymbol(sym)
+            : enumDef.Members.Any(m => m.Value is StringLiteral);
+
+    /// <summary>
+    /// Checks if a TypeSymbol represents a string enum. <c>TypeSymbol.IsStringEnum</c> is set in
+    /// name resolution; <c>CodeGenInfo.IsStringEnum</c> is the materialized mirror, consulted for
+    /// symbols restored from a cache that predates the symbol flag.
     /// </summary>
     private bool IsStringEnumSymbol(TypeSymbol enumSymbol)
-    {
-        return GetCodeGenInfo(enumSymbol)?.IsStringEnum == true;
-    }
+        => enumSymbol.IsStringEnum || GetCodeGenInfo(enumSymbol)?.IsStringEnum == true;
 
     /// <summary>
     /// Generates a C# enum for integer enums
@@ -1276,12 +1299,23 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates a sealed class with public static readonly string fields for string enums
+    /// Generates the sealed class a string-backed enum lowers to (#1284): one singleton instance
+    /// per member, a <c>Value</c>/<c>Name</c> pair, <c>ToString()</c> returning the value, an
+    /// implicit conversion to <c>string</c>, and a static <c>Values</c> list the iteration arms
+    /// consume in place of <c>Enum.GetValues&lt;T&gt;()</c>.
+    ///
+    /// <para>
+    /// This is CPython's <c>StrEnum</c> shape: a member is its own type AND compares equal to its
+    /// string. The previous emission — bare <c>static readonly string</c> fields — made the member
+    /// literally a string, so the declared enum type could not appear in any annotation the
+    /// semantic layer agreed with; every use was refused or emitted uncompilable C#.
+    /// </para>
     /// </summary>
     private ClassDeclarationSyntax GenerateStringEnumClass(EnumDef enumDef)
     {
         // Transform enum name
         var className = NameCasing.ResolveType(enumDef.Name, enumDef.IsNameBacktickEscaped);
+        var classType = (TypeSyntax)EscapedIdentifierName(className);
 
         // Create public sealed class
         var modifiers = TokenList(
@@ -1292,47 +1326,104 @@ internal partial class RoslynEmitter
         var classDecl = ClassDeclaration(EscapedIdentifier(className))
             .WithModifiers(modifiers);
 
-        // Generate public static readonly string fields for each member
+        var stringType = PredefinedType(Token(SyntaxKind.StringKeyword));
         var members = new List<MemberDeclarationSyntax>();
 
+        // private LogLevel(string name, string value) { Name = name; Value = value; }
+        members.Add(ConstructorDeclaration(EscapedIdentifier(className))
+            .WithModifiers(TokenList(Token(SyntaxKind.PrivateKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[]
+            {
+                Parameter(Identifier("name")).WithType(stringType),
+                Parameter(Identifier("value")).WithType(stringType)
+            })))
+            .WithBody(Block(
+                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName("Name"), IdentifierName("name"))),
+                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName("Value"), IdentifierName("value"))))));
+
+        // public string Name { get; }  /  public string Value { get; }
+        foreach (var propName in new[] { "Name", "Value" })
+        {
+            members.Add(PropertyDeclaration(stringType, Identifier(propName))
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                .WithAccessorList(AccessorList(SingletonList(
+                    AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))))));
+        }
+
+        // public static readonly LogLevel INFO = new LogLevel("INFO", "INFO");
+        var memberFieldNames = new List<string>();
         foreach (var member in enumDef.Members)
         {
             var fieldName = NameMangler.Transform(member.Name, NameContext.Constant);
+            memberFieldNames.Add(fieldName);
 
-            // Determine the value - use the explicit value if provided, otherwise use the member name
-            ExpressionSyntax valueExpr;
-            if (member.Value is StringLiteral strLit)
-            {
-                valueExpr = GenerateExpression(strLit);
-            }
-            else
-            {
-                // Default to the original member name as a string
-                valueExpr = LiteralExpression(
-                    SyntaxKind.StringLiteralExpression,
-                    Literal(member.Name)
-                );
-            }
+            // Use the explicit value if provided, otherwise the member name as written.
+            ExpressionSyntax valueExpr = member.Value is StringLiteral strLit
+                ? GenerateExpression(strLit)
+                : LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(member.Name));
 
-            var field = FieldDeclaration(
-                VariableDeclaration(
-                    PredefinedType(Token(SyntaxKind.StringKeyword))
-                )
-                .WithVariables(
-                    SingletonSeparatedList(
-                        VariableDeclarator(EscapedIdentifier(fieldName))
-                            .WithInitializer(EqualsValueClause(valueExpr))
-                    )
-                )
-            )
+            var instance = ObjectCreationExpression(classType)
+                .WithArgumentList(ArgumentList(SeparatedList(new[]
+                {
+                    Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(member.Name))),
+                    Argument(valueExpr)
+                })));
+
+            members.Add(FieldDeclaration(
+                    VariableDeclaration(classType)
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(EscapedIdentifier(fieldName))
+                                .WithInitializer(EqualsValueClause(instance)))))
+                .WithModifiers(TokenList(
+                    Token(SyntaxKind.PublicKeyword),
+                    Token(SyntaxKind.StaticKeyword),
+                    Token(SyntaxKind.ReadOnlyKeyword))));
+        }
+
+        // public override string ToString() => Value;
+        members.Add(MethodDeclaration(stringType, Identifier("ToString"))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.OverrideKeyword)))
+            .WithParameterList(ParameterList())
+            .WithExpressionBody(ArrowExpressionClause(IdentifierName("Value")))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+
+        // public static implicit operator string(LogLevel value) => value.Value;
+        members.Add(ConversionOperatorDeclaration(Token(SyntaxKind.ImplicitKeyword), stringType)
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SingletonSeparatedList(
+                Parameter(Identifier("value")).WithType(classType))))
+            .WithExpressionBody(ArrowExpressionClause(MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression, IdentifierName("value"), IdentifierName("Value"))))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+
+        // public static readonly Sharpy.List<LogLevel> Values = new(new LogLevel[] { ... });
+        // Declared last: C# initializes static fields in textual order, so the members must exist.
+        // Built as real syntax, not as an identifier spelled "Sharpy.List": a dotted identifier
+        // prints correctly but does not bind under direct tree handoff (#1095's guard).
+        var valuesType = (TypeSyntax)QualifiedName(
+            MakeGlobalQualifiedName("Sharpy"),
+            GenericName(Identifier("List"))
+                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(classType))));
+        var valuesArray = ArrayCreationExpression(
+                ArrayType(classType).WithRankSpecifiers(SingletonList(
+                    ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(OmittedArraySizeExpression())))))
+            .WithInitializer(InitializerExpression(SyntaxKind.ArrayInitializerExpression,
+                SeparatedList<ExpressionSyntax>(memberFieldNames.Select(EscapedIdentifierName))));
+        members.Add(FieldDeclaration(
+                VariableDeclaration(valuesType)
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(StringEnumValuesMember))
+                            .WithInitializer(EqualsValueClause(
+                                ObjectCreationExpression(valuesType)
+                                    .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                                        Argument(valuesArray)))))))))
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.StaticKeyword),
-                Token(SyntaxKind.ReadOnlyKeyword)
-            ));
-
-            members.Add(field);
-        }
+                Token(SyntaxKind.ReadOnlyKeyword))));
 
         classDecl = classDecl.WithMembers(List(members));
 

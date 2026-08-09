@@ -483,6 +483,13 @@ internal partial class TypeChecker
     /// Check if a source type can be assigned to a target type.
     /// This extends the basic IsAssignableTo to handle nullable types and generic variance.
     /// </summary>
+    /// <summary>
+    /// Whether a type is a string-backed enum — a member of which is both its own type and its
+    /// backing string (#1284).
+    /// </summary>
+    internal static bool IsStringBackedEnum(SemanticType? type)
+        => type is UserDefinedType { Symbol: { TypeKind: TypeKind.Enum, IsStringEnum: true } };
+
     private bool IsAssignable(SemanticType source, SemanticType target)
     {
         // Allow assignment to UnknownType to avoid cascading errors
@@ -492,6 +499,13 @@ internal partial class TypeChecker
 
         // First check the standard assignability
         if (source.IsAssignableTo(target))
+            return true;
+
+        // A string-backed enum member IS its string, exactly as CPython's StrEnum is
+        // (`isinstance(LogLevel.INFO, str)` is True). The emitted class carries
+        // `implicit operator string`, so this is stating a conversion .NET already performs —
+        // `IsAssignable` does not consult user conversions, so the rule is explicit (#1284).
+        if (IsStringBackedEnum(source) && target is BuiltinType { Name: BuiltinNames.Str })
             return true;
 
         // Non-nullable type can be assigned to nullable version of the same type.

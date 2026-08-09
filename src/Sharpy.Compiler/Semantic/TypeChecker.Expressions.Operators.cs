@@ -92,6 +92,17 @@ internal partial class TypeChecker
             }
         }
 
+        // A string-backed enum member compares equal to its backing string — CPython's StrEnum
+        // does (`LogLevel.INFO == "INFO"` is True), and the emitted class's implicit conversion
+        // makes the C# comparison bind. Answered here rather than in the operator registry, which
+        // keys on type identity and would need an entry per enum (#1284).
+        if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual
+            && ((IsStringBackedEnum(leftType) && rightType is BuiltinType { Name: BuiltinNames.Str })
+                || (IsStringBackedEnum(rightType) && leftType is BuiltinType { Name: BuiltinNames.Str })))
+        {
+            return SemanticType.Bool;
+        }
+
         // Use TypeInferenceService for type inference
         var resultType = _typeInference.InferBinaryOpType(binOp.Operator, leftType, rightType);
 

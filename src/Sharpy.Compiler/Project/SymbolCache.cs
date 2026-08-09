@@ -99,6 +99,9 @@ internal record CachedSymbol
     /// </summary>
     public bool IsAbstract { get; init; }
 
+    /// <summary>String-backed enum (#1284) — decides emission shape and checker rules.</summary>
+    public bool IsStringEnum { get; init; }
+
     /// <summary>
     /// For TypeSymbol: defining module path
     /// </summary>

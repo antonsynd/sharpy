@@ -117,6 +117,7 @@ internal static class SymbolSerializer
             DeclarationSpanLength = ts.DeclarationSpan?.Length,
             TypeKind = ts.TypeKind.ToString(),
             IsAbstract = ts.IsAbstract,
+            IsStringEnum = ts.IsStringEnum,
             DefiningModule = ts.DefiningModule,
             BaseTypeId = ts.BaseType is { ClrType: null } bt
                 ? ComputeSymbolId(bt, bt.DefiningFilePath ?? filePath) : null,
@@ -461,6 +462,7 @@ internal static class SymbolSerializer
             DeclaringFilePath = cached.FilePath,
             TypeKind = typeKind,
             IsAbstract = cached.IsAbstract,
+            IsStringEnum = cached.IsStringEnum,
             DefiningModule = cached.DefiningModule,
             DefiningFilePath = cached.FilePath,
             Fields = fields,
