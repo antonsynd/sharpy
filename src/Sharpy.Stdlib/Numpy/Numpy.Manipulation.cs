@@ -213,9 +213,16 @@ namespace Sharpy
         /// returning a list of sub-arrays. Mirrors NumPy's <c>numpy.split</c>.
         /// </summary>
         /// <param name="a">Input array.</param>
-        /// <param name="indices">Sorted strictly-increasing list of split points.</param>
+        /// <param name="indices">Sorted strictly-increasing list of split points. A raw
+        /// <c>int[]</c> deliberately: the stdlib rule is about what a public API <em>produces</em>,
+        /// and a parameter accepts — a Sharpy <c>list[int]</c> converts to an array at the call
+        /// boundary, so requiring one here would add a copy without adding reach (#1293).</param>
         /// <param name="axis">Axis along which to split. Default 0.</param>
-        public static NdArray<double>[] Split(NdArray<double> a, int[] indices, int axis = 0)
+        /// <returns>A <see cref="List{T}"/> of sub-arrays. A Sharpy list, not <c>NdArray[]</c>:
+        /// a raw .NET array in a public return is the surface #1256 fixed for <c>sys.argv</c>, and
+        /// it is what the caller has to live with — <c>parts.append(...)</c>, <c>len(parts)</c> and
+        /// slicing all work on the Sharpy collection and none of them work on the array.</returns>
+        public static List<NdArray<double>> Split(NdArray<double> a, int[] indices, int axis = 0)
         {
             if (a == null)
             {
@@ -251,7 +258,7 @@ namespace Sharpy
 
             boundaries[boundaries.Length - 1] = axisLen;
 
-            var result = new NdArray<double>[indices.Length + 1];
+            var result = new List<NdArray<double>>();
             var sliceSpecs = new SliceSpec[a.Ndim];
             for (int p = 0; p < indices.Length + 1; p++)
             {
@@ -262,7 +269,7 @@ namespace Sharpy
                         : SliceSpec.All;
                 }
 
-                result[p] = a.Slice(sliceSpecs).Copy();
+                result.Append(a.Slice(sliceSpecs).Copy());
             }
 
             return result;

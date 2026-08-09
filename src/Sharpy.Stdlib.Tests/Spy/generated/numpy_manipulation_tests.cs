@@ -37,7 +37,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (27, 5) - (27, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var r = np.Concatenate((new Sharpy.List<global::Sharpy.NdArray<double>>() { a, b }).ToArray());
 #line (28, 5) - (28, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(5, r.Shape[0]);
+                Xunit.Assert.Equal(5, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (29, 5) - (29, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 Xunit.Assert.True(np.Allclose(r, np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d })));
 #line hidden
@@ -53,9 +53,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (35, 5) - (35, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var r = np.Concatenate((new Sharpy.List<global::Sharpy.NdArray<double>>() { a, b }).ToArray(), 0);
 #line (36, 5) - (36, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (37, 5) - (37, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[1]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 1));
 #line (38, 5) - (38, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 Xunit.Assert.Equal(7.0d, r[2, 0]);
 #line (39, 5) - (39, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
@@ -73,9 +73,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (45, 5) - (45, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var r = np.Concatenate((new Sharpy.List<global::Sharpy.NdArray<double>>() { a, b }).ToArray(), 1);
 #line (46, 5) - (46, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (47, 5) - (47, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[1]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 1));
 #line (48, 5) - (48, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 Xunit.Assert.Equal(5.0d, r[0, 2]);
 #line (49, 5) - (49, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
@@ -110,9 +110,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (64, 5) - (64, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var r = np.Stack((new Sharpy.List<global::Sharpy.NdArray<double>>() { a, b }).ToArray());
 #line (65, 5) - (65, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (66, 5) - (66, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[1]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 1));
 #line (67, 5) - (67, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 Xunit.Assert.Equal(1.0d, r[0, 0]);
 #line (68, 5) - (68, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
@@ -130,9 +130,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (74, 5) - (74, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var r = np.Stack((new Sharpy.List<global::Sharpy.NdArray<double>>() { a, b }).ToArray(), 1);
 #line (75, 5) - (75, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (76, 5) - (76, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 1));
 #line (77, 5) - (77, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 Xunit.Assert.Equal(1.0d, r[0, 0]);
 #line (78, 5) - (78, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
@@ -150,7 +150,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (84, 5) - (84, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var r = np.Hstack((new Sharpy.List<global::Sharpy.NdArray<double>>() { a, b }).ToArray());
 #line (85, 5) - (85, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(5, r.Shape[0]);
+                Xunit.Assert.Equal(5, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (86, 5) - (86, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 Xunit.Assert.True(np.Allclose(r, np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d })));
 #line hidden
@@ -166,9 +166,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (92, 5) - (92, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var r = np.Hstack((new Sharpy.List<global::Sharpy.NdArray<double>>() { a, b }).ToArray());
 #line (93, 5) - (93, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (94, 5) - (94, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[1]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 1));
 #line (95, 5) - (95, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 Xunit.Assert.Equal(5.0d, r[0, 2]);
 #line (96, 5) - (96, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
@@ -186,9 +186,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (102, 5) - (102, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var r = np.Vstack((new Sharpy.List<global::Sharpy.NdArray<double>>() { a, b }).ToArray());
 #line (103, 5) - (103, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (104, 5) - (104, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[1]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 1));
 #line (105, 5) - (105, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 Xunit.Assert.Equal(1.0d, r[0, 0]);
 #line (106, 5) - (106, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
@@ -206,9 +206,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (112, 5) - (112, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var r = np.Vstack((new Sharpy.List<global::Sharpy.NdArray<double>>() { a, b }).ToArray());
 #line (113, 5) - (113, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (114, 5) - (114, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 1));
 #line (115, 5) - (115, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 Xunit.Assert.Equal(5.0d, r[2, 0]);
 #line (116, 5) - (116, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
@@ -224,13 +224,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (123, 5) - (123, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var parts = np.Split(a, (new Sharpy.List<int>() { 2 }).ToArray());
 #line (124, 5) - (124, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts, 0).Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts[0].Shape, 0));
 #line (125, 5) - (125, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(parts, 1).Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(parts[1].Shape, 0));
 #line (126, 5) - (126, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(1.0d, global::Sharpy.ArrayHelpers.GetItem(parts, 0)[0]);
+                Xunit.Assert.Equal(1.0d, parts[0][0]);
 #line (127, 5) - (127, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(3.0d, global::Sharpy.ArrayHelpers.GetItem(parts, 1)[0]);
+                Xunit.Assert.Equal(3.0d, parts[1][0]);
 #line hidden
             }
 
@@ -242,17 +242,17 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (132, 5) - (132, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var parts = np.Split(a, (new Sharpy.List<int>() { 2, 4 }).ToArray());
 #line (133, 5) - (133, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts, 0).Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts[0].Shape, 0));
 #line (134, 5) - (134, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts, 1).Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts[1].Shape, 0));
 #line (135, 5) - (135, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts, 2).Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts[2].Shape, 0));
 #line (136, 5) - (136, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(1.0d, global::Sharpy.ArrayHelpers.GetItem(parts, 0)[0]);
+                Xunit.Assert.Equal(1.0d, parts[0][0]);
 #line (137, 5) - (137, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(3.0d, global::Sharpy.ArrayHelpers.GetItem(parts, 1)[0]);
+                Xunit.Assert.Equal(3.0d, parts[1][0]);
 #line (138, 5) - (138, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(6.0d, global::Sharpy.ArrayHelpers.GetItem(parts, 2)[1]);
+                Xunit.Assert.Equal(6.0d, parts[2][1]);
 #line hidden
             }
 
@@ -264,13 +264,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (143, 5) - (143, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var parts = np.Split(a, (new Sharpy.List<int>() { 2 }).ToArray(), 1);
 #line (144, 5) - (144, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts, 0).Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts[0].Shape, 0));
 #line (145, 5) - (145, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts, 0).Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts[0].Shape, 1));
 #line (146, 5) - (146, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts, 1).Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts[1].Shape, 0));
 #line (147, 5) - (147, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts, 1).Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(parts[1].Shape, 1));
 #line hidden
             }
 
@@ -328,9 +328,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (179, 5) - (179, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var r = np.Clip(a, 0.0d, 5.0d);
 #line (180, 5) - (180, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (181, 5) - (181, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 1));
 #line hidden
             }
 
@@ -339,7 +339,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (185, 5) - (185, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d });
-#line (186, 5) - (188, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+#line (186, 5) - (190, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 Xunit.Assert.Throws<ArgumentException>((global::System.Action)(() =>
 #line hidden
                 {
@@ -347,6 +347,26 @@ namespace Sharpy.Stdlib.Tests.Spy
                     np.Clip(a, 5.0d, 2.0d);
 #line hidden
                 }));
+            }
+
+            [Xunit.FactAttribute]
+            public void TestSplitReturnsASharpyList()
+            {
+#line (195, 5) - (195, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+                var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d });
+#line (196, 5) - (196, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+                var parts = np.Split(a, (new Sharpy.List<int>() { 2 }).ToArray());
+#line (197, 5) - (197, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+                Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(parts));
+#line (198, 5) - (198, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+                var extra = np.Array(new Sharpy.List<double>() { 9.0d });
+#line (199, 5) - (199, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+                parts.Append(extra);
+#line (200, 5) - (200, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+                Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(parts));
+#line (201, 5) - (201, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+                Xunit.Assert.Equal(9.0d, parts[2][0]);
+#line hidden
             }
         }
     }
