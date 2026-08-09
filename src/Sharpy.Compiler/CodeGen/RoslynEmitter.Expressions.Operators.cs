@@ -748,11 +748,14 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateTypeCoercion(TypeCoercion coercion)
     {
         // The cast operators lower purely by their failure mode; the `to`/`to?` and
-        // `as!`/`as?` spellings share one lowering (snapshot parity, #1029):
-        // - Throw mode (value to T / value as! T)  → (T)value (throws InvalidCastException)
-        // - Null  mode (value to T? / value as? T) → one of three shapes, chosen entirely in semantic
-        //   analysis and materialized as a TypeCoercionLowering (#1110); the emitter only applies it:
-        //     * NumericRangeChecked (narrowing) → global::Sharpy.NumericSafeCast.To{T}OrNone(value)
+        // `as!`/`as?` spellings share one lowering (snapshot parity, #1029). Every shape below is
+        // chosen in semantic analysis and materialized as a TypeCoercionLowering; the emitter only
+        // applies it (#1110, #1306):
+        // - Throw mode (value to T / value as! T):
+        //     * NumericChecked (narrowing) → global::Sharpy.NumericCheckedCast.To{T}((hub)value)
+        //     * absent (widening, enums, unboxing, __explicit__, reference downcasts) → (T)value
+        // - Null  mode (value to T? / value as? T):
+        //     * NumericRangeChecked (narrowing) → global::Sharpy.NumericSafeCast.To{T}OrNone((hub)value)
         //     * NumericAlwaysFits (widening/identity) → Optional<T>.Some((T)value)
         //     * absent (object/reference/optional/non-numeric source) → the type-pattern form
         //       value is T _temp ? Optional<T>.Some(_temp) : default
@@ -790,12 +793,7 @@ internal partial class RoslynEmitter
                 {
                     // Narrowing: global::Sharpy.NumericSafeCast.To{T}OrNone(value). The helper returns
                     // Optional<T> directly (Some in range, None for out-of-range/NaN/±inf).
-                    return InvocationExpression(
-                        MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            MakeGlobalQualifiedName("Sharpy", "NumericSafeCast"),
-                            IdentifierName(numericLowering.SafeCastMethod!)))
-                        .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(value))));
+                    return GenerateNumericCastHelperCall("NumericSafeCast", numericLowering, value);
                 }
 
                 // NumericAlwaysFits: Optional<T>.Some((T)value). The C# cast is a widening/identity
@@ -835,12 +833,71 @@ internal partial class RoslynEmitter
         }
         else
         {
-            // Throwing form: value to T / value as! T → (T)value. A user-defined __explicit__
-            // conversion, if present, is invoked by this C# cast exactly as it is for `to`.
+            // Throwing form. A recorded checked lowering means the pair can lose data: emit the helper
+            // so the failure is a catchable Sharpy.OverflowError/ValueError instead of C#'s unchecked
+            // wrap (#1306). Without one — widening numerics, enums, unboxing, __explicit__, reference
+            // downcasts — the bare cast stands, and a user-defined conversion is invoked by it exactly
+            // as it is for `to`.
+            var checkedLowering = _context.SemanticInfo?.GetTypeCoercionLowering(coercion);
+            if (checkedLowering is { Kind: TypeCoercionLoweringKind.NumericChecked })
+            {
+                return GenerateNumericCastHelperCall("NumericCheckedCast", checkedLowering, value);
+            }
+
             var targetType = MapClassifiedTypeOperand(coercion.TargetType);
             return CastExpression(targetType, value);
         }
     }
+
+    /// <summary>
+    /// Builds <c>global::Sharpy.{helperClass}.{HelperMethod}(({SourceHubType})value)</c>. The hub cast is
+    /// emitted only when the checker recorded one — the helpers take <c>long</c>, <c>ulong</c> and
+    /// <c>double</c> parameters, and an operand of any other numeric width must name which it converts
+    /// to or the call is CS0121-ambiguous between the signed and unsigned 64-bit overloads.
+    /// </summary>
+    private ExpressionSyntax GenerateNumericCastHelperCall(
+        string helperClass,
+        TypeCoercionLowering lowering,
+        ExpressionSyntax value)
+    {
+        var argument = lowering.SourceHubType == null
+            ? value
+            : CastExpression(
+                PredefinedType(Token(HubTypeKeyword(lowering.SourceHubType))),
+                IsTrivialExpression_ForHub(value) ? value : ParenthesizedExpression(value));
+
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("Sharpy", helperClass),
+                IdentifierName(lowering.HelperMethod!)))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(argument))));
+    }
+
+    /// <summary>Maps a recorded hub name to its C# keyword token.</summary>
+    private static SyntaxKind HubTypeKeyword(string hub)
+        => hub switch
+        {
+            "long" => SyntaxKind.LongKeyword,
+            "ulong" => SyntaxKind.ULongKeyword,
+            "double" => SyntaxKind.DoubleKeyword,
+            _ => throw new System.InvalidOperationException(
+                $"Unknown numeric cast hub type '{hub}' — the checker recorded a hub the emitter "
+                + "cannot spell.")
+        };
+
+    /// <summary>
+    /// Whether generated syntax is atomic enough to cast without parentheses. Unlike
+    /// <see cref="IsTrivialExpression(Expression)"/> this inspects the emitted C#, because the hub cast
+    /// sits between the operand and the helper call.
+    /// </summary>
+    private static bool IsTrivialExpression_ForHub(ExpressionSyntax syntax)
+        => syntax is IdentifierNameSyntax
+            or LiteralExpressionSyntax
+            or ParenthesizedExpressionSyntax
+            or InvocationExpressionSyntax
+            or MemberAccessExpressionSyntax
+            or ElementAccessExpressionSyntax;
 
     private ExpressionSyntax GenerateTypeCheck(TypeCheck check)
     {

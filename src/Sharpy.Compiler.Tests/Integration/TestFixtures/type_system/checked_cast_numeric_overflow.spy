@@ -1,0 +1,42 @@
+# `as!` numeric narrowing is range-checked and throws catchable Sharpy exceptions (#1306).
+# Before this, the throwing form emitted a bare C# cast, which is unchecked: `big as! int` printed
+# 0 (silent wrap), `1e100 as! int` printed 2147483647 (silent saturation) and NaN printed 0.
+# The exceptions must be Sharpy's own — a `checked(...)` fix would throw System.OverflowException,
+# which `except OverflowError` compiles to a catch of global::Sharpy.OverflowError and cannot see.
+
+def main() -> None:
+    big: long = 4294967296
+    try:
+        print(big as! int)
+    except OverflowError:
+        print("overflow")
+
+    huge: float = 1e100
+    try:
+        print(huge as! int)
+    except OverflowError:
+        print("overflow-float")
+
+    nan: float = float("nan")
+    try:
+        print(nan as! int)
+    except ValueError:
+        print("nan")
+
+    # In-range narrowing is unaffected and still truncates toward zero.
+    ok: long = 42
+    print(ok as! int)
+    frac: float = -3.9
+    print(frac as! int)
+
+    # A widening `as!` keeps its bare cast — nothing to check, nothing to change.
+    small: int = 7
+    print(small as! long)
+
+    # `try` sees the same exception and carries it as Err.
+    r = try big as! int
+    match r:
+        case Ok(v):
+            print(v)
+        case Err(_):
+            print("err")

@@ -1,0 +1,47 @@
+# The numeric cast matrix covers every integral width, not just int/long (#1306).
+# `x as? byte` used to record no lowering, so the emitter fell back to its type-pattern form —
+# `x is byte _t ? ... : default` on a concrete numeric source, which is CS8121: an ICE, not a cast.
+
+def main() -> None:
+    # Failable form at a small width: out of range is None, in range is Some.
+    too_big: int = 300
+    none_case: byte? = too_big as? byte
+    print(none_case.is_none)
+
+    fits: int = 200
+    some_case: byte? = fits as? byte
+    print(some_case.is_some)
+
+    # Throwing form at the same width.
+    try:
+        print(too_big as! byte)
+    except OverflowError:
+        print("byte-overflow")
+    print(fits as! byte)
+
+    # A uint32 source rides the long hub; the emitted cast is what keeps the helper call from being
+    # ambiguous between the signed and unsigned 64-bit overloads.
+    u: uint32 = 4000000000u
+    try:
+        print(u as! int)
+    except OverflowError:
+        print("uint-overflow")
+
+    # uint64 has no implicit conversion to long, so it is its own hub.
+    v: uint64 = 18446744073709551615UL
+    try:
+        print(v as! long)
+    except OverflowError:
+        print("ulong-overflow")
+
+    # Signed -> unsigned admits no negatives, whatever the widths.
+    neg: int = -1
+    try:
+        print(neg as! uint32)
+    except OverflowError:
+        print("negative-overflow")
+
+    # Widening within the small widths stays a bare cast. The initializer needs the cast because no
+    # literal can initialize a sub-32-bit annotation today (#1355) — `b: uint8 = 200` is SPY0220.
+    b: uint8 = 200 as! uint8
+    print(b as! int)

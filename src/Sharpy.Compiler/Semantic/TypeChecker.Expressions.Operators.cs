@@ -959,19 +959,19 @@ internal partial class TypeChecker
             _ => targetType
         };
 
-        // For the failable form (`as? T`), decide the emission shape here so the emitter never
-        // inspects operand types. When the source and stripped target are both plain numeric primitives,
-        // record a numeric lowering (widening/identity ⇒ AlwaysFits; narrowing ⇒ a range-checked helper).
-        // Any other source keeps the emitter's default type-pattern lowering, which is the only correct
-        // shape for object/reference/optional sources but is uncompilable (CS8121) for concrete numerics
-        // — the gap #1110 closes.
-        if (coercion.Mode == CastFailureMode.Null)
+        // Decide the emission shape here, for BOTH modes, so the emitter never inspects operand types.
+        // When the source and stripped target are both plain numeric primitives, record a numeric
+        // lowering: `as?` gets AlwaysFits for widening and a None-returning helper for narrowing (#1110);
+        // `as!` gets a throwing helper for narrowing and NOTHING for widening, so a widening throw-mode
+        // cast keeps its bare C# cast byte-for-byte (#1306).
+        // Any other source keeps the emitter's mode default — the type pattern for `as?`, which is the
+        // only correct shape for object/reference/optional sources but is uncompilable (CS8121) for
+        // concrete numerics, and the bare cast for `as!`, correct for enums, unboxing, `__explicit__`
+        // conversions and reference downcasts.
+        var lowering = ClassifyNumericCoercion(sourceType, underlyingTargetType, coercion.Mode);
+        if (lowering != null)
         {
-            var lowering = ClassifyNumericSafeCast(sourceType, underlyingTargetType);
-            if (lowering != null)
-            {
-                _semanticInfo.SetTypeCoercionLowering(coercion, lowering);
-            }
+            _semanticInfo.SetTypeCoercionLowering(coercion, lowering);
         }
 
         // Validate the coercion
@@ -981,50 +981,126 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Classifies a failable numeric cast into its emission shape, or returns <c>null</c> when the
-    /// numeric lowering does not apply (leaving the default type-pattern lowering in place). Applies only
-    /// when BOTH the source and the stripped target are plain numeric <c>int</c>/<c>long</c>/
-    /// <c>float32</c>/<c>double</c> — object, reference, optional/nullable, type-parameter, and other
-    /// numeric-family (byte/short/uint/decimal/…) sources are intentionally excluded so their generated
-    /// C# stays byte-for-byte unchanged (#1110).
+    /// Classifies a numeric cast into its emission shape, or returns <c>null</c> when no numeric
+    /// lowering applies and the emitter's mode default stands (the type pattern for <c>as?</c>, a bare
+    /// C# cast for <c>as!</c>).
     /// </summary>
-    private static TypeCoercionLowering? ClassifyNumericSafeCast(SemanticType source, SemanticType target)
+    /// <remarks>
+    /// <para>
+    /// Applies when BOTH the source and the stripped target are integral or floating primitives —
+    /// the full width family, not just int/long/float32/float64 (#1306). <c>decimal</c> is excluded
+    /// (no helper overloads; the bare cast is unchanged), as are object, reference, optional/nullable,
+    /// type-parameter, <c>bool</c>, <c>char</c> and <c>str</c> operands.
+    /// </para>
+    /// <para>
+    /// The throwing mode records a lowering ONLY for pairs that can fail. A widening <c>as!</c> keeps
+    /// its bare cast, so no existing generated C# moves; the narrowing ones stop wrapping silently.
+    /// </para>
+    /// </remarks>
+    private static TypeCoercionLowering? ClassifyNumericCoercion(
+        SemanticType source,
+        SemanticType target,
+        CastFailureMode mode)
     {
-        var srcClr = PrimitiveCatalog.GetPrimitiveInfo(source)?.ClrType;
-        var tgtClr = PrimitiveCatalog.GetPrimitiveInfo(target)?.ClrType;
+        var src = PrimitiveCatalog.GetPrimitiveInfo(source);
+        var tgt = PrimitiveCatalog.GetPrimitiveInfo(target);
 
-        if (!IsSafeCastNumeric(srcClr) || !IsSafeCastNumeric(tgtClr))
+        if (!IsCoercionNumeric(src) || !IsCoercionNumeric(tgt))
         {
             return null;
         }
 
-        // Narrowing to int: long/float32/double → int is range-checked. int → int is identity.
-        if (tgtClr == typeof(int))
+        if (!CanNarrowingFail(src!, tgt!))
         {
-            return srcClr == typeof(int)
+            // Widening/identity. `as?` still needs a lowering (Optional<T>.Some((T)value)) because its
+            // default type pattern is CS8121 on a concrete numeric source; `as!` needs none.
+            return mode == CastFailureMode.Null
                 ? new TypeCoercionLowering(TypeCoercionLoweringKind.NumericAlwaysFits)
-                : new TypeCoercionLowering(TypeCoercionLoweringKind.NumericRangeChecked, "ToIntOrNone");
+                : null;
         }
 
-        // Narrowing to long: float32/double → long is range-checked. int/long → long widens/identity.
-        if (tgtClr == typeof(long))
-        {
-            return srcClr == typeof(float) || srcClr == typeof(double)
-                ? new TypeCoercionLowering(TypeCoercionLoweringKind.NumericRangeChecked, "ToLongOrNone")
-                : new TypeCoercionLowering(TypeCoercionLoweringKind.NumericAlwaysFits);
-        }
+        var hub = SourceHubType(src!);
+        var hubCast = src!.CSharpName == hub ? null : hub;
+        var targetName = HelperTargetName(tgt!);
 
-        // Target is float32 or double: every int/long/float32/double source fits (widening/identity, or
-        // double → float32 which maps overflow to ±∞ and preserves NaN, both representable in float32).
-        return new TypeCoercionLowering(TypeCoercionLoweringKind.NumericAlwaysFits);
+        return mode == CastFailureMode.Null
+            ? new TypeCoercionLowering(
+                TypeCoercionLoweringKind.NumericRangeChecked, $"To{targetName}OrNone", hubCast)
+            : new TypeCoercionLowering(
+                TypeCoercionLoweringKind.NumericChecked, $"To{targetName}", hubCast);
     }
 
     /// <summary>
-    /// True for exactly the four plain numeric CLR types the safe-cast numeric lowering handles:
-    /// <c>int</c>, <c>long</c>, <c>float</c> (Sharpy <c>float32</c>), <c>double</c> (Sharpy <c>float</c>).
+    /// True for the integral and floating primitives the numeric cast helpers cover. <c>decimal</c> is
+    /// deliberately out: it has no helper overloads and its bare cast must stay unchanged.
     /// </summary>
-    private static bool IsSafeCastNumeric(System.Type? clr)
-        => clr == typeof(int) || clr == typeof(long) || clr == typeof(float) || clr == typeof(double);
+    private static bool IsCoercionNumeric(PrimitiveCatalog.PrimitiveInfo? info)
+        => info != null
+            && (info.Kind == PrimitiveCatalog.NumericKind.SignedInteger
+                || info.Kind == PrimitiveCatalog.NumericKind.UnsignedInteger
+                || info.Kind == PrimitiveCatalog.NumericKind.FloatingPoint);
+
+    /// <summary>
+    /// Whether converting <paramref name="src"/> to <paramref name="tgt"/> can fail at runtime — the
+    /// question that decides whether a checked helper is emitted at all.
+    /// </summary>
+    /// <remarks>
+    /// A floating target never fails (an out-of-range double→float32 becomes ±∞, and NaN survives).
+    /// A floating source into any integral target always can (NaN, ±∞, magnitude). Integral→integral
+    /// fails unless the source's whole value range sits inside the target's: same signedness compares
+    /// widths; signed→unsigned always admits negatives; unsigned→signed needs a strictly wider target
+    /// because the sign bit costs one bit of magnitude.
+    /// </remarks>
+    private static bool CanNarrowingFail(
+        PrimitiveCatalog.PrimitiveInfo src,
+        PrimitiveCatalog.PrimitiveInfo tgt)
+    {
+        if (tgt.Kind == PrimitiveCatalog.NumericKind.FloatingPoint)
+        {
+            return false;
+        }
+
+        if (src.Kind == PrimitiveCatalog.NumericKind.FloatingPoint)
+        {
+            return true;
+        }
+
+        if (src.IsSigned == tgt.IsSigned)
+        {
+            return src.SizeInBits > tgt.SizeInBits;
+        }
+
+        return src.IsSigned || src.SizeInBits >= tgt.SizeInBits;
+    }
+
+    /// <summary>
+    /// The C# type the operand is cast to before invoking a helper: <c>double</c> for floating sources,
+    /// <c>ulong</c> for the one integral source with no implicit conversion to <c>long</c>, and
+    /// <c>long</c> for every other integral source.
+    /// </summary>
+    private static string SourceHubType(PrimitiveCatalog.PrimitiveInfo src)
+        => src.Kind == PrimitiveCatalog.NumericKind.FloatingPoint ? "double"
+            : src.Kind == PrimitiveCatalog.NumericKind.UnsignedInteger && src.SizeInBits == 64 ? "ulong"
+            : "long";
+
+    /// <summary>
+    /// The helper-name fragment for a target width — <c>ToInt</c>/<c>ToIntOrNone</c> from <c>int</c>.
+    /// </summary>
+    private static string HelperTargetName(PrimitiveCatalog.PrimitiveInfo tgt)
+        => tgt.CSharpName switch
+        {
+            "sbyte" => "SByte",
+            "byte" => "Byte",
+            "short" => "Short",
+            "ushort" => "UShort",
+            "int" => "Int",
+            "uint" => "UInt",
+            "long" => "Long",
+            "ulong" => "ULong",
+            _ => throw new System.InvalidOperationException(
+                $"No numeric cast helper for target '{tgt.CSharpName}' — CanNarrowingFail admitted a "
+                + "target the helper matrix does not cover.")
+        };
 
     /// <summary>
     /// Validates that a type coercion is valid per the language specification.
@@ -1296,9 +1372,16 @@ internal partial class TypeChecker
                 ? resolved[0]
                 : FindCommonExceptionBase(resolved, exceptionSymbol);
         }
-        else if (tryExpr.Operand is TypeCoercion)
+        else if (tryExpr.Operand is TypeCoercion coercionOperand
+            && _semanticInfo.GetTypeCoercionLowering(coercionOperand)
+                is not { Kind: TypeCoercionLoweringKind.NumericChecked })
         {
-            // Special case: try x to Cat → Result[Cat, InvalidCastException]
+            // Special case: try x to Cat → Result[Cat, InvalidCastException]. That is the exception a
+            // reference/unboxing cast throws — but a numeric narrowing throws Sharpy.OverflowError or
+            // Sharpy.ValueError (#1306), and Result.Try catches only the error type named here, so
+            // pinning InvalidCastException would let those escape the carrier that exists to hold them.
+            // Numeric narrowings therefore fall through to the Exception default below, which is also
+            // the most specific common base of the two they can throw.
             var clrSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType("InvalidCastException");
             errorType = new UserDefinedType { Name = "InvalidCastException", Symbol = clrSymbol };
         }

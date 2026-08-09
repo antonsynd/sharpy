@@ -1276,42 +1276,63 @@ public sealed record TypeTestLowering(
     IReadOnlyList<SemanticType>? Alternatives = null);
 
 /// <summary>
-/// The emission shape codegen applies for a safe cast (<c>value to T?</c> / <c>value as? T</c>) whose
-/// source and stripped target are both plain numeric primitives. The TypeChecker classifies the pair
-/// during type checking so the emitter switches on the tag alone and never inspects operand types
-/// (#1110, Critical Rule 2 pattern (b)).
+/// The emission shape codegen applies for a cast (<c>value to T?</c> / <c>value as? T</c> /
+/// <c>value as! T</c>) whose source and stripped target are both plain numeric primitives. The
+/// TypeChecker classifies the pair during type checking so the emitter switches on the tag alone and
+/// never inspects operand types (#1110, #1306, Critical Rule 2 pattern (b)).
 /// </summary>
 public enum TypeCoercionLoweringKind
 {
     /// <summary>
     /// Widening or identity (int→long/float32/double, long→float32/double, float32→double,
-    /// double→float32, and same-type). Emit <c>Optional&lt;T&gt;.Some((T)value)</c> unconditionally — the
-    /// value always fits (double→float32 maps overflow to ±∞ and preserves NaN, both representable). Never
-    /// routed through the type pattern, which would raise a CS8794-class "expression is always
-    /// true/false" warning on an identity source (spy-test C# compiles under TreatWarningsAsErrors).
+    /// double→float32, and same-type) in the failable form. Emit <c>Optional&lt;T&gt;.Some((T)value)</c>
+    /// unconditionally — the value always fits (double→float32 maps overflow to ±∞ and preserves NaN,
+    /// both representable). Never routed through the type pattern, which would raise a CS8794-class
+    /// "expression is always true/false" warning on an identity source (spy-test C# compiles under
+    /// TreatWarningsAsErrors).
     /// </summary>
     NumericAlwaysFits,
 
     /// <summary>
-    /// Narrowing (double→int, double→long, float32→int, float32→long, long→int). Emit
-    /// <c>global::Sharpy.NumericSafeCast.{SafeCastMethod}(value)</c>, which range-checks and returns
-    /// <c>None</c> for out-of-range, NaN, or ±∞.
+    /// Narrowing in the failable form (<c>as?</c>). Emit
+    /// <c>global::Sharpy.NumericSafeCast.{HelperMethod}(({SourceHubType})value)</c>, which range-checks
+    /// and returns <c>None</c> for out-of-range, NaN, or ±∞.
     /// </summary>
-    NumericRangeChecked
+    NumericRangeChecked,
+
+    /// <summary>
+    /// Narrowing in the throwing form (<c>as!</c> / <c>to</c>). Emit
+    /// <c>global::Sharpy.NumericCheckedCast.{HelperMethod}(({SourceHubType})value)</c>, which throws
+    /// <c>Sharpy.OverflowError</c> out of range and <c>Sharpy.ValueError</c> for NaN. A bare C# cast
+    /// here is <c>unchecked</c>, so it wrapped silently — <c>big as! int</c> printed <c>0</c> (#1306).
+    /// Recorded ONLY for pairs that can fail: a widening throw-mode coercion records nothing and keeps
+    /// the bare cast, so its generated C# is unchanged.
+    /// </summary>
+    NumericChecked
 }
 
 /// <summary>
-/// A materialized numeric safe-cast lowering decision, keyed per coercion node (Critical Rule 2 pattern
-/// (b), #1110). Absent from <see cref="SemanticInfo"/> ⇒ the emitter uses its default type-pattern
-/// lowering (correct for object/reference/optional/non-numeric sources).
+/// A materialized numeric cast lowering decision, keyed per coercion node (Critical Rule 2 pattern
+/// (b), #1110, #1306). Absent from <see cref="SemanticInfo"/> ⇒ the emitter uses its default lowering
+/// for the mode: the type pattern for <c>as?</c> (correct for object/reference/optional/non-numeric
+/// sources) and a bare C# cast for <c>as!</c>.
 /// </summary>
 /// <param name="Kind">Which emission shape to apply.</param>
-/// <param name="SafeCastMethod">
-/// For <see cref="TypeCoercionLoweringKind.NumericRangeChecked"/>, the <c>Sharpy.NumericSafeCast</c> method
-/// to invoke (<c>ToIntOrNone</c> / <c>ToLongOrNone</c>); <c>null</c> for
+/// <param name="HelperMethod">
+/// For the two range-checked kinds, the helper method to invoke — <c>ToIntOrNone</c> on
+/// <c>Sharpy.NumericSafeCast</c>, <c>ToInt</c> on <c>Sharpy.NumericCheckedCast</c>; <c>null</c> for
 /// <see cref="TypeCoercionLoweringKind.NumericAlwaysFits"/>.
 /// </param>
-public sealed record TypeCoercionLowering(TypeCoercionLoweringKind Kind, string? SafeCastMethod = null);
+/// <param name="SourceHubType">
+/// The C# keyword the operand is cast to before the call (<c>long</c>, <c>ulong</c>, or <c>double</c>),
+/// or <c>null</c> when the operand's own type is already the hub and no cast is emitted. The helpers
+/// take only those three parameter shapes; without pinning the hub a <c>uint</c> operand is
+/// CS0121-ambiguous between the <c>long</c> and <c>ulong</c> overloads.
+/// </param>
+public sealed record TypeCoercionLowering(
+    TypeCoercionLoweringKind Kind,
+    string? HelperMethod = null,
+    string? SourceHubType = null);
 
 /// <summary>
 /// How codegen must project a builtin-call argument before passing it. The TypeChecker records this
