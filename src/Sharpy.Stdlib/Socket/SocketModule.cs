@@ -412,7 +412,7 @@ namespace Sharpy
                     else
                     {
                         this._Socket.Blocking = true;
-                        int ms = (int)(value * 1000.0d);
+                        int ms = global::Sharpy.NumericCheckedCast.ToInt((value * 1000.0d));
                         this._Socket.ReceiveTimeout = ms;
                         this._Socket.SendTimeout = ms;
                     }

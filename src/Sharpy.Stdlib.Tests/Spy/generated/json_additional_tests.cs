@@ -62,7 +62,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (28, 5) - (28, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 Xunit.Assert.IsAssignableFrom<double>(r);
 #line (29, 5) - (35, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
-                switch (r)
+                switch (((double)r!))
 #line hidden
                 {
                     case double f:

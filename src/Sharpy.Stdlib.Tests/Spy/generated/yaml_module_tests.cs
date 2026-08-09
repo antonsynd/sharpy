@@ -254,7 +254,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (111, 13) - (111, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<double>(d["key"]);
 #line (112, 13) - (117, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        switch (d["key"])
+                        switch (((double)d["key"]!))
 #line hidden
                         {
                             case double fv:
@@ -291,7 +291,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (125, 13) - (125, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<double>(d["key"]);
 #line (126, 13) - (131, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                        switch (d["key"])
+                        switch (((double)d["key"]!))
 #line hidden
                         {
                             case double fv:

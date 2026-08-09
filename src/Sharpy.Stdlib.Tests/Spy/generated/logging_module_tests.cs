@@ -57,7 +57,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (29, 9) - (29, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                     logger.Warning("test message");
 #line (30, 9) - (30, 78) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Equal("WARNING:test_output:test message", err.Getvalue().Rstrip());
+                    Xunit.Assert.Equal("WARNING:test_output:test message", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
                 }
             }
@@ -95,7 +95,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (47, 9) - (47, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                     logger.Warning("at level");
 #line (48, 9) - (48, 70) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Equal("WARNING:test_at:at level", err.Getvalue().Rstrip());
+                    Xunit.Assert.Equal("WARNING:test_at:at level", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
                 }
             }
@@ -232,7 +232,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (118, 9) - (118, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                     logger.Warning("");
 #line (119, 9) - (119, 69) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Equal("WARNING:test_empty_msg:", err.Getvalue().Rstrip());
+                    Xunit.Assert.Equal("WARNING:test_empty_msg:", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
                 }
             }
@@ -251,7 +251,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (128, 9) - (128, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                     logger.Warning("key:value:pair");
 #line (129, 9) - (129, 80) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    Xunit.Assert.Equal("WARNING:test_colons:key:value:pair", err.Getvalue().Rstrip());
+                    Xunit.Assert.Equal("WARNING:test_colons:key:value:pair", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
                 }
             }
@@ -274,7 +274,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (139, 9) - (139, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                     logger.Warning("third");
 #line (143, 9) - (143, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
-                    var output = err.Getvalue().Rstrip();
+                    var output = global::Sharpy.StringExtensions.Rstrip(err.Getvalue());
 #line (144, 9) - (144, 101) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_module_tests.spy"
                     Xunit.Assert.Equal("DEBUG:test_order:first\nINFO:test_order:second\nWARNING:test_order:third", output);
 #line hidden

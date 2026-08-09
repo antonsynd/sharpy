@@ -73,7 +73,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (45, 9) - (45, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                     logger.Debug("dbg");
 #line (46, 9) - (46, 67) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                    Xunit.Assert.Equal("DEBUG:lc_debug_on:dbg", err.Getvalue().Rstrip());
+                    Xunit.Assert.Equal("DEBUG:lc_debug_on:dbg", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
                 }
             }
@@ -92,7 +92,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (54, 9) - (54, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                     logger.Info("informational");
 #line (55, 9) - (55, 75) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                    Xunit.Assert.Equal("INFO:lc_info_on:informational", err.Getvalue().Rstrip());
+                    Xunit.Assert.Equal("INFO:lc_info_on:informational", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
                 }
             }
@@ -111,7 +111,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (63, 9) - (63, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                     logger.Error("something failed");
 #line (64, 9) - (64, 80) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                    Xunit.Assert.Equal("ERROR:lc_error_on:something failed", err.Getvalue().Rstrip());
+                    Xunit.Assert.Equal("ERROR:lc_error_on:something failed", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
                 }
             }
@@ -130,7 +130,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (72, 9) - (72, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
                     logger.Critical("fatal error");
 #line (73, 9) - (73, 81) 20 "src/Sharpy.Stdlib.Tests/Spy/logging/logging_complete_tests.spy"
-                    Xunit.Assert.Equal("CRITICAL:lc_critical_on:fatal error", err.Getvalue().Rstrip());
+                    Xunit.Assert.Equal("CRITICAL:lc_critical_on:fatal error", global::Sharpy.StringExtensions.Rstrip(err.Getvalue()));
 #line hidden
                 }
             }

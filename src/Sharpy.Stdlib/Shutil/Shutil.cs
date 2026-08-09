@@ -180,7 +180,7 @@ namespace Sharpy
                 string extValue = rawExt != null ? rawExt : "";
                 if (extValue.Length > 0)
                 {
-                    extensions = global::Sharpy.StringExtensions.Split(extValue, ";");
+                    extensions = new Sharpy.List<string>(global::Sharpy.StringExtensions.Split(extValue, ";"));
                 }
                 else
                 {
