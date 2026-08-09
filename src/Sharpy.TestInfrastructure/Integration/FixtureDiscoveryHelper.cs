@@ -18,6 +18,13 @@ public record TestFixtureInfo
     public string Category { get; init; } = "";
 
     /// <summary>
+    /// The <see cref="FixtureRoot.Label"/> of the corpus this fixture came from — empty for the
+    /// primary root. A cross-corpus sweep reads this to decide what a fixture needs (stdlib
+    /// fixtures need <c>Sharpy.Stdlib.dll</c> referenced) and to report per-root coverage.
+    /// </summary>
+    public string RootLabel { get; init; } = "";
+
+    /// <summary>
     /// Experimental feature names declared in this fixture's <c>.features</c> sidecar
     /// (empty when there is no sidecar). These are enabled compilation-wide when the
     /// fixture is compiled, gating features such as <c>matmul</c> and <c>defer</c>.
@@ -31,17 +38,32 @@ public record TestFixtureInfo
 /// </summary>
 public static class FixtureDiscoveryHelper
 {
-    public static readonly string FixturesPath = Path.GetFullPath(Path.Combine(
-        Path.GetDirectoryName(typeof(FixtureDiscoveryHelper).Assembly.Location)!,
-        "..", "..", "..", "Integration", "TestFixtures"));
-
     /// <summary>
-    /// Discovers all test fixtures by scanning the TestFixtures directory.
+    /// Discovers all test fixtures under one directory.
     /// Supports both single-file tests and multi-file tests (including packages with subdirectories).
     /// </summary>
-    public static IEnumerable<TestFixtureInfo> DiscoverFixtures(string? fixturesPath = null)
+    /// <remarks>
+    /// The path is required. There used to be a host-anchored default, which meant a sweep's
+    /// corpus was whatever fixture directory sat next to the test project hosting it — unstated at
+    /// the call site and unnoticed when wrong (#1338). Callers covering a named corpus use
+    /// <see cref="DiscoverFixturesFrom"/>; this overload is for the paths that are not named roots
+    /// (the file-based harness base class, told its root by the concrete test class, and the
+    /// temp-directory discovery unit tests).
+    /// </remarks>
+    public static IEnumerable<TestFixtureInfo> DiscoverFixtures(string fixturesPath)
+        => DiscoverFrom(new FixtureRoot { Path = fixturesPath });
+
+    /// <summary>
+    /// Discovers fixtures across one or more declared corpora. Each root's fixtures carry that
+    /// root's <see cref="FixtureRoot.Label"/> as a test-name prefix and in
+    /// <see cref="TestFixtureInfo.RootLabel"/>, so a cross-corpus sweep's keys stay unambiguous.
+    /// </summary>
+    public static IEnumerable<TestFixtureInfo> DiscoverFixturesFrom(params FixtureRoot[] roots)
+        => roots.SelectMany(DiscoverFrom);
+
+    private static IEnumerable<TestFixtureInfo> DiscoverFrom(FixtureRoot root)
     {
-        var basePath = fixturesPath ?? FixturesPath;
+        var basePath = root.Path;
 
         if (!Directory.Exists(basePath))
         {
@@ -88,7 +110,7 @@ public static class FixtureDiscoveryHelper
                 }
 
                 var relativePath = Path.GetRelativePath(basePath, multiFileRoot);
-                var testName = relativePath.Replace(Path.DirectorySeparatorChar, '/');
+                var testName = Qualify(root, relativePath.Replace(Path.DirectorySeparatorChar, '/'));
                 var category = ExtractCategory(relativePath);
 
                 var expectedFile = Path.Combine(multiFileRoot, "main.expected");
@@ -110,6 +132,7 @@ public static class FixtureDiscoveryHelper
                     ExpectedCsFile = File.Exists(expectedCsFile) ? expectedCsFile : null,
                     IsMultiFile = true,
                     Category = category,
+                    RootLabel = root.Label,
                     Features = ReadFeaturesFile(featuresFile),
                 };
             }
@@ -122,8 +145,8 @@ public static class FixtureDiscoveryHelper
                 }
 
                 var relativePath = Path.GetRelativePath(basePath, spyFile);
-                var testName = Path.ChangeExtension(relativePath, null)
-                    .Replace(Path.DirectorySeparatorChar, '/');
+                var testName = Qualify(root, Path.ChangeExtension(relativePath, null)
+                    .Replace(Path.DirectorySeparatorChar, '/'));
                 var category = ExtractCategory(relativePath);
 
                 var expectedFile = Path.ChangeExtension(spyFile, ".expected");
@@ -145,11 +168,19 @@ public static class FixtureDiscoveryHelper
                     ExpectedCsFile = File.Exists(expectedCsFile) ? expectedCsFile : null,
                     IsMultiFile = false,
                     Category = category,
+                    RootLabel = root.Label,
                     Features = ReadFeaturesFile(featuresFile),
                 };
             }
         }
     }
+
+    /// <summary>
+    /// Qualifies a root-relative test name with the root's label. The primary root's label is
+    /// empty, so its names are unchanged — the allowlists keyed on them keep matching.
+    /// </summary>
+    private static string Qualify(FixtureRoot root, string testName)
+        => root.Label.Length == 0 ? testName : $"{root.Label}/{testName}";
 
     private static string? FindMultiFileTestRoot(string path, HashSet<string> multiFileTestRoots)
     {

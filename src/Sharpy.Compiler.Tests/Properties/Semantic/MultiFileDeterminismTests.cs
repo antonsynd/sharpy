@@ -121,7 +121,7 @@ public class MultiFileDeterminismTests
 
     public static IEnumerable<object[]> MultiFileFixtures()
     {
-        foreach (var fixture in FixtureDiscoveryHelper.DiscoverFixtures().Where(f => f.IsMultiFile))
+        foreach (var fixture in FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests).Where(f => f.IsMultiFile))
         {
             yield return new object[] { fixture.TestName, fixture.SpyFilePath };
         }

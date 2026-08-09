@@ -284,7 +284,7 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
     /// entry file (see the sweep loop); the same <c>.expected</c>-and-no-<c>.error</c> rule applies.
     /// </summary>
     private static List<TestFixtureInfo> AllEligibleFixtures()
-        => FixtureDiscoveryHelper.DiscoverFixtures()
+        => FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests)
             .Where(fx => fx.ExpectedFile is not null
                       && fx.ErrorFile is null
                       && fx.RuntimeErrorFile is null)

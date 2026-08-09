@@ -9,7 +9,7 @@ namespace Sharpy.Stdlib.Tests.Integration;
 public class FormatterIntegrationTests
 {
     private static readonly string FixturesPath = IOPath.Combine(
-        FixtureDiscoveryHelper.FixturesPath,
+        FixtureRoots.StdlibTests.Path,
         "Formatting");
 
     private readonly ITestOutputHelper _output;

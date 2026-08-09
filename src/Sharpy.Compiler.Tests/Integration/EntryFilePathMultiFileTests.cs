@@ -28,7 +28,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 [Collection("HeavyCompilation")]
 public class EntryFilePathMultiFileTests : FileBasedIntegrationTestsBase
 {
-    private static readonly string FixturesPathValue = FixtureDiscoveryHelper.FixturesPath;
+    private static readonly string FixturesPathValue = FixtureRoots.CompilerTests.Path;
 
     protected override string FixturesPath => FixturesPathValue;
 

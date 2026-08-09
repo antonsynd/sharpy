@@ -22,7 +22,7 @@ public class DiagnosticSweepTests
     [Fact]
     public void DiagnosticSweep_AllFixtures_NoCrashes()
     {
-        var fixtures = FixtureDiscoveryHelper.DiscoverFixtures().ToList();
+        var fixtures = FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests).ToList();
         Assert.True(fixtures.Count > 0, "No fixtures discovered");
 
         var crashes = new List<object>();

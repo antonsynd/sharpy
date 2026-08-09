@@ -175,7 +175,7 @@ public class UnterminatedFinalLineParserTests
     public void NoTrailingNewlineFixture_StillHasNoTrailingNewline()
     {
         var path = Path.Combine(
-            FixtureDiscoveryHelper.FixturesPath, "terminators", "const_at_eof_no_trailing_newline.spy");
+            FixtureRoots.CompilerTests.Path, "terminators", "const_at_eof_no_trailing_newline.spy");
 
         File.Exists(path).Should().BeTrue($"the fixture must exist at the discovered path {path}");
 

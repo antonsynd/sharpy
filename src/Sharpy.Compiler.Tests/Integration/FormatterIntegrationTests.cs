@@ -23,7 +23,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 public class FormatterIntegrationTests
 {
     private static readonly string FixturesPath = Path.Combine(
-        FixtureDiscoveryHelper.FixturesPath,
+        FixtureRoots.CompilerTests.Path,
         "Formatting");
 
     private readonly ITestOutputHelper _output;

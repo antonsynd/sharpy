@@ -21,7 +21,7 @@ public class UnparserFixtureRoundTripTests
 
     public static IEnumerable<object[]> GetRoundTripFixtures()
     {
-        foreach (var fixture in FixtureDiscoveryHelper.DiscoverFixtures())
+        foreach (var fixture in FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests))
         {
             if (fixture.ErrorFile != null && fixture.ExpectedFile == null)
                 continue;

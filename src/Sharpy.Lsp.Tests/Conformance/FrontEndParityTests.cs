@@ -579,18 +579,11 @@ public class FrontEndParityTests
             Path.GetDirectoryName(typeof(FrontEndParityTests).Assembly.Location)!,
             "..", "..", "..", "..", "..", ".claude", "tmp"));
 
-    private static string ResolveFixturesPath()
-    {
-        var current = AppContext.BaseDirectory;
-        while (current != null)
-        {
-            var candidate = Path.Combine(current, "src", "Sharpy.Compiler.Tests", "Integration", "TestFixtures");
-            if (Directory.Exists(candidate))
-                return candidate;
-            current = Directory.GetParent(current)?.FullName;
-        }
-        throw new DirectoryNotFoundException("Could not locate src/Sharpy.Compiler.Tests/Integration/TestFixtures.");
-    }
+    /// <summary>
+    /// The language corpus. Formerly a fourth hand-rolled copy of the anchoring walk; the named
+    /// root does the same walk once (#1338).
+    /// </summary>
+    private static string ResolveFixturesPath() => FixtureRoots.CompilerTests.Path;
 
     private static (string CorePath, string StdlibPath) ResolveStdlibAssemblyPaths()
     {

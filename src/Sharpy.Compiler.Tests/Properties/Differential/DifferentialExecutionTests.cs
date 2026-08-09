@@ -456,7 +456,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
             }
         }
 
-        foreach (var fx in FixtureDiscoveryHelper.DiscoverFixtures())
+        foreach (var fx in FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests))
         {
             discovered++;
             if (fx.IsMultiFile || fx.ExpectedFile is null || fx.ErrorFile is not null

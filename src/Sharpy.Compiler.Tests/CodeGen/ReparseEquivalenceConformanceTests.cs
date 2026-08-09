@@ -163,7 +163,7 @@ public class ReparseEquivalenceConformanceTests
     [Fact]
     public void FileBasedFixtures_EmitterTrees_BindEquivalentlyUnderDirectHandoff()
     {
-        var fixtures = FixtureDiscoveryHelper.DiscoverFixtures()
+        var fixtures = FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests)
             .OrderBy(f => f.TestName, StringComparer.Ordinal)
             .ToList();
 
@@ -241,7 +241,7 @@ public class ReparseEquivalenceConformanceTests
     [Fact]
     public void FileBasedFixtures_TreeRewriteText_ByteIdenticalToOracle()
     {
-        var fixtures = FixtureDiscoveryHelper.DiscoverFixtures()
+        var fixtures = FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests)
             .OrderBy(f => f.TestName, StringComparer.Ordinal)
             .ToList();
 

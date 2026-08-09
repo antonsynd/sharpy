@@ -8,9 +8,7 @@ namespace Sharpy.Stdlib.Tests.Integration;
 [Collection("HeavyCompilation")]
 public class FileBasedIntegrationTests : FileBasedIntegrationTestsBase
 {
-    private static readonly string FixturesPathValue = IOPath.GetFullPath(IOPath.Combine(
-        IOPath.GetDirectoryName(typeof(FileBasedIntegrationTests).Assembly.Location)!,
-        "..", "..", "..", "Integration", "TestFixtures"));
+    private static readonly string FixturesPathValue = FixtureRoots.StdlibTests.Path;
 
     private static readonly string[] StdlibPaths = ResolveStdlibPaths();
 

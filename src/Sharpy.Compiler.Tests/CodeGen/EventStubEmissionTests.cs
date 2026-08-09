@@ -159,7 +159,7 @@ public class EventStubEmissionTests
 
     private static string ReadFixture(string fileName)
     {
-        var path = Path.Combine(FixtureDiscoveryHelper.FixturesPath, "events", fileName);
+        var path = Path.Combine(FixtureRoots.CompilerTests.Path, "events", fileName);
         File.Exists(path).Should().BeTrue($"fixture '{path}' must exist");
         return File.ReadAllText(path);
     }
