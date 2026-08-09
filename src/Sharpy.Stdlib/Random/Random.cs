@@ -167,7 +167,7 @@ namespace Sharpy
                 throw new global::Sharpy.ValueError("number of bits must be <= 30 for int return");
             }
 
-            return _Random.Next(1 << (int)(k));
+            return _Random.Next(1 << k);
         }
 
         /// <summary>
