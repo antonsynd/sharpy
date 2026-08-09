@@ -1,0 +1,5 @@
+# An L-suffixed literal types as int64; assigning it to an int annotation is a
+# clean semantic refusal, not an ICE (#1314).
+def main():
+    a: int = 3794L
+    print(a)

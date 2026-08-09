@@ -115,6 +115,12 @@ internal static class IntegerLiteralClassifier
         if (magnitude >= 0 && magnitude <= long.MaxValue)
             return new Result(SemanticType.Long, false, null);
 
+        // Unsuffixed inference stops at long (spec: integer_literals.md promotion table).
+        // A value that fits ulong is not "too large for any integer type" — name the remedy.
+        if (FitsULong(magnitude))
+            return new Result(SemanticType.Long, true,
+                $"Integer literal '{originalValue}' is too large for 'long'; it fits 'uint64' — add the 'UL' suffix");
+
         return new Result(SemanticType.Long, true,
             $"Integer literal '{originalValue}' is too large for any integer type");
     }

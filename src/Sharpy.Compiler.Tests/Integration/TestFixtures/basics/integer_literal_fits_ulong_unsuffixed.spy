@@ -1,0 +1,5 @@
+# An unsuffixed literal that fits only ulong: inference stops at long, and the
+# refusal names the UL-suffix remedy instead of claiming no type fits (#1320).
+def main():
+    y = 18446744073709551615
+    print(y)

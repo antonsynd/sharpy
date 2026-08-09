@@ -408,9 +408,11 @@ internal partial class RoslynEmitter
             try
             {
                 var ulongVal = ParseIntegerText(text);
+                // NB: the int singleton is named "int", not the catalog's "int32" — the other
+                // widths use the catalog spelling. "int32" here was dead code (#1304, #1356 class).
                 return bt.Name switch
                 {
-                    "int32" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)ulongVal)),
+                    "int" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)ulongVal)),
                     "int64" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((long)ulongVal)),
                     "uint32" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((uint)ulongVal)),
                     "uint64" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(ulongVal)),

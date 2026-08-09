@@ -1,0 +1,15 @@
+# The int32 minimum is writable as a literal in every int-typed sink (#1304).
+# Pre-fix, the emitter's int arm compared BuiltinType.Name against "int32" (the
+# catalog name) instead of "int" (the singleton's name), so every int-typed
+# literal fell through to the magnitude fallback and emitted -2147483648L.
+def take(n: int) -> int:
+    return n
+
+def main():
+    a: int = -2147483648
+    print(a)
+    c = -2147483648
+    print(take(c))
+    print(-2147483648)
+    m: long = -9223372036854775808
+    print(m)

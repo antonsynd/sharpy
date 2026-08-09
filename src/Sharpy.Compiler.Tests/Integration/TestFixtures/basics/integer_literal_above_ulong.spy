@@ -1,0 +1,5 @@
+# A literal above ulong.MaxValue is refused with one clean semantic error —
+# no cascading SPY0908 (#1320, SPY0210).
+def main():
+    z = 99999999999999999999999
+    print(z)

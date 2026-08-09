@@ -1,0 +1,4 @@
+# The UL suffix types the ulong maximum as uint64 end-to-end (#1314, #1320).
+def main():
+    y = 18446744073709551615UL
+    print(y)
