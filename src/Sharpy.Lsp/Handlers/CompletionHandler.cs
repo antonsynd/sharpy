@@ -46,6 +46,24 @@ internal sealed class SharpyCompletionHandler : CompletionHandlerBase
                     AddMemberCompletions(udt.Symbol, items);
                     return new CompletionList(items);
                 }
+
+                // A module receiver offers that module's exports (#851). Without this arm the
+                // request fell through to the scope dump below, so `math.` suggested every visible
+                // symbol in the file — the local variables, the user's own functions, the builtins —
+                // none of which are reachable through that dot.
+                // MEASURED LIMIT: a stdlib module's members are resolved lazily through
+                // ModuleRegistry at each access and never materialised into Exports, so `math.`
+                // has nothing here (#1360). Falling through to the scope dump in that case keeps
+                // today's behaviour rather than answering with an empty list.
+                if (type is ModuleType moduleType && moduleType.Symbol.Exports.Count > 0)
+                {
+                    foreach (var (_, exported) in moduleType.Symbol.Exports)
+                    {
+                        items.Add(SymbolToCompletionItem(exported));
+                    }
+
+                    return new CompletionList(items);
+                }
             }
         }
 

@@ -54,6 +54,46 @@ public class MultiFileTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Completion_OnUserModuleReceiver_ListsThatModulesExports()
+    {
+        // #851: the handler had an arm for a UserDefinedType receiver and nothing for a module, so
+        // `helpers.` fell through to "every visible symbol" — this file's own locals and functions,
+        // none of which are reachable through that dot.
+        CreateProjectFiles(
+            ("main.spy", "import helpers\n\ndef main() -> None:\n    unrelated_local: int = 1\n    print(helpers.compute())"),
+            ("helpers.spy", "def compute() -> int:\n    return 7\n\ndef describe() -> str:\n    return \"x\""));
+
+        var rootUri = new Uri(_tempDir).AbsoluteUri;
+        await _client.InitializeAsync(rootUri);
+
+        var mainUri = new Uri(System.IO.Path.Combine(_tempDir, "main.spy")).AbsoluteUri;
+        var mainText = File.ReadAllText(System.IO.Path.Combine(_tempDir, "main.spy"));
+        await _client.DidOpenAsync(mainUri, mainText);
+
+        await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(15));
+
+        // Line 4, just after the '.' of `helpers.compute()`. The source parses: a file mid-edit
+        // with a bare trailing dot does not analyse at all, so completion returns nothing there —
+        // a separate gap (#1360), not what this test is pinning.
+        var completion = await _client.CompletionAsync(mainUri, 4, 18, ".");
+        completion.Should().NotBeNull();
+
+        var items = completion is System.Text.Json.Nodes.JsonArray arr
+            ? arr
+            : completion!["items"]?.AsArray();
+        items.Should().NotBeNull();
+
+        var labels = items!.Select(i => i?["label"]?.GetValue<string>()).Where(l => l != null).ToList();
+        labels.Should().Contain("compute", "the module's own exports are what this dot reaches");
+        labels.Should().Contain("describe");
+        labels.Should().NotContain("unrelated_local",
+            "a local in the importing file is not reachable through 'helpers.'");
+        labels.Should().NotContain("main");
+    }
+
+    [Fact]
     public async Task MultiFile_OpenProject_IndividualFilesAnalyze()
     {
         // Create a multi-file project with self-contained files

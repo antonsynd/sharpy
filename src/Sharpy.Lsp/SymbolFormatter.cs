@@ -70,9 +70,19 @@ internal static class SymbolFormatter
             prefix = "(self)";
         else if (v.IsConstant)
             prefix = "(constant)";
+        else if (v.IsModuleProperty)
+        {
+            // A module-level property is a VariableSymbol carrying accessor flags (#844), so it
+            // rendered as "(variable) count: int" — which says the wrong thing twice: the value is
+            // computed on each read, and a getter-only property cannot be assigned. Hover is where
+            // a reader finds that out (#851).
+            prefix = v.HasPropertySetter ? "(property)" : "(property, read-only)";
+        }
         else
             prefix = "(variable)";
-        return $"{prefix} {v.Name}: {typeStr}";
+
+        var name = v.IsNameBacktickEscaped ? $"`{v.Name}`" : v.Name;
+        return $"{prefix} {name}: {typeStr}";
     }
 
     /// <summary>

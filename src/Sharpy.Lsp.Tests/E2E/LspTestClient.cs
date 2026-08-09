@@ -385,12 +385,31 @@ public sealed class LspTestClient : IAsyncDisposable
     /// Sends a textDocument/completion request.
     /// </summary>
     public Task<JsonNode?> CompletionAsync(string uri, int line, int character, CancellationToken ct = default)
+        => CompletionAsync(uri, line, character, triggerCharacter: null, ct);
+
+    /// <summary>
+    /// Completion with an optional trigger character, so member completion (the '.' path) can be
+    /// exercised end to end — the handler branches on <c>context.triggerCharacter</c>, which the
+    /// no-context overload never supplies.
+    /// </summary>
+    public Task<JsonNode?> CompletionAsync(
+        string uri, int line, int character, string? triggerCharacter, CancellationToken ct = default)
     {
         var @params = new JsonObject
         {
             ["textDocument"] = new JsonObject { ["uri"] = uri },
             ["position"] = new JsonObject { ["line"] = line, ["character"] = character }
         };
+
+        if (triggerCharacter != null)
+        {
+            @params["context"] = new JsonObject
+            {
+                ["triggerKind"] = 2, // TriggerCharacter
+                ["triggerCharacter"] = triggerCharacter
+            };
+        }
+
         return SendRequestAsync("textDocument/completion", @params, ct);
     }
 

@@ -72,6 +72,45 @@ public class HoverTests : IDisposable
     }
 
     [Fact]
+    public async Task Hover_OverModuleProperty_SaysPropertyAndReadOnly()
+    {
+        // #851: a module-level property is a VariableSymbol carrying accessor flags, so hover
+        // rendered "(variable) count: int" — wrong twice over. The value is recomputed on every
+        // read, and a getter-only property cannot be assigned; hover is where a reader learns that.
+        var source = "counter: int = 0\n\nproperty get count() -> int:\n    return counter\n\n"
+            + "def main() -> None:\n    print(count)";
+        _workspace.OpenDocument("file:///prop.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///prop.spy");
+        analysis.Should().NotBeNull();
+
+        var node = _api.FindNodeAtPosition(analysis!.Ast!, 7, 11);
+        node.Should().BeOfType<Identifier>();
+
+        var symbol = analysis.SemanticQuery?.GetIdentifierSymbol((Identifier)node!);
+        symbol.Should().NotBeNull("a module property reference must resolve");
+
+        SymbolFormatter.FormatSymbol(symbol!)
+            .Should().Be("(property, read-only) count: int");
+    }
+
+    [Fact]
+    public async Task Hover_OverSettableModuleProperty_OmitsReadOnly()
+    {
+        var source = "_value: int = 0\n\nproperty get level() -> int:\n    return _value\n\n"
+            + "property set level(v: int) -> None:\n    _value = v\n\n"
+            + "def main() -> None:\n    print(level)";
+        _workspace.OpenDocument("file:///prop2.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///prop2.spy");
+        var symbol = analysis!.SymbolTable?.Lookup("level");
+        symbol.Should().NotBeNull();
+
+        SymbolFormatter.FormatSymbol(symbol!)
+            .Should().Be("(property) level: int", "a property with a setter is not read-only");
+    }
+
+    [Fact]
     public async Task Hover_OverFunction_ShowsSignature()
     {
         var source = "def greet(name: str) -> str:\n    return \"hi \" + name\ndef main():\n    greet(\"world\")";
