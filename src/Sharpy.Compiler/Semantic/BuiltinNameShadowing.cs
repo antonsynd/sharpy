@@ -104,6 +104,44 @@ internal static class BuiltinNameShadowing
     public static bool ShadowsBuiltin(Registry.BuiltinRegistry registry, string name) =>
         registry.IsReservedBuiltinName(name);
 
+    /// <summary>
+    /// The registry's own binding for a name imported out of the synthetic <c>builtins</c> module —
+    /// the symbol a bare spelling of that name binds, plus its overload set — or null when
+    /// <paramref name="moduleInfo"/> is not that module or the name is not registered.
+    /// </summary>
+    /// <remarks>
+    /// <para><c>from builtins import len</c> has to bind the SAME object a bare <c>len</c> binds,
+    /// because every builtin-vs-user dispatch decision is made by reference identity against the
+    /// registry (<c>BuiltinRegistry.IsBuiltinSymbol</c>, the #1241 rule). A module's exports are not
+    /// that object: they are what CLR discovery found on the <c>Sharpy.Builtins</c> static class.
+    /// Binding one made the imported name look like a user function SHADOWING the builtin, so the
+    /// call skipped the builtin return-type inference and was ranked against the raw discovered
+    /// overload set instead — where <c>Len(ICollection)</c>, <c>Len(ISized)</c> and
+    /// <c>Len(object)</c> all match a <c>list[int]</c> with nothing to separate them, giving SPY0353
+    /// to a program whose only sin was naming the builtin it wanted (#1322).</para>
+    /// <para>Gated on module IDENTITY (a .NET module whose canonical name is <c>builtins</c>) — the
+    /// same test the qualified-call path uses — so a user's own <c>builtins.spy</c> keeps ordinary
+    /// import semantics. Stated here, next to <see cref="ShadowsBuiltin"/>, because the two
+    /// from-import loops (single-file in <c>ImportResolver</c>, multi-file in
+    /// <c>ProjectCompiler</c>) both have to apply it: binding is one of the parallel-site classes
+    /// where covering one loop covers exactly the case that cannot arise (#1145).</para>
+    /// </remarks>
+    public static (Symbol Symbol, List<FunctionSymbol>? Overloads)? RegistryBindingFor(
+        Registry.BuiltinRegistry registry, ModuleInfo moduleInfo, string name)
+    {
+        if (!moduleInfo.IsNetModule
+            || !string.Equals(moduleInfo.CanonicalModuleName, "builtins", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        if (registry.GetType(name) is { } typeSymbol)
+            return (typeSymbol, null);
+
+        var overloads = registry.GetFunctionOverloads(name);
+        return overloads is { Count: > 0 } ? (overloads[0], overloads) : null;
+    }
+
     /// <summary>The warning message (SPY0483).</summary>
     public static string WarningMessage(string name) =>
         $"'{name}' is a builtin name; this declaration shadows it, so the builtin is no longer "

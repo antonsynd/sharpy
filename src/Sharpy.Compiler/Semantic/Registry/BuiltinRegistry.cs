@@ -739,6 +739,14 @@ internal class BuiltinRegistry
     internal IReadOnlyDictionary<string, TypeSymbol> RegisteredTypes => _types;
 
     /// <summary>
+    /// Every builtin FUNCTION name registered here. Exposed for the same reason
+    /// <see cref="RegisteredTypes"/> is: a conformance sweep has to enumerate the class it guards
+    /// from the registry itself, or the "all builtins" it claims to cover quietly becomes "the
+    /// builtins someone listed once" (#1322).
+    /// </summary>
+    internal IReadOnlyCollection<string> RegisteredFunctionNames => _functions.Keys;
+
+    /// <summary>
     /// Returns the first function symbol with the given name.
     /// For functions with multiple overloads, use GetFunctionOverloads instead.
     /// </summary>

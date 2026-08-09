@@ -192,6 +192,21 @@ internal partial class ImportResolver
                             if (reExportedSymbols.TryGetValue(lookupName, out var symbol))
                             {
                                 _logger.LogDebug($"  Defining imported symbol: {lookupName} as {registerName} ({symbol.Kind})");
+
+                                // A name imported out of the builtins module binds the REGISTRY's own
+                                // symbol, not the CLR-discovered export that happens to implement it —
+                                // identity is what every builtin dispatch decision reads (#1322). See
+                                // BuiltinNameShadowing.RegistryBindingFor. Only for the unaliased
+                                // spelling: an alias binds a DIFFERENT name, which no name-keyed
+                                // builtin path can answer to anyway, so substituting the registry's
+                                // (differently named) symbol there would leave the alias undefined.
+                                var registryBinding = importAlias.AsName == null
+                                    ? BuiltinNameShadowing.RegistryBindingFor(
+                                        symbolTable.BuiltinRegistry, moduleInfo, lookupName)
+                                    : null;
+                                if (registryBinding != null)
+                                    symbol = registryBinding.Value.Symbol;
+
                                 if (importAlias.AsName != null)
                                 {
                                     symbol = CloneSymbolWithName(symbol, registerName);
@@ -203,9 +218,13 @@ internal partial class ImportResolver
                                     _deferredCycleSymbols.Add(registerName);
 
                                 // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
-                                if (defined && moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads) && overloads.Count > 1)
+                                var importedOverloads = registryBinding?.Overloads
+                                    ?? (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads)
+                                        ? overloads
+                                        : null);
+                                if (defined && importedOverloads is { Count: > 1 })
                                 {
-                                    symbolTable.DefineFunctionOverloads(registerName, overloads);
+                                    symbolTable.DefineFunctionOverloads(registerName, importedOverloads);
                                 }
                             }
                             else if (registerName != lookupName && reExportedSymbols.TryGetValue(registerName, out symbol))

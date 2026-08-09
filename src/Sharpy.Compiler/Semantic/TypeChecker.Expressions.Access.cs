@@ -155,6 +155,24 @@ internal partial class TypeChecker
             var moduleSymbol = moduleType.Symbol;
             var memberName = memberAccess.Member;
 
+            // The builtins module's TYPE surface is the registry, consulted BEFORE the discovered
+            // exports so that `builtins.X()` denotes what a bare `X()` denotes. See
+            // TryResolveBuiltinsQualifiedType for why the two disagreed in both directions (#1322).
+            //
+            // CALLEE position only. A builtin type name written as a VALUE (`f = builtins.dict`) is
+            // the constructor-reference question (#1182's family), which has its own rule and its own
+            // refusal for the bare spelling (SPY0342) — typing the qualified spelling as the type
+            // itself instead would hand codegen a member access with no C# form and turn today's
+            // honest "no member" into an SPY0908. That spelling keeps its current answer until the
+            // constructor-reference rule is extended to it (#1382).
+            if (IsCurrentCallCallee(memberAccess)
+                && TryResolveBuiltinsQualifiedType(moduleSymbol, memberName, memberAccess.IsMemberBacktickEscaped)
+                is { } builtinsQualifiedType)
+            {
+                _semanticInfo.MarkTypeReference(memberAccess);
+                return new UserDefinedType { Name = builtinsQualifiedType.Name, Symbol = builtinsQualifiedType };
+            }
+
             // For .NET modules, try PascalCase conversion if the exact name isn't found
             // (e.g., system.console -> System.Console)
             if (!moduleSymbol.Exports.ContainsKey(memberName) && moduleSymbol.IsNetModule)

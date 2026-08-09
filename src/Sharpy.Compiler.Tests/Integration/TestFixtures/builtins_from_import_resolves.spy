@@ -1,0 +1,21 @@
+# `from builtins import len` binds the REGISTRY's own symbol (#1322).
+#
+# The import used to bind whatever CLR discovery found on the Sharpy.Builtins class, which is not
+# the object the bare spelling binds -- so identity-based builtin dispatch saw a stranger, treated
+# the imported name as a user function SHADOWING the builtin, and ranked the call against the raw
+# discovered overload set, where Len(ICollection), Len(ISized) and Len(object) all match a
+# list[int] with nothing to separate them: SPY0353 for a program whose only sin was naming the
+# builtin it wanted.
+#
+# SPY0484 still fires -- the import DOES rebind the name in this file, which is worth saying.
+from builtins import len
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(len(xs))
+
+    d: dict[str, int] = {"a": 1, "b": 2}
+    print(len(d))
+
+    print(len("abc"))

@@ -1,0 +1,32 @@
+# A builtins-qualified CONSTRUCTION means the bare construction (#1322).
+#
+# `dict` has no static helper method behind it, so the qualified spelling reported "Module
+# 'builtins' has no member 'dict'" where bare `dict()` type-checks. The registry -- not the
+# discovered method inventory of the Sharpy.Builtins class -- is what both spellings resolve
+# against now, and codegen emits what the bare spelling emits (new Sharpy.Dict<...>()) rather than
+# a Sharpy.Builtins.Dict() that names no method.
+#
+# Each pair is the same construction written both ways; the two must agree.
+import builtins
+
+
+def main() -> None:
+    d: dict[str, int] = builtins.dict()
+    d["a"] = 1
+    print(len(d))
+
+    bare_d: dict[str, int] = dict()
+    bare_d["a"] = 1
+    print(len(bare_d))
+
+    s: set[int] = builtins.set()
+    print(len(s))
+
+    xs: list[int] = [1, 2, 3]
+    ys: list[int] = builtins.list(xs)
+    print(ys)
+
+    # The primitives keep the bare split: a call on `str` is the CONVERSION function, not a
+    # construction, and the qualified spelling has to make the same choice or emit `new Str(5)`.
+    print(builtins.str(5) + "!")
+    print(str(5) + "!")

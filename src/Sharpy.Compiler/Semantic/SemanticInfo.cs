@@ -1504,6 +1504,16 @@ public enum IndexAccessLowering
 /// </summary>
 public enum CalleeRouting
 {
+    /// <summary>
+    /// The call targets the BUILTIN of that name. Recorded for the <c>builtins.</c>-qualified
+    /// spelling, whose C# form is the bare spelling's — the qualified syntax has none of its own
+    /// (<c>Sharpy.Builtins.Dict()</c> names no method), and whether the receiver is the builtins
+    /// module is a semantic fact the emitter cannot re-derive from a collapsed scope (#1322).
+    /// </summary>
     Builtin,
+
+    /// <summary>
+    /// The call targets a USER symbol that shadows a builtin name (#1326).
+    /// </summary>
     UserSymbol
 }

@@ -348,6 +348,24 @@ internal partial class ProjectCompiler
                                         (lookupName != symbolName && symbolsToImport.TryGetValue(symbolName, out symbol)))
                                     {
                                         var originalName = importAlias.Name;
+
+                                        // A name imported out of the builtins module binds the
+                                        // REGISTRY's own symbol, not the CLR-discovered export that
+                                        // happens to implement it — identity is what every builtin
+                                        // dispatch decision reads (#1322). Applied on this path as
+                                        // well as in ImportResolver, for the reason the two notes
+                                        // above give: this is the loop compilation actually runs.
+                                        // Unaliased only — an alias binds a different name, which no
+                                        // name-keyed builtin path answers to, so substituting the
+                                        // registry's own (differently named) symbol would leave the
+                                        // alias undefined.
+                                        var registryBinding = importAlias.AsName == null
+                                            ? BuiltinNameShadowing.RegistryBindingFor(
+                                                SymbolTable.BuiltinRegistry, moduleInfo, lookupName)
+                                            : null;
+                                        if (registryBinding != null)
+                                            symbol = registryBinding.Value.Symbol;
+
                                         var symbolToRegister = importAlias.AsName == null
                                             ? ResolveImportSymbol(symbol, originalName, sourceModuleScope)
                                             : symbol;
@@ -361,9 +379,13 @@ internal partial class ProjectCompiler
                                             importedSymbolSources[symbolName] = sourceModule;
 
                                             // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
-                                            if (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads) && overloads.Count > 1)
+                                            var importedOverloads = registryBinding?.Overloads
+                                                ?? (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads)
+                                                    ? overloads
+                                                    : null);
+                                            if (importedOverloads is { Count: > 1 })
                                             {
-                                                SymbolTable.DefineFunctionOverloads(symbolName, overloads);
+                                                SymbolTable.DefineFunctionOverloads(symbolName, importedOverloads);
                                             }
                                         }
                                     }

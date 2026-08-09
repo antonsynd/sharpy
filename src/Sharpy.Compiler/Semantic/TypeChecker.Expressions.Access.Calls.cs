@@ -226,7 +226,7 @@ internal partial class TypeChecker
                     id.Name, argTypes, _typeInference);
                 if (builtinReturn != null)
                 {
-                    ValidateMinMaxValueFormKey(id, call, argTypes, kwargTypes);
+                    ValidateMinMaxValueFormKey(id.Name, call, argTypes, kwargTypes);
                     return builtinReturn;
                 }
             }
@@ -329,6 +329,15 @@ internal partial class TypeChecker
             // Module-qualified constructor call (e.g., fractions.Fraction(1, 2)): resolve the
             // member to an exported TypeSymbol and route into the shared constructor-checking
             // path, which validates arguments, abstract-class usage, and deprecation.
+            // `builtins.X(...)` is decided FIRST, and decided by the registry: the qualified
+            // spelling means exactly what the bare spelling means, so it goes to the bare arm's
+            // authorities rather than to the module machinery below (#1322).
+            var builtinsQualified = CheckBuiltinsQualifiedCall(
+                memberAccessCall, call, argTypes, kwargTypes, totalArgCount,
+                isNullConditionalCall, isOptionalNullConditional);
+            if (builtinsQualified != null)
+                return builtinsQualified;
+
             if (TryResolveTypeSymbolFromMemberAccess(memberAccessCall) is { } moduleTypeSymbol)
             {
                 return CheckConstructorCall(call, moduleTypeSymbol, argTypes, kwargTypes, totalArgCount);
@@ -435,7 +444,15 @@ internal partial class TypeChecker
     /// </summary>
     private void ClassifyTypeTestOperand(FunctionCall call, Expression callee, List<SemanticType> argTypes)
     {
-        if (callee is not Identifier { Name: BuiltinNames.Isinstance } isinstanceId)
+        // The BARE spelling, or the qualified escape from a shadowed one. Both name the builtin, so
+        // both classify: leaving `builtins.isinstance(x, T)` unclassified would give the escape a
+        // type test that compiles without narrowing — the one outcome this classifier exists to
+        // prevent (#1322).
+        var isQualifiedIsinstance = callee is MemberAccess { IsMemberBacktickEscaped: false, Member: BuiltinNames.Isinstance } qualifiedIsinstance
+            && _semanticInfo.GetExpressionType(qualifiedIsinstance.Object) is ModuleType isinstanceModule
+            && IsBuiltinsModule(isinstanceModule.Symbol);
+        var isinstanceId = callee as Identifier;
+        if (!isQualifiedIsinstance && isinstanceId is not { Name: BuiltinNames.Isinstance })
             return;
         if (call.Arguments.Length != 2 || call.KeywordArguments.Length != 0)
             return;
@@ -444,14 +461,18 @@ internal partial class TypeChecker
         // (TransitionWarningValidator.CheckIsinstanceSingleType). A user-defined `isinstance` — their
         // own function or a variable — is an ordinary call whose second argument is an ordinary value.
         // Builtins are seeded into the global scope, so the name always resolves; identity against the
-        // registry's own overloads is what separates the builtin from a shadow.
-        var resolvedCallee = _symbolTable.Lookup(isinstanceId.Name);
-        var builtinIsinstance = _symbolTable.BuiltinRegistry.GetFunctionOverloads(BuiltinNames.Isinstance);
-        if (resolvedCallee is not FunctionSymbol calleeFunction
-            || builtinIsinstance == null
-            || !builtinIsinstance.Contains(calleeFunction))
+        // registry's own overloads is what separates the builtin from a shadow. The qualified
+        // spelling needs no such separation — being unshadowable is what it is for.
+        if (!isQualifiedIsinstance)
         {
-            return;
+            var resolvedCallee = _symbolTable.Lookup(isinstanceId!.Name);
+            var builtinIsinstance = _symbolTable.BuiltinRegistry.GetFunctionOverloads(BuiltinNames.Isinstance);
+            if (resolvedCallee is not FunctionSymbol calleeFunction
+                || builtinIsinstance == null
+                || !builtinIsinstance.Contains(calleeFunction))
+            {
+                return;
+            }
         }
 
         var operandNode = call.Arguments[1];
@@ -1098,6 +1119,122 @@ internal partial class TypeChecker
         && string.Equals(moduleSymbol.CanonicalModuleName, "builtins", StringComparison.Ordinal);
 
     /// <summary>
+    /// The builtin TYPE a <c>builtins.</c>-qualified member names (<c>builtins.dict</c> → the
+    /// registry's <c>dict</c>), or null when the member names no builtin type.
+    /// </summary>
+    /// <remarks>
+    /// <para>The registry — not the discovered CLR surface of <c>Sharpy.Builtins</c> — is what a
+    /// bare spelling resolves against, so it is what the qualified spelling has to resolve against
+    /// too, or the escape hatch means something different from the name it escapes to. The two
+    /// disagreed in BOTH directions, because the discovered surface is a static helper class whose
+    /// method inventory is an implementation detail: <c>dict</c> and <c>frozenset</c> have no
+    /// helper method behind them, so the qualified spelling reported "module has no member" where
+    /// bare gives SPY0227; and <c>tuple</c> DOES have one (<c>Builtins.Tuple&lt;T1,T2&gt;</c>), so
+    /// the qualified spelling bound a method where bare refuses the shape outright (SPY0338) — the
+    /// call reached codegen and came back as CS0411 behind SPY0908 (#1322).</para>
+    /// <para>The primitives are the one carve-out, and it is the bare path's own carve-out rather
+    /// than a second rule: <c>int(x)</c> is the conversion FUNCTION, not a construction, so a
+    /// primitive name that has registered overloads is left to the function path exactly as
+    /// <see cref="CheckFunctionCall"/>'s identifier arm leaves it.</para>
+    /// <para>An escaped member (<c>builtins.`dict`</c>) is excluded by the same identity rule that
+    /// governs every other name position: an escaped spelling never binds a bare-declared symbol,
+    /// and the registry's names are bare.</para>
+    /// </remarks>
+    private TypeSymbol? TryResolveBuiltinsQualifiedType(
+        ModuleSymbol moduleSymbol, string memberName, bool isMemberBacktickEscaped)
+    {
+        if (isMemberBacktickEscaped || !IsBuiltinsModule(moduleSymbol))
+            return null;
+
+        var registryType = _symbolTable.BuiltinRegistry.GetType(memberName);
+        if (registryType == null)
+            return null;
+
+        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(memberName);
+        if (PrimitiveCatalog.IsPrimitive(memberName) && overloads is { Count: > 0 })
+            return null;
+
+        return registryType;
+    }
+
+    /// <summary>
+    /// Checks <c>builtins.X(...)</c> — the qualified spelling of a builtin call — through the same
+    /// authorities, in the same order, that <see cref="CheckFunctionCall"/>'s identifier arm applies
+    /// to the bare spelling. Returns null when the receiver is not the builtins module or the member
+    /// names nothing the registry knows, leaving every other module call exactly as it was.
+    /// </summary>
+    /// <remarks>
+    /// <para>The qualified spelling is the sanctioned escape from a shadowed builtin, which is why
+    /// SPY0483 warns instead of refusing. That trade is only honest if the escape lands on the same
+    /// meaning, and it did not: the qualified path resolved against the CLR-discovered surface of
+    /// the <c>Sharpy.Builtins</c> static class, so its answers tracked that class's method inventory
+    /// instead of the registry. The failures were not one bug but one CAUSE with several faces —
+    /// <c>builtins.dict()</c> "module has no member" vs bare's SPY0227; <c>builtins.tuple(xs)</c>
+    /// binding a helper method where bare refuses the shape (SPY0338), reaching codegen and coming
+    /// back CS0411 behind SPY0908; single-signature builtins reporting arity as SPY0354 where bare
+    /// says SPY0224; and <c>builtins.isinstance(x, T)</c> ranked against unrankable CLR overloads
+    /// into SPY0353 where bare answers <c>bool</c> (#1322).</para>
+    /// <para>So this dispatches rather than re-checks: <see cref="BuiltinReturnTypeInference"/>
+    /// first (bare's first authority), then construction through
+    /// <see cref="CheckConstructorCall"/> for a registry TYPE, then the registry's own overload
+    /// ranking, then <see cref="ValidateFunctionSymbolCall"/> for a single signature. No refusal is
+    /// restated here — every one of them is reached by going where bare goes.</para>
+    /// <para>It also records <see cref="CalleeRouting.Builtin"/>, which codegen applies by emitting
+    /// the BARE spelling's emission: the qualified syntax has no C# form of its own
+    /// (<c>Sharpy.Builtins.Dict()</c> names no method), and the receiver's identity is a semantic
+    /// fact the emitter must not re-derive.</para>
+    /// </remarks>
+    private SemanticType? CheckBuiltinsQualifiedCall(
+        MemberAccess memberAccess, FunctionCall call, List<SemanticType> argTypes,
+        Dictionary<string, SemanticType> kwargTypes, int totalArgCount,
+        bool isNullConditionalCall, bool isOptionalNullConditional)
+    {
+        if (memberAccess.IsMemberBacktickEscaped
+            || _semanticInfo.GetExpressionType(memberAccess.Object) is not ModuleType moduleType
+            || !IsBuiltinsModule(moduleType.Symbol))
+        {
+            return null;
+        }
+
+        var name = memberAccess.Member;
+
+        // `isinstance` is the one name held back (#1381). Narrowing facts are recognised by a purely
+        // syntactic engine (NarrowingFlowAnalysis.RecognizeLeaf) that matches an Identifier callee
+        // and has no way to ask whether a member-access receiver is the builtins module; routing the
+        // qualified spelling here would make it COMPILE without narrowing, and a type test that
+        // compiles but cannot narrow is worse than a clean refusal (ClassifyTypeTestOperand's rule) —
+        // measured, it turns the next member access into an SPY0908. It keeps its existing report
+        // until the recogniser can be given that fact.
+        if (name == BuiltinNames.Isinstance)
+            return null;
+
+        var registryType = TryResolveBuiltinsQualifiedType(moduleType.Symbol, name, isMemberBacktickEscaped: false);
+        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(name);
+        if (registryType == null && overloads is not { Count: > 0 })
+            return null;
+
+        _semanticInfo.SetCalleeRouting(call, CalleeRouting.Builtin);
+
+        // Data-driven inference (len, hash, reversed, sorted, min, max) — bare checks this before
+        // anything else, so a name it answers must not be answered by construction or by overload
+        // ranking here either.
+        var builtinReturn = BuiltinReturnTypeInference.InferReturnType(name, argTypes, _typeInference);
+        if (builtinReturn != null)
+        {
+            ValidateMinMaxValueFormKey(name, call, argTypes, kwargTypes);
+            return builtinReturn;
+        }
+
+        if (registryType != null)
+            return CheckConstructorCall(call, registryType, argTypes, kwargTypes, totalArgCount);
+
+        return overloads!.Count > 1
+            ? ResolveBuiltinOverloadCore(name, id: null, overloads, argTypes, totalArgCount, call)
+            : ValidateFunctionSymbolCall(call, overloads[0], argTypes, kwargTypes, totalArgCount,
+                isNullConditionalCall, isOptionalNullConditional);
+    }
+
+    /// <summary>
     /// The overload set an imported module exports under <paramref name="memberName"/>, trying the
     /// PascalCase spelling as well for .NET modules (mirroring the member lookup in the resolver).
     /// </summary>
@@ -1385,10 +1522,10 @@ internal partial class TypeChecker
     /// SPY0234 and the non-callable key with SPY0230.
     /// </summary>
     private void ValidateMinMaxValueFormKey(
-        Identifier id, FunctionCall call,
+        string calleeName, FunctionCall call,
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes)
     {
-        if (id.Name is not (BuiltinNames.Min or BuiltinNames.Max))
+        if (calleeName is not (BuiltinNames.Min or BuiltinNames.Max))
             return;
         // Only the value form (>= 2 positional args) is handled here; the single-positional
         // iterable form (incl. its default=/key= kwargs) is handled by ordinary overload
@@ -1404,7 +1541,7 @@ internal partial class TypeChecker
         {
             if (kw.Name != "key")
                 AddError(
-                    $"'{id.Name}' value form does not accept keyword argument '{kw.Name}'",
+                    $"'{calleeName}' value form does not accept keyword argument '{kw.Name}'",
                     kw.LineStart, kw.ColumnStart,
                     code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
                     span: kw.Span);
@@ -1427,7 +1564,7 @@ internal partial class TypeChecker
             return;
 
         AddError(
-            $"'{id.Name}' key must be callable; got '{keyType.GetDisplayName()}'",
+            $"'{calleeName}' key must be callable; got '{keyType.GetDisplayName()}'",
             keyArg?.LineStart, keyArg?.ColumnStart,
             code: DiagnosticCodes.Semantic.NotCallable,
             span: keyArg?.Span);
@@ -1456,6 +1593,23 @@ internal partial class TypeChecker
         if (lookupSymbol != null && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(lookupSymbol))
             return null;
 
+        return ResolveBuiltinOverloadCore(id.Name, id, overloads!, argTypes, totalArgCount, call);
+    }
+
+    /// <summary>
+    /// Ranks a call against a builtin's registered overloads, keyed by NAME so the qualified
+    /// spelling (<c>builtins.min(…)</c>) reaches the identical ranking the bare one does (#1322).
+    /// <paramref name="id"/> is the callee identifier when there is one — the qualified spelling has
+    /// no identifier node to annotate, and the call-target fact is what codegen reads either way.
+    /// </summary>
+    /// <remarks>
+    /// The shadow gate lives in the bare caller, not here: a qualified spelling is by definition
+    /// unshadowable, so applying the gate to it would defeat the escape.
+    /// </remarks>
+    private SemanticType? ResolveBuiltinOverloadCore(
+        string name, Identifier? id, List<FunctionSymbol> overloads,
+        List<SemanticType> argTypes, int totalArgCount, FunctionCall call)
+    {
         var kwNames = ExtractKeywordArgNames(call);
         // Builtin overloads resolve through the deterministic betterness chain (exact arity → fewer
         // type parameters → most specific), not registration-order first-match, so resolution is
@@ -1486,8 +1640,10 @@ internal partial class TypeChecker
 
         if (matchingOverload != null)
         {
-            // Update the identifier symbol to point to the matching overload
-            _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
+            // Update the identifier symbol to point to the matching overload (the qualified
+            // spelling has no identifier node; the call target below is what codegen reads)
+            if (id != null)
+                _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
             // Record the resolved call target for codegen
             _semanticInfo.SetCallTarget(call, matchingOverload);
             return matchingOverload.ReturnType;
@@ -1497,7 +1653,7 @@ internal partial class TypeChecker
         // tuple or a bare generic name, and the diagnostic for those shapes belongs to the type-operand
         // classifier (SPY0344/SPY0345, #1207/#1213) — a premature SPY0224 here would report the
         // symptom instead.
-        if (id.Name == BuiltinNames.Isinstance)
+        if (name == BuiltinNames.Isinstance)
             return SemanticType.Bool;
 
         // No matching overload found. Distinguish the two failure modes (#1010):
@@ -1510,7 +1666,7 @@ internal partial class TypeChecker
         if (arityCandidates.Count > 0)
         {
             var typeList = string.Join(", ", argTypes.Select(t => t.GetDisplayName()));
-            AddError($"No overload of '{id.Name}' matches the argument types ({typeList})",
+            AddError($"No overload of '{name}' matches the argument types ({typeList})",
                 call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
                 span: call.Span);
             return SemanticType.Unknown;
@@ -1525,7 +1681,7 @@ internal partial class TypeChecker
                 return $"{required}+";
             return required == total ? total.ToString(CultureInfo.InvariantCulture) : $"{required}-{total}";
         }).Distinct());
-        AddError($"Function '{id.Name}' expects {expectedCounts} arguments but got {totalArgCount}",
+        AddError($"Function '{name}' expects {expectedCounts} arguments but got {totalArgCount}",
             call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
             span: call.Span);
         return SemanticType.Unknown;
@@ -1755,6 +1911,15 @@ internal partial class TypeChecker
 
         var moduleSymbol = moduleType.Symbol;
         var memberName = memberAccess.Member;
+
+        // The builtins module's TYPE surface is the registry, consulted BEFORE the discovered
+        // exports — `dict` is not among them and `tuple` is among them as the wrong thing. See
+        // TryResolveBuiltinsQualifiedType (#1322).
+        if (TryResolveBuiltinsQualifiedType(moduleSymbol, memberName, memberAccess.IsMemberBacktickEscaped)
+            is { } builtinsQualifiedType)
+        {
+            return builtinsQualifiedType;
+        }
 
         // For .NET modules, try PascalCase conversion if the exact name isn't found
         // (mirrors the module branch in CheckMemberAccess / CheckIndexAccess).

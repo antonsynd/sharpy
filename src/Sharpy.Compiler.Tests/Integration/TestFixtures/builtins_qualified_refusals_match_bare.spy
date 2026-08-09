@@ -1,0 +1,16 @@
+# The qualified spelling inherits the bare spelling's REFUSALS, not just its successes (#1322).
+#
+# `builtins.tuple(xs)` used to bind a discovered helper method (Builtins.Tuple<T1, T2>) because the
+# qualified path resolved against the CLR surface of the Sharpy.Builtins static class rather than
+# against the registry. The call was accepted, reached codegen, and came back as CS0411 behind
+# SPY0908 -- an internal error for a program bare Sharpy refuses by design with SPY0338.
+#
+# One line, because the point is the diagnostic: the bare twin is builtins_qualified_call.spy's
+# sibling refusal, and the class contract over every registry name is
+# BuiltinsQualifiedAgreementTests.
+import builtins
+
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(builtins.tuple(xs))

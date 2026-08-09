@@ -53,6 +53,27 @@ internal partial class RoslynEmitter
                 return result;
         }
 
+        // `builtins.dict()` is the BARE `dict()`, spelled so no local binding can capture it. The
+        // TypeChecker resolved it against the registry and recorded CalleeRouting.Builtin; applying
+        // that fact means emitting the bare spelling's emission, so the callee becomes the bare name
+        // and the arm below reads the registry instead of the collapsed scope. Without this the
+        // qualified syntax survived into C# as `Sharpy.Builtins.Dict()`, which names no method
+        // (#1322).
+        var isBuiltinsQualified = callee is MemberAccess { IsNullConditional: false }
+            && _context.SemanticInfo?.GetCalleeRouting(call) == CalleeRouting.Builtin;
+        if (isBuiltinsQualified && callee is MemberAccess builtinsQualified)
+        {
+            callee = new Identifier
+            {
+                Name = builtinsQualified.Member,
+                LineStart = builtinsQualified.LineStart,
+                ColumnStart = builtinsQualified.ColumnStart,
+                LineEnd = builtinsQualified.LineEnd,
+                ColumnEnd = builtinsQualified.ColumnEnd,
+                Span = builtinsQualified.Span
+            };
+        }
+
         if (callee is Identifier funcName)
         {
             // The TypeChecker records whether this call targets a builtin or a user symbol
@@ -75,16 +96,28 @@ internal partial class RoslynEmitter
             var symbol = _context.LookupSymbol(funcName.Name);
             if (symbol != null && funcName.IsNameBacktickEscaped != symbol.IsNameBacktickEscaped)
                 symbol = null;
+
+            // The one thing the qualified spelling changes is WHERE the symbol comes from: the
+            // registry, never the scope. Everything after this is bare's own derivation, unchanged,
+            // so the two spellings emit the same C# for the same name — including the split that
+            // makes `str(5)` the conversion function while `dict()` constructs. Being immune to
+            // shadowing is the whole point of writing `builtins.`, so the shadow adjustments below
+            // are skipped for it (#1322).
+            if (isBuiltinsQualified)
+            {
+                symbol = (Symbol?)_context.SymbolTable.BuiltinRegistry.GetType(funcName.Name)
+                    ?? _context.SymbolTable.BuiltinRegistry.GetFunction(funcName.Name);
+            }
             // When the TypeChecker says a user binding shadows the builtin, the scope-collapsed
             // lookup answer (the global-seeded builtin) is wrong — null it so the emitter does
             // not treat the call as a type instantiation or constructor (#1326).
             if (calleeRouting == CalleeRouting.UserSymbol && symbol != null
                 && _context.SymbolTable.BuiltinRegistry.IsBuiltinSymbol(symbol))
                 symbol = null;
-            if (isBuiltinFunc && symbol != null
+            if (!isBuiltinsQualified && isBuiltinFunc && symbol != null
                 && !_context.SymbolTable.BuiltinRegistry.IsBuiltinSymbol(symbol))
                 isBuiltinFunc = false;
-            if (isBuiltinFunc && !funcName.IsNameBacktickEscaped
+            if (!isBuiltinsQualified && isBuiltinFunc && !funcName.IsNameBacktickEscaped
                 && _localFunctionNames.ContainsKey(funcName.Name))
                 isBuiltinFunc = false;
 
