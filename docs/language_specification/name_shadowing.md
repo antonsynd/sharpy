@@ -78,9 +78,10 @@ the registry types (`list`, `dict`, `set`, `frozenset`, `tuple`, `bytes`, `Excep
 
 ## 3. Builtin names in *value* position — permitted, warned (SPY0483)
 
-A variable, parameter, for-target, `with ... as`, `except ... as`, or **function declaration** may
-spell a builtin name. This is legal and honored — the binding shadows the builtin exactly as any
-inner binding shadows an outer one:
+A variable, parameter, for-target, comprehension for-target, walrus (`:=`) target, inline `out`
+declaration, `with ... as`, `except ... as`, or **function declaration** may spell a builtin name.
+This is legal and honored — the binding shadows the builtin exactly as any inner binding shadows an
+outer one:
 
 ```python
 def double(x: int) -> int:   # SPY0483 warning — compiles and does what it says
@@ -90,6 +91,34 @@ def double(x: int) -> int:   # SPY0483 warning — compiles and does what it say
 It is warned rather than refused because something real happens: for the rest of that scope the
 builtin is not reachable by its bare spelling. It is not refused because a value-position name
 creates no annotation ambiguity, and because `builtins.double` still reaches the builtin.
+
+### The escape decides identity, and it does so in every one of these forms
+
+Backtick-escaping the binding keeps both names available: the escaped spelling is yours, the bare
+spelling is still the builtin's. The escape is a property of the **binding**, not of the statement
+it happens to appear in, so it applies to every form listed above — including the ones whose target
+is not written as a standalone identifier:
+
+```python
+def twice(x: int) -> int:
+    return x * 2
+
+
+def call_it(`int`: (int) -> int) -> None:
+    print(`int`(21))                                 # 42 — the parameter
+    print(int(3))                                    # 3  — the builtin conversion
+
+
+def main() -> None:
+    call_it(twice)
+    print([`int`(21) + int(1) for `int` in [twice]])  # [43]
+
+    if (`len` := 5) > 0:
+        print(`len`, len([1, 2, 3]))                  # 5 3
+```
+
+An escaped binding draws no SPY0483: it is the escape the warning names, so warning about it would
+be advice to do what was already done.
 
 ## 4. Star-imports — ambiguous at the point of use (SPY0492)
 

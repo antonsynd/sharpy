@@ -1126,6 +1126,7 @@ public partial class Parser
                             Modifier = mod,
                             Argument = argExpr,
                             InlineName = inlineId.Name,
+                            IsNameBacktickEscaped = inlineId.IsNameBacktickEscaped,
                             InlineType = inlineType,
                             LineStart = modToken.Line,
                             ColumnStart = modToken.Column,

@@ -1,0 +1,36 @@
+# The escape is part of a binding's IDENTITY, and it is so in every value-position binding form —
+# not only the ones whose AST node happened to carry the flag. Three forms had no plumbing at all,
+# and each failed silently, because both spellings mangle to the same C# name (#1326, #1281):
+#
+#   parameter      -> `` def f(`int`: T) `` bound the bare `int` in the body to the PARAMETER, so
+#                     `int(3)` ran the caller's function and printed 6
+#   comprehension  -> `` [... for `int` in xs] `` captured the bare spelling too, so `int(1)` in the
+#                     element expression ran the loop variable
+#   walrus         -> `` (`len` := 5) `` had no flag anywhere: it drew SPY0483 for a spelling the
+#                     user had escaped AND destroyed the bare builtin (`len([1,2,3])` became
+#                     "'len' is not callable")
+#
+# The `.warning` sidecar is empty on purpose: an escaped binding is the sanctioned escape and must
+# draw nothing. The statement-level twins (assignment, for-statement) already worked and are pinned
+# in backtick_local_builtin_type_name and backtick_escaped_name_resolution.
+def twice(x: int) -> int:
+    return x * 2
+
+
+def call_through_escaped_parameter(`int`: (int) -> int) -> None:
+    # The escaped spelling is the parameter...
+    print(`int`(21))
+    # ...and the bare spelling in the same body is still the builtin conversion.
+    print(int(3))
+
+
+def main() -> None:
+    call_through_escaped_parameter(twice)
+
+    # Comprehension for-target: 42 from the escaped loop variable, 1 from the builtin.
+    print([`int`(21) + int(1) for `int` in [twice]])
+
+    # Walrus target: the escaped local and the builtin both stay reachable.
+    if (`len` := 5) > 0:
+        print(`len`)
+        print(len([1, 2, 3]))

@@ -606,7 +606,12 @@ internal partial class TypeChecker
         if (type is ConstructorReferenceType carrier)
             return new ConstructorReferenceClassification(carrier, null, null);
 
-        if (reference is not Identifier id || _symbolTable.Lookup(id.Name) is not TypeSymbol typeSymbol)
+        // By SPELLING, not by name: an escaped binding that spells a builtin holds the name in the
+        // symbol table, and a plain lookup handed it back for the BARE reference — so this returned
+        // "not a type reference" and `h: (str) -> int = int` lost its overload pinning in any scope
+        // containing a `` `int` `` binding (#1326).
+        if (reference is not Identifier id
+            || LookupBySpelling(id).Symbol is not TypeSymbol typeSymbol)
             return default;
 
         var isBuiltin = ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(id.Name));

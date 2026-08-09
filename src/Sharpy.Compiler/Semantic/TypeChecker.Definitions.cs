@@ -633,6 +633,11 @@ internal partial class TypeChecker
                 Type = effectiveType,
                 IsParameter = true,
                 ParameterModifier = param.Modifier,
+                // A parameter is a value-position binding like any other, and the escape is part of
+                // its identity. Without this, `` def f(`int`: T) `` bound the bare `int` inside the
+                // body to the parameter and the call ran it — silently, since both spellings mangle
+                // to the same C# name (#1326).
+                IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                 DeclarationLine = null,
                 DeclarationColumn = null,
                 NameDeclarationLine = null,
@@ -1721,6 +1726,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.Parameter,
                 Type = paramType,
                 IsParameter = true,
+                IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,
                 NameDeclarationLine = param.LineStart,
@@ -1869,6 +1875,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.Parameter,
                 Type = paramType,
                 IsParameter = true,
+                IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,
                 NameDeclarationLine = param.LineStart,
@@ -2015,6 +2022,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.Parameter,
                 Type = paramType,
                 IsParameter = true,
+                IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,
                 NameDeclarationLine = param.LineStart,

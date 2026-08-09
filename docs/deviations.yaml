@@ -359,7 +359,7 @@ deviations:
     audience: python
     severity: warning
     python_behavior: "Rebinding a builtin name is silent and late-bound: `len = 5` at module level changes what `len` means for every later use in that module, including uses in functions defined earlier."
-    sharpy_behavior: "Allowed and honored, but warned. A variable, constant, parameter, for-target or function declaration may spell a builtin name; the binding shadows the builtin lexically, as any inner binding shadows an outer one — statically, not late-bound. The builtin is then unreachable by its bare spelling in that scope. Backtick-escape the declaration to keep both spellings usable. Class MEMBERS are not warned: a field or method is reached through `self.`, so it never competes for a bare spelling."
+    sharpy_behavior: "Allowed and honored, but warned. A variable, constant, parameter, for-target (including a comprehension's), walrus (`:=`) target, inline `out` declaration or function declaration may spell a builtin name; the binding shadows the builtin lexically, as any inner binding shadows an outer one — statically, not late-bound. The builtin is then unreachable by its bare spelling in that scope. Backtick-escape the declaration to keep both spellings usable — in every one of those forms. Class MEMBERS are not warned: a field or method is reached through `self.`, so it never competes for a bare spelling."
     spec_ref: docs/language_specification/name_mangling.md
     existing_diagnostic: SPY0483
     planned_diagnostic: null

@@ -122,9 +122,7 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
 
     public override void VisitWalrusExpression(WalrusExpression node)
     {
-        // The walrus node carries no escape flag yet, so an escaped walrus target is treated as
-        // bare — it can only under-report, never fabricate a collision.
-        Declare(node.Target, isEscaped: false, node.LineStart, node.ColumnStart);
+        Declare(node.Target, node.IsNameBacktickEscaped, node.LineStart, node.ColumnStart);
         base.VisitWalrusExpression(node);
     }
 

@@ -289,9 +289,9 @@ def main():
 ```
 
 **A binding in value position may shadow any builtin name** (warning SPY0483). Variables, constants,
-parameters, for-targets and function declarations never enter the type namespace, so they cannot make
-an annotation ambiguous. The binding shadows the builtin lexically, the way any inner binding shadows
-an outer one:
+parameters, for-targets (including a comprehension's), walrus targets, inline `out` declarations and
+function declarations never enter the type namespace, so they cannot make an annotation ambiguous.
+The binding shadows the builtin lexically, the way any inner binding shadows an outer one:
 
 ```python
 def double(x: int) -> int:   # warning SPY0483: 'double' is a builtin name

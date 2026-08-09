@@ -1108,7 +1108,8 @@ internal partial class RoslynEmitter
         var value = GenerateExpression(walrus.Value);
 
         // Get the mangled variable name, registering it as a new declaration
-        var varName = GetMangledVariableName(walrus.Target, isNewDeclaration: true);
+        var varName = GetMangledVariableName(walrus.Target, isNewDeclaration: true,
+            walrus.IsNameBacktickEscaped);
 
         if (_walrusInlineMode)
         {

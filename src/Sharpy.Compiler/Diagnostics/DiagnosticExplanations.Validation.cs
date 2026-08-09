@@ -704,7 +704,8 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.Validation.BuiltinNameShadowedInValuePosition,
             "Builtin name shadowed",
             "Validation",
-            "A binding in value position — a variable, parameter, for-target, or a function " +
+            "A binding in value position — a variable, parameter, for-target (including a " +
+            "comprehension's), walrus (':=') target, inline 'out' declaration, or a function " +
             "declaration — spells the name of a builtin type or builtin " +
             "function. This is legal and it is honored: the binding shadows the builtin exactly as any " +
             "inner binding shadows an outer one, which is why 'def double(x: int) -> int' and " +

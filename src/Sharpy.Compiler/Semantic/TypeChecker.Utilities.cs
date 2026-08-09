@@ -1834,4 +1834,53 @@ internal partial class TypeChecker
 
         _symbolTable.Define(TypeAliasSymbol.CreateFrom(typeAlias));
     }
+
+    /// <summary>
+    /// What a SPELLING denotes, as opposed to what its NAME finds. The symbol table is keyed by
+    /// name and the lexer strips backticks, so a plain <c>Lookup</c> answers a bare reference with
+    /// an escape-declared symbol; this applies the identity rule on top of it.
+    /// </summary>
+    /// <returns>
+    /// The symbol the spelling denotes (null when it denotes nothing), and whether it denotes
+    /// nothing BECAUSE an escape-declared symbol holds the name — which the caller reports as the
+    /// missing escape rather than as an unknown name.
+    /// </returns>
+    /// <remarks>
+    /// <para>The rule (#1325, #1328, #1281): a BARE spelling never binds an escape-DECLARED symbol.
+    /// Without it the lookup succeeded and emission mangled the name — <c>class `zed`</c> followed
+    /// by a bare <c>zed()</c> compiled to <c>Zed()</c> against a type emitted as <c>zed</c>, i.e.
+    /// CS0103 behind SPY0908, the compiler reporting its own bug for a user error. The converse — an
+    /// escaped spelling binding a bare-declared symbol — is quoting and stands, which is what keeps
+    /// #713's escaped-import spellings usable.</para>
+    ///
+    /// <para>When the name IS a builtin's, the bare spelling has somewhere to land, so it means the
+    /// BUILTIN and this hands back the registry's own symbol (#1281). The program already behaved
+    /// that way at the call seam, but the RECORDED symbol was the user's, so every reader of that
+    /// map — hover, go-to-definition, rename, highlight — named something the program does not
+    /// call.</para>
+    ///
+    /// <para>It lives here because more than one seam re-looks-a-spelling-up by name and each one
+    /// that forgot the rule produced its own defect: the value-position constructor-reference
+    /// classifier fell through to "not a type reference" when an escaped binding held the name, so
+    /// <c>h: (str) -&gt; int = int</c> in that scope lost its overload pinning (#1326).</para>
+    /// </remarks>
+    private (Symbol? Symbol, bool EscapeDeclaredShadow) LookupBySpelling(Identifier id)
+    {
+        var symbol = _symbolTable.Lookup(id.Name);
+
+        if (symbol == null || id.IsNameBacktickEscaped || !symbol.IsNameBacktickEscaped)
+            return (symbol, false);
+
+        Symbol? builtinSymbol = _symbolTable.BuiltinRegistry.GetType(id.Name)
+            ?? (Symbol?)_symbolTable.BuiltinRegistry.GetFunction(id.Name);
+
+        if (builtinSymbol != null)
+            return (builtinSymbol, false);
+
+        // No builtin to land on: the bare spelling names nothing. Reported by the caller rather
+        // than bound, because binding it made emission mangle the name (#1328).
+        return _symbolTable.BuiltinRegistry.IsReservedBuiltinName(id.Name)
+            ? (symbol, false)
+            : (null, true);
+    }
 }

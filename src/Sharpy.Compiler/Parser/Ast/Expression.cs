@@ -842,6 +842,14 @@ public record ModifiedArgument : Expression
     public string? InlineName { get; init; }
 
     /// <summary>
+    /// True when <see cref="InlineName"/> was spelled backtick-escaped (<c>out `int`: int</c>).
+    /// Carried on the node rather than read back off <see cref="Argument"/> because
+    /// <see cref="InlineName"/> is what every downstream binding site uses, and the flag has to
+    /// travel with it (#1326).
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
+
+    /// <summary>
     /// The type annotation for an inline out declaration (e.g., int in out value: int).
     /// Must be non-null when InlineName is set.
     /// </summary>
@@ -983,6 +991,14 @@ public record SuperExpression : Expression;
 public record WalrusExpression : Expression
 {
     public string Target { get; init; } = "";
+
+    /// <summary>
+    /// True when the target was spelled backtick-escaped (<c>`len` := 5</c>). The lexer strips the
+    /// backticks, so the spelling alone cannot tell the two forms apart, and every seam that decides
+    /// whether this binding is the builtin's or the user's own needs the flag (#1326).
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
+
     public Expression Value { get; init; } = null!;
 
     /// <inheritdoc/>

@@ -25,9 +25,6 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// <para>A TYPE declaration spelling a builtin FUNCTION name (<c>class len:</c>) is warned rather
 /// than refused: it makes no annotation ambiguous, since <c>len</c> was never a type, but the class
 /// is unconstructible by its bare spelling.</para>
-///
-/// <para>Walrus expressions lack <c>IsNameBacktickEscaped</c> on the AST node; the warning
-/// passes <c>false</c> until the AST is plumbed.</para>
 /// </remarks>
 internal sealed class BuiltinNameShadowingValidator : ValidatingAstWalker
 {
@@ -130,7 +127,7 @@ internal sealed class BuiltinNameShadowingValidator : ValidatingAstWalker
 
     public override void VisitWalrusExpression(WalrusExpression node)
     {
-        Warn(node.Target, false, node.LineStart, node.ColumnStart,
+        Warn(node.Target, node.IsNameBacktickEscaped, node.LineStart, node.ColumnStart,
             node.Span, isTypeDeclaration: false);
 
         base.VisitWalrusExpression(node);

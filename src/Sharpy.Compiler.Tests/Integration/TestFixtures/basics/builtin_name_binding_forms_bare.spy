@@ -1,0 +1,19 @@
+# The bare half of the binding-form matrix whose escaped half is backtick_escaped_binding_forms.
+# builtin_name_value_position_allowed covers module variables, consts, defs, parameters and
+# for-statement targets; the three forms here — a comprehension for-target and a walrus target,
+# plus a free function's parameter — were the ones whose escape flag was missing, so their BARE
+# behavior is pinned alongside it. Bare shadowing is legal and honored; each row draws SPY0483.
+def shadow_in_parameter(len: int) -> int:
+    # Inside this body `len` is the parameter, exactly as CPython would have it.
+    return len + 1
+
+
+def main() -> None:
+    print(shadow_in_parameter(41))
+
+    # Comprehension for-target: the loop variable shadows the builtin inside the comprehension.
+    print([int * 2 for int in [21]])
+
+    # Walrus target: the binding shadows the builtin for the rest of the scope.
+    if (hash := 5) > 0:
+        print(hash)

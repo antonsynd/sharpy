@@ -303,7 +303,7 @@ internal sealed partial class UnparseVisitor
 
     public override void VisitWalrusExpression(WalrusExpression node)
     {
-        _w.Write(node.Target);
+        WriteName(node.Target, node.IsNameBacktickEscaped);
         _w.Write(" := ");
         Visit(node.Value);
     }
@@ -352,7 +352,7 @@ internal sealed partial class UnparseVisitor
         _w.Write(" ");
         if (node.InlineName != null)
         {
-            _w.Write(node.InlineName);
+            WriteName(node.InlineName, node.IsNameBacktickEscaped);
             if (node.InlineType != null)
             {
                 _w.Write(": ");

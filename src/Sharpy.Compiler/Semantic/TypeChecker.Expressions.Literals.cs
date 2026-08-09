@@ -433,6 +433,10 @@ internal partial class TypeChecker
                 Kind = SymbolKind.Variable,
                 Type = elemType,
                 AccessLevel = AccessLevel.Public,
+                // The escape travels to the symbol, as it does for a statement for-target: a
+                // comprehension binding spelled `` `int` `` must not answer a bare `int` in the
+                // element expression, which silently ran the loop variable instead (#1326).
+                IsNameBacktickEscaped = id.IsNameBacktickEscaped,
                 DeclarationLine = id.LineStart,
                 DeclarationColumn = id.ColumnStart,
                 NameDeclarationLine = id.LineStart,

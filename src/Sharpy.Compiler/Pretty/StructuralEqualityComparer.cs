@@ -62,7 +62,9 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             TypeCheck a => Equals(a.Value, ((TypeCheck)y).Value) && TypeAnnotationEquals(a.CheckType, ((TypeCheck)y).CheckType),
             Parenthesized a => Equals(a.Expression, ((Parenthesized)y).Expression),
             SuperExpression => true,
-            WalrusExpression a => a.Target == ((WalrusExpression)y).Target && Equals(a.Value, ((WalrusExpression)y).Value),
+            WalrusExpression a => a.Target == ((WalrusExpression)y).Target
+                && a.IsNameBacktickEscaped == ((WalrusExpression)y).IsNameBacktickEscaped
+                && Equals(a.Value, ((WalrusExpression)y).Value),
             TryExpression a => Equals(a.Operand, ((TryExpression)y).Operand) && TypeAnnotationsEqual(a.ExceptionTypes, ((TryExpression)y).ExceptionTypes),
             MaybeExpression a => Equals(a.Operand, ((MaybeExpression)y).Operand),
             QuestionMarkExpression a => Equals(a.Operand, ((QuestionMarkExpression)y).Operand),
@@ -218,6 +220,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
     private bool ModifiedArgumentEquals(ModifiedArgument a, ModifiedArgument b) =>
         a.Modifier == b.Modifier
         && a.InlineName == b.InlineName
+        && a.IsNameBacktickEscaped == b.IsNameBacktickEscaped
         && NullableTypeEquals(a.InlineType, b.InlineType)
         && Equals(a.Argument, b.Argument);
 

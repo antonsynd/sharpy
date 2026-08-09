@@ -217,9 +217,11 @@ internal partial class TypeChecker
             // (TypeResolver returns UnknownType for "auto", which maps to C# var)
             var resolvedType = _typeResolver.ResolveTypeAnnotation(modArg.InlineType);
 
-            // Register the variable in the current scope (follows walrus operator pattern)
+            // Register the variable in the current scope (follows walrus operator pattern,
+            // including the escape's part in the binding's identity — #1326)
             var existingSymbol = _symbolTable.Lookup(modArg.InlineName, searchParents: false);
-            if (existingSymbol is VariableSymbol existingVar)
+            if (existingSymbol is VariableSymbol existingVar
+                && existingVar.IsNameBacktickEscaped == modArg.IsNameBacktickEscaped)
             {
                 // Variable already exists in this scope — update its type
                 SemanticBinding.SetVariableType(existingVar, resolvedType);
@@ -233,6 +235,7 @@ internal partial class TypeChecker
                     Kind = SymbolKind.Variable,
                     Type = resolvedType,
                     IsConstant = false,
+                    IsNameBacktickEscaped = modArg.IsNameBacktickEscaped,
                     DeclarationLine = modArg.Argument.LineStart,
                     DeclarationColumn = modArg.Argument.ColumnStart,
                     NameDeclarationLine = modArg.Argument.LineStart,
@@ -337,47 +340,7 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        var symbol = _symbolTable.Lookup(id.Name);
-
-        // The identity rule at the value seam (#1325's rule, #1328's remaining half): a BARE
-        // spelling never binds an escape-DECLARED symbol. Without this the lookup succeeded and
-        // emission mangled the name — `` class `zed` `` followed by a bare `zed()` compiled to
-        // `Zed()` against a type emitted as `zed`, i.e. CS0103 behind SPY0908. Falling through to
-        // the undefined path reports the user's mistake instead of the compiler's.
-        // (The converse — an escaped spelling binding a bare-declared symbol — is quoting and
-        // stands, which is what keeps #713's escaped-import spellings usable.)
-        // The identity rule at the value seam, for the one case the downstream classifiers cannot
-        // cover (#1328). A bare spelling never means an escape-DECLARED symbol — but when the name
-        // IS a builtin's, the bare spelling has somewhere to land and the call/member classifiers
-        // already route it there (`str(7)` reaches the builtin in a file declaring `` class `str` ``,
-        // pinned by basics/backtick_escaped_name_resolution). When it is NOT a builtin's name there
-        // is nowhere to land: the lookup bound the escape-declared symbol and emission mangled it,
-        // so `` class `zed` `` plus a bare `zed()` compiled to `Zed()` against a type emitted as
-        // `zed` — CS0103 behind SPY0908, the compiler reporting its own bug for a user error.
-        var escapeDeclaredShadow = false;
-        if (symbol != null && !id.IsNameBacktickEscaped && symbol.IsNameBacktickEscaped)
-        {
-            // When the name IS a builtin's, the bare spelling means the BUILTIN — so hand back the
-            // registry's own symbol rather than the user's (#1281). The program already behaved this
-            // way (the call classifier routes `len(xs)` to the builtin), but the RECORDED symbol was
-            // the user class, so every reader of that map — hover, go-to-definition, rename,
-            // highlight, 13 handlers in all — named something the program does not call.
-            Symbol? builtinSymbol = _symbolTable.BuiltinRegistry.GetType(id.Name)
-                ?? (Symbol?)_symbolTable.BuiltinRegistry.GetFunction(id.Name);
-
-            if (builtinSymbol != null)
-            {
-                symbol = builtinSymbol;
-            }
-            else if (!_symbolTable.BuiltinRegistry.IsReservedBuiltinName(id.Name))
-            {
-                // No builtin to land on: the bare spelling names nothing. Reported below rather
-                // than bound, because binding it made emission mangle the name — `` class `zed` ``
-                // plus a bare `zed()` was CS0103 behind SPY0908 (#1328).
-                symbol = null;
-                escapeDeclaredShadow = true;
-            }
-        }
+        var (symbol, escapeDeclaredShadow) = LookupBySpelling(id);
 
         if (symbol == null)
         {
@@ -574,9 +537,12 @@ internal partial class TypeChecker
     {
         var valueType = CheckExpression(walrus.Value);
 
-        // Register the walrus target variable in the current scope
+        // Register the walrus target variable in the current scope. The escape is part of the
+        // binding's identity, so a `` `len` := 5 `` never rebinds a bare `len` already in scope and
+        // vice versa: they are two names that happen to share a spelling (#1326).
         var existingSymbol = _symbolTable.Lookup(walrus.Target, searchParents: false);
-        if (existingSymbol is VariableSymbol existingVar)
+        if (existingSymbol is VariableSymbol existingVar
+            && existingVar.IsNameBacktickEscaped == walrus.IsNameBacktickEscaped)
         {
             // Variable already exists — update its type (redeclaration)
             SemanticBinding.SetVariableType(existingVar, valueType);
@@ -590,6 +556,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.Variable,
                 Type = valueType,
                 IsConstant = false,
+                IsNameBacktickEscaped = walrus.IsNameBacktickEscaped,
                 DeclarationLine = walrus.LineStart,
                 DeclarationColumn = walrus.ColumnStart,
                 NameDeclarationLine = walrus.LineStart,

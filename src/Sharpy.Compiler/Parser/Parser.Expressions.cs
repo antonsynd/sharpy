@@ -140,6 +140,7 @@ public partial class Parser
             return new WalrusExpression
             {
                 Target = name,
+                IsNameBacktickEscaped = startToken.IsBacktickEscaped,
                 Value = value,
                 LineStart = startLine,
                 ColumnStart = startColumn,

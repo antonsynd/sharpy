@@ -569,7 +569,8 @@ internal partial class RoslynEmitter
         {
             case Identifier id:
                 statements.Add(DeclareComprehensionVar(
-                    GetMangledVariableName(id.Name, isNewDeclaration: true), IdentifierName(sourceVar)));
+                    GetMangledVariableName(id.Name, isNewDeclaration: true, id.IsNameBacktickEscaped),
+                    IdentifierName(sourceVar)));
                 break;
 
             case TupleLiteral tuple when tuple.Elements.All(e => e is Identifier):
@@ -577,7 +578,8 @@ internal partial class RoslynEmitter
                 var designations = new List<VariableDesignationSyntax>();
                 foreach (var elemId in tuple.Elements.Cast<Identifier>())
                 {
-                    var name = GetMangledVariableName(elemId.Name, isNewDeclaration: true);
+                    var name = GetMangledVariableName(elemId.Name, isNewDeclaration: true,
+                        elemId.IsNameBacktickEscaped);
                     _declaredVariables.Add(name);
                     designations.Add(SingleVariableDesignation(EscapedIdentifier(name)));
                 }
@@ -603,7 +605,9 @@ internal partial class RoslynEmitter
                     if (tuple.Elements[i] is Identifier elemId)
                     {
                         statements.Add(DeclareComprehensionVar(
-                            GetMangledVariableName(elemId.Name, isNewDeclaration: true), itemAccess));
+                            GetMangledVariableName(elemId.Name, isNewDeclaration: true,
+                                elemId.IsNameBacktickEscaped),
+                            itemAccess));
                     }
                     else if (tuple.Elements[i] is TupleLiteral nested)
                     {

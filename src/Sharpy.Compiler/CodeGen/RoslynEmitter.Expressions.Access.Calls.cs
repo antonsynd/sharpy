@@ -1145,7 +1145,8 @@ internal partial class RoslynEmitter
                     }
 
                     // Register the variable for subsequent references
-                    var mangledName = GetMangledVariableName(modArg.InlineName, isNewDeclaration: true);
+                    var mangledName = GetMangledVariableName(modArg.InlineName,
+                        isNewDeclaration: true, modArg.IsNameBacktickEscaped);
 
                     yield return Argument(
                         DeclarationExpression(
