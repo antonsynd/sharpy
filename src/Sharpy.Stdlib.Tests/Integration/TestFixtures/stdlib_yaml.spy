@@ -1,0 +1,12 @@
+# #1300: the first yaml fixture. The harness's dependency list was hand-maintained and never
+# gained YamlDotNet, so no yaml fixture could run at all — the gap stayed invisible until someone
+# wrote one. Deployment is now the resolved runtime closure, so this is the acceptance cell.
+#
+# Only shapes correct today are pinned; yaml's single-precision float parsing is #1339 (batch K).
+import yaml
+
+def main():
+    print(yaml.safe_dump(1.0).strip())
+    print(yaml.safe_dump("hello").strip())
+    print(yaml.safe_dump(42).strip())
+    print(yaml.safe_dump(True).strip())

@@ -339,7 +339,8 @@ public abstract class IntegrationTestBase
                     File.Copy(runtimePath, runtimeDest, overwrite: true);
 
                     var testBinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-                    CopyTransitiveDependencies(testBinDir, tempDir);
+                    CopyRuntimeClosure(testBinDir, tempDir,
+                        new[] { runtimeDest }.Concat(additionalPaths));
                 }
 
                 foreach (var additionalPath in additionalPaths.Where(File.Exists))
@@ -836,7 +837,8 @@ public abstract class IntegrationTestBase
                     File.Copy(runtimePath, runtimeDest, overwrite: true);
 
                     var testBinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-                    CopyTransitiveDependencies(testBinDir, tempDir);
+                    CopyRuntimeClosure(testBinDir, tempDir,
+                        new[] { runtimeDest }.Concat(additionalPaths));
                 }
 
                 foreach (var additionalPath in additionalPaths.Where(File.Exists))
@@ -970,42 +972,37 @@ public abstract class IntegrationTestBase
     }
 
     /// <summary>
-    /// Copies transitive dependencies of Sharpy.Core (e.g., Microsoft.Data.Sqlite and its
-    /// native SQLite libraries) from the test project's output directory to the temp execution
-    /// directory. Skips assemblies already present and framework assemblies.
-    /// Also copies native libraries (e.g., libe_sqlite3.dylib) directly to the temp directory
-    /// so the .NET runtime can find them without a .deps.json probing configuration.
+    /// Copies the runtime closure of the fixture's references into the temp execution directory,
+    /// flat. There is no .deps.json, so the host resolves managed assemblies and native libraries
+    /// from the app directory alone — which is why everything lands beside the assembly.
+    ///
+    /// <para>
+    /// This used to be a hand-maintained list of six DLL names, and it drifted: YamlDotNet was
+    /// simply never added, so no yaml fixture could ever run and the gap was invisible until
+    /// someone tried (#1300). The closure is now computed by the same
+    /// <see cref="RuntimeClosureResolver"/> the CLI uses — a mechanical walk of assembly
+    /// references plus the companion pass that finds runtime-registration assemblies like
+    /// SQLitePCLRaw's provider bundle — so a new NuGet-backed stdlib module needs no edit here.
+    /// </para>
     /// </summary>
-    private static void CopyTransitiveDependencies(string testBinDir, string destDir)
+    private static void CopyRuntimeClosure(
+        string testBinDir, string destDir, IEnumerable<string> referencePaths)
     {
-        // Managed DLLs that are transitive dependencies of Sharpy.Core but not part of the
-        // .NET runtime. These must be present next to the compiled test assembly.
-        string[] transitiveDeps = new[]
-        {
-            "Microsoft.Data.Sqlite.dll",
-            "SQLitePCLRaw.batteries_v2.dll",
-            "SQLitePCLRaw.core.dll",
-            "SQLitePCLRaw.provider.e_sqlite3.dll",
-            // Math.NET Numerics — required by numpy.linalg / numpy.fft submodules.
-            "MathNet.Numerics.dll",
-            // Tomlyn — required by toml module.
-            "Tomlyn.dll",
-        };
+        var seeds = referencePaths.Where(File.Exists).ToList();
+        if (seeds.Count == 0)
+            return;
 
-        foreach (var dllName in transitiveDeps)
+        var closure = RuntimeClosureResolver.Resolve(seeds);
+
+        foreach (var assetPath in closure.ManagedAssemblies.Concat(closure.NativeAssets))
         {
-            var srcPath = Path.Combine(testBinDir, dllName);
-            if (File.Exists(srcPath))
-            {
-                var destPath = Path.Combine(destDir, dllName);
-                if (!File.Exists(destPath))
-                    File.Copy(srcPath, destPath);
-            }
+            var destPath = Path.Combine(destDir, Path.GetFileName(assetPath));
+            if (!File.Exists(destPath))
+                File.Copy(assetPath, destPath);
         }
 
-        // Copy native runtime libraries directly into the temp directory.
-        // Without a .deps.json, the runtime won't probe the runtimes/ subdirectory,
-        // so we find the platform-specific native library and place it at the root.
+        // The closure walks assembly REFERENCES; a native asset reachable only through the test
+        // project's own runtimes/ layout (not through a closure member's) is still needed.
         CopyNativeLibraries(testBinDir, destDir);
     }
 
