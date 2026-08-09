@@ -729,10 +729,13 @@ public partial class Lexer
 
             if (c == '`')
             {
-                // Found closing backtick
+                // Found closing backtick. The token's source extent must include both
+                // backticks (value stays bare) — LSP ranges and rename edit lengths are
+                // computed from the span, and Name.Length is 2 short for `name` (#1281).
                 _position++;
                 _column++;
-                return CreateToken(TokenType.Identifier, sb.ToString(), startLine, startColumn, startPosition)
+                return CreateToken(TokenType.Identifier, sb.ToString(), startLine, startColumn, startPosition,
+                    sourceLength: _position - startPosition)
                     with
                 { IsBacktickEscaped = true };
             }

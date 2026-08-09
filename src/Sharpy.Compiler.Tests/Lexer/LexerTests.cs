@@ -1510,6 +1510,22 @@ y = 2";
         token.IsBacktickEscaped.Should().BeTrue();
     }
 
+    [Theory]
+    [InlineData("`class`", "class")]
+    [InlineData("`event`", "event")]
+    [InlineData("`System.IO`", "System.IO")]
+    public void Tokenize_LiteralName_SpansItsFullSourceExtentIncludingBackticks(
+        string source, string expectedValue)
+    {
+        // The token's Length must cover both backticks while Value stays bare — LSP
+        // ranges and rename edit lengths are computed from the span, and Value.Length
+        // is 2 short for an escaped name (#1281).
+        var token = SingleToken(source);
+        token.Value.Should().Be(expectedValue);
+        token.Length.Should().Be(source.Length);
+        token.SourceLength.Should().Be(expectedValue.Length + 2);
+    }
+
     [Fact]
     public void Tokenize_MultipleLiteralNames_ProducesCorrectTokens()
     {
