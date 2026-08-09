@@ -1,18 +1,13 @@
 # #1311: a lone operator overload must still type-check its argument. Before the fix a
-# single-candidate `__or__` was accepted on arity alone, so these cells sailed through
-# semantic analysis typed as `object` and died in codegen as SPY0908. Each must be
-# refused at semantic time as SPY0222 — never an internal error. The three pairings are
-# the exact cells the fix names (set|list, set|frozenset, frozenset|set); operand types
-# differ per cell so each @line:col anchor matches a unique message. set|list is an
-# error in CPython too and stays one; the two set/frozenset cells pin the CURRENT
-# deliberate refusal — #1312 tracks adopting CPython's left-operand rule, and its
-# implementation updates this fixture as part of that behavioral change.
+# single-candidate `__or__` was accepted on arity alone, so this cell sailed through semantic
+# analysis typed as `object` and died in codegen as SPY0908. It must be refused at semantic
+# time as SPY0222 — never an internal error. `set | list` is an error in CPython too.
+#
+# This fixture used to pin two more cells, `set | frozenset` and `frozenset | set`, as deliberate
+# refusals, and said in this header that #1312's implementation would update it when Sharpy
+# adopted CPython's left-operand rule. That happened: both now WORK and are pinned by
+# collections/set_frozenset_mixed_operators, whose values were checked against python3.
 def main() -> None:
     s: set[int] = {1, 2}
-    fs: frozenset[int] = frozenset([1, 2])
     a = s | [3]
-    b = s | fs
-    c = fs | s
     print(a)
-    print(b)
-    print(c)

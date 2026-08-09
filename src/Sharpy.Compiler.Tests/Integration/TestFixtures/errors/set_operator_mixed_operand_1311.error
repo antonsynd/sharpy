@@ -1,3 +1,1 @@
-Type 'set[int]' does not support operator '|' with operand of type 'list[int]' @13:9
-Type 'set[int]' does not support operator '|' with operand of type 'frozenset[int]' @14:9
-Type 'frozenset[int]' does not support operator '|' with operand of type 'set[int]' @15:9
+Type 'set[int]' does not support operator '|' with operand of type 'list[int]' @12:9

@@ -104,6 +104,31 @@ namespace Sharpy
         /// <summary>Determines whether two frozensets are not equal.</summary>
         public static bool operator !=(FrozenSet<T>? a, FrozenSet<T>? b) => !(a == b);
 
+        // Mixed frozenset/set operators (#1312). CPython's left-operand rule: `frozenset | set` is a
+        // frozenset, while `set | frozenset` is a set — that pairing lives on Set<T>, so neither
+        // signature is declared twice. Verified against python3.
+
+        /// <summary>Union with a set. The left operand decides: the result is a frozenset.</summary>
+        public static FrozenSet<T> operator |(FrozenSet<T> a, Set<T> b) => new(a._set.Union(b));
+        /// <summary>Intersection with a set. The result is a frozenset.</summary>
+        public static FrozenSet<T> operator &(FrozenSet<T> a, Set<T> b) => new(a._set.Intersect(b));
+        /// <summary>Difference with a set. The result is a frozenset.</summary>
+        public static FrozenSet<T> operator -(FrozenSet<T> a, Set<T> b) => new(a._set.Except(b));
+        /// <summary>Symmetric difference with a set. The result is a frozenset.</summary>
+        public static FrozenSet<T> operator ^(FrozenSet<T> a, Set<T> b) => new(a._set.SymmetricExcept(b));
+
+        /// <summary>Returns true if this frozenset is a proper subset of the set.</summary>
+        public static bool operator <(FrozenSet<T> a, Set<T> b) => a._set.IsProperSubsetOf(b);
+        /// <summary>Returns true if this frozenset is a subset of the set.</summary>
+        public static bool operator <=(FrozenSet<T> a, Set<T> b) => a._set.IsSubsetOf(b);
+        /// <summary>Returns true if this frozenset is a proper superset of the set.</summary>
+        public static bool operator >(FrozenSet<T> a, Set<T> b) => a._set.IsProperSupersetOf(b);
+        /// <summary>Returns true if this frozenset is a superset of the set.</summary>
+        public static bool operator >=(FrozenSet<T> a, Set<T> b) => a._set.IsSupersetOf(b);
+
+        // No mixed ==/!= — see the note on Set<T>'s mixed operators: pairing them with the
+        // same-type overloads makes a comparison against the null literal CS9342-ambiguous.
+
         /// <summary>Return a shallow copy of the frozenset.</summary>
         public FrozenSet<T> Copy() => new(_set);
         /// <summary>Return a new frozenset with elements from this set and other.</summary>

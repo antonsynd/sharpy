@@ -1,0 +1,25 @@
+# Mixed set/frozenset operators follow CPython's left-operand rule (#1312).
+#
+# Both directions used to be refused (SPY0222, "does not support operator") because each type
+# declared its operators only against itself. CPython: `set | frozenset` is a set and
+# `frozenset | set` is a frozenset — the LEFT operand decides. Every value below was checked
+# against python3.
+
+def main() -> None:
+    s: set[int] = {1, 2}
+    f: frozenset[int] = frozenset([2, 3])
+
+    print(s | f)
+    print(f | s)
+    print(s & f)
+    print(f & s)
+    print(s - f)
+    print(f - s)
+    print(s ^ f)
+    print(f ^ s)
+
+    small: set[int] = {2}
+    print(small < f)
+    print(small <= f)
+    print(f > small)
+    print(f >= small)

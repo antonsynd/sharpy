@@ -102,6 +102,77 @@ namespace Sharpy
 
         #endregion
 
+        #region Mixed set/frozenset operators (#1312)
+
+        // CPython's left-operand rule: the LEFT operand's type decides the result, so `set | frozenset`
+        // is a set and `frozenset | set` is a frozenset (verified with python3). Sharpy refused both
+        // directions — SPY0222, "does not support operator '|'" — because each type declared its
+        // operators only against itself.
+        //
+        // The mixed pairings live on the LEFT operand's type, one signature each: declaring
+        // `Set<T> op FrozenSet<T>` on both types would be a duplicate C# would reject, and putting a
+        // pairing on the right operand's type would put the result rule where the reader does not
+        // look for it. The frozenset side of each pair is materialised into a Set<T> because Set's
+        // set operations take Set<T>, not IEnumerable<T>.
+
+        /// <summary>Union with a frozenset. The left operand decides: the result is a set.</summary>
+        public static Set<T> operator |(Set<T> left, FrozenSet<T> right)
+        {
+            return left.Union(new Set<T>(right));
+        }
+
+        /// <summary>Intersection with a frozenset. The result is a set.</summary>
+        public static Set<T> operator &(Set<T> left, FrozenSet<T> right)
+        {
+            return left.Intersection(new Set<T>(right));
+        }
+
+        /// <summary>Symmetric difference with a frozenset. The result is a set.</summary>
+        public static Set<T> operator ^(Set<T> left, FrozenSet<T> right)
+        {
+            return left.SymmetricDifference(new Set<T>(right));
+        }
+
+        /// <summary>Difference with a frozenset. The result is a set.</summary>
+        public static Set<T> operator -(Set<T> left, FrozenSet<T> right)
+        {
+            return left.Difference(new Set<T>(right));
+        }
+
+        /// <summary>Proper-subset comparison against a frozenset.</summary>
+        public static bool operator <(Set<T> left, FrozenSet<T> right)
+        {
+            return left < new Set<T>(right);
+        }
+
+        /// <summary>Proper-superset comparison against a frozenset.</summary>
+        public static bool operator >(Set<T> left, FrozenSet<T> right)
+        {
+            return left > new Set<T>(right);
+        }
+
+        /// <summary>Subset comparison against a frozenset.</summary>
+        public static bool operator <=(Set<T> left, FrozenSet<T> right)
+        {
+            return left <= new Set<T>(right);
+        }
+
+        /// <summary>Superset comparison against a frozenset.</summary>
+        public static bool operator >=(Set<T> left, FrozenSet<T> right)
+        {
+            return left >= new Set<T>(right);
+        }
+
+        // NO MIXED ==/!= , and the reason is measured. Declaring `operator ==(Set<T>?, FrozenSet<T>?)`
+        // alongside the existing `operator ==(Set<T>?, Set<T>?)` makes `someSet == null` ambiguous
+        // (CS9342) — the null literal converts to both. That broke Sharpy.Core's own DictKeyView on
+        // the first build, and it would break the same shape in every user program, which is far
+        // worse than the gap it closes. So `{1, 2} == frozenset([1, 2])`, True in CPython, stays
+        // refused here; the four set operations and four comparisons above take non-nullable
+        // operands and have no such conflict. Tracked as a deviation rather than papered over.
+
+        #endregion
+
         #region Truthiness Operators
 
         /// <summary>
