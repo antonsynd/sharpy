@@ -599,6 +599,11 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
         {
             if (a[i].Name != b[i].Name)
                 return false;
+            // The escape is part of the name's identity, so two type parameters that differ only in
+            // it are different declarations — and a round-trip that dropped it must not compare equal
+            // (#1274, #1327).
+            if (a[i].IsNameBacktickEscaped != b[i].IsNameBacktickEscaped)
+                return false;
             if (a[i].Variance != b[i].Variance)
                 return false;
             if (!NullableTypeEquals(a[i].DefaultType, b[i].DefaultType))

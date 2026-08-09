@@ -568,6 +568,24 @@ internal partial class RoslynEmitter : ICodeEmitter
             : Identifier(csharpName);
 
     /// <summary>
+    /// Identifier token for a type-parameter name, which — unlike every other name reaching the
+    /// emitter — arrives WITHOUT the <c>@</c> already applied (#1327).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="EscapedIdentifier"/> preserves an escape that is already there; it does not add
+    /// one. Every other declaration position gets its <c>@</c> from name mangling upstream, but a
+    /// type parameter's name is emitted verbatim from the AST, so <c>class Box[`class`]</c> produced
+    /// <c>class Box&lt;class&gt;</c> — 24 syntax errors from one token. This applies the escape at
+    /// the point where the name becomes C#.
+    /// </remarks>
+    internal static SyntaxToken TypeParameterIdentifier(string name) =>
+        EscapedIdentifier(CSharpKeywords.EscapeIfNeeded(name));
+
+    /// <summary>Name-syntax counterpart of <see cref="TypeParameterIdentifier"/>.</summary>
+    internal static IdentifierNameSyntax TypeParameterIdentifierName(string name) =>
+        IdentifierName(TypeParameterIdentifier(name));
+
+    /// <summary>
     /// Resolve the C# name for a variable using CodeGenInfo.
     /// Returns null if CodeGenInfo is not available or if this is a local redeclaration.
     /// </summary>

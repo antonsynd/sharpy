@@ -427,7 +427,10 @@ internal sealed partial class UnparseVisitor : AstVisitor
                 _w.Write("out ");
             else if (tp.Variance == TypeParameterVariance.Contravariant)
                 _w.Write("in ");
-            _w.Write(tp.Name);
+            // The DECLARATION half of #1274: references to `` `class` `` already round-tripped, so
+            // dropping the backticks here produced `def identity[class](value: `class`)` — source
+            // that cannot re-parse, and a use with no declaration.
+            WriteName(tp.Name, tp.IsNameBacktickEscaped);
             foreach (var constraint in tp.Constraints)
             {
                 WriteConstraint(constraint);

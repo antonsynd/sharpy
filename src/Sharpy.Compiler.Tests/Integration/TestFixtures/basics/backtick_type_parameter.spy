@@ -1,0 +1,29 @@
+# A backtick-escaped TYPE PARAMETER reaches emission escaped (#1327).
+#
+# Every other declaration position gets its `@` from name mangling upstream, but a type parameter's
+# name was emitted verbatim from the AST, so `class Box[`class`]` produced `class Box<class>` — one
+# token, 24 syntax errors. Both the declaration sites and the reference sites (field type, method
+# return type, generic-argument list) now apply the escape.
+
+def identity[`class`](value: `class`) -> `class`:
+    return value
+
+
+class Pair[`event`, `class`]:
+    first: `event`
+    second: `class`
+
+    def __init__(self, first: `event`, second: `class`) -> None:
+        self.first = first
+        self.second = second
+
+    def swapped(self) -> Pair[`class`, `event`]:
+        return Pair[`class`, `event`](self.second, self.first)
+
+
+def main() -> None:
+    print(identity[int](5))
+    p = Pair[int, str](1, "a")
+    q = p.swapped()
+    print(q.first)
+    print(q.second)

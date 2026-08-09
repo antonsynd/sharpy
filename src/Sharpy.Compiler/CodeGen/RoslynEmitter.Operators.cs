@@ -28,7 +28,7 @@ internal partial class RoslynEmitter
         {
             return GenericName(className)
                 .WithTypeArgumentList(TypeArgumentList(SeparatedList(
-                    _currentTypeSymbol.TypeParameters.Select(tp => (TypeSyntax)IdentifierName(tp.Name)))));
+                    _currentTypeSymbol.TypeParameters.Select(tp => (TypeSyntax)TypeParameterIdentifierName(tp.Name)))));
         }
         return IdentifierName(className);
     }

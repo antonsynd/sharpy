@@ -68,7 +68,7 @@ internal class TypeSyntaxMapper
             UserDefinedType udt => RoslynEmitter.ParseQualifiedTypeName(GetMappedTypeNameFromSymbol(udt)),
 
             // Handle type parameters (e.g., T in class Box[T])
-            TypeParameterType typeParam => RoslynEmitter.EscapedIdentifierName(typeParam.Name),
+            TypeParameterType typeParam => RoslynEmitter.TypeParameterIdentifierName(typeParam.Name),
 
             // Template emits as Sharpy.Template
             TemplateType => RoslynEmitter.ParseQualifiedTypeName("global::" + CSharpTypeNames.SharpyTemplate),
@@ -190,7 +190,7 @@ internal class TypeSyntaxMapper
         {
             // For generic classes (e.g., Box[T]), emit Box<T> with type parameter references
             var typeArgs = declaringType.TypeParameters
-                .Select(tp => (TypeSyntax)RoslynEmitter.EscapedIdentifierName(tp.Name))
+                .Select(tp => (TypeSyntax)RoslynEmitter.TypeParameterIdentifierName(tp.Name))
                 .ToArray();
             var baseName = GetMappedTypeNameFromSymbol(new UserDefinedType { Name = declaringType.Name, Symbol = declaringType });
             return GenericName(Identifier(baseName))

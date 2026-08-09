@@ -695,7 +695,7 @@ internal partial class RoslynEmitter
             // Reference the union with its own type parameter names so the nested
             // case type is correctly qualified (e.g. Option<T>.Some).
             var typeParamSyntax = unionParent.TypeParameters
-                .Select(tp => (TypeSyntax)IdentifierName(tp.Name))
+                .Select(tp => (TypeSyntax)TypeParameterIdentifierName(tp.Name))
                 .ToArray();
             unionNameSyntax = GenericName(Identifier(unionCSharpName))
                 .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeParamSyntax)));

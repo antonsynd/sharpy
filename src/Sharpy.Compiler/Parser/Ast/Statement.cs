@@ -754,6 +754,13 @@ public enum TypeParameterVariance
 public record TypeParameterDef
 {
     public string Name { get; init; } = "";
+
+    /// <summary>
+    /// True when the name was written backtick-escaped (<c>class Box[`class`]</c>), so it denotes the
+    /// user's spelling rather than the keyword or builtin it shares a name with (#1327).
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
+
     public ImmutableArray<ConstraintClause> Constraints { get; init; } = ImmutableArray<ConstraintClause>.Empty;
     public TypeParameterVariance Variance { get; init; } = TypeParameterVariance.None;
     public TypeAnnotation? DefaultType { get; init; }

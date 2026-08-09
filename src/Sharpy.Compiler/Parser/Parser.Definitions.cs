@@ -754,6 +754,7 @@ public partial class Parser
                 Advance();
             }
 
+            var paramNameToken = Current;
             var paramName = ExpectIdentifier();
             var constraints = new List<ConstraintClause>();
 
@@ -777,6 +778,7 @@ public partial class Parser
             typeParams.Add(new TypeParameterDef
             {
                 Name = paramName,
+                IsNameBacktickEscaped = paramNameToken.IsBacktickEscaped,
                 Constraints = constraints.ToImmutableArray(),
                 Variance = variance,
                 DefaultType = defaultType,
