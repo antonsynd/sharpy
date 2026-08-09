@@ -1,0 +1,470 @@
+#!/usr/bin/env python3
+"""
+Interleaved A/B benchmark orchestrator for the Sharpy compiler (#1318).
+
+Why this exists
+---------------
+Run **position** alone swings wall-clock 7-10% on this corpus: whatever runs second
+appears faster, and BenchmarkDotNet's 99.9% confidence intervals come out
+non-overlapping *in both directions* depending on which arm you ran first. So the
+usual comparison — build A, measure, build B, measure, subtract — cannot distinguish
+a code effect from an ordering artifact, and "the intervals don't overlap" does not
+rescue it. Three measurements in round 8 were corrupted this way before anyone
+noticed the mechanism.
+
+Two remedies, both built in here:
+
+1. **Interleave.** Alternate A, B, A, B, ... so each arm is measured the same number
+   of times in each position. A position bias that affects both arms equally cancels
+   in the pooled mean instead of loading onto whichever arm ran second.
+
+2. **Require sign agreement between positions.** Pool separately by position — arm A
+   when it ran first vs arm A when it ran second — and report a delta only when both
+   pools agree on its direction. When they disagree, the honest answer is
+   "unmeasured: position-dominated", not a number with a confidence interval.
+
+What it does not do
+-------------------
+It does not decide whether a delta matters, and it does not touch allocations, which
+are measured precisely and are immune to the artifact (see ``allocation_gate.py`` --
+that remains the load-bearing regression signal for allocation changes).
+
+Usage
+-----
+::
+
+    python -m build_tools.bench_ab <refA> <refB> [--rounds N] [--filter PATTERN]
+
+Each ref is anything ``git rev-parse`` accepts. Two worktrees are prepared and built
+in Release once; the rounds then only run the already-built binaries::
+
+    python -m build_tools.bench_ab HEAD~1 HEAD --rounds 4
+    python -m build_tools.bench_ab main my-branch --filter '*Fibonacci*'
+
+The null control -- comparing a ref to itself -- must report no significant delta.
+An instrument that cannot say "nothing" cannot be trusted to say "something"::
+
+    python -m build_tools.bench_ab HEAD HEAD --rounds 4
+"""
+
+from __future__ import annotations
+
+import argparse
+import glob
+import json
+import os
+import shutil
+import statistics
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass, field
+from typing import Iterable, Optional
+
+DEFAULT_FILTER = "*CompilerBenchmarks*"
+DEFAULT_ROUNDS = 3
+
+#: Below this, a pooled difference is reported as noise regardless of sign agreement.
+#: Chosen from the measured position effect (7-10%): a delta the artifact alone can
+#: produce is not evidence, so the floor sits above it.
+SIGNIFICANCE_THRESHOLD_PERCENT = 15.0
+
+
+# --------------------------------------------------------------------------------------
+# Parsing
+# --------------------------------------------------------------------------------------
+
+
+def parse_bdn_means(results_dir: str) -> dict[str, float]:
+    """
+    Parse BenchmarkDotNet report JSON under *results_dir* into benchmark -> mean ns.
+
+    Mirrors ``allocation_gate.parse_bdn_results``, reading ``Statistics.Mean`` instead of
+    the allocation column. Raises when nothing is found: an empty parse silently pooling
+    to "no difference" is the failure mode this whole module exists to prevent.
+    """
+    patterns = [
+        os.path.join(results_dir, "results", "*-report-full-compressed.json"),
+        os.path.join(results_dir, "results", "*-report-full.json"),
+        os.path.join(results_dir, "results", "*-report.json"),
+        os.path.join(results_dir, "*-report-full.json"),
+        os.path.join(results_dir, "*-report.json"),
+    ]
+    files: list[str] = []
+    for pattern in patterns:
+        files.extend(sorted(glob.glob(pattern)))
+
+    if not files:
+        raise FileNotFoundError(
+            f"No BenchmarkDotNet report JSON under {results_dir!r}. "
+            "Did the run use --exporters json?"
+        )
+
+    means: dict[str, float] = {}
+    for path in files:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+        for bench in data.get("Benchmarks", []):
+            name = bench.get("FullName") or bench.get("Method")
+            stats = bench.get("Statistics")
+            if name is None or not stats:
+                continue
+            mean = stats.get("Mean")
+            if mean is None:
+                continue
+            means[name] = float(mean)
+
+    if not means:
+        raise ValueError(
+            f"Report JSON under {results_dir!r} contained no benchmark means. "
+            "A run that produced no measurements must not pool to 'no difference'."
+        )
+    return means
+
+
+# --------------------------------------------------------------------------------------
+# Pooling and the sign gate
+# --------------------------------------------------------------------------------------
+
+
+@dataclass
+class Measurement:
+    """One benchmark's mean from one arm in one position."""
+
+    arm: str
+    position: int  # 0 = ran first in its round, 1 = ran second
+    benchmark: str
+    mean_ns: float
+
+
+@dataclass
+class Verdict:
+    benchmark: str
+    delta_first_percent: Optional[float]
+    delta_second_percent: Optional[float]
+    pooled_delta_percent: Optional[float]
+    measured: bool
+    reason: str
+    samples: dict[str, int] = field(default_factory=dict)
+
+    def describe(self, arm_a: str, arm_b: str) -> str:
+        if not self.measured or self.pooled_delta_percent is None:
+            return f"  {self.benchmark}: UNMEASURED — {self.reason}"
+        assert self.delta_first_percent is not None
+        assert self.delta_second_percent is not None
+        direction = "slower" if self.pooled_delta_percent > 0 else "faster"
+        return (
+            f"  {self.benchmark}: {arm_b} is {abs(self.pooled_delta_percent):.1f}% "
+            f"{direction} than {arm_a} "
+            f"({arm_a} first: {self.delta_first_percent:+.1f}%, "
+            f"{arm_b} first: {self.delta_second_percent:+.1f}%)"
+        )
+
+
+def pool_by_position(measurements: Iterable[Measurement]) -> dict[tuple[str, str, int], float]:
+    """Median of each (benchmark, arm, position) cell. Median, not mean: a single
+    scheduling hiccup in one round should not move the cell."""
+    buckets: dict[tuple[str, str, int], list[float]] = {}
+    for m in measurements:
+        buckets.setdefault((m.benchmark, m.arm, m.position), []).append(m.mean_ns)
+    return {key: statistics.median(values) for key, values in buckets.items()}
+
+
+def evaluate(
+    measurements: Iterable[Measurement],
+    arm_a: str,
+    arm_b: str,
+    threshold_percent: float = SIGNIFICANCE_THRESHOLD_PERCENT,
+) -> list[Verdict]:
+    """
+    Per benchmark: compute B-vs-A at each position, and report a pooled delta only when
+    the two positions agree in sign.
+
+    Sign agreement is the whole gate. The position effect is large enough to invert a
+    real difference, so a delta that changes direction depending on which arm ran first
+    is not a measurement of the code — it is a measurement of the ordering.
+    """
+    pooled = pool_by_position(measurements)
+    benchmarks = sorted({m.benchmark for m in measurements})
+    counts: dict[tuple[str, str, int], int] = {}
+    for m in measurements:
+        key = (m.benchmark, m.arm, m.position)
+        counts[key] = counts.get(key, 0) + 1
+
+    verdicts: list[Verdict] = []
+    for benchmark in benchmarks:
+        cells = {
+            (arm, position): pooled.get((benchmark, arm, position))
+            for arm in (arm_a, arm_b)
+            for position in (0, 1)
+        }
+
+        missing = [
+            f"{arm}@position{position + 1}"
+            for (arm, position), value in cells.items()
+            if value is None
+        ]
+        if missing:
+            verdicts.append(Verdict(
+                benchmark, None, None, None, False,
+                "not measured in every (arm, position) cell — interleaving incomplete: "
+                + ", ".join(missing),
+            ))
+            continue
+
+        a_first, a_second = cells[(arm_a, 0)], cells[(arm_a, 1)]
+        b_first, b_second = cells[(arm_b, 0)], cells[(arm_b, 1)]
+        assert a_first is not None and a_second is not None
+        assert b_first is not None and b_second is not None
+
+        # Each comparison is one round's ACTUAL ordering: A-first-vs-B-second is what the
+        # even rounds ran, A-second-vs-B-first is what the odd rounds ran. Both orderings are
+        # therefore represented, and a position bias enters the two with opposite sign — which
+        # is what the sign test below detects and the geometric pooling below cancels. Pairing
+        # same-position cells instead would keep the bias in with a single sign.
+        delta_first = _percent(a_first, b_second)
+        delta_second = _percent(a_second, b_first)
+
+        # Pooled GEOMETRICALLY, not by averaging the two percentages. Percent change is
+        # asymmetric — 100→92 is -8.0% but 92→100 is +8.7% — so the arithmetic mean of two
+        # equal-and-opposite ratios is not zero, and a pure position artifact would pool to a
+        # small nonzero "delta". The geometric mean of the ratios makes the null control exactly
+        # zero, which is what a null control has to be.
+        pooled_delta = _geometric_percent(b_second / a_first, b_first / a_second)
+        samples = {
+            f"{arm}@position{position + 1}": counts.get((benchmark, arm, position), 0)
+            for arm in (arm_a, arm_b)
+            for position in (0, 1)
+        }
+
+        if (delta_first > 0) != (delta_second > 0):
+            verdicts.append(Verdict(
+                benchmark, delta_first, delta_second, pooled_delta, False,
+                f"position-dominated: {delta_first:+.1f}% when {arm_b} ran second, "
+                f"{delta_second:+.1f}% when {arm_b} ran first. The two orderings disagree on "
+                "the SIGN, so there is no delta to report",
+                samples,
+            ))
+            continue
+
+        if abs(pooled_delta) < threshold_percent:
+            verdicts.append(Verdict(
+                benchmark, delta_first, delta_second, pooled_delta, False,
+                f"below the {threshold_percent:.0f}% floor "
+                f"(pooled {pooled_delta:+.1f}%) — inside the range the position artifact "
+                "alone can produce",
+                samples,
+            ))
+            continue
+
+        verdicts.append(Verdict(
+            benchmark, delta_first, delta_second, pooled_delta, True,
+            "both positions agree in sign and the pooled delta clears the floor",
+            samples,
+        ))
+
+    return verdicts
+
+
+def _percent(baseline_ns: float, candidate_ns: float) -> float:
+    """Signed percent change from *baseline_ns* to *candidate_ns*; positive = slower."""
+    if baseline_ns == 0:
+        return 0.0
+    return (candidate_ns - baseline_ns) / baseline_ns * 100.0
+
+
+def _geometric_percent(*ratios: float) -> float:
+    """Percent change corresponding to the geometric mean of *ratios* (1.0 = no change)."""
+    product = 1.0
+    for ratio in ratios:
+        product *= ratio
+    return (product ** (1.0 / len(ratios)) - 1.0) * 100.0
+
+
+# --------------------------------------------------------------------------------------
+# Worktree preparation and running
+# --------------------------------------------------------------------------------------
+
+
+#: Repo wrapper that serialises dotnet invocations behind an exclusive lock. Concurrent
+#: `dotnet build`/`test` runs consume 5-10 GB each and OOM the machine, so the repo forbids
+#: raw `dotnet` — and a benchmark orchestrator has a second reason to care: another dotnet
+#: process competing for cores is exactly the contention that makes a timing meaningless.
+SERIALIZED_DOTNET = os.path.join(".claude", "scripts", "dotnet-serialized")
+
+
+def _dotnet_command(repo_root: str, args: list[str]) -> list[str]:
+    """Prefix a dotnet invocation with the serialising wrapper when the repo provides one."""
+    wrapper = os.path.join(repo_root, SERIALIZED_DOTNET)
+    return [wrapper] + args if os.access(wrapper, os.X_OK) else ["dotnet"] + args
+
+
+def _run(command: list[str], cwd: Optional[str] = None) -> None:
+    result = subprocess.run(command, cwd=cwd)
+    if result.returncode != 0:
+        raise RuntimeError(f"command failed ({result.returncode}): {' '.join(command)}")
+
+
+def prepare_worktree(repo_root: str, ref: str, destination: str) -> str:
+    """
+    Create a detached worktree at *ref* and build Sharpy.Compiler.Benchmarks in Release.
+
+    Restore is explicit and the build is ``--no-restore``, mirroring ``benchmarks.yml``. That is
+    not stylistic: letting ``dotnet build`` restore implicitly resolves
+    ``Microsoft.CodeAnalysis.CSharp`` to BenchmarkDotNet's 4.14.0 rather than Sharpy.Compiler's
+    5.6.0 and the build dies with CS1705. A warm ``obj/`` hides it, so it only appears on a fresh
+    checkout — which is exactly what every worktree is.
+    """
+    _run(["git", "worktree", "add", "--detach", destination, ref], cwd=repo_root)
+
+    # cwd INSIDE the worktree, project paths RELATIVE. Measured, not stylistic: with an absolute
+    # project path from outside, restore produces a graph in which the Benchmarks compile binds
+    # BenchmarkDotNet's Microsoft.CodeAnalysis.CSharp 4.14.0 instead of Sharpy.Compiler's 5.6.0,
+    # and the build dies with CS1705. On macOS the tempdir is /var/... symlinked to /private/var/...,
+    # and the successful invocation is the one where the path resolves before MSBuild sees it.
+    # Both failing spellings restore "successfully" first, so the symptom lands on the build.
+    worktree = os.path.realpath(destination)
+    project = os.path.join("src", "Sharpy.Compiler.Benchmarks")
+    _run(_dotnet_command(repo_root, [
+        "restore", os.path.join(project, "Sharpy.Compiler.Benchmarks.csproj")]), cwd=worktree)
+    _run(_dotnet_command(repo_root, [
+        "build", "-c", "Release", "--no-restore", project]), cwd=worktree)
+    return worktree
+
+
+def run_arm(
+    repo_root: str, worktree: str, artifacts: str, bdn_filter: str, job: Optional[str] = None
+) -> dict[str, float]:
+    """Run one arm's benchmarks and return benchmark -> mean ns."""
+    # Same relative-path-from-inside-the-worktree rule as prepare_worktree.
+    command = _dotnet_command(repo_root, [
+        "run", "--project", os.path.join("src", "Sharpy.Compiler.Benchmarks"),
+        "-c", "Release", "--no-build", "--",
+        "--filter", bdn_filter, "--exporters", "json", "--artifacts", artifacts,
+    ])
+    # A shorter BenchmarkDotNet job trades per-run precision for more rounds. That is the
+    # right trade here: the thing being averaged out is run POSITION, and more A/B pairs
+    # cancel it better than longer individual runs do.
+    if job:
+        command += ["--job", job]
+    _run(command, cwd=worktree)
+    return parse_bdn_means(artifacts)
+
+
+def orchestrate(
+    repo_root: str,
+    ref_a: str,
+    ref_b: str,
+    rounds: int,
+    bdn_filter: str,
+    workdir: str,
+    job: Optional[str] = None,
+) -> list[Measurement]:
+    """
+    Alternate the arms so each is measured in each position an equal number of times.
+
+    Round parity decides which arm goes first, so over an even number of rounds every
+    (arm, position) cell gets the same count. An odd round count leaves one cell short
+    and ``evaluate`` will say so rather than pooling an unbalanced comparison.
+    """
+    worktrees = {
+        ref_a: prepare_worktree(repo_root, ref_a, os.path.join(workdir, "arm_a")),
+        ref_b: prepare_worktree(repo_root, ref_b, os.path.join(workdir, "arm_b")),
+    }
+
+    measurements: list[Measurement] = []
+    for round_index in range(rounds):
+        order = (ref_a, ref_b) if round_index % 2 == 0 else (ref_b, ref_a)
+        for position, ref in enumerate(order):
+            artifacts = os.path.join(workdir, f"artifacts_r{round_index}_p{position}")
+            print(f"[bench_ab] round {round_index + 1}/{rounds}, "
+                  f"position {position + 1}: {ref}", flush=True)
+            arm_means = run_arm(repo_root, worktrees[ref], artifacts, bdn_filter, job)
+            for benchmark, mean_ns in arm_means.items():
+                measurements.append(Measurement(ref, position, benchmark, mean_ns))
+
+    return measurements
+
+
+def cleanup_worktrees(repo_root: str, workdir: str) -> None:
+    for name in ("arm_a", "arm_b"):
+        path = os.path.join(workdir, name)
+        if os.path.isdir(path):
+            subprocess.run(["git", "worktree", "remove", "--force", path], cwd=repo_root)
+    shutil.rmtree(workdir, ignore_errors=True)
+
+
+# --------------------------------------------------------------------------------------
+# CLI
+# --------------------------------------------------------------------------------------
+
+
+def report(verdicts: list[Verdict], arm_a: str, arm_b: str, rounds: int) -> str:
+    measured = [v for v in verdicts if v.measured]
+    lines = [
+        "",
+        f"Interleaved A/B: {arm_a} (A) vs {arm_b} (B), {rounds} round(s), "
+        f"{rounds * 2} benchmark invocations",
+        f"{len(measured)} of {len(verdicts)} benchmark(s) produced a measurable delta.",
+        "",
+    ]
+    lines.extend(v.describe(arm_a, arm_b) for v in verdicts)
+    lines.extend([
+        "",
+        "A delta is reported only when both positions agree in sign AND the pooled "
+        f"magnitude clears {SIGNIFICANCE_THRESHOLD_PERCENT:.0f}%. Run position alone moves "
+        "wall clock 7-10% on this corpus (#1318), so anything smaller is unmeasured, not zero.",
+    ])
+    return "\n".join(lines)
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="python -m build_tools.bench_ab",
+        description="Interleaved A/B compiler benchmarking with position sign agreement.",
+    )
+    parser.add_argument("ref_a", help="baseline git ref (A)")
+    parser.add_argument("ref_b", help="candidate git ref (B)")
+    parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS,
+                        help=f"A/B round pairs (default {DEFAULT_ROUNDS}); "
+                             "an EVEN count balances the positions")
+    parser.add_argument("--filter", dest="bdn_filter", default=DEFAULT_FILTER,
+                        help=f"BenchmarkDotNet --filter (default {DEFAULT_FILTER!r})")
+    parser.add_argument("--job", default=None,
+                        help="BenchmarkDotNet --job (e.g. short, medium); omit for the default. "
+                             "A shorter job buys more rounds, which is what cancels position.")
+    parser.add_argument("--keep-worktrees", action="store_true",
+                        help="leave the prepared worktrees in place for inspection")
+    args = parser.parse_args(argv)
+
+    if args.rounds < 2:
+        print("--rounds must be at least 2: one round measures each arm in exactly one "
+              "position, which is the sequential comparison this tool replaces.",
+              file=sys.stderr)
+        return 2
+    if args.rounds % 2 == 1:
+        print(f"[bench_ab] note: {args.rounds} rounds leaves the positions unbalanced; "
+              "an even count gives every (arm, position) cell the same sample count.",
+              file=sys.stderr)
+
+    repo_root = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True, text=True, check=True).stdout.strip()
+
+    workdir = tempfile.mkdtemp(prefix="sharpy_bench_ab_")
+    try:
+        measurements = orchestrate(
+            repo_root, args.ref_a, args.ref_b, args.rounds, args.bdn_filter, workdir, args.job)
+        verdicts = evaluate(measurements, args.ref_a, args.ref_b)
+        print(report(verdicts, args.ref_a, args.ref_b, args.rounds))
+    finally:
+        if not args.keep_worktrees:
+            cleanup_worktrees(repo_root, workdir)
+        else:
+            print(f"[bench_ab] worktrees kept under {workdir}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

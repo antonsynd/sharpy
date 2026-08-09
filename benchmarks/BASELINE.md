@@ -30,6 +30,24 @@
 > Every wall-clock number recorded in this file before the orchestrator existed is
 > position-uncontrolled and should be read as an order of magnitude, not a measurement; the
 > allocation figures are unaffected.
+>
+> **Null control, 2026-08-09** (Apple M4 Max, `--job short`, HEAD vs HEAD, 4 rounds — identical
+> code in both arms, so every difference is artifact):
+>
+> | benchmark | B ran second | B ran first | verdict |
+> |---|---:|---:|---|
+> | `CompilerBenchmarks.Compile_Fibonacci` | +6.2% | −5.9% | UNMEASURED — position-dominated |
+> | `ParserBenchmarks.Parse_Fibonacci` | +0.1% | −0.1% | UNMEASURED — position-dominated |
+>
+> The instrument can say "nothing", which is the prerequisite for believing it when it says
+> something. Two things worth keeping: the compile row swings ±6% on ordering alone — a
+> sequential comparison would have reported that as a 6% win or loss with a straight face — and
+> the effect is **not uniform across benchmarks**. The parse row is ~50× cheaper and essentially
+> immune. That the expensive row carries the artifact and the cheap one does not points at
+> warm-up (JIT, tiered compilation, caches) rather than a machine-wide thermal or scheduling
+> drift, which is the mechanism remedy 3 in #1318 proposes to neutralise with a fixed pre-run
+> corpus pass. That remedy is **not implemented and not tested** — this run measures the effect,
+> it does not explain it.
 
 ## D4 Sharpy.Core Hot-Path Results (#1051)
 

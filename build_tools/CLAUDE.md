@@ -26,6 +26,7 @@ python -m build_tools build run --max-tasks 5      # Auto-builder
 | `differential_parse/` | Batched CPython `ast.parse` oracle used by `CPythonDifferentialParseTests` (#1037) |
 | `differential_exec/` | Batched python3 executor used by `DifferentialExecutionTests` (stdout differential oracle) |
 | `allocation_gate.py` | BenchmarkDotNet allocation-baseline ratchet (compares runs to `benchmarks/allocation-baseline.json`) |
+| `bench_ab.py` | Interleaved A/B benchmark orchestrator — alternates two refs and reports a wall-clock delta only when both run positions agree in sign (#1318) |
 | `generate_stdlib_docs.py` | Stdlib docs generator — `docs/stdlib` is generated, never hand-edit |
 | `generate_code_walkthroughs.py` | AI-powered C# documentation generator |
 | `cli.py` / `__main__.py` | Unified CLI entry point |
