@@ -51,6 +51,9 @@ internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
             return null;
 
         var locations = new System.Collections.Generic.List<Location>();
+        // The declaration is usually recorded as a reference too, so it would otherwise be
+        // reported twice at the same range (#1263).
+        var seen = new RangeDedupe();
 
         // Include declaration if requested
         if (request.Context.IncludeDeclaration && symbol.DeclarationSpan != null)
@@ -64,18 +67,19 @@ internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
                 ? DocumentUri.From(declFilePath)
                 : DocumentUri.FromFileSystemPath(declFilePath);
 
-            locations.Add(new Location
+            var declRange = new LspRange(
+                new Position(declLine, declCol),
+                new Position(declLine, declEnd));
+
+            if (seen.IsFirst(declUri, declRange))
             {
-                Uri = declUri,
-                Range = new LspRange(
-                    new Position(declLine, declCol),
-                    new Position(declLine, declEnd))
-            });
+                locations.Add(new Location { Uri = declUri, Range = declRange });
+            }
         }
 
         // Get references from current file
         var references = analysis.SemanticQuery.GetReferences(symbol);
-        AddReferenceLocations(locations, references, symbol.Name, uri);
+        AddReferenceLocations(locations, seen, references, symbol.Name, uri);
 
         // Collect references from other workspace files
         var allUris = _workspace.GetAllDocumentUris();
@@ -103,7 +107,7 @@ internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
 
                     var crossRefs = otherAnalysis.SemanticQuery.FindReferencesBySymbolIdentity(
                         symbol.Name, symbol.DeclaringFilePath);
-                    AddReferenceLocations(locations, crossRefs, symbol.Name, otherUri);
+                    AddReferenceLocations(locations, seen, crossRefs, symbol.Name, otherUri);
                 }
                 catch (OperationCanceledException)
                 {
@@ -121,6 +125,7 @@ internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
 
     private static void AddReferenceLocations(
         System.Collections.Generic.List<Location> locations,
+        RangeDedupe seen,
         IReadOnlyList<Compiler.Semantic.SymbolReference> references,
         string symbolName,
         string fallbackUri)
@@ -136,13 +141,14 @@ internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
                 ? DocumentUri.From(refFilePath)
                 : DocumentUri.FromFileSystemPath(refFilePath);
 
-            locations.Add(new Location
+            var refRange = new LspRange(
+                new Position(refLine, refCol),
+                new Position(refLine, refEnd));
+
+            if (seen.IsFirst(refUri, refRange))
             {
-                Uri = refUri,
-                Range = new LspRange(
-                    new Position(refLine, refCol),
-                    new Position(refLine, refEnd))
-            });
+                locations.Add(new Location { Uri = refUri, Range = refRange });
+            }
         }
     }
 

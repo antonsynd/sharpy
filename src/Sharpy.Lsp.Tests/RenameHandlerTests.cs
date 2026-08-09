@@ -77,6 +77,28 @@ public class RenameHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Rename_DeclarationAlsoRecordedAsReference_EmitsOneEditPerOccurrence()
+    {
+        // Pins the invariant #1263 is about: no two edits may target the same range, because an
+        // editor applying both writes the new name twice. MEASURED CAVEAT: with the dedupe disabled
+        // this shape does NOT duplicate — five shapes were probed (function, local, module variable,
+        // class, parameter) and none did, so this is a guard against the shape arising, not a
+        // reproduction of it. See the #1263 comment for what the probe found instead.
+        var source = "def target() -> int:\n    return 1\n\ndef main() -> None:\n    print(target())\n    print(target())";
+
+        var result = await RenameAsync(source, 0, 4, "renamed");
+
+        result.Should().NotBeNull();
+        var uri = DocumentUri.From("file:///test.spy");
+        var edits = result!.Changes![uri].ToList();
+
+        edits.Select(e => (e.Range.Start.Line, e.Range.Start.Character, e.Range.End.Character))
+            .Should().OnlyHaveUniqueItems("no two edits may target the same range");
+        edits.Should().HaveCount(3, "one declaration edit and one per call site");
+        edits.Should().OnlyContain(e => e.NewText == "renamed");
+    }
+
+    [Fact]
     public async Task Rename_DecoratedFunction_RenamesNameNotDecorator()
     {
         // Test a decorated top-level function.

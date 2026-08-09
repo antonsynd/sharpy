@@ -51,6 +51,9 @@ internal sealed class SharpyDocumentHighlightHandler : DocumentHighlightHandlerB
             return null;
 
         var results = new List<DocumentHighlight>();
+        // The declaration is usually recorded as a reference too. Deduping keeps the Write kind:
+        // the declaration is added first, so the Read duplicate is the one dropped (#1263).
+        var seen = new RangeDedupe();
 
         // Add declaration highlight (Write kind)
         if (symbol.DeclarationLine != null)
@@ -59,13 +62,18 @@ internal sealed class SharpyDocumentHighlightHandler : DocumentHighlightHandlerB
             var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
             var declEnd = declCol + symbol.Name.Length;
 
-            results.Add(new DocumentHighlight
+            var declRange = new LspRange(
+                new Position(declLine, declCol),
+                new Position(declLine, declEnd));
+
+            if (seen.IsFirst(declRange))
             {
-                Range = new LspRange(
-                    new Position(declLine, declCol),
-                    new Position(declLine, declEnd)),
-                Kind = DocumentHighlightKind.Write
-            });
+                results.Add(new DocumentHighlight
+                {
+                    Range = declRange,
+                    Kind = DocumentHighlightKind.Write
+                });
+            }
         }
 
         // Add reference highlights (Read kind)
@@ -81,11 +89,16 @@ internal sealed class SharpyDocumentHighlightHandler : DocumentHighlightHandlerB
             var refCol = System.Math.Max(0, refLoc.Column - 1);
             var refEnd = refCol + symbol.Name.Length;
 
+            var refRange = new LspRange(
+                new Position(refLine, refCol),
+                new Position(refLine, refEnd));
+
+            if (!seen.IsFirst(refRange))
+                continue;
+
             results.Add(new DocumentHighlight
             {
-                Range = new LspRange(
-                    new Position(refLine, refCol),
-                    new Position(refLine, refEnd)),
+                Range = refRange,
                 Kind = DocumentHighlightKind.Read
             });
         }

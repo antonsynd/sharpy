@@ -66,6 +66,9 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
             return null;
 
         var edits = new Dictionary<DocumentUri, System.Collections.Generic.IList<TextEdit>>();
+        // The declaration is usually recorded as a reference too, so without this the same range
+        // is emitted twice — two overlapping edits an editor may apply twice (#1263).
+        var seen = new RangeDedupe();
 
         // Edit declaration — use the name token position, not the statement start
         if (symbol.DeclaringFilePath != null || symbol.DeclarationSpan != null)
@@ -73,13 +76,13 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
             var declLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
             var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
 
-            AddEdit(edits, ToDocumentUri(symbol.DeclaringFilePath, uri),
+            AddEdit(edits, seen, ToDocumentUri(symbol.DeclaringFilePath, uri),
                 declLine, declCol, symbol.Name.Length, newName);
         }
 
         // Edit all references in current file
         var references = analysis.SemanticQuery.GetReferences(symbol);
-        AddReferenceEdits(edits, references, symbol.Name, uri, newName);
+        AddReferenceEdits(edits, seen, references, symbol.Name, uri, newName);
 
         // Edit references in other workspace files
         var allUris = _workspace.GetAllDocumentUris();
@@ -107,7 +110,7 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
 
                     var crossRefs = otherAnalysis.SemanticQuery.FindReferencesBySymbolIdentity(
                         symbol.Name, symbol.DeclaringFilePath);
-                    AddReferenceEdits(edits, crossRefs, symbol.Name, otherUri, newName);
+                    AddReferenceEdits(edits, seen, crossRefs, symbol.Name, otherUri, newName);
                 }
                 catch (OperationCanceledException)
                 {
@@ -260,6 +263,7 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
 
     private static void AddReferenceEdits(
         Dictionary<DocumentUri, System.Collections.Generic.IList<TextEdit>> edits,
+        RangeDedupe seen,
         IReadOnlyList<Compiler.Semantic.SymbolReference> references,
         string symbolName,
         string fallbackUri,
@@ -270,7 +274,7 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
             var refLine = System.Math.Max(0, refLoc.Line - 1);
             var refCol = System.Math.Max(0, refLoc.Column - 1);
 
-            AddEdit(edits, ToDocumentUri(refLoc.FilePath, fallbackUri),
+            AddEdit(edits, seen, ToDocumentUri(refLoc.FilePath, fallbackUri),
                 refLine, refCol, symbolName.Length, newName);
         }
     }
@@ -305,12 +309,20 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
 
     private static void AddEdit(
         Dictionary<DocumentUri, System.Collections.Generic.IList<TextEdit>> edits,
+        RangeDedupe seen,
         DocumentUri uri,
         int line,
         int col,
         int oldNameLength,
         string newName)
     {
+        var range = new LspRange(
+            new Position(line, col),
+            new Position(line, col + oldNameLength));
+
+        if (!seen.IsFirst(uri, range))
+            return;
+
         if (!edits.TryGetValue(uri, out var fileEdits))
         {
             fileEdits = new System.Collections.Generic.List<TextEdit>();
@@ -319,9 +331,7 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
 
         fileEdits.Add(new TextEdit
         {
-            Range = new LspRange(
-                new Position(line, col),
-                new Position(line, col + oldNameLength)),
+            Range = range,
             NewText = newName
         });
     }
