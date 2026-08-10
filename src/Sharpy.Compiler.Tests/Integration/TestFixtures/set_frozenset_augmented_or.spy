@@ -1,0 +1,20 @@
+# The mixed `|=` forms (#1311/#1312). Augmented assignment is `x = x | y`, so the left-operand
+# rule that types `set | frozenset` also decides what the variable is left holding: a set on the
+# left stays a set, a frozenset on the left is rebound to a new frozenset. frozenset_operators
+# next door covers the same-type `|=`; this is the half where the two types meet.
+#
+# The isinstance probes are closed-generic because Sharpy's generics are real runtime types.
+# Every value and every boolean below is what python3 prints for the same program.
+
+def main() -> None:
+    s: set[int] = {1, 2}
+    s |= frozenset([2, 3])
+    print(sorted(s))
+    print(isinstance(s, set[int]))
+    print(isinstance(s, frozenset[int]))
+
+    f: frozenset[int] = frozenset([1, 2])
+    f |= {2, 3}
+    print(sorted(f))
+    print(isinstance(f, frozenset[int]))
+    print(isinstance(f, set[int]))

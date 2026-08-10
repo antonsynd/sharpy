@@ -48,6 +48,40 @@ public class FrozenSetMixedOperatorTests
     }
 
     [Fact]
+    public void AugmentedOr_FollowsTheSameLeftOperandRule()
+    {
+        // `x |= y` is `x = x | y` — Sharpy has no `__ior__` (assignment_operators.md), so the
+        // left-operand rule that types the binary form also decides what the variable holds.
+        var s = S(1, 2);
+        s |= F(2, 3);
+        s.Should().BeOfType<Set<int>>().And.BeEquivalentTo(new[] { 1, 2, 3 });
+
+        var f = F(1, 2);
+        f |= S(2, 3);
+        f.Should().BeOfType<FrozenSet<int>>().And.BeEquivalentTo(new[] { 1, 2, 3 });
+    }
+
+    [Fact]
+    public void AugmentedOr_RebindsRatherThanUpdatingInPlace()
+    {
+        // Both directions produce a new object. For the frozenset-on-the-left form that matches
+        // CPython, which cannot update an immutable value. For the set-on-the-left form it does
+        // not: CPython's `set |= other` calls `__ior__` and mutates, so an alias would see the
+        // change. `update()` is the in-place spelling here.
+        var s = S(1, 2);
+        var sAlias = s;
+        s |= F(2, 3);
+        ReferenceEquals(s, sAlias).Should().BeFalse();
+        sAlias.Should().BeEquivalentTo(new[] { 1, 2 }, "the alias still holds the original set");
+
+        var f = F(1, 2);
+        var fAlias = f;
+        f |= S(2, 3);
+        ReferenceEquals(f, fAlias).Should().BeFalse();
+        fAlias.Should().BeEquivalentTo(new[] { 1, 2 });
+    }
+
+    [Fact]
     public void EmptyOperands_BehaveAsIdentityOrAnnihilator()
     {
         (S() | F(1)).Should().BeEquivalentTo(new[] { 1 });
