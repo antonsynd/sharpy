@@ -526,7 +526,7 @@ internal class TypeInferenceService
             // Try direct operator
             if (typeSymbol.OperatorMethods.TryGetValue(dunderName, out var methods))
             {
-                var bestOverload = FindBestOverload(methods, right);
+                var bestOverload = FindBestOverload(methods, right, left);
                 if (bestOverload != null)
                 {
                     if (left is GenericType leftGeneric && !IsComparisonOperator(op))
@@ -543,7 +543,7 @@ internal class TypeInferenceService
             }
 
             // Try equality complement synthesis
-            var complementResult = TryInferEqualityComplement(op, typeSymbol, right);
+            var complementResult = TryInferEqualityComplement(op, typeSymbol, right, left);
             if (complementResult != null)
                 return complementResult;
         }
@@ -556,7 +556,8 @@ internal class TypeInferenceService
             or BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
             or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual;
 
-    private SemanticType? TryInferEqualityComplement(BinaryOperator op, TypeSymbol typeSymbol, SemanticType right)
+    private SemanticType? TryInferEqualityComplement(
+        BinaryOperator op, TypeSymbol typeSymbol, SemanticType right, SemanticType left)
     {
         bool hasEq = typeSymbol.OperatorMethods.ContainsKey(DunderNames.Eq);
         bool hasNe = typeSymbol.OperatorMethods.ContainsKey(DunderNames.Ne);
@@ -564,14 +565,14 @@ internal class TypeInferenceService
         if (op == BinaryOperator.Equal && hasNe && !hasEq)
         {
             var neMethods = typeSymbol.OperatorMethods[DunderNames.Ne];
-            var bestOverload = FindBestOverload(neMethods, right);
+            var bestOverload = FindBestOverload(neMethods, right, left);
             if (bestOverload != null)
                 return SemanticType.Bool;
         }
         else if (op == BinaryOperator.NotEqual && hasEq && !hasNe)
         {
             var eqMethods = typeSymbol.OperatorMethods[DunderNames.Eq];
-            var bestOverload = FindBestOverload(eqMethods, right);
+            var bestOverload = FindBestOverload(eqMethods, right, left);
             if (bestOverload != null)
                 return SemanticType.Bool;
         }
@@ -581,20 +582,27 @@ internal class TypeInferenceService
 
     /// <summary>
     /// Selects the best operator-dunder / <c>__getitem__</c> overload for a single (non-self)
-    /// argument. A lone candidate is returned as-is (no ambiguity is possible; any type error is
-    /// reported by the operator validator). Multiple candidates route through the shared
-    /// deterministic betterness core via <see cref="DeterministicBinaryOverloadResolver"/>, so
-    /// resolution is order-independent and uses the same specificity tiebreak as call resolution
-    /// (#975) — replacing the former first-match-wins tiers (including the unconstrained bare
-    /// <c>TypeParameterType</c> wildcard, which the core now ranks by specificity like any other).
+    /// argument. A lone candidate has no rival to be ambiguous with, but its operand is still
+    /// type-checked (<see cref="AcceptsArgument"/>) — being the only overload rules out ambiguity,
+    /// not a type error. Multiple candidates route through the shared deterministic betterness core
+    /// via <see cref="DeterministicBinaryOverloadResolver"/>, so resolution is order-independent and
+    /// uses the same specificity tiebreak as call resolution (#975) — replacing the former
+    /// first-match-wins tiers (including the unconstrained bare <c>TypeParameterType</c> wildcard,
+    /// which the core now ranks by specificity like any other).
     /// </summary>
-    private FunctionSymbol? FindBestOverload(List<FunctionSymbol> candidates, SemanticType argumentType)
+    /// <param name="receiver">
+    /// The type the operator or indexer was resolved ON, when the caller knows it — the
+    /// instantiation whose type arguments close the candidate's open parameter types. Null leaves
+    /// those parameters open, and an open position is a wildcard to the operand check.
+    /// </param>
+    private FunctionSymbol? FindBestOverload(
+        List<FunctionSymbol> candidates, SemanticType argumentType, SemanticType? receiver = null)
     {
         if (candidates.Count == 0)
             return null;
 
         if (candidates.Count == 1)
-            return AcceptsArgument(candidates[0], argumentType) ? candidates[0] : null;
+            return AcceptsArgument(candidates[0], argumentType, receiver) ? candidates[0] : null;
 
         if (DeterministicBinaryOverloadResolver != null)
             return DeterministicBinaryOverloadResolver(candidates, argumentType);
@@ -607,31 +615,193 @@ internal class TypeInferenceService
     }
 
     /// <summary>
-    /// Whether a lone operator candidate can accept <paramref name="argumentType"/> at all.
+    /// Whether a lone operator candidate can accept <paramref name="argumentType"/> in its operand
+    /// position.
     /// </summary>
     /// <remarks>
     /// A single candidate used to be returned unconditionally, on the reasoning that one overload
     /// admits no ambiguity and the operator validator would report any type error. It does not:
-    /// <c>Sharpy.Set&lt;T&gt;</c> declares exactly one <c>operator |</c>, so <c>set | list</c>
-    /// resolved, typed as <c>set</c>, and emitted C# that Roslyn rejected with CS0019 — surfacing
-    /// as SPY0908, an internal error, for ordinary user code (#1253).
+    /// <c>Sharpy.List&lt;T&gt;</c> declares exactly one <c>operator +</c>, so <c>list[int] + 5</c>
+    /// resolved, typed as <c>list[int]</c>, and emitted C# that Roslyn rejected with CS0019 —
+    /// surfacing as SPY0908, an internal error, for ordinary user code. The same type's
+    /// <c>operator *</c> has two overloads and was refused correctly all along: the SIZE of the
+    /// candidate list, not the operand, decided whether a type check happened (#1253, #1311).
     /// <para>
-    /// Deliberately shallow: it rejects only when parameter and argument are both generics built
-    /// from <em>different</em> type constructors (<c>set[T]</c> against <c>list[int]</c>), which no
-    /// conversion bridges. Anything else — a type parameter, a base type, a primitive, a user type
-    /// — is left alone, so a single-candidate operator that today accepts an argument via an
-    /// implicit conversion still does.
+    /// The operand is <c>Parameters[^1]</c> — located by SHAPE, never by name. An operator
+    /// discovered from CLR metadata carries its declared parameter names (<c>left</c>/<c>right</c>)
+    /// verbatim, so any rule keyed on a leading <c>self</c> skips exactly the operators the
+    /// language's own collection types declare.
+    /// </para>
+    /// <para>
+    /// Refusal takes proof, never mere doubt — a candidate wrongly refused here reports a type
+    /// error on code that compiles. <see cref="OperandAccepts"/> therefore accepts anything Sharpy
+    /// assignability, per-argument generic matching, an inheritance walk or a .NET conversion
+    /// admits (<see cref="ClrConversionRank"/> — the same widening / reference / <c>op_Implicit</c>
+    /// ranking the CLR operator path uses), and treats every position still open after receiver
+    /// substitution as a wildcard.
     /// </para>
     /// </remarks>
-    private static bool AcceptsArgument(FunctionSymbol candidate, SemanticType argumentType)
+    private bool AcceptsArgument(FunctionSymbol candidate, SemanticType argumentType, SemanticType? receiver)
     {
         if (candidate.Parameters.Count < 2)
             return true;
 
-        return candidate.Parameters[^1].Type is not GenericType parameterType
-            || argumentType is not GenericType argument
-            || string.Equals(parameterType.Name, argument.Name, StringComparison.Ordinal);
+        return OperandAccepts(CloseOverReceiver(candidate.Parameters[^1].Type, receiver), argumentType);
     }
+
+    /// <summary>
+    /// The declared operand type with the receiver's type arguments substituted in, so
+    /// <c>List&lt;T&gt; operator +(List&lt;T&gt;, List&lt;T&gt;)</c> on a <c>list[int]</c> receiver is
+    /// checked as the <c>list[int]</c>-taking operator it actually is. Left open, the parameter
+    /// matches every element type, which is how <c>list[int] + list[str]</c> reached codegen.
+    /// </summary>
+    private static SemanticType CloseOverReceiver(SemanticType parameterType, SemanticType? receiver)
+    {
+        if (receiver is not GenericType { GenericDefinition: { } definition } instantiation)
+            return parameterType;
+
+        var typeParameters = definition.TypeParameters;
+        if (typeParameters.Count == 0 || typeParameters.Count != instantiation.TypeArguments.Count)
+            return parameterType;
+
+        var substitutions = new Dictionary<string, SemanticType>(typeParameters.Count, StringComparer.Ordinal);
+        for (int i = 0; i < typeParameters.Count; i++)
+            substitutions[typeParameters[i].Name] = instantiation.TypeArguments[i];
+
+        return TypeSubstitution.Apply(parameterType, substitutions);
+    }
+
+    /// <summary>
+    /// Whether an argument of <paramref name="argumentType"/> can reach an operand position declared
+    /// as <paramref name="parameterType"/>. Every arm below grants acceptance; falling off the end is
+    /// the only refusal, so an unknown, open or unmapped type is always let through.
+    /// </summary>
+    private bool OperandAccepts(SemanticType parameterType, SemanticType argumentType)
+    {
+        // A position that is still open after substitution, or a type that is already an error
+        // placeholder, supports no conclusion either way.
+        if (parameterType is TypeParameterType or UnknownType or SelfType)
+            return true;
+        if (argumentType is TypeParameterType or UnknownType)
+            return true;
+
+        // A C#-nullable operand — how Sharpy.Core spells its own collection operators
+        // (`operator +(List<T>? left, List<T>? right)`) — accepts what its underlying type
+        // accepts, plus None.
+        if (parameterType is NullableType nullableParameter)
+            return argumentType is VoidType || OperandAccepts(nullableParameter.UnderlyingType, argumentType);
+        if (parameterType is OptionalType optionalParameter)
+            return argumentType is VoidType || OperandAccepts(optionalParameter.UnderlyingType, argumentType);
+
+        if (argumentType.IsAssignableTo(parameterType))
+            return true;
+
+        // A string-backed enum member IS its backing string (#1284). The emitted class carries the
+        // `implicit operator string` that makes this true, but it does not exist yet, so no amount
+        // of reflection below can find the conversion — the rule has to be stated.
+        if (TypeChecker.IsStringBackedEnum(argumentType) && parameterType is BuiltinType { Name: BuiltinNames.Str })
+            return true;
+
+        // Callable operands are compared structurally elsewhere, with knowledge (delegate Invoke
+        // signatures, symbol-table lookups) this service does not have. No opinion.
+        if (parameterType is FunctionType || argumentType is FunctionType)
+            return true;
+
+        // Same declaration, position by position, so an operand left partly open by the receiver
+        // still matches. Type arguments are INVARIANT in .NET, so a position matches on equality
+        // (or a wildcard) rather than assignability: `list[object]` does not take a `list[int]`
+        // however assignable the elements are — C# rejects that call, and so must this.
+        if (parameterType is GenericType parameterGeneric && argumentType is GenericType argumentGeneric
+            && TypeArgumentsMatch(parameterGeneric, argumentGeneric))
+        {
+            return true;
+        }
+
+        // A type that INHERITS the operand's declaration satisfies it. The walk needs the symbol
+        // hierarchy, which a SemanticType record cannot do for a GenericType target.
+        if (DefinitionOf(parameterType) is { } operandDefinition
+            && TypeHierarchyService.InheritsFrom(DefinitionOf(argumentType), operandDefinition))
+        {
+            return true;
+        }
+
+        // .NET has the last word, through the same conversion ranking the CLR operator path applies
+        // to reflected operators: reference conversions, builtin numeric widening and user-defined
+        // op_Implicit all count as acceptance.
+        var argumentClrType = GetClrType(argumentType);
+        var parameterClrType = GetClrType(parameterType);
+        return argumentClrType != null && parameterClrType != null
+            && ClrConversionRank(argumentClrType, parameterClrType) >= 0;
+    }
+
+    /// <summary>
+    /// Whether two generic types name the same declaration and agree at every type-argument
+    /// position, where a position still occupied by a type parameter (or by the empty-literal
+    /// <see cref="UnknownType"/> wildcard) agrees with anything.
+    /// <para>Agreement is equality except where the declaration says otherwise: a position is
+    /// invariant in .NET unless its type parameter is declared <c>out</c>/<c>in</c>, and comparing
+    /// a variant position by equality would refuse a call C# binds (a covariant
+    /// <c>Reader[Dog]</c> IS a <c>Reader[Animal]</c>, #827).</para>
+    /// </summary>
+    private static bool TypeArgumentsMatch(GenericType parameterType, GenericType argumentType)
+    {
+        if (!NamesSameDeclaration(parameterType, argumentType)
+            || parameterType.TypeArguments.Count != argumentType.TypeArguments.Count)
+        {
+            return false;
+        }
+
+        var declaration = parameterType.GenericDefinition ?? argumentType.GenericDefinition;
+
+        for (int i = 0; i < parameterType.TypeArguments.Count; i++)
+        {
+            var parameterArgument = parameterType.TypeArguments[i];
+            var argument = argumentType.TypeArguments[i];
+
+            if (parameterArgument is TypeParameterType or UnknownType
+                || argument is TypeParameterType or UnknownType
+                || parameterArgument.Equals(argument))
+            {
+                continue;
+            }
+
+            if (parameterArgument is GenericType nestedParameter && argument is GenericType nestedArgument
+                && TypeArgumentsMatch(nestedParameter, nestedArgument))
+            {
+                continue;
+            }
+
+            var variance = declaration != null && i < declaration.TypeParameters.Count
+                ? declaration.TypeParameters[i].Variance
+                : TypeParameterVariance.None;
+
+            if (variance == TypeParameterVariance.Covariant && argument.IsAssignableTo(parameterArgument))
+                continue;
+            if (variance == TypeParameterVariance.Contravariant && parameterArgument.IsAssignableTo(argument))
+                continue;
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Whether two generic types name the same declaration. Mirrors the rule
+    /// <see cref="GenericType.IsAssignableTo"/> applies (#1193): the written name usually settles
+    /// it, but one declaration can have more than one legal spelling, so a matching
+    /// <see cref="GenericType.GenericDefinition"/> is authoritative when both carry one.
+    /// </summary>
+    private static bool NamesSameDeclaration(GenericType left, GenericType right)
+        => string.Equals(left.Name, right.Name, StringComparison.Ordinal)
+            || (left.GenericDefinition != null && ReferenceEquals(left.GenericDefinition, right.GenericDefinition));
+
+    /// <summary>The declaring symbol behind a nominal type, generic or not.</summary>
+    private static TypeSymbol? DefinitionOf(SemanticType type) => type switch
+    {
+        GenericType generic => generic.GenericDefinition,
+        _ => type.DeclaringSymbol
+    };
 
     private SemanticType? TryInferClrBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
     {
@@ -1308,7 +1478,7 @@ internal class TypeInferenceService
             (typeSymbol.OperatorMethods.TryGetValue(DunderNames.GetItem, out var getItemMethods) ||
              typeSymbol.ProtocolMethods.TryGetValue(DunderNames.GetItem, out getItemMethods)))
         {
-            var bestOverload = FindBestOverload(getItemMethods, index);
+            var bestOverload = FindBestOverload(getItemMethods, index, container);
             if (bestOverload != null)
                 return bestOverload.ReturnType;
             // Fall back to first overload's return type

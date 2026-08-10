@@ -1,0 +1,104 @@
+# #1311 tolerance pin. Checking the operand of a LONE overload must not narrow what that operand
+# is allowed to be: every conversion the operator path accepted before the check went in still
+# has to bind. Each class below declares exactly one overload of its operator, so each one goes
+# through the single-candidate path.
+class Meters:
+    value: float
+
+    def __init__(self, value: float) -> None:
+        self.value = value
+
+    # Numeric widening: invoked with an `int`, bound to a `float` parameter.
+    def __add__(self, other: float) -> Meters:
+        return Meters(self.value + other)
+
+
+class Tag:
+    name: str
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    # An `object` parameter accepts anything, exactly as it did before.
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Tag)
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
+
+class Box[T]:
+    items: list[T]
+
+    def __init__(self, items: list[T]) -> None:
+        self.items = items
+
+    # The operand is the class's own type parameter — open at declaration, bound by the receiver.
+    def __or__(self, other: T) -> int:
+        self.items.append(other)
+        return len(self.items)
+
+    # __getitem__ shares the same overload selection; a lone indexer must keep resolving.
+    def __getitem__(self, index: int) -> T:
+        return self.items[index]
+
+
+# A string-backed enum member IS its backing string (#1284) — the conversion lives in an
+# `implicit operator string` on a class that does not exist yet, so no reflection can find it.
+enum Level:
+    INFO = "info"
+
+
+class Prefixer:
+    prefix: str
+
+    def __init__(self, prefix: str) -> None:
+        self.prefix = prefix
+
+    def __add__(self, other: str) -> str:
+        return self.prefix + other
+
+
+class Animal:
+    def name(self) -> str:
+        return "animal"
+
+
+class Dog(Animal):
+    pass
+
+
+# A covariant position is NOT invariant: .NET converts `Source[Dog]` to `Source[Animal]` because
+# the declaration says `out` (#827), so comparing the position by equality would refuse a call
+# C# binds.
+interface Source[out T]:
+    def get(self) -> T: ...
+
+
+class DogSource(Source[Dog]):
+    def get(self) -> Dog:
+        return Dog()
+
+
+class Shelter:
+    def __add__(self, other: Source[Animal]) -> str:
+        return other.get().name()
+
+
+def main() -> None:
+    print((Meters(1.5) + 2).value)
+    print(Tag("a") == Tag("a"))
+    print(Tag("a") == 7)
+
+    b: Box[str] = Box[str](["x"])
+    print(b | "y")
+    print(b[1])
+
+    # The builtin single-candidate operators keep binding their matching operand.
+    xs: list[int] = [1, 2]
+    print(xs + [3])
+    left: bytes = b"ab"
+    print(left + b"cd")
+    print(Prefixer(">") + Level.INFO)
+    source: Source[Dog] = DogSource()
+    print(Shelter() + source)

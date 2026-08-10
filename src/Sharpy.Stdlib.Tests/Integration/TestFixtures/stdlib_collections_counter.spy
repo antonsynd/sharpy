@@ -25,7 +25,9 @@ def main():
     c2: Counter[str] = c.copy()
     print(c2["a"])
 
-    # Operators
+    # Operators. This is also #1311's regression cell: `Counter + Counter` must keep typing as
+    # `Counter[str]`. Counter is CLR-discovered and has no bridge arm, so when its lone `+` is
+    # refused the CLR fallback degrades the result to `object` and this assignment fails.
     c3: Counter[str] = Counter(["a", "b"]) + Counter(["b", "c"])
     print(c3["a"])
     print(c3["b"])

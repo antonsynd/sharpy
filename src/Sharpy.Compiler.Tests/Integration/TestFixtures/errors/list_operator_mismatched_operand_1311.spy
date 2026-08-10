@@ -1,0 +1,12 @@
+# #1311: a lone operator overload must still check the type of its operand.
+#
+# `Sharpy.List<T>` declares exactly ONE `operator +`, so overload resolution took the
+# single-candidate short-circuit and never looked at the right operand: `list[int] + 5` typed as
+# `list[int]`, reached codegen, and died there as SPY0908 — an internal-error report for ordinary
+# user code. `list[int] * "x"` was refused correctly all along, because `operator *` has TWO
+# overloads and therefore took the strict multi-candidate path. Same type, same file, opposite
+# outcomes: the SIZE of the candidate list decided whether an operand was checked at all.
+def main() -> None:
+    xs: list[int] = [1, 2]
+    a = xs + 5
+    print(a)

@@ -1,0 +1,7 @@
+# #1311: the same single-candidate hole on a non-generic operand. `Sharpy.Bytes` declares one
+# `operator +` (Bytes, Bytes); before the fix `bytes + int` was accepted on arity alone and
+# surfaced as SPY0908 (CS0019 on `Bytes` and `int`).
+def main() -> None:
+    b: bytes = b"ab"
+    a = b + 5
+    print(a)

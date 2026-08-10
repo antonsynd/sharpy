@@ -1,0 +1,10 @@
+# #1311: the operand of a lone overload is checked against the parameter as INSTANTIATED by the
+# receiver, not against the open declaration. `List<T> operator +(List<T>, List<T>)` on a
+# `list[int]` receiver takes a `list[int]`; a `list[str]` matched the bare constructor name under
+# the old shallow check and only failed in codegen (SPY0908, CS0019 on `List<int>` and
+# `List<string>`).
+def main() -> None:
+    xs: list[int] = [1, 2]
+    ys: list[str] = ["a"]
+    a = xs + ys
+    print(a)
