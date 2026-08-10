@@ -215,7 +215,7 @@ namespace Sharpy
                 return collapsed;
             }
 
-            if (width < global::Sharpy.Builtins.Len(placeholder.TrimStart()))
+            if (width < placeholder.TrimStart().Length)
             {
                 throw new global::Sharpy.ValueError("placeholder too large for max width");
             }
