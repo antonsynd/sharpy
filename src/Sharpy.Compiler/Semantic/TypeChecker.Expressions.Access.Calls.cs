@@ -2475,7 +2475,8 @@ internal partial class TypeChecker
 
                     if (!IsArgumentAssignable(argTypes[i], expected, ArgumentNodeAt(call, i)))
                     {
-                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{expected.GetDisplayName()}'",
+                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{expected.GetDisplayName()}'"
+                            + DescribeOptionalArgument(argTypes[i], expected),
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
                     }
@@ -2616,6 +2617,7 @@ internal partial class TypeChecker
                     else
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{paramType.GetDisplayName()}'"
+                            + DescribeOptionalArgument(argTypes[i], paramType)
                             + DescribeTypeParameterBinding(param.Type, typeBinding),
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
@@ -2655,6 +2657,7 @@ internal partial class TypeChecker
                         && !(IsSystemTypeParameter(paramType) && _semanticInfo.IsTypeReference(kwarg.Value)))
                     {
                         AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{paramType.GetDisplayName()}'"
+                            + DescribeOptionalArgument(kwargTypes[kwarg.Name], paramType)
                             + DescribeTypeParameterBinding(param.Type, typeBinding),
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: kwarg.Span ?? kwarg.Value.Span);

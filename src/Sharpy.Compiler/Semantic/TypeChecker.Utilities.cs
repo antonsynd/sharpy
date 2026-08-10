@@ -733,6 +733,22 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The clause that tells a user holding an <c>Optional[T]</c> what to do about it. Appended to the
+    /// argument type-mismatch that <see cref="IsArgumentAssignable"/>'s refusal produces (#1397).
+    ///
+    /// <para>It is not decoration. <c>OptionalType</c> and <c>NullableType</c> both render as
+    /// <c>T?</c>, so the strict-to-loose cell — an <c>Optional[str]</c> handed to a <c>str | None</c>
+    /// formal — otherwise reads "cannot pass argument of type 'str?' to parameter of type 'str?'",
+    /// a tautology the reader cannot act on. Naming the argument's Optional-ness says which of the
+    /// two <c>T?</c>s is which, and states the remedy the type exists to require.</para>
+    /// </summary>
+    private static string DescribeOptionalArgument(SemanticType argumentType, SemanticType parameterType)
+        => argumentType is OptionalType optional && parameterType is not OptionalType
+            ? $" — the argument is Optional[{optional.UnderlyingType.GetDisplayName()}]; narrow it"
+              + " ('if x is not None:') or unwrap it first"
+            : string.Empty;
+
+    /// <summary>
     /// The type an argument expression binds through in an iterable position — <c>list[element]</c>,
     /// with <c>element</c> whatever the recorded mark says the source iterates as — or null when the
     /// argument carries no mark. The single gate every argument-binding consumer shares (#1159, #1198).
@@ -985,7 +1001,30 @@ internal partial class TypeChecker
             case NullableType nt:
                 return TryGetClrType(nt.UnderlyingType);
             case OptionalType ot:
-                return TryGetClrType(ot.UnderlyingType);
+                {
+                    // An Optional IS `Sharpy.Optional<T>`; it is not its payload. Answering the payload
+                    // here made the CLR fallback in IsAssignable decide a question about a value that
+                    // does not exist — `List<int>.IsAssignableFrom(List<int>)` for a source that is an
+                    // `Optional<List<int>>` — so an un-unwrapped Optional bound to a plain-T formal and
+                    // failed downstream as CS1503, reported to the user as a compiler bug (#1397).
+                    //
+                    // Nothing is lost by telling the truth: Sharpy.Core declares exactly one conversion,
+                    // `implicit operator Optional<T>(T)` (Optional.cs), which is the WRAP direction. There
+                    // is no Optional→T conversion for any check to find, so every acceptance the payload
+                    // mapping produced was a CS1503 in waiting. The caller narrows (`if x is not None`) or
+                    // unwraps, which is the entire guarantee `T?` exists to provide.
+                    var payloadClr = TryGetClrType(ot.UnderlyingType);
+                    if (payloadClr == null)
+                        return null;
+                    try
+                    {
+                        return typeof(SharpyRT::Sharpy.Optional<>).MakeGenericType(payloadClr);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
             case GenericType gt:
                 {
                     if (gt.Name == BuiltinNames.Array && gt.TypeArguments.Count == 1)
