@@ -44,8 +44,11 @@ namespace Sharpy
                 throw TypeError.ArgNone("max", "key");
             }
 
+            // The incumbent's key is CARRIED, not recomputed (#1416) — see Min for the full
+            // reasoning; this is its twin, and the two must not drift.
             bool iterableIsEmpty = true;
             T? biggest = default;
+            TKey? biggestKey = default;
 
             foreach (var elem in iterable)
             {
@@ -54,17 +57,22 @@ namespace Sharpy
                     throw TypeError.OpNotSupported("<", "NoneType");
                 }
 
-                if (biggest is null || iterableIsEmpty)
+                // Exactly once per element, the first included.
+                TKey elemKey = key(elem);
+
+                if (iterableIsEmpty)
                 {
                     biggest = elem;
+                    biggestKey = elemKey;
                     iterableIsEmpty = false;
 
                     continue;
                 }
 
-                if (Operator.Lt(key(biggest), key(elem)))
+                if (Operator.Lt(biggestKey!, elemKey))
                 {
                     biggest = elem;
+                    biggestKey = elemKey;
                 }
             }
 
@@ -100,8 +108,11 @@ namespace Sharpy
                 throw TypeError.ArgNone("max", "key");
             }
 
+            // Carries the incumbent's key, exactly as the two-argument overload does (#1416). This
+            // overload holds its own copy of the loop, so it held its own copy of the defect.
             bool iterableIsEmpty = true;
             T? biggest = default;
+            TKey? biggestKey = default;
 
             foreach (var elem in iterable)
             {
@@ -110,16 +121,20 @@ namespace Sharpy
                     throw TypeError.OpNotSupported("<", "NoneType");
                 }
 
-                if (biggest is null || iterableIsEmpty)
+                TKey elemKey = key(elem);
+
+                if (iterableIsEmpty)
                 {
                     biggest = elem;
+                    biggestKey = elemKey;
                     iterableIsEmpty = false;
                     continue;
                 }
 
-                if (Operator.Lt(key(biggest), key(elem)))
+                if (Operator.Lt(biggestKey!, elemKey))
                 {
                     biggest = elem;
+                    biggestKey = elemKey;
                 }
             }
 

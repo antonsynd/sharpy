@@ -44,8 +44,14 @@ namespace Sharpy
                 throw TypeError.ArgNone("min", "key");
             }
 
+            // The incumbent's key is CARRIED, not recomputed (#1416). Recomputing it on every
+            // comparison cost 2(N-1) key evaluations against CPython's N, and skipping the first
+            // element's key entirely cost 0 against CPython's 1 for a single-element sequence. A key
+            // may log, count or memoise, so the evaluation count is observable semantics, not just
+            // a cost — and it is a cost too, since the key is the expensive part of a keyed min.
             bool iterableIsEmpty = true;
             T? smallest = default;
+            TKey? smallestKey = default;
 
             foreach (var elem in iterable)
             {
@@ -54,17 +60,22 @@ namespace Sharpy
                     throw TypeError.OpNotSupported("<", "NoneType");
                 }
 
-                if (smallest is null || iterableIsEmpty)
+                // Exactly once per element, the first included.
+                TKey elemKey = key(elem);
+
+                if (iterableIsEmpty)
                 {
                     smallest = elem;
+                    smallestKey = elemKey;
                     iterableIsEmpty = false;
 
                     continue;
                 }
 
-                if (Operator.Lt(key(elem), key(smallest)))
+                if (Operator.Lt(elemKey, smallestKey!))
                 {
                     smallest = elem;
+                    smallestKey = elemKey;
                 }
             }
 
@@ -100,8 +111,11 @@ namespace Sharpy
                 throw TypeError.ArgNone("min", "key");
             }
 
+            // Carries the incumbent's key, exactly as the two-argument overload does (#1416). This
+            // overload holds its own copy of the loop, so it held its own copy of the defect.
             bool iterableIsEmpty = true;
             T? smallest = default;
+            TKey? smallestKey = default;
 
             foreach (var elem in iterable)
             {
@@ -110,16 +124,20 @@ namespace Sharpy
                     throw TypeError.OpNotSupported("<", "NoneType");
                 }
 
-                if (smallest is null || iterableIsEmpty)
+                TKey elemKey = key(elem);
+
+                if (iterableIsEmpty)
                 {
                     smallest = elem;
+                    smallestKey = elemKey;
                     iterableIsEmpty = false;
                     continue;
                 }
 
-                if (Operator.Lt(key(elem), key(smallest)))
+                if (Operator.Lt(elemKey, smallestKey!))
                 {
                     smallest = elem;
+                    smallestKey = elemKey;
                 }
             }
 
