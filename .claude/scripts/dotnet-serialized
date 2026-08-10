@@ -12,6 +12,23 @@
 #
 # Usage:  .claude/scripts/dotnet-serialized build sharpy.sln --nologo -v q
 #         .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer"
+#
+# GATE ON A PROJECT, NOT ON sharpy.sln (#1384).
+#
+# `dotnet test sharpy.sln` runs all five test projects in ONE invocation and prints one summary
+# line PER ASSEMBLY, in COMPLETION order, with each assembly's events interleaved in the log —
+# Sharpy.Compiler.Tests finishes last (~17 min) while the others report in the first ~4. Reading
+# the wrong line, or reading before the slow one lands, attributes a small project's tally to the
+# big one. That is what #1384 recorded as a ~9,400-cell undercount; measured at 43c7dd07c, both
+# invocations discover the SAME 13,422 Compiler.Tests cells (identical name sets) and both execute
+# 13,434 including all 3 skips, so nothing is being dropped.
+#
+# The real reason to prefer per-project is cross-project interference, which the same measurement
+# found: Sharpy.Cli.Tests' E2E tests compile and RUN programs that load Sharpy.Stdlib.dll, and under
+# a solution-level run — with Sharpy.Stdlib.Tests executing concurrently — one of them failed with
+# "Could not load file or assembly 'Sharpy.Stdlib'". It passes 6/6 in isolation. A solution-level
+# red can therefore be someone else's concurrency, and a solution-level green is only as trustworthy
+# as the line you happened to read.
 
 LOCK_DIR="${HOME}/.claude/locks/dotnet.lock"
 # The full suite takes ~18 minutes, so a 15-minute lock timeout made any queued run
