@@ -23,7 +23,7 @@ def sum_all(*numbers: int) -> int:
 # Call with any number of arguments
 total = sum_all(1, 2, 3)           # 6
 total = sum_all(1, 2, 3, 4, 5)     # 15
-total = sum_all()                   # 0 (empty tuple)
+total = sum_all()                   # 0 (args is an empty array[int])
 
 # Print multiple messages
 def log_all(*messages: str) -> None:

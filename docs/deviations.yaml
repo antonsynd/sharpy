@@ -447,6 +447,31 @@ deviations:
         log(1, "two", 3.0)
         # ERROR SPY0220: argument 'two' (str) not assignable to int
 
+  - id: variadic-args-is-array-not-tuple
+    code: null
+    category: types
+    audience: python
+    severity: none
+    python_behavior: "Inside the function, `*args` is a **tuple**: `args` prints as `(1, 2, 3)`, slicing it yields a tuple, and an empty call gives `()`."
+    sharpy_behavior: "`*args: T` binds as an `array[T]` — the CLR `params T[]` backing shown through. `len()`, indexing and iteration behave the same; slicing yields a `list[T]` (per array slicing), and an empty call gives an empty array, not `()`. This is the CONTAINER half of the variadic difference; the element half is `homogeneous-variadic-args`, which is what refuses a heterogeneous call."
+    spec_ref: docs/language_specification/function_variadic_arguments.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        def f(*args):
+            print(len(args))
+            print(args[0])
+            print(args[1:])       # a TUPLE: (2, 3)
+        f(1, 2, 3)
+      sharpy: |
+        def f(*args: int) -> None:
+            print(len(args))
+            print(args[0])
+            print(args[1:])       # a list[int]: [2, 3]
+        f(1, 2, 3)
+        # Same three values; the container differs. `args` is array[int], not a tuple.
+
   - id: no-classmethod
     code: null
     category: syntax

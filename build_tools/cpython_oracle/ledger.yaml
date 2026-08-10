@@ -557,6 +557,14 @@ deviations:
   spec_ref: docs/language_specification/string_type.md
   existing_diagnostic: null
   planned_diagnostic: SPY0470
+- id: variadic-args-is-array-not-tuple
+  category: types
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/function_variadic_arguments.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: variance-required-on-generics
   category: types
   audience: python
