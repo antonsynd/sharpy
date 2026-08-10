@@ -1,0 +1,37 @@
+# #1300's round-trip half: safe_load(safe_dump(x)) recovers x for the scalar shapes that are
+# correct today. The first yaml fixture (stdlib_yaml) pins the dump direction only; a dump that
+# round-trips is the property that actually says the two halves agree about a representation.
+#
+# Float precision is included because #1339 fixed it — safe_load used to take a single-precision
+# detour, so 0.1 came back as 0.10000000149011612 and this fixture could not have existed.
+#
+# NOT pinned here, because it is broken: a string whose text is a YAML scalar of another type
+# ("true", "42", "null", "1.5") is dumped BARE, so it round-trips to a bool/int/null/float instead
+# of a str (#1417). PyYAML quotes all four. Add those cells here when that lands, rather than
+# starting a second fixture.
+#
+# Every value verified against PyYAML on CPython 3.12: each round-trip below is an identity there.
+import yaml
+
+def main():
+    f: float = yaml.safe_load(yaml.safe_dump(0.1)) as! float
+    print(f)
+    print(f == 0.1)
+
+    pi: float = yaml.safe_load(yaml.safe_dump(3.141592653589793)) as! float
+    print(pi == 3.141592653589793)
+
+    s: str = yaml.safe_load(yaml.safe_dump("hello")) as! str
+    print(s)
+    print(s == "hello")
+
+    i: int = yaml.safe_load(yaml.safe_dump(42)) as! int
+    print(i)
+    print(i == 42)
+
+    t: bool = yaml.safe_load(yaml.safe_dump(True)) as! bool
+    print(t)
+    print(t == True)
+
+    fa: bool = yaml.safe_load(yaml.safe_dump(False)) as! bool
+    print(fa == False)
