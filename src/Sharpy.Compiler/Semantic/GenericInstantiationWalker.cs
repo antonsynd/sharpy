@@ -127,21 +127,20 @@ internal static class GenericInstantiationWalker
             }
         }
 
-        // Fallback: positional copy for the common case where derived and base
-        // share the same type parameters (e.g. class MyList[T](list[T])) and
-        // no BaseTypeReference was populated (legacy/synthesized types).
-        if (symbol.TypeParameters.Count == baseSymbol.TypeParameters.Count)
-        {
-            var baseArguments = new List<SemanticType>(symbol.TypeParameters.Count);
-            foreach (var typeParam in symbol.TypeParameters)
-            {
-                baseArguments.Add(substitution.TryGetValue(typeParam.Name, out var bound)
-                    ? bound
-                    : new TypeParameterType { Name = typeParam.Name });
-            }
-            return new InstantiatedSupertype(baseSymbol, baseArguments);
-        }
-
+        // No fallback. A generic base whose arguments we cannot read is UNKNOWN, not "the derived
+        // class's own parameters in order" (#1287, Design Decision 2).
+        //
+        // The deleted fallback copied `symbol`'s type parameters into the base positionally whenever
+        // the two arities happened to coincide. That is right only for `class MyList[T](list[T])`,
+        // where the written arguments are the parameters in order — and it is silently WRONG for
+        // every other coincidence: `class MyList[T](List[int])` came back as `List[T]`, which both
+        // accepts `List[str] = MyList[str]()` and refuses the correct `List[int] = MyList[str]()`.
+        // Guessing from arity is not a fallback, it is a second, worse answer to the question
+        // ResolveBaseReferenceArguments already answers from the written arguments.
+        //
+        // Returning null degrades to "this base contributes no supertype", which the callers already
+        // handle: assignability declines rather than inventing a match, and inference leaves the
+        // parameter open. A wrong supertype has no such recovery.
         return null;
     }
 

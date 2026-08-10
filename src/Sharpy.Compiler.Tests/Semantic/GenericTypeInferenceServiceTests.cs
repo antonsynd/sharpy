@@ -1527,7 +1527,22 @@ public class GenericTypeInferenceServiceTests
                 new TypeParameterDef { Name = "T" }
             }
         };
-        myListSymbol.BaseType = _builtinRegistry.GetType("list");
+        var listSymbol = _builtinRegistry.GetType("list");
+        myListSymbol.BaseType = listSymbol;
+
+        // The base's WRITTEN arguments, which `class MyList[T](list[T])` spells as `[T]`. Setting
+        // BaseType alone modelled a symbol the compiler never produces: NameResolver populates both
+        // in the same breath (NameResolver.cs:369-374), and the supertype walker reads the reference
+        // — it does NOT guess the arguments from arity (#1287). Before the guess was deleted this
+        // arrangement passed by coincidence, because `MyList[T]`'s one parameter and `list[T]`'s one
+        // parameter happened to line up; the same omission with `class MyList[T](list[int])` would
+        // have made these tests assert the wrong answer.
+        myListSymbol.BaseTypeRef = new BaseTypeReference
+        {
+            Definition = listSymbol!,
+            TypeArgAnnotations = ImmutableArray.Create(new TypeAnnotation { Name = "T" })
+        };
+
         _symbolTable.Define(myListSymbol);
         return myListSymbol;
     }
