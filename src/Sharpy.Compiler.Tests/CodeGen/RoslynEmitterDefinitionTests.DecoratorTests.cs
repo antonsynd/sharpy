@@ -75,6 +75,27 @@ public partial class RoslynEmitterDefinitionTests
             }.ToImmutableArray()
         };
 
+        // The emitter READS abstractness from the resolved symbol rather than re-deriving it from the
+        // decorator (#1371) — the decorator-only fallback that used to stand in for a missing symbol
+        // is what made an implicitly-abstract member of a nested class emit a throwing concrete body.
+        // So the symbol name resolution would have produced is provided here: without it this test
+        // exercised a configuration production never reaches, since name resolution always runs before
+        // codegen.
+        var shapeSymbol = new TypeSymbol
+        {
+            Name = "Shape",
+            Kind = Sharpy.Compiler.Semantic.SymbolKind.Type,
+            TypeKind = Sharpy.Compiler.Semantic.TypeKind.Class,
+            IsAbstract = true
+        };
+        shapeSymbol.Methods.Add(new FunctionSymbol
+        {
+            Name = "area",
+            Kind = Sharpy.Compiler.Semantic.SymbolKind.Function,
+            IsAbstract = true
+        });
+        _context.SymbolTable.Define(shapeSymbol);
+
         // Act
         var module = new Module { Body = new List<Statement> { classDef }.ToImmutableArray() };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
