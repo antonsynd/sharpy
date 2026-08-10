@@ -33,12 +33,15 @@ by the caller.
 """
 from __future__ import annotations
 
+import atexit
 import importlib
 import json
 import os
+import shutil
 import subprocess
 import sys
-from typing import Any, Dict, Iterable, List
+import tempfile
+from typing import Any, Dict, Iterable, List, Optional
 
 # Per-program wall-clock budget. Overridable so a stress sweep can widen it; the
 # C# harness keeps generated programs well under this by bounding loop fuel.
@@ -59,15 +62,35 @@ OUTPUT_CAP_BYTES = 256 * 1024
 ORACLE_THIRD_PARTY = ("yaml",)
 
 
+#: Lazily-built directory of symlinks to exactly the :data:`ORACLE_THIRD_PARTY` packages.
+#: Memoized per process; ``None`` until first use, ``""`` when nothing could be linked.
+_LINK_FARM: Optional[str] = None
+
+
 def _third_party_paths() -> List[str]:
-    """Import locations for :data:`ORACLE_THIRD_PARTY`, resolved in THIS interpreter.
+    """Import locations for :data:`ORACLE_THIRD_PARTY`, scoped to exactly those packages.
 
     Resolved here, in the parent, because the parent runs with ``site`` enabled while the
-    children deliberately do not. A module that is genuinely not installed contributes
-    nothing and its cells fall back to the existing name-missing skip, which is the honest
-    outcome on a machine without it.
+    children deliberately do not. The declared packages are exposed through a private link
+    farm — a temp directory holding a symlink per declared package — NOT by putting the
+    resolved site-packages directory itself on ``PYTHONPATH``. The distinction is the whole
+    contract: site-packages also holds every co-installed module (pytest, hypothesis, ...),
+    and injecting it wholesale makes all of them importable in the child, which is exactly
+    the verdict-changing leak ``-S`` exists to prevent. This broke on CI, where PyYAML and
+    pytest share one site-packages, the moment the negative-control test ran there.
+
+    A module that is genuinely not installed contributes nothing and its cells fall back to
+    the existing name-missing skip — but note the C# harness's vacuity guard FAILS a
+    whitelisted module whose cells only ever skip, so CI must install the declared modules
+    (dotnet10.yml does, naming this function).
     """
-    paths: List[str] = []
+    global _LINK_FARM
+    if _LINK_FARM is not None:
+        return [_LINK_FARM] if _LINK_FARM else []
+
+    farm = tempfile.mkdtemp(prefix="sharpy-oracle-third-party-")
+    atexit.register(shutil.rmtree, farm, ignore_errors=True)
+    linked = False
     for name in ORACLE_THIRD_PARTY:
         try:
             module = importlib.import_module(name)
@@ -75,12 +98,26 @@ def _third_party_paths() -> List[str]:
             continue
         origin = getattr(module, "__file__", None)
         if not origin:
+            continue  # namespace package; nothing linkable
+        origin = os.path.abspath(origin)
+        if os.path.basename(origin).startswith("__init__."):
+            # <site-packages>/<pkg>/__init__.py -> link the package directory. Compiled
+            # extension submodules (e.g. PyYAML's yaml._yaml since 5.1) live inside the
+            # package, so the one link carries them too.
+            target = os.path.dirname(origin)
+        else:
+            # Single-file module: link the file itself.
+            target = origin
+        try:
+            os.symlink(target, os.path.join(farm, os.path.basename(target)))
+            linked = True
+        except OSError:
+            # No symlink capability (e.g. unprivileged Windows): skip — the module's
+            # cells then score the honest name-missing skip.
             continue
-        # <site-packages>/<pkg>/__init__.py -> <site-packages>
-        site_dir = os.path.dirname(os.path.dirname(os.path.abspath(origin)))
-        if site_dir and site_dir not in paths:
-            paths.append(site_dir)
-    return paths
+
+    _LINK_FARM = farm if linked else ""
+    return [_LINK_FARM] if _LINK_FARM else []
 
 
 def _child_env() -> Dict[str, str]:
