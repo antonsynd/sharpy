@@ -284,13 +284,21 @@ internal class ClrTypeBridge
     ///
     /// <para>
     /// The stamp is applied HERE, to whatever <see cref="MapGenericTypeCore"/> returns, rather than
-    /// inside each arm. Six arms collapse a CLR type to a Sharpy collection —
-    /// <c>List/IList/Sharpy.List</c>, <c>Dictionary/IDictionary/Sharpy.Dict</c>,
-    /// <c>HashSet/ISet/Sharpy.Set</c>, <c>IReadOnlyList/IReadOnlyCollection</c>,
-    /// <c>IReadOnlyDictionary</c> and <c>IEnumerable</c> — and stamping one and not its siblings is the
+    /// inside each arm. Nine arms currently collapse a CLR type onto a Sharpy collection name —
+    /// <c>List/IList/ICollection/Sharpy.List</c>, <c>Dictionary/IDictionary/Sharpy.Dict</c>,
+    /// <c>HashSet/ISet/Sharpy.Set</c>, <c>Sharpy.FrozenSet</c>, <c>Sharpy.FrozenDict</c>,
+    /// <c>IReadOnlyList/IReadOnlyCollection</c>, <c>IReadOnlyDictionary</c>,
+    /// <c>IOrderedEnumerable</c> and <c>IEnumerable</c> — and stamping one and not its siblings is the
     /// parallel-site defect this provenance exists to close (#1145, #1260). Wrapping the whole switch
     /// makes the sweep exhaustive by construction: a future arm is stamped whether or not its author
     /// knows provenance exists.
+    /// </para>
+    ///
+    /// <para>
+    /// The count above is descriptive, not load-bearing — the wrapper is what guarantees coverage, and
+    /// the arm SET is tracked by probing this method rather than by any hand-written list (see
+    /// <c>ClrBridgeArmProbe</c> in the tests). Three arms were added without updating the prose that
+    /// claimed to enumerate them, which is exactly why nothing downstream is allowed to depend on it.
     /// </para>
     /// </summary>
     private SemanticType MapGenericType(Type clrType)
@@ -310,7 +318,15 @@ internal class ClrTypeBridge
         var genericDef = clrType.GetGenericTypeDefinition();
         var typeArgs = clrType.GetGenericArguments();
 
-        // Sharpy.List<T>, List<T>, IList<T>, or ICollection<T> (#1295)
+        // Sharpy.List<T>, List<T>, IList<T>, or ICollection<T>.
+        //
+        // ICollection<T> folds into the MUTABLE list arm rather than the IReadOnlyList arm below,
+        // even though both produce `list[T]`, because the two arms differ in the provenance they
+        // stamp and provenance is what assignability reads. The precedent is IReadOnlyCollection<T>,
+        // which sits with IReadOnlyList<T>: an arm's grouping tracks the CLR contract's mutability,
+        // so a formal typed ICollection<T> is satisfied by the same actuals .NET would accept for a
+        // mutable collection, and a read-only formal stays read-only-shaped. Put a new interface with
+        // the arm whose mutability it shares (#1295).
         if (genericDef.FullName == SpecialCases.SharpyListFullName ||
             IsGenericTypeDefinition(genericDef, typeof(List<>)) ||
             IsGenericTypeDefinition(genericDef, typeof(IList<>)) ||

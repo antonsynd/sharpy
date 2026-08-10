@@ -1,11 +1,13 @@
 extern alias SharpyRT;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FluentAssertions;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
+using Sharpy.Compiler.Tests.Conformance;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Discovery;
@@ -31,26 +33,91 @@ public class ClrOriginProvenanceTests
         => closedGeneric.GetGenericTypeDefinition().FullName!;
 
     /// <summary>
-    /// Every arm that collapses a CLR generic onto a Sharpy collection name. Stamping one and leaving
-    /// its siblings bare is the parallel-site defect class this batch exists to close, so the arms are
-    /// enumerated here rather than sampled.
+    /// Every arm that collapses a CLR generic onto a Sharpy collection name, with the name it must
+    /// collapse to. Stamping one and leaving its siblings bare is the parallel-site defect class this
+    /// batch exists to close, so the arms are enumerated rather than sampled.
+    ///
+    /// <para>
+    /// The expected Sharpy name has to be written by hand — deriving it from the bridge would make
+    /// the theory assert the mapping against itself. Completeness is what gets derived instead:
+    /// <see cref="CollapsingArms_EnumeratesEveryArmThatCollapsesOntoACollectionName"/> probes the
+    /// bridge and fails if this list has fallen behind. It had: <c>ICollection&lt;T&gt;</c> (#1295),
+    /// <c>Sharpy.FrozenDict&lt;K,V&gt;</c> (#1310) and <c>IOrderedEnumerable&lt;T&gt;</c> (#1332) were
+    /// added to the bridge while the comment above still claimed the list was exhaustive.
+    /// </para>
     /// </summary>
-    public static TheoryData<Type, string> CollapsingArms() => new()
+    private static readonly (Type ClrType, string SharpyName)[] Arms =
     {
-        { typeof(List<int>), BuiltinNames.List },
-        { typeof(IList<int>), BuiltinNames.List },
-        { typeof(IReadOnlyList<int>), BuiltinNames.List },
-        { typeof(IReadOnlyCollection<int>), BuiltinNames.List },
-        { typeof(IEnumerable<int>), BuiltinNames.List },
-        { typeof(Dictionary<string, int>), BuiltinNames.Dict },
-        { typeof(IDictionary<string, int>), BuiltinNames.Dict },
-        { typeof(IReadOnlyDictionary<string, int>), BuiltinNames.Dict },
-        { typeof(HashSet<int>), BuiltinNames.Set },
-        { typeof(ISet<int>), BuiltinNames.Set },
-        { typeof(SharpyRT::Sharpy.List<int>), BuiltinNames.List },
-        { typeof(SharpyRT::Sharpy.Dict<string, int>), BuiltinNames.Dict },
-        { typeof(SharpyRT::Sharpy.Set<int>), BuiltinNames.Set },
+        (typeof(List<int>), BuiltinNames.List),
+        (typeof(IList<int>), BuiltinNames.List),
+        (typeof(ICollection<int>), BuiltinNames.List),
+        (typeof(IReadOnlyList<int>), BuiltinNames.List),
+        (typeof(IReadOnlyCollection<int>), BuiltinNames.List),
+        (typeof(IOrderedEnumerable<int>), BuiltinNames.List),
+        (typeof(IEnumerable<int>), BuiltinNames.List),
+        (typeof(Dictionary<string, int>), BuiltinNames.Dict),
+        (typeof(IDictionary<string, int>), BuiltinNames.Dict),
+        (typeof(IReadOnlyDictionary<string, int>), BuiltinNames.Dict),
+        (typeof(HashSet<int>), BuiltinNames.Set),
+        (typeof(ISet<int>), BuiltinNames.Set),
+        (typeof(SharpyRT::Sharpy.List<int>), BuiltinNames.List),
+        (typeof(SharpyRT::Sharpy.Dict<string, int>), BuiltinNames.Dict),
+        (typeof(SharpyRT::Sharpy.Set<int>), BuiltinNames.Set),
+        (typeof(SharpyRT::Sharpy.FrozenSet<int>), BuiltinNames.FrozenSet),
+        (typeof(SharpyRT::Sharpy.FrozenDict<string, int>), BuiltinNames.FrozenDict),
     };
+
+    public static TheoryData<Type, string> CollapsingArms()
+    {
+        var data = new TheoryData<Type, string>();
+        foreach (var (clrType, sharpyName) in Arms)
+        {
+            data.Add(clrType, sharpyName);
+        }
+
+        return data;
+    }
+
+    /// <summary>
+    /// The enumeration above cannot rot again: the bridge is probed for every arm that collapses a
+    /// CLR generic onto a Sharpy collection name, and an arm missing from <see cref="Arms"/> fails
+    /// here rather than being silently un-swept.
+    /// </summary>
+    [Fact]
+    public void CollapsingArms_EnumeratesEveryArmThatCollapsesOntoACollectionName()
+    {
+        var collectionNames = new HashSet<string>(StringComparer.Ordinal)
+        {
+            BuiltinNames.List,
+            BuiltinNames.Dict,
+            BuiltinNames.Set,
+            BuiltinNames.FrozenSet,
+            BuiltinNames.FrozenDict
+        };
+
+        var probed = ClrBridgeArmProbe.DiscoverCollapsingArms(_bridge)
+            .Where(a => collectionNames.Contains(a.Mapped.Name))
+            .Select(a => a.Closed.GetGenericTypeDefinition().FullName!)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        // Anti-vacuity control: a probe that found nothing would make the comparison below pass with
+        // an empty list, which is how a completeness check turns into decoration.
+        probed.Should().Contain(
+            ClrBridgeArmProbe.RequiredArms,
+            "the probe must rediscover the arms we already know exist before its silence about others "
+            + "means anything");
+
+        var enumerated = Arms
+            .Select(a => a.ClrType.GetGenericTypeDefinition().FullName!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        probed.Where(p => !enumerated.Contains(p)).OrderBy(p => p, StringComparer.Ordinal)
+            .Should().BeEmpty(
+                "every CLR generic the bridge collapses onto a collection name must appear in `Arms`, "
+                + "or its provenance stamp is never asserted — the parallel-site gap that let three "
+                + "arms be added without joining this sweep.\nMissing from Arms:");
+    }
 
     [Theory]
     [MemberData(nameof(CollapsingArms))]
