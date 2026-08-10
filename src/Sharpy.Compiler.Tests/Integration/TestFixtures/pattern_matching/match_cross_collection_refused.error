@@ -1,0 +1,1 @@
+Type pattern 'list' is incompatible with scrutinee type 'dict[str, int]' @12:14

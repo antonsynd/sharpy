@@ -39,8 +39,10 @@ public class CsLeakRegressionCorpusTests
 
     public static IEnumerable<object[]> Corpus()
     {
-        // #1235 site 1 — a bare generic operand of as?/as!/is emitted the open generic
+        // #1235 site 1 — a bare generic operand of as?/as! emitted the open generic
         // `Box<T>` (CS0305, twice for as?). Filled from the tested value's static type.
+        // The `is` third of this site is gone: #1298 retired `x is TypeName` as a type
+        // test (SPY0349), so only the two cast spellings can still reach codegen.
         yield return Case("#1235-cast-open-generic", """
             class Box[T]:
                 value: T

@@ -1,0 +1,15 @@
+# #1299 Design Decision 6: a class pattern naming a different collection than the
+# scrutinee's own closed type is statically impossible, so Sharpy refuses the arm
+# (SPY0361) rather than emitting a branch that can never run. Python would silently
+# never-match. The refusal policy predates #1299 (see match_type_incompatible_0001
+# for the primitive twin); this fixture pins that closing the collection-pattern gap
+# did not soften it.
+
+def main() -> None:
+    d: dict[str, int] = {"a": 1}
+
+    match d:
+        case list():
+            print("never a list")
+        case _:
+            print("dict")

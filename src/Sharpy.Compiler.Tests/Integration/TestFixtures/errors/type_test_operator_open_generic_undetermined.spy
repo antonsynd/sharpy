@@ -1,7 +1,7 @@
-# #1235: the `is` sibling of isinstance_open_generic_undetermined. Nothing at this test
-# determines Box's type arguments — the subject is declared `object` — so the operand
-# names no runtime type and is refused, exactly as the isinstance spelling is. .NET
-# reifies generics; emitting the open name produced CS0305 behind SPY0908.
+# Once the `is` sibling of isinstance_open_generic_undetermined (#1235). `x is TypeName`
+# is retired as a type test (#1298), so `is` is now refused before the open-generic
+# question is ever asked: this fixture pins SPY0349, not the SPY0345 rationale it was
+# written for. errors/isinstance_open_generic_undetermined keeps the SPY0345 coverage.
 
 class Box[T]:
     value: T

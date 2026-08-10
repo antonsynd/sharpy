@@ -1,0 +1,22 @@
+# #1298 retired `x is TypeName` as a type test (SPY0349). The identity spellings that
+# never named a type are unaffected, and this fixture pins that: reference identity
+# between two locals, its negation, and the None checks.
+
+class Node:
+    label: str
+
+    def __init__(self, label: str):
+        self.label = label
+
+
+def main() -> None:
+    a: Node = Node("a")
+    b: Node = a
+    c: Node = Node("a")
+    missing: Node? = None
+
+    print(a is b)
+    print(a is c)
+    print(a is not c)
+    print(missing is None)
+    print(missing is not None)
