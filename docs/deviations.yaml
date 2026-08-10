@@ -19,6 +19,10 @@
 #   example.python      — short Python snippet showing the deviation
 #   example.sharpy      — short Sharpy snippet (or comment) showing Sharpy behavior
 #
+# Standard: every example line is EXECUTED against HEAD (python3 for the Python side, the
+# compiler for the Sharpy side) before its entry is committed — an entry whose examples were
+# only reasoned about documents a deviation that may not exist.
+#
 # Categories:
 #   scoping    — variable visibility / lifetime
 #   types      — type system, type rules, generics, protocols
