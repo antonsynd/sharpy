@@ -82,6 +82,31 @@ internal static class DualWriteAssertions
                     "This is a compiler bug - please report it.");
             }
 
+            // PRESENCE, not just parity (#1287). The two checks above compare the stores against
+            // each other, so they agree perfectly when BOTH are empty — deleting the
+            // SetBaseTypeReference call in NameResolver fired nothing, which is the one mutation
+            // this guard exists to catch. A base that DECLARES type parameters cannot have been
+            // written without arguments: the base list is arity-validated at resolution time
+            // (ValidateBaseReferenceArity) and a bare generic base is refused outright (#1286).
+            // So for a source-declared class, "generic base present, no reference" is a drop.
+            //
+            // Scoped to symbols that came from source. A synthesized type (union/Optional/Result
+            // backing) has no base annotation to carry and is exempt by construction — it has no
+            // declaring file — and CLR-discovered and re-exported symbols were already skipped
+            // above, so a legitimate empty never reaches here.
+            if (symbol.BaseType is { } declaredBase
+                && declaredBase.TypeParameters.Count > 0
+                && symbol.DeclaringFilePath != null
+                && symbol.BaseTypeRef == null)
+            {
+                throw new InvalidOperationException(
+                    $"TypeSymbol '{symbol.Name}' inherits the generic base '{declaredBase.Name}' " +
+                    $"(declaring {declaredBase.TypeParameters.Count} type parameter(s)) but carries no " +
+                    "BaseTypeReference, so its base-type arguments were dropped. The supertype walker " +
+                    "would answer from a positional copy instead of the written arguments (#1287). " +
+                    "This is a compiler bug - please report it.");
+            }
+
             var sbInterfaceRefs = semanticBinding.GetInterfaces(symbol);
             if (sbInterfaceRefs != null && sbInterfaceRefs.Count > 0)
             {

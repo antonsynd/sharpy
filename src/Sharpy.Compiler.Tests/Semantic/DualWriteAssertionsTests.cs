@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using FluentAssertions;
@@ -77,6 +80,95 @@ public class DualWriteAssertionsTests
         symbolTable.Define(clrType);
 
         // Should not throw even though CLR type has BaseType not in SemanticBinding
+        DualWriteAssertions.AssertInheritanceConsistency(symbolTable, binding);
+    }
+
+    [Fact]
+    public void AssertInheritanceConsistency_ThrowsWhenAGenericBaseCarriesNoReference()
+    {
+        // The presence half of the #1287 guard. Before it, the two BaseTypeRef checks compared the
+        // stores against EACH OTHER, so dropping the SetBaseTypeReference call left both null and
+        // fired nothing — the guard agreed perfectly that the data was absent from both places.
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var box = new TypeSymbol
+        {
+            Name = "Box",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            TypeParameters = new List<TypeParameterDef> { new() { Name = "T" } }
+        };
+        var intBox = new TypeSymbol
+        {
+            Name = "IntBox",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            DeclaringFilePath = "/src/lib.spy"
+        };
+        symbolTable.Define(box);
+        symbolTable.Define(intBox);
+
+        // Base set, reference NOT set — exactly the state a dropped assignment site produces.
+        binding.SetBaseType(intBox, box);
+        binding.MaterializeInheritance();
+
+        var act = () => DualWriteAssertions.AssertInheritanceConsistency(symbolTable, binding);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*IntBox*")
+            .WithMessage("*Box*")
+            .WithMessage("*base-type arguments were dropped*");
+    }
+
+    [Fact]
+    public void AssertInheritanceConsistency_AllowsANonGenericBaseWithNoReference()
+    {
+        // The negative control for the check above: a base that declares no type parameters has no
+        // arguments to carry, so its empty reference is legitimate and must not throw. Without this,
+        // the new check would fire on every ordinary `class Child(Base)`.
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var baseType = new TypeSymbol { Name = "Base", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        var child = new TypeSymbol
+        {
+            Name = "Child",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            DeclaringFilePath = "/src/lib.spy"
+        };
+        symbolTable.Define(baseType);
+        symbolTable.Define(child);
+
+        binding.SetBaseType(child, baseType);
+        binding.MaterializeInheritance();
+
+        DualWriteAssertions.AssertInheritanceConsistency(symbolTable, binding);
+    }
+
+    [Fact]
+    public void AssertInheritanceConsistency_ExemptsASynthesizedTypeWithAGenericBase()
+    {
+        // A synthesized backing type has no declaring file and no base annotation to carry. It must
+        // stay exempt, or the guard turns a legitimate empty into a compiler crash.
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var box = new TypeSymbol
+        {
+            Name = "Box",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            TypeParameters = new List<TypeParameterDef> { new() { Name = "T" } }
+        };
+        var synthesized = new TypeSymbol { Name = "__Synth", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
+        symbolTable.Define(box);
+        symbolTable.Define(synthesized);
+
+        binding.SetBaseType(synthesized, box);
+        binding.MaterializeInheritance();
+
         DualWriteAssertions.AssertInheritanceConsistency(symbolTable, binding);
     }
 
