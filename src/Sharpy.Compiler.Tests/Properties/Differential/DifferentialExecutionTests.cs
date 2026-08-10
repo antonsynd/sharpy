@@ -214,6 +214,48 @@ public class DifferentialExecutionTests : IntegrationTestBase
         // Enumeration sanity — a corpus that shrank to nothing is itself a regression.
         Assert.True(results.Count > 0, "No programs were compared.");
 
+        // Per-module vacuity guard. Admitting a module to CPythonAvailableModules only gets its
+        // fixtures PAST THE FILTER; it does not make them comparable. If CPython cannot import the
+        // module, every one of those cells scores sharpy-ok + ModuleNotFoundError, which Classify
+        // records as a name-missing SKIP — and skips are invisible in every headline number, so the
+        // widening reads as successful while comparing nothing.
+        //
+        // That is not hypothetical: yaml was admitted and compared NOTHING, because the children run
+        // with `-S` (no site-packages, deliberately) and PyYAML lives there. The report's own
+        // fixturesRunByRoot went up, because it counts fixtures that reached CLASSIFICATION, not
+        // fixtures that were COMPARED. Reading that number is what produced a false all-clear.
+        //
+        // So the property is stated per module: a whitelisted module whose fixtures entered the pool
+        // must produce at least one cell that was actually compared — Match or Divergent, not Skip.
+        if (limit <= FullPool)
+        {
+            foreach (var module in ExecSubsetFilter.CPythonAvailableModules.OrderBy(m => m, StringComparer.Ordinal))
+            {
+                var moduleCells = results
+                    .Where(r => ImportsModule(r.Program.Source, module))
+                    .ToList();
+                if (moduleCells.Count == 0)
+                    continue;   // nothing in the corpus imports it yet — a to-do, not a failure
+
+                var compared = moduleCells.Count(r => r.Verdict != Verdict.Skip);
+                var skipClasses = moduleCells
+                    .Where(r => r.Verdict == Verdict.Skip)
+                    .Select(r => r.SkipClass.Length == 0 ? "unclassified" : r.SkipClass)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(s => s, StringComparer.Ordinal);
+
+                Assert.True(compared > 0,
+                    $"Module '{module}' is whitelisted for the CPython oracle and {moduleCells.Count} "
+                    + "of its cells entered the pool, but NONE was compared — every one skipped "
+                    + $"({string.Join(", ", skipClasses)}). A whitelisted module that only ever skips "
+                    + "is a vacuous widening: the fixture counts rise and no comparison happens. The "
+                    + "usual cause is that the child interpreter cannot import it — the children run "
+                    + "with -S, so a non-stdlib module must also be listed in ORACLE_THIRD_PARTY in "
+                    + "build_tools/differential_exec/run_programs.py, which puts its install location "
+                    + "back on PYTHONPATH.");
+            }
+        }
+
         // Vacuity guard for the #1338 widening. The stdlib corpus reaches the oracle only if BOTH
         // halves hold: the Stdlib root is discovered, and ExecSubsetFilter admits its imports.
         // Either one regressing puts the count back to zero while every other number stays healthy.
@@ -911,7 +953,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
         /// <para>Grows one module at a time: each addition puts a new corpus in front of the
         /// oracle, and the divergences it finds are the deliverable.</para>
         /// </summary>
-        private static readonly HashSet<string> CPythonAvailableModules = new(StringComparer.Ordinal)
+        internal static readonly HashSet<string> CPythonAvailableModules = new(StringComparer.Ordinal)
         {
             // yaml is PyYAML, which is not in the standard library — it is admitted because it is
             // installed here (6.0.3, verified) and the Sharpy side is a YamlDotNet-backed
@@ -1568,7 +1610,17 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 pythonStderr = FirstLine(r.Python?.Stderr ?? ""),
                 source = r.Program.Source,
             }),
-            skips = skips.Take(60).Select(r => new { key = r.Program.Key, detail = r.Detail }),
+            // EVERY skip, not a sample. The list was capped at 60 against 148 skips, so a reader
+            // could grep it, find no `yaml` entry, and conclude yaml had not skipped — when in fact
+            // every yaml cell was skipping and the entries were simply past the cap. A truncated
+            // list that does not say it is truncated is worse than no list: it answers absence
+            // questions wrongly. `skipsByClass` above stays as the aggregate.
+            skips = skips.Select(r => new
+            {
+                key = r.Program.Key,
+                skipClass = r.SkipClass.Length == 0 ? "unclassified" : r.SkipClass,
+                detail = r.Detail,
+            }),
         };
         var path = Path.Combine(reportDir, "differential-exec-report.json");
         File.WriteAllText(path, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
@@ -1645,6 +1697,35 @@ public class DifferentialExecutionTests : IntegrationTestBase
     /// One corpus program. <paramref name="NeedsStdlib"/> is set for the fixtures that import a
     /// stdlib module: their compile needs Sharpy.Stdlib referenced and their run needs it deployed.
     /// </summary>
+    /// <summary>
+    /// Whether <paramref name="source"/> imports <paramref name="module"/> at its top level, by the
+    /// two spellings the subset filter itself recognises (<c>import m</c> / <c>from m import</c>).
+    /// Deliberately textual and deliberately conservative: it feeds a vacuity guard, so a miss costs
+    /// only that the guard declines to assert about that module, never a false failure.
+    /// </summary>
+    private static bool ImportsModule(string source, string module)
+    {
+        foreach (var rawLine in source.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (line.StartsWith("import " + module, StringComparison.Ordinal)
+                || line.StartsWith("from " + module + " import ", StringComparison.Ordinal)
+                || line.StartsWith("from " + module + ".", StringComparison.Ordinal))
+            {
+                // `import json` must not match a fixture importing `jsonschema`.
+                var rest = line.Substring(line.StartsWith("import ", StringComparison.Ordinal) ? 7 + module.Length : 0);
+                if (line.StartsWith("import ", StringComparison.Ordinal)
+                    && rest.Length > 0 && (char.IsLetterOrDigit(rest[0]) || rest[0] == '_'))
+                {
+                    continue;
+                }
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private sealed record Program(string Key, string Source, bool NeedsStdlib = false);
 
     /// <summary>
