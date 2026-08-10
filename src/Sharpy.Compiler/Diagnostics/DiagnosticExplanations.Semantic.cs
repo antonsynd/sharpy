@@ -702,9 +702,10 @@ public static partial class DiagnosticExplanations
             "Use the correct operator signature:\nclass Vec:\n    def __add__(self, other: Vec) -> Vec:\n        return Vec()");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidDecoratorUsage, "Invalid decorator usage", "Semantic",
-            "A decorator was used in an invalid context or with invalid arguments. Check that the decorator is appropriate for the target (function, method, or class).",
-            "@override\ndef top_level_func():  # @override only valid on class methods\n    pass",
-            "Use the decorator on an appropriate target, or remove it.");
+            "A decorator was used in an invalid context or with invalid arguments. Check that the decorator is appropriate for the target (function, method, or class). "
+            + "The most common instance is @staticmethod or @classmethod: Sharpy has no such decorators, because a method without a 'self' parameter is already static (#821).",
+            "class Counter:\n    @staticmethod  # not supported: dropping 'self' is what makes it static\n    def zero() -> int:\n        return 0",
+            "Remove the decorator (and the 'self' parameter, if the method has one):\nclass Counter:\n    def zero() -> int:\n        return 0\n\n'@static' declares static FIELDS, not methods.");
 
         Add(dict, DiagnosticCodes.Semantic.ConflictingSynthesizedInterface,
             "Conflicting synthesized interface",
