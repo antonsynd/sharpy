@@ -46,6 +46,21 @@ internal class TypeInferenceService
     /// </summary>
     internal Func<IReadOnlyList<FunctionSymbol>, SemanticType, FunctionSymbol?>? DeterministicBinaryOverloadResolver { get; set; }
 
+    /// <summary>
+    /// Argument-binding assignability (<c>TypeChecker.IsArgumentAssignable</c>), injected by the
+    /// <see cref="TypeChecker"/> host so the operand of a lone operator overload is judged by the ONE
+    /// implementation of the relation — the one that knows about generic variance, CLR provenance,
+    /// string-backed enums and delegate shapes (#1311). A second implementation here would be the
+    /// parallel-site drift the codebase keeps paying for (#1145).
+    /// <para>
+    /// Null for a standalone service with no host (unit tests, alternate construction). Unset means
+    /// "no opinion available", and <see cref="AcceptsArgument"/> is then permissive — the operand
+    /// check can only ever narrow what resolution accepts, so losing it must lose diagnostics, never
+    /// produce refusals.
+    /// </para>
+    /// </summary>
+    internal Func<SemanticType, SemanticType, bool>? OperandAssignability { get; set; }
+
     // Caches for performance (not thread-safe)
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache = new();
     private readonly Dictionary<(UnaryOperator, SemanticType), SemanticType?> _unaryOpCache = new();
@@ -634,11 +649,11 @@ internal class TypeInferenceService
     /// </para>
     /// <para>
     /// Refusal takes proof, never mere doubt — a candidate wrongly refused here reports a type
-    /// error on code that compiles. <see cref="OperandAccepts"/> therefore accepts anything Sharpy
-    /// assignability, per-argument generic matching, an inheritance walk or a .NET conversion
-    /// admits (<see cref="ClrConversionRank"/> — the same widening / reference / <c>op_Implicit</c>
-    /// ranking the CLR operator path uses), and treats every position still open after receiver
-    /// substitution as a wildcard.
+    /// error on code that compiles. The proof is <see cref="OperandAssignability"/>, the host's one
+    /// argument-binding relation, which already models numeric widening, generic variance, CLR
+    /// provenance, string-backed enums and delegate shapes; this seam adds no second opinion, only
+    /// the receiver substitution that closes the operand and the wildcard treatment of whatever
+    /// stays open.
     /// </para>
     /// </remarks>
     private bool AcceptsArgument(FunctionSymbol candidate, SemanticType argumentType, SemanticType? receiver)
@@ -673,134 +688,49 @@ internal class TypeInferenceService
 
     /// <summary>
     /// Whether an argument of <paramref name="argumentType"/> can reach an operand position declared
-    /// as <paramref name="parameterType"/>. Every arm below grants acceptance; falling off the end is
-    /// the only refusal, so an unknown, open or unmapped type is always let through.
+    /// as <paramref name="parameterType"/>. The verdict is <see cref="OperandAssignability"/>'s — the
+    /// host's one argument-binding relation — for every operand it can rule on; this method only
+    /// decides which operands it can be asked about at all, and answers "yes" for the rest.
     /// </summary>
     private bool OperandAccepts(SemanticType parameterType, SemanticType argumentType)
     {
-        // A position that is still open after substitution, or a type that is already an error
-        // placeholder, supports no conclusion either way.
-        if (parameterType is TypeParameterType or UnknownType or SelfType)
+        // No host, no authority, no refusal. The check can only narrow what resolution already
+        // accepted, so an un-injected service must lose the diagnostic, never invent one.
+        if (OperandAssignability is not { } isAssignable)
+            return true;
+
+        // An operand still open after receiver substitution stands for whatever the receiver would
+        // have bound it to, and an error placeholder stands for anything. Assignability answers a
+        // different question about both — `list[int]` is not assignable to `list[T]` — so they are
+        // settled here rather than passed on. `ResolveOverloadCore` guards its own
+        // IsArgumentAssignable call the same way (Calls.Overloads.cs, the ContainsTypeParameter
+        // skip); this is that rule at the operator seam.
+        if (parameterType is SelfType || ContainsOpenPosition(parameterType))
             return true;
         if (argumentType is TypeParameterType or UnknownType)
             return true;
 
-        // A C#-nullable operand — how Sharpy.Core spells its own collection operators
-        // (`operator +(List<T>? left, List<T>? right)`) — accepts what its underlying type
-        // accepts, plus None.
-        if (parameterType is NullableType nullableParameter)
-            return argumentType is VoidType || OperandAccepts(nullableParameter.UnderlyingType, argumentType);
-        if (parameterType is OptionalType optionalParameter)
-            return argumentType is VoidType || OperandAccepts(optionalParameter.UnderlyingType, argumentType);
-
-        if (argumentType.IsAssignableTo(parameterType))
-            return true;
-
-        // A string-backed enum member IS its backing string (#1284). The emitted class carries the
-        // `implicit operator string` that makes this true, but it does not exist yet, so no amount
-        // of reflection below can find the conversion — the rule has to be stated.
-        if (TypeChecker.IsStringBackedEnum(argumentType) && parameterType is BuiltinType { Name: BuiltinNames.Str })
-            return true;
-
-        // Callable operands are compared structurally elsewhere, with knowledge (delegate Invoke
-        // signatures, symbol-table lookups) this service does not have. No opinion.
-        if (parameterType is FunctionType || argumentType is FunctionType)
-            return true;
-
-        // Same declaration, position by position, so an operand left partly open by the receiver
-        // still matches. Type arguments are INVARIANT in .NET, so a position matches on equality
-        // (or a wildcard) rather than assignability: `list[object]` does not take a `list[int]`
-        // however assignable the elements are — C# rejects that call, and so must this.
-        if (parameterType is GenericType parameterGeneric && argumentType is GenericType argumentGeneric
-            && TypeArgumentsMatch(parameterGeneric, argumentGeneric))
-        {
-            return true;
-        }
-
-        // A type that INHERITS the operand's declaration satisfies it. The walk needs the symbol
-        // hierarchy, which a SemanticType record cannot do for a GenericType target.
-        if (DefinitionOf(parameterType) is { } operandDefinition
-            && TypeHierarchyService.InheritsFrom(DefinitionOf(argumentType), operandDefinition))
-        {
-            return true;
-        }
-
-        // .NET has the last word, through the same conversion ranking the CLR operator path applies
-        // to reflected operators: reference conversions, builtin numeric widening and user-defined
-        // op_Implicit all count as acceptance.
-        var argumentClrType = GetClrType(argumentType);
-        var parameterClrType = GetClrType(parameterType);
-        return argumentClrType != null && parameterClrType != null
-            && ClrConversionRank(argumentClrType, parameterClrType) >= 0;
+        return isAssignable(argumentType, parameterType);
     }
 
     /// <summary>
-    /// Whether two generic types name the same declaration and agree at every type-argument
-    /// position, where a position still occupied by a type parameter (or by the empty-literal
-    /// <see cref="UnknownType"/> wildcard) agrees with anything.
-    /// <para>Agreement is equality except where the declaration says otherwise: a position is
-    /// invariant in .NET unless its type parameter is declared <c>out</c>/<c>in</c>, and comparing
-    /// a variant position by equality would refuse a call C# binds (a covariant
-    /// <c>Reader[Dog]</c> IS a <c>Reader[Animal]</c>, #827).</para>
+    /// Whether any position of <paramref name="type"/> is still unbound — an un-substituted
+    /// <see cref="TypeParameterType"/>, or the <see cref="UnknownType"/> an empty literal and an
+    /// earlier error both leave behind. Structural, not semantic: it decides whether the operand is
+    /// a question assignability can be asked about, and deliberately decides nothing about the types
+    /// themselves.
     /// </summary>
-    private static bool TypeArgumentsMatch(GenericType parameterType, GenericType argumentType)
+    private static bool ContainsOpenPosition(SemanticType type) => type switch
     {
-        if (!NamesSameDeclaration(parameterType, argumentType)
-            || parameterType.TypeArguments.Count != argumentType.TypeArguments.Count)
-        {
-            return false;
-        }
-
-        var declaration = parameterType.GenericDefinition ?? argumentType.GenericDefinition;
-
-        for (int i = 0; i < parameterType.TypeArguments.Count; i++)
-        {
-            var parameterArgument = parameterType.TypeArguments[i];
-            var argument = argumentType.TypeArguments[i];
-
-            if (parameterArgument is TypeParameterType or UnknownType
-                || argument is TypeParameterType or UnknownType
-                || parameterArgument.Equals(argument))
-            {
-                continue;
-            }
-
-            if (parameterArgument is GenericType nestedParameter && argument is GenericType nestedArgument
-                && TypeArgumentsMatch(nestedParameter, nestedArgument))
-            {
-                continue;
-            }
-
-            var variance = declaration != null && i < declaration.TypeParameters.Count
-                ? declaration.TypeParameters[i].Variance
-                : TypeParameterVariance.None;
-
-            if (variance == TypeParameterVariance.Covariant && argument.IsAssignableTo(parameterArgument))
-                continue;
-            if (variance == TypeParameterVariance.Contravariant && parameterArgument.IsAssignableTo(argument))
-                continue;
-
-            return false;
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// Whether two generic types name the same declaration. Mirrors the rule
-    /// <see cref="GenericType.IsAssignableTo"/> applies (#1193): the written name usually settles
-    /// it, but one declaration can have more than one legal spelling, so a matching
-    /// <see cref="GenericType.GenericDefinition"/> is authoritative when both carry one.
-    /// </summary>
-    private static bool NamesSameDeclaration(GenericType left, GenericType right)
-        => string.Equals(left.Name, right.Name, StringComparison.Ordinal)
-            || (left.GenericDefinition != null && ReferenceEquals(left.GenericDefinition, right.GenericDefinition));
-
-    /// <summary>The declaring symbol behind a nominal type, generic or not.</summary>
-    private static TypeSymbol? DefinitionOf(SemanticType type) => type switch
-    {
-        GenericType generic => generic.GenericDefinition,
-        _ => type.DeclaringSymbol
+        TypeParameterType => true,
+        UnknownType => true,
+        GenericType generic => generic.TypeArguments.Any(ContainsOpenPosition),
+        NullableType nullable => ContainsOpenPosition(nullable.UnderlyingType),
+        OptionalType optional => ContainsOpenPosition(optional.UnderlyingType),
+        TupleType tuple => tuple.ElementTypes.Any(ContainsOpenPosition),
+        FunctionType function => function.ParameterTypes.Any(ContainsOpenPosition)
+            || ContainsOpenPosition(function.ReturnType),
+        _ => false
     };
 
     private SemanticType? TryInferClrBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)

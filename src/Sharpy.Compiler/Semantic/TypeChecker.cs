@@ -296,6 +296,7 @@ internal partial class TypeChecker
         // Route Engine B (operator dunders, __getitem__) through the shared deterministic
         // betterness core so overload resolution is order-independent (#975).
         _typeInference.DeterministicBinaryOverloadResolver = ResolveDunderOverload;
+        _typeInference.OperandAssignability = (source, target) => IsArgumentAssignable(source, target);
 
         // Initialize generic type argument inference service
         _genericInference = new GenericTypeInferenceService(_symbolTable, typeResolver);
