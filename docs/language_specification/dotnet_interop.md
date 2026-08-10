@@ -116,23 +116,41 @@ meaning.
 
 A call whose type arguments cannot be determined is left exactly as it was: no type is recorded, no
 diagnostic is reported, and the emitted C# infers the vector itself. This is the normal outcome for
-an ambiguous overload, for a result type Sharpy cannot represent (`order_by` returns
-`IOrderedEnumerable<T>`), and for a receiver that is not a sequence:
+an ambiguous overload and for a result type Sharpy cannot represent — `group_by` yields
+`IGrouping<K, T>` elements the bridge can only call `object`, so nothing is recorded and the emitted
+C# keeps the precise type:
 
 ```python
 from system.collections.generic import List
 
 
-def main():
+def main() -> None:
     lst: List[int] = List[int]()
     lst.add(3)
     lst.add(1)
-    for x in lst.order_by(lambda v: v):   # no Sharpy type, still iterates
-        print(x)
+    groups = lst.group_by(lambda v: v % 2)   # no Sharpy type, still iterates
+    for g in groups:
+        print(g.key)                          # 1
 ```
 
 Such a call cannot be wrapped or annotated, because there is no type to wrap. Only the explicit
 spelling recovers that.
+
+A receiver that is not a sequence is a different case, and it is refused rather than left alone: no
+overload of the name accepts it, so no argument list could make the call bind and deferring to
+codegen would only turn a type error into an internal error.
+
+```python
+def main() -> None:
+    n: int = 5
+    for x in n.select(lambda v: v):
+        print(x)
+```
+
+```
+error[SPY0203]: Type 'int' has no member 'select'. 'select' is a .NET extension method on
+'IEnumerable'; chain it onto an expression of that type
+```
 
 ## CLR Sequences and Sharpy Collections
 
@@ -178,6 +196,36 @@ def main() -> None:
 
 Because the conversion copies, mutating the result does not affect the .NET collection it came
 from, exactly as `b = list(a)` in Python leaves `a` alone.
+
+**An ordered sequence is not collapsed, because a Sharpy list cannot stand in for one.** Everything
+above holds for CLR types a `Sharpy.List<T>` can replace — it *is* an `IEnumerable<T>`, an
+`IList<T>`, an `ICollection<T>` — so materializing loses nothing. `order_by` returns
+`IOrderedEnumerable<T>`, which `then_by` extends and a list is not, so `order_by`'s result keeps its
+own type and an inferred slot chains exactly as an unbroken chain does
+([#1390](https://github.com/antonsynd/sharpy/issues/1390)):
+
+```python
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst: List[int] = List[int]()
+    lst.add(3)
+    lst.add(1)
+    xs = lst.order_by(lambda v: v)     # an ordered sequence, not a list
+    for y in xs.then_by(lambda v: -v):
+        print(y)                        # 1 then 3
+```
+
+The trade is real and the annotation is how you choose: an inferred slot holds an ordered sequence,
+so it chains but has no list surface (`len(xs)` draws SPY0320). Write `list[T]` and you get the
+materialization instead, and with it the loss of `then_by` — which is now reported rather than
+deferred to the C# compiler:
+
+```python
+    xs: list[int] = lst.order_by(lambda v: v)   # fine: a Sharpy list[int]
+    xs.then_by(lambda v: -v)                    # error[SPY0203]: list[int] has no member 'then_by'
+```
 
 **Reading a CLR property is one of those positions.** A property whose declared type is a CLR
 sequence materializes on read under the same rule, so what you get back is a Sharpy collection with

@@ -1,0 +1,17 @@
+# Pin: #1390 — `then_by` on a slot the user ANNOTATED as list[int]. Unlike the inferred slot
+# (clr_order_by_then_by_slot_1390.spy), the annotation asks for a Sharpy list, the value is
+# materialized into one, and Enumerable.ThenBy extends IOrderedEnumerable<T> and nothing
+# else — so this is a genuine type error. What the pin holds is that it is REPORTED, not
+# deferred to codegen as CS0411 behind SPY0908 (#1146: SPY0908 is a net, not an error
+# channel), and that the message names what `then_by` does extend.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst: List[int] = List[int]()
+    lst.add(3)
+    lst.add(1)
+
+    xs: list[int] = lst.order_by(lambda v: v)
+    for y in xs.then_by(lambda v: -v):
+        print(y)

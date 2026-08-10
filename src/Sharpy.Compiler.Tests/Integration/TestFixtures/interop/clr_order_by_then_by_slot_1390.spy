@@ -1,0 +1,24 @@
+# Pin: #1390 — the SLOTTED order_by/then_by chain, where a variable sits between the two
+# calls. The #1332 bridge arm mapped IOrderedEnumerable<T> onto list[T], so binding the
+# order_by result materialized it into a Sharpy.List<int> — which is not an
+# IOrderedEnumerable<T>, and Enumerable.ThenBy accepts nothing else. `then_by` then reached
+# codegen on the permissive channel and died as CS0411 behind SPY0908, reported against
+# ParallelEnumerable.ThenBy: merely the overload C# names when no candidate fits.
+#
+# IOrderedEnumerable<T> now maps to ITSELF, so the slot carries the ordering context and
+# `then_by` binds here exactly as it does mid-chain. The unslotted twin is
+# clr_order_by_then_by_chain.spy; the list-ANNOTATED slot, where the annotation genuinely
+# asks for a Sharpy list, refuses in clr_then_by_list_slot_refusal_1390.spy.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst: List[int] = List[int]()
+    lst.add(3)
+    lst.add(1)
+    lst.add(2)
+    lst.add(1)
+
+    xs = lst.order_by(lambda v: v)
+    for x in xs.then_by(lambda v: -v):
+        print(x)

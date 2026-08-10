@@ -1,0 +1,24 @@
+# Pin: #1390 sibling cells — a staged extension result bound to a variable and then chained
+# again. These work because Sharpy.List<T> IS an IEnumerable<T>, so materializing the slot
+# loses nothing Skip/OrderBy need; only ThenBy's IOrderedEnumerable<T> receiver was ever the
+# casualty. They are pinned here because the fix moved the materialization boundary, and a
+# regression would show up first as one of these slots losing its element type.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst: List[int] = List[int]()
+    lst.add(1)
+    lst.add(2)
+    lst.add(3)
+    lst.add(4)
+
+    # take -> slot -> skip
+    ys = lst.take(3)
+    for y in ys.skip(1):
+        print(y)
+
+    # order_by -> slot -> order_by
+    xs = lst.order_by(lambda v: v)
+    for x in xs.order_by(lambda v: -v):
+        print(x)

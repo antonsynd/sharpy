@@ -1,16 +1,15 @@
 # Pin: the unslotted order_by/then_by chain must survive the IOrderedEnumerable bridge
-# arm (#1332). IOrderedEnumerable<T> maps to list[T] at the Sharpy level, but in the
-# emitted C# the chain is a single expression where OrderBy returns IOrderedEnumerable<T>
-# and ThenBy extends it — no materialization intervenes.
+# arm (#1332). In the emitted C# the chain is a single expression where OrderBy returns
+# IOrderedEnumerable<T> and ThenBy extends it — no materialization intervenes.
 #
-# The slotted variant (xs = lst.order_by(f); xs.then_by(g)) is an accepted casualty of
-# the materialization contract (dotnet_interop.md:162): binding the result to a variable
-# materializes it into a Sharpy list, which loses IOrderedEnumerable<T>. The chain-before-
-# binding remedy is pinned here.
-#
-# The slotted variant does NOT currently refuse cleanly — semantic analysis reports nothing
-# and it dies in codegen as SPY0908 (CS0411, against the ParallelEnumerable.ThenBy overload).
-# That is tracked by #1390; the fixture pinning its behaviour ships with that fix.
+# The slotted variants ship their own pins (#1390), and they differ:
+#   - clr_order_by_then_by_slot_1390.spy      — `xs = lst.order_by(f)` then `xs.then_by(g)`
+#     WORKS. IOrderedEnumerable<T> maps to itself, so an inferred slot keeps the ordering
+#     context instead of materializing into a Sharpy list.
+#   - clr_then_by_list_slot_refusal_1390.spy  — `xs: list[int] = lst.order_by(f)` then
+#     `xs.then_by(g)` REFUSES with SPY0203. The annotation asks for a Sharpy list, which is
+#     not an IOrderedEnumerable<T>; that is the materialization contract
+#     (dotnet_interop.md:162) doing what it says, reported instead of deferred to codegen.
 from system.collections.generic import List
 
 

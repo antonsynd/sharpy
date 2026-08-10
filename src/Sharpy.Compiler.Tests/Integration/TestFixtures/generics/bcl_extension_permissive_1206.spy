@@ -18,10 +18,15 @@ def main():
     lst.add(5)
     lst.add(1)
 
-    # DECLINED: unrepresentable return type. OrderBy returns IOrderedEnumerable<TSource>, which the
-    # CLR-to-Sharpy bridge has no mapping for, so it collapses to `object`. Recording `object` would
-    # be strictly worse than recording nothing — `object` misinforms everything downstream, while no
-    # fact leaves the call permissive and lets C# infer, which is what makes this loop work.
+    # NO LONGER DECLINED — kept because the loop's behaviour must not change. This line was the
+    # fixture's example of an unrepresentable return type: IOrderedEnumerable<TSource> had no bridge
+    # mapping and collapsed to `object`, and recording `object` would have been strictly worse than
+    # recording nothing. It has a mapping now — to list[T] (#1332), then to itself (#1390), so
+    # `order_by` records a fact and its slotted/chained forms are pinned in interop/. What survives
+    # here is the invariant: iterating the result still works, and the emitted loop is unchanged.
+    #
+    # The unrepresentable-return decline itself is still live for `group_by`, whose IGrouping<K, T>
+    # elements the bridge can only call `object`; it is exercised by the interop suite.
     for x in lst.order_by(lambda v: v):
         print(x)
 
@@ -51,9 +56,14 @@ def main():
     #    it is pinned in bcl_extension_closed_signature_1195. The decline itself is pinned in
     #    ClrExtensionMethodResolverTests.CastAndOfType_NeverClose_TheirResultIsDeterminedByNothing.
     #
-    # 2. Receivers that pass all four call-site gates and are stopped only by the resolver — an
-    #    `int`, a StringBuilder, an `int?`. Each has a CLR type, each carries a name on the
-    #    acceptance surface, and none of them is a sequence, so TryBindThisParameter never reaches
-    #    IEnumerable<T>. That is the shape of the whole design: the gates are a cheap pre-filter and
-    #    the resolver is the real filter. Pinned in
+    # 2. Receivers that pass the call-site gates and are stopped only by the resolver — an `int`, a
+    #    StringBuilder, an `int?`. Each has a CLR type, each carries a name on the acceptance
+    #    surface, and none of them is a sequence, so TryBindThisParameter never reaches
+    #    IEnumerable<T>. Pinned in
     #    ClrExtensionMethodResolverTests.DecliningReceivers_ProduceNothingAtAll.
+    #
+    #    These no longer merely decline: a receiver NO overload of the name accepts is now refused
+    #    with SPY0203 (#1390). That is not a narrowing of the acceptance surface — the note above
+    #    records that these never compiled, before or after #1206, so the change is only in WHICH
+    #    compiler reports it. Turning a certain CS0411/CS1929 behind SPY0908 into a semantic
+    #    diagnostic is #1146's whole point.
