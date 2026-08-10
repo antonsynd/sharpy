@@ -1,0 +1,15 @@
+# The refusal twin of clr_take_extension_1332 (#1332). Resolving `take` at an annotated target
+# is only half the contract: the element type it carries has to be checked against the slot.
+# The bridge maps the Take(int) result to list[int], and list[int] does not fit a list[str] slot.
+#
+# This pin is what distinguishes a resolved `take` from the pre-#1332 behaviour: when the staging
+# declined, `take` stayed Unknown, and an Unknown slots into any annotation without complaint.
+# A green take_extension fixture alone cannot tell those two states apart — this one can.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst: List[int] = List[int]()
+    lst.add(1)
+    bad: list[str] = lst.take(1)
+    print(bad)

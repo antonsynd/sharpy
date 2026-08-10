@@ -1,0 +1,12 @@
+# The `skip` half of the wrong-slot refusal (#1332); see clr_take_wrong_slot_1332 for the
+# reasoning. `skip` is the single-overload control in clr_take_extension_1332, so it takes a
+# different path to the same staging decision — its element type has to be checked too, or the
+# single-overload path could pass an Unknown through where the discriminated one no longer does.
+from system.collections.generic import List
+
+
+def main() -> None:
+    lst: List[int] = List[int]()
+    lst.add(1)
+    bad: list[str] = lst.skip(0)
+    print(bad)
