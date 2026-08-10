@@ -97,13 +97,15 @@ fixture::basics/ellipsis_concrete_method
 fixture::generics/variadic_args_slice_1292
 fixture::generics/variadic_args_empty_1292
 
-# --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
-
-# math.floor / math.ceil return double; CPython returns int, so these print 3.0/4.0
-# where CPython prints 3/4. The first parity finding from the stdlib-corpus widening
-# (#1338) — both fixtures pin the float spelling in their .expected files, so nothing
-# in the suite could have objected. Type choice (int vs long vs documented deviation)
-# is open; Batch K.
-# #1350. Delete both when it lands.
+# math.floor / math.ceil return float (double) where CPython returns int, so these print
+# 3.0/4.0 for CPython's 3/4. Found by the stdlib-corpus widening (#1338) and RULED on in
+# Batch K (#1350): returning int overflows above 2^31 — math.floor(1e10) would raise where
+# CPython answers — and returning long still diverges above 2^63 while breaking callers
+# typed int or float. Parity here has a real cost, which is when .NET > Types > Python
+# applies. Sharpy already says the same thing at the operator, where CPython agrees:
+# 7.0 // 2.0 is 3.0, a float. `int(math.floor(x))` is the explicit bridge.
+# deviations.yaml: math-floor-ceil-return-float. Permanent.
 fixture::stdlib-tests/stdlib_math
 fixture::stdlib-tests/stdlib_from_math
+
+# --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---

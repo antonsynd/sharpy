@@ -1,4 +1,10 @@
 # Test math module: sqrt, floor, ceil via import
+#
+# The 3.0/4.0 below are DELIBERATE, not a rounding accident: math.floor/ceil return float
+# where CPython returns int. Ruled in Batch K (#1350) — returning int overflows above 2^31
+# and long still diverges above 2^63, so parity costs more than it buys, and Sharpy already
+# says the same at the operator (7.0 // 2.0 is 3.0, where CPython agrees). Use
+# int(math.floor(x)) when an int is wanted. deviations.yaml: math-floor-ceil-return-float.
 import math
 
 def main():

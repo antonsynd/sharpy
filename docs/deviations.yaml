@@ -1312,6 +1312,32 @@ deviations:
       sharpy: |
         print(min(2, 3.0))   # 2.0
 
+  - id: math-floor-ceil-return-float
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`math.floor`/`math.ceil` return `int`, so `math.floor(3.7)` is `3` and prints `3`."
+    sharpy_behavior: "They return `float` (double), so `math.floor(3.7)` is `3.0`. Returning `int` would overflow above 2^31 — `math.floor(1e10)` would raise where CPython gives 10000000000 — and returning `long` would still diverge above 2^63 while breaking every caller typed `int` or `float`; parity here has a real cost, which is when the codified precedence (.NET > Types > Python) applies, unlike `//` and `%` where Python semantics were adopted at zero cost. Sharpy already tells this story at the operator: `7.0 // 2.0` is `3.0`, a float — and CPython agrees there, so it is CPython that is inconsistent between its operator and its function. `int(math.floor(x))` is the explicit bridge (#1350)."
+    spec_ref: docs/stdlib/math.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        import math
+        print(math.floor(3.7))        # 3
+        print(math.ceil(3.7))         # 4
+        print(math.floor(-3.2))       # -4
+        print(7.0 // 2.0)             # 3.0   (a float here too)
+        print(int(math.floor(3.7)))   # 3     (the explicit bridge)
+      sharpy: |
+        import math
+        print(math.floor(3.7))        # 3.0
+        print(math.ceil(3.7))         # 4.0
+        print(math.floor(-3.2))       # -4.0
+        print(7.0 // 2.0)             # 3.0
+        print(int(math.floor(3.7)))   # 3
+
   - id: ellipsis-body-raises
     code: null
     category: semantics

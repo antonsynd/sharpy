@@ -1,4 +1,8 @@
 # Test from-import math module: sqrt, floor, ceil
+#
+# The 3.0/4.0 below are DELIBERATE — floor/ceil return float where CPython returns int.
+# Ruled in Batch K (#1350); the from-import spelling changes nothing about the return type.
+# deviations.yaml: math-floor-ceil-return-float. See stdlib_math.spy for the full reasoning.
 from math import sqrt, floor, ceil
 
 def main():
