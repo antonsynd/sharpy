@@ -1,0 +1,21 @@
+# The specification's own `sum_all` example (function_variadic_arguments.md), executed rather than
+# only written down. The spec states `args is an array[T] inside the function` and then shows this
+# function iterating it; #1292 was the gap between those two claims and the implementation.
+#
+# The three call forms are the spec's, including the empty one. CPython agrees on all three values
+# (6, 15, 0). It describes the empty case as an empty TUPLE where Sharpy's is an empty array — a
+# container difference no sum can show, and the reason the spec line that called it a tuple is
+# corrected alongside this fixture. variadic_args_empty_1292 covers the empty container directly.
+
+
+def sum_all(*numbers: int) -> int:
+    result = 0
+    for n in numbers:
+        result += n
+    return result
+
+
+def main() -> None:
+    print(sum_all(1, 2, 3))
+    print(sum_all(1, 2, 3, 4, 5))
+    print(sum_all())

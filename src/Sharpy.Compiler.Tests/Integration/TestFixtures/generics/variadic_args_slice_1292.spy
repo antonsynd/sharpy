@@ -1,0 +1,24 @@
+# #1292's headline reproduction, verbatim: len(), indexing and a SLICE of a variadic parameter, which
+# the issue reported as three SPY0320/SPY0260 diagnostics all naming `int` — the element type — as
+# the type of `args`. A slice of `array[T]` is a `list[T]` per #1256, so `args[1:]` is a list[int].
+#
+# Values verified against CPython, where `args` is a tuple: `list(args[1:])` prints [2, 3] there and
+# `args[1:]` prints [2, 3] here. The DIVERGENCE is the container — CPython's variadic is a tuple and
+# slicing it yields a tuple, Sharpy's is an array[T] and slicing it yields a list[T]. The slice's
+# printed form coincides because a Sharpy list prints like a Python list; see
+# variadic_args_empty_1292 for what the container difference does to len() and an empty slice.
+
+
+def show(*args: int) -> None:
+    print(len(args))
+    print(args[0])
+    print(args[1:])
+
+
+def tail(*args: int) -> list[int]:
+    return args[1:]
+
+
+def main() -> None:
+    show(1, 2, 3)
+    print(tail(1, 2, 3))

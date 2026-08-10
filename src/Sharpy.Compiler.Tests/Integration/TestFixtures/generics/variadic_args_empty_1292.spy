@@ -1,0 +1,28 @@
+# The empty variadic (#1292). The spec called this "an empty tuple", which is CPython's container,
+# not Sharpy's: `*args: T` binds as `array[T]`, so calling with no arguments gives an empty array.
+# The spec line is corrected in the same change as this fixture.
+#
+# What is pinned here is deliberately what is WELL-DEFINED about an empty variadic: its length, an
+# empty slice of it, and that iterating it runs the body zero times. `print(args)` on the bare
+# container is deliberately NOT pinned — printing a bare array is inconsistent in a way that has
+# nothing to do with variadics (an int[] prints its CLR type name while a string[] spreads into
+# print's params), which is a separate defect and would make this fixture fail for someone else's
+# reason.
+#
+# CPython agrees on every value below except the container spelling it never has to show: len 0,
+# an empty slice printing as an empty sequence, and no loop iterations.
+
+
+def describe(*args: int) -> None:
+    print(len(args))
+    print(args[0:0])
+
+    count = 0
+    for _n in args:
+        count += 1
+    print(count)
+
+
+def main() -> None:
+    describe()
+    describe(7)

@@ -1,0 +1,35 @@
+# #1292 mutation acceptance. Iterating a `*args: str` — the shape that pinned the emitter's variadic
+# compensation in place, and the one that proves the compensation no longer does anything.
+#
+# Before the parameter was typed as a sequence, `*args: str` was typed `str` (the ELEMENT type), so
+# the for-loop lowering saw `iteratorType == str` and would have wrapped the iterator in
+# StringHelpers.Iterate — iterating the parameter as if it were one string's characters. The emitter
+# carried a name-tracking set (_currentVariadicParams) purely so it could recognise the parameter and
+# suppress that wrap. Now `*args: str` is `array[str]`, the wrap is never reached at all, and the
+# suppression has nothing left to suppress.
+#
+# This fixture is green both before and after that compensation is deleted, which is exactly its job:
+# it is the control saying the deletion changed no behaviour, and it goes red the moment the
+# parameter's type regresses to the element type. Values verified against CPython.
+
+
+def log_all(*messages: str) -> None:
+    for msg in messages:
+        print(msg)
+
+
+def joined(*parts: str) -> str:
+    out = ""
+    for p in parts:
+        out += p
+    return out
+
+
+def main() -> None:
+    log_all("Starting", "Processing", "Done")
+
+    # A one-element call is the cell that would break loudest under the old lowering: iterating a
+    # single string variadic as characters prints one line per LETTER instead of one line total.
+    log_all("solo")
+
+    print(joined("a", "bc", "d"))
