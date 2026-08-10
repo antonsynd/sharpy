@@ -1,0 +1,23 @@
+# The candidate list when NO substitution is available: the target names a construction of a generic
+# BASE, and #1345 records that the arguments cannot be carried across the hierarchy, so the class is
+# shown constructing itself — `(T) -> Box[T]`.
+#
+# The refusal itself is #1345's, not this fixture's subject; what is pinned here is that the shape
+# still names a type. It used to print the arity-less `(T) -> Box`. When #1345 lands this cell stops
+# refusing and this fixture should become an .expected — that is the intended way for it to fail.
+
+class Base[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+class Box[T](Base[T]):
+    def __init__(self, value: T) -> None:
+        super().__init__(value)
+
+
+def main() -> None:
+    mk: (int) -> Base[int] = Box
+    print(mk)

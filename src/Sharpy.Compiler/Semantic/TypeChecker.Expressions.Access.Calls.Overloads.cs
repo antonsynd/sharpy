@@ -445,7 +445,7 @@ internal partial class TypeChecker
 
             AddError(
                 $"{ConstructorReferenceSubject(constructorReference)} has no constructor signature matching "
-                + $"'{target.GetDisplayName()}'. {ConstructorReferenceShapes(constructorReference)}",
+                + $"'{target.GetDisplayName()}'. {ConstructorReferenceShapes(constructorReference, target.ReturnType)}",
                 reference.LineStart, reference.ColumnStart,
                 code: DiagnosticCodes.Semantic.UnpinnedConstructorReference,
                 span: reference.Span);
@@ -528,7 +528,7 @@ internal partial class TypeChecker
         if (target is { } concreteTarget)
         {
             reason = $"has no constructor signature matching '{concreteTarget.GetDisplayName()}'. "
-                + ConstructorReferenceShapes(constructorReference);
+                + ConstructorReferenceShapes(constructorReference, concreteTarget.ReturnType);
         }
         else if (constructorReference.Symbol.TypeParameters.Count > 0)
         {
@@ -1084,7 +1084,8 @@ internal partial class TypeChecker
         };
 
     /// <summary>The construction shapes a type offers, for the no-matching-signature message.</summary>
-    private string ConstructorReferenceShapes(ConstructorReferenceType constructorReference)
+    private string ConstructorReferenceShapes(
+        ConstructorReferenceType constructorReference, SemanticType? targetReturnType = null)
     {
         if (constructorReference.Family == ConstructorReferenceFamily.Collection)
         {
@@ -1095,7 +1096,7 @@ internal partial class TypeChecker
 
         if (constructorReference.Family == ConstructorReferenceFamily.UserType)
         {
-            var shapes = UserTypeConstructorShapes(constructorReference)
+            var shapes = UserTypeConstructorShapes(constructorReference, targetReturnType)
                 .Select(shape => shape.GetDisplayName())
                 .Distinct()
                 .ToList();
@@ -1120,19 +1121,53 @@ internal partial class TypeChecker
     /// <see cref="UserTypeSignatureSatisfies"/> applies, so the message can never advertise a shape
     /// that would not actually pin.
     /// </summary>
-    private IEnumerable<FunctionType> UserTypeConstructorShapes(ConstructorReferenceType constructorReference)
+    private IEnumerable<FunctionType> UserTypeConstructorShapes(
+        ConstructorReferenceType constructorReference, SemanticType? targetReturnType = null)
     {
-        var constructed = new UserDefinedType
-        {
-            Name = constructorReference.Name,
-            Symbol = constructorReference.Symbol,
-        };
+        var typeSymbol = constructorReference.Symbol;
 
-        var candidates = ResolveInitializerConstructorCandidates(constructorReference.Symbol);
+        // Report the candidates under the SAME substitution the acceptance test used, so the shapes
+        // printed are the ones actually compared against the target (#1270). Listing `(T) -> Box`
+        // for a target of `(str) -> Box[int]` names neither what the class offers under that target
+        // nor a spelling the reader can act on — the reader has to perform the substitution in their
+        // head to see that the real mismatch is str against int.
+        var substitute = targetReturnType is null
+            ? null
+            : UserTypeConstructionSubstitutionOf(constructorReference, targetReturnType);
+
+        // With no substitution the class is shown constructing ITSELF, type parameters and all
+        // (`(T) -> Box[T]`). That is the honest answer when the target names a construction of some
+        // BASE, where the arguments cannot be carried across the hierarchy (#1345) — and it is still
+        // strictly better than the arity-less `Box` this printed before, which named no type at all.
+        var map = substitute ?? (static t => t);
+        var constructed = substitute != null && targetReturnType != null
+            ? targetReturnType
+            : SelfConstructionOf(typeSymbol);
+
+        var candidates = ResolveInitializerConstructorCandidates(typeSymbol);
         return candidates.Count == 0
             ? new[] { FunctionType.FromParameters(new List<ParameterSymbol>(), constructed) }
             : candidates.Select(constructor =>
-                ReferenceSignatureOf(constructor, t => t) with { ReturnType = constructed });
+                ReferenceSignatureOf(constructor, map) with { ReturnType = constructed });
+    }
+
+    /// <summary>
+    /// The type a class's constructor returns when nothing substitutes its type parameters: the
+    /// class applied to its OWN parameters (<c>Box[T]</c>), or the plain type when it has none.
+    /// </summary>
+    private static SemanticType SelfConstructionOf(TypeSymbol typeSymbol)
+    {
+        if (typeSymbol.TypeParameters.Count == 0)
+            return new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol };
+
+        return new GenericType
+        {
+            Name = typeSymbol.Name,
+            GenericDefinition = typeSymbol,
+            TypeArguments = typeSymbol.TypeParameters
+                .Select(tp => (SemanticType)new TypeParameterType { Name = tp.Name })
+                .ToList(),
+        };
     }
 
     /// <summary>The first shape a user type offers, for the SPY0342 annotation suggestion.</summary>

@@ -1,0 +1,17 @@
+# #1270: the SPY0342 candidate list is printed under the same substitution the acceptance test used.
+#
+# This target names a construction of Box itself, so the substitution T := int is available and the
+# candidate reads `(int) -> Box[int]` — which shows the reader that the mismatch is str against int.
+# It used to print `(T) -> Box`: an unsubstituted parameter and an arity-less return type that names
+# no type at all, leaving the reader to perform the substitution themselves to find the defect.
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+def main() -> None:
+    mk: (str) -> Box[int] = Box
+    print(mk)
