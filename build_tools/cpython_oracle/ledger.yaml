@@ -301,6 +301,14 @@ deviations:
   spec_ref: docs/language_specification/program_entry_point.md
   existing_diagnostic: SPY0403
   planned_diagnostic: null
+- id: mixed-set-frozenset-equality
+  category: operators
+  audience: python
+  severity: error
+  code: SPY0222
+  spec_ref: docs/language_specification/collection_types.md
+  existing_diagnostic: SPY0222
+  planned_diagnostic: null
 - id: module-level-executable-statement
   category: semantics
   audience: python

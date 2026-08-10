@@ -1425,3 +1425,28 @@ deviations:
         from shadowlib import len   # warning SPY0484, then 999
         import builtins
         print(builtins.len(xs))     # 3 — 'import builtins' is required
+
+  - id: mixed-set-frozenset-equality
+    code: SPY0222
+    category: operators
+    audience: python
+    severity: error
+    python_behavior: "A set and a frozenset compare by their elements, so the two types are interchangeable operands for every set operator including equality: `{1} == frozenset([1])` is True and `{1} != frozenset([1])` is False — verified with python3."
+    sharpy_behavior: "The four set operations (`|`, `&`, `-`, `^`) and the four subset/superset comparisons DO accept mixed `set`/`frozenset` operands in both directions, following CPython's left-operand rule — the left operand's type decides the result (#1312). Mixed `==`/`!=` alone is refused, SPY0222, in both directions. The reason is measured rather than an oversight: equality operators take NULLABLE operands, so declaring `operator ==(Set<T>?, FrozenSet<T>?)` alongside the existing `operator ==(Set<T>?, Set<T>?)` makes the ordinary `someSet == None` ambiguous — the null literal converts to both and C# reports CS9342. That is not hypothetical; it broke Sharpy.Core's own DictKeyView on the first build, and it would break the same shape in every user program, which is worse than the gap it closes. The eight operators that do take mixed operands have non-nullable parameters and carry no such conflict, which is exactly why equality is the only missing cell. Converting one side states which comparison is meant and both spellings hold. Axiom precedence: .NET (1) > Python (2)."
+    spec_ref: docs/language_specification/collection_types.md
+    existing_diagnostic: SPY0222
+    planned_diagnostic: null
+    example:
+      python: |
+        {1} == frozenset([1])       # True
+        {1} != frozenset([1])       # False
+      sharpy: |
+        # Every line below was executed against the compiler.
+        s: set[int] = {1}
+        f: frozenset[int] = frozenset([1])
+        print(s == f)               # ERROR SPY0222: Type 'set[int]' does not support
+                                    # operator '==' with operand of type 'frozenset[int]'
+        print(f == s)               # ERROR SPY0222 — the refusal is symmetric
+        print(s | f)                # {1} — the set OPERATIONS do take mixed operands
+        print(s == set(f))          # True — convert one side to say what you mean
+        print(frozenset(s) == f)    # True

@@ -4,7 +4,8 @@
 |-------------|-----------|-----------|-------|
 | `list[T]` | `[T]` | `Sharpy.List<T>` | Mutable list |
 | `dict[K, V]` | `{K: V}` | `Sharpy.Dict<K, V>` | Hash map |
-| `set[T]` | `{T}` | `Sharpy.Set<T>` | Unique elements |
+| `set[T]` | `{T}` | `Sharpy.Set<T>` | Unique elements; see [set operators](#set-and-frozenset-operators) |
+| `frozenset[T]` | — | `Sharpy.FrozenSet<T>` | Immutable, hashable set; no shorthand |
 | `tuple[T1, T2, ...]` | `(T1, T2, ...)` | `System.ValueTuple<T1, T2, ...>` | Fixed-size tuple; supports [positional access](#tuple-positional-access) |
 
 With the exception of `tuple[...]`, Sharpy collection types use custom Pythonic wrappers around the corresponding .NET collection types.
@@ -52,6 +53,165 @@ item: str? = items.get(99)  # None()
 item: str = items[0]        # "a"
 item: str = items[99]       # IndexError
 ```
+
+## Set and Frozenset Operators
+
+`set[T]` and `frozenset[T]` support the same four set operations and the same four subset/superset
+comparisons, and every one of them accepts the *other* type as its right operand. Every value in
+this section was executed against the compiler.
+
+### The left operand decides the result type
+
+A mixed operation follows CPython's **left-operand rule**: the type of the left operand is the type
+of the result. `set | frozenset` is a `set`; `frozenset | set` is a `frozenset`. The rule is about
+the operand types alone — it does not depend on which side is larger, or on the annotation of the
+variable being assigned.
+
+In the table below, `∘` stands for whichever operator the row names:
+
+| Operator | Meaning | `set ∘ set` | `set ∘ frozenset` | `frozenset ∘ set` | `frozenset ∘ frozenset` |
+|----------|---------|-------------|-------------------|-------------------|-------------------------|
+| `\|` | union | `set[T]` | `set[T]` | `frozenset[T]` | `frozenset[T]` |
+| `&` | intersection | `set[T]` | `set[T]` | `frozenset[T]` | `frozenset[T]` |
+| `-` | difference | `set[T]` | `set[T]` | `frozenset[T]` | `frozenset[T]` |
+| `^` | symmetric difference | `set[T]` | `set[T]` | `frozenset[T]` | `frozenset[T]` |
+| `<` `<=` `>` `>=` | subset/superset | `bool` | `bool` | `bool` | `bool` |
+| `==` `!=` | equality | `bool` | **refused (SPY0222)** | **refused (SPY0222)** | `bool` |
+
+The comparisons answer a question about the two operands rather than building a collection, so they
+return `bool` in every cell and the left-operand rule has nothing to decide.
+
+### Neither operand is mutated
+
+A set operation builds a new collection; it never writes through either operand, whichever side the
+mutable one is on. With a `set` on the left, the result is a `set`:
+
+```python
+def main() -> None:
+    s: set[int] = {1, 2}
+    f: frozenset[int] = frozenset([2, 3])
+
+    print(s | f)      # {1, 2, 3}
+    print(s & f)      # {2}
+    print(s - f)      # {1}
+    print(s ^ f)      # {1, 3}
+    print(s <= f)     # False
+
+    print(s)          # {1, 2}             — unchanged
+    print(f)          # frozenset({2, 3})  — unchanged
+```
+
+The same operands the other way round produce the same elements in a `frozenset`:
+
+```python
+def main() -> None:
+    s: set[int] = {1, 2}
+    f: frozenset[int] = frozenset([2, 3])
+
+    print(f | s)      # frozenset({1, 2, 3})
+    print(f & s)      # frozenset({2})
+    print(f - s)      # frozenset({3})
+    print(f ^ s)      # frozenset({1, 3})
+    print(f >= s)     # False
+```
+
+`s - f` is `{1}` and `f - s` is `frozenset({3})` because difference is not symmetric; the elements
+differ for the usual reason, and only the *type* of each result comes from the left-operand rule.
+
+### Augmented assignment rebinds
+
+`|=`, `&=`, `-=` and `^=` are defined by the binary operator plus a rebinding of the left-hand name.
+Nothing is mutated in place, so the left operand may be a `frozenset` — the name is simply bound to
+the new frozenset the operator returned:
+
+```python
+def main() -> None:
+    s: set[int] = {1, 2}
+    f: frozenset[int] = frozenset([2, 3])
+
+    s |= f
+    print(s)          # {1, 2, 3}
+
+    g: frozenset[int] = frozenset([1, 2])
+    g |= {2, 3}
+    print(g)          # frozenset({1, 2, 3})
+```
+
+Because the result type follows the left operand, an augmented assignment always rebinds the name to
+its own type: `s` stays a `set[int]` and `g` stays a `frozenset[int]`.
+
+### Mixed `==` and `!=` are refused
+
+CPython compares a set and a frozenset by their elements, so `{1} == frozenset([1])` is `True`.
+Sharpy refuses the comparison in both directions:
+
+```python
+def main() -> None:
+    s: set[int] = {1}
+    f: frozenset[int] = frozenset([1])
+
+    # ERROR SPY0222: Type 'set[int]' does not support operator '=='
+    #                with operand of type 'frozenset[int]'
+    print(s == f)
+    # ERROR SPY0222: Type 'frozenset[int]' does not support operator '=='
+    #                with operand of type 'set[int]'
+    print(f == s)
+    # ERROR SPY0222: Type 'set[int]' does not support operator '!='
+    #                with operand of type 'frozenset[int]'
+    print(s != f)
+```
+
+This is the one gap in the mixed matrix, and it is a deliberate trade rather than an oversight:
+equality operators take nullable operands, so a mixed `==` overload would make the ordinary
+`someSet == None` ambiguous between the two candidates. Converting one side states which comparison
+is meant, and both spellings hold:
+
+```python
+def main() -> None:
+    s: set[int] = {1}
+    f: frozenset[int] = frozenset([1])
+
+    print(s == set(f))          # True
+    print(frozenset(s) == f)    # True
+```
+
+Catalogued as a deviation (`docs/deviations.yaml`, `mixed-set-frozenset-equality`), which carries
+the full rationale.
+
+### Dict and frozendict
+
+`dict[K, V]` and `frozendict[K, V]` support their operators against *their own type only*. There is
+no mixed `dict`/`frozendict` matrix — the left-operand rule described above applies to sets, not to
+dicts:
+
+```python
+def main() -> None:
+    d: dict[str, int] = {"a": 1}
+    e: dict[str, int] = {"b": 2}
+    print(d | e)                    # {'a': 1, 'b': 2}
+
+    a: frozendict[str, int] = frozendict({"a": 1})
+    b: frozendict[str, int] = frozendict({"b": 2})
+    merged: frozendict[str, int] = a | b
+    print(len(merged))              # 2
+    print(merged["a"])              # 1
+    print(merged["b"])              # 2
+
+    # ERROR SPY0222: Type 'dict[str, int]' does not support operator '|'
+    #                with operand of type 'frozendict[str, int]'
+    # print(d | b)
+```
+
+The `frozendict` result is read by key rather than printed whole because a `frozendict` does not
+carry `dict`'s insertion order — see [#1392](https://github.com/antonsynd/sharpy/issues/1392).
+
+Convert explicitly when the operands differ. Tracked as
+[#1361](https://github.com/antonsynd/sharpy/issues/1361).
+
+*Implementation*
+- *✅ Native - each mixed pairing is a C# operator overload declared on the LEFT operand's type
+  (`Sharpy.Set<T>` for `set ∘ frozenset`, `Sharpy.FrozenSet<T>` for `frozenset ∘ set`), which is
+  what makes the left operand decide the result type.*
 
 ## Tuple Positional Access
 

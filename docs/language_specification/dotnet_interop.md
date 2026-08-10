@@ -179,6 +179,27 @@ def main() -> None:
 Because the conversion copies, mutating the result does not affect the .NET collection it came
 from, exactly as `b = list(a)` in Python leaves `a` alone.
 
+**Reading a CLR property is one of those positions.** A property whose declared type is a CLR
+sequence materializes on read under the same rule, so what you get back is a Sharpy collection with
+a Sharpy collection's surface — indexable and `len()`-able — not the bare `IEnumerable<T>` the
+metadata names ([#1294](https://github.com/antonsynd/sharpy/issues/1294)):
+
+```python
+from collections import Counter
+
+
+def main() -> None:
+    c = Counter[str](["a", "b", "a"])
+    ks = c.keys          # CLR metadata says IEnumerable<str>
+    print(ks)            # ['a', 'b'] — a Sharpy list[str]
+    print(ks[0])         # a — indexable, which IEnumerable is not
+    print(len(ks))       # 2
+```
+
+What the rule settles here is the *type* of the read. What a write through such a materialized
+property read should mean for the object it came from is a separate question, still open as
+[#1391](https://github.com/antonsynd/sharpy/issues/1391); do not rely on either answer yet.
+
 **Assigning a .NET collection itself to a Sharpy annotation is refused.** The conversion above
 happens where a *sequence expression* meets a Sharpy slot; naming a CLR collection and annotating it
 as a Sharpy one is a different request, and Sharpy will not silently copy for it:
