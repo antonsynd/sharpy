@@ -1,0 +1,4 @@
+Cannot pass argument of type 'list[int]?' to parameter of type 'list[int]' — the argument is Optional[list[int]]; narrow it ('if x is not None:') or unwrap it first @31:17
+Cannot pass argument of type 'str?' to parameter of type 'str' — the argument is Optional[str]; narrow it ('if x is not None:') or unwrap it first @33:17
+Cannot pass argument of type 'str?' to parameter of type 'str?' — the argument is Optional[str]; narrow it ('if x is not None:') or unwrap it first @35:17
+Cannot pass argument of type 'int?' to parameter of type 'int' — the argument is Optional[int]; narrow it ('if x is not None:') or unwrap it first @38:23

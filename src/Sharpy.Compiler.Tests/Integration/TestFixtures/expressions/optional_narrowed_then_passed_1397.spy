@@ -1,0 +1,24 @@
+# #1397 control. Refusing an un-unwrapped Optional at an argument boundary must leave the two ways
+# of legitimately getting one INTO such a boundary working: narrow it first (`is not None` gives a
+# `list[int]` in the branch), or hand a plain `T` to a formal that accepts the Optional — the wrap
+# direction, which is the one conversion `Sharpy.Optional<T>` actually declares. Passing an Optional
+# to an Optional formal is likewise untouched.
+def total(xs: list[int]) -> int:
+    return len(xs)
+
+
+def describe(v: int?) -> str:
+    if v is not None:
+        return str(v)
+    return "none"
+
+
+def main() -> None:
+    ys: list[int]? = [1, 2, 3]
+    if ys is not None:
+        print(total(ys))
+
+    print(describe(7))
+
+    x: int? = 4
+    print(describe(x))

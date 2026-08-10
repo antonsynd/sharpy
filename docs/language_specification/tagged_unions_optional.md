@@ -175,6 +175,38 @@ print(s.unwrap_or("default"))
 The only members callable directly on a `T?` are `Optional`'s own API
 (`unwrap`, `unwrap_or`, `unwrap_or_else`, `map`, `is_some`, `is_none`).
 
+### Passing a `T?` is the same rule
+
+Handing a `T?` to something that expects a `T` is a use of the underlying value,
+so it is refused for the same reason `len(s)` is — at argument binding, at an
+operator's operand, and at any other position typed `T`. The reverse direction
+is free: `Optional[T]` has an implicit conversion **from** `T`, so a plain value
+goes into a `T?` parameter unchanged.
+
+```python
+def total(xs: list[int]) -> int:
+    return len(xs)
+
+ys: list[int]? = get_items()
+
+total(ys)          # error: Cannot pass argument of type 'list[int]?' to parameter
+                   # of type 'list[int]' — the argument is Optional[list[int]];
+                   # narrow it ('if x is not None:') or unwrap it first
+[1, 2] + ys        # error: Type 'list[int]' does not support operator '+' with
+                   # operand of type 'list[int]?'
+
+if ys is not None: # narrowed to list[int] in the branch
+    total(ys)      # OK
+total(ys.unwrap_or([]))  # OK
+
+def describe(v: int?) -> str: ...
+describe(7)        # OK — T into T? is the conversion Optional[T] declares
+```
+
+A `T?` is not a `T | None` either, even though both spell as `T?` at a use site:
+they are different types, and neither converts to the other implicitly. Use
+`maybe` to go from `T | None` to `T?`, and narrow or unwrap to go the other way.
+
 ### `T | None` is loose
 
 By contrast, `T | None` (the C# nullable interop type — see

@@ -1,0 +1,38 @@
+# #1397. Sharpy's `T?` is the STRICT tagged union: an `Optional[T]` is a `Sharpy.Optional<T>`, not a
+# `T`, and Sharpy.Core declares exactly one conversion for it — `implicit operator Optional<T>(T)`,
+# the WRAP direction. There is no Optional->T conversion, so an un-unwrapped Optional handed to a
+# formal that is not itself Optional must be REFUSED at the argument-binding boundary. It used to be
+# accepted, and the user met it as `SPY0908: internal error ... (CS1503)` — a compiler-bug report for
+# their own type error. Narrowing (`if xs is not None:`) or unwrapping is the caller's job; that is
+# the entire guarantee `T?` exists to provide.
+def total(xs: list[int]) -> int:
+    return len(xs)
+
+
+def shout(s: str) -> str:
+    return s.upper()
+
+
+# The strict-to-loose seam. A `str | None` formal is C#'s LOOSE nullable, which is NOT the same type
+# as `Optional[str]` even though both render `str?`. Because the two spellings collide, the refusal
+# names the argument's Optional-ness explicitly — without that the message would read "cannot pass
+# argument of type 'str?' to parameter of type 'str?'", which the reader cannot act on.
+def greet(name: str | None) -> str:
+    return "hello"
+
+
+class Scaler:
+    def by(self, factor: int) -> int:
+        return factor * 2
+
+
+def main() -> None:
+    ys: list[int]? = None
+    print(total(ys))
+    v: str? = None
+    print(shout(v))
+    n: str? = "ada"
+    print(greet(n))
+    # The method-binding seam refuses it for the same reason the free-function seam does.
+    k: int? = 3
+    print(Scaler().by(k))

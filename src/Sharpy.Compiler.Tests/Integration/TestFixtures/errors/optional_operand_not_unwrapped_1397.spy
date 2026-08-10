@@ -1,0 +1,10 @@
+# #1397 / #1311. The operator operand check delegates to the one argument-binding relation, so an
+# un-unwrapped Optional operand is refused for the same reason an un-unwrapped Optional argument is.
+# This cell was refused by a hand-rolled operand check, re-opened to `SPY0908 (CS0019)` when #1311
+# moved the check onto the shared relation, and is refused again now that the relation itself tells
+# the truth about what an `Optional[T]` is.
+def main() -> None:
+    xs: list[int] = [1, 2]
+    ys: list[int]? = None
+    zs = xs + ys
+    print(len(zs))
