@@ -83,7 +83,7 @@ internal partial class RoslynEmitter
 
         var convertAll = MemberAccessExpression(
             SyntaxKind.SimpleMemberAccessExpression,
-            ParseTypeName("global::System.Array"),
+            MakeGlobalQualifiedName(nameof(System), nameof(System.Array)),
             GenericName(Identifier(nameof(System.Array.ConvertAll)))
                 .WithTypeArgumentList(TypeArgumentList(SeparatedList<TypeSyntax>(new TypeSyntax[]
                 {
