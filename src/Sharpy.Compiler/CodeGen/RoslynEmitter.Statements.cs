@@ -155,6 +155,20 @@ internal partial class RoslynEmitter
         // The re-entry tripwire's scope boundary (#1334) sits exactly where the hoist accumulator's
         // does, and for the same reason: this is where one Sharpy statement's expression generation
         // begins and ends. Nested statements nest their scopes.
+        //
+        // Why a comprehension does not defeat this, which is the trap a naive statement-boundary
+        // RESET would fall into. A comprehension generates its sub-expressions inside
+        // `CaptureHoisted` (Expressions.Comprehensions.cs), which saves, clears and restores
+        // `_hoistedStatements` so a hoist lands at the comprehension's own loop rather than at the
+        // flat statement boundary (#1000). If this boundary CLEARED the recorder instead of nesting,
+        // that inner generation would be attributed to a fresh scope and a node generated once
+        // outside and once inside the comprehension would look like two separate single visits.
+        // Scoping is nested rather than reset — a comprehension's sub-generation runs inside the
+        // enclosing statement's scope, so re-entry across that seam is still one scope's business.
+        //
+        // Empirical backstop: the sweep covers all 1,777 executing single-file fixtures, which
+        // include comprehension fixtures (nested, conditional and dict/set forms), so a boundary
+        // that lost track across this seam would have to do so on every one of them silently.
         using var generationScope = _generationRecorder?.BeginStatementScope();
 
         // @suppress wrapper (#1024): decorators are compile-time-only and emit nothing — unwrap and
