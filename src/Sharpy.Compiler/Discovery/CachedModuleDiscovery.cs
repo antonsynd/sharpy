@@ -688,7 +688,12 @@ internal class CachedModuleDiscovery
     /// <summary>
     /// Convert a TypeSignature back to a SemanticType.
     /// </summary>
-    private SemanticType ConvertTypeSignature(TypeSignature signature)
+    /// <remarks>
+    /// Internal rather than private so the two-mapper agreement fact can drive this path directly:
+    /// this is one of the two producers of <see cref="GenericType.ClrOriginTypeName"/> and its
+    /// agreement with <see cref="ClrTypeBridge"/>'s stamp is load-bearing (#1294).
+    /// </remarks>
+    internal SemanticType ConvertTypeSignature(TypeSignature signature)
     {
         return ConvertTypeSignature(signature, sharedTypeParams: null);
     }
@@ -697,7 +702,7 @@ internal class CachedModuleDiscovery
     /// Convert a TypeSignature back to a SemanticType, optionally remapping generic type
     /// parameters to shared instances by positional index.
     /// </summary>
-    private SemanticType ConvertTypeSignature(TypeSignature signature, TypeParameterType[]? sharedTypeParams)
+    internal SemanticType ConvertTypeSignature(TypeSignature signature, TypeParameterType[]? sharedTypeParams)
     {
         // Handle generic type parameters (e.g., T in Min<T>)
         if (signature.IsGenericParameter)

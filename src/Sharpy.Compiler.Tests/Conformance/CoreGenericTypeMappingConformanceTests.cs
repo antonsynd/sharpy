@@ -2,11 +2,14 @@ extern alias SharpyRT;
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using FluentAssertions;
 using Sharpy.Compiler.Discovery;
+using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Shared;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Conformance;
@@ -33,8 +36,30 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// degradations.
 /// </para>
 /// </summary>
-public class CoreGenericTypeMappingConformanceTests
+public class CoreGenericTypeMappingConformanceTests : IDisposable
 {
+    /// <summary>
+    /// Private cache directory for the <see cref="CachedModuleDiscovery"/> instances the provenance
+    /// fact drives. Nothing is written to it — <c>ConvertTypeSignature</c> reads no index — but the
+    /// cache constructor creates its directory, and pointing it at a temp path keeps this suite out
+    /// of the shared <c>~/.sharpy/cache</c> that parallel runs contend on.
+    /// </summary>
+    private readonly string _cacheDirectory =
+        Path.Combine(Path.GetTempPath(), "sharpy-test-cache", Guid.NewGuid().ToString());
+
+    public void Dispose()
+    {
+        try
+        {
+            if (Directory.Exists(_cacheDirectory))
+                Directory.Delete(_cacheDirectory, recursive: true);
+        }
+        catch
+        {
+            // Cleanup is best-effort; a leaked temp directory is not a test failure.
+        }
+    }
+
     /// <summary>
     /// Types whose <c>object</c> mapping is accepted for a stated reason. Key = type name without
     /// arity; value = the reason, which must cite an issue when it is a defect rather than a
@@ -107,6 +132,51 @@ public class CoreGenericTypeMappingConformanceTests
     [Fact]
     public void Allowlist_HasNoStaleEntries()
     {
+        var stale = StaleMappingAllowlistEntries(Allowlist);
+
+        stale.Should().BeEmpty(
+            "each allowlist entry must name a Sharpy.Core generic that still maps to `object`; "
+            + "delete entries whose type is gone or has gained a MapGenericType arm.\nStale:\n"
+            + string.Join("\n", stale));
+    }
+
+    /// <summary>
+    /// Positive control for the check above. <see cref="Allowlist"/> is empty — every entry was
+    /// drained — so <see cref="Allowlist_HasNoStaleEntries"/> now iterates nothing and would pass
+    /// against a staleness rule that had been deleted outright. This feeds the same rule a synthetic
+    /// entry that IS stale and asserts it trips.
+    /// </summary>
+    /// <remarks>
+    /// The synthetic key is a real Sharpy.Core generic that maps cleanly rather than a nonsense
+    /// string, so the control exercises the actual distinction — "no longer degrades" vs "still
+    /// degrades" — instead of merely "unknown name". There is deliberately no negative control
+    /// alongside it: nothing in Sharpy.Core degrades any more (that is what
+    /// <see cref="PublicCoreGenerics_MapToUsableSemanticTypes"/> asserts against an empty allowlist),
+    /// so a still-degrading entry cannot be constructed from a real type today.
+    /// </remarks>
+    [Fact]
+    public void AllowlistStalenessRule_TripsOnAStaleEntry()
+    {
+        var synthetic = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["List"] = "synthetic: Sharpy.List<T> has a MapGenericType arm and never degrades"
+        };
+
+        StaleMappingAllowlistEntries(synthetic).Should().ContainSingle()
+            .Which.Should().Be(
+                "List",
+                "an entry naming a type that maps cleanly is by definition stale; if this does not "
+                + "trip, Allowlist_HasNoStaleEntries is passing because it checks nothing");
+    }
+
+    /// <summary>
+    /// The staleness rule itself, parameterized on the allowlist so the real (empty) one and a
+    /// synthetic stale one run through identical code. An entry is stale when the type it names no
+    /// longer maps to <c>object</c>.
+    /// </summary>
+    private static IReadOnlyList<string> StaleMappingAllowlistEntries(
+        IReadOnlyDictionary<string, string> allowlist)
+    {
         var bridge = new ClrTypeBridge();
         var stillDegrading = new HashSet<string>(StringComparer.Ordinal);
 
@@ -119,12 +189,7 @@ public class CoreGenericTypeMappingConformanceTests
                 stillDegrading.Add(NameWithoutArity(definition));
         }
 
-        var stale = Allowlist.Keys.Where(k => !stillDegrading.Contains(k)).ToList();
-
-        stale.Should().BeEmpty(
-            "each allowlist entry must name a Sharpy.Core generic that still maps to `object`; "
-            + "delete entries whose type is gone or has gained a MapGenericType arm.\nStale:\n"
-            + string.Join("\n", stale));
+        return allowlist.Keys.Where(k => !stillDegrading.Contains(k)).ToList();
     }
 
     /// <summary>
@@ -171,6 +236,47 @@ public class CoreGenericTypeMappingConformanceTests
     [Fact]
     public void OperatorResolutionAllowlist_HasNoStaleEntries()
     {
+        var stale = StaleOperatorAllowlistEntries(OperatorResolutionAllowlist);
+
+        stale.Should().BeEmpty(
+            "each operator-allowlist entry must name a registered builtin that STILL declares "
+            + "dunder-mappable CLR operators and still resolves none; delete entries whose cause is "
+            + "gone.\nStale:\n" + string.Join("\n", stale));
+    }
+
+    /// <summary>
+    /// Positive control for the check above, for the same reason its sibling has one:
+    /// <see cref="OperatorResolutionAllowlist"/> is empty, so the real check iterates nothing.
+    /// </summary>
+    /// <remarks>
+    /// This codifies by test what #1310's commit message claimed had been verified by hand — the
+    /// mutation that proves the guard can fail. Hand-verification leaves no artifact and does not
+    /// survive the next refactor; that is precisely how Complex's entry outlived a cause it never
+    /// had.
+    /// </remarks>
+    [Fact]
+    public void OperatorResolutionStalenessRule_TripsOnAStaleEntry()
+    {
+        var synthetic = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [BuiltinNames.List] = "synthetic: list resolves its CLR operators, so it is not a gap"
+        };
+
+        StaleOperatorAllowlistEntries(synthetic).Should().ContainSingle()
+            .Which.Should().Be(
+                BuiltinNames.List,
+                "an entry naming a builtin that resolves its operators is by definition stale; if "
+                + "this does not trip, OperatorResolutionAllowlist_HasNoStaleEntries checks nothing");
+    }
+
+    /// <summary>
+    /// The operator staleness rule, parameterized on the allowlist so the real (empty) one and a
+    /// synthetic stale one run through identical code. An entry is stale when the builtin it names
+    /// no longer both declares dunder-mappable CLR operators and resolves none of them.
+    /// </summary>
+    private static IReadOnlyList<string> StaleOperatorAllowlistEntries(
+        IReadOnlyDictionary<string, string> allowlist)
+    {
         var registry = new BuiltinRegistry();
         var stillUnresolved = new HashSet<string>(StringComparer.Ordinal);
 
@@ -180,22 +286,25 @@ public class CoreGenericTypeMappingConformanceTests
             if (clrType?.Namespace is not ClrTypeBridge.SpecialCases.SharpyNamespace)
                 continue;
 
-            var declared = clrType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-                .Count(m => m.IsSpecialName
-                    && m.Name.StartsWith("op_", StringComparison.Ordinal)
-                    && global::Sharpy.Compiler.Discovery.Caching.OverloadIndexBuilder.IsDunderMappableOperator(m.Name));
-
-            if (declared > 0 && symbol.OperatorMethods.Count == 0)
+            if (DunderMappableOperatorCount(clrType) > 0 && symbol.OperatorMethods.Count == 0)
                 stillUnresolved.Add(sharpyName);
         }
 
-        var stale = OperatorResolutionAllowlist.Keys.Where(k => !stillUnresolved.Contains(k)).ToList();
-
-        stale.Should().BeEmpty(
-            "each operator-allowlist entry must name a registered builtin that STILL declares "
-            + "dunder-mappable CLR operators and still resolves none; delete entries whose cause is "
-            + "gone.\nStale:\n" + string.Join("\n", stale));
+        return allowlist.Keys.Where(k => !stillUnresolved.Contains(k)).ToList();
     }
+
+    /// <summary>
+    /// Operators discovery can MAP to a dunder — the only ones that can be "lost". Conversion
+    /// operators (op_Implicit / op_Explicit) have no dunder, so counting them made the guard report a
+    /// gap for a type that had none (#1310). Shared by the staleness rule and the gap sweep so the
+    /// two cannot drift into disagreeing about what counts.
+    /// </summary>
+    private static int DunderMappableOperatorCount(Type clrType)
+        => clrType
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Count(m => m.IsSpecialName
+                && m.Name.StartsWith("op_", StringComparison.Ordinal)
+                && OverloadIndexBuilder.IsDunderMappableOperator(m.Name));
 
     [Fact]
     public void EveryRegisteredBuiltinTypeResolvesItsClrOperators()
@@ -218,13 +327,9 @@ public class CoreGenericTypeMappingConformanceTests
             if (clrType.Namespace is not ClrTypeBridge.SpecialCases.SharpyNamespace)
                 continue;
 
-            // Only operators discovery can MAP to a dunder can be "lost". Conversion operators
-            // (op_Implicit / op_Explicit) have no dunder, so counting them made the guard report a
-            // gap for a type that had none — see the allowlist note (#1310).
-            var declared = clrType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-                .Count(m => m.IsSpecialName
-                    && m.Name.StartsWith("op_", StringComparison.Ordinal)
-                    && global::Sharpy.Compiler.Discovery.Caching.OverloadIndexBuilder.IsDunderMappableOperator(m.Name));
+            // Only operators discovery can MAP to a dunder can be "lost" — see
+            // DunderMappableOperatorCount and the allowlist note (#1310).
+            var declared = DunderMappableOperatorCount(clrType);
             if (declared == 0)
                 continue;
 
@@ -239,6 +344,135 @@ public class CoreGenericTypeMappingConformanceTests
             "a registered builtin whose CLR type declares operators must resolve them; a missing "
             + "SharpyToClrNameMap entry silently yields an operator-less symbol.\nGaps:\n"
             + string.Join("\n", gaps));
+    }
+
+    /// <summary>
+    /// The fourth fact: the compiler has <b>two</b> producers of
+    /// <see cref="GenericType.ClrOriginTypeName"/>, and they must spell the same CLR definition.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="ClrTypeBridge"/> stamps <c>GetGenericTypeDefinition().FullName</c> directly.
+    /// <c>CachedModuleDiscovery.ConvertTypeSignature</c> reconstructs the stamp from the cached
+    /// <see cref="TypeSignature.ClrTypeName"/>, which <see cref="OverloadIndexBuilder"/> writes as the
+    /// definition's <c>AssemblyQualifiedName</c>, by cutting at the first depth-0 comma
+    /// (<c>ClrNameHelper.ToFullClrName</c>). Two independent derivations of one string: if they ever
+    /// diverge, every warm-cache formal silently stops matching the assignability rule that reads the
+    /// stamp, and nothing fails until a user's call to a .NET method is refused.
+    /// </para>
+    /// <para>
+    /// #1294 fixed exactly that class by hand and left it untested — its preservation one-liner in
+    /// <c>TypeSubstitution</c> could be reverted without failing a single test, which is the inert-fix
+    /// failure mode that had already bitten the issue once. This fact is the defense: it drives both
+    /// producers over the same CLR types and compares their output.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void BothProvenanceProducers_SpellTheSameClrDefinition()
+    {
+        var bridge = new ClrTypeBridge();
+        var builder = new OverloadIndexBuilder();
+        var discovery = new CachedModuleDiscovery(new OverloadIndexCache(_cacheDirectory));
+
+        var arms = ClrBridgeArmProbe.DiscoverCollapsingArms(bridge);
+
+        // Positive control on the probe itself. Every assertion below is over `arms`, so an empty or
+        // shrunken arm set would make the whole fact pass vacuously — the exact way a conformance
+        // sweep dies quietly. The named arms must be FOUND by the probe, not assumed to be in it.
+        var probed = arms
+            .Select(a => a.Closed.GetGenericTypeDefinition().FullName!)
+            .ToHashSet(StringComparer.Ordinal);
+        ClrBridgeArmProbe.RequiredArms.Where(r => !probed.Contains(r)).Should().BeEmpty(
+            "the probe below discovers the bridge's collapsing arms by mapping candidate CLR generics "
+            + "rather than listing them, so it picks up arms added later for free — but a probe that "
+            + "stops finding the arms we already know about is broken, not passing.\nProbed "
+            + $"{arms.Count} arm(s).");
+
+        var disagreements = new List<string>();
+
+        foreach (var (closed, viaBridge) in arms)
+        {
+            var viaDiscovery = discovery.ConvertTypeSignature(builder.CreateTypeSignature(closed));
+
+            if (viaDiscovery is not GenericType discoveryGeneric)
+            {
+                disagreements.Add(
+                    $"{closed.GetGenericTypeDefinition().FullName}: bridge -> "
+                    + $"{viaBridge.GetDisplayName()}, discovery -> {viaDiscovery.GetDisplayName()} "
+                    + $"({viaDiscovery.GetType().Name}, which carries no provenance at all)");
+                continue;
+            }
+
+            if (!string.Equals(discoveryGeneric.Name, viaBridge.Name, StringComparison.Ordinal))
+            {
+                disagreements.Add(
+                    $"{closed.GetGenericTypeDefinition().FullName}: bridge names it "
+                    + $"'{viaBridge.Name}', discovery names it '{discoveryGeneric.Name}'");
+            }
+
+            if (!string.Equals(
+                    discoveryGeneric.ClrOriginTypeName, viaBridge.ClrOriginTypeName, StringComparison.Ordinal))
+            {
+                disagreements.Add(
+                    $"{closed.GetGenericTypeDefinition().FullName}: bridge stamps "
+                    + $"'{viaBridge.ClrOriginTypeName ?? "<null>"}', discovery stamps "
+                    + $"'{discoveryGeneric.ClrOriginTypeName ?? "<null>"}'");
+            }
+        }
+
+        disagreements.Should().BeEmpty(
+            "ClrTypeBridge and CachedModuleDiscovery.ConvertTypeSignature both produce "
+            + "GenericType.ClrOriginTypeName, and ClrTypeHelper.ClrOriginIsSatisfiedBy compares that "
+            + "string against a CLR definition name. A formal that arrives from the warm cache spelled "
+            + "differently from one the bridge just mapped stops satisfying the same calls, with no "
+            + "diagnostic.\nDisagreements:\n" + string.Join("\n", disagreements));
+    }
+
+    /// <summary>
+    /// The stamp has to survive <see cref="TypeSubstitution"/>, because a generic .NET formal only
+    /// reaches assignability AFTER its type parameters are substituted at the call site.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately end-to-end over the real producers rather than a hand-built
+    /// <see cref="GenericType"/>: <c>Sharpy.List&lt;T&gt;.Extend(IEnumerable&lt;T&gt;)</c> is exactly
+    /// the shape at issue — an open-constructed CLR formal that collapses to <c>list[T]</c> stamped
+    /// with <c>IEnumerable`1</c>. <c>TypeSubstitution.Apply</c> rebuilds every GenericType it touches,
+    /// so a rebuild that forgets to copy the stamp erases provenance for every generic call site
+    /// while leaving the type otherwise identical (#1294).
+    /// </remarks>
+    [Fact]
+    public void Substitution_PreservesTheStampBothProducersAgreedOn()
+    {
+        var builder = new OverloadIndexBuilder();
+        var discovery = new CachedModuleDiscovery(new OverloadIndexCache(_cacheDirectory));
+
+        var openFormal = typeof(SharpyRT::Sharpy.List<>)
+            .GetMethod(nameof(SharpyRT::Sharpy.List<int>.Extend))!
+            .GetParameters()[0]
+            .ParameterType;
+
+        var formal = discovery
+            .ConvertTypeSignature(builder.CreateTypeSignature(openFormal))
+            .Should().BeOfType<GenericType>().Subject;
+
+        // Precondition, asserted rather than assumed: if the formal were unstamped on arrival the
+        // substitution assertion below would hold for the wrong reason.
+        formal.ClrOriginTypeName.Should().Be(
+            typeof(IEnumerable<>).FullName,
+            "the discovery path must stamp the formal before substitution ever sees it");
+        formal.TypeArguments.Should().ContainSingle().Which.Should().BeOfType<TypeParameterType>();
+
+        var substituted = TypeSubstitution.Apply(
+            formal,
+            new Dictionary<string, SemanticType> { ["T"] = SemanticType.Int });
+
+        var substitutedGeneric = substituted.Should().BeOfType<GenericType>().Subject;
+        substitutedGeneric.TypeArguments.Should().ContainSingle().Which.Should().Be(SemanticType.Int);
+        substitutedGeneric.ClrOriginTypeName.Should().Be(
+            formal.ClrOriginTypeName,
+            "substitution rebuilds the GenericType; dropping the stamp there would make every "
+            + "instantiated .NET formal indistinguishable from a list[T] the user wrote, which is the "
+            + "refusal #1260/#1294 fixed");
     }
 
     private static bool IsDegraded(SemanticType mapped)
@@ -258,24 +492,7 @@ public class CoreGenericTypeMappingConformanceTests
     /// satisfies the constraints — that is a reflection limitation, not a mapping verdict.
     /// </summary>
     private static bool TryClose(Type definition, out Type closed)
-    {
-        closed = null!;
-        var arity = definition.GetGenericArguments().Length;
-        foreach (var placeholder in new[] { typeof(int), typeof(string), typeof(object) })
-        {
-            try
-            {
-                closed = definition.MakeGenericType(Enumerable.Repeat(placeholder, arity).ToArray());
-                return true;
-            }
-            catch (ArgumentException)
-            {
-                // constraint violation — try the next placeholder
-            }
-        }
-
-        return false;
-    }
+        => ClrBridgeArmProbe.TryClose(definition, out closed);
 
     private static string NameWithoutArity(Type definition)
     {

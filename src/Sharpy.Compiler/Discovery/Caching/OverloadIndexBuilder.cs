@@ -671,7 +671,13 @@ internal class OverloadIndexBuilder
         };
     }
 
-    private TypeSignature CreateTypeSignature(Type clrType)
+    /// <remarks>
+    /// Internal rather than private so the two-mapper agreement fact can drive this path directly:
+    /// <see cref="TypeSignature.ClrTypeName"/> as written here is the input from which
+    /// <c>CachedModuleDiscovery.ConvertTypeSignature</c> derives <see cref="GenericType.ClrOriginTypeName"/>,
+    /// and that stamp must match the one <see cref="ClrTypeBridge"/> applies (#1294).
+    /// </remarks>
+    internal TypeSignature CreateTypeSignature(Type clrType)
     {
         // Handle generic type parameters (e.g., T in Min<T>(T[] items))
         if (clrType.IsGenericParameter)
