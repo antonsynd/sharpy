@@ -389,13 +389,23 @@ internal partial class RoslynEmitter
             var initMethods = ancestor.Constructors;
             if (initMethods.Count > 0)
             {
-                foreach (var initMethod in initMethods)
-                {
-                    // Skip parameterless constructors — C# handles these automatically
-                    var nonSelfParams = initMethod.Parameters
+                // A parameterless base constructor needs a forwarder only when some OTHER forwarder
+                // is emitted. C# supplies an implicit `E()` for a class that declares no constructor
+                // at all, so emitting one where it is the only forwarder would be noise — but the
+                // moment any parameterised forwarder is declared, the implicit one is gone, and
+                // `E()` stops compiling. That is the shape #1408 reported as a dropped 0-arg
+                // overload, and it is the reason `raise E()` must be re-checked whenever `raise
+                // E('boom')` is fixed (#1367): the two are one decision, not two.
+                var forwardable = initMethods
+                    .Select(m => (Method: m, NonSelf: m.Parameters
                         .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
-                        .ToList();
-                    if (nonSelfParams.Count == 0)
+                        .ToList()))
+                    .ToList();
+                var emitsParameterised = forwardable.Any(f => f.NonSelf.Count > 0);
+
+                foreach (var (initMethod, nonSelfParams) in forwardable)
+                {
+                    if (nonSelfParams.Count == 0 && !emitsParameterised)
                         continue;
 
                     // Reorder for C# compliance (required before optional, params last)

@@ -255,6 +255,14 @@ internal class BuiltinRegistry
             OperatorMethods = operatorMethods,
             ProtocolMethods = protocolMethods,
             Properties = properties,
+            // The base's constructor surface, which ModuleRegistry has always collected and this
+            // registry did not. C# inherits no constructors, so the emitter synthesizes forwarders
+            // from this list: without it `class E(Exception): pass` emitted no forwarder at all and
+            // `E('boom')` — the way a user exception is written in Python — died as CS1729 behind
+            // SPY0908 (#1367). Both registries now build it through one helper, because a surface
+            // that exists for CLR types reached by import and not for builtin-registered ones is the
+            // same defect with a different entry point.
+            Constructors = Discovery.ClrConstructorSurface.Build(clrType),
         };
 
         PopulateMethodOverloads(typeSymbol);

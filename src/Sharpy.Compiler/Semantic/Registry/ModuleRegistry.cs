@@ -425,17 +425,10 @@ internal class ModuleRegistry
             }
         }
 
-        // Collect constructors (as __init__ methods for Sharpy compatibility)
-        var ctorSymbols = new List<FunctionSymbol>();
-        var constructors = clrType.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
-        foreach (var ctor in constructors)
-        {
-            var ctorSymbol = CreateConstructorSymbol(ctor, clrType);
-            if (ctorSymbol != null)
-            {
-                ctorSymbols.Add(ctorSymbol);
-            }
-        }
+        // Collect constructors (as __init__ methods for Sharpy compatibility). Shared with
+        // BuiltinRegistry: a surface collected by one registry and not the other is what made
+        // `class E(Exception): pass` unconstructible (#1367).
+        var ctorSymbols = Discovery.ClrConstructorSurface.Build(clrType);
 
         // Collect enum members as Fields so TypeChecker can resolve EnumType.Member
         var enumFields = new List<VariableSymbol>();
@@ -502,48 +495,6 @@ internal class ModuleRegistry
             }
         }
         return builder.MoveToImmutable();
-    }
-
-    /// <summary>
-    /// Create a FunctionSymbol for a .NET constructor, mapped as __init__.
-    ///
-    /// Note: We DO include 'self' as the first parameter to match Sharpy conventions.
-    /// The type checker uses .Skip(1) when building FunctionType from constructors,
-    /// so we need the 'self' parameter for the skip to work correctly.
-    /// </summary>
-    private FunctionSymbol? CreateConstructorSymbol(System.Reflection.ConstructorInfo ctor, Type declaringType)
-    {
-        var typeMapper = new Discovery.ClrTypeBridge();
-        var parameters = new List<ParameterSymbol>();
-
-        // Add 'self' parameter first (Sharpy convention - will be skipped by type checker)
-        parameters.Add(new ParameterSymbol
-        {
-            Name = PythonNames.Self,
-            Type = new UserDefinedType { Name = declaringType.Name }
-        });
-
-        // Add constructor parameters
-        foreach (var param in ctor.GetParameters())
-        {
-            var paramType = typeMapper.MapClrTypeToSemanticType(param.ParameterType);
-            parameters.Add(new ParameterSymbol
-            {
-                Name = param.Name ?? $"arg{param.Position}",
-                Type = paramType,
-                HasDefault = param.HasDefaultValue
-            });
-        }
-
-        return new FunctionSymbol
-        {
-            Name = DunderNames.Init,
-            Kind = SymbolKind.Function,
-            ReturnType = SemanticType.Void,
-            Parameters = parameters,
-            AccessLevel = AccessLevel.Public,
-            ClrMethod = null  // ConstructorInfo isn't a MethodInfo, leave null
-        };
     }
 
     /// <summary>
