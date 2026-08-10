@@ -1,0 +1,37 @@
+# #1307's false-positive control: the SAME three member shapes SPY0493 refuses in a plain class are
+# legal in an @abstract one, so this compiles and runs. Without it, a validator that reported every
+# @abstract member regardless of its class would pass all three refusal fixtures for the wrong
+# reason. The concrete overrides carry @override, which is the separate rule SPY0248 enforces.
+
+delegate SimpleHandler() -> None
+
+
+@abstract
+class Shape:
+    @abstract
+    def area(self) -> float: ...
+
+    @abstract
+    property get name(self) -> str: ...
+
+    @abstract
+    event on_change: SimpleHandler
+
+
+class Circle(Shape):
+    @override
+    def area(self) -> float:
+        return 3.0
+
+    @override
+    property get name(self) -> str:
+        return "circle"
+
+    @override
+    event on_change: SimpleHandler
+
+
+def main() -> None:
+    c: Circle = Circle()
+    print(c.area())
+    print(c.name)

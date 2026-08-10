@@ -1,0 +1,10 @@
+# #1307, the PROPERTY arm of SPY0493. The rule has three member arms and the first fixture only
+# exercised the method one; a validator switching on FunctionDef alone would have passed it.
+
+class Shape:
+    @abstract
+    property get area(self) -> float: ...
+
+
+def main() -> None:
+    pass

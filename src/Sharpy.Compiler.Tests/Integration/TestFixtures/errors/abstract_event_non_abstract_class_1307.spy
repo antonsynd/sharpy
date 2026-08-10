@@ -1,0 +1,12 @@
+# #1307, the EVENT arm of SPY0493. Third of the validator's three member arms.
+
+delegate SimpleHandler() -> None
+
+
+class Widget:
+    @abstract
+    event on_click: SimpleHandler
+
+
+def main() -> None:
+    pass
