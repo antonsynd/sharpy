@@ -820,14 +820,24 @@ internal partial class TypeChecker
 
         // Interface or base-class assignment: find an instantiated supertype of the
         // source matching the target's definition by symbol identity (#1330).
-        // Name fallback for CLR types whose re-exported symbols carry DefiningModule
-        // while interface-reference Definitions do not (mixed-context false negative).
         var rejected = false;
         foreach (var supertype in GenericInstantiationWalker.EnumerateSupertypes(
                      source, _symbolTable, SemanticBinding, _typeResolver))
         {
-            var definitionsMatch = (targetDef != null && TypeHierarchyService.IsSameType(supertype.Definition, targetDef))
-                || supertype.Definition.Name == target.Name;
+            // The name comparison is a LAST RESORT, reachable only where identity cannot speak at all:
+            // a CLR-discovered definition (`IList` off a walked `list[Dog]`, carrying neither module nor
+            // file) against a target resolved with module context. IsSameType answers conservative-false
+            // there, which means "not enough information", and taking that as "different declaration"
+            // costs the two variance refusals and the cross-module interface spellings their SEMANTIC
+            // verdict — `list[Dog]` into `IList[Animal]` stops being SPY0220 and becomes CS1503.
+            //
+            // Gated, not unconditional (#1330). Two modules each declaring `interface Holder[T]` both
+            // carry DefiningFilePath, so identity is authoritative for them and the name never gets a
+            // vote — which is exactly the acceptance that used to reach codegen as CS0266.
+            var definitionsMatch = targetDef != null
+                && (TypeHierarchyService.IsSameType(supertype.Definition, targetDef)
+                    || (!TypeHierarchyService.HasComparableIdentityContext(supertype.Definition, targetDef)
+                        && supertype.Definition.Name == target.Name));
             if (!definitionsMatch || supertype.TypeArguments.Count != target.TypeArguments.Count)
             {
                 continue;
@@ -843,6 +853,29 @@ internal partial class TypeChecker
         }
 
         return rejected ? false : (bool?)null;
+    }
+
+    /// <summary>
+    /// Whether a WRITTEN generic type names the same declaration as <paramref name="target"/>.
+    ///
+    /// <para>The written name is not evidence of identity on its own: two modules may each declare
+    /// <c>class Bag[T]</c>, and treating those as one declaration is how an argument vector from one
+    /// gets stamped onto the other and reaches codegen as CS0029/CS0305 (#1330). So the written type
+    /// is resolved to its definition and compared by symbol, and the name decides only where identity
+    /// genuinely cannot: a synthesized type that carries no definition to resolve, or the mixed
+    /// CLR/source context <see cref="TypeHierarchyService.IsSameType"/> answers conservative-false
+    /// for. This is the same gate the supertype match in
+    /// <see cref="IsGenericAssignableWithVariance"/> uses; the two must not drift.</para>
+    /// </summary>
+    private bool NamesSameDeclaration(GenericType written, TypeSymbol target)
+    {
+        var writtenDefinition = GenericInstantiationWalker.ResolveDefinition(written, _symbolTable);
+        if (writtenDefinition == null)
+            return written.Name == target.Name;
+
+        return TypeHierarchyService.IsSameType(writtenDefinition, target)
+            || (!TypeHierarchyService.HasComparableIdentityContext(writtenDefinition, target)
+                && written.Name == target.Name);
     }
 
     /// <summary>

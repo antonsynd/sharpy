@@ -270,6 +270,26 @@ internal static class TypeHierarchyService
     }
 
     /// <summary>
+    /// Whether <see cref="IsSameType"/>'s answer for these two symbols is AUTHORITATIVE — that is,
+    /// whether both carry the same KIND of identity context, so a <c>false</c> means "different
+    /// declarations" rather than "not enough information to tell".
+    ///
+    /// <para>Only the mixed-context branch of <see cref="IsSameType"/> is undecided: a
+    /// CLR-discovered definition (no module, no file) compared against a source-declared or
+    /// re-exported one. Callers that want to keep a name comparison as a last resort must gate it on
+    /// this returning false, so the fallback speaks only where identity genuinely cannot (#1330).
+    /// Gating it any more loosely re-admits the bug the comparator exists to prevent: two modules
+    /// each declaring <c>interface Holder[T]</c> are different declarations, both carry
+    /// <c>DefiningFilePath</c>, and no name comparison may override that.</para>
+    /// </summary>
+    internal static bool HasComparableIdentityContext(TypeSymbol a, TypeSymbol b)
+        => ReferenceEquals(a, b)
+           || (a.DefiningModule != null && b.DefiningModule != null)
+           || (a.DefiningFilePath != null && b.DefiningFilePath != null)
+           || (a.DefiningModule == null && a.DefiningFilePath == null
+               && b.DefiningModule == null && b.DefiningFilePath == null);
+
+    /// <summary>
     /// Resolves the base type for a symbol, checking the binding first then the symbol property.
     /// </summary>
     private static TypeSymbol? ResolveBaseType(TypeSymbol symbol, SemanticBinding? binding)

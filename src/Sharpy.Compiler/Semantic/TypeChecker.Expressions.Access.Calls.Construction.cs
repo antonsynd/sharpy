@@ -90,7 +90,7 @@ internal partial class TypeChecker
         {
             List<SemanticType>? typeArgs = null;
             if (_expectedType is GenericType expectedGeneric
-                && expectedGeneric.Name == typeSymbol.Name
+                && NamesSameDeclaration(expectedGeneric, typeSymbol)
                 && expectedGeneric.TypeArguments.Count == typeSymbol.TypeParameters.Count
                 && !expectedGeneric.TypeArguments.Any(ContainsTypeParameter))
             {

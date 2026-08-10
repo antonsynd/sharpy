@@ -647,9 +647,15 @@ internal partial class TypeChecker
         if (subject is not GenericType generic)
             return null;
 
-        // Identity match — the subject is already the target type
+        // Identity match — the subject is already the target type.
+        //
+        // TODO(#1410): identity only decides here when the subject carries a resolvable definition. A
+        // module-qualified subject (`x: mod_b.Bag[int]`) arrives without one, so ResolveDefinition
+        // falls through to a name lookup that finds a same-named LOCAL declaration and compares it
+        // against itself — `isinstance(x, Bag)` then emits a test against mod_b's Bag. The fix is
+        // upstream, where the qualified annotation is resolved; this comparison is already strict.
         if (generic.TypeArguments.Count == typeSymbol.TypeParameters.Count
-            && (ReferenceEquals(generic.GenericDefinition, typeSymbol) || generic.Name == typeSymbol.Name))
+            && NamesSameDeclaration(generic, typeSymbol))
         {
             return generic;
         }
@@ -2915,7 +2921,7 @@ internal partial class TypeChecker
         var typeParams = unionBaseSymbol.TypeParameters;
         List<SemanticType>? typeArgs = null;
         if (typeParams.Count > 0 && _expectedType is GenericType expectedGenericType
-            && expectedGenericType.Name == unionBaseSymbol.Name
+            && NamesSameDeclaration(expectedGenericType, unionBaseSymbol)
             && expectedGenericType.TypeArguments.Count == typeParams.Count)
         {
             typeArgs = expectedGenericType.TypeArguments;
