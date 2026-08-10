@@ -460,7 +460,7 @@ internal partial class TypeChecker
                 // Persist the narrowed type for code generation and tooling (ISemanticQuery).
                 _semanticInfo.SetNarrowedType(id, contextNarrowed!);
                 if (contextLowering != null)
-                    _semanticInfo.SetNarrowedReadLowering(id, contextLowering);
+                    RecordNarrowedReadLowering(id, contextLowering);
                 return contextNarrowed!;
             }
 
@@ -468,7 +468,7 @@ internal partial class TypeChecker
                 && ResolveNarrowedTypeFromFacts(id.Name, GetVariableType(narrowableVar)) is { } factRead)
             {
                 _semanticInfo.SetNarrowedType(id, factRead.Type);
-                _semanticInfo.SetNarrowedReadLowering(id, factRead.Lowering);
+                RecordNarrowedReadLowering(id, factRead.Lowering);
                 return factRead.Type;
             }
         }
@@ -572,7 +572,20 @@ internal partial class TypeChecker
 
     private SemanticType CheckMatchExpression(MatchExpression matchExpr)
     {
-        var scrutineeType = CheckExpression(matchExpr.Scrutinee);
+        // The subject gets the same #1370 treatment as the statement form's: a Cast lowering here
+        // makes the emitted switch EXPRESSION statically total, and the trailing `case _` arm draws
+        // CS8510 instead of CS0162 — same defect, different diagnostic.
+        //
+        // Deliberately NOT mirrored from CheckMatch: the `_currentFacts = FactsBeforeBranch(...)`
+        // resolution. Only ControlFlowGraphBuilder.BuildMatch records a MatchSubject, so a match
+        // EXPRESSION's subject is not a key in the branch-condition fact map, and FactsBeforeBranch
+        // returns an EMPTY collection (not null) for an unknown key — the `?? _currentFacts` would
+        // not fire and the copy would CLEAR the facts this subject correctly inherits from its
+        // enclosing tracked statement. That inheritance is why the expression form already narrowed
+        // when the statement form did not (#1299). Add the resolution only together with a CFG entry.
+        SemanticType scrutineeType;
+        using (ScopedValue.Push(ref _matchSubjectOperand, UnwrapParenthesized(matchExpr.Scrutinee)))
+            scrutineeType = CheckExpression(matchExpr.Scrutinee);
         SemanticType? resultType = null;
 
         foreach (var arm in matchExpr.Arms)

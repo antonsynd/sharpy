@@ -31,7 +31,7 @@ internal partial class TypeChecker
         {
             _semanticInfo.SetNarrowedType(memberAccess, contextNarrowed!);
             if (contextLowering != null)
-                _semanticInfo.SetNarrowedReadLowering(memberAccess, contextLowering);
+                RecordNarrowedReadLowering(memberAccess, contextLowering);
             return contextNarrowed!;
         }
 
@@ -44,7 +44,7 @@ internal partial class TypeChecker
         if (narrowingKey != null && ResolveNarrowedTypeFromFacts(narrowingKey, memberType) is { } factRead)
         {
             _semanticInfo.SetNarrowedType(memberAccess, factRead.Type);
-            _semanticInfo.SetNarrowedReadLowering(memberAccess, factRead.Lowering);
+            RecordNarrowedReadLowering(memberAccess, factRead.Lowering);
             return factRead.Type;
         }
 
@@ -1232,7 +1232,7 @@ internal partial class TypeChecker
             // The container access strategy (RecordIndexAccessLowering above) and the narrowed-read
             // accessor are distinct facts on the same node; codegen composes them (e.g. xs[0].Unwrap()).
             if (contextLowering != null)
-                _semanticInfo.SetNarrowedReadLowering(indexAccess, contextLowering);
+                RecordNarrowedReadLowering(indexAccess, contextLowering);
             return contextNarrowed!;
         }
 
@@ -1245,7 +1245,7 @@ internal partial class TypeChecker
         // prior index-access narrowing path, which did not record a narrowed *type* in SemanticInfo.
         if (narrowingKey != null && ResolveNarrowedTypeFromFacts(narrowingKey, elementType) is { } factRead)
         {
-            _semanticInfo.SetNarrowedReadLowering(indexAccess, factRead.Lowering);
+            RecordNarrowedReadLowering(indexAccess, factRead.Lowering);
             return factRead.Type;
         }
 

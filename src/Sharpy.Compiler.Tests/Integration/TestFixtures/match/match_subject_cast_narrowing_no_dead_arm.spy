@@ -1,0 +1,77 @@
+# #1370: an isinstance-narrowed match SUBJECT must still be switched on raw.
+#
+# #1299 taught the match subject to see isinstance narrowing, and the narrowed read carried a Cast
+# lowering like any other narrowed read. Applied to the subject that cast makes the emitted C# switch
+# statically total — `switch (((double)r!))` against `case double f:` matches everything — so Roslyn
+# proves the `case _:` arm dead and reports CS0162. Only a warning for `run`/`emit`, but fatal for any
+# warnings-as-errors consumer of the generated C#, which the checked-in spy-test C# is by design.
+#
+# The cast is not load-bearing here: each arm re-performs its own runtime test on the subject, so
+# dropping it changes nothing but the static totality. The narrowed TYPE is still recorded, which is
+# what #1299's pattern filling reads.
+#
+# All three subject SHAPES are pinned (identifier, index access, member access) plus the match
+# EXPRESSION form, whose switch expression draws CS8510 rather than CS0162 for the same reason. The
+# companion assertion is the .expected.cs snapshot: it pins the RAW subject in the emitted switch,
+# which is the only place this defect is observable.
+
+class Holder:
+    value: object
+
+    def __init__(self, value: object) -> None:
+        self.value = value
+
+def from_identifier(r: object) -> None:
+    assert isinstance(r, float)
+    match r:
+        case float() as f:
+            print(f)
+        case _:
+            print("other")
+
+def from_index(d: dict[str, object]) -> None:
+    # The yaml shape: `match d["key"]:` under an assert on the same element (#1370's second and
+    # third reported sites).
+    assert isinstance(d["key"], float)
+    match d["key"]:
+        case float() as fv:
+            print(fv)
+        case _:
+            print("other")
+
+def from_member(h: Holder) -> None:
+    assert isinstance(h.value, float)
+    match h.value:
+        case float() as mv:
+            print(mv)
+        case _:
+            print("other")
+
+def from_match_expression(r: object) -> str:
+    assert isinstance(r, float)
+    return match r:
+        case float() as f: "expr-float"
+        case _: "expr-other"
+
+def from_optional_match_expression(x: str?) -> str:
+    # The control for the OTHER half of the subject rule: an unwrap-kind narrowing IS load-bearing,
+    # so this subject must keep reading `.Unwrap()`. It also pins where a match expression's subject
+    # gets its facts from — the enclosing tracked statement, not a CFG entry of its own (only
+    # ControlFlowGraphBuilder.BuildMatch records a MatchSubject). Resolving the subject against
+    # FactsBeforeBranch here would clear those inherited facts and land back on #1358's ICE.
+    if x is not None:
+        return match x:
+            case str() as s: "opt " + s
+            case _: "opt-other"
+    return "opt-none"
+
+def main() -> None:
+    from_identifier(3.5)
+
+    d: dict[str, object] = {}
+    d["key"] = 1.25
+    from_index(d)
+
+    from_member(Holder(2.5))
+    print(from_match_expression(4.75))
+    print(from_optional_match_expression("hi"))

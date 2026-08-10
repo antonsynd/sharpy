@@ -85,6 +85,14 @@ internal partial class TypeChecker
     // argument only names a type when there IS a second argument.
     private Expression? _typeTestTypeArgument;
 
+    // The SUBJECT expression of the match statement or match expression currently being checked
+    // (parentheses unwrapped, since the read lowering lands on the inner node). A match subject that
+    // carries an isinstance narrowing records its narrowed TYPE as usual — #1299's pattern filling
+    // reads it — but suppresses the Cast read lowering; see RecordNarrowedReadLowering for why
+    // (#1370). Set only around the subject's own CheckExpression, so an arm body's reads and a nested
+    // match's subject see their own state.
+    private Expression? _matchSubjectOperand;
+
     // The test expression of the `assert` currently being checked, but only inside a @test-decorated
     // function — null everywhere else. The @test assert is not an ordinary expression: the emitter
     // rewrites it wholesale into an xUnit assertion (RoslynEmitter.GenerateTestAssert), pre-empting

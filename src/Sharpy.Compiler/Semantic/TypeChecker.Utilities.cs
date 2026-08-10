@@ -403,6 +403,35 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The single gate every narrowed read passes through before its accessor is materialized for
+    /// codegen. It records the lowering unchanged everywhere except at a match SUBJECT carrying a
+    /// <see cref="NarrowedReadKind.Cast"/>, where it records nothing (#1370).
+    /// <para>
+    /// A cast is not load-bearing for a cast-kind narrowing: the arms re-perform the runtime test on
+    /// the raw subject, so casting the subject read only tells C# the switch is statically total —
+    /// <c>switch (((double)r!))</c> against <c>case double f:</c> proves every later arm dead, and a
+    /// <c>case _:</c> arm becomes CS0162 in any warnings-as-errors consumer of the generated C# (the
+    /// checked-in spy-test C# is the standing one, by design). Suppressing it here rather than
+    /// dropping arms in the emitter keeps the reachability decision in the semantic phase, where the
+    /// narrowing fact lives, instead of duplicating Roslyn's analysis (Critical Rule 2).
+    /// </para>
+    /// <para>
+    /// The other kinds ARE load-bearing and are recorded normally: a narrowed <c>T?</c> subject must
+    /// still read <c>x.Unwrap()</c> to produce a value the arms can test at all — an un-narrowed
+    /// Optional subject is #1358's ICE — and the <c>.Value</c>/<c>!</c> accessors likewise change what
+    /// value is switched on rather than merely restating its type. The narrowed TYPE is recorded by
+    /// the caller either way, so #1299's pattern filling from the subject is untouched.
+    /// </para>
+    /// </summary>
+    private void RecordNarrowedReadLowering(Expression node, NarrowedReadLowering lowering)
+    {
+        if (lowering.Kind == NarrowedReadKind.Cast && ReferenceEquals(node, _matchSubjectOperand))
+            return;
+
+        _semanticInfo.SetNarrowedReadLowering(node, lowering);
+    }
+
+    /// <summary>
     /// The single decision point mapping a <c>RemoveNone</c> narrowing onto a value's un-narrowed
     /// type shape: strips <see cref="NullableType"/>/<see cref="OptionalType"/> and pairs the
     /// underlying type with the accessor codegen must apply at the read site. Shared by the

@@ -36,7 +36,12 @@ internal partial class TypeChecker
         // CheckStatement's finally restores _currentFacts.
         _currentFacts = _narrowingFlow?.FactsBeforeBranch(matchStmt.Scrutinee) ?? _currentFacts;
 
-        var scrutineeType = CheckExpression(matchStmt.Scrutinee);
+        // Mark the subject so its own read suppresses a Cast lowering (#1370) — the narrowed type is
+        // still recorded, so the arms keep filling from it. Unwrapped because `match (x):` puts the
+        // read, and therefore the lowering, on the inner node (#1349).
+        SemanticType scrutineeType;
+        using (ScopedValue.Push(ref _matchSubjectOperand, UnwrapParenthesized(matchStmt.Scrutinee)))
+            scrutineeType = CheckExpression(matchStmt.Scrutinee);
 
         foreach (var matchCase in matchStmt.Cases)
         {
