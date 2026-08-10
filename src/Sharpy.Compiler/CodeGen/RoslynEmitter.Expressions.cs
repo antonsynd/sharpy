@@ -25,6 +25,14 @@ internal partial class RoslynEmitter
 
         var generated = GenerateExpressionCore(expr);
 
+        // Char materialization (#1291): the TypeChecker decided this expression yields a char-based CLR
+        // value where its own semantic type says Sharpy `str`, and named the conversion. Applied before
+        // the sequence wrap below, so a value needing both is converted first and then wrapped — the
+        // order the two facts were decided in.
+        var charKind = _context.SemanticInfo?.GetCharMaterialization(expr);
+        if (charKind != null)
+            generated = MaterializeChar(generated, charKind.Value);
+
         // Sequence materialization (#1251): the TypeChecker decided this expression yields a CLR
         // sequence where its own semantic type says Sharpy collection, and named the collection to
         // build. Applied here, at the one choke point every expression passes through, so no position
@@ -47,6 +55,51 @@ internal partial class RoslynEmitter
     {
         return ObjectCreationExpression(_typeMapper.MapSemanticType(targetCollection))
             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(value))));
+    }
+
+    /// <summary>
+    /// Converts a char-based CLR value into the Sharpy <c>str</c> the TypeChecker typed it as: a scalar
+    /// becomes <c>.ToString()</c>, a <c>char[]</c> becomes a <c>string[]</c> of one-character strings
+    /// (#1291). The emitter decides nothing here — which expressions carry a conversion, and which of
+    /// the two it is, was decided by the seam that read the reflected signature.
+    /// </summary>
+    /// <remarks>
+    /// The array form is <c>Array.ConvertAll&lt;char, string&gt;(xs, char.ToString)</c> — a method
+    /// group rather than a lambda, so the emitted form introduces no parameter name that could collide
+    /// with a Sharpy local in scope, and the explicit type arguments leave no inference to a
+    /// <c>ToString</c> overload set.
+    /// </remarks>
+    private static ExpressionSyntax MaterializeChar(ExpressionSyntax value, CharMaterializationKind kind)
+    {
+        if (kind == CharMaterializationKind.Scalar)
+        {
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    value,
+                    IdentifierName(nameof(object.ToString))))
+                .WithArgumentList(ArgumentList());
+        }
+
+        var convertAll = MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            ParseTypeName("global::System.Array"),
+            GenericName(Identifier(nameof(System.Array.ConvertAll)))
+                .WithTypeArgumentList(TypeArgumentList(SeparatedList<TypeSyntax>(new TypeSyntax[]
+                {
+                    PredefinedType(Token(SyntaxKind.CharKeyword)),
+                    PredefinedType(Token(SyntaxKind.StringKeyword))
+                }))));
+
+        return InvocationExpression(convertAll)
+            .WithArgumentList(ArgumentList(SeparatedList(new[]
+            {
+                Argument(value),
+                Argument(MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    PredefinedType(Token(SyntaxKind.CharKeyword)),
+                    IdentifierName(nameof(char.ToString))))
+            })));
     }
 
     private ExpressionSyntax GenerateExpressionCore(Sharpy.Compiler.Parser.Ast.Expression expr)

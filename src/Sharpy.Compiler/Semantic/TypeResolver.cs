@@ -465,6 +465,12 @@ internal class TypeResolver
             return SemanticType.Bool;
         if (clrType == typeof(string))
             return SemanticType.Str;
+        // Sharpy has no char type, so the interop spelling `char` denotes the same thing a CLR char
+        // denotes at the Sharpy surface: a one-character str (#1291). Without this arm the name was
+        // registered in PrimitiveCatalog but resolved nowhere, so `x: char` was SPY0202 "type not
+        // found" for a name the catalog itself declares.
+        if (clrType == typeof(char))
+            return SemanticType.Str;
         if (clrType == typeof(void))
             return SemanticType.Void;
         return null;

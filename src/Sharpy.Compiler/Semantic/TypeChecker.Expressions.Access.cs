@@ -578,6 +578,32 @@ internal partial class TypeChecker
             return bclType;
         }
 
+        // The member did not reflect, and on a BUILTIN receiver reflection can prove that is because it
+        // does not exist: `"s".nonexistent_member_xyz()` reached Roslyn and came back as CS1061 behind
+        // SPY0908, a compiler-bug report for a typo (#1291). The same #1141 proof the UserDefinedType
+        // arm above draws on, asked of the same symbol — it is deliberately hard to satisfy, so it fires
+        // only where codegen was certain to fail too.
+        //
+        // BuiltinType ONLY, and that restriction is the point rather than an omission. The rest of this
+        // fall-through carries GenericType and TupleType receivers whose members codegen resolves
+        // through discovery paths this proof does not model, and a false refusal rejects a working
+        // program — worse than the ICE it replaces (#1243, #1260).
+        if (memberLookupType is BuiltinType
+            && ClrReflectionProvesMemberAbsent(memberLookupType, memberAccess.Member, out var builtinSuggestion))
+        {
+            var absentOnBuiltin =
+                $"Type '{memberLookupType.GetDisplayName()}' has no member '{memberAccess.Member}'";
+            if (builtinSuggestion != null)
+                absentOnBuiltin += $". Did you mean '{builtinSuggestion}'?";
+
+            AddError(absentOnBuiltin,
+                memberAccess.LineStart, memberAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedMember,
+                span: memberAccess.Span,
+                data: SuggestionData(builtinSuggestion));
+            return SemanticType.Unknown;
+        }
+
         // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
         // are resolved by the codegen layer through CLR member discovery, not the
         // type checker. Mark as error recovery to suppress SPY0907 false positives.
@@ -635,6 +661,15 @@ internal partial class TypeChecker
                 return null;
             }
 
+            // A char-returning method is declined HERE so the call seam types it instead (#1291). The
+            // conversion to str belongs on the CALL node — the value that carries the char — and this
+            // seam describes the method group, which has no value to convert. Declining costs nothing:
+            // the call seam re-selects the same single overload by arity.
+            if (ClrCharProjection(returnType) != null)
+            {
+                return null;
+            }
+
             var parameterTypes = new List<SemanticType>();
             foreach (var parameter in methods[0].GetParameters())
             {
@@ -655,7 +690,123 @@ internal partial class TypeChecker
             && clrType.GetProperty(propertyName) is { } property)
         {
             var propertyType = _bclGenericMethodBridge.MapClrTypeToSemanticType(property.PropertyType);
-            return propertyType is UnknownType ? null : propertyType;
+            if (propertyType is UnknownType)
+            {
+                return null;
+            }
+
+            // A property read IS the value, so its conversion is recorded on the member node itself.
+            return ProjectClrChar(memberAccess, propertyType);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The Sharpy type a raw BCL call on a builtin receiver produces — <c>"abc".to_char_array()</c>,
+    /// <c>s.to_upper()</c> — or <c>null</c> when reflection does not decide it (#1291).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Runs only for what every resolution above declined, i.e. calls that were on the name-only
+    /// interop channel: the emitter wrote them verbatim and the checker had typed them Unknown, which
+    /// is assignable to anything. That is what let <c>x: str = "abc".to_char_array()[0]</c> through in
+    /// silence and hand Roslyn a <c>char</c> for a <c>string</c> slot (SPY0908/CS0029) — the compiler
+    /// reporting its own bug for what is, once typed, an ordinary conversion.
+    /// </para>
+    /// <para>
+    /// Selection is #1243's rule verbatim, the same one <see cref="BclMemberTypeOnBuiltinReceiver"/>
+    /// uses for a declared member and #1290 uses for a CLR instance call: exactly one candidate of the
+    /// call's arity means the user's intent is not in doubt. Two of the same arity keep silence,
+    /// because choosing between them is CLR overload resolution and this seam does not own it — and so
+    /// does a keyword or spread argument, whose arity this seam cannot count.
+    /// </para>
+    /// </remarks>
+    private SemanticType? BclCallTypeOnBuiltinReceiver(
+        FunctionCall call, MemberAccess memberAccess, List<SemanticType> argTypes)
+    {
+        if (call.KeywordArguments.Length > 0 || call.Arguments.Any(a => a is SpreadElement))
+        {
+            return null;
+        }
+
+        if (_semanticInfo.GetExpressionType(memberAccess.Object) is not BuiltinType { ClrType: { } clrType })
+        {
+            return null;
+        }
+
+        var methodName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member);
+        if (methodName == null)
+        {
+            return null;
+        }
+
+        var candidates = clrType.GetMethods(System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.Static)
+            .Where(m => m.Name == methodName
+                && !m.IsGenericMethodDefinition
+                && m.GetParameters().Length == argTypes.Count)
+            .ToList();
+
+        if (candidates.Count != 1)
+        {
+            return null;
+        }
+
+        var returnType = _bclGenericMethodBridge.MapClrTypeToSemanticType(candidates[0].ReturnType);
+        if (returnType is UnknownType)
+        {
+            return null;
+        }
+
+        return ProjectClrChar(call, returnType);
+    }
+
+    /// <summary>
+    /// Rewrites a reflected type that is char-based into the Sharpy <c>str</c> it means, recording on
+    /// <paramref name="producer"/> the conversion codegen must apply to the value (#1291). Returns
+    /// <paramref name="mapped"/> unchanged, and records nothing, for every type with no char in it.
+    /// </summary>
+    private SemanticType ProjectClrChar(Expression producer, SemanticType mapped)
+    {
+        var projection = ClrCharProjection(mapped);
+        if (projection == null)
+        {
+            return mapped;
+        }
+
+        _semanticInfo.SetCharMaterialization(producer, projection.Value.Kind);
+        return projection.Value.Projected;
+    }
+
+    /// <summary>
+    /// The str type a char-based reflected type projects to and the conversion that realizes it, or
+    /// <c>null</c> when the type has no char in it. Sharpy has no char type: a CLR <c>char</c> is a
+    /// one-character <c>str</c> at the surface, which is what Python's <c>s[0]</c> is too.
+    /// </summary>
+    /// <remarks>
+    /// Only the two shapes reflection actually hands back on a builtin receiver are described — a
+    /// scalar and an array. A <c>List&lt;char&gt;</c> or <c>IEnumerable&lt;char&gt;</c> arrives through
+    /// the extension-method seam, which this method does not own, and is left to type as it does today
+    /// rather than guessed at from here.
+    /// </remarks>
+    private static (SemanticType Projected, CharMaterializationKind Kind)? ClrCharProjection(SemanticType mapped)
+    {
+        if (mapped is BuiltinType { ClrType: { } scalarClr } && scalarClr == typeof(char))
+        {
+            return (SemanticType.Str, CharMaterializationKind.Scalar);
+        }
+
+        if (mapped is GenericType { Name: BuiltinNames.Array, TypeArguments: { Count: 1 } elements }
+            && elements[0] is BuiltinType { ClrType: { } elementClr }
+            && elementClr == typeof(char))
+        {
+            return (new GenericType
+            {
+                Name = BuiltinNames.Array,
+                TypeArguments = new List<SemanticType> { SemanticType.Str }
+            }, CharMaterializationKind.Array);
         }
 
         return null;

@@ -73,6 +73,16 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, SemanticType> _sequenceMaterializations =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map expressions whose EMITTED C# type is char-based to the conversion that turns them into the
+    // Sharpy `str` their semantic type says they are (#1291, Critical Rule 2 pattern (b)). Sharpy has
+    // no char, so a reflected `char` is a one-character `str` at the surface; recording the conversion
+    // on the PRODUCING expression means the value is a string from that point on, and every position
+    // downstream — indexing, slicing, iteration, `list()`, an annotation, an argument — is ordinary
+    // str handling with nothing further to know. Absent for every expression that never touched a CLR
+    // char, which is all of them but these, so the default path is byte-identical.
+    private readonly ConcurrentDictionary<Expression, CharMaterializationKind> _charMaterializations =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map a TYPE OPERAND node to the type test codegen must emit. Keyed on the operand node so the
     // emitter and both narrowing resolvers read ONE decided type and none of them re-derives what the
     // operand's syntax denotes (#1207, #1213, Critical Rule 2 pattern (b)).
@@ -433,6 +443,28 @@ public class SemanticInfo : ISemanticQuery
     public SemanticType? GetSequenceMaterialization(Expression expr)
     {
         return _sequenceMaterializations.TryGetValue(expr, out var target) ? target : null;
+    }
+
+    /// <summary>
+    /// Records that <paramref name="expr"/> produces a value whose emitted C# type is char-based, and
+    /// how it must be converted to the Sharpy <c>str</c> its semantic type already claims (#1291).
+    /// Set by the TypeChecker at the seam that reads the reflected signature, so the conversion lands
+    /// on the expression that produces the char rather than on each of the many positions that consume
+    /// one.
+    /// </summary>
+    public void SetCharMaterialization(Expression expr, CharMaterializationKind kind)
+    {
+        _charMaterializations[expr] = kind;
+    }
+
+    /// <summary>
+    /// The char-to-str conversion an expression must be wrapped in, or <c>null</c> when its emitted
+    /// type already matches its semantic type — which is every expression that did not come from a
+    /// CLR char.
+    /// </summary>
+    public CharMaterializationKind? GetCharMaterialization(Expression expr)
+    {
+        return _charMaterializations.TryGetValue(expr, out var kind) ? kind : null;
     }
 
     /// <summary>
@@ -986,6 +1018,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._sequenceMaterializations)
             _sequenceMaterializations.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._charMaterializations)
+            _charMaterializations.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._typeTestLowerings)
             _typeTestLowerings.TryAdd(kvp.Key, kvp.Value);
 
@@ -1210,6 +1245,31 @@ public enum NarrowedReadKind
 /// routes builtin collections through the non-generic-interface rule, #912); <c>null</c> for all other kinds.
 /// </param>
 public sealed record NarrowedReadLowering(NarrowedReadKind Kind, SemanticType? CastTarget = null);
+
+/// <summary>
+/// How codegen converts a value whose emitted C# type is char-based into the Sharpy <c>str</c> its
+/// semantic type claims (#1291). Sharpy has no char type — a CLR <c>char</c> is a one-character
+/// <c>str</c> at the surface, which is also what Python means by <c>s[0]</c>.
+/// </summary>
+/// <remarks>
+/// The conversion is recorded on the expression that PRODUCES the char, not on the positions that
+/// consume it. That is what makes the fix complete rather than per-position: the reported repro alone
+/// reached a <c>str</c> annotation, a <c>list()</c> conversion, a slice, a parameter and a
+/// <c>return</c>, and each is ordinary str handling once the producer hands back a string.
+/// </remarks>
+public enum CharMaterializationKind
+{
+    /// <summary>A scalar <c>char</c> — emit <c>.ToString()</c>.</summary>
+    Scalar,
+
+    /// <summary>
+    /// A <c>char[]</c> — emit an <c>Array.ConvertAll</c> to <c>string[]</c> of one-character strings.
+    /// The copy is deliberate and unavoidable: a <c>string[]</c> view of a <c>char[]</c> does not
+    /// exist, so unlike the CLR-sequence materialization next door there is no aliasing alternative
+    /// to weigh.
+    /// </summary>
+    Array
+}
 
 /// <summary>
 /// How codegen emits the type test for a classified <c>isinstance</c> type operand. The TypeChecker's

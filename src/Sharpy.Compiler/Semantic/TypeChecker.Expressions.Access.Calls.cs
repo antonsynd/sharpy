@@ -373,7 +373,16 @@ internal partial class TypeChecker
             // its own bug for a user's type error (#1290). Runs last, and only for what the
             // resolutions above declined, so every call one of them owns keeps that owner's check.
             if (funcSymbol == null && calleeType is UnknownType)
+            {
                 CheckClrInstanceMethodCall(call, memberAccessCall, argTypes, kwargTypes);
+
+                // Same channel, the other half of the same silence: nothing typed this call either, so
+                // its value was Unknown and assignable to anything. Reflection types it when the call's
+                // arity selects exactly one overload, which is also where a CLR char becomes the str
+                // Sharpy means by it (#1291).
+                if (BclCallTypeOnBuiltinReceiver(call, memberAccessCall, argTypes) is { } bclCallType)
+                    return bclCallType;
+            }
         }
 
         // If we have a FunctionSymbol, use it for validation (supports default parameters)
@@ -909,7 +918,15 @@ internal partial class TypeChecker
             } extensionReference)
         {
             ValidateClosedExtensionArguments(call, callee, extensionReference, argTypes);
-            return closedReturnType;
+
+            // A closed signature over a string receiver is a signature over CHARS — `s.first()` is
+            // Enumerable.First<char>. Sharpy has no char, so the same projection the builtin-receiver
+            // seams apply runs here: without it `x: str = s.first()` was refused as char-vs-str, a
+            // refusal for something that is a one-character str in every sense the user means (#1291).
+            // Only the scalar and array shapes project; an IEnumerable<char> return keeps today's type,
+            // because converting a CLR SEQUENCE'S element is a decision #1251's materialization owns
+            // and its re-represented-element rule already speaks to.
+            return ProjectClrChar(call, closedReturnType);
         }
 
         // Handle generic function call: identity[int](42)
