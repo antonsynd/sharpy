@@ -2,8 +2,15 @@
 # "1e-7" as the STRING '1e-7'; Sharpy's YamlScalarResolver is more permissive and returns the
 # float 1e-07. This fixture pins Sharpy's CURRENT (divergent) behavior so the differential
 # oracle guards the divergence live — its allowlist entry cites #1423 and drains when it lands,
-# at which point the expected output below becomes "1e-7" (the string, unchanged by load).
+# at which point the expected output becomes "1e-7" / 4 (the string, unchanged by load).
+#
+# The LENGTH line is what makes the divergence oracle-visible at all: printed bare, the two
+# arms show `1e-07` vs `1e-7`, which the oracle's float-tolerant OutputComparer deliberately
+# treats as equal formatting of the same number. A type divergence that prints as an equal
+# number is invisible to a stdout oracle — the string's length is not.
 import yaml
 
 def main():
-    print(yaml.safe_load("1e-7"))
+    v = yaml.safe_load("1e-7")
+    print(v)
+    print(len(str(v)))
