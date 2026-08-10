@@ -32,22 +32,63 @@ internal class EventValidator : SemanticValidatorBase
 
         foreach (var stmt in module.Body)
         {
-            switch (stmt)
-            {
-                case ClassDef classDef:
-                    ValidateTypeBody(classDef.Name, classDef.Body);
-                    break;
-                case StructDef structDef:
-                    ValidateTypeBody(structDef.Name, structDef.Body);
-                    break;
-                case InterfaceDef interfaceDef:
-                    ValidateInterfaceEvents(interfaceDef.Name, interfaceDef.Body);
-                    break;
-            }
+            ValidateTypeStatement(stmt, _context.SymbolTable.LookupType(TypeStatementName(stmt) ?? string.Empty));
         }
     }
 
-    private void ValidateTypeBody(string typeName, IReadOnlyList<Statement> body)
+    /// <summary>
+    /// Validates one type declaration and, recursively, the types NESTED inside it. Nested types were
+    /// never event-validated at all before — this walked <c>module.Body</c> only — so an unpaired
+    /// accessor or an abstractness disagreement inside a nested class reached codegen unreported.
+    /// Mirrors <c>AbstractMemberValidator.ValidateClass</c>, which already recurses.
+    /// </summary>
+    /// <param name="ownerSymbol">
+    /// The declaring type's symbol. Threaded rather than looked up by name because a NESTED type's
+    /// symbol lives in its enclosing type's scope, where the global <c>LookupType</c> cannot see it
+    /// (#1371); without this the owner would read as non-abstract and every implicit-stub verdict
+    /// inside a nested type would be wrong.
+    /// </param>
+    private void ValidateTypeStatement(Statement stmt, TypeSymbol? ownerSymbol)
+    {
+        switch (stmt)
+        {
+            case ClassDef classDef:
+                ValidateTypeBody(classDef.Name, classDef.Body, ownerSymbol);
+                ValidateNestedTypes(classDef.Body, ownerSymbol);
+                break;
+            case StructDef structDef:
+                ValidateTypeBody(structDef.Name, structDef.Body, ownerSymbol);
+                ValidateNestedTypes(structDef.Body, ownerSymbol);
+                break;
+            case InterfaceDef interfaceDef:
+                ValidateInterfaceEvents(interfaceDef.Name, interfaceDef.Body);
+                ValidateNestedTypes(interfaceDef.Body, ownerSymbol);
+                break;
+        }
+    }
+
+    private void ValidateNestedTypes(IReadOnlyList<Statement> body, TypeSymbol? ownerSymbol)
+    {
+        foreach (var member in body)
+        {
+            var nestedName = TypeStatementName(member);
+            if (nestedName == null)
+                continue;
+
+            var nestedSymbol = ownerSymbol?.NestedTypes.FirstOrDefault(n => n.Name == nestedName);
+            ValidateTypeStatement(member, nestedSymbol);
+        }
+    }
+
+    private static string? TypeStatementName(Statement stmt) => stmt switch
+    {
+        ClassDef c => c.Name,
+        StructDef s => s.Name,
+        InterfaceDef i => i.Name,
+        _ => null
+    };
+
+    private void ValidateTypeBody(string typeName, IReadOnlyList<Statement> body, TypeSymbol? ownerSymbol)
     {
         // Collect fields, methods, and events from the body
         var fieldNames = new HashSet<string>();
@@ -95,7 +136,7 @@ internal class EventValidator : SemanticValidatorBase
         foreach (var (eventName, group) in eventGroups)
         {
             ValidateUnpairedAccessors(typeName, eventName, group);
-            ValidateAccessorAbstractnessAgreement(typeName, eventName, group);
+            ValidateAccessorAbstractnessAgreement(typeName, eventName, group, ownerSymbol);
         }
     }
 
@@ -209,7 +250,7 @@ internal class EventValidator : SemanticValidatorBase
     /// </summary>
     private void ValidateAbstractEventBody(string typeName, EventDef eventDef)
     {
-        bool isAbstract = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool isAbstract = Shared.MemberClassification.HasAbstractDecorator(eventDef.Decorators);
         if (!isAbstract || !eventDef.IsFunctionStyle)
             return;
 
@@ -234,7 +275,7 @@ internal class EventValidator : SemanticValidatorBase
         if (!isFinal)
             return;
 
-        bool isAbstract = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool isAbstract = Shared.MemberClassification.HasAbstractDecorator(eventDef.Decorators);
         bool isVirtual = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
 
         if (isAbstract)
@@ -259,20 +300,20 @@ internal class EventValidator : SemanticValidatorBase
     /// <summary>
     /// Rule 6: All function-style accessors of one event must agree about abstractness (#1264).
     /// </summary>
-    private void ValidateAccessorAbstractnessAgreement(string typeName, string eventName, List<EventDef> group)
+    private void ValidateAccessorAbstractnessAgreement(
+        string typeName, string eventName, List<EventDef> group, TypeSymbol? ownerSymbol)
     {
         if (group.Count < 2 || !group.Any(e => e.IsFunctionStyle))
             return;
 
-        var ownerSymbol = _context.SymbolTable.LookupType(typeName);
         bool ownerIsAbstract = ownerSymbol?.IsAbstract == true;
 
         bool hasAbstract = false;
         bool hasConcrete = false;
         foreach (var eventDef in group)
         {
-            bool isAbstract = eventDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
-                || (ownerIsAbstract && AstHelper.IsEllipsisStubBody(eventDef.Body));
+            bool isAbstract = Shared.MemberClassification.IsAbstract(
+                eventDef, ownerSymbol?.TypeKind ?? TypeKind.Class, ownerIsAbstract);
             if (isAbstract)
                 hasAbstract = true;
             else
