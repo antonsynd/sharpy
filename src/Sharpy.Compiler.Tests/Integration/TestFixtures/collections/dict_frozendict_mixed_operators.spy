@@ -1,0 +1,34 @@
+# Mixed dict/frozendict `|` follows CPython's left-operand rule, by analogy with set/frozenset
+# (#1312): the LEFT operand decides the result type and keys on the right win. The annotations on
+# `mixed` and `frozen_first` are load-bearing — they fail the fixture if either direction returns
+# the sibling type. frozendict is not printable the way dict is, so it is read by len/index.
+#
+# The same-type cells are regression pins: `dict | dict` broke when Dict gained its second `|`
+# overload (#1361), and the four sampled set/frozenset cells cover the sibling pairing (#1312)
+# that this change routes through the same resolution path.
+
+def main() -> None:
+    d: dict[str, int] = {"a": 1, "b": 2}
+    fd: frozendict[str, int] = frozendict({"b": 20, "c": 30})
+
+    mixed: dict[str, int] = d | fd
+    print(mixed)
+
+    frozen_first: frozendict[str, int] = fd | d
+    print(len(frozen_first))
+    print(frozen_first["a"])
+    print(frozen_first["b"])
+    print(frozen_first["c"])
+
+    same_dict: dict[str, int] = d | d
+    print(same_dict)
+
+    same_frozen: frozendict[str, int] = fd | fd
+    print(len(same_frozen))
+
+    s: set[int] = {1, 2}
+    f: frozenset[int] = frozenset([2, 3])
+    print(s | f)
+    print(f | s)
+    print(s & f)
+    print(f - s)

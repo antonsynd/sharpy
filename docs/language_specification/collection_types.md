@@ -180,38 +180,46 @@ the full rationale.
 
 ### Dict and frozendict
 
-`dict[K, V]` and `frozendict[K, V]` support their operators against *their own type only*. There is
-no mixed `dict`/`frozendict` matrix — the left-operand rule described above applies to sets, not to
-dicts:
+`dict[K, V]` and `frozendict[K, V]` share exactly one operator, `|`, and it obeys the same
+left-operand rule. Keys on the **right** win in every cell, which is CPython's PEP 584 rule for
+`dict | dict`:
+
+| Operator | Meaning | `dict ∘ dict` | `dict ∘ frozendict` | `frozendict ∘ dict` | `frozendict ∘ frozendict` |
+|----------|---------|---------------|---------------------|---------------------|---------------------------|
+| `\|` | merge | `dict[K, V]` | `dict[K, V]` | `frozendict[K, V]` | `frozendict[K, V]` |
+
+Neither operand is mutated, exactly as for sets — `\|` builds a new mapping even when the mutable
+`dict` is on the left:
 
 ```python
 def main() -> None:
-    d: dict[str, int] = {"a": 1}
-    e: dict[str, int] = {"b": 2}
-    print(d | e)                    # {'a': 1, 'b': 2}
+    d: dict[str, int] = {"a": 1, "b": 2}
+    fd: frozendict[str, int] = frozendict({"b": 20, "c": 30})
 
-    a: frozendict[str, int] = frozendict({"a": 1})
-    b: frozendict[str, int] = frozendict({"b": 2})
-    merged: frozendict[str, int] = a | b
-    print(len(merged))              # 2
-    print(merged["a"])              # 1
-    print(merged["b"])              # 2
+    mixed: dict[str, int] = d | fd
+    print(mixed)                    # {'a': 1, 'b': 20, 'c': 30}
 
-    # ERROR SPY0222: Type 'dict[str, int]' does not support operator '|'
-    #                with operand of type 'frozendict[str, int]'
-    # print(d | b)
+    frozen_first: frozendict[str, int] = fd | d
+    print(len(frozen_first))        # 3
+    print(frozen_first["b"])        # 2 — the right operand wins, so d's value survives
+
+    print(d)                        # {'a': 1, 'b': 2}  — unchanged
 ```
 
-The `frozendict` result is read by key rather than printed whole because a `frozendict` does not
+The `frozendict` results are read by key rather than printed whole because a `frozendict` does not
 carry `dict`'s insertion order — see [#1392](https://github.com/antonsynd/sharpy/issues/1392).
 
-Convert explicitly when the operands differ. Tracked as
-[#1361](https://github.com/antonsynd/sharpy/issues/1361).
+Both mixed directions were unreachable until [#1361](https://github.com/antonsynd/sharpy/issues/1361):
+`dict` was the one builtin collection still registered against `System.Collections.Generic.Dictionary<,>`
+rather than its `Sharpy.Dict<K, V>` wrapper, and the registered CLR type is what operator resolution
+reflects over. `Dictionary` declares no operators, so `dict | dict` resolved only through the
+shortcut that applies to a lone candidate, and the mixed overload took that shortcut away.
 
 *Implementation*
 - *✅ Native - each mixed pairing is a C# operator overload declared on the LEFT operand's type
-  (`Sharpy.Set<T>` for `set ∘ frozenset`, `Sharpy.FrozenSet<T>` for `frozenset ∘ set`), which is
-  what makes the left operand decide the result type.*
+  (`Sharpy.Set<T>` for `set ∘ frozenset`, `Sharpy.FrozenSet<T>` for `frozenset ∘ set`,
+  `Sharpy.Dict<K, V>` for `dict | frozendict`, `Sharpy.FrozenDict<K, V>` for `frozendict | dict`),
+  which is what makes the left operand decide the result type.*
 
 ## Tuple Positional Access
 

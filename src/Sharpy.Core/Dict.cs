@@ -155,6 +155,32 @@ namespace Sharpy
             return left.Merge(right);
         }
 
+        /// <summary>
+        /// Merge with a frozendict. The LEFT operand decides the result type, by analogy with
+        /// set/frozenset (#1312): a dict on the left yields a dict. Keys on the right win, matching
+        /// this type's own <c>|</c>.
+        /// </summary>
+        public static Dict<K, V> operator |(Dict<K, V> left, FrozenDict<K, V> right)
+        {
+            if (left is null)
+            {
+                throw new ArgumentNullException(nameof(left));
+            }
+
+            if (right is null)
+            {
+                throw new ArgumentNullException(nameof(right));
+            }
+
+            var merged = left.Copy();
+            foreach (var key in right.Keys())
+            {
+                merged[key] = right[key];
+            }
+
+            return merged;
+        }
+
         /// <summary>Determines whether two dictionaries are equal.</summary>
         public static bool operator ==(Dict<K, V>? left, Dict<K, V>? right)
         {

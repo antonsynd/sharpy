@@ -163,13 +163,12 @@ namespace Sharpy
             return left >= new Set<T>(right);
         }
 
-        // NO MIXED dict/frozendict PAIRINGS EITHER, same discipline, measured the same way. They
-        // were written and then removed: `Dict | FrozenDict` gives Dict<K,V> a second `|` candidate,
-        // which takes it off the compiler's single-candidate operator path, and the resolver then
-        // fails to select — `dict | dict` itself stopped resolving. The mixed forms never worked in
-        // the first place (the compiler does not find Dict's `|` through the path set/frozenset use),
-        // so the pair was pure loss: an inert feature that broke a working one. Reinstating it needs
-        // the compiler-side gap fixed first (#1361).
+        // The mixed dict/frozendict `|` pairings live on Dict/FrozenDict and follow this same rule.
+        // They were written, removed once, and re-landed: a second `|` candidate took Dict<K,V> off
+        // the compiler's single-candidate operator path, and nothing else could resolve it because
+        // dict alone was registered against System.Collections.Generic.Dictionary<,>, which declares
+        // no operators. Registering dict against Sharpy.Dict<,> like every sibling here is what made
+        // all three dict cells reachable (#1361).
 
         // NO MIXED ==/!= , and the reason is measured. Declaring `operator ==(Set<T>?, FrozenSet<T>?)`
         // alongside the existing `operator ==(Set<T>?, Set<T>?)` makes `someSet == null` ambiguous
