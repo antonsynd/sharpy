@@ -1,0 +1,19 @@
+# A CLR instance call's ARITY is checked at semantic time (#1290).
+#
+# These used to reach Roslyn as CS7036 ("no argument given for required parameter") and CS1501
+# ("no overload takes 2 arguments") behind SPY0908. The count is decided against the candidate
+# MethodInfo set on the constructed receiver: optional parameters lower the floor and a `params`
+# array removes the ceiling, exactly as C# counts them, so only a count NO overload accepts is
+# refused.
+
+from system.collections.generic import List
+from system.text import StringBuilder
+
+
+def main() -> None:
+    xs: List[int] = List[int]()
+    xs.add()
+    xs.add(1, 2)
+
+    sb: StringBuilder = StringBuilder()
+    sb.ensure_capacity()

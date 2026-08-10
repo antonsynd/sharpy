@@ -1,0 +1,28 @@
+# A CLR instance call's ARGUMENT TYPES are checked at semantic time (#1290).
+#
+# Every call below used to reach Roslyn on the name-only interop channel and come back as CS1503
+# behind SPY0908 — the compiler reporting its own bug for a user's type error. The absence half of
+# #1290 already refuses a member reflection proves is not there; this is the PRESENT case, where the
+# question is whether THIS call binds. Only the sole arity-matching candidate is checked (#1243's
+# rule), so what is refused is what .NET was certain to refuse too.
+
+from system.collections.generic import HashSet
+from system.collections.generic import List
+from system.text import StringBuilder
+
+
+def main() -> None:
+    xs: List[int] = List[int]()
+    xs.add("not an int")
+    xs.insert(0, "not an int")
+
+    # A sequence parameter: the element type is part of what the formal means.
+    ints: HashSet[int] = HashSet[int]()
+    strs: List[str] = List[str]()
+    ints.union_with(strs)
+
+    # AppendLine's arity-2 overload takes (IFormatProvider, ref handler) — an interface the bridge
+    # has no Sharpy word for, so the RAW parameter type is what the argument is checked against.
+    # Mapping it would collapse to `object`, which accepts everything and is how this stayed silent.
+    sb: StringBuilder = StringBuilder()
+    sb.append_line("ok", 42)

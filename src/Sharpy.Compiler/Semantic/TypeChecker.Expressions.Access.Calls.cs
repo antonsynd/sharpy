@@ -366,6 +366,14 @@ internal partial class TypeChecker
 
             // Builtin method overloads (dict.get, list.pop) are now handled by
             // ResolveUserMethodOverload above via discovery-populated metadata.
+
+            // Nothing above typed this call, so it is on the name-only interop channel: the emitter
+            // writes it verbatim and Roslyn performs the only binding check it ever gets — which is
+            // how `xs.add("not an int")` came back as CS1503 behind SPY0908, the compiler reporting
+            // its own bug for a user's type error (#1290). Runs last, and only for what the
+            // resolutions above declined, so every call one of them owns keeps that owner's check.
+            if (funcSymbol == null && calleeType is UnknownType)
+                CheckClrInstanceMethodCall(call, memberAccessCall, argTypes, kwargTypes);
         }
 
         // If we have a FunctionSymbol, use it for validation (supports default parameters)
@@ -4005,4 +4013,402 @@ internal partial class TypeChecker
         return false;
     }
 
+    // ============================================================
+    // CLR instance-method calls: arity and argument types (#1290)
+    // ============================================================
+
+    /// <summary>
+    /// What a member call on a CLR receiver could bind to: the public instance methods answering to
+    /// the written name, and whether an extension method of that name is reachable from the emitted
+    /// compilation. Memoized together because they are computed from the same reflection and consumed
+    /// by the same decision.
+    /// </summary>
+    private sealed record ClrInstanceCallSurface(
+        System.Reflection.MethodInfo[] Candidates, bool ExtensionNameReachable);
+
+    // The PRESENT-member companion of the #1141 absence memo (_bclMemberAbsenceMemo in
+    // TypeChecker.cs): same memo pattern, asked at the same seam, of the same reflection. Keyed on
+    // the CONSTRUCTED receiver type rather than its TypeSymbol, because that is what distinguishes
+    // the signatures being checked — List[int].Add and List[str].Add share one TypeSymbol and take
+    // different arguments.
+    private readonly Dictionary<(Type, string), ClrInstanceCallSurface> _clrInstanceCallMemo = new();
+
+    /// <summary>
+    /// Checks the ARITY and ARGUMENT TYPES of a call whose member sits on a CLR-backed receiver and
+    /// which nothing else typed — the last call seam that had no check of its own. On the name-only
+    /// interop channel the emitter writes the call verbatim and Roslyn performs the only binding
+    /// check it ever gets, so <c>xs.add("not an int")</c> on an imported <c>List[int]</c> came back
+    /// as CS1503 behind SPY0908: the compiler reporting its own bug for a user's type error (#1290).
+    ///
+    /// <para>The absence half of that issue (#1141's proof, wired into the member seam) refuses a
+    /// member reflection can prove is not there. This is the PRESENT case — the member exists, and
+    /// the question is whether THIS call binds to it — so the candidate set comes from the same
+    /// constructed receiver that proof reflects on, memoized the same way.</para>
+    ///
+    /// <para>The selection rule is #1243's, verbatim: when exactly one arity fits, the user's intent
+    /// is not in doubt and a wrong argument is as diagnosable as it is for a single declared method;
+    /// two candidates of the same arity keep silence, because choosing between them is CLR overload
+    /// resolution and this seam does not own it.</para>
+    ///
+    /// <para>Every other step defaults to silence too — an unreflectable or open-generic receiver, a
+    /// keyword or spread argument, a name an extension method could also answer, a <c>ref</c> or
+    /// delegate or <c>params</c> parameter, a bridge mapping that collapsed to <c>object</c>. A false
+    /// refusal here rejects interop .NET binds happily, which is strictly worse than the ICE it would
+    /// replace (#1260), so an undecidable step is left to Roslyn rather than guessed at.</para>
+    /// </summary>
+    private void CheckClrInstanceMethodCall(
+        FunctionCall call, MemberAccess memberAccess,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes)
+    {
+        // A keyword argument binds by CLR parameter name, and a spread occupies one argument slot
+        // while standing for however many the sequence holds — so neither the count nor the
+        // positions mean here what this check would read them as. Both leave the call exactly as
+        // permissive as it is today.
+        if (kwargTypes.Count > 0 || call.KeywordArguments.Length > 0
+            || call.Arguments.Length != argTypes.Count
+            || call.Arguments.Any(argument => argument is SpreadElement))
+        {
+            return;
+        }
+
+        // A static call through a type name (`Console.write_line(...)`) reaches a different resolver
+        // with a different receiver; this seam is about instance members.
+        if (memberAccess.Object is Identifier staticId
+            && _semanticInfo.GetIdentifierSymbol(staticId) is TypeSymbol)
+        {
+            return;
+        }
+
+        // `obj?.method()` binds the member on the underlying type, which is what the member seam
+        // itself looked the call up on.
+        var receiverType = _semanticInfo.GetExpressionType(memberAccess.Object) switch
+        {
+            NullableType nullableReceiver => nullableReceiver.UnderlyingType,
+            OptionalType optionalReceiver => optionalReceiver.UnderlyingType,
+            var other => other
+        };
+        if (receiverType is null or UnknownType)
+            return;
+
+        var reflectionType = ClrReceiverReflectionType(receiverType);
+        if (reflectionType == null)
+            return;
+
+        var surface = ClrInstanceCallSurfaceOf(reflectionType, memberAccess.Member);
+
+        // No candidate at all: a property, a field, a member only codegen can resolve, or one that is
+        // genuinely absent — and absence is the member seam's question, answered there (#1141).
+        if (surface.Candidates.Length == 0)
+            return;
+
+        // The permissive extension clause, for the same reason the absence proof has it: an extension
+        // method binds when no instance overload is applicable, so `xs.contains(v, comparer)` is a
+        // legal call to Enumerable.Contains that no instance candidate accounts for. Refusing on the
+        // instance surface alone would reject it.
+        if (surface.ExtensionNameReachable)
+            return;
+
+        var fitting = surface.Candidates
+            .Where(candidate => ClrArityFits(candidate, argTypes.Count))
+            .ToList();
+
+        var memberDisplay = $"{Shared.ClrNameHelper.StripArity(reflectionType.Name)}.{memberAccess.Member}";
+
+        if (fitting.Count == 0)
+        {
+            AddError(
+                $"'{memberDisplay}' expects {DescribeClrArities(surface.Candidates)} but got {argTypes.Count}",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                span: call.Span);
+            return;
+        }
+
+        // Two overloads of this arity: which one the call means is CLR overload resolution's answer,
+        // not this seam's (#1243). Reporting against a guess would be worse than the silence.
+        if (fitting.Count > 1)
+            return;
+
+        CheckClrCallArgumentTypes(call, fitting[0], argTypes, memberDisplay);
+    }
+
+    /// <summary>
+    /// Checks each argument of a member call against the sole arity-matching CLR candidate, using the
+    /// RAW <see cref="System.Reflection.ParameterInfo"/> types. The bridge's mapping is used to ASK
+    /// the question in Sharpy vocabulary (so the provenance-aware <see cref="IsAssignable"/> answers
+    /// it, and so the message names a type the user wrote), with the raw CLR type as a second chance
+    /// for anything the mapping does not describe — never the reconstructed signature a
+    /// <see cref="BuildBclGenericMethodSymbol"/> would build, whose <c>object</c> fallbacks accept
+    /// everything.
+    /// </summary>
+    private void CheckClrCallArgumentTypes(
+        FunctionCall call, System.Reflection.MethodInfo method,
+        List<SemanticType> argTypes, string memberDisplay)
+    {
+        var parameters = method.GetParameters();
+
+        for (int i = 0; i < argTypes.Count && i < parameters.Length; i++)
+        {
+            var parameter = parameters[i];
+
+            // A params array absorbs the whole tail, and C# lets the caller pass either the elements
+            // or the array itself — two shapes this seam would have to re-decide to check either.
+            if (IsClrParamsArray(parameter))
+                return;
+
+            if (ClrParameterIsUndecidable(parameter))
+                continue;
+
+            // An argument whose own type is not settled (an error recovery, a still-open type
+            // parameter, a bare `None` whose target decides its meaning) is skipped rather than
+            // guessed at.
+            //
+            // So is a FUNCTION-typed argument, for a reason that is not about lambdas: a parameter
+            // whose name equals its own function's name currently resolves to the function rather
+            // than the parameter (#1393), and that mis-resolution reaches here as a function type
+            // where the user wrote an ordinary value. `calendar_module.spy`'s
+            // `def month(year, month, ...)` calling `cal.formatmonth(year, month, w, l)` is exactly
+            // that shape, and it emits and runs correctly — refusing it would report this seam's
+            // diagnosis of someone else's bug. Narrow this back to unresolved lambdas when #1393
+            // lands; the stdlib module is the pin.
+            if (argTypes[i] is UnknownType or TypeParameterType or FunctionType
+                || call.Arguments[i] is NoneLiteral)
+            {
+                continue;
+            }
+
+            var argumentNode = ArgumentNodeAt(call, i);
+            var argumentClrType = TryGetClrType(argTypes[i]);
+            string expectedDisplay;
+
+            if (MapClrParameterType(parameter) is { } expected)
+            {
+                // Materialization is recorded before the acceptance question, in the same order the
+                // argument-binding seam uses (ValidateCallArguments), so the checker and the emitter
+                // agree about copies. A CLR formal is a .NET position — the emitted parameter IS the
+                // CLR type and the value goes in unconverted — so this records nothing here today; it
+                // is the rule (#1251, #1260) that must be stated at every binding site, not an effect.
+                RecordSequenceMaterialization(argumentNode, argTypes[i], expected);
+
+                if (IsArgumentAssignable(argTypes[i], expected, argumentNode))
+                    continue;
+
+                // Second chance against the parameter's real CLR type: the mapping is a
+                // Sharpy-vocabulary description and can lose an inheritance relation .NET has (a
+                // derived CLR class bound to a base-class parameter both bridge to UserDefinedType,
+                // whose names differ).
+                if (argumentClrType != null && parameter.ParameterType.IsAssignableFrom(argumentClrType))
+                    continue;
+
+                expectedDisplay = expected.GetDisplayName();
+            }
+            else
+            {
+                // The bridge collapsed the formal to `object`, which is a degradation and not a fact —
+                // checking against it would accept everything, which is how `sb.append_line("ok", 42)`
+                // stayed silent (its arity-2 overload's first parameter is IFormatProvider, an
+                // interface the bridge has no Sharpy word for). The RAW parameter type is then the
+                // only honest description of the formal, so the question is asked of .NET directly.
+                if (argumentClrType == null
+                    || parameter.ParameterType.IsAssignableFrom(argumentClrType))
+                {
+                    continue;
+                }
+
+                expectedDisplay = Shared.ClrNameHelper.StripArity(parameter.ParameterType.Name);
+            }
+
+            AddError(
+                $"Argument {i + 1} of '{memberDisplay}' expects '{expectedDisplay}' "
+                + $"but got '{argTypes[i].GetDisplayName()}'",
+                call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: call.Arguments[i].Span);
+        }
+    }
+
+    /// <summary>
+    /// Whether nothing this seam knows can decide an argument against <paramref name="parameter"/>,
+    /// whichever description of the formal is used. A <c>ref</c>/<c>out</c> or pointer parameter is
+    /// unwritable from Sharpy and a different diagnosis; one still naming a type parameter has no
+    /// concrete formal at all; an enum reaches the call as the bridge's <c>int</c>; a delegate is
+    /// bound from a lambda by a C# conversion rather than an assignability rule;
+    /// <see cref="System.Type"/> is satisfied by a type reference, as
+    /// <see cref="IsSystemTypeParameter"/> already allows; <c>object</c> accepts everything; and a
+    /// ref-struct (<c>Span</c>, <c>ReadOnlySpan</c>) or a type carrying <c>op_Implicit</c> is reached
+    /// by conversions reflection cannot enumerate.
+    /// </summary>
+    private static bool ClrParameterIsUndecidable(System.Reflection.ParameterInfo parameter)
+    {
+        var parameterClrType = parameter.ParameterType;
+
+        return parameterClrType.IsByRef || parameterClrType.IsPointer
+            || parameterClrType.ContainsGenericParameters || parameterClrType.IsEnum
+            || parameterClrType.IsByRefLike
+            || parameterClrType == typeof(Type) || parameterClrType == typeof(object)
+            || typeof(Delegate).IsAssignableFrom(parameterClrType)
+            || DeclaresImplicitConversion(parameterClrType);
+    }
+
+    /// <summary>
+    /// The parameter's formal in Sharpy vocabulary, or <c>null</c> when the bridge collapsed it to
+    /// <c>object</c> — a degradation, not a fact, and the caller asks .NET about the raw type instead.
+    /// </summary>
+    private SemanticType? MapClrParameterType(System.Reflection.ParameterInfo parameter)
+    {
+        var mapped = _bclGenericMethodBridge.MapClrTypeToSemanticType(parameter.ParameterType);
+        return mapped is UnknownType || IsObjectType(mapped) ? null : mapped;
+    }
+
+    /// <summary>
+    /// Whether a type declares any user-defined implicit conversion. Such a type can be reached from
+    /// values <see cref="Type.IsAssignableFrom"/> says nothing about, so the raw check stays out of it.
+    /// </summary>
+    private static bool DeclaresImplicitConversion(Type type)
+        => type.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Any(m => m.Name == "op_Implicit");
+
+    /// <summary>
+    /// Whether <paramref name="method"/> can take <paramref name="argCount"/> positional arguments:
+    /// optional parameters lower the floor and a <c>params</c> array removes the ceiling, exactly as
+    /// C# counts them.
+    /// </summary>
+    private static bool ClrArityFits(System.Reflection.MethodInfo method, int argCount)
+    {
+        var parameters = method.GetParameters();
+        var required = parameters.Count(p => !p.IsOptional && !IsClrParamsArray(p));
+        if (argCount < required)
+            return false;
+
+        return (parameters.Length > 0 && IsClrParamsArray(parameters[^1]))
+               || argCount <= parameters.Length;
+    }
+
+    private static bool IsClrParamsArray(System.Reflection.ParameterInfo parameter)
+        => parameter.IsDefined(typeof(ParamArrayAttribute), inherit: false);
+
+    /// <summary>
+    /// The argument counts a member's CLR overloads accept, as a phrase — "1 argument",
+    /// "0 to 2 arguments", "at least 1 argument" — for the count diagnostic. Phrased as a span
+    /// rather than a list because optional parameters make each candidate a span of its own; the
+    /// message says what would have been acceptable, and the refused count is outside it either way.
+    /// </summary>
+    private static string DescribeClrArities(IReadOnlyList<System.Reflection.MethodInfo> candidates)
+    {
+        var fewest = int.MaxValue;
+        var most = 0;
+        var unbounded = false;
+
+        foreach (var candidate in candidates)
+        {
+            var parameters = candidate.GetParameters();
+            if (parameters.Length > 0 && IsClrParamsArray(parameters[^1]))
+                unbounded = true;
+
+            fewest = Math.Min(fewest, parameters.Count(p => !p.IsOptional && !IsClrParamsArray(p)));
+            most = Math.Max(most, parameters.Length);
+        }
+
+        if (unbounded)
+            return $"at least {fewest} argument{(fewest == 1 ? "" : "s")}";
+
+        return fewest == most
+            ? $"{fewest} argument{(fewest == 1 ? "" : "s")}"
+            : $"{fewest} to {most} arguments";
+    }
+
+    /// <summary>
+    /// The CLR type a member call on <paramref name="receiverType"/> binds against — the CONSTRUCTED
+    /// receiver where one is available (<c>List&lt;int&gt;</c>, not the open <c>List&lt;&gt;</c>),
+    /// mirroring the #1136 fallback and the #1141 absence proof so all three see the same surface.
+    /// Null when the receiver has no CLR type, or when the type is still open: an open generic's
+    /// parameters name <c>T</c>, so there is nothing to check an argument against.
+    /// </summary>
+    private Type? ClrReceiverReflectionType(SemanticType receiverType)
+    {
+        var ownerSymbol = ResolveInstanceMemberOwnerSymbol(receiverType);
+        if (ownerSymbol?.ClrType == null)
+            return null;
+
+        var reflectionType = TryGetClrType(receiverType) ?? ownerSymbol.ClrType;
+        return reflectionType.ContainsGenericParameters ? null : reflectionType;
+    }
+
+    private ClrInstanceCallSurface ClrInstanceCallSurfaceOf(Type reflectionType, string memberName)
+    {
+        var memoKey = (reflectionType, memberName);
+        if (_clrInstanceCallMemo.TryGetValue(memoKey, out var memoized))
+            return memoized;
+
+        var surface = BuildClrInstanceCallSurface(reflectionType, memberName);
+        _clrInstanceCallMemo[memoKey] = surface;
+        return surface;
+    }
+
+    private ClrInstanceCallSurface BuildClrInstanceCallSurface(Type reflectionType, string memberName)
+    {
+        var empty = new ClrInstanceCallSurface(Array.Empty<System.Reflection.MethodInfo>(), false);
+
+        System.Reflection.MethodInfo[] candidates;
+        try
+        {
+            const System.Reflection.BindingFlags flags =
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance;
+
+            var declared = reflectionType.GetMethods(flags).AsEnumerable();
+            // A receiver typed as an interface does not see its inherited interface methods through
+            // GetMethods; for a class receiver this adds nothing (same rule as GetMemberNameSurface).
+            if (reflectionType.IsInterface)
+                declared = declared.Concat(reflectionType.GetInterfaces().SelectMany(i => i.GetMethods(flags)));
+
+            candidates = declared
+                .Where(method => !method.IsGenericMethodDefinition
+                    && ClrMethodAnswersToName(method, memberName))
+                .ToArray();
+
+            // A property or field of the same name means the call may be invoking a delegate stored
+            // there, which the method surface does not describe.
+            if (candidates.Length > 0
+                && Discovery.ClrTypeHelper.ResolveClrPropertyName(reflectionType, memberName) != null)
+            {
+                return empty;
+            }
+        }
+        catch (Exception ex) when (ex is System.Reflection.ReflectionTypeLoadException or TypeLoadException
+                                       or System.IO.FileNotFoundException or NotSupportedException)
+        {
+            return empty; // reflection could not answer — nothing is proven, so nothing is refused
+        }
+
+        if (candidates.Length == 0)
+            return empty;
+
+        return new ClrInstanceCallSurface(
+            candidates, ClrExtensionMethodNameIsReachable(reflectionType, memberName));
+    }
+
+    /// <summary>
+    /// Whether a CLR method answers to the written Sharpy member name — verbatim, or by the same
+    /// reverse mangling every other CLR member lookup uses (<c>add_range</c> → <c>AddRange</c>).
+    /// </summary>
+    private static bool ClrMethodAnswersToName(System.Reflection.MethodInfo method, string memberName)
+        => method.Name == memberName
+           || NameMangler.ToSharpyName(method.Name, ReverseNameContext.Method) == memberName;
+
+    /// <summary>
+    /// Whether an extension method of this name is reachable from the emitted compilation — the same
+    /// clause, over the same assemblies, that keeps the #1141 absence proof permissive.
+    /// </summary>
+    private bool ClrExtensionMethodNameIsReachable(Type receiverClrType, string memberName)
+    {
+        var pascalName = NameMangler.ToPascalCase(memberName);
+        foreach (var assembly in EnumerateExtensionMethodAssemblies(receiverClrType))
+        {
+            var extensionNames = Discovery.ClrTypeHelper.GetExtensionMethodNames(assembly);
+            if (extensionNames.Contains(memberName) || extensionNames.Contains(pascalName))
+                return true;
+        }
+
+        return false;
+    }
 }

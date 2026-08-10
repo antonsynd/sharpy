@@ -1,0 +1,53 @@
+# The false-positive twin of #1290's call check (the constructor_arg_conversions_1243 pattern): the
+# conversions .NET performs at a call boundary must keep compiling, because a check that refuses
+# working interop is worse than the SPY0908 it replaces (#1260).
+#
+# Every call below reaches the same seam the refusals do — the mutations are one keystroke away, and
+# each of them IS refused: `longs.add("s")`, `writers.add(1)`, `writers.add(w, 2)` all report.
+
+from system.collections.generic import List
+from system.io import StringWriter
+from system.io import TextWriter
+from system.text import StringBuilder
+
+
+def main() -> None:
+    # CLR widening: an int argument binds a long parameter, and a double one.
+    longs: List[long] = List[long]()
+    longs.add(1)
+    print(longs.count)
+
+    floats: List[float] = List[float]()
+    floats.add(2)
+    print(floats[0])
+
+    # A params array absorbs the tail; C# decides whether the arguments or an array were passed.
+    sb: StringBuilder = StringBuilder()
+    sb.append_format("{0}-{1}", 1, 2)
+    print(sb.to_string())
+
+    # None binds a reference-typed parameter — what the target means by it is the target's business.
+    names: List[str] = List[str]()
+    names.add("a")
+    print(names.index_of(None))
+
+    # Derived binds base: the mapping describes both as their own CLR-backed types, so the raw
+    # parameter type is what settles it.
+    writers: List[TextWriter] = List[TextWriter]()
+    writers.add(StringWriter())
+    print(writers.count)
+
+    # A name an extension method also carries stays permissive: an extension binds when no instance
+    # overload is applicable (`AddRange` has a ReadOnlySpan-taking extension since .NET 8), so the
+    # instance surface alone cannot refuse it.
+    xs: List[int] = List[int]()
+    xs.add_range(List[int]())
+    print(xs.count)
+
+    # Several candidates of the same arity: which one a call means is CLR overload resolution's
+    # answer, not this seam's, so it says nothing.
+    sb2: StringBuilder = StringBuilder()
+    sb2.append("x")
+    sb2.append(1)
+    sb2.insert(0, "y")
+    print(sb2.to_string())
