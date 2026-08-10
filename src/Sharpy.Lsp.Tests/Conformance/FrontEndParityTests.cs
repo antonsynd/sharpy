@@ -60,8 +60,11 @@ namespace Sharpy.Lsp.Tests.Conformance;
 ///     (SPY05xx), infrastructure (SPY09xx), info notes (SPY1xxx, e.g. the SPY1001 implicit-interface
 ///     synthesis note the emitter emits), and uncoded wrapper diagnostics are excluded, because
 ///     Analyze and LSP never run code generation, so those are not producible by every entry point.
-///     Real code-generation leaks (X1 / SPY0908) are guarded by ReparseEquivalence + executing
-///     fixtures, not here.</description></item>
+///     Two exceptions are admitted by code, not by band — SPY0522 and SPY0523, which are numbered in
+///     the code-generation range but emitted during semantic analysis/validation (see
+///     <c>FrontEndEmittedCollisionCodes</c>); without them every name-collision fixture compared an
+///     empty multiset. Real code-generation leaks (X1 / SPY0908) are guarded by ReparseEquivalence +
+///     executing fixtures, not here.</description></item>
 ///   <item><term>N2 — OutputType held constant (compile)</term><description><see cref="CompilerApi.Compile"/>
 ///     is invoked with <c>OutputType=library</c> to match the Analyze baseline. The only
 ///     library-vs-exe front-end diagnostic is SPY0403 (MissingMainFunction), gated purely by
@@ -109,7 +112,8 @@ public class FrontEndParityTests
 
     // Diagnostics whose SPYnnnn number is in [1, 499] are front-end (Lexer/Parser/Semantic/
     // Validation). 500-599 = code generation, 900-999 = infrastructure, 1000+ = info notes — all
-    // out of scope per N1.
+    // out of scope per N1, except the two collision codes listed in FrontEndEmittedCollisionCodes,
+    // which are numbered in the 5xx band but emitted before code generation.
     private static readonly Regex SpyCode = new(@"^SPY(\d{4})$", RegexOptions.Compiled);
 
     private readonly ITestOutputHelper _output;
@@ -353,6 +357,30 @@ public class FrontEndParityTests
     private static IReadOnlyList<string> Signature(IEnumerable<CompilerDiagnostic> diagnostics)
         => diagnostics.Where(IsInScope).Select(d => d.Code!).OrderBy(c => c, StringComparer.Ordinal).ToList();
 
+    /// <summary>
+    /// Name-collision refusals that are NUMBERED in the code-generation band but EMITTED before code
+    /// generation, so every entry point can produce them and the band must not hide them.
+    /// </summary>
+    /// <remarks>
+    /// Numbering debt: both codes predate the passes that emit them today. SPY0522 comes from
+    /// <c>LocalNameCollisionValidator</c> (Validation) and from <c>CodeGenInfoComputer</c>, which
+    /// <c>TypeChecker.CheckModule</c> runs during semantic analysis; SPY0523 comes from that same
+    /// computer. Leaving them behind the [1, 499] band made every collision fixture vacuous here —
+    /// #1268's delegate repro emits SPY0522 and nothing else, so all four entry points were compared
+    /// on an empty multiset and would have agreed no matter how far they had drifted.
+    /// <para>
+    /// Deliberately NOT admitted: SPY0520, which <c>RoslynEmitter.ModuleClass</c> emits and Analyze
+    /// therefore structurally cannot produce (admitting it would manufacture divergences, which is
+    /// what N1's band exists to prevent), and SPY0521, which is reserved and never emitted. This is
+    /// an exception for two named codes, not a widening of the band to 5xx.
+    /// </para>
+    /// </remarks>
+    private static readonly SCG.HashSet<string> FrontEndEmittedCollisionCodes = new(StringComparer.Ordinal)
+    {
+        DiagnosticCodes.CodeGen.MemberNameCollision,
+        DiagnosticCodes.CodeGen.FunctionModuleClassCollision,
+    };
+
     private static bool IsInScope(CompilerDiagnostic d)
     {
         if (d.Severity is not (CompilerDiagnosticSeverity.Error or CompilerDiagnosticSeverity.Warning))
@@ -360,6 +388,8 @@ public class FrontEndParityTests
         var match = SpyCode.Match(d.Code ?? "");
         if (!match.Success)
             return false;
+        if (FrontEndEmittedCollisionCodes.Contains(d.Code!))
+            return true;
         var n = int.Parse(match.Groups[1].Value);
         return n is >= 1 and <= 499;
     }
@@ -541,7 +571,7 @@ public class FrontEndParityTests
             signatureCoverage,
             normalizationRules = new[]
             {
-                "N1 (all pairs): compare only Error/Warning diagnostics with SPYnnnn in [0001,0499] (Lexer/Parser/Semantic/Validation); drop codegen SPY05xx, infra SPY09xx, info SPY1xxx, and uncoded diagnostics.",
+                "N1 (all pairs): compare only Error/Warning diagnostics with SPYnnnn in [0001,0499] (Lexer/Parser/Semantic/Validation), plus SPY0522/SPY0523 — numbered in the codegen band but emitted during semantic analysis/validation; drop the rest of codegen SPY05xx (including emitter-only SPY0520), infra SPY09xx, info SPY1xxx, and uncoded diagnostics.",
                 "N2 (compile): invoke Compile with OutputType=library to match the Analyze baseline; SPY0403 (MissingMainFunction) is OutputType-driven, not pipeline drift.",
                 "N3 (REPL): compare only when ClassifyInput yields a module-level submission; wrapped-executable and pre-parse-rejected inputs are record-and-skipped.",
                 "N4 (REPL): skip fixtures that define a top-level main() (collide with the REPL's synthesized main()).",
