@@ -285,10 +285,15 @@ internal partial class RoslynEmitter
             }
 
             // Regular function call — check if this is a local variable/parameter (callable)
-            // before falling back to PascalCase for module-level functions
+            // before falling back to PascalCase for module-level functions.
+            // The slot must belong to THIS spelling, exactly as the read path in
+            // GetMangledVariableName requires: the slot key is the camelCased base name, so a call
+            // to the module function `Zed` found the slot of a local or parameter `zed` and emitted
+            // `zed()` on an int — CS0149, surfacing as SPY0908 (#1276).
             var codeGenInfo = symbol != null ? GetCodeGenInfo(symbol) : null;
             string funcCSharpName;
-            if (_variableVersions.ContainsKey(_nameResolutionService.GetBaseName(funcName.Name)))
+            var funcBaseName = _nameResolutionService.GetBaseName(funcName.Name);
+            if (_variableVersions.ContainsKey(funcBaseName) && SlotAnswersSpelling(funcBaseName, funcName.Name))
             {
                 funcCSharpName = GetMangledVariableName(funcName.Name, isNewDeclaration: false, funcName.IsNameBacktickEscaped);
             }

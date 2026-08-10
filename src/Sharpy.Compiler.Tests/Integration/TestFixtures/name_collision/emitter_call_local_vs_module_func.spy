@@ -1,0 +1,12 @@
+# CALL-SHAPED sibling of no_collision_local_vs_type, guarding the call path's own slot lookup:
+# slot keys are camelCased, so a local `zed` owns the slot "zed" that a call to the module function
+# `Zed` also hashes to. Answering the call from that slot emits zed() on an int — CS0149, surfacing
+# as SPY0908 (#1276). Both spellings are read afterwards so a wrong answer cannot hide.
+def Zed() -> int:
+    return 99
+
+
+def main() -> None:
+    zed: int = 6
+    print(Zed())
+    print(zed)
