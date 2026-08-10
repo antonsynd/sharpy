@@ -1594,6 +1594,38 @@ class TestXmlEntitiesAndKeywordScoping:
         assert _strip_xml_tags(
             "<c>Dict&lt;str, List&lt;int&gt;&gt;</c>") == "`Dict<str, List<int>>`"
 
+    def test_camel_case_param_keeps_its_description(self, tmp_path):
+        """A documented parameter whose C# name is more than one word (#1421).
+
+        The description is merged onto the parsed parameter BY NAME, and the two sides used to
+        spell it differently: `_parse_params` stores `pascal_to_snake(pname)` while the merge
+        keyed on the raw XML `name`. So `doc_params["allowNan"]` was never found under
+        `"allow_nan"` and the text was replaced with "". Single-word names were unaffected,
+        which is why the result read as "some parameters just aren't documented".
+        """
+        cs = textwrap.dedent(
+            """\
+            public partial class JsonModule
+            {
+                /// <summary>Serialize obj.</summary>
+                /// <param name="obj">The object to serialize.</param>
+                /// <param name="allowNan">When true, Infinity and NaN are emitted as tokens.</param>
+                public static string Dumps(object obj, bool allowNan = true)
+                {
+                    return "";
+                }
+            }
+        """
+        )
+        f = tmp_path / "Json.cs"
+        f.write_text(cs)
+        members = parse_cs_file(f)
+        params = {p.name: p.description for p in members[0].params}
+
+        assert params["allow_nan"] == "When true, Infinity and NaN are emitted as tokens."
+        # The single-word control: it never broke, and must not start.
+        assert params["obj"] == "The object to serialize."
+
     def test_keyword_mapping_applies_to_all_prose_deliberately(self):
         # NOT scoped to code spans, and measured rather than assumed (#1305). The source is C#
         # XML doc comments: `true` and `null` in running prose mean the literal far more often

@@ -16,7 +16,7 @@ Parse a URL into six components: (scheme, netloc, path, params, query, fragment)
 
 - `url` (str) -- URL string to parse.
 - `scheme` (str) -- Default scheme if none is present in the URL.
-- `allow_fragments` (bool)
+- `allow_fragments` (bool) -- Whether to recognize fragment identifiers.
 
 **Returns:** A `ParseResult` with the six components.
 
@@ -29,7 +29,7 @@ Similar to `Urlparse` but does not split params from the path.
 
 - `url` (str) -- URL string to parse.
 - `scheme` (str) -- Default scheme if none is present in the URL.
-- `allow_fragments` (bool)
+- `allow_fragments` (bool) -- Whether to recognize fragment identifiers.
 
 **Returns:** A `SplitResult` with the five components.
 
@@ -47,9 +47,9 @@ Construct a full URL by combining a base URL with a relative URL.
 
 **Parameters:**
 
-- `base_url` (str)
+- `base_url` (str) -- The base URL.
 - `url` (str) -- The URL to join (may be relative).
-- `allow_fragments` (bool)
+- `allow_fragments` (bool) -- Whether to recognize fragment identifiers.
 
 **Returns:** The combined URL.
 

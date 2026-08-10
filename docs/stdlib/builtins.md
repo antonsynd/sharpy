@@ -867,7 +867,7 @@ The interpretation of format_spec will depend on the type of the value argument.
 **Parameters:**
 
 - `value` (object | None) -- The value to format
-- `format_spec` (str)
+- `format_spec` (str) -- The format specification string (default is empty string)
 
 **Returns:** The formatted string representation
 
@@ -1055,7 +1055,7 @@ This overload accepts the type as a parameter for runtime type checking.
 **Parameters:**
 
 - `obj` (object | None) -- The object to check
-- `class_info` (Type)
+- `class_info` (Type) -- The type to check against
 
 **Returns:** True if obj is an instance of classInfo, False otherwise
 
@@ -1066,7 +1066,7 @@ Return True if the object argument is an instance of any of the types in classIn
 **Parameters:**
 
 - `obj` (object | None) -- The object to check
-- `class_info` (list[Type])
+- `class_info` (list[Type]) -- A tuple of types to check against
 
 **Returns:** True if obj is an instance of any type in classInfo, False otherwise
 
@@ -1078,7 +1078,7 @@ a subclass of itself.
 **Parameters:**
 
 - `cls` (Type) -- The class to check
-- `class_info` (Type)
+- `class_info` (Type) -- The base class to check against
 
 **Returns:** True if cls is a subclass of classInfo, False otherwise
 
@@ -1094,7 +1094,7 @@ Return True if class is a subclass of any of the types in classInfo.
 **Parameters:**
 
 - `cls` (Type) -- The class to check
-- `class_info` (list[Type])
+- `class_info` (list[Type]) -- A tuple of types to check against
 
 **Returns:** True if cls is a subclass of any type in classInfo, False otherwise
 

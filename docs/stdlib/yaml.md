@@ -30,10 +30,11 @@ Serialize *data* to a YAML formatted string.
 **Parameters:**
 
 - `data` (object | None) -- The Sharpy value to serialize.
-- `default_flow_style` (bool)
+- `default_flow_style` (bool) -- When `True`, emit collections in flow style
+(`{a: 1}`); otherwise use block style. Mirrors Python's `default_flow_style`.
 - `indent` (int) -- Number of spaces per indentation level (1-9).
-- `sort_keys` (bool)
-- `allow_unicode` (bool)
+- `sort_keys` (bool) -- Whether to sort mapping keys.
+- `allow_unicode` (bool) -- Whether to allow non-ASCII characters unescaped.
 - `width` (int) -- Preferred maximum line width before wrapping.
 
 **Returns:** The YAML string representation of *data*.
@@ -60,10 +61,10 @@ Serialize *data* to a file as a YAML formatted document.
 
 - `data` (object | None) -- The Sharpy value to serialize.
 - `fp` (TextFile) -- The file to write to.
-- `default_flow_style` (bool)
+- `default_flow_style` (bool) -- When `True`, emit collections in flow style.
 - `indent` (int) -- Number of spaces per indentation level (1-9).
-- `sort_keys` (bool)
-- `allow_unicode` (bool)
+- `sort_keys` (bool) -- Whether to sort mapping keys.
+- `allow_unicode` (bool) -- Whether to allow non-ASCII characters unescaped.
 - `width` (int) -- Preferred maximum line width before wrapping.
 
 ### `yaml.safe_load_all(text: str) -> list[object | None]`
@@ -88,10 +89,10 @@ separating documents with `---`.
 **Parameters:**
 
 - `documents` (list[object | None]) -- The documents to serialize.
-- `default_flow_style` (bool)
+- `default_flow_style` (bool) -- When `True`, emit collections in flow style.
 - `indent` (int) -- Number of spaces per indentation level (1-9).
-- `sort_keys` (bool)
-- `allow_unicode` (bool)
+- `sort_keys` (bool) -- Whether to sort mapping keys.
+- `allow_unicode` (bool) -- Whether to allow non-ASCII characters unescaped.
 - `width` (int) -- Preferred maximum line width before wrapping.
 
 **Returns:** The multi-document YAML string.

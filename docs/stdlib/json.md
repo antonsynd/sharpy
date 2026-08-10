@@ -31,15 +31,18 @@ Serialize obj to a JSON formatted string with formatting options.
 
 - `obj` (object | None) -- The object to serialize.
 - `indent` (int) -- Number of spaces for indentation. Use -1 for compact output.
-- `sort_keys` (bool)
-- `ensure_ascii` (bool)
+- `sort_keys` (bool) -- Whether to sort dictionary keys.
+- `ensure_ascii` (bool) -- Whether to escape non-ASCII characters.
 - `separators` (tuple[str, str] | None) -- A tuple of `(itemSeparator, keySeparator)` overriding the
 defaults. When `None`, defaults to `(", ", ": ")` in compact mode and
 `(",", ": ")`-style behavior in pretty mode (newlines drive item separation).
 - `@default` ((object) -> object | None | None)
 - `cls` (JSONEncoder | None) -- Optional `JSONEncoder` instance. When provided,
 delegates serialization to `cls.Encode(obj)`.
-- `allow_nan` (bool)
+- `allow_nan` (bool) -- When `True` (CPython's default), `Infinity`,
+`-Infinity` and `NaN` are emitted as those literal tokens — CPython's own
+extension to JSON, which its parser also accepts. When `False`, a non-finite
+float raises `ValueError` (#1296).
 
 **Returns:** A JSON string representation of *obj*.
 
@@ -53,7 +56,7 @@ string, int/long/double, bool, or None.
 
 - `s` (str) -- The JSON string to deserialize.
 - `cls` (JSONDecoder | None) -- Optional `JSONDecoder` instance for custom decoding.
-- `object_hook` ((dict[str, object | None]) -> object | None | None)
+- `object_hook` ((dict[str, object | None]) -> object | None | None) -- Optional callback invoked for every decoded JSON object (dict).
 
 **Returns:** The deserialized object.
 
@@ -86,13 +89,15 @@ Serialize obj as a JSON formatted stream to a file with formatting options.
 - `obj` (object | None) -- The object to serialize.
 - `fp` (TextFile) -- The file to write to.
 - `indent` (int) -- Number of spaces for indentation. Use -1 for compact output.
-- `sort_keys` (bool)
-- `ensure_ascii` (bool)
+- `sort_keys` (bool) -- Whether to sort dictionary keys.
+- `ensure_ascii` (bool) -- Whether to escape non-ASCII characters.
 - `separators` (tuple[str, str] | None) -- A tuple of `(itemSeparator, keySeparator)` overriding the
 defaults. See `Dumps(object?, int, bool, bool, ValueTuple{string, string}?, Func{object, object?}?)`.
 - `@default` ((object) -> object | None | None)
 - `cls` (JSONEncoder | None) -- Optional `JSONEncoder` instance for custom encoding.
-- `allow_nan` (bool)
+- `allow_nan` (bool) -- When `True` (CPython's default), non-finite floats are
+emitted as `Infinity`/`-Infinity`/`NaN`; when `False` they raise
+`ValueError` (#1296).
 
 ### `json.load(fp: TextFile, cls: JSONDecoder | None = None, object_hook: (dict[str, object | None]) -> object | None | None = None) -> object | None`
 
@@ -102,7 +107,7 @@ Deserialize a JSON document read from a file.
 
 - `fp` (TextFile) -- The file to read from.
 - `cls` (JSONDecoder | None) -- Optional `JSONDecoder` instance for custom decoding.
-- `object_hook` ((dict[str, object | None]) -> object | None | None)
+- `object_hook` ((dict[str, object | None]) -> object | None | None) -- Optional callback invoked for every decoded JSON object (dict).
 
 **Returns:** The deserialized object.
 

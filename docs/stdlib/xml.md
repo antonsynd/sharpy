@@ -353,8 +353,8 @@ Write the XML tree to a file.
 
 **Parameters:**
 
-- `file_path` (str)
-- `xml_declaration` (bool)
+- `file_path` (str) -- The file path to write to.
+- `xml_declaration` (bool) -- Whether to include the XML declaration.
 - `encoding` (str) -- The encoding name (default: "utf-8").
 
 ## ParseError

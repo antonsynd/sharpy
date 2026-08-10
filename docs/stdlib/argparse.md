@@ -38,7 +38,7 @@ Add a positional argument.
 - `name` (str) -- The argument name.
 - `type` (str) -- Value type: "str", "int", or "float".
 - `help` (str) -- Help text for this argument.
-- `default_value` (object | None)
+- `default_value` (object | None) -- Default value if not provided.
 - `nargs` (str | None) -- Number of arguments: "*", "+", or "?".
 - `choices` (list[str] | None) -- Restrict values to this set.
 

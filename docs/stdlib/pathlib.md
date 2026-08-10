@@ -128,6 +128,10 @@ Return the user's home directory.
 
 Create the file if it doesn't exist, or update its timestamp if it does.
 
+**Parameters:**
+
+- `exist_ok` (bool) -- If False, raise FileExistsError when the file already exists.
+
 ### `stat() -> StatResult`
 
 Return file or directory stats.

@@ -998,8 +998,13 @@ def parse_cs_file(
             doc = _parse_xml_doc(doc_lines)
             params = _parse_params(param_str or "", is_extension=is_extension)
 
-            # Merge doc param descriptions
-            doc_params = {p[0]: p[1] for p in doc.get("params", [])}
+            # Merge doc param descriptions. The key is snake-cased on the way in because that is
+            # what `_parse_params` stores (`pascal_to_snake(pname)`), and the XML carries the C#
+            # spelling: keying on the raw `name` meant `doc_params["allowNan"]` was never found
+            # under `"allow_nan"` and the description was replaced with "" (#1421). Only
+            # multi-word names were affected, so the damage read as "some parameters happen to be
+            # undocumented" rather than as a lookup miss.
+            doc_params = {pascal_to_snake(p[0]): p[1] for p in doc.get("params", [])}
             for p in params:
                 p.description = doc_params.get(p.name, "")
 

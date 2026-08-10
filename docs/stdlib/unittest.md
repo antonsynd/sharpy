@@ -31,7 +31,7 @@ Marker for assert_raises context manager. The compiler transforms
 
 **Parameters:**
 
-- `exception_type` (Type)
+- `exception_type` (Type) -- The expected exception type.
 - `match` (str | None) -- Optional regular expression applied to the exception message with
 `re.search` semantics. When provided, the compiler appends a
 `Xunit.Assert.Matches(match, exception.Message)` check after the

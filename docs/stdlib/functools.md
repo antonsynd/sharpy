@@ -25,6 +25,13 @@ Apply function of two arguments cumulatively to the items of iterable, starting 
 Snapshot of cache statistics returned by
 `LruCache{TKey, TResult}.CacheInfo`.
 
+**Parameters:**
+
+- `hits` (int) -- The number of cache hits.
+- `misses` (int) -- The number of cache misses.
+- `max_size` (int | None) -- The maximum size, or `None` for unbounded.
+- `current_size` (int) -- The current number of cached entries.
+
 ### `functools.get_or_add(key: TKey, factory: (TKey) -> TResult) -> TResult`
 
 Looks up the cached value for *key*, or computes it
