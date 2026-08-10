@@ -9,8 +9,10 @@
 # print's params), which is a separate defect and would make this fixture fail for someone else's
 # reason.
 #
-# CPython agrees on every value below except the container spelling it never has to show: len 0,
-# an empty slice printing as an empty sequence, and no loop iterations.
+# CPython agrees on the length and the iteration count. It does NOT agree on the empty slice: a tuple
+# slices to `()` where Sharpy's array slices to a list printing `[]`. That is the same designed
+# deviation this fixture exists to describe (deviations.yaml: variadic-args-is-array-not-tuple), and
+# the row is allowlisted in the differential oracle rather than papered over.
 
 
 def describe(*args: int) -> None:

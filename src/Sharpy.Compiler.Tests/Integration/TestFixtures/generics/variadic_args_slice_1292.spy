@@ -2,11 +2,13 @@
 # the issue reported as three SPY0320/SPY0260 diagnostics all naming `int` — the element type — as
 # the type of `args`. A slice of `array[T]` is a `list[T]` per #1256, so `args[1:]` is a list[int].
 #
-# Values verified against CPython, where `args` is a tuple: `list(args[1:])` prints [2, 3] there and
-# `args[1:]` prints [2, 3] here. The DIVERGENCE is the container — CPython's variadic is a tuple and
-# slicing it yields a tuple, Sharpy's is an array[T] and slicing it yields a list[T]. The slice's
-# printed form coincides because a Sharpy list prints like a Python list; see
-# variadic_args_empty_1292 for what the container difference does to len() and an empty slice.
+# len() and the index agree with CPython. The SLICE does not, and the difference is the container:
+# CPython's variadic is a tuple, so `args[1:]` prints `(2, 3)` there where Sharpy's array[T] slices to
+# a list[int] and prints `[2, 3]`. That is a designed deviation
+# (deviations.yaml: variadic-args-is-array-not-tuple) and both slice-printing rows are allowlisted in
+# the differential oracle, which is what caught it — an earlier draft of this header claimed the two
+# printed forms coincided, because the CPython reference had been run as `list(args[1:])` rather than
+# as the program actually reads.
 
 
 def show(*args: int) -> None:

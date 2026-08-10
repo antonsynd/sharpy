@@ -88,6 +88,15 @@ fixture::builtins/min_max_mixed_numeric
 # deviations.yaml: ellipsis-body-raises. Permanent.
 fixture::basics/ellipsis_concrete_method
 
+# A variadic parameter binds as `array[T]`, where CPython's `*args` is a tuple (#1292). Both
+# fixtures print a SLICE of the parameter, and that is where the container shows: Sharpy prints
+# `[2, 3]` / `[]` for CPython's `(2, 3)` / `()`. Every other value in both fixtures agrees. This
+# is designed — the array is the CLR `params T[]` backing shown through, which is what makes
+# len/index/slice/iteration work at all.
+# deviations.yaml: variadic-args-is-array-not-tuple. Permanent.
+fixture::generics/variadic_args_slice_1292
+fixture::generics/variadic_args_empty_1292
+
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
 
 # math.floor / math.ceil return double; CPython returns int, so these print 3.0/4.0
