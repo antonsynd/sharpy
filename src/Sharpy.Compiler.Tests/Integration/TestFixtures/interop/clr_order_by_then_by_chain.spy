@@ -6,7 +6,11 @@
 # The slotted variant (xs = lst.order_by(f); xs.then_by(g)) is an accepted casualty of
 # the materialization contract (dotnet_interop.md:162): binding the result to a variable
 # materializes it into a Sharpy list, which loses IOrderedEnumerable<T>. The chain-before-
-# binding remedy is pinned here; the slotted refusal is tested separately.
+# binding remedy is pinned here.
+#
+# The slotted variant does NOT currently refuse cleanly — semantic analysis reports nothing
+# and it dies in codegen as SPY0908 (CS0411, against the ParallelEnumerable.ThenBy overload).
+# That is tracked by #1390; the fixture pinning its behaviour ships with that fix.
 from system.collections.generic import List
 
 
