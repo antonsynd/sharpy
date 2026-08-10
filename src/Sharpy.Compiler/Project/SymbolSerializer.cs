@@ -975,6 +975,20 @@ internal static class SymbolSerializer
     {
         // Resolve BaseType from registry; on miss, set the unresolved name so the
         // Phase 4b/4c inheritance machinery can resolve it (#1309).
+        //
+        // This branch only ever runs for a SOURCE base. `BaseTypeId` is written as null by
+        // construction when the base is a CLR type (`ts.BaseType is { ClrType: null }` at the
+        // serialize site), so a class like `MyList[T](List[int])` never enters here — which reads
+        // like a dropped `BaseTypeRef` and was reported as one (#1287 audit). It is not: the
+        // arguments reach that shape by the OTHER path, `BaseTypeArgs` -> `UnresolvedBaseTypeArgs`
+        // (see the restore site above) -> rebuilt into a BaseTypeReference by InheritanceResolver
+        // when it resolves `UnresolvedBaseName`. Measured on a real two-build project: the cache
+        // entry reads `BaseTypeId: null, BaseTypeArgs: ["int"], UnresolvedBaseName: "List"`, and the
+        // warm build both accepts `List[int] = m` and refuses `List[str] = m`, same as cold.
+        //
+        // The two shapes therefore take two different restore paths, and neither is redundant.
+        // Changing either alone silently drops the arguments for its half while the other stays
+        // green; both halves are pinned by the warm-cache tests named for #1287.
         if (cached.BaseTypeId != null && symbolRegistry.TryGetValue(cached.BaseTypeId, out var baseSymbol))
         {
             if (baseSymbol is TypeSymbol baseType)

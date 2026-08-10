@@ -3490,4 +3490,203 @@ def main():
     }
 
     #endregion
+
+    #region Warm-Cache Base-Type Arguments (#1287)
+
+    /// <summary>
+    /// The acceptance for #1287's serializer leg (Design Decision 9): a base class's type
+    /// ARGUMENTS must survive the symbol cache, or the warm build silently answers assignability
+    /// from a different supertype than the cold one did.
+    ///
+    /// <para>
+    /// This is the CLR-base cell, the one whose round-trip is least obvious.
+    /// <c>class MyList[T](List[int])</c> has a base whose <c>ClrType</c> is set, so
+    /// <c>SymbolSerializer</c> writes no <c>BaseTypeId</c> for it by construction, and
+    /// <c>ResolveTypeReferences</c> rebuilds <c>BaseTypeRef</c> only inside its
+    /// <c>BaseTypeId != null</c> branch — which is never entered here. The arguments survive anyway,
+    /// on a second path: they are written as <c>BaseTypeArgs</c> beside <c>UnresolvedBaseName</c>,
+    /// restored into <c>UnresolvedBaseTypeArgs</c> (<c>SymbolSerializer.cs:484</c>), and turned back
+    /// into a <c>BaseTypeReference</c> when <c>InheritanceResolver</c> re-resolves the base name
+    /// (<c>InheritanceResolver.cs:78-83</c>). The cache entry for <c>MyList</c> reads
+    /// <c>BaseTypeId: null, BaseTypeArgs: ["int"], UnresolvedBaseName: "List"</c>.
+    /// </para>
+    ///
+    /// <para>
+    /// So this passes today, and it is a PIN rather than a repro: the two paths are independent, and
+    /// a change to either one alone would silently drop the arguments for exactly this shape while
+    /// leaving the source-base cell below green.
+    /// </para>
+    ///
+    /// <para>
+    /// The arity coincides (<c>MyList</c> has one parameter, <c>List</c> has one), which is exactly
+    /// the condition the walker's positional-copy fallback tests. So a dropped reference does not
+    /// degrade to "no supertype" — it degrades to the WRONG supertype, <c>List[str]</c> instead of
+    /// <c>List[int]</c>, and both verdicts invert: the correct assignment is refused and the
+    /// incorrect one would be accepted. Two directions are asserted for that reason; checking only
+    /// the acceptance would pass against a walker that had simply stopped answering.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void IncrementalMode_WarmCache_ClrGenericBaseAtConcreteArgs_KeepsBothVerdicts()
+    {
+        var libFile = CreateTempFile("lib.spy", ClrGenericBaseLibrary);
+        var mainFile = CreateTempFile("main.spy", @"
+from system.collections.generic import List
+from lib import MyList
+
+
+def main():
+    m: MyList[str] = MyList[str]()
+    ok: List[int] = m
+    print(ok.count)
+");
+
+        var config = CreateConfigFor(mainFile, libFile);
+        var logger = new CapturingCompilerLogger();
+        var compiler = new Compiler(new CompilerOptions { Incremental = true }, logger);
+
+        var cold = compiler.CompileProject(config);
+        Assert.True(cold.Success,
+            "Cold build must accept List[int] = MyList[str] — the base is written List[int]: "
+            + string.Join("; ", cold.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        File.WriteAllText(mainFile, @"
+from system.collections.generic import List
+from lib import MyList
+
+
+def main():
+    m: MyList[str] = MyList[str]()
+    ok: List[int] = m
+    print(ok.count)
+    print(ok.count)
+");
+
+        logger.Clear();
+        var warm = compiler.CompileProject(config);
+
+        AssertIncrementalSplit(logger, compiled: 1, skipped: 1);
+        Assert.True(warm.Success,
+            "Warm build must still read MyList's base as List[int]. A dropped BaseTypeReference "
+            + "falls into the walker's positional copy, which reads it as List[T] and refuses: "
+            + string.Join("; ", warm.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // The other direction, on the same warm cache: the positional copy would ACCEPT this.
+        File.WriteAllText(mainFile, @"
+from system.collections.generic import List
+from lib import MyList
+
+
+def main():
+    m: MyList[str] = MyList[str]()
+    bad: List[str] = m
+    print(bad.count)
+");
+
+        logger.Clear();
+        var warmWrong = compiler.CompileProject(config);
+
+        AssertIncrementalSplit(logger, compiled: 1, skipped: 1);
+        Assert.False(warmWrong.Success,
+            "Warm build must still REFUSE List[str] = MyList[str]; accepting it is the positional "
+            + "copy answering from List[T].");
+        Assert.Contains(
+            warmWrong.Diagnostics.GetErrors(),
+            d => d.Code == DiagnosticCodes.Semantic.TypeMismatch
+                && d.Message.Contains("'List[str]'"));
+    }
+
+    /// <summary>
+    /// The plan's own cell: a source-declared generic base at a concrete argument
+    /// (<c>class IntBox(Box[int])</c>), cached, then used from an edited file. The base has no
+    /// <c>ClrType</c>, so this half round-trips through <c>BaseTypeId</c> + <c>BaseTypeArgs</c> and
+    /// the <c>ResolveTypeReferences</c> branch the CLR cell never enters. It is the CONTROL for that
+    /// cell: the two shapes exercise different restore paths, so if both fail the defect is in the
+    /// serializer generally, and if only one fails it names which path broke.
+    /// </summary>
+    [Fact]
+    public void IncrementalMode_WarmCache_SourceGenericBaseAtConcreteArg_StillAssignable()
+    {
+        var libFile = CreateTempFile("lib.spy", SourceGenericBaseLibrary);
+        var mainFile = CreateTempFile("main.spy", @"
+from lib import Box, IntBox
+
+
+def main():
+    b: Box[int] = IntBox(1)
+    print(b.value)
+");
+
+        var config = CreateConfigFor(mainFile, libFile);
+        var logger = new CapturingCompilerLogger();
+        var compiler = new Compiler(new CompilerOptions { Incremental = true }, logger);
+
+        var cold = compiler.CompileProject(config);
+        Assert.True(cold.Success,
+            "Cold build: " + string.Join("; ", cold.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        File.WriteAllText(mainFile, @"
+from lib import Box, IntBox
+
+
+def main():
+    b: Box[int] = IntBox(1)
+    print(b.value)
+    print(b.value)
+");
+
+        logger.Clear();
+        var warm = compiler.CompileProject(config);
+
+        AssertIncrementalSplit(logger, compiled: 1, skipped: 1);
+        Assert.True(warm.Success,
+            "Warm build must still accept Box[int] = IntBox(1): "
+            + string.Join("; ", warm.Diagnostics.GetErrors().Select(e => e.Message)));
+
+        // The wrong argument stays refused on the same warm cache.
+        File.WriteAllText(mainFile, @"
+from lib import Box, IntBox
+
+
+def main():
+    b: Box[str] = IntBox(1)
+    print(b.value)
+");
+
+        logger.Clear();
+        var warmWrong = compiler.CompileProject(config);
+
+        AssertIncrementalSplit(logger, compiled: 1, skipped: 1);
+        Assert.False(warmWrong.Success,
+            "Warm build must still refuse Box[str] = IntBox(1).");
+    }
+
+    /// <summary>
+    /// A generic class over a CLR generic base pinned at a concrete argument. The explicit
+    /// <c>__init__</c> is load-bearing: without it the shape fails to emit for an unrelated reason
+    /// (CS1503 behind SPY0908 at the constructor), which would make the cell untestable.
+    /// </summary>
+    private const string ClrGenericBaseLibrary = @"
+from system.collections.generic import List
+
+
+class MyList[T](List[int]):
+    def __init__(self) -> None:
+        super().__init__()
+";
+
+    private const string SourceGenericBaseLibrary = @"
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+class IntBox(Box[int]):
+    def __init__(self, value: int) -> None:
+        super().__init__(value)
+";
+
+    #endregion
 }
