@@ -1260,13 +1260,17 @@ def main():
     [Fact]
     public void ComprehensiveTest_StructWithStringEnum()
     {
-        // The enum member is converted explicitly. Passing `LogLevel.INFO` straight into a `str`
-        // parameter compiled only because constructors did not type-check their arguments (#1243);
-        // every other seam — free function, method, assignment — refuses it, because an enum member
-        // types as its enum. It happened to emit valid C# because a string-backed enum lowers to a
-        // sealed class of `static readonly string` fields, so the semantic type and the emitted type
-        // disagree for this one enum shape. That divergence is filed separately (#1284); this test's
-        // subject is a struct holding a string enum, which the explicit conversion preserves.
+        // The explicit `str(...)` is no longer load-bearing, and the comment that used to live here
+        // described the pre-#1284 world: it said every seam but the constructor REFUSED
+        // `LogLevel.INFO` in a `str` position, and that a string enum lowered to `static readonly
+        // string` fields. Both are false now. A string-backed enum member IS its backing string
+        // (#1284, CPython's StrEnum), so free function, method, assignment and constructor all
+        // accept it; and the lowering is a sealed class of `static readonly LogLevel` SINGLETONS
+        // carrying Name and Value plus an `implicit operator string` — the conversion is real, not
+        // a coincidence of the field type. #1284 shipped; nothing is filed against this shape.
+        //
+        // The `str(...)` stays because this test's subject is a struct holding a string enum, not
+        // the conversion; `string_enum_shape_1284` is where the conversion itself is pinned.
         var source = @"
 enum LogLevel:
     DEBUG = ""DEBUG""

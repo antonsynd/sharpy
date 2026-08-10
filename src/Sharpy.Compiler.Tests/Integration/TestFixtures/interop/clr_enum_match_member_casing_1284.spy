@@ -1,0 +1,19 @@
+# #1284 sibling, same arm. A CLR enum's members already carry correct .NET names, so the pattern
+# path must not mangle them either — `case StringComparison.OrdinalIgnoreCase:` emitted
+# `Ordinalignorecase` (CS0117 behind SPY0908) because the arm ran every enum through
+# NameContext.EnumMember. A member name with inner capitals is what distinguishes the two; a
+# single-word one like `Ordinal` survives the mangling unchanged and proves nothing.
+from System import StringComparison
+
+
+def render(c: StringComparison) -> str:
+    match c:
+        case StringComparison.OrdinalIgnoreCase:
+            return "ordinal-ignore-case"
+        case _:
+            return "fell through"
+
+
+def main() -> None:
+    print(render(StringComparison.OrdinalIgnoreCase))
+    print(render(StringComparison.Ordinal))

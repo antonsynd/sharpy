@@ -1,0 +1,45 @@
+# #1284 residue: a `match` on a string-backed enum.
+#
+# The pattern path spelled enum members with NameContext.EnumMember for EVERY enum. That is right
+# only for a source int-backed enum. A string enum's members are class fields emitted in
+# NameContext.Constant, and the two contexts agree on SCREAMING_SNAKE_CASE, single-word and
+# snake_case names while disagreeing on everything else — so a member like `DebugMode` declared a
+# field `Mode.DebugMode` and matched against `Mode.Debugmode`, which is CS0117 behind SPY0908.
+#
+# All three member shapes are exercised, because only the last one could ever have failed: the
+# SCREAMING and single-word arms are the ones that made the divergence invisible.
+enum LogLevel:
+    INFO = "info"
+    ERROR = "error"
+    WARN = "warn"
+
+
+enum Mode:
+    DebugMode = "debug"
+    ReleaseMode = "release"
+
+
+def render(level: LogLevel) -> str:
+    match level:
+        case LogLevel.INFO:
+            return "informational"
+        case LogLevel.ERROR:
+            return "fatal"
+        case _:
+            return "fell through"
+
+
+def build(m: Mode) -> str:
+    match m:
+        case Mode.DebugMode:
+            return "dev build"
+        case _:
+            return "fell through"
+
+
+def main() -> None:
+    print(render(LogLevel.INFO))
+    print(render(LogLevel.ERROR))
+    print(render(LogLevel.WARN))
+    print(build(Mode.DebugMode))
+    print(build(Mode.ReleaseMode))
