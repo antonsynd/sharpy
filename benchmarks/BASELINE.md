@@ -43,11 +43,50 @@
 > something. Two things worth keeping: the compile row swings ±6% on ordering alone — a
 > sequential comparison would have reported that as a 6% win or loss with a straight face — and
 > the effect is **not uniform across benchmarks**. The parse row is ~50× cheaper and essentially
-> immune. That the expensive row carries the artifact and the cheap one does not points at
-> warm-up (JIT, tiered compilation, caches) rather than a machine-wide thermal or scheduling
-> drift, which is the mechanism remedy 3 in #1318 proposes to neutralise with a fixed pre-run
-> corpus pass. That remedy is **not implemented and not tested** — this run measures the effect,
-> it does not explain it.
+> immune. That asymmetry was read as pointing at warm-up rather than machine-wide drift.
+>
+> **The warm-up remedy was run on 2026-08-10, and both halves of that reading are wrong.**
+
+> **Warm-up experiment, 2026-08-10** (Apple M4 Max, `--job short`, HEAD vs HEAD, 4 rounds,
+> `--filter '*Fibonacci*'`. Machine **not quiet** — load average 9–12 with 4–6 agents queued on
+> the repo's dotnet lock, which is itself part of the finding.)
+>
+> **1. The asymmetry did not reproduce, so the inference built on it does not stand.** The
+> premise was that the expensive compile row carries the artifact and the ~50× cheaper parse row
+> is immune. Re-measured with no warm-up, the rows had swapped: `Compile_Fibonacci` pooled −0.02%
+> and `Parse_Fibonacci` +4.10%, and in the run below the parse row reached −16%. Benchmark cost
+> does not decide who carries the swing.
+>
+> **2. A fixed pre-run corpus pass before each arm does NOT neutralise it.** With one discarded
+> pass before every measured arm — remedy 3 as specified — the pooled position effect was
+> **−9.45%** (parse) and **−5.57%** (compile). Larger, not smaller.
+>
+> **3. The effect is a SESSION transient, not a property of position.** Re-pooling that same run
+> by round window is unambiguous:
+>
+> | row | rounds 1–2 | rounds 3–4 | all 4 |
+> |---|---:|---:|---:|
+> | `Compile_Fibonacci` | −10.63% | **−0.30%** | −5.57% |
+> | `Parse_Fibonacci` | −16.33% | **+0.25%** | −9.45% |
+>
+> The raw series shows why: the parse row decays 7.632 → 6.991 → 6.140 → … → 4.408 µs over about
+> seven invocations and is then flat within 2% for the remaining nine, with its StdDev collapsing
+> from 3.45 µs to 0.04 µs. The transient spans several ARMS, so one extra pass per arm cannot
+> clear it — which is exactly why remedy 3 failed while the underlying mechanism is real.
+>
+> **What this changes.** The instrument is capable of near-exact agreement (±0.3% on identical
+> code) once warm; the first rounds are what carry the artifact. So the useful remedy is to
+> **discard the opening rounds** rather than to prepend one pass per arm. Filed as #1418. Until
+> that lands, the "under ~15% is unmeasured" rule stands unchanged — it is what protects a
+> reader from the early-round swing.
+>
+> **Caveats, stated because they bound the claim.** The machine was not quiet, and the no-warm-up
+> run's parse row drifted *upward* across the session (4.4 → 5.7 µs) as peer load rose — that is
+> contention, the opposite direction from warm-up, and it is why the all-rounds compile figure
+> (−0.02%) is two large opposite-signed halves cancelling rather than a quiet row. The
+> round-window split is a post-hoc subset with n=2 per cell: indicative, not definitive. A second
+> no-warm-up sample was attempted and died on a transient `dotnet restore` failure under lock
+> contention, so there is one sample per condition.
 
 ## D4 Sharpy.Core Hot-Path Results (#1051)
 
