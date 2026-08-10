@@ -1093,7 +1093,11 @@ internal partial class TypeChecker
                     // as the TUPLE, which emitted `catch (ValueTuple<A, B> e)` (CS0155).
                     exceptionType = classifiedExceptionType
                         ?? (handler.ExceptionType != null
-                            ? _typeResolver.ResolveTypeAnnotation(handler.ExceptionType)
+                            // Reached only when classification declined or refused; a bare generic
+                            // there already has its own diagnosis, so this fallback must not add the
+                            // annotation arity error on top (#1331).
+                            ? _typeResolver.ResolveTypeAnnotation(
+                                handler.ExceptionType, bareGenericFillsFromContext: true)
                             : _typeResolver.ResolveTypeAnnotation(
                                 new TypeAnnotation { Name = "Exception", LineStart = handler.LineStart, ColumnStart = handler.ColumnStart }));
                 }

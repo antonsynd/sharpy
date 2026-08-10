@@ -63,7 +63,16 @@ internal class TypeResolver
     /// </summary>
     public void SetIsStaticContext(bool isStatic) => _isStaticContext = isStatic;
 
-    public SemanticType ResolveTypeAnnotation(TypeAnnotation? annotation)
+    /// <param name="bareGenericFillsFromContext">
+    /// Whether a bare reference to a generic type names something this position can still complete.
+    /// False for an annotation — nothing there supplies the arguments, so a deficient reference draws
+    /// the arity diagnostic (#1331). True at the type-operand positions (match patterns, type tests,
+    /// <c>except</c>), where a bare name is a legal spelling whose vector is filled from the subject
+    /// or refused with SPY0345 by the classifier that owns that rule (#1235); those callers need the
+    /// bare symbol back to apply it, and an arity error here would pre-empt a better diagnosis.
+    /// </param>
+    public SemanticType ResolveTypeAnnotation(
+        TypeAnnotation? annotation, bool bareGenericFillsFromContext = false)
     {
         if (annotation == null)
             return SemanticType.Unknown;
@@ -193,7 +202,7 @@ internal class TypeResolver
                 }
                 else
                 {
-                    var typeArgs = annotation.TypeArguments.Select(ResolveTypeAnnotation).ToList();
+                    var typeArgs = annotation.TypeArguments.Select(ta => ResolveTypeAnnotation(ta)).ToList();
                     result = ExpandGenericTypeAlias(aliasSymbol, typeArgs, annotation.IsOptional);
                 }
             }
@@ -240,12 +249,22 @@ internal class TypeResolver
 
             if (typeSymbol != null)
             {
-                // Bare reference to a fully-defaulted generic: dispatch to the fill authority (#1331).
-                // Only fires when EVERY type parameter has a default, so existing bare references
-                // to non-defaulted generics (match patterns, etc.) stay as UserDefinedType.
+                // Bare reference to a generic: dispatch to the fill authority (#1331). It fills when
+                // every parameter has a default and otherwise draws the existing "expects N type
+                // arguments but got 0" diagnostic — the same answer a written-but-short argument
+                // list gets, because zero written arguments is just the shortest such list.
+                //
+                // Dispatching only for the all-defaulted case (as this first did) left the deficient
+                // half silently resolving to an arity-less UserDefinedType, which downstream either
+                // mis-reported as an assignability mismatch against its own instantiations
+                // (`h: Holder = Holder[int](...)` → SPY0220) or, for an interface, accepted and
+                // leaked to codegen as CS0305 behind SPY0908 — nothing had a mismatch to notice.
+                //
+                // The type-operand positions opt out: there a bare name is fillable from the
+                // subject, and their own classifier owns the refusal (#1235).
                 if (typeSymbol.IsGeneric
                     && typeSymbol.TypeParameters.Count > 0
-                    && typeSymbol.TypeParameters.All(tp => tp.DefaultType != null))
+                    && !bareGenericFillsFromContext)
                 {
                     result = ResolveGenericType(annotation);
                 }
@@ -538,7 +557,7 @@ internal class TypeResolver
         if (!escaped && annotation.Name == BuiltinNames.Tuple)
         {
             var elementTypes = annotation.TypeArguments
-                .Select(ResolveTypeAnnotation)
+                .Select(ta => ResolveTypeAnnotation(ta))
                 .ToList();
 
             var tupleType = new TupleType { ElementTypes = elementTypes };
@@ -564,7 +583,7 @@ internal class TypeResolver
             }
 
             // Last type argument is the return type, rest are parameter types
-            var allTypes = annotation.TypeArguments.Select(ResolveTypeAnnotation).ToList();
+            var allTypes = annotation.TypeArguments.Select(ta => ResolveTypeAnnotation(ta)).ToList();
             var returnType = allTypes[^1];
             var paramTypes = allTypes.Take(allTypes.Count - 1).ToList();
 
@@ -635,7 +654,7 @@ internal class TypeResolver
 
         // Resolve type arguments
         var typeArgs = annotation.TypeArguments
-            .Select(ResolveTypeAnnotation)
+            .Select(ta => ResolveTypeAnnotation(ta))
             .ToList();
 
         // Validate type argument count (PEP 696: allow fewer if remaining have defaults)
@@ -908,7 +927,7 @@ internal class TypeResolver
     private Semantic.FunctionType ResolveFunctionType(Parser.Ast.FunctionType functionType)
     {
         var paramTypes = functionType.ParameterTypes
-            .Select(ResolveTypeAnnotation)
+            .Select(ta => ResolveTypeAnnotation(ta))
             .ToList();
 
         var returnType = ResolveTypeAnnotation(functionType.ReturnType);

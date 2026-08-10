@@ -1,0 +1,19 @@
+# #1331, the partial cell: defaults fill from the RIGHT, so a bare reference to `Pair[T, U = str]`
+# can supply U but never T. It is therefore deficient and draws the same arity diagnostic as the
+# no-defaults case — filling only the tail would leave a half-open type nothing can write.
+#
+# Writing the leading argument is enough and the defaulted tail still fills — that direction is
+# pinned by generic_default_partial, which annotates the same shape as `Pair[int]` and runs.
+
+class Pair[T, U = str]:
+    first: T
+    second: U
+
+    def __init__(self, first: T, second: U) -> None:
+        self.first = first
+        self.second = second
+
+
+def main() -> None:
+    p: Pair = Pair[int, str](1, "a")
+    print(p.first)

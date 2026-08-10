@@ -444,7 +444,11 @@ internal partial class TypeChecker
     /// </summary>
     private void CheckTypePattern(TypePattern typePattern, SemanticType scrutineeType)
     {
-        var resolvedType = _typeResolver.ResolveTypeAnnotation(typePattern.Type);
+        // A bare generic name here is fillable from the scrutinee, so it must come back as the bare
+        // symbol for the rule below to apply; the arity diagnostic an annotation would draw (#1331)
+        // would pre-empt SPY0345's better diagnosis (#1235).
+        var resolvedType = _typeResolver.ResolveTypeAnnotation(
+            typePattern.Type, bareGenericFillsFromContext: true);
 
         // A bare `case list()` against an `array[T]` scrutinee (e.g. a CLR `object?[]`
         // surfaced from interop such as sqlite3's default row) binds the captured value
@@ -677,7 +681,8 @@ internal partial class TypeChecker
         TypeSymbol? typeSymbol = null;
         if (propertyPattern.Type != null)
         {
-            var resolvedType = _typeResolver.ResolveTypeAnnotation(propertyPattern.Type);
+            var resolvedType = _typeResolver.ResolveTypeAnnotation(
+                propertyPattern.Type, bareGenericFillsFromContext: true);
             if (resolvedType is UnknownType)
             {
                 AddError(
@@ -749,7 +754,8 @@ internal partial class TypeChecker
             }
             else
             {
-                var resolvedType = _typeResolver.ResolveTypeAnnotation(positionalPattern.Type);
+                var resolvedType = _typeResolver.ResolveTypeAnnotation(
+                    positionalPattern.Type, bareGenericFillsFromContext: true);
                 if (resolvedType is UnknownType)
                 {
                     AddError(

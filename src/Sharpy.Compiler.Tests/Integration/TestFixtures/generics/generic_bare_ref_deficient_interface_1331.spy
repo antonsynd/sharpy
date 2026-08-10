@@ -1,0 +1,25 @@
+# #1331, the deficient twin of generic_bare_ref_defaulted_interface_1331: a bare reference to a
+# generic whose parameters have NO defaults draws the arity diagnostic at the annotation, because
+# nothing in an annotation position can supply the missing arguments.
+#
+# This is the cell that used to leak. `Holder` resolved to an arity-less type that its own
+# implementer satisfied, so semantic analysis reported nothing at all and the bare interface name
+# reached the emitter, which produced CS0305 wrapped as SPY0908 — an internal-error report for
+# ordinary user code, and only under `run`, since `emit diagnostics` saw a clean compile. Both
+# fronts now agree here, which is what the `.error` file asserts.
+#
+# A bare generic in a match pattern or an isinstance test is NOT this case: there the subject can
+# supply the vector, and SPY0345 owns the refusal when it cannot (#1235).
+
+interface Holder[T]:
+    def get(self) -> T: ...
+
+
+class Good(Holder[int]):
+    def get(self) -> int:
+        return 7
+
+
+def main() -> None:
+    h: Holder = Good()
+    print(h.get())

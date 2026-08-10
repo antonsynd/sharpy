@@ -1,0 +1,21 @@
+# #1331, interface half: a bare reference to a fully-defaulted generic INTERFACE fills from the
+# defaults, exactly as the class cell does. The routing is a property of the symbol being generic,
+# not of its kind, and this is the cell where getting it wrong is invisible: an arity-less interface
+# target accepts its own implementers, so nothing downstream has a mismatch to report and the bare
+# name reaches codegen as CS0305 behind SPY0908. The deficient twin is pinned next to this.
+
+interface HolderD[T = int]:
+    def get(self) -> T: ...
+
+
+class Good(HolderD[int]):
+    def get(self) -> int:
+        return 7
+
+
+def main() -> None:
+    h: HolderD = Good()
+    print(h.get())
+
+    explicit: HolderD[int] = Good()
+    print(explicit.get())
