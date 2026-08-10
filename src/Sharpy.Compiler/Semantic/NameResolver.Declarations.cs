@@ -114,8 +114,9 @@ internal partial class NameResolver
             return;
         }
 
-        // Check for @abstract decorator
-        bool isAbstract = classDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        // Check for @abstract decorator. Through the authority so `@[abstract]` — a CLR attribute
+        // pass-through, not the decorator — cannot make the class symbol abstract (#1373).
+        bool isAbstract = Shared.MemberClassification.HasAbstractDecorator(classDef.Decorators);
 
         // Create type symbol
         var typeSymbol = new TypeSymbol

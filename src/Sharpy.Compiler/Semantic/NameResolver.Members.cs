@@ -331,10 +331,8 @@ internal partial class NameResolver
             || !propDef.Parameters.Any(p => string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
             && propDef.IsFunctionStyle;
         bool isVirtual = propDef.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
-        bool hasAbstractDecorator = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
-        bool isAbstract = hasAbstractDecorator
-            || (owningType.IsAbstract && propDef.IsFunctionStyle && AstHelper.IsEllipsisStubBody(propDef.Body))
-            || (owningType.TypeKind == TypeKind.Interface && propDef.IsFunctionStyle && AstHelper.IsAbstractStubBody(propDef.Body));
+        bool isAbstract = Shared.MemberClassification.IsAbstract(
+            propDef, owningType.TypeKind, owningType.IsAbstract);
         bool isOverride = propDef.Decorators.Any(d => d.Name == DecoratorNames.Override);
         bool isFinal = propDef.Decorators.Any(d => d.Name == DecoratorNames.Final);
 
@@ -398,10 +396,8 @@ internal partial class NameResolver
             || eventDef.IsFunctionStyle
             && !eventDef.Parameters.Any(p => string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
         bool isVirtual = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
-        bool hasAbstractDecorator = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
-        bool isAbstract = hasAbstractDecorator
-            || (owningType.IsAbstract && eventDef.IsFunctionStyle && AstHelper.IsEllipsisStubBody(eventDef.Body))
-            || (owningType.TypeKind == TypeKind.Interface && eventDef.IsFunctionStyle && AstHelper.IsAbstractStubBody(eventDef.Body));
+        bool isAbstract = Shared.MemberClassification.IsAbstract(
+            eventDef, owningType.TypeKind, owningType.IsAbstract);
         bool isOverride = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Override);
         bool isFinal = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Final);
 

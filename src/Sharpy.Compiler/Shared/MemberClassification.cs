@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -35,13 +36,8 @@ internal static class MemberClassification
             string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
         bool isStatic = def.Decorators.Any(d => d.Name == DecoratorNames.Static) || !hasSelf;
 
-        bool hasAbstractDecorator = def.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
-        bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(def.Body);
-        bool isInterfaceAbstract = ownerKind == TypeKind.Interface
-            && AstHelper.IsAbstractStubBody(def.Body);
-        bool isAbstract = hasAbstractDecorator
-            || (ownerIsAbstract && hasEllipsisBody)
-            || isInterfaceAbstract;
+        bool isAbstract = IsAbstractMember(
+            def.Decorators, def.Body, canBeImplicitStub: true, ownerKind, ownerIsAbstract);
 
         bool isVirtual = def.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
         bool isOverride = def.Decorators.Any(d => d.Name == DecoratorNames.Override)
@@ -49,6 +45,55 @@ internal static class MemberClassification
 
         return new Result(access, explicitAccess, isStatic, isAbstract, isVirtual, isOverride);
     }
+
+    /// <summary>
+    /// Whether a member carries the Sharpy <c>@abstract</c> DECORATOR.
+    /// </summary>
+    /// <remarks>
+    /// A bracket attribute — <c>@[abstract]</c> — is a CLR attribute pass-through, not the decorator,
+    /// and is deliberately excluded (#1373). Without that exclusion <c>@[abstract] class Weird</c> made
+    /// the class symbol abstract, the implicit-stub rule then classified its <c>...</c>-bodied members
+    /// abstract, and emission produced abstract members inside a NON-abstract C# class — CS0513 behind
+    /// SPY0908. The emitter's own formulas always excluded it; this is the seam that did not.
+    /// </remarks>
+    public static bool HasAbstractDecorator(IEnumerable<Decorator> decorators)
+        => decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
+
+    /// <summary>
+    /// The ONE abstractness rule, for every member kind (#1374). A member is abstract when it carries
+    /// the <c>@abstract</c> decorator, or when it is a stub its owner makes implicitly abstract: an
+    /// ellipsis body in an abstract class, or an abstract stub body in an interface.
+    /// </summary>
+    /// <param name="canBeImplicitStub">
+    /// Whether the member can carry a body at all, and so whether the implicit arms can apply. Always
+    /// true for a method. For a property or event this is <c>IsFunctionStyle</c>: an AUTO-event
+    /// (<c>event on_click: Handler</c>) and an auto-property have no body to be a stub, so only the
+    /// decorator can make them abstract — which is the one place the member kinds genuinely differ.
+    /// </param>
+    public static bool IsAbstractMember(
+        IEnumerable<Decorator> decorators,
+        ImmutableArray<Statement> body,
+        bool canBeImplicitStub,
+        TypeKind ownerKind,
+        bool ownerIsAbstract)
+    {
+        if (HasAbstractDecorator(decorators))
+            return true;
+
+        if (!canBeImplicitStub)
+            return false;
+
+        return (ownerIsAbstract && AstHelper.IsEllipsisStubBody(body))
+            || (ownerKind == TypeKind.Interface && AstHelper.IsAbstractStubBody(body));
+    }
+
+    /// <summary>Abstractness of a property, through <see cref="IsAbstractMember"/> (#1374).</summary>
+    public static bool IsAbstract(PropertyDef def, TypeKind ownerKind, bool ownerIsAbstract)
+        => IsAbstractMember(def.Decorators, def.Body, def.IsFunctionStyle, ownerKind, ownerIsAbstract);
+
+    /// <summary>Abstractness of an event, through <see cref="IsAbstractMember"/> (#1374).</summary>
+    public static bool IsAbstract(EventDef def, TypeKind ownerKind, bool ownerIsAbstract)
+        => IsAbstractMember(def.Decorators, def.Body, def.IsFunctionStyle, ownerKind, ownerIsAbstract);
 
     /// <summary>
     /// Extracts the explicit access level from access modifier decorators, if any.

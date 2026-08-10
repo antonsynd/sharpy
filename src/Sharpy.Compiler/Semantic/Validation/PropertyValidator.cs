@@ -267,7 +267,7 @@ internal class PropertyValidator : SemanticValidatorBase
     /// </summary>
     private void ValidateAbstractPropertyBody(string typeName, PropertyDef propDef)
     {
-        bool isAbstract = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool isAbstract = Shared.MemberClassification.HasAbstractDecorator(propDef.Decorators);
         if (!isAbstract || !propDef.IsFunctionStyle)
             return;
 
@@ -292,7 +292,7 @@ internal class PropertyValidator : SemanticValidatorBase
         if (!isFinal)
             return;
 
-        bool isAbstract = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool isAbstract = Shared.MemberClassification.HasAbstractDecorator(propDef.Decorators);
         bool isVirtual = propDef.Decorators.Any(d => d.Name == DecoratorNames.Virtual);
 
         if (isAbstract)
@@ -427,7 +427,7 @@ internal class PropertyValidator : SemanticValidatorBase
             return "an interface property";
         if (propDef.IsFunctionStyle)
             return "a function-style property";
-        if (propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract))
+        if (Shared.MemberClassification.HasAbstractDecorator(propDef.Decorators))
             return "an @abstract property";
         if (propDef.Decorators.Any(d => d.Name == DecoratorNames.Override))
             return "an @override property";

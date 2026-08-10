@@ -88,7 +88,7 @@ internal class ControlFlowValidator : ValidatingAstWalker
         _logger.LogDebug($"Building CFG for function: {func.Name}");
 
         // Skip abstract methods
-        if (func.Decorators.Any(d => d.Name == DecoratorNames.Abstract))
+        if (Shared.MemberClassification.HasAbstractDecorator(func.Decorators))
             return;
 
         // Skip stub bodies (ellipsis only)

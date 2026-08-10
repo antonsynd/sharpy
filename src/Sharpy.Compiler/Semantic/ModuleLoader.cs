@@ -357,7 +357,7 @@ internal class ModuleLoader
     internal TypeSymbol ExtractFullClassSymbol(ClassDef classDef, string definingModulePath)
     {
         var accessLevel = GetAccessLevel(classDef.Name);
-        bool isAbstract = classDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool isAbstract = Shared.MemberClassification.HasAbstractDecorator(classDef.Decorators);
 
         string? unresolvedBase = classDef.BaseClasses.Length > 0 ? classDef.BaseClasses[0].Name : null;
         var unresolvedBaseTypeArgs = classDef.BaseClasses.Length > 0
@@ -770,11 +770,10 @@ internal class ModuleLoader
             if (explicitAccess != null)
                 accessLevel = explicitAccess.Value;
 
-            // Mirror of NameResolver.ResolvePropertyDeclaration's abstractness rule (#1267):
-            // explicit decorator, or implicit stub in an abstract/interface owner.
-            bool isAbstract = propDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract)
-                || (ownerIsAbstract && propDef.IsFunctionStyle && Shared.AstHelper.IsEllipsisStubBody(propDef.Body))
-                || (ownerKind == TypeKind.Interface && propDef.IsFunctionStyle && Shared.AstHelper.IsAbstractStubBody(propDef.Body));
+            // The SAME authority NameResolver consumes, not a mirror of it (#1374). This site and
+            // NameResolver.ResolvePropertyDeclaration used to hold copies of one rule, which is how
+            // #1258/#1266/#1368 happened; a copy cannot drift if it does not exist.
+            bool isAbstract = Shared.MemberClassification.IsAbstract(propDef, ownerKind, ownerIsAbstract);
             bool hasGetter = propDef.Accessor == PropertyAccessor.Get || propDef.Accessor == PropertyAccessor.None;
             bool hasSetter = propDef.Accessor == PropertyAccessor.Set;
             bool hasInit = propDef.Accessor == PropertyAccessor.Init;
@@ -832,11 +831,9 @@ internal class ModuleLoader
             if (explicitAccess != null)
                 accessLevel = explicitAccess.Value;
 
-            // Mirror of NameResolver.ResolveEventDeclaration's abstractness rule (#1267):
-            // explicit decorator, or implicit stub in an abstract/interface owner.
-            bool isAbstract = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract)
-                || (ownerIsAbstract && eventDef.IsFunctionStyle && Shared.AstHelper.IsEllipsisStubBody(eventDef.Body))
-                || (ownerKind == TypeKind.Interface && eventDef.IsFunctionStyle && Shared.AstHelper.IsAbstractStubBody(eventDef.Body));
+            // Same authority as NameResolver.ResolveEventDeclaration (#1374) — see the property
+            // extractor above for why this is a call and not a copy.
+            bool isAbstract = Shared.MemberClassification.IsAbstract(eventDef, ownerKind, ownerIsAbstract);
             bool hasAdd = eventDef.Accessor == EventAccessor.Add;
             bool hasRemove = eventDef.Accessor == EventAccessor.Remove;
             if (!eventDef.IsFunctionStyle)

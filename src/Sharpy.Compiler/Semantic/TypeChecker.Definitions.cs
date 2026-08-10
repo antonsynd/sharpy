@@ -491,7 +491,7 @@ internal partial class TypeChecker
         // Determine if method is abstract:
         // 1. Has @abstract decorator explicitly, OR
         // 2. Is in an @abstract class AND has ellipsis body (implicit abstract)
-        bool hasAbstractDecorator = functionDef.Decorators.Any(d => d.Name == DecoratorNames.Abstract);
+        bool hasAbstractDecorator = Shared.MemberClassification.HasAbstractDecorator(functionDef.Decorators);
         bool isInAbstractClass = _currentClass?.IsAbstract == true;
         bool hasEllipsisBody = AstHelper.IsEllipsisStubBody(functionDef.Body);
 

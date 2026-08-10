@@ -49,7 +49,7 @@ internal class UnusedVariableValidator : ValidatingAstWalker
     private void ValidateFunction(FunctionDef func)
     {
         // Skip abstract methods and stub bodies
-        if (func.Decorators.Any(d => d.Name == DecoratorNames.Abstract))
+        if (Shared.MemberClassification.HasAbstractDecorator(func.Decorators))
             return;
         if (AstHelper.IsEllipsisStubBody(func.Body))
             return;
