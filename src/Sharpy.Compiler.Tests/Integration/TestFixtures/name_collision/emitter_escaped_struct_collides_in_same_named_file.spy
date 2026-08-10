@@ -1,0 +1,11 @@
+# NEGATIVE CONTROL for emitter_escaped_struct_in_same_named_file. Escape-awareness must not become
+# escape-blindness in the other direction: an escaped name emits verbatim, so a struct escaped as
+# `EmitterEscapedStructCollidesInSameNamedFile` really does land on the module class name and
+# really is a collision. Delete the collision check and this fixture is what fails (#1268).
+struct `EmitterEscapedStructCollidesInSameNamedFile`:
+    n: int
+
+
+def main() -> None:
+    x = `EmitterEscapedStructCollidesInSameNamedFile`(4)
+    print(x.n)

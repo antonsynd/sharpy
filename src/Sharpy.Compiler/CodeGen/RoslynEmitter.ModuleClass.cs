@@ -335,8 +335,17 @@ internal partial class RoslynEmitter
         // Generate module class name from source file name
         var moduleClassName = GetModuleClassName(willHaveMainMethod, functionNames);
 
-        // Name collision detection: check if any user-defined type's PascalCase name
-        // matches the module class name (e.g., animal.spy defining class Animal)
+        // Name collision detection: a user-defined type collides with the module class only when
+        // the identifier the emitter actually writes for it equals the module class name
+        // (e.g., animal.spy defining class Animal). Each arm below must therefore mirror the
+        // resolver used at the type's declaration site in RoslynEmitter.TypeDeclarations.cs.
+        // Mangling the source spelling here instead reported collisions the generated C# does not
+        // have, because two spellings survive mangling unchanged: a backtick-escaped name emits
+        // verbatim (`h` in h.spy is not H) and an unescaped camelCase name passes through
+        // (camEl in cam_el.spy is not CamEl). For a class that only misdirected the syntax lookup
+        // below into a silent no-op, but every other kind raised SPY0520 and returned without
+        // emitting the module class, so the entry point vanished and the build died with CS5001
+        // (#1268, #1276).
         ClassDeclarationSyntax? collidingTypeDecl = null;
         {
             // Find colliding type declarations and their generated syntax
@@ -344,11 +353,15 @@ internal partial class RoslynEmitter
             {
                 string? typeName = stmt switch
                 {
-                    ClassDef cd => NameMangler.ToNamespacePart(cd.Name),
-                    StructDef sd => NameMangler.ToNamespacePart(sd.Name),
-                    InterfaceDef id => NameMangler.ToNamespacePart(id.Name),
-                    EnumDef ed => NameMangler.ToNamespacePart(ed.Name),
-                    DelegateDef dd => NameMangler.ToNamespacePart(dd.Name),
+                    ClassDef cd => NameCasing.ResolveType(cd.Name, cd.IsNameBacktickEscaped),
+                    StructDef sd => NameCasing.ResolveType(sd.Name, sd.IsNameBacktickEscaped),
+                    InterfaceDef id => NameCasing.ResolveInterface(id.Name, id.IsNameBacktickEscaped),
+                    EnumDef ed => NameCasing.ResolveType(ed.Name, ed.IsNameBacktickEscaped),
+                    DelegateDef dd => NameCasing.ResolveType(dd.Name, dd.IsNameBacktickEscaped),
+                    // A union declares a type too, and it was missing from this switch entirely:
+                    // `union Shape` in shape.spy emitted class Shape inside class Shape and died
+                    // with CS0542 as an SPY0908 internal error instead of the diagnostic below.
+                    UnionDef ud => NameCasing.ResolveType(ud.Name, ud.IsNameBacktickEscaped),
                     _ => null
                 };
 
@@ -362,8 +375,8 @@ internal partial class RoslynEmitter
                 }
                 else if (typeName != null && typeName == moduleClassName)
                 {
-                    // Collision with struct/interface/enum — error (can't merge)
-                    var srcName = stmt switch { StructDef sd => sd.Name, InterfaceDef id => id.Name, EnumDef ed => ed.Name, _ => "?" };
+                    // Collision with struct/interface/enum/delegate/union — error (can't merge)
+                    var srcName = stmt switch { StructDef sd => sd.Name, InterfaceDef id => id.Name, EnumDef ed => ed.Name, DelegateDef dd => dd.Name, UnionDef ud => ud.Name, _ => "?" };
                     _context.AddError(
                         $"Type '{srcName}' conflicts with module class name '{moduleClassName}'. " +
                         $"Rename the type or the source file to avoid this collision.",

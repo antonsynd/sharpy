@@ -1,0 +1,9 @@
+# Enum sibling of emitter_escaped_delegate_in_same_named_file: the escaped name emits verbatim as
+# `emitterEscapedEnumInSameNamedFile`, which is not the module class
+# EmitterEscapedEnumInSameNamedFile (#1268).
+enum `emitterEscapedEnumInSameNamedFile`:
+    A = 3
+
+
+def main() -> None:
+    print(`emitterEscapedEnumInSameNamedFile`.A.value)

@@ -1,0 +1,20 @@
+# The module class name comes from the FILE name, so this file emits class
+# EmitterEscapedDelegateInSameNamedFile. A backtick-escaped type name emits VERBATIM, so the
+# delegate below is `emitterEscapedDelegateInSameNamedFile` in C# — a different identifier, and
+# therefore no collision at all (#1268, #1276).
+#
+# The emitter's collision check mangled the SOURCE spelling instead of asking for the emitted one,
+# so it saw two equal names, raised SPY0520, and returned without the module class — which is where
+# the entry point lives, so the build then died with CS5001 reported as an SPY0908 internal error.
+# The delegate arm is the required cell; the struct, interface and enum siblings each get their own
+# file because the module class name can only be spelled after one type per file.
+delegate `emitterEscapedDelegateInSameNamedFile`(v: int) -> None
+
+
+def log(v: int) -> None:
+    print(v)
+
+
+def main() -> None:
+    d: `emitterEscapedDelegateInSameNamedFile` = log
+    d(11)

@@ -1,0 +1,16 @@
+# A union declares a type, and it was missing from the emitter's module-class collision switch
+# altogether: this file used to emit class EmitterUnionInSameNamedFile nested inside class
+# EmitterUnionInSameNamedFile and fail with CS0542 reported as an SPY0908 internal error. A
+# collision the compiler can name is the answer here, exactly as for a struct or an enum (#1268).
+union EmitterUnionInSameNamedFile:
+    case Circle(r: float)
+    case Empty()
+
+
+def main() -> None:
+    s: EmitterUnionInSameNamedFile = EmitterUnionInSameNamedFile.Circle(5.0)
+    match s:
+        case Circle(r):
+            print(r)
+        case EmitterUnionInSameNamedFile.Empty:
+            print("empty")

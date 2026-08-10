@@ -1,0 +1,10 @@
+# Struct sibling of emitter_escaped_delegate_in_same_named_file: the escaped name emits verbatim
+# as `emitterEscapedStructInSameNamedFile`, which is not the module class
+# EmitterEscapedStructInSameNamedFile (#1268).
+struct `emitterEscapedStructInSameNamedFile`:
+    n: int
+
+
+def main() -> None:
+    x = `emitterEscapedStructInSameNamedFile`(4)
+    print(x.n)

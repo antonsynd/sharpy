@@ -1,0 +1,16 @@
+# Interface sibling of emitter_escaped_delegate_in_same_named_file. An interface name is emitted
+# with its casing preserved rather than PascalCased, so this one is doubly not the module class
+# EmitterEscapedInterfaceInSameNamedFile — and the collision check has to ask the interface
+# resolver, not the namespace mangler, what identifier it will get (#1268).
+interface `emitterEscapedInterfaceInSameNamedFile`:
+    def go() -> int
+
+
+class Impl(`emitterEscapedInterfaceInSameNamedFile`):
+    def go(self) -> int:
+        return 7
+
+
+def main() -> None:
+    o: `emitterEscapedInterfaceInSameNamedFile` = Impl()
+    print(o.go())
