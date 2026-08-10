@@ -33,6 +33,7 @@ by the caller.
 """
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import subprocess
@@ -49,6 +50,39 @@ DEFAULT_TIMEOUT_SECONDS = float(os.environ.get("DIFF_EXEC_PY_TIMEOUT", "5"))
 OUTPUT_CAP_BYTES = 256 * 1024
 
 
+#: Third-party (non-stdlib) modules the oracle is allowed to compare against, and therefore
+#: the only ones whose install location is put back on the child's path. Must stay in step
+#: with ``CPythonAvailableModules`` in DifferentialExecutionTests: a module admitted there but
+#: missing here is compared against a CPython that cannot import it, which scores every cell
+#: as a name-missing SKIP and makes the comparison silently vacuous — that is exactly how the
+#: yaml widening looked non-vacuous while never comparing anything (#1338 follow-up).
+ORACLE_THIRD_PARTY = ("yaml",)
+
+
+def _third_party_paths() -> List[str]:
+    """Import locations for :data:`ORACLE_THIRD_PARTY`, resolved in THIS interpreter.
+
+    Resolved here, in the parent, because the parent runs with ``site`` enabled while the
+    children deliberately do not. A module that is genuinely not installed contributes
+    nothing and its cells fall back to the existing name-missing skip, which is the honest
+    outcome on a machine without it.
+    """
+    paths: List[str] = []
+    for name in ORACLE_THIRD_PARTY:
+        try:
+            module = importlib.import_module(name)
+        except ImportError:
+            continue
+        origin = getattr(module, "__file__", None)
+        if not origin:
+            continue
+        # <site-packages>/<pkg>/__init__.py -> <site-packages>
+        site_dir = os.path.dirname(os.path.dirname(os.path.abspath(origin)))
+        if site_dir and site_dir not in paths:
+            paths.append(site_dir)
+    return paths
+
+
 def _child_env() -> Dict[str, str]:
     """Minimal, deterministic environment for the executed program.
 
@@ -56,6 +90,11 @@ def _child_env() -> Dict[str, str]:
     stable run-to-run (whether Sharpy *agrees* with that order is a separate
     question the harness's subset filter and allowlist handle). PATH is preserved
     so ``sys.executable`` resolves; nothing else is inherited.
+
+    ``PYTHONPATH`` carries the install locations of :data:`ORACLE_THIRD_PARTY` and nothing
+    else. The children keep ``-S``: hermeticity is the point, and inheriting the developer's
+    whole site-packages would let an unrelated install change an oracle verdict. This adds
+    back exactly the modules the oracle has declared it compares.
     """
     env = {
         "PYTHONHASHSEED": "0",
@@ -65,6 +104,10 @@ def _child_env() -> Dict[str, str]:
     for key in ("PATH", "SYSTEMROOT", "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"):
         if key in os.environ:
             env[key] = os.environ[key]
+
+    third_party = _third_party_paths()
+    if third_party:
+        env["PYTHONPATH"] = os.pathsep.join(third_party)
     return env
 
 
