@@ -1,0 +1,14 @@
+# Escaping BOTH names keeps the two spellings apart: `H` and `h` emit verbatim, so the delegate
+# type and the function no longer land on one module-class member. This is the remedy SPY0522
+# points at (#1268). Escaping only the type is still refused — the bare partner mangles onto the
+# escaped spelling — which errors/delegate_mangling_collision pins.
+delegate `H`(x: int) -> int
+
+
+def `h`() -> int:
+    return 21
+
+
+def main() -> None:
+    twice: `H` = lambda x: x * 2
+    print(twice(`h`()))

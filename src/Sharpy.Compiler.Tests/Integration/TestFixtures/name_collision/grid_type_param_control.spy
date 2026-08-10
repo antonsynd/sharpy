@@ -1,0 +1,13 @@
+# Member-space control for the type-parameter collision (#1288): a field whose mangled name does
+# NOT collide with the type parameter compiles and runs. `item` mangles to `Item`, distinct from
+# `T`, so the check that refuses `t: T` (errors/type_param_member_collision) must stay quiet here.
+class Box[T]:
+    item: T
+
+    def __init__(self, item: T):
+        self.item = item
+
+
+def main() -> None:
+    b: Box[int] = Box(7)
+    print(b.item)

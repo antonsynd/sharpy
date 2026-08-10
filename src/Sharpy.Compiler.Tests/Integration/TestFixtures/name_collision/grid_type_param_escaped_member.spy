@@ -1,0 +1,13 @@
+# The escape hatch in the member space: a bare field `t` collides with the type parameter `T`
+# (both compile to `T`), but an escaped `t` emits verbatim and does not. Same remedy the
+# diagnostic names, one declaration space over from the module-level grid (#1288, #1268).
+class Box[T]:
+    `t`: T
+
+    def __init__(self, value: T):
+        self.`t` = value
+
+
+def main() -> None:
+    b: Box[int] = Box(7)
+    print(b.`t`)

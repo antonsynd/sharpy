@@ -1,0 +1,3 @@
+# Same two-position shape as the module-variable cell, one line further down.
+Name collision: 'h' and 'H' (line 5) both compile to 'H' @7:0
+Rename one, or backtick-escape the name you need to keep.

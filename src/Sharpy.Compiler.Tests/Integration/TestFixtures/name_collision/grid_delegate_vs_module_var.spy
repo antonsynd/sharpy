@@ -1,0 +1,10 @@
+# The delegate arm of #1268's collision grid, module-variable cell. `delegate H` and the module
+# variable `h` both become members of the same generated module class under the name `H`, so the
+# pair is refused at binding (SPY0522) instead of reaching Roslyn as CS0102 behind SPY0908.
+delegate H() -> None
+
+h: int = 7
+
+
+def main() -> None:
+    print(h)

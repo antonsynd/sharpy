@@ -1,0 +1,11 @@
+# The delegate arm of #1268's collision grid, module-constant cell. A lowercase `const h` mangles
+# to `H` exactly as the module variable does, so it collides with `delegate H` the same way.
+# SPY0453 also fires here (a constant should be SCREAMING_SNAKE_CASE) — that is the naming advice,
+# not the refusal; the refusal is SPY0522.
+delegate H() -> None
+
+const h: int = 7
+
+
+def main() -> None:
+    print(h)
