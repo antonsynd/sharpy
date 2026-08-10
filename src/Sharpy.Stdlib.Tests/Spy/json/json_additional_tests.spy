@@ -25,9 +25,10 @@ def test_loads_int_max_value_plus_one_returns_long():
 @test
 def test_loads_negative_float_returns_double():
     r: object = json.loads("-3.14")
-    # TODO(#1370): an `assert isinstance(r, float)` here narrows the match subject and
-    # the emitted switch becomes statically total — case _ draws CS0162. Restore the
-    # assert as the pinned reproduction when #1370 is fixed; the match subsumes it.
+    # The assert narrows the match subject; the subject must still be switched on RAW so the
+    # `case _` arm stays reachable (#1370). This is the shape that made this file's generated
+    # C# fail the warnings-as-errors sln build.
+    assert isinstance(r, float)
     match r:
         case float() as f:
             assert f == approx(-3.14, abs=1e-10)

@@ -108,9 +108,9 @@ def test_safe_load_float_returns_double_exactly():
     result: object = yaml.safe_load("key: 3.14")
     match result:
         case dict() as d:
-            # TODO(#1370): an `assert isinstance(d["key"], float)` here narrows the inner
-            # match subject and its case _ arm draws CS0162. Restore it as the pinned
-            # reproduction when #1370 is fixed; the float() arm subsumes the assertion.
+            # An index-access match subject, narrowed by the assert: same #1370 shape as
+            # json_additional_tests' identifier subject, and the reason both are pinned here.
+            assert isinstance(d["key"], float)
             match d["key"]:
                 case float() as fv:
                     assert fv == 3.14
@@ -124,8 +124,7 @@ def test_safe_load_whole_number_float_stays_float_typed():
     result: object = yaml.safe_load("key: 2.0")
     match result:
         case dict() as d:
-            # TODO(#1370): see test_safe_load_float_scalar_is_double_precision — same
-            # narrowed-subject CS0162 shape, same pinned-reproduction note.
+            assert isinstance(d["key"], float)
             match d["key"]:
                 case float() as fv:
                     assert fv == 2.0
