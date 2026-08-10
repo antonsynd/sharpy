@@ -195,8 +195,126 @@ namespace Sharpy
             IncludeFields = true,
             // Sharpy 'T?' fields lower to Optional<T>; without a converter STJ never
             // populates a present value (struct default is None) (#843 dogfooding).
-            Converters = { new OptionalJsonConverterFactory() }
+            Converters = { new OptionalJsonConverterFactory() },
+            // `dumps` emits Infinity/-Infinity/NaN by CPython's default (#1296), and the typed
+            // reader has to be able to read back what the writer produces. Without this the two
+            // halves of the module disagreed: the untyped `loads` (a hand-written parser) accepted
+            // the three tokens while `loads[T]` returned JSONDecodeError for the same text, so
+            // `dumps ∘ loads[T]` was broken for every non-finite float (#1353).
+            //
+            // Case sensitivity comes along for free and matches CPython, which accepts only the
+            // exact spellings: `[infinity]`, `[nan]` and `[NAN]` all raise there and stay errors
+            // here.
+            NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals
         };
+
+        /// <summary>
+        /// Rewrites CPython's BARE non-finite tokens — <c>Infinity</c>, <c>-Infinity</c>,
+        /// <c>NaN</c> — into the quoted spelling System.Text.Json accepts, leaving everything
+        /// else byte-identical (#1353).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <c>JsonNumberHandling.AllowNamedFloatingPointLiterals</c> is necessary but NOT
+        /// sufficient: it accepts the tokens only as JSON STRINGS (<c>"Infinity"</c>). CPython
+        /// writes them bare, which is not valid JSON at all, so <c>Utf8JsonReader</c> fails while
+        /// tokenizing — before any converter or option can intervene. Measured: with the option on,
+        /// <c>["Infinity"]</c> reads as <c>inf</c> while <c>[Infinity]</c> still returns
+        /// <c>'I' is an invalid start of a value</c>. A custom <c>JsonConverter&lt;double&gt;</c>
+        /// cannot help for the same reason — it is never reached.
+        /// </para>
+        /// <para>
+        /// The scan is string-aware: an <c>Infinity</c> inside a JSON string is DATA and is left
+        /// alone, and backslash escapes are tracked so a <c>\"</c> does not end a string early.
+        /// A token is rewritten only at a token boundary, so <c>Infinity2</c> or a property named
+        /// <c>NaNo</c> are untouched. Payloads without the substrings skip the walk entirely.
+        /// </para>
+        /// </remarks>
+        internal static string QuoteBareNonFiniteTokens(string s)
+        {
+            if (s.IndexOf("Infinity", StringComparison.Ordinal) < 0
+                && s.IndexOf("NaN", StringComparison.Ordinal) < 0)
+            {
+                return s;
+            }
+
+            var sb = new System.Text.StringBuilder(s.Length + 8);
+            bool inString = false;
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+
+                if (inString)
+                {
+                    sb.Append(c);
+                    if (c == '\\' && i + 1 < s.Length)
+                    {
+                        sb.Append(s[++i]);
+                    }
+                    else if (c == '"')
+                    {
+                        inString = false;
+                    }
+                    continue;
+                }
+
+                if (c == '"')
+                {
+                    inString = true;
+                    sb.Append(c);
+                    continue;
+                }
+
+                string? token = MatchBareNonFiniteToken(s, i);
+                if (token != null)
+                {
+                    sb.Append('"').Append(token).Append('"');
+                    i += token.Length - 1;
+                    continue;
+                }
+
+                sb.Append(c);
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// The bare non-finite token starting at <paramref name="i"/>, or <c>null</c>. A match must
+        /// end at a token boundary so an identifier merely starting with one of the spellings is not
+        /// rewritten.
+        /// </summary>
+        private static string? MatchBareNonFiniteToken(string s, int i)
+        {
+            foreach (var token in BareNonFiniteTokens)
+            {
+                if (i + token.Length > s.Length
+                    || string.CompareOrdinal(s, i, token, 0, token.Length) != 0)
+                {
+                    continue;
+                }
+
+                int end = i + token.Length;
+                if (end < s.Length)
+                {
+                    char next = s[end];
+                    if (char.IsLetterOrDigit(next) || next == '_' || next == '.')
+                    {
+                        continue;
+                    }
+                }
+
+                return token;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Longest first, so <c>-Infinity</c> is matched as one token rather than a minus followed
+        /// by <c>Infinity</c> — quoting only the tail would produce the invalid <c>-"Infinity"</c>.
+        /// </summary>
+        private static readonly string[] BareNonFiniteTokens = { "-Infinity", "Infinity", "NaN" };
 
         /// <summary>
         /// Deserialize a JSON string to a strongly-typed object using <c>System.Text.Json</c>.
@@ -214,7 +332,8 @@ namespace Sharpy
 
             try
             {
-                T? result = System.Text.Json.JsonSerializer.Deserialize<T>(s, _typedOptions);
+                T? result = System.Text.Json.JsonSerializer.Deserialize<T>(
+                    QuoteBareNonFiniteTokens(s), _typedOptions);
                 return Result<T, JSONDecodeError>.Ok(result!);
             }
             catch (JsonException ex)

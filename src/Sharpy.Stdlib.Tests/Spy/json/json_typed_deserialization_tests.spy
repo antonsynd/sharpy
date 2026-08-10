@@ -1,6 +1,7 @@
 from unittest import assert_raises
 
 import json
+import math
 
 # Ported from JsonTypedDeserializationTests.cs (#843).
 # json.loads[T]() / json.load[T]() return Result<T, JSONDecodeError>.
@@ -170,3 +171,64 @@ def test_load_t_file_round_trip_deserializes(tmp_path: str):
     assert ok
     assert name == "FileTest"
     assert age == 42
+
+
+# --- Loads[T] — CPython's non-finite tokens (#1353) ---
+# `json.dumps` emits Infinity/-Infinity/NaN by CPython's default (#1296), but the TYPED reader
+# rejected them: `loads[list[float]]("[1.0, Infinity]")` came back JSONDecodeError while the
+# untyped `loads` accepted the same text. dumps emitting what loads[T] cannot read is a
+# round-trip break, and it shipped because #1296 measured only the untyped side.
+#
+# The payloads are READ, not merely checked for Ok-ness — an Ok carrying the wrong numbers
+# would pass an is_ok assertion and still be broken.
+
+@test
+def test_loads_t_reads_the_three_non_finite_tokens():
+    result = json.loads[list[float]]("[1.0, Infinity, NaN, -Infinity]")
+    assert result.IsOk
+    xs: list[float] = result.Unwrap()
+    assert len(xs) == 4
+    assert xs[0] == 1.0
+    assert math.isinf(xs[1])
+    assert xs[1] > 0.0
+    assert math.isnan(xs[2])
+    assert math.isinf(xs[3])
+    assert xs[3] < 0.0
+
+
+@test
+def test_dumps_then_loads_t_round_trips_non_finite():
+    text = json.dumps([1.0, math.inf, math.nan, -math.inf])
+    assert text == "[1.0, Infinity, NaN, -Infinity]"
+    result = json.loads[list[float]](text)
+    assert result.IsOk
+    xs: list[float] = result.Unwrap()
+    assert xs[0] == 1.0
+    assert math.isinf(xs[1]) and xs[1] > 0.0
+    assert math.isnan(xs[2])
+    assert math.isinf(xs[3]) and xs[3] < 0.0
+
+
+@test
+def test_loads_t_rejects_lowercase_non_finite_tokens():
+    # CPython is case-sensitive here: json.loads("[infinity]") raises, only the exact
+    # spellings Infinity/-Infinity/NaN are accepted. Verified against python3.
+    lower = json.loads[list[float]]("[infinity]")
+    assert lower.IsErr
+    lower_nan = json.loads[list[float]]("[nan]")
+    assert lower_nan.IsErr
+    shout = json.loads[list[float]]("[NAN]")
+    assert shout.IsErr
+
+
+@test
+def test_loads_t_leaves_non_finite_spellings_inside_strings_alone():
+    # The reader cannot tokenize a BARE Infinity, so the typed path rewrites those tokens to the
+    # quoted spelling STJ accepts. That rewrite is string-aware: the same letters INSIDE a JSON
+    # string are data and must survive untouched, or every payload mentioning "Infinity" in prose
+    # would be silently corrupted.
+    result = json.loads[list[str]]("[\"Infinity is data\", \"NaN too\"]")
+    assert result.IsOk
+    xs: list[str] = result.Unwrap()
+    assert xs[0] == "Infinity is data"
+    assert xs[1] == "NaN too"
