@@ -183,7 +183,7 @@ internal class GenericTypeInferenceService
             var typeParam = typeParams[i];
             var inferredType = inferredTypes[i];
 
-            var constraintResult = CheckConstraints(typeParam, inferredType, substitutions);
+            var constraintResult = CheckConstraints(typeParam, inferredType, typeParams);
             if (!constraintResult.Success)
             {
                 return constraintResult;
@@ -619,13 +619,50 @@ internal class GenericTypeInferenceService
     }
 
     /// <summary>
-    /// Check that an inferred type satisfies all constraints on a type parameter.
+    /// Checks the WRITTEN type arguments of an explicit generic reference — <c>describe[Circle](c)</c> —
+    /// against their parameters' constraints (#1289). The inference path has always checked what it
+    /// infers; this is the same check for what the user writes, so one comparator answers the question
+    /// for both call paths instead of the explicit one reaching Roslyn and returning CS0311 behind
+    /// SPY0908.
+    /// <para>Positions beyond the shorter of the two lists are not checked here: an arity mismatch is
+    /// its own diagnostic, already emitted by the caller before this runs.</para>
     /// </summary>
-    private InferenceResult CheckConstraints(TypeParameterDef typeParam, SemanticType inferredType, Dictionary<string, SemanticType> substitutions)
+    public InferenceResult CheckWrittenTypeArguments(
+        IReadOnlyList<TypeParameterDef> typeParameters, IReadOnlyList<SemanticType> typeArgs)
+    {
+        for (int i = 0; i < typeParameters.Count && i < typeArgs.Count; i++)
+        {
+            var result = CheckConstraints(
+                typeParameters[i], typeArgs[i], typeParameters, ConstraintSubject.Written);
+            if (!result.Success)
+                return result;
+        }
+
+        return InferenceResult.Succeeded(new List<SemanticType>());
+    }
+
+    /// <summary>
+    /// How the type being checked was arrived at, for the diagnostic's leading noun. The check itself
+    /// is identical either way — that is the point of #1289's second call path.
+    /// </summary>
+    private static class ConstraintSubject
+    {
+        public const string Inferred = "Inferred type";
+        public const string Written = "Type argument";
+    }
+
+    /// <summary>
+    /// Check that a type satisfies all constraints on a type parameter.
+    /// </summary>
+    private InferenceResult CheckConstraints(
+        TypeParameterDef typeParam, SemanticType type,
+        IReadOnlyList<TypeParameterDef> declaringParameters,
+        string subject = ConstraintSubject.Inferred)
     {
         foreach (var constraint in typeParam.Constraints)
         {
-            var result = CheckSingleConstraint(typeParam.Name, inferredType, constraint, substitutions);
+            var result = CheckSingleConstraint(
+                typeParam.Name, type, constraint, declaringParameters, subject);
             if (!result.Success)
             {
                 return result;
@@ -638,7 +675,9 @@ internal class GenericTypeInferenceService
     /// <summary>
     /// Check a single constraint.
     /// </summary>
-    private InferenceResult CheckSingleConstraint(string paramName, SemanticType inferredType, ConstraintClause constraint, Dictionary<string, SemanticType> substitutions)
+    private InferenceResult CheckSingleConstraint(
+        string paramName, SemanticType inferredType, ConstraintClause constraint,
+        IReadOnlyList<TypeParameterDef> declaringParameters, string subject)
     {
         switch (constraint)
         {
@@ -676,19 +715,21 @@ internal class GenericTypeInferenceService
 
             // Handle interface/type constraint
             case Parser.Ast.TypeConstraint tc:
-                var constraintTypeName = GetTypeAnnotationName(tc.Type);
+                // The constraint is RESOLVED, not stringified (#1289): a declaration, not the text
+                // that names it, is what the inferred type is compared against. Resolution mirrors the
+                // type-parameter DEFAULT seam (TypeChecker.Definitions.cs), down to its rule for an
+                // annotation that does not resolve: no proof either way, so no refusal — the emitted
+                // C# still carries the constraint and Roslyn remains the backstop.
+                var constraintType = ResolveConstraint(tc.Type, declaringParameters);
+                if (constraintType == null)
+                    return InferenceResult.Succeeded(new List<SemanticType>());
 
-                // Substitute type parameters in the constraint
-                // E.g., for T: IComparable[T], substitute T with the inferred type
-                var substitutedConstraint = SubstituteInConstraint(constraintTypeName, substitutions);
-
-                // Check if inferredType implements/extends the constraint type
-                if (!TypeSatisfiesConstraint(inferredType, substitutedConstraint))
+                if (!TypeSatisfiesConstraint(inferredType, constraintType))
                 {
                     return InferenceResult.Failed(
                         InferenceErrorKind.ConstraintNotSatisfied,
-                        $"Inferred type '{inferredType.GetDisplayName()}' does not satisfy constraint " +
-                        $"'{substitutedConstraint}' for type parameter '{paramName}'");
+                        $"{subject} '{inferredType.GetDisplayName()}' does not satisfy constraint " +
+                        $"'{constraintType.GetDisplayName()}' for type parameter '{paramName}'");
                 }
                 return InferenceResult.Succeeded(new List<SemanticType>());
 
@@ -699,119 +740,143 @@ internal class GenericTypeInferenceService
     }
 
     /// <summary>
-    /// Get a string representation of a type annotation for constraint checking.
+    /// The constraint annotation as a resolved type, or <c>null</c> when it does not resolve (#1289).
+    /// <para>Resolution goes through the <see cref="TypeResolver"/> — the same authority every other
+    /// annotation goes through — rather than the name-keyed lookup it replaces, which stripped the
+    /// annotation at <c>[</c> and asked the symbol table for the remaining text. That text lookup is
+    /// why the check could only ever compare spellings; going through the resolver is what lets the
+    /// comparison be between declarations.</para>
+    /// <para>A MODULE-QUALIFIED constraint (<c>T: shapes.Shape</c>) resolves here but is still refused
+    /// downstream, and not by this check: with no generics anywhere, <c>s: shapes.Shape = c</c> is
+    /// refused the same way, so the inheritance is invisible through that spelling (#1407).</para>
     /// </summary>
-    private string GetTypeAnnotationName(Parser.Ast.TypeAnnotation typeAnnotation)
+    /// <param name="declaringParameters">
+    /// The type parameters the constraint was WRITTEN alongside. They are put back in scope for the
+    /// resolution, because a constraint may name them — <c>T: Comparable[T]</c> is the ordinary
+    /// spelling of a self-comparable bound — and nothing named <c>T</c> exists at the call site this
+    /// check runs from. Without it the resolver reports "Type 'T' not found" against the declaration,
+    /// once per compilation, for a program that is correct.
+    /// </param>
+    private SemanticType? ResolveConstraint(
+        Parser.Ast.TypeAnnotation annotation, IReadOnlyList<TypeParameterDef> declaringParameters)
     {
-        var baseName = typeAnnotation.Name;
+        if (_typeResolver == null)
+            return null;
 
-        // Add type arguments if present
-        if (typeAnnotation.TypeArguments.Length > 0)
+        var scoped = PushConstraintScope(declaringParameters);
+        try
         {
-            baseName = $"{baseName}[{string.Join(", ", typeAnnotation.TypeArguments.Select(GetTypeAnnotationName))}]";
+            var resolved = _typeResolver.ResolveTypeAnnotation(annotation);
+            return resolved is UnknownType ? null : resolved;
         }
-
-        // Add nullable suffix if nullable
-        if (typeAnnotation.IsOptional)
+        finally
         {
-            baseName = $"{baseName}?";
+            if (scoped)
+                _symbolTable.ExitScope();
         }
-
-        return baseName;
     }
 
     /// <summary>
-    /// Substitute type parameters in a constraint type name.
+    /// Defines <paramref name="declaringParameters"/> in a scope of their own so a constraint
+    /// annotation resolves the way its declaration reads it. Returns whether a scope was pushed —
+    /// the caller pops exactly what it pushed.
     /// </summary>
-    private string SubstituteInConstraint(string constraintTypeName, Dictionary<string, SemanticType> substitutions)
+    private bool PushConstraintScope(IReadOnlyList<TypeParameterDef> declaringParameters)
     {
-        var result = constraintTypeName;
-        foreach (var (paramName, inferredType) in substitutions)
+        if (declaringParameters.Count == 0)
+            return false;
+
+        _symbolTable.EnterScope("constraint-resolution");
+        foreach (var typeParam in declaringParameters)
         {
-            result = result.Replace(paramName, inferredType.GetDisplayName(), StringComparison.Ordinal);
+            _symbolTable.Define(new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                Constraints = typeParam.Constraints,
+                Variance = typeParam.Variance,
+                IsNameBacktickEscaped = typeParam.IsNameBacktickEscaped
+            });
         }
-        return result;
+
+        return true;
     }
 
     /// <summary>
-    /// Check if a type satisfies a constraint (#1289).
-    /// Resolves the constraint to a TypeSymbol and checks identity or inheritance —
-    /// self, subclass, and interface all fall out of the same comparator.
-    /// Falls back to string matching when the constraint cannot be resolved.
+    /// Whether <paramref name="type"/> satisfies the resolved <paramref name="constraint"/> (#1289):
+    /// the declarations are the same, one inherits the other, or the constraint is an interface the
+    /// type implements. Self, subclass and interface all fall out of one comparator, and every
+    /// comparison is between SYMBOLS — a cross-module spelling, an alias and a bare import name the
+    /// same declaration, and only symbols can see that.
+    /// <para>Type arguments are deliberately not compared: the constraint <c>T: Comparable[T]</c> is
+    /// satisfied by a declaration that implements <c>Comparable</c> at all. The emitted C# carries the
+    /// constructed constraint, so Roslyn remains the authority on the argument vector; re-deciding it
+    /// here would be a second, weaker implementation of the rule.</para>
     /// </summary>
-    private bool TypeSatisfiesConstraint(SemanticType type, string constraintTypeName)
+    private bool TypeSatisfiesConstraint(SemanticType type, SemanticType constraint)
     {
+        // A primitive satisfies any type constraint. Long-standing behaviour, unchanged here: the
+        // registry's builtins do not carry the interface lists (IComparable and friends) that would
+        // let this be answered honestly, so refusing would reject working code.
         if (type is BuiltinType)
             return true;
 
-        if (type is TypeParameterType tpt)
-        {
-            foreach (var constraint in tpt.Constraints)
-            {
-                if (constraint is Parser.Ast.TypeConstraint tc)
-                {
-                    var ownConstraintName = GetTypeAnnotationName(tc.Type);
-                    var ownSubstituted = ownConstraintName.Replace(tpt.Name, type.GetDisplayName(), StringComparison.Ordinal);
-                    if (ownSubstituted == constraintTypeName)
-                        return true;
-                }
+        var constraintSymbol = ConstraintSymbolOf(constraint);
+        if (constraintSymbol == null)
+            return true; // a constraint with no declaration behind it proves nothing
 
-                if (constraint is Parser.Ast.ClassConstraint && constraintTypeName == "class")
+        // A type parameter forwarded into another constrained call (`def outer[U: Shape]` calling
+        // `inner(y)` where `inner` wants `T: Shape`) satisfies the callee when one of ITS OWN
+        // constraints does — the same symbol comparison, one level in.
+        if (type is TypeParameterType typeParameter)
+        {
+            // Its own constraints resolve in ITS declaration's scope, which for a self-referential
+            // bound is the parameter itself.
+            var ownScope = new[]
+            {
+                new TypeParameterDef { Name = typeParameter.Name, Constraints = typeParameter.Constraints }
+            };
+
+            foreach (var own in typeParameter.Constraints)
+            {
+                if (own is Parser.Ast.TypeConstraint ownConstraint
+                    && ResolveConstraint(ownConstraint.Type, ownScope) is { } ownResolved
+                    && SymbolSatisfiesConstraint(ConstraintSymbolOf(ownResolved), constraintSymbol))
+                {
                     return true;
-                if (constraint is Parser.Ast.StructConstraint && constraintTypeName == "struct")
-                    return true;
+                }
             }
+
+            return false;
         }
 
-        if (type is UserDefinedType udt && udt.Symbol != null)
-        {
-            // Resolve the constraint type by symbol lookup (#1289)
-            var constraintSymbol = ResolveConstraintType(constraintTypeName);
-            if (constraintSymbol != null)
-            {
-                // Self: the inferred type IS the constraint type
-                if (TypeHierarchyService.IsSameType(udt.Symbol, constraintSymbol))
-                    return true;
-
-                // Subclass or interface: inherits from or implements the constraint
-                if (TypeHierarchyService.InheritsFrom(udt.Symbol, constraintSymbol, SemanticBinding))
-                    return true;
-
-                foreach (var iface in TypeHierarchyService.GetAllInterfaces(udt.Symbol, SemanticBinding))
-                {
-                    if (TypeHierarchyService.IsSameType(iface, constraintSymbol))
-                        return true;
-                }
-
-                return false;
-            }
-
-            // Fallback: string-based matching when resolution fails
-            foreach (var iface in TypeHierarchyService.GetAllInterfaces(udt.Symbol, SemanticBinding))
-            {
-                if (iface.Name == constraintTypeName)
-                    return true;
-            }
-
-            foreach (var baseSymbol in TypeHierarchyService.GetAllBaseTypes(udt.Symbol, SemanticBinding))
-            {
-                if (baseSymbol.Name == constraintTypeName)
-                    return true;
-            }
-        }
-
-        return false;
+        return SymbolSatisfiesConstraint(ConstraintSymbolOf(type), constraintSymbol);
     }
 
     /// <summary>
-    /// Resolves a constraint type name to its TypeSymbol (#1289).
+    /// The declaration a type names, for constraint comparison: a class/struct/interface reference names
+    /// its symbol, and a constructed generic names its definition (<c>Comparable[Money]</c> is a
+    /// <c>Comparable</c>).
     /// </summary>
-    private TypeSymbol? ResolveConstraintType(string constraintTypeName)
+    private static TypeSymbol? ConstraintSymbolOf(SemanticType type) => type switch
     {
-        var bracketIndex = constraintTypeName.IndexOf('[', StringComparison.Ordinal);
-        var baseName = bracketIndex > 0 ? constraintTypeName.Substring(0, bracketIndex) : constraintTypeName;
+        UserDefinedType { Symbol: { } symbol } => symbol,
+        GenericType { GenericDefinition: { } definition } => definition,
+        _ => null
+    };
 
-        return _symbolTable.BuiltinRegistry.GetType(baseName)
-            ?? _symbolTable.LookupType(baseName);
+    private bool SymbolSatisfiesConstraint(TypeSymbol? candidate, TypeSymbol constraintSymbol)
+    {
+        if (candidate == null)
+            return false;
+
+        if (TypeHierarchyService.IsSameType(candidate, constraintSymbol))
+            return true;
+
+        if (TypeHierarchyService.InheritsFrom(candidate, constraintSymbol, SemanticBinding))
+            return true;
+
+        return TypeHierarchyService.GetAllInterfaces(candidate, SemanticBinding)
+            .Any(iface => TypeHierarchyService.IsSameType(iface, constraintSymbol));
     }
 }

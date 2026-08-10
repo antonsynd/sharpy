@@ -1,0 +1,29 @@
+# A WRITTEN type argument is checked against its constraint, not left to Roslyn (#1289).
+#
+# Inference has always checked what it infers. The explicit spelling was checked by nobody:
+# `describe[Unrelated](u)` type-checked clean and came back from Roslyn as CS0311 behind SPY0908 —
+# the compiler reporting its own bug for a constraint the user violated in the source. Both call
+# paths now ask the same comparator, so the two cannot disagree about what satisfies a constraint.
+
+
+class Shape:
+    sides: int
+
+    def __init__(self, sides: int) -> None:
+        self.sides = sides
+
+
+class Unrelated:
+    size: int
+
+    def __init__(self) -> None:
+        self.size = 3
+
+
+def describe[T: Shape](shape: T) -> int:
+    return 1
+
+
+def main() -> None:
+    u: Unrelated = Unrelated()
+    print(describe[Unrelated](u))

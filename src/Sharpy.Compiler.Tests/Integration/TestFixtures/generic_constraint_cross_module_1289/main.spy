@@ -1,0 +1,22 @@
+# A constraint naming a type from another module is satisfied by that module's subclass (#1289).
+#
+# The check resolves the constraint annotation through the type resolver and compares SYMBOLS, so a
+# declaration keeps its identity across the import. The name comparison this replaced could not see
+# that at all: it asked the symbol table for the constraint's text and compared the answer's Name to
+# the inferred type's, which is why a cross-module hierarchy needed the spelling to match by luck.
+#
+# The MODULE-QUALIFIED spelling of the same program (`import shapes` + `T: shapes.Shape`) is still
+# refused, but not by this check: `s: shapes.Shape = c` is refused the same way with no generics
+# anywhere, so the inheritance itself is invisible through that spelling (#1407).
+
+from shapes import Circle
+from shapes import Shape
+
+
+def describe[T: Shape](shape: T) -> int:
+    return shape.sides
+
+
+def main() -> None:
+    print(describe(Shape(4)))
+    print(describe(Circle()))

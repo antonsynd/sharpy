@@ -1,0 +1,46 @@
+# The interface arms of constraint satisfaction, pinned against the deletion of the name-based
+# machinery they used to run on (#1289). Both shapes resolve the constraint through the type
+# resolver and compare symbols: a plain interface bound, and the self-referential generic bound
+# `T: Comparable[T]`, whose annotation names the very parameter being constrained — so it only
+# resolves with that parameter back in scope.
+
+
+interface Drawable:
+    def draw(self) -> int
+
+
+interface Comparable[T]:
+    def compare_to(self, other: T) -> int
+
+
+class Square(Drawable):
+    size: int
+
+    def __init__(self) -> None:
+        self.size = 7
+
+    def draw(self) -> int:
+        return self.size
+
+
+class Money(Comparable[Money]):
+    amount: int
+
+    def __init__(self, amount: int) -> None:
+        self.amount = amount
+
+    def compare_to(self, other: Money) -> int:
+        return self.amount - other.amount
+
+
+def render[T: Drawable](item: T) -> int:
+    return item.draw()
+
+
+def difference[T: Comparable[T]](a: T, b: T) -> int:
+    return a.compare_to(b)
+
+
+def main() -> None:
+    print(render(Square()))
+    print(difference(Money(5), Money(3)))

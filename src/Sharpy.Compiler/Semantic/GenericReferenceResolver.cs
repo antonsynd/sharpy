@@ -256,6 +256,10 @@ internal partial class TypeChecker
                             typeId.Name, resolvedFuncSymbol.TypeParameters, typeArgs, indexAccess))
                         return true; // arity error emitted; handled
 
+                    if (!CheckGenericReferenceConstraints(
+                            resolvedFuncSymbol.TypeParameters, typeArgs, indexAccess))
+                        return true; // constraint error emitted; handled (#1289)
+
                     var funcType = new GenericFunctionType
                     {
                         FunctionSymbol = resolvedFuncSymbol,
@@ -314,6 +318,10 @@ internal partial class TypeChecker
                                     memberAccessObj.Member, modFuncSymbol.TypeParameters,
                                     typeArgs, indexAccess))
                                 return true;
+
+                            if (!CheckGenericReferenceConstraints(
+                                    modFuncSymbol.TypeParameters, typeArgs, indexAccess))
+                                return true; // #1289
 
                             var funcType = new GenericFunctionType
                             {
@@ -378,6 +386,13 @@ internal partial class TypeChecker
                     if (!CheckGenericReferenceArity(
                             memberAccessObj.Member, instanceMethod.TypeParameters,
                             typeArgs, indexAccess))
+                        return true;
+
+                    // A BCL-reflected method's type parameters carry no reconstructed constraints
+                    // (BuildBclGenericMethodSymbol leaves them to Roslyn), so this is a no-op for that
+                    // kind and a real check for a user-declared generic method (#1289).
+                    if (!CheckGenericReferenceConstraints(
+                            instanceMethod.TypeParameters, typeArgs, indexAccess))
                         return true;
 
                     var funcType = new GenericFunctionType
@@ -1091,6 +1106,41 @@ internal partial class TypeChecker
             indexAccess.LineStart,
             indexAccess.ColumnStart,
             code: DiagnosticCodes.Semantic.WrongArgumentCount,
+            span: indexAccess.Span);
+        return false;
+    }
+
+    /// <summary>
+    /// The CONSTRAINT half of the explicit-type-argument seam (#1289), run right after
+    /// <see cref="CheckGenericReferenceArity"/> at every site that binds a written vector to a generic
+    /// function. Inference has checked its own answers since the constraint machinery existed; the
+    /// written spelling was checked by nobody, so <c>describe[Unrelated](u)</c> type-checked clean and
+    /// came back from Roslyn as CS0311 behind SPY0908 — a compiler-bug report for a constraint the
+    /// user violated in the source.
+    ///
+    /// <para>The comparator is the inference service's, called with the written vector instead of the
+    /// inferred one, so the two paths cannot disagree about what satisfies a constraint. Only the
+    /// leading noun of the diagnostic differs ("Type argument" rather than "Inferred type"), and the
+    /// code is SPY0237 either way.</para>
+    ///
+    /// <para>Returns false when a violation was reported, which the callers treat exactly as they
+    /// treat an arity failure: the reference is handled, and nothing downstream builds a call whose
+    /// type arguments are known not to bind.</para>
+    /// </summary>
+    private bool CheckGenericReferenceConstraints(
+        IReadOnlyList<TypeParameterDef> typeParameters,
+        IReadOnlyList<SemanticType> typeArgs,
+        IndexAccess indexAccess)
+    {
+        var result = _genericInference.CheckWrittenTypeArguments(typeParameters, typeArgs);
+        if (result.Success)
+            return true;
+
+        AddError(
+            result.ErrorMessage ?? "Type argument does not satisfy its constraint",
+            indexAccess.LineStart,
+            indexAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.CannotInferGenericType,
             span: indexAccess.Span);
         return false;
     }
