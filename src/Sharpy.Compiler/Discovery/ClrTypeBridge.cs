@@ -284,11 +284,11 @@ internal class ClrTypeBridge
     ///
     /// <para>
     /// The stamp is applied HERE, to whatever <see cref="MapGenericTypeCore"/> returns, rather than
-    /// inside each arm. Nine arms currently collapse a CLR type onto a Sharpy collection name —
+    /// inside each arm. Eight arms currently collapse a CLR type onto a Sharpy collection name —
     /// <c>List/IList/ICollection/Sharpy.List</c>, <c>Dictionary/IDictionary/Sharpy.Dict</c>,
     /// <c>HashSet/ISet/Sharpy.Set</c>, <c>Sharpy.FrozenSet</c>, <c>Sharpy.FrozenDict</c>,
-    /// <c>IReadOnlyList/IReadOnlyCollection</c>, <c>IReadOnlyDictionary</c>,
-    /// <c>IOrderedEnumerable</c> and <c>IEnumerable</c> — and stamping one and not its siblings is the
+    /// <c>IReadOnlyList/IReadOnlyCollection</c>, <c>IReadOnlyDictionary</c> and <c>IEnumerable</c> —
+    /// and stamping one and not its siblings is the
     /// parallel-site defect this provenance exists to close (#1145, #1260). Wrapping the whole switch
     /// makes the sweep exhaustive by construction: a future arm is stamped whether or not its author
     /// knows provenance exists.
@@ -428,17 +428,31 @@ internal class ClrTypeBridge
             };
         }
 
-        // IOrderedEnumerable<T> — sequence, mapped to list like IEnumerable (#1332).
+        // IOrderedEnumerable<T> — kept as ITSELF, not collapsed onto list[T] (#1390).
         // Must precede IEnumerable because IOrderedEnumerable extends IEnumerable.
+        //
+        // The #1332 arm mapped it to list[T] like every other sequence. That is the one collapse the
+        // Sharpy wrapper cannot honour: `Sharpy.List<T>` implements IEnumerable/IList/ICollection, so
+        // materializing any of those into it loses nothing an extension method could want — but it is
+        // NOT an IOrderedEnumerable<T>, and `ThenBy`/`ThenByDescending` accept nothing else. Calling the
+        // ordered sequence a list therefore made `xs = lst.order_by(f)` bind a Sharpy list (#1251) and
+        // left `xs.then_by(g)` with no receiver any `ThenBy` overload accepts — CS0411 behind SPY0908,
+        // against ParallelEnumerable's overload, which is merely the candidate C# names when none fit.
+        //
+        // Carrying the CLR definition (the IComparer/IEqualityComparer and Sharpy-interface precedents
+        // below and above) keeps the identity: TryGetClrType reconstructs IOrderedEnumerable<T> from
+        // GenericDefinition, so `then_by` binds on a slotted receiver exactly as it does mid-chain, and
+        // the materialization ring leaves the value alone because its name is not a collection's.
         if (IsGenericTypeDefinition(genericDef, typeof(IOrderedEnumerable<>)))
         {
             return new GenericType
             {
-                Name = BuiltinNames.List,
+                Name = ClrNameHelper.StripArity(genericDef.Name),
                 TypeArguments = new List<SemanticType>
                 {
                     MapClrTypeToSemanticType(typeArgs[0])
-                }
+                },
+                GenericDefinition = GetOrCreateInterfaceSymbol(genericDef)
             };
         }
 

@@ -656,6 +656,38 @@ internal partial class TypeChecker
         if (!NoClrInstanceMemberCouldBind(receiverType, memberAccess.Member))
             return null;
 
+        // 4b. The receiver is wrong for EVERY overload of this name — the one gate here that REPORTS
+        // instead of declining. Nothing downstream can rescue it: the emitter writes the call verbatim
+        // on the permissive channel and C# answers CS0411/CS1929 behind SPY0908, the compiler filing its
+        // own bug for a user's type error (#1146, #1390). `xs: list[int] = lst.order_by(f)` then
+        // `xs.then_by(g)` is exactly that shape — the annotation asked for a Sharpy list, and `ThenBy`
+        // extends an IOrderedEnumerable<T> and nothing else.
+        //
+        // Reporting is safe because the proof is about the RECEIVER ALONE: no arity, argument shape or
+        // keyword spelling can turn a receiver no `this` parameter accepts into a call that binds, so
+        // no gate below can contradict it. An `object` receiver is exempt — `object` is where the bridge
+        // GAVE UP, so the emitted expression may well be a sequence the checker cannot see, and refusing
+        // on a non-fact is how a permissive channel becomes a false error (#1206 D2).
+        if (!IsObjectType(receiverType)
+            && !Discovery.ClrExtensionMethodResolver.AnyOverloadAcceptsReceiver(
+                receiverClrType, memberAccess.Member))
+        {
+            var extends = Discovery.ClrExtensionMethodResolver.ReceiverTypeNames(memberAccess.Member);
+            var message = $"Type '{receiverType.GetDisplayName()}' has no member '{memberAccess.Member}'";
+            if (extends.Count > 0)
+            {
+                // Naming what the member DOES extend is the whole steer: for `then_by` it says
+                // IOrderedEnumerable, which is what tells a reader to chain rather than slot.
+                message += $". '{memberAccess.Member}' is a .NET extension method on "
+                    + string.Join(" or ", extends.Select(n => $"'{n}'"))
+                    + "; chain it onto an expression of that type";
+            }
+
+            AddError(message, memberAccess.LineStart, memberAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedMember, span: memberAccess.Span);
+            return null;
+        }
+
         // Keyword arguments have no name correspondence to a CLR extension method's parameters, and a
         // spread breaks the positional formal-to-actual alignment the staging relies on.
         if (call.KeywordArguments.Length > 0)

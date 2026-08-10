@@ -45,6 +45,13 @@ public class ClrOriginProvenanceTests
     /// <c>Sharpy.FrozenDict&lt;K,V&gt;</c> (#1310) and <c>IOrderedEnumerable&lt;T&gt;</c> (#1332) were
     /// added to the bridge while the comment above still claimed the list was exhaustive.
     /// </para>
+    ///
+    /// <para>
+    /// <c>IOrderedEnumerable&lt;T&gt;</c> left again (#1390): it is still a stamped arm, but it no
+    /// longer collapses onto a collection name — it maps to itself, so a slotted <c>then_by</c> keeps
+    /// a receiver <c>ThenBy</c> accepts. It is subtracted from the completeness floor below rather
+    /// than removed from it, so the probe still has to find it.
+    /// </para>
     /// </summary>
     private static readonly (Type ClrType, string SharpyName)[] Arms =
     {
@@ -53,7 +60,6 @@ public class ClrOriginProvenanceTests
         (typeof(ICollection<int>), BuiltinNames.List),
         (typeof(IReadOnlyList<int>), BuiltinNames.List),
         (typeof(IReadOnlyCollection<int>), BuiltinNames.List),
-        (typeof(IOrderedEnumerable<int>), BuiltinNames.List),
         (typeof(IEnumerable<int>), BuiltinNames.List),
         (typeof(Dictionary<string, int>), BuiltinNames.Dict),
         (typeof(IDictionary<string, int>), BuiltinNames.Dict),
@@ -102,9 +108,13 @@ public class ClrOriginProvenanceTests
             .ToList();
 
         // Anti-vacuity control: a probe that found nothing would make the comparison below pass with
-        // an empty list, which is how a completeness check turns into decoration.
+        // an empty list, which is how a completeness check turns into decoration. The floor is the
+        // stamped-arm list MINUS the arms that stamp provenance without collapsing onto a collection
+        // name — those are real arms (and the unfiltered sweeps still require them), they just cannot
+        // appear in a list filtered to collection names.
         probed.Should().Contain(
-            ClrBridgeArmProbe.RequiredArms,
+            ClrBridgeArmProbe.RequiredArms.Except(
+                ClrBridgeArmProbe.RequiredNonCollectionArms, StringComparer.Ordinal),
             "the probe must rediscover the arms we already know exist before its silence about others "
             + "means anything");
 

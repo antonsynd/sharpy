@@ -121,6 +121,72 @@ internal static class ClrExtensionMethodResolver
         => _byName.Value.ContainsKey(memberName);
 
     /// <summary>
+    /// Whether ANY overload of <paramref name="memberName"/> on the acceptance surface would accept
+    /// <paramref name="receiverType"/> as its <c>this</c> argument.
+    ///
+    /// <para>
+    /// Deliberately asks about the RECEIVER ALONE — no arity, no argument shapes, no keyword spelling.
+    /// That makes a <c>false</c> answer a proof no later stage can overturn: if no overload's <c>this</c>
+    /// parameter accepts this type, no argument list can make one bind, so leaving the call on the
+    /// permissive channel only defers a certain failure into codegen as CS0411/CS1929 behind SPY0908
+    /// (#1146, #1390). Every other gate around the staging path declines quietly; this one is what a
+    /// caller may report on.
+    /// </para>
+    ///
+    /// <para>
+    /// Conservative by construction: <see cref="TryBindThisParameter"/> accepts a non-generic <c>this</c>
+    /// (<c>Cast(this IEnumerable)</c>) against any receiver, so a name with one such overload never
+    /// reports false.
+    /// </para>
+    /// </summary>
+    internal static bool AnyOverloadAcceptsReceiver(Type receiverType, string memberName)
+    {
+        if (!_byName.Value.TryGetValue(memberName, out var candidates))
+            return false;
+
+        foreach (var candidate in candidates)
+        {
+            if (TryBindThisParameter(
+                    candidate.GetParameters()[0].ParameterType, receiverType, new Dictionary<Type, Type>()))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The distinct type names every overload of <paramref name="memberName"/> extends — the
+    /// <c>this</c> parameters, stripped of arity (<c>ThenBy</c> → <c>IOrderedEnumerable</c>). Names what
+    /// a receiver would have to BE, so a refusal can say more than that the member is missing.
+    /// </summary>
+    internal static IReadOnlyList<string> ReceiverTypeNames(string memberName)
+    {
+        if (!_byName.Value.TryGetValue(memberName, out var candidates))
+            return Array.Empty<string>();
+
+        var names = new List<string>();
+        foreach (var candidate in candidates)
+        {
+            var name = NameOfThisParameter(candidate.GetParameters()[0].ParameterType);
+            if (!names.Contains(name, StringComparer.Ordinal))
+                names.Add(name);
+        }
+
+        return names;
+    }
+
+    private static string NameOfThisParameter(Type thisParameter)
+    {
+        if (thisParameter.IsArray)
+            return NameOfThisParameter(thisParameter.GetElementType()!) + "[]";
+        return thisParameter.IsGenericParameter
+            ? thisParameter.Name
+            : ClrNameHelper.StripArity(thisParameter.Name);
+    }
+
+    /// <summary>
     /// Resolves <paramref name="memberName"/> on <paramref name="receiverType"/> with the written
     /// <paramref name="explicitTypeArgs"/>, returning the CLR method name and the complete closed
     /// type-argument vector — or <c>null</c> when no single candidate accounts for the written

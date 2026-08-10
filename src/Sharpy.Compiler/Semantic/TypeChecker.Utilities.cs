@@ -663,6 +663,18 @@ internal partial class TypeChecker
             return true;
         }
 
+        // A CLR sequence interface the bridge kept as itself lands in a Sharpy `list[E]` slot exactly
+        // as a bridge-mapped `list[E]` does — .NET says it IS an IEnumerable<E>, and the same
+        // `new Sharpy.List<E>(source)` copy converts it. The two halves are stated together:
+        // TryGetClrSequenceInterfaceElement is what RecordSequenceMaterialization keys on, so this
+        // accepts exactly the assignments the ring can carry out and never one it cannot (#1390).
+        if (target is GenericType { Name: BuiltinNames.List, ClrOriginTypeName: null, TypeArguments.Count: 1 } listSlot
+            && TryGetClrSequenceInterfaceElement(source) is { } sequenceElement
+            && IsAssignable(sequenceElement, listSlot.TypeArguments[0]))
+        {
+            return true;
+        }
+
         return false;
     }
 
@@ -883,6 +895,39 @@ internal partial class TypeChecker
             : type;
 
     /// <summary>
+    /// The element of a bridge-mapped CLR sequence INTERFACE — a generic the bridge kept as ITSELF
+    /// (<c>IOrderedEnumerable[T]</c>) instead of collapsing onto a Sharpy collection name, and which
+    /// .NET says is an <c>IEnumerable&lt;E&gt;</c>. Null for anything else.
+    ///
+    /// <para>
+    /// Such a value is a sequence that no Sharpy collection name describes, so it reaches a
+    /// <c>list[E]</c> slot by the same pair a mapped <c>list[E]</c> uses: <see cref="IsAssignable"/>
+    /// accepts it and <see cref="RecordSequenceMaterialization"/> emits the copy. The two must agree —
+    /// accepting an assignment the materialization ring cannot convert only moves the failure into
+    /// codegen (#1390).
+    /// </para>
+    ///
+    /// <para>
+    /// Scoped to INTERFACES: a mapped CLR class (<c>NdArray[T]</c>) is a first-class Sharpy type whose
+    /// own identity a list slot must not silently consume, and a mapped collection already has an arm
+    /// of its own below.
+    /// </para>
+    /// </summary>
+    private static SemanticType? TryGetClrSequenceInterfaceElement(SemanticType type)
+    {
+        if (type is not GenericType { TypeArguments.Count: 1 } mapped
+            || mapped.GenericDefinition?.ClrType is not { IsInterface: true, IsGenericTypeDefinition: true } definition)
+        {
+            return null;
+        }
+
+        var isSequence = definition.GetInterfaces()
+            .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+
+        return isSequence ? mapped.TypeArguments[0] : null;
+    }
+
+    /// <summary>
     /// Whether <paramref name="type"/> is a value the checker calls a Sharpy collection but codegen
     /// emits as some OTHER CLR type — a bridge-mapped <c>list</c>/<c>set</c>/<c>dict</c> whose origin
     /// is not the Sharpy wrapper. These are the values that need materializing before they can be used
@@ -897,6 +942,11 @@ internal partial class TypeChecker
     /// </summary>
     private static bool IsUnmaterializedClrSequence(SemanticType type)
     {
+        // A CLR sequence interface the bridge kept as itself is unmaterialized by construction: no
+        // Sharpy collection name describes it, so nothing about it can already BE the wrapper (#1390).
+        if (TryGetClrSequenceInterfaceElement(type) is { } interfaceElement)
+            return IsMaterializableElement(interfaceElement);
+
         if (type is not GenericType { ClrOriginTypeName: { Length: > 0 } origin } mapped)
             return false;
 

@@ -57,6 +57,24 @@ internal static class ClrBridgeArmProbe
     };
 
     /// <summary>
+    /// The subset of <see cref="RequiredArms"/> that stamps provenance WITHOUT collapsing onto a
+    /// Sharpy collection name. <c>IOrderedEnumerable&lt;T&gt;</c> maps to itself so that a slotted
+    /// <c>then_by</c> still has a receiver <c>Enumerable.ThenBy</c> accepts (#1390) — a Sharpy list is
+    /// not one, which is the single collapse the wrapper cannot honour.
+    ///
+    /// <para>
+    /// Kept as a subtraction rather than a deletion from <see cref="RequiredArms"/>: the arm still
+    /// exists and still carries a stamp, so every sweep over ALL arms must still find it. Only a sweep
+    /// that has already filtered to collection names may subtract it, and having to name it here is
+    /// what stops "the filter dropped it" from being indistinguishable from "the arm disappeared".
+    /// </para>
+    /// </summary>
+    internal static readonly string[] RequiredNonCollectionArms =
+    {
+        "System.Linq.IOrderedEnumerable`1",
+    };
+
+    /// <summary>
     /// Every arm the bridge currently collapses, as (closed CLR type, mapped Sharpy type) pairs.
     /// </summary>
     internal static IReadOnlyList<(Type Closed, GenericType Mapped)> DiscoverCollapsingArms(ClrTypeBridge bridge)
