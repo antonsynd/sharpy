@@ -50,6 +50,10 @@ f: Result[float, ValueError] = float.parse("3.14")
 | `isinstance(x, T)` | Check if `x` is an instance of type `T` | `x is T` |
 | `type(x)` | Get runtime type of `x` | `x.GetType()` |
 
+> The `x is T` in the C# Mapping column is the **generated C# target syntax**, not Sharpy source.
+> In a `.spy` file, `is` compares references and never types: `x is T` draws **SPY0349** and
+> directs you to `isinstance`. See [Identity Operators](identity_operators.md).
+
 **`type(x)` Return Type:**
 
 The `type()` function returns `System.Type`, the .NET reflection type:
@@ -182,7 +186,9 @@ if isinstance(x, list):
     pass  # x could be list[int], list[str], etc.
 ```
 
-This matches C#'s `is` operator: `x is Box<int>` is exact, and `x is Box` does not compile.
+This matches the behavior of the C# `is` operator the check lowers to — `x is Box<int>` (C#) is
+exact, and `x is Box` (C#) does not compile. Both spellings there are C# target syntax: in Sharpy
+source the type test is always `isinstance`, since `is` compares references (SPY0349).
 
 **Type Narrowing:**
 

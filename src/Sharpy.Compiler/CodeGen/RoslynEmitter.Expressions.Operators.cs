@@ -904,10 +904,13 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateTypeCheck(TypeCheck check)
     {
-        // value is Type → value is Type, against the type the semantic phase decided the operand
-        // denotes. WHAT THE OPERAND DENOTES IS NOT DECIDED HERE (Critical Rule 2): mapping the written
-        // annotation is what emitted the unspellable open generic `Box<T>` for `x is Box` (CS0305 →
-        // SPY0908, #1235), and what made `x is list` disagree with `isinstance(x, list)`.
+        // UNREACHABLE, KEPT AS DEFENCE-IN-DEPTH (#1298): `x is TypeName` is retired as a type test,
+        // so CheckTypeCheck refuses every TypeCheck node with SPY0349 and no compilation reaches
+        // here. The parser still builds the node (tooling reads the shape), and this arm stays so a
+        // future path to it emits the operand the semantic phase decided on rather than the written
+        // annotation. That distinction is why it is written this way (Critical Rule 2): mapping the
+        // annotation directly is what emitted the unspellable open generic `Box<T>` (CS0305 →
+        // SPY0908, #1235) back when this arm was live.
         var value = GenerateExpression(check.Value);
         var checkType = MapClassifiedTypeOperand(check.CheckType);
 

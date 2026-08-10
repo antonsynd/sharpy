@@ -7,6 +7,50 @@
 | `is None` | None check | `== null` (nullable/reference), `.IsNone` (Optional) |
 | `is not None` | Non-None check | `!= null` (nullable/reference), `!.IsNone` (Optional) |
 
+## `is` Is Not a Type Test
+
+`is` compares references, never types. Writing a type name on the right — `x is Dog` — is
+rejected with **SPY0349**; it was a type test in earlier versions of Sharpy, which silently
+diverged from CPython (`a is Dog` in CPython is an identity comparison against the class object,
+so it is `False`). Use `isinstance()` to test a value's type.
+
+```python
+class Dog:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+
+def main() -> None:
+    x: object = Dog("Rex")
+    if x is Dog:          # SPY0349: 'is' compares references, not types
+        print("never")
+```
+
+```
+error[SPY0349]: 'is' compares references, not types. Use 'isinstance(x, Dog)' to test a value's type.
+```
+
+The `isinstance()` spelling compiles and narrows `x` to `Dog` inside the branch:
+
+```python
+class Dog:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+
+def main() -> None:
+    x: object = Dog("Rex")
+    if isinstance(x, Dog):
+        print(x.name)     # prints: Rex
+```
+
+The identity spellings in the table above are unaffected: `x is None`, `x is not None` and
+`x is y` between two references all keep working, because none of them names a type.
+
 ## Value-Type Boxing Warning
 
 Using `is` or `is not` with value types (e.g., `int`, `bool`, `float`, structs) emits a

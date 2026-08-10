@@ -21,7 +21,7 @@ This document maps Python `typing` constructs to their Sharpy equivalents.
 | `Final` | `@final` decorator | `@final def method()` |
 | `Self` | `Self` type (no import needed) | `def clone(self) -> Self` |
 | `TypeAlias` | `type X = Y` syntax | `type UserId = int` |
-| `TypeGuard` | `x is T` narrowing | `if x is int:` |
+| `TypeGuard` | `isinstance(x, T)` narrowing | `if isinstance(x, int):` |
 | `TypeIs` | Conversion functions (`-> T \| None`) + `as?` cast | see [User-Defined Type Guards](#user-defined-type-guards) |
 | `NamedTuple` | `type X = tuple[name: type, ...]` | `type Point = tuple[x: float, y: float]` |
 | `ClassVar` | Class-level field declarations | Direct class body fields |
