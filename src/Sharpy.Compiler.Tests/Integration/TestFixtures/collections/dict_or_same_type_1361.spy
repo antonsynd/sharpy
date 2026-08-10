@@ -1,0 +1,16 @@
+# PEP 584 `dict | dict`, and the regression guard for how it is resolved (#1361).
+#
+# dict was the only builtin collection still registered against
+# System.Collections.Generic.Dictionary<,> instead of its Sharpy.Core wrapper, and the CLR type
+# recorded at registration is what operator resolution reflects over. Dictionary declares no
+# operators, so this line survived only on the single-candidate shortcut in
+# TypeInferenceService.FindBestOverload: the moment Dict<K,V> gained a second `|` overload the
+# shortcut no longer applied and `dict | dict` drew SPY0222. Keys on the right win, per CPython.
+
+def main() -> None:
+    a: dict[str, int] = {"a": 1, "b": 0}
+    b: dict[str, int] = {"b": 2}
+    merged: dict[str, int] = a | b
+    print(merged)
+    print(a)
+    print(b)

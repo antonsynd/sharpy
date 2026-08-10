@@ -81,7 +81,12 @@ internal class BuiltinRegistry
 
         // Collections (generic) - use Sharpy.Core wrapper types
         RegisterType("list", typeof(SharpyRT::Sharpy.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
-        RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        // dict was left on System.Collections.Generic.Dictionary<,> when 616a07c9b moved its
+        // siblings to the wrappers. The CLR type recorded here is what operator resolution
+        // reflects over, and Dictionary declares no operators, so every `dict op dict` had to be
+        // served by the single-candidate shortcut in TypeInferenceService.FindBestOverload; a
+        // second `|` overload took that shortcut away and `dict | dict` stopped resolving (#1361).
+        RegisterType("dict", typeof(SharpyRT::Sharpy.Dict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
         RegisterType("set", typeof(SharpyRT::Sharpy.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
         RegisterType(BuiltinNames.FrozenDict, typeof(SharpyRT::Sharpy.FrozenDict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
         RegisterType(BuiltinNames.FrozenSet, typeof(SharpyRT::Sharpy.FrozenSet<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
