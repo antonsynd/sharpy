@@ -4,7 +4,7 @@
 # Before the parameter was typed as a sequence, `*args: str` was typed `str` (the ELEMENT type), so
 # the for-loop lowering saw `iteratorType == str` and would have wrapped the iterator in
 # StringHelpers.Iterate — iterating the parameter as if it were one string's characters. The emitter
-# carried a name-tracking set (_currentVariadicParams) purely so it could recognise the parameter and
+# carried a per-scope set of variadic parameter NAMES purely so it could recognise the parameter and
 # suppress that wrap. Now `*args: str` is `array[str]`, the wrap is never reached at all, and the
 # suppression has nothing left to suppress.
 #

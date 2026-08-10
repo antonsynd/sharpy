@@ -120,12 +120,6 @@ internal partial class RoslynEmitter : ICodeEmitter
     // CodeGenInfo.IsStringEnum (for string enums). This information is populated
     // during semantic analysis.
 
-    /// <summary>
-    /// Tracks the Sharpy names of variadic parameters (*args) in the current function scope.
-    /// Used to avoid wrapping variadic string[] params with StringHelpers.Iterate() in for-loops.
-    /// </summary>
-    private readonly HashSet<string> _currentVariadicParams = new();
-
     private readonly DunderCodeGenRegistry _dunderRegistry;
     private readonly Dictionary<string, InterfaceDef> _interfaceDefinitions = new(); // Track interface definitions for abstract class stub generation
     private int _tempVarCounter = 0;
@@ -286,23 +280,11 @@ internal partial class RoslynEmitter : ICodeEmitter
         _sourceVariableNames.Clear();
         _localFunctionNames.Clear();
         _localVariableTypes.Clear();
-        _currentVariadicParams.Clear();
 
         // Resolve the current return type so `return None` can target Optional<T>.None.
         _currentReturnType = funcDef?.ReturnType != null
             ? _context.SemanticInfo?.GetTypeAnnotation(funcDef.ReturnType)
             : null;
-
-        // Track variadic parameter names so codegen can distinguish
-        // `for x in str_var:` (needs Iterate) from `for x in variadic_params:` (already T[])
-        if (funcDef != null)
-        {
-            foreach (var p in funcDef.Parameters)
-            {
-                if (p.IsVariadic)
-                    _currentVariadicParams.Add(p.Name);
-            }
-        }
     }
 
     /// <summary>

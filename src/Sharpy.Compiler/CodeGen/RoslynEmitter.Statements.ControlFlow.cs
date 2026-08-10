@@ -484,9 +484,13 @@ internal partial class RoslynEmitter
 
         // String iteration: `for c in s:` → `foreach (var c in StringHelpers.Iterate(s))`
         // Yields string elements (single-character strings), not char.
-        // Skip for variadic parameters (*args: str) — those are string[] at C# level,
-        // and iterating over string[] already yields string elements.
-        if (iteratorType == SemanticType.Str && !IsVariadicParameterReference(forStmt.Iterator))
+        //
+        // This test once carried an exception for variadic parameters, which the emitter recognised
+        // by tracking their names per scope: `*args: str` was typed as the ELEMENT type `str` and
+        // would otherwise have been iterated as one string's characters. The exception is gone with
+        // its cause — a variadic binds as `array[str]` (#1292), so it never reaches this test at all,
+        // and the emitter reads the semantic type without knowing which parameters were variadic.
+        if (iteratorType == SemanticType.Str)
         {
             iterator = InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,

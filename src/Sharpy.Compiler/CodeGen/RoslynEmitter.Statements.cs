@@ -906,16 +906,6 @@ internal partial class RoslynEmitter
         return type is GenericType { Name: Shared.CSharpTypeNames.IAsyncEnumerable };
     }
 
-    /// <summary>
-    /// Checks if the expression is a reference to a variadic parameter (*args).
-    /// Variadic parameters have semantic type T but are params T[] at C# level,
-    /// so they should not be wrapped with StringHelpers.Iterate().
-    /// </summary>
-    private bool IsVariadicParameterReference(Expression expr)
-    {
-        return expr is Identifier ident && _currentVariadicParams.Contains(ident.Name);
-    }
-
     private static bool IsCompileTimeLiteral(Expression? expr)
     {
         // Check if the expression is a compile-time literal that can be used with C# const
