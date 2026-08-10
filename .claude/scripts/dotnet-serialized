@@ -158,7 +158,12 @@ EXIT_CODE=${PIPESTATUS[0]}
 # Every real run prints a summary line per assembly — "Total:" with the default logger,
 # "Total tests: N" when a custom console logger verbosity is passed; if neither appeared,
 # fail loudly rather than letting zero verified tests be mistaken for a green suite.
-if [ "$1" = "test" ] && [ "$EXIT_CODE" -eq 0 ] && ! grep -qE "Total( tests)?:" "$LOG_FILE"; then
+# --list-tests (and -t) enumerates without running, so "no results" is its correct output.
+case " $* " in
+    *" --list-tests "*|*" -t "*) LIST_ONLY=1 ;;
+    *) LIST_ONLY=0 ;;
+esac
+if [ "$1" = "test" ] && [ "$LIST_ONLY" -eq 0 ] && [ "$EXIT_CODE" -eq 0 ] && ! grep -qE "Total( tests)?:" "$LOG_FILE"; then
     echo "ERROR: 'dotnet test' exited 0 but produced NO test results." >&2
     echo "Zero tests ran. This is not a pass. Common causes:" >&2
     echo "  * --no-build against binaries that were never built (a prior build failed)" >&2
