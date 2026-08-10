@@ -1,0 +1,30 @@
+# #1371: a nested type's symbol was invisible to the emitter, so an implicitly-abstract member of a
+# NESTED @abstract class emitted a silently-throwing concrete member instead of an abstract one.
+#
+# NameResolver defines a nested type's symbol inside the enclosing class's scope, so codegen's global
+# lookup returned null and `_currentTypeSymbol` was null for EVERY nested type. The read sites had
+# been patched with a decorator-only fallback, which drops the implicit-stub arm — hence the throwing
+# concrete member. The fix makes the symbol reachable through the enclosing symbol's NestedTypes, so
+# the read sites are pure symbol reads again.
+#
+# The pin is BEHAVIOURAL, not just a snapshot: `Concrete` overrides the nested abstract member, and a
+# C# class cannot override a non-abstract, non-virtual property — so if the member regresses to
+# concrete this fixture stops compiling rather than silently printing the same thing.
+
+
+@abstract
+class Outer:
+    @abstract
+    class Inner:
+        property get value(self) -> int:
+            ...
+
+    class Concrete(Inner):
+        @override
+        property get value(self) -> int:
+            return 42
+
+
+def main() -> None:
+    c = Outer.Concrete()
+    print(c.value)

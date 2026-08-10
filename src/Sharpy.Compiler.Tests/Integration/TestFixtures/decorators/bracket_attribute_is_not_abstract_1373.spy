@@ -1,0 +1,38 @@
+# #1373: a bracket attribute `@[X]` is a CLR attribute pass-through, NOT the Sharpy `@abstract`
+# decorator. NameResolver counted it as the decorator, so `@[abstract] class Weird` made the class
+# symbol abstract, the implicit-stub rule then classified its `...`-bodied members abstract, and
+# emission produced abstract members inside a NON-abstract C# class — CS0513 behind SPY0908.
+#
+# A real attribute is used rather than `@[abstract]` itself: `@[abstract]` names an `AbstractAttribute`
+# type that does not exist, so it fails on the missing type for a reason that has nothing to do with
+# this defect. What is pinned is the contract the issue states — the attribute is emitted, the class is
+# NOT abstract, and the stub member is concrete by the ordinary non-abstract-owner rules, exactly as
+# the un-attributed control beside it.
+
+
+@[Obsolete]
+class Attributed:
+    property get value(self) -> int:
+        ...
+
+
+class Control:
+    property get value(self) -> int:
+        ...
+
+
+def main() -> None:
+    a = Attributed()
+    c = Control()
+
+    # Both stubs are concrete throwing members, so both raise — the attributed class behaves exactly
+    # like the un-attributed one, which is the whole claim.
+    try:
+        print(a.value)
+    except Exception:
+        print("attributed raised")
+
+    try:
+        print(c.value)
+    except Exception:
+        print("control raised")

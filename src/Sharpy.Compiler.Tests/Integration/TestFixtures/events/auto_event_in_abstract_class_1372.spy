@@ -1,0 +1,42 @@
+# #1372: an undecorated auto-event in an abstract class emitted a NON-nullable event field, because
+# the emitter computed `@abstract-decorator || owner-is-abstract` while the symbol said decorator
+# alone. The two formulas disagreed on exactly this cell, and the verdict decided the event field's
+# TYPE — so the disagreement was a different emitted type, not a different spelling.
+#
+# Resolved in the symbol's favour: an undecorated auto-event is a CONCRETE event with a backing field
+# and subscribers whatever its owner's abstractness, so it is nullable like every other concrete
+# auto-event. The abstract owner below and the concrete owner beside it now emit the same shape, which
+# is the property that was missing.
+delegate SimpleHandler() -> None
+
+
+@abstract
+class AbstractOwner:
+    event on_click: SimpleHandler
+
+    @abstract
+    def describe(self) -> str: ...
+
+
+class ConcreteOwner:
+    event on_click: SimpleHandler
+
+
+class Impl(AbstractOwner):
+    @override
+    def describe(self) -> str:
+        return "impl"
+
+
+def on_fire() -> None:
+    print("fired")
+
+
+def main() -> None:
+    a = Impl()
+    print(a.describe())
+
+    c = ConcreteOwner()
+    c.on_click += on_fire
+    c.on_click -= on_fire
+    print("ok")
