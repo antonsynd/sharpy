@@ -27,6 +27,10 @@ class NestedConfig:
     server: ServerConfig = ServerConfig()
 
 
+class RatioConfig:
+    ratio: float = 0.0
+
+
 # --- SafeLoadTyped — success ---
 
 @test
@@ -69,3 +73,30 @@ def test_safe_load_typed_type_mismatch_returns_err():
 def test_safe_load_typed_malformed_yaml_returns_err():
     result = yaml.safe_load_typed[ServerConfig]("host: [unbalanced\n")
     assert result.IsErr
+
+
+# --- SafeLoadTyped — scalar precision (#1339 probe, #1353 remediation) ---
+# The untyped loader's single-precision detour was #1339: safe_load("0.1") came back
+# 0.10000000149011612 because YamlDotNet's convenience resolver tried float before double.
+# The typed path builds its OWN deserializer and was argued to be unaffected by construction —
+# but the plan asked for a probe rather than an assumption, and nothing pinned it. This is that
+# pin: a typed float FIELD must carry the double, not a widened Single.
+#
+# 0.1 is chosen because it is not float32-exact; a Single detour shows up in the value itself,
+# which is what the untyped suite was blind to before #1339.
+
+@test
+def test_safe_load_typed_float_field_keeps_double_precision():
+    result = yaml.safe_load_typed[RatioConfig]("ratio: 0.1")
+    assert result.IsOk
+    cfg = result.Unwrap()
+    assert cfg.ratio == 0.1
+
+
+@test
+def test_safe_load_typed_float_field_survives_non_float32_exact_values():
+    doc = "ratio: -0.30000000000000004"
+    result = yaml.safe_load_typed[RatioConfig](doc)
+    assert result.IsOk
+    cfg = result.Unwrap()
+    assert cfg.ratio == -0.30000000000000004
