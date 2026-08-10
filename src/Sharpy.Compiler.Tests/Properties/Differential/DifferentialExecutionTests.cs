@@ -897,15 +897,27 @@ public class DifferentialExecutionTests : IntegrationTestBase
         /// <para>This is the list the #1338 widening turns on. Without it, adding the Stdlib.Tests
         /// root would have been vacuous — the filter rejected <em>every</em> import outright, so a
         /// corpus of stdlib fixtures would have been excluded to the last cell while the report
-        /// showed a larger discovered count. A Sharpy-only module (or one CPython does not ship,
-        /// like numpy) is excluded by name here, visibly, rather than allowlisted after diverging.</para>
+        /// showed a larger discovered count.</para>
+        ///
+        /// <para>
+        /// It is an OPT-IN WHITELIST, and the exclusion label says so: a module absent from this set
+        /// is reported as <c>not-in-cpython-whitelist:</c>, not as "Sharpy-only". The distinction is
+        /// not pedantry — the label previously read <c>sharpy-only-import:</c> while covering 51
+        /// modules, among them <c>os</c>, <c>sys</c>, <c>time</c> and <c>datetime</c>, every one of
+        /// which CPython ships. Absence here establishes only that nobody has yet put the module in
+        /// front of the oracle, which is a to-do, not a property of the module.
+        /// </para>
         ///
         /// <para>Grows one module at a time: each addition puts a new corpus in front of the
         /// oracle, and the divergences it finds are the deliverable.</para>
         /// </summary>
         private static readonly HashSet<string> CPythonAvailableModules = new(StringComparer.Ordinal)
         {
-            "json", "math", "pprint", "re", "string",
+            // yaml is PyYAML, which is not in the standard library — it is admitted because it is
+            // installed here (6.0.3, verified) and the Sharpy side is a YamlDotNet-backed
+            // reimplementation whose scalar resolution is exactly the kind of thing an oracle
+            // catches. A machine without PyYAML sees these cells skip rather than fail.
+            "json", "math", "pprint", "re", "string", "yaml",
         };
 
         /// <summary>
@@ -1015,7 +1027,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
         {
             var root = moduleName.Split('.')[0];
             if (!CPythonAvailableModules.Contains(root))
-                Reject("sharpy-only-import:" + root);
+                Reject("not-in-cpython-whitelist:" + root);
         }
 
         // Divergence-prone / Sharpy-only compound statements.
