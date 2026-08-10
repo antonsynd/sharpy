@@ -74,9 +74,11 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
 
     public override void VisitAssignment(Assignment node)
     {
-        if (node.Operator == AssignmentOperator.Assign && node.Target is Identifier target)
+        if (node.Operator == AssignmentOperator.Assign)
         {
-            Declare(target.Name, target.IsNameBacktickEscaped, target.LineStart, target.ColumnStart);
+            // Every shape a target can take, not just a bare name: `Zed, other = (7, 8)` binds
+            // `Zed` exactly as `Zed = 7` does, and the emitter gives it the same mangled slot.
+            DeclareTarget(node.Target);
         }
 
         base.VisitAssignment(node);
@@ -126,6 +128,43 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
         base.VisitWalrusExpression(node);
     }
 
+    public override void VisitBindingPattern(BindingPattern node)
+    {
+        // A bare name in a case label captures the scrutinee into a local — unless the TypeChecker
+        // resolved it to a module-level constant, in which case the arm compares against that
+        // constant and binds nothing (RFC 3535).
+        if (Context.SemanticInfo.GetPatternConstantSymbol(node) == null)
+        {
+            Declare(node.Name.Name, node.Name.IsNameBacktickEscaped, node.Name.LineStart, node.Name.ColumnStart);
+        }
+
+        base.VisitBindingPattern(node);
+    }
+
+    public override void VisitTypePattern(TypePattern node)
+    {
+        if (node.BindingName != null)
+        {
+            Declare(node.BindingName.Name, node.BindingName.IsNameBacktickEscaped,
+                node.BindingName.LineStart, node.BindingName.ColumnStart);
+        }
+
+        base.VisitTypePattern(node);
+    }
+
+    public override void VisitModifiedArgument(ModifiedArgument node)
+    {
+        // An inline out declaration (`try_parse("42", out value: int)`) introduces a local at the
+        // call site, and the emitter gives it a slot from the same table as every other local.
+        if (node.InlineName != null)
+        {
+            Declare(node.InlineName, node.IsNameBacktickEscaped,
+                node.Argument.LineStart, node.Argument.ColumnStart);
+        }
+
+        base.VisitModifiedArgument(node);
+    }
+
     /// <summary>Declares whatever names a binding target spells, ignoring non-binding shapes.</summary>
     private void DeclareTarget(Expression? target)
     {
@@ -139,6 +178,10 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
                 {
                     DeclareTarget(element);
                 }
+                break;
+            case StarExpression star:
+                // `a, *rest = ...` binds `rest`; the star only says how much it takes.
+                DeclareTarget(star.Operand);
                 break;
         }
     }

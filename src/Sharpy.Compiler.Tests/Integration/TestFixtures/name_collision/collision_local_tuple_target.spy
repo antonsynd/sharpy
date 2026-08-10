@@ -1,0 +1,11 @@
+# A tuple-unpacking target binds exactly as a bare `Zed = 7` does, so it is held to the same
+# collision rule (#1276). The validator used to look only at `Assignment.Target is Identifier`,
+# so this shape slipped through and the program printed `7 7 8` where CPython prints `6 7 8` —
+# the headline silent-wrong-output of #1276, surviving in a second syntax.
+
+def main() -> None:
+    zed: int = 6
+    Zed, other = (7, 8)
+    print(zed)
+    print(Zed)
+    print(other)

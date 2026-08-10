@@ -1,0 +1,1 @@
+Name collision: local 'rest' and 'Rest' (line 6) both compile to 'rest' @7:9

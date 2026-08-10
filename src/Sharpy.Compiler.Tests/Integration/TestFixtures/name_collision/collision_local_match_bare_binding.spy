@@ -1,0 +1,12 @@
+# A bare name in a case label captures, so it collides the same way an `as` capture does (#1276).
+# Uncaught this was CS0136 as well.
+
+def main() -> None:
+    zed: int = 6
+    value: int = 7
+    match value:
+        case 7:
+            print(70)
+        case Zed:
+            print(Zed)
+    print(zed)

@@ -1,0 +1,10 @@
+# The `*rest` of a starred unpack is a binding position too — the star says how much it takes,
+# not what it binds (#1276). Uncaught, the emitter put the list into `Rest`'s int slot and the
+# generated C# was CS0029.
+
+def main() -> None:
+    Rest: int = 5
+    a, *rest = (1, 2, 3)
+    print(a)
+    print(rest)
+    print(Rest)

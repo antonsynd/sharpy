@@ -1,0 +1,15 @@
+# `case LIMIT` compares against the module constant instead of capturing (RFC 3535), so it binds
+# no local and cannot collide with `limit`. The collision check must ask what the pattern actually
+# does, not just what it spells (#1276).
+
+const LIMIT: int = 7
+
+def main() -> None:
+    limit: int = 3
+    value: int = 7
+    match value:
+        case LIMIT:
+            print(1)
+        case _:
+            print(0)
+    print(limit)

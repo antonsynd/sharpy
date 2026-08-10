@@ -1,0 +1,12 @@
+# A capture in a case label is a local like any other (#1276). Uncaught, the emitter declared a
+# second `zed` inside the switch arm and the generated C# was CS0136, surfacing as SPY0908.
+
+def main() -> None:
+    zed: int = 6
+    value: object = 7
+    match value:
+        case int() as Zed:
+            print(Zed)
+        case _:
+            print(0)
+    print(zed)
