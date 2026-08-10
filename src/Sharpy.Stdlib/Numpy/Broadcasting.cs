@@ -20,7 +20,7 @@ namespace Sharpy
         /// <param name="shapeB">Second input shape.</param>
         /// <returns>The broadcast shape — a new array.</returns>
         /// <exception cref="ArgumentException">Thrown when the shapes are not broadcastable.</exception>
-        public static int[] BroadcastShapes(int[] shapeA, int[] shapeB)
+        internal static int[] BroadcastShapes(int[] shapeA, int[] shapeB)
         {
             if (shapeA == null)
             {
@@ -69,7 +69,7 @@ namespace Sharpy
         /// Produce a stride vector that maps <paramref name="targetShape"/> indices back into
         /// <paramref name="sourceShape"/>, treating broadcast (size-1) axes as zero-stride.
         /// </summary>
-        public static int[] BroadcastStrides(int[] sourceShape, int[] sourceStrides, int[] targetShape)
+        internal static int[] BroadcastStrides(int[] sourceShape, int[] sourceStrides, int[] targetShape)
         {
             if (sourceShape == null)
             {
