@@ -1270,6 +1270,39 @@ internal partial class RoslynEmitter
         => enumSymbol.IsStringEnum || GetCodeGenInfo(enumSymbol)?.IsStringEnum == true;
 
     /// <summary>
+    /// The C# identifier that names <paramref name="memberName"/> on <paramref name="enumSymbol"/>.
+    /// Three kinds of enum, three spellings, and the caller must not have to know which:
+    ///
+    /// <list type="bullet">
+    /// <item><description>a string-backed enum is a CLASS of singleton fields, emitted by
+    /// <see cref="GenerateStringEnumClass"/> through <c>NameContext.Constant</c>, so the reference
+    /// has to use that same casing;</description></item>
+    /// <item><description>a CLR enum already carries correct .NET member names, so mangling would
+    /// only corrupt them;</description></item>
+    /// <item><description>a source int-backed enum is a real C# enum whose members go through
+    /// <see cref="NameMangler.ToEnumMemberName"/>.</description></item>
+    /// </list>
+    ///
+    /// <para>One helper rather than the rule written out at each reference site, because that is
+    /// exactly how it broke: the expression path made this three-way choice and the pattern path
+    /// made a two-way one, so a `match` arm naming a string-enum or CLR member whose casing the two
+    /// contexts spell differently emitted an identifier no member has (CS0117 behind SPY0908 —
+    /// `Debugmode` for a field named `DebugMode`, `Ordinalignorecase` for `OrdinalIgnoreCase`).
+    /// Only names already SCREAMING_SNAKE_CASE, single-word, or snake_case survived the divergence,
+    /// which is why nothing in the corpus caught it (#1284).</para>
+    /// </summary>
+    private SimpleNameSyntax EnumMemberIdentifier(
+        TypeSymbol enumSymbol, string memberName, bool isMemberBacktickEscaped = false)
+    {
+        if (IsStringEnumSymbol(enumSymbol))
+            return EscapedIdentifierName(NameCasing.ResolveConstant(memberName, isMemberBacktickEscaped));
+
+        return IdentifierName(enumSymbol.ClrType != null
+            ? memberName
+            : NameMangler.ToEnumMemberName(memberName));
+    }
+
+    /// <summary>
     /// Generates a C# enum for integer enums
     /// </summary>
     private EnumDeclarationSyntax GenerateIntegerEnum(EnumDef enumDef)

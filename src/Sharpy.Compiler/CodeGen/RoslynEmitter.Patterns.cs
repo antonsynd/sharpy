@@ -106,19 +106,24 @@ internal partial class RoslynEmitter
         ExpressionSyntax expr = IdentifierName(
             NameMangler.Transform(memberAccess.Parts[0], NameContext.Type));
 
-        // Determine if the first part is an enum type to use correct name mangling
+        // An enum member is spelled by the one helper the expression path uses. This arm used to
+        // pick NameContext.EnumMember for EVERY enum, which is right only for a source int-backed
+        // enum: a string-backed enum's members are class fields emitted in NameContext.Constant,
+        // and a CLR enum's members are already correctly cased. The two contexts agree on
+        // SCREAMING_SNAKE_CASE, single-word and snake_case names and disagree on everything else,
+        // so `case Mode.DebugMode:` emitted `Mode.Debugmode` and `case StringComparison
+        // .OrdinalIgnoreCase:` emitted `Ordinalignorecase` — CS0117 behind SPY0908 (#1284).
         var typeSymbol = _context.SymbolTable?.Lookup(memberAccess.Parts[0]) as TypeSymbol;
-        var memberContext = typeSymbol?.TypeKind == TypeKind.Enum
-            ? NameContext.EnumMember
-            : NameContext.Field;
+        var enumSymbol = typeSymbol?.TypeKind == TypeKind.Enum ? typeSymbol : null;
 
         for (int i = 1; i < memberAccess.Parts.Length; i++)
         {
             expr = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 expr,
-                IdentifierName(NameMangler.Transform(
-                    memberAccess.Parts[i], memberContext)));
+                enumSymbol != null
+                    ? EnumMemberIdentifier(enumSymbol, memberAccess.Parts[i])
+                    : IdentifierName(NameMangler.Transform(memberAccess.Parts[i], NameContext.Field)));
         }
 
         return expr;

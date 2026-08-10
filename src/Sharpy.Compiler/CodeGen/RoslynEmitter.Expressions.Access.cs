@@ -1429,30 +1429,14 @@ internal partial class RoslynEmitter
                 // GetFullyQualifiedTypeName; same-file types inside a class need module class qualification.
                 ExpressionSyntax enumType = BuildQualifiedTypeAccess(enumSymbol, enumTypeIdentifier.Name);
 
-                // Check if this is a string enum (string enums are generated as classes, not C# enums)
-                if (IsStringEnumSymbol(enumSymbol))
-                {
-                    // String enums use CONSTANT_CASE field names (same as NameContext.Constant)
-                    var fieldName = NameCasing.ResolveConstant(memberAccess.Member, isBacktickEscaped: memberAccess.IsMemberBacktickEscaped);
-                    var enumMemberAccess = MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        enumType,
-                        EscapedIdentifierName(fieldName));
-                    // String enums: Color.RED already returns the string value from the static field
-                    return enumMemberAccess;
-                }
-                else
-                {
-                    // CLR enums already have correct PascalCase member names — skip mangling
-                    var enumMemberName = enumSymbol.ClrType != null
-                        ? memberAccess.Member
-                        : NameMangler.ToEnumMemberName(memberAccess.Member);
-                    var enumMemberAccess = MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        enumType,
-                        IdentifierName(enumMemberName));
-                    return enumMemberAccess;
-                }
+                // String enum → the singleton field's CONSTANT_CASE name; CLR enum → the .NET name
+                // unmangled; source int enum → NameContext.EnumMember. Shared with the pattern path
+                // so the two cannot spell the same member differently (#1284).
+                return MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    enumType,
+                    EnumMemberIdentifier(
+                        enumSymbol, memberAccess.Member, memberAccess.IsMemberBacktickEscaped));
             }
         }
 
