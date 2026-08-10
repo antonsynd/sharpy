@@ -1,0 +1,4 @@
+# #1330. One of two modules that each declare an interface spelled `Holder[T]`. They are different
+# declarations; only the name coincides.
+interface Holder[T]:
+    def get(self) -> T: ...

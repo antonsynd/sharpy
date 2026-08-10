@@ -1,0 +1,15 @@
+# #1330, the construction seam. An empty generic constructor takes its argument vector from the
+# EXPECTED type, and that hand-off used to be gated on the written name alone: `mod_a.Bag[int]` and
+# `mod_b.Bag[int]` spell the same name, so mod_a's vector was stamped onto mod_b's declaration and
+# the result reached codegen as `SPY0908 ... (CS0029)` — a compiler-bug report for a type error.
+#
+# The expected type now has to name the SAME declaration, and it does not. With nothing to infer
+# from, the empty constructor is refused on its own terms (SPY0227) instead of being filled from a
+# type it has nothing to do with.
+import mod_a
+import mod_b
+
+
+def main() -> None:
+    b: mod_a.Bag[int] = mod_b.Bag()
+    print(len(b.items))

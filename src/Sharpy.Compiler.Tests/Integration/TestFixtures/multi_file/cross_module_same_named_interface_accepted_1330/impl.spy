@@ -1,0 +1,8 @@
+# The implementer lives in a THIRD file on purpose: an alias or a same-file declaration changes the
+# written annotation name and dodges the name comparison entirely.
+import module_b
+
+
+class IntBox(module_b.Holder[int]):
+    def get(self) -> int:
+        return 7

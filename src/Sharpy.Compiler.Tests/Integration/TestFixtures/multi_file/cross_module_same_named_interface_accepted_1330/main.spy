@@ -1,0 +1,10 @@
+# #1330 positive control. Refusing the OTHER module's same-named `Holder` must not cost the spelling
+# the implementer actually implements: `module_b.Holder[int]` is the interface `IntBox` declares, and
+# it still binds.
+import module_b
+from impl import IntBox
+
+
+def main() -> None:
+    h: module_b.Holder[int] = IntBox()
+    print(h.get())

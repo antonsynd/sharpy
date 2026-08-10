@@ -1,0 +1,8 @@
+# #1330 positive control for the construction seam: when the expected type DOES name the same
+# declaration, the empty constructor still fills from it, cross-module or not.
+import mod_b
+
+
+def main() -> None:
+    b: mod_b.Bag[int] = mod_b.Bag()
+    print(len(b.items))

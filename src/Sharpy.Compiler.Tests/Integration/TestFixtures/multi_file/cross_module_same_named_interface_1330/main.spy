@@ -1,0 +1,12 @@
+# `IntBox` implements module_b's `Holder`, so it is NOT a `module_a.Holder`. Supertype assignability
+# used to match the walked supertype against the target by NAME, accept this, and hand codegen a
+# conversion that does not exist — the user got `SPY0908 ... (CS0266)`, a compiler-bug report for
+# their own type error. Definitions with comparable identity context are compared by symbol, and the
+# name never overrides that verdict.
+import module_a
+from impl import IntBox
+
+
+def main() -> None:
+    h: module_a.Holder[int] = IntBox()
+    print(h.get())
