@@ -1,0 +1,18 @@
+# #1264, the OTHER presentation of the same defect. The original fixture marks the `add` accessor
+# @abstract and leaves `remove` concrete; this one reverses the placement — concrete `add` first,
+# @abstract `remove` after. The plan established these are one defect and not two, so the pinned
+# diagnostic is identical: whichever accessor carries the modifier, an event whose accessors
+# disagree about abstractness is refused with SPY0424.
+delegate SimpleHandler() -> None
+
+@abstract
+class Widget:
+    event add on_click(self, handler: SimpleHandler):
+        pass
+
+    @abstract
+    event remove on_click(self, handler: SimpleHandler):
+        ...
+
+def main() -> None:
+    pass
