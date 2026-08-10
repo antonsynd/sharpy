@@ -1,0 +1,18 @@
+# The interop spelling `char` denotes what a CLR char denotes at the Sharpy surface: a one-character
+# str (#1291). PrimitiveCatalog has always registered the name, but nothing resolved it, so `x: char`
+# was SPY0202 "type 'char' not found" for a name the catalog itself declares.
+#
+# Only LOCAL annotations here, deliberately: CPython does not evaluate those, so this fixture stays
+# inside the differential oracle's shared subset and agrees with CPython on every line. The signature
+# spelling `def echo(c: char) -> char` is covered by clr_char_array_is_str_1291, which is out of that
+# subset for an unrelated reason.
+
+
+def main() -> None:
+    c: char = "a"
+    print(c)
+    print(c.upper())
+    print(len(c))
+
+    joined: str = c + "bc"
+    print(joined)

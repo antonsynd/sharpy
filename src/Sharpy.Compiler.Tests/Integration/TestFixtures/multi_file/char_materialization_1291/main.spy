@@ -1,0 +1,6 @@
+from lib import letters, initial
+
+
+def main() -> None:
+    print(letters("hi"))
+    print(initial("sharpy"))

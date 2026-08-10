@@ -1,0 +1,13 @@
+# `"s".nonexistent_member_xyz()` reached Roslyn and came back as CS1061 behind SPY0908 — the
+# compiler reporting its own bug for a typo (#1291). Reflection can PROVE the member absent on a
+# builtin receiver, and where it can, the refusal is Sharpy's own.
+#
+# BuiltinType receivers ONLY. The same fall-through carries GenericType and TupleType receivers whose
+# members codegen resolves through discovery paths the absence proof does not model, and a false
+# refusal rejects a working program — worse than the ICE it replaces. The twin below is the
+# measurement of that: raw BCL spellings on a builtin receiver still bind.
+
+
+def main() -> None:
+    s = "abc"
+    print(s.nonexistent_member_xyz())

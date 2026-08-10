@@ -1,0 +1,16 @@
+# A closed extension signature over a string receiver is a signature over CHARS: `s.element_at(1)`
+# is Enumerable.ElementAt<char> (#1291). Sharpy has no char, so the result is the one-character str
+# the user means. It was typed `char` before, and `x: str = s.element_at(1)` was refused for a
+# difference that does not exist at the Sharpy surface — a refusal, not an ICE, which is why this row
+# outlived the SPY0908 ones.
+#
+# An IEnumerable<char> return (`s.take(3)`) deliberately does NOT project: converting a CLR
+# SEQUENCE's element is a decision the #1251 materialization owns.
+
+
+def main() -> None:
+    s = "abc"
+    x: str = s.element_at(1)
+    print(x)
+    print(x.upper())
+    print(len(x))

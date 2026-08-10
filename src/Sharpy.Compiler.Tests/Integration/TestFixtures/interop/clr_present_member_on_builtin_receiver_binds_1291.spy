@@ -1,0 +1,27 @@
+# The permissive twin of clr_absent_member_on_builtin_receiver_refused_1291 (#1291): every spelling
+# below is one keystroke from the refusal that fixture draws, and each still binds. The absence proof
+# only fires when reflection SUCCEEDS and finds nothing under any mangling candidate, with no
+# extension method reachable that could answer the name.
+
+
+def main() -> None:
+    s = "  abc  "
+
+    # Raw BCL spellings reached by reverse-mangling.
+    print(s.trim())
+    print(s.to_upper())
+    print(s.length)
+
+    # Sharpy's own str API, which resolves earlier.
+    print(s.strip())
+    print(s.upper())
+
+    # An extension method rather than an instance member.
+    print(s.first())
+
+    # A name several same-arity overloads answer, where selection stays with CLR overload resolution.
+    print(s.contains("abc"))
+
+    # A non-str builtin receiver.
+    n = 42
+    print(n.to_string())

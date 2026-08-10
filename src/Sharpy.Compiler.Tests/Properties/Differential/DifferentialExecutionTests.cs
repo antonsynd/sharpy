@@ -932,7 +932,15 @@ public class DifferentialExecutionTests : IntegrationTestBase
             "to_lower",     // System.String.ToLower — CPython spells it s.lower()
             "trim",         // System.String.Trim — CPython spells it s.strip()
             "clone",        // System.String.Clone — no CPython counterpart
+            "to_char_array",// System.String.ToCharArray — CPython spells it list(s)
+            "element_at",   // Enumerable.ElementAt on a string — CPython spells it s[i]
         };
+
+        // Deliberately NOT listed: `first` and `contains`, which #1291's fixtures also use. Both are
+        // reached on a builtin receiver there, but both are ordinary member names that 14 other
+        // fixtures spell on their own types, and listing a name here excludes every fixture using it.
+        // The two fixtures that need them are already out of the subset on `to_upper`/`trim`/`length`,
+        // so listing them would buy nothing and cost the oracle real coverage.
 
         private string? _rejection;
         private readonly HashSet<string> _exceptAliases = new(StringComparer.Ordinal);

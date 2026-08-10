@@ -1,0 +1,53 @@
+# A CLR char[] is a sequence of one-character strings at the Sharpy surface (#1291).
+#
+# `to_char_array()` returns a genuine System.Char[]. Sharpy has no char type, so its elements are
+# `str` — which is also what CPython's list('hello') holds. Before this the call was typed Unknown
+# (ToCharArray has two overloads, so the single-overload member seam declined it) and Unknown is
+# assignable to anything, so codegen handed Roslyn a `char` for every `string` slot: an annotation, a
+# list() conversion, a slice, an argument and a return each leaked CS0029/CS1503 behind SPY0908.
+#
+# The conversion is applied ONCE, where the array is produced, which is what makes every position
+# below ordinary str handling rather than a case that had to be found and patched. Values verified
+# against CPython (list('hello') indexes, slices and iterates identically).
+
+
+def take(s: str) -> None:
+    print(s)
+
+
+def first_of(cs: array[str]) -> str:
+    return cs[0]
+
+
+# `char` in a signature is the same str, and emits as C# string.
+def echo(c: char) -> char:
+    return c
+
+
+def main() -> None:
+    cs = "hello".to_char_array()
+
+    # Plain indexing into a str slot — the row the issue was filed on, no slice involved.
+    x: str = cs[0]
+    print(x)
+
+    # The element IS a str, so str members and len() apply to it.
+    print(x.upper())
+    print(len(x))
+
+    # A slice, a list() conversion and iteration all carry str.
+    tail: list[str] = cs[1:3]
+    print(tail)
+    print(list(cs))
+    for c in cs:
+        ch: str = c
+        print(ch)
+
+    # An argument slot and a return slot.
+    take(cs[1])
+    print(first_of(cs))
+
+    # The array annotation a user would write for the value.
+    named: array[str] = "ab".to_char_array()
+    print(len(named))
+    print(echo(named[1]))

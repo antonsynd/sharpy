@@ -1,0 +1,9 @@
+# The refusal twin of clr_char_array_is_str_1291 (#1291). A char[] element is a `str`, so an int
+# slot is a type error — not the silent C# char-to-int widening it used to be, which compiled and
+# printed 97 for "a". CPython agrees the program is wrong: int('a') raises ValueError.
+
+
+def main() -> None:
+    cs = "abc".to_char_array()
+    n: int = cs[0]
+    print(n)

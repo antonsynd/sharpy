@@ -1,0 +1,15 @@
+# The char-to-str conversion #1291 records is a node-keyed SemanticInfo fact, and every such fact has
+# to survive the per-file -> project merge in SemanticInfo.MergeFrom or its entries are silently
+# dropped. Dropping them here does not produce a missing conversion that fails loudly: it produces a
+# `char` handed to a `string` slot, i.e. SPY0908 again — the exact defect this closed, reappearing
+# only in multi-file builds. So the merge is pinned by a fixture that compiles the producer in a
+# NON-entry file.
+
+
+def letters(word: str) -> list[str]:
+    cs = word.to_char_array()
+    return list(cs)
+
+
+def initial(word: str) -> str:
+    return word.to_char_array()[0]

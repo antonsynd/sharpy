@@ -8,14 +8,15 @@
 # exercises LIST slicing — pinning the array path through argv would have quietly stopped testing it.
 # `to_char_array()` returns a genuine CLR char[].
 #
-# Expected values verified against CPython (list('hello') sliced identically); Sharpy prints a char
-# without quotes, which is the only difference.
+# Expected values verified against CPython (list('hello') sliced identically) and now agree with it
+# character for character. They did not when this fixture was written: the char rows printed
+# `[e, l, l]` for CPython's `['e', 'l', 'l']`, because a char[]'s elements emitted as C# `char` and a
+# Sharpy list of char prints its elements unquoted. That divergence was the visible half of #1291,
+# whose annotated positions were the SPY0908 half; both are closed by converting the char[] to a
+# string[] where it is produced, so the rows below are ordinary list-of-str printing.
 #
-# The annotated row uses a string[] rather than the char[] above, on purpose. A char[]'s elements map
-# to Sharpy `str` semantically but emit as C# `char`, so ANY position where one meets a `str`
-# annotation leaks CS0029 — plain `x: str = cs[0]` does it too, with no slice involved. That is a
-# separate pre-existing defect and pinning it here would make this fixture fail for a reason that has
-# nothing to do with array slicing.
+# The char[] annotation this fixture originally had to avoid is now pinned directly (see the `x: str`
+# and `list[str]` rows), alongside the string[] source that stood in for it.
 from system import Environment
 
 
@@ -30,6 +31,13 @@ def main() -> None:
     print(cs[-2:])
     print(cs[::-1])
     print(cs[0:0])
+
+    # The char[] rows the fixture used to route around (#1291). An element in a str slot and a slice
+    # in a list[str] slot are the two positions that leaked CS0029 behind SPY0908.
+    x: str = cs[0]
+    print(x)
+    tail_chars: list[str] = cs[1:]
+    print(tail_chars)
 
     # The annotation a user would naturally write is now well-typed by construction. Only
     # invocation-independent facts are asserted, since the argument vector varies by host.
