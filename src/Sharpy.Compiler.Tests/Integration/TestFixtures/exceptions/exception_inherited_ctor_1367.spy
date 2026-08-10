@@ -1,0 +1,35 @@
+# Pin: #1367 — `class E(Exception): pass` inherits Exception's constructors.
+#
+# C# inherits no constructors, so the emitter synthesizes a forwarder per accessible base
+# constructor. Exception's TypeSymbol carried NONE — BuiltinRegistry never collected the
+# constructor surface that ModuleRegistry has always collected — so nothing was forwarded
+# and `raise AppError('boom')`, the way a user exception is written in Python, died as
+# CS1729 behind SPY0908.
+#
+# Every arity is exercised because they are ONE decision, not three: the moment any
+# parameterised forwarder is emitted, C#'s implicit parameterless constructor disappears,
+# so the zero-arg row is what keeps `raise AppError()` from regressing while the message
+# form is fixed (the same dropped-0-arg shape #1408 reports for a CLR generic base).
+#
+# What this pins is constructor SELECTION and compilation, not the message payload:
+# reading it back would ride `str(e)`, which currently prints .NET's ToString() with an
+# absolute source path in it.
+class AppError(Exception):
+    pass
+
+
+def main() -> None:
+    try:
+        raise AppError('boom')
+    except AppError:
+        print('message-arg ok')
+
+    try:
+        raise AppError()
+    except AppError:
+        print('zero-arg ok')
+
+    try:
+        raise AppError('outer', ValueError('inner'))
+    except AppError:
+        print('two-arg ok')

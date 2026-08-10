@@ -1,0 +1,14 @@
+# Control for #1367: an explicit __init__ SUPPRESSES synthesis, matching Python, where an
+# explicit __init__ shadows the inherited one (verified: `F()` on a class whose __init__
+# requires an argument is a TypeError in python3). The emitted C# must carry only the
+# user's constructor, with no forwarders beside it.
+class AppError(Exception):
+    def __init__(self, msg: str) -> None:
+        super().__init__(msg)
+
+
+def main() -> None:
+    try:
+        raise AppError('boom')
+    except AppError:
+        print('explicit ok')
