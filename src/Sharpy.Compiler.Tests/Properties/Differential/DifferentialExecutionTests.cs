@@ -1109,6 +1109,19 @@ public class DifferentialExecutionTests : IntegrationTestBase
                     return;
                 }
 
+                // Sharpy's isinstance/issubclass accept a parameterized generic as the type
+                // argument (`isinstance(s, set[int])` — the only spelling available when the open
+                // form is refused, e.g. bare `frozenset` under SPY0345); CPython 3.12 raises
+                // "TypeError: isinstance() argument 2 cannot be a parameterized generic", in the
+                // bare, tuple, and issubclass forms alike (#1396).
+                if (name.Name is "isinstance" or "issubclass"
+                    && node.Arguments.Length >= 2
+                    && IsOrContainsParameterizedGeneric(Unwrap(node.Arguments[1])))
+                {
+                    Reject($"sharpy-only-call:parameterized-{name.Name}");
+                    return;
+                }
+
                 // Sharpy's map() accepts strict=; CPython's map() takes no keyword arguments at all
                 // (zip(..., strict=True) IS valid CPython >= 3.10 and stays eligible).
                 if (name.Name == "map" && node.KeywordArguments.Any(k => k.Name == "strict"))
@@ -1127,6 +1140,18 @@ public class DifferentialExecutionTests : IntegrationTestBase
 
             DefaultVisit(node);
         }
+
+        /// <summary>
+        /// A subscripted expression (<c>set[int]</c>), or a tuple with one as an element
+        /// (<c>(set[int], str)</c>) — the two shapes CPython's isinstance/issubclass reject at
+        /// runtime as "argument 2 cannot be a parameterized generic" (#1396).
+        /// </summary>
+        private static bool IsOrContainsParameterizedGeneric(Expression e) => e switch
+        {
+            IndexAccess => true,
+            TupleLiteral tuple => tuple.Elements.Any(el => Unwrap(el) is IndexAccess),
+            _ => false,
+        };
 
         public override void VisitBinaryOp(BinaryOp node)
         {
