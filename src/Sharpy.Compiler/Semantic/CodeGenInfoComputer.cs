@@ -390,25 +390,31 @@ internal class CodeGenInfoComputer
     /// </summary>
     private void DetectMemberCollisions(TypeSymbol typeSymbol, IEnumerable<Statement> body)
     {
-        var seen = new Dictionary<string, string>(); // CSharpName → originalName
+        var seen = new Dictionary<string, (string originalName, int? line)>(); // CSharpName → (originalName, line)
 
         foreach (var tp in typeSymbol.TypeParameters)
         {
-            seen[tp.Name] = tp.Name;
+            // Key on the name the emitter writes, not the source spelling: type parameters go out
+            // through CSharpKeywords.EscapeIfNeeded (`class` → `@class`), which is the same form a
+            // member's CSharpName takes, so a raw key could not match one.
+            seen[CSharpKeywords.EscapeIfNeeded(tp.Name)] = (tp.Name, tp.LineStart > 0 ? tp.LineStart : null);
         }
 
+        // TODO(#1385): properties, events, and enum members are not in this walk, so a case
+        // collision among them reaches the emitter and comes out as CS0102.
         foreach (var symbol in typeSymbol.Fields.Cast<Symbol>().Concat(typeSymbol.Methods))
         {
             var info = _semanticBinding.GetCodeGenInfo(symbol);
             if (info == null)
                 continue;
 
-            if (seen.TryGetValue(info.CSharpName, out var existingOriginal))
-            {
-                var line = FindMemberLine(body, symbol.Name);
+            var line = FindMemberLine(body, symbol.Name);
 
+            if (seen.TryGetValue(info.CSharpName, out var existing))
+            {
+                var firstPos = existing.line.HasValue ? $" (line {existing.line})" : "";
                 _diagnostics.AddError(
-                    $"Name collision: '{symbol.Name}' and '{existingOriginal}' both compile to " +
+                    $"Name collision: '{symbol.Name}' and '{existing.originalName}'{firstPos} both compile to " +
                     $"'{info.CSharpName}'. Rename one, or backtick-escape the name you need to keep.",
                     line: line,
                     code: DiagnosticCodes.CodeGen.MemberNameCollision,
@@ -416,7 +422,7 @@ internal class CodeGenInfoComputer
             }
             else
             {
-                seen[info.CSharpName] = symbol.Name;
+                seen[info.CSharpName] = (symbol.Name, line);
             }
         }
 

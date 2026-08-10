@@ -1,1 +1,1 @@
-Name collision
+Name collision: 't' and 'T' (line 1) both compile to 'T' @2:0

@@ -120,11 +120,19 @@ public static partial class DiagnosticExplanations
             "# File: animal.spy\n# Module class name would be 'Animal', but 'struct Animal' collides\nstruct Animal:\n    name: str",
             "Rename the type or the source file so that the type name does not match the file name in PascalCase.");
 
-        Add(dict, DiagnosticCodes.CodeGen.MemberNameCollision, "Member name collision after mangling", "CodeGen",
-            "Two symbols in the same scope produce the same C# name after name mangling. " +
-            "For example, 'foo_bar' and 'FooBar' both compile to 'FooBar'.",
-            "class Foo:\n    def foo_bar(self): ...\n    def FooBar(self): ...",
-            "Rename one of the conflicting symbols or use backtick escaping.");
+        Add(dict, DiagnosticCodes.CodeGen.MemberNameCollision, "Name collision after mangling", "CodeGen",
+            "Two distinct spellings in the same declaration space produce the same C# name after " +
+            "mangling — for example 'foo_bar' and 'FooBar', which both compile to 'FooBar'. " +
+            "The remedy depends on the space. At module level and inside a class body, a " +
+            "backtick-escaped name is emitted verbatim, so escaping the name that mangling would " +
+            "REWRITE (the snake_case one) keeps both spellings: escaping the other one changes " +
+            "nothing, because it already spells its emitted name. Inside a function body the escape " +
+            "is no remedy at all: a local is mangled either way, since on a local the escape says " +
+            "which symbol the name denotes rather than how it is spelled (#1357). A local collision " +
+            "can only be resolved by renaming one of the two.",
+            "class Foo:\n    `foo_bar`: int = 1   # escaped, so it emits foo_bar\n    FooBar: int = 2      # emits FooBar — no longer a collision\n\ndef main() -> None:\n    zed: int = 6\n    Zed: int = 7         # both emit zed; the escape will not help, rename one",
+            "Module-level or class-member collision: backtick-escape the name mangling would rewrite, " +
+            "or rename one of the two. Local collision: rename one of the two.");
 
         Add(dict, DiagnosticCodes.CodeGen.FunctionModuleClassCollision, "Function name collides with module class name", "CodeGen",
             "A module-level function's mangled name matches the module class name derived from the source filename. " +
