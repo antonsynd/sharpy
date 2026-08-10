@@ -1,0 +1,30 @@
+# #1308, third spelling. `case`/`isinstance` have their own fixtures; `as?` is the remaining way to
+# name a bare generic as a runtime type, and the three must agree — the fill is one rule at one
+# authority, not three.
+#
+# `Pair[T]` derives from `Box[list[T]]`, so `p as? Box` fills `Box[list[int]]` and the payload reads
+# as a `list[int]`. As in the sibling fixtures, the READ is the discriminating part: a positional
+# copy of the derived arguments onto the base would produce `Box[int]` and still cast successfully.
+
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+class Pair[T](Box[list[T]]):
+    def __init__(self, value: list[T]) -> None:
+        super().__init__(value)
+
+
+def main() -> None:
+    p: Pair[int] = Pair[int]([1, 2, 3])
+
+    c = p as? Box
+    if c is not None:
+        payload: list[int] = c.value
+        print(len(payload))
+        print(payload[2])
+    else:
+        print("no match")

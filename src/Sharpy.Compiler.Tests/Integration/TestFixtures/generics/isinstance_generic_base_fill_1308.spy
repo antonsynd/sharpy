@@ -1,5 +1,9 @@
 # #1308: isinstance fills through the inheritance chain.
-# Pair[int](Box[list[int]]) — isinstance(p, Box) fills Box[list[int]].
+#
+# `Pair[int]` derives from `Box[list[int]]`, so `isinstance(p, Box)` fills `Box[list[int]]`. The
+# narrowed value's payload is READ as a `list[int]`: reaching the branch only proves the test
+# matched, which a positional copy filling `Box[int]` would also do. `len(p.value)` is what
+# distinguishes them — an `int` payload does not compile there.
 
 class Box[T]:
     value: T
@@ -16,6 +20,7 @@ class Pair[T](Box[list[T]]):
 def main() -> None:
     p: Pair[int] = Pair[int]([1, 2])
     if isinstance(p, Box):
-        print("isinstance Box: True")
+        payload: list[int] = p.value
+        print(len(payload))
     else:
-        print("isinstance Box: False")
+        print("no match")

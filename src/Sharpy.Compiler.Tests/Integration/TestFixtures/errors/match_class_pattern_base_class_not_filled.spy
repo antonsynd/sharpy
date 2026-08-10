@@ -1,8 +1,12 @@
 # #1308: the fill WALKS the inheritance chain with per-level substitution.
 #
-# `Pair[T]` derives from `Box[list[T]]`, so a scrutinee of `Pair[int]` is a
-# `Box[list[int]]` — and the fill produces `Box[list[int]]`, NOT `Box[int]`.
-# The match arm body entering proves the fill succeeded.
+# `Pair[T]` derives from `Box[list[T]]`, so a scrutinee of `Pair[int]` is a `Box[list[int]]` — and
+# the fill must produce `Box[list[int]]`, NOT `Box[int]`.
+#
+# The arm BINDS and READS the payload, which is what makes this fixture discriminating: entering the
+# arm only proves the pattern matched, and a positional copy of the derived class's arguments onto
+# the base (`Box[int]`) matches too. Typing `b.value` as `list[int]` is what a positional copy
+# cannot do — under it `b.value` is an `int`, and `len(...)`/indexing on an int does not compile.
 
 class Box[T]:
     value: T
@@ -19,7 +23,9 @@ class Pair[T](Box[list[T]]):
 def main() -> None:
     p: Pair[int] = Pair[int]([1, 2])
     match p:
-        case Box():
-            print("matched Box")
+        case Box() as b:
+            payload: list[int] = b.value
+            print(len(payload))
+            print(payload[0] + payload[1])
         case _:
             print("other")
