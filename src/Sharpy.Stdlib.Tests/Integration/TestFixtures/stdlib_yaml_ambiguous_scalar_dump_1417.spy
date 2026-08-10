@@ -1,0 +1,11 @@
+# Oracle guard for #1417: a string whose text is a YAML scalar of another type must be QUOTED
+# on dump or it changes type on the way back in. PyYAML emits 'true' / '42'; Sharpy emits them
+# bare. This fixture pins Sharpy's CURRENT (divergent) behavior so the differential oracle
+# guards the divergence live — its allowlist entry cites #1417 and drains when it lands, at
+# which point the expected output gains the quotes. The round-trip corruption itself is pinned
+# (by absence) in stdlib_yaml_round_trip.spy's header.
+import yaml
+
+def main():
+    print(yaml.safe_dump("true").strip())
+    print(yaml.safe_dump("42").strip())

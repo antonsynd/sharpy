@@ -1,0 +1,9 @@
+# Oracle guard for #1423: YAML 1.1 requires a '.' in the plain-float form, so PyYAML types
+# "1e-7" as the STRING '1e-7'; Sharpy's YamlScalarResolver is more permissive and returns the
+# float 1e-07. This fixture pins Sharpy's CURRENT (divergent) behavior so the differential
+# oracle guards the divergence live — its allowlist entry cites #1423 and drains when it lands,
+# at which point the expected output below becomes "1e-7" (the string, unchanged by load).
+import yaml
+
+def main():
+    print(yaml.safe_load("1e-7"))

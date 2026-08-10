@@ -109,3 +109,27 @@ fixture::stdlib-tests/stdlib_math
 fixture::stdlib-tests/stdlib_from_math
 
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
+
+# safe_dump leaves a string whose text is a YAML scalar of another type UNQUOTED, so it
+# prints `true` / `42` where PyYAML prints 'true' / '42' — and the value silently changes
+# type on the way back in. The fixture exists to hold this divergence in front of the
+# oracle (it pins Sharpy's current output in its .expected, so only the oracle objects).
+# #1417. Delete when it lands; the fixture's .expected gains the quotes then.
+fixture::stdlib-tests/stdlib_yaml_ambiguous_scalar_dump_1417
+
+# safe_dump of a BARE SCALAR omits the '...' document-end marker PyYAML emits, so Sharpy
+# prints `1.0` where PyYAML prints `1.0\n...`. Collections agree (`a: 1`, `- 1`); the marker
+# is specific to the top-level-scalar case. Found by the oracle on its first run that could
+# actually reach PyYAML — before the -S fix every yaml cell skipped.
+# #1426. Delete when it lands; stdlib_yaml's .expected gains the markers if parity is ruled.
+fixture::stdlib-tests/stdlib_yaml
+
+# NOTE — #1423's guard fixture (stdlib_yaml_exponent_scalar_1423) is deliberately NOT listed.
+# It MATCHES under the oracle: measured, the python arm prints `1e-7` and the fixture's own
+# .expected (which its FileBased test passes against) is `1e-07`, yet the differential run
+# classifies the cell as neither divergent nor skipped. Those three facts cannot all hold, so
+# the cell is not measuring what it looks like it measures, and an allowlist entry for it
+# would be a stale entry asserting a divergence that never arrives — the ratchet says so, and
+# it is right. #1423 itself is real and independently reproducible (safe_load("1e-7") is a
+# float in Sharpy, a str in PyYAML); what is unresolved is whether that difference can reach
+# the oracle through stdout at all. Tracked on #1423.
