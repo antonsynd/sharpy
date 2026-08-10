@@ -418,10 +418,6 @@ internal partial class RoslynEmitter
         // The _classNames tracking set was used for instantiation detection but is no longer needed
         // since the symbol table is populated during semantic analysis.
 
-        // Check if this is an abstract class (for implicit abstract method detection)
-        var wasInAbstractClass = _isInAbstractClass;
-        _isInAbstractClass = classDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
-
         // Transform class name
         var className = NameCasing.ResolveType(classDef.Name, classDef.IsNameBacktickEscaped);
 
@@ -588,9 +584,6 @@ internal partial class RoslynEmitter
         {
             classDecl = classDecl.WithLeadingTrivia(GenerateXmlDocComment(classDef.DocString));
         }
-
-        // Restore previous abstract class context
-        _isInAbstractClass = wasInAbstractClass;
 
         return classDecl;
     }

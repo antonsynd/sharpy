@@ -57,13 +57,16 @@ internal partial class RoslynEmitter
         // Build modifiers from decorators
         var modifiers = GenerateMethodModifiers(eventDef.Name, eventDef.Decorators);
 
-        // Check for abstract: abstract events don't need nullable type.
-        // This stays an AST derivation rather than an EventSymbol read (unlike the function-style
-        // path below): NameResolver's implicit-stub arm requires IsFunctionStyle, so the symbol
-        // classifies an auto-event by decorator alone and reading it would make every auto-event in
-        // an abstract class nullable — a different emitted type, not a different spelling.
-        bool isAbstract = eventDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
-            || _isInAbstractClass;
+        // Abstractness decides the type's nullability — an abstract event has no backing field, so it
+        // is not nullable. Read from the symbol, which classifies an auto-event by its DECORATOR alone
+        // (#1372). The emitter used to add `|| owner-is-abstract` here, and that arm was the bug: an
+        // undecorated auto-event is a concrete event with a backing field and subscribers whatever its
+        // owner's abstractness, so it is nullable like every other concrete auto-event. The two
+        // formulas disagreed on exactly that cell, which is what kept this site from being a symbol
+        // read at all.
+        var autoEventSymbol = _currentTypeSymbol?.Events.FirstOrDefault(e => e.Name == eventDef.Name);
+        bool isAbstract = autoEventSymbol?.IsAbstract
+            ?? MemberClassification.HasAbstractDecorator(eventDef.Decorators);
 
         // For abstract events, the type is not nullable (abstract events have no backing field)
         var eventType = isAbstract ? delegateType : nullableType;
@@ -94,25 +97,6 @@ internal partial class RoslynEmitter
                 VariableDeclarator(Identifier(eventName))));
 
         return EventFieldDeclaration(declaration).WithModifiers(modifiers);
-    }
-
-    /// <summary>
-    /// True when a function-style event accessor is abstract: it carries <c>@abstract</c>, or it sits
-    /// in an abstract class with an ellipsis body (implicit abstract). The implicit arm uses
-    /// <see cref="AstHelper.IsEllipsisStubBody"/> — the abstract-class rule, matching
-    /// <c>NameResolver</c>/<c>TypeChecker</c>, under which a <c>pass</c> body is a concrete empty
-    /// implementation rather than a stub.
-    /// <para>
-    /// This is the fallback for the only shape where the merged <c>EventSymbol</c> is unreachable:
-    /// a nested type, whose symbol <c>NameResolver</c> defines inside the enclosing class scope, so
-    /// the global lookup behind <c>_currentTypeSymbol</c> does not find it and codegen sees no symbol
-    /// at all. Everywhere else the symbol answers.
-    /// </para>
-    /// </summary>
-    private bool IsAbstractEventAccessor(EventDef eventDef)
-    {
-        return eventDef.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract)
-            || (_isInAbstractClass && AstHelper.IsEllipsisStubBody(eventDef.Body));
     }
 
     /// <summary>
@@ -155,8 +139,8 @@ internal partial class RoslynEmitter
         // Abstractness is decided in name resolution and read here, not re-derived (#1267). One
         // answer covers the whole accessor pair: the merged EventSymbol carries the first accessor's
         // classification, and SPY0424 refuses a pair whose accessors disagree, so the pair is uniform
-        // by the time codegen runs. IsAbstractEventAccessor is the fallback for nested types, whose
-        // symbol codegen cannot look up — the only shape that still re-derives.
+        // by the time codegen runs. The nested-type fallback that used to sit beside this read is gone
+        // with its cause — a nested type's symbol is now reachable (#1371).
         var eventSymbol = _currentTypeSymbol?.Events.FirstOrDefault(e => e.Name == first.Name);
 
         // C# forbids accessor syntax on an abstract event (CS8712): when the event is abstract and
@@ -164,7 +148,7 @@ internal partial class RoslynEmitter
         // declaration form instead of an accessor list.
         // "Body is a stub" is AstHelper.IsAbstractStubBody, the same predicate EventValidator uses
         // to accept an @abstract event body, so every body the validator admits is lowerable here.
-        bool isAbstractEvent = eventSymbol?.IsAbstract ?? eventGroup.All(IsAbstractEventAccessor);
+        bool isAbstractEvent = eventSymbol?.IsAbstract ?? false;
 
         if (isAbstractEvent
             && eventGroup.All(e => AstHelper.IsAbstractStubBody(e.Body)))
@@ -210,7 +194,7 @@ internal partial class RoslynEmitter
 
             var accessor = AccessorDeclaration(accessorKind);
 
-            if (eventSymbol?.IsAbstract ?? IsAbstractEventAccessor(eventDef))
+            if (eventSymbol?.IsAbstract ?? false)
             {
                 accessor = accessor.WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
             }

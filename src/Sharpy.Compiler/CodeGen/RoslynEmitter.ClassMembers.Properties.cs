@@ -129,8 +129,7 @@ internal partial class RoslynEmitter
         var modifiers = GenerateMethodModifiers(primaryFunc.Name, primaryFunc.Decorators);
 
         var indexerSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == primaryFunc.Name);
-        bool isAbstract = indexerSymbol?.IsAbstract
-            ?? primaryFunc.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Abstract);
+        bool isAbstract = indexerSymbol?.IsAbstract ?? false;
 
         if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))
         {

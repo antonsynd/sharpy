@@ -27,7 +27,20 @@ internal partial class RoslynEmitter
         var fieldTypeMapping = new Dictionary<string, TypeAnnotation>();
         var fieldMembers = new List<MemberDeclarationSyntax>();
 
-        var typeSymbol = _context.LookupSymbol(originalTypeName) as TypeSymbol;
+        // A NESTED type's symbol is defined by NameResolver inside the enclosing class's scope, so the
+        // global lookup below cannot see it and `_currentTypeSymbol` was null for every nested type
+        // (#1371) — which is why an implicitly-abstract member of a nested @abstract class emitted a
+        // silently-throwing concrete member instead of an abstract one. The enclosing symbol's
+        // NestedTypes is the index NameResolver already populates, and `_currentTypeSymbol` still holds
+        // that enclosing symbol here, because this method is re-entered through the nested type's
+        // generation before the outer frame restores it.
+        //
+        // Nested is consulted FIRST: an inner name shadows an outer one, so when both exist the inner
+        // symbol is the right answer. This can only change what a nested type resolves to, since
+        // `_currentTypeSymbol` is null at module level.
+        var typeSymbol =
+            _currentTypeSymbol?.NestedTypes.FirstOrDefault(n => n.Name == originalTypeName)
+            ?? _context.LookupSymbol(originalTypeName) as TypeSymbol;
         var previousTypeSymbol = _currentTypeSymbol;
         _currentTypeSymbol = typeSymbol;
 

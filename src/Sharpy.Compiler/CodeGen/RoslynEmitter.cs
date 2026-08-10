@@ -171,10 +171,6 @@ internal partial class RoslynEmitter : ICodeEmitter
     // Optional<T>.None rather than a bare `null` (which won't convert to the struct).
     private SemanticType? _currentReturnType;
 
-    // Track if we're currently generating methods for an abstract class
-    // Used for implicit abstract method detection (ellipsis body in abstract class = abstract method)
-    private bool _isInAbstractClass;
-
     // Track if the current method being generated is a generator (contains yield statements).
     // When true, GenerateReturn emits yield break instead of return, and the method's
     // return type is wrapped in IEnumerable<T> or IEnumerator<T>.
