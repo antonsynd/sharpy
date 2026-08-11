@@ -491,8 +491,9 @@ public class ReplSession
         {
             // Share the assembly path's SPY0908 net so a compiler bug that emits invalid
             // C# surfaces as an internal-error diagnostic, never a bare CSxxxx code (#1059).
-            // EmitLineDirectives is off in the REPL, so any mapped location is generated-C#
-            // coords — that's the documented scope; SPY0908 + preserved CS text is the point.
+            // EmitLineDirectives is off in the REPL, so nothing here carries a mapping and the
+            // diagnostic is reported with no position at all rather than a generated-C# one
+            // (#1427); SPY0908 + the preserved CS text is the point.
             //
             // The net stays fully armed here, and front-end parity holds without threading the
             // #1387 gate through: CompileAndExecute only reaches this method when the front-end

@@ -488,9 +488,20 @@ internal class AssemblyCompiler
                 lineSpan = enclosing;
             }
 
-            filePath = lineSpan.HasMappedPath ? lineSpan.Path : Path.GetFileName(lineSpan.Path);
-            line = lineSpan.StartLinePosition.Line + 1;
-            column = lineSpan.StartLinePosition.Character + 1;
+            // A mapped path is the only coordinate the user can act on (#1427). Without one, the
+            // span describes the generated C# — a file the user never wrote, cannot open, and did
+            // not ask to be told about — so the position is omitted rather than reported. That is
+            // strictly better than the generated-file fallback it replaces: a caret into
+            // `probe_bracket_attr.cs:13:10` looks like a location and is not one, whereas an
+            // omitted position lets the renderer fall back to naming the file it was handed. This
+            // deliberately does not attempt to invent a mapping; the enclosing-region walk above
+            // (#1237) is as far as the recovery goes.
+            if (lineSpan.HasMappedPath)
+            {
+                filePath = lineSpan.Path;
+                line = lineSpan.StartLinePosition.Line + 1;
+                column = lineSpan.StartLinePosition.Character + 1;
+            }
         }
 
         var rawMessage = diagnostic.GetMessage(CultureInfo.InvariantCulture);
