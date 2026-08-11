@@ -1,0 +1,23 @@
+# #1409: a class deriving from a CLR GENERIC base sees the base's members.
+#
+# The member-lookup arm for a UserDefinedType receiver is gated on the RECEIVER's own ClrType, and
+# the four hierarchy walks behind it read TypeSymbol.Fields/Properties/Methods — which a raw BCL
+# TypeSymbol leaves empty. So `m.add(7)` drew SPY0203 while the SAME member on a direct `List[int]`
+# receiver took the permissive channel and ran. The discriminator was never "is the base CLR" but
+# "did anything reflect": `class AppError(Exception)` works for the same reason a direct receiver
+# does. The fix resolves the member against the nearest CLR-backed ANCESTOR, instantiated at the
+# base clause's written arguments.
+from system.collections.generic import List
+
+
+class IntList(List[int]):
+    pass
+
+
+def main() -> None:
+    m: IntList = IntList()
+    m.add(7)
+    m.add(8)
+    print(m.count)
+    ok: List[int] = m
+    print(ok.count)

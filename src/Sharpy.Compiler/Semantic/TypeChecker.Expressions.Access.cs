@@ -443,6 +443,20 @@ internal partial class TypeChecker
                 return methodFunctionType;
             }
 
+            // A receiver whose OWN symbol is not CLR-backed can still inherit a CLR member through its
+            // base clause: `class IntList(List[int])` reaches System.Collections.Generic.List<int>
+            // (#1409). The discovered-members block above is gated on the RECEIVER's ClrType, and the
+            // four hierarchy walks just above read TypeSymbol.Fields/Properties/Methods, which a raw
+            // BCL TypeSymbol leaves empty — so `m.add(7)` was refused outright while the SAME member
+            // on a direct `List[int]` receiver takes the permissive channel and runs. This resolves the
+            // ancestor's surface at the base clause's written arguments, and falls back to the same
+            // #1141 absence proof a direct receiver of that ancestor would face.
+            if (TryResolveInheritedClrMember(memberAccess, udt.Symbol, Array.Empty<SemanticType>())
+                is { } inheritedClrMember)
+            {
+                return inheritedClrMember;
+            }
+
             var typeMemberMessage = $"Type '{memberLookupType.GetDisplayName()}' has no member '{effectiveMember}'";
             string? typeMemberSuggestion = null;
             if (udt.Symbol != null)
@@ -641,6 +655,110 @@ internal partial class TypeChecker
                 "codegen resolves this receiver's members through CLR discovery"));
         return SemanticType.Unknown;
     }
+
+    /// <summary>
+    /// Resolves a member against the nearest CLR-backed ANCESTOR of a receiver whose own symbol has no
+    /// <see cref="TypeSymbol.ClrType"/>, with the base clause's written type arguments substituted in
+    /// (#1409). Returns null when the receiver has no CLR ancestor, leaving the caller's own
+    /// "no member" report intact.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The substitution is what distinguishes this from a plain "look on the base too": the ancestor's
+    /// discovered members are built ONCE from the open definition and shared by every instantiation, so
+    /// <c>List[T].Add(T)</c> is the same <see cref="FunctionSymbol"/> for <c>IntList</c> and for
+    /// <c>StrList</c>. Typing the member at the receiver's inherited arguments means composing the base
+    /// chain's maps, which <see cref="GenericInstantiationWalker.FindClrAncestor"/> does; the composition
+    /// is why <c>class A(B[int])</c> over <c>class B[T](C[T])</c> reaches <c>C[int]</c> and not
+    /// <c>C[T]</c>.
+    /// </para>
+    /// <para>
+    /// Falling through to the permissive channel rather than to the caller's refusal is deliberate and
+    /// is parity, not laxity: a DIRECT <c>List[int]</c> receiver whose member misses the discovered
+    /// surface already lands there (a raw BCL <see cref="TypeSymbol"/> has empty <c>Methods</c>, so
+    /// nearly every member does), and codegen resolves it through CLR discovery. Refusing the derived
+    /// spelling of a reference the direct spelling accepts is the defect #1409 reported.
+    /// </para>
+    /// </remarks>
+    private SemanticType? TryResolveInheritedClrMember(
+        MemberAccess memberAccess, TypeSymbol receiver, IReadOnlyList<SemanticType> receiverTypeArguments)
+    {
+        // The receiver's own CLR surface is the caller's business (the gate this method sits behind).
+        if (receiver.ClrType != null)
+            return null;
+
+        var ancestor = GenericInstantiationWalker.FindClrAncestor(
+            receiver, receiverTypeArguments, SemanticBinding, _typeResolver);
+        if (ancestor == null)
+            return null;
+
+        var definition = ancestor.Definition;
+        var typeArgs = ancestor.TypeArguments.ToList();
+        SemanticType Substitute(SemanticType t) =>
+            definition.TypeParameters.Count > 0 && definition.TypeParameters.Count == typeArgs.Count
+                ? SubstituteTypeParameters(t, definition.TypeParameters, typeArgs, substituteNamedUserTypes: true)
+                : t;
+
+        var member = memberAccess.Member;
+
+        var inheritedProperty = definition.Properties.FirstOrDefault(p => p.Name == member);
+        if (inheritedProperty != null)
+            return Substitute(inheritedProperty.Type);
+
+        var inheritedMethod = definition.Methods.FirstOrDefault(m => m.Name == member);
+        if (inheritedMethod != null)
+        {
+            var selfOffset = inheritedMethod.Parameters.Count > 0
+                && inheritedMethod.Parameters[0].Name == PythonNames.Self
+                ? 1 : 0;
+            var substitutedParams = inheritedMethod.Parameters
+                .Select(p => p with { Type = Substitute(p.Type) })
+                .ToList();
+            return FunctionType.FromParameters(
+                substitutedParams, Substitute(inheritedMethod.ReturnType), skipLeading: selfOffset);
+        }
+
+        var inheritedField = definition.Fields.FirstOrDefault(f => f.Name == member);
+        if (inheritedField != null)
+            return Substitute(GetVariableType(inheritedField));
+
+        // Nothing discovered on the ancestor. The #1141 absence proof decides between a refusal and the
+        // permissive channel, measured against the ancestor instantiated at the written arguments — the
+        // same question, and so the same answer, a direct receiver of that ancestor would get.
+        if (ClrReflectionProvesMemberAbsent(InstantiatedTypeOf(ancestor), member, out var suggestion))
+        {
+            var absentMessage = $"Type '{receiver.Name}' has no member '{member}'";
+            if (suggestion != null)
+                absentMessage += $". Did you mean '{suggestion}'?";
+
+            AddError(absentMessage,
+                memberAccess.LineStart, memberAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedMember,
+                span: memberAccess.Span,
+                data: SuggestionData(suggestion));
+            return SemanticType.Unknown;
+        }
+
+        MarkExpressionAsErrorRecovery(memberAccess,
+            ErrorRecoveryReason.DeliberatelyPermissive(
+                "codegen resolves an inherited CLR member through discovery on the base type"));
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// The <see cref="SemanticType"/> form of a walked supertype: a <see cref="GenericType"/> when the
+    /// chain produced type arguments, a <see cref="UserDefinedType"/> otherwise.
+    /// </summary>
+    private static SemanticType InstantiatedTypeOf(
+        GenericInstantiationWalker.InstantiatedSupertype ancestor)
+        => ancestor.TypeArguments.Count > 0
+            ? new GenericType
+            {
+                Name = ancestor.Definition.Name,
+                TypeArguments = ancestor.TypeArguments.ToList(),
+                GenericDefinition = ancestor.Definition
+            }
+            : new UserDefinedType { Name = ancestor.Definition.Name, Symbol = ancestor.Definition };
 
     /// <summary>
     /// Whether <paramref name="type"/> is an <c>object</c> the USER wrote — the receiver whose unknown
@@ -1651,6 +1769,16 @@ internal partial class TypeChecker
                 {
                     UserDefinedType udt when (udt.Symbol as TypeSymbol)?.ClrType is { } ct => ct,
                     BuiltinType bt => bt.ClrType,
+                    // A receiver that INHERITS its CLR surface reaches the same members and needs the
+                    // same verbatim spelling (#1409). Without this the member resolves (the lookup arm
+                    // above sees it) but arrives at codegen with no entry in _resolvedClrMemberNames,
+                    // and is emitted through NameMangler instead — which survives `add` -> `Add` by
+                    // luck and corrupts every member whose CLR casing mangling cannot reproduce
+                    // (socket's lowercase `type`, IsOSPlatform's acronym; #1093, #974).
+                    UserDefinedType { Symbol: TypeSymbol receiver } =>
+                        InheritedClrTypeOf(receiver, Array.Empty<SemanticType>()),
+                    GenericType { GenericDefinition: { ClrType: null } definition } gt =>
+                        InheritedClrTypeOf(definition, gt.TypeArguments),
                     _ => null
                 };
 
@@ -1665,6 +1793,18 @@ internal partial class TypeChecker
         if (clrName != null)
             _semanticInfo.SetResolvedClrMemberName(memberAccess, clrName);
     }
+
+    /// <summary>
+    /// The CLR type a receiver inherits its member surface from — the nearest CLR-backed ancestor of
+    /// <paramref name="receiver"/> — or null when there is none (#1409). Name resolution is
+    /// arity-independent, so the ancestor's own (open) <see cref="TypeSymbol.ClrType"/> is the right
+    /// reflection target even when the chain closed it at concrete arguments.
+    /// </summary>
+    private Type? InheritedClrTypeOf(TypeSymbol receiver, IReadOnlyList<SemanticType> receiverTypeArguments)
+        => receiver.ClrType
+           ?? GenericInstantiationWalker
+               .FindClrAncestor(receiver, receiverTypeArguments, SemanticBinding, _typeResolver)
+               ?.Definition.ClrType;
 
     /// <summary>
     /// Records that a <c>str</c> method call must be emitted as a static

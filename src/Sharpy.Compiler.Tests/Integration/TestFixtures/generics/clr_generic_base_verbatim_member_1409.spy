@@ -1,0 +1,20 @@
+# #1409, second leg: an INHERITED CLR member also needs its verbatim CLR spelling recorded.
+#
+# RecordResolvedClrMemberName returned early for a derived receiver, so a member made visible by the
+# lookup fix arrived at code generation with no _resolvedClrMemberNames entry and was emitted through
+# NameMangler instead. `add` -> `Add` and `count` -> `Count` survive that by luck, which is why the
+# #1409 repro cannot catch this leg; these two cannot. Forward-mangling `two_letter_iso_language_name`
+# gives `TwoLetterIsoLanguageName` and `lcid` gives `Lcid`, both CS1061 behind SPY0908 — the same
+# class of defect as socket's lowercase `type` (#1093) and IsOSPlatform's acronym (#974), reached
+# through inheritance rather than directly.
+from system.globalization import CultureInfo
+
+
+class MyCulture(CultureInfo):
+    pass
+
+
+def main() -> None:
+    c: MyCulture = MyCulture("en-US")
+    print(c.two_letter_iso_language_name)
+    print(c.lcid)
