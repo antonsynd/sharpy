@@ -1,0 +1,26 @@
+# #1403: the library half. `IntBox(Container[int])` writes a CONCRETE argument on an interface
+# base — the fact ModuleLoader's extraction used to drop, keeping only the name "Container".
+
+interface Container[T]:
+    def get(self) -> T:
+        ...
+
+
+class IntBox(Container[int]):
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    def get(self) -> int:
+        return self.value
+
+
+struct StrCell(Container[str]):
+    text: str
+
+    def __init__(self, text: str):
+        self.text = text
+
+    def get(self) -> str:
+        return self.text

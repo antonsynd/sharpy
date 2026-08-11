@@ -93,9 +93,13 @@ internal record CachedSymbol
     public string? UnresolvedBaseName { get; init; }
 
     /// <summary>
-    /// For TypeSymbol: unresolved interface names that cannot be expressed as registry IDs.
+    /// For TypeSymbol: unresolved interface references that cannot be expressed as registry IDs,
+    /// each a serialized <see cref="Parser.Ast.TypeAnnotation"/> so the written type arguments
+    /// survive a warm build (#1403). Mirrors <see cref="BaseTypeArgs"/>, which does the same for
+    /// the base class. A v23 entry holds bare names, which deserialize as argument-less
+    /// annotations — the pre-#1403 behaviour — but the schema bump to v24 keeps the two apart.
     /// </summary>
-    public List<string>? UnresolvedInterfaceNames { get; init; }
+    public List<string>? UnresolvedInterfaces { get; init; }
 
     /// <summary>
     /// For TypeSymbol: interface entries (symbol ID + type arg annotations)

@@ -358,9 +358,11 @@ internal class ModuleLoader
         var unresolvedBaseTypeArgs = classDef.BaseClasses.Length > 0
             ? classDef.BaseClasses[0].TypeArguments
             : ImmutableArray<TypeAnnotation>.Empty;
+        // The written annotations, not their names (#1403): `class Repo(Base, Comparable[int])`
+        // means Comparable AT int, and a name-only record cannot say so.
         var unresolvedInterfaces = classDef.BaseClasses.Length > 1
-            ? classDef.BaseClasses.Skip(1).Select(b => b.Name).ToList()
-            : new List<string>();
+            ? classDef.BaseClasses.Skip(1).ToList()
+            : new List<TypeAnnotation>();
 
         var fields = ExtractFields(classDef.Body);
 
@@ -403,7 +405,7 @@ internal class ModuleLoader
             DefiningModule = definingModulePath,
             UnresolvedBaseName = unresolvedBase,
             UnresolvedBaseTypeArgs = unresolvedBaseTypeArgs,
-            UnresolvedInterfaceNames = unresolvedInterfaces,
+            UnresolvedInterfaces = unresolvedInterfaces,
             Fields = fields,
             Methods = methods,
             Constructors = ctors,
@@ -468,7 +470,7 @@ internal class ModuleLoader
             NameDeclarationColumn = structDef.NameColumnStart,
             DeclarationSpan = structDef.Span,
             DefiningModule = definingModulePath,
-            UnresolvedInterfaceNames = structDef.BaseClasses.Select(b => b.Name).ToList(),
+            UnresolvedInterfaces = structDef.BaseClasses.ToList(),
             Fields = fields,
             Methods = methods,
             Constructors = ctors,
@@ -521,7 +523,7 @@ internal class ModuleLoader
             NameDeclarationColumn = interfaceDef.NameColumnStart,
             DeclarationSpan = interfaceDef.Span,
             DefiningModule = definingModulePath,
-            UnresolvedInterfaceNames = interfaceDef.BaseInterfaces.Select(b => b.Name).ToList(),
+            UnresolvedInterfaces = interfaceDef.BaseInterfaces.ToList(),
             Methods = methods,
             Properties = properties,
             Events = events,

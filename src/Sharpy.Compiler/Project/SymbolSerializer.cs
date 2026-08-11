@@ -128,8 +128,8 @@ internal static class SymbolSerializer
             UnresolvedBaseName = !string.IsNullOrEmpty(ts.UnresolvedBaseName)
                 ? ts.UnresolvedBaseName
                 : ts.BaseType is { ClrType: not null } clrBase ? clrBase.Name : null,
-            UnresolvedInterfaceNames = ts.UnresolvedInterfaceNames.Count > 0
-                ? ts.UnresolvedInterfaceNames.ToList() : null,
+            UnresolvedInterfaces = ts.UnresolvedInterfaces.Count > 0
+                ? ts.UnresolvedInterfaces.Select(SerializeTypeAnnotation).ToList() : null,
             InterfaceEntries = ts.Interfaces.Count > 0
                 ? ts.Interfaces.Where(i => i.Definition.ClrType == null).Select(i => new CachedInterfaceEntry
                 {
@@ -486,11 +486,14 @@ internal static class SymbolSerializer
                 : ImmutableArray<TypeAnnotation>.Empty
         };
 
-        // Restore unresolved interface names so Phase 4b/4c resolves them (#1309)
-        if (cached.UnresolvedInterfaceNames is { Count: > 0 })
+        // Restore unresolved interface references so Phase 4b/4c resolves them (#1309). Round-trips
+        // the written ANNOTATION, not just the name (#1403): a warm build that restored bare names
+        // would resolve `class Repo(Comparable[int])` to an argument-less Comparable and diverge
+        // from the cold build — the exact shape #1287 fixed for the base class. Hence schema v24.
+        if (cached.UnresolvedInterfaces is { Count: > 0 })
         {
-            foreach (var name in cached.UnresolvedInterfaceNames)
-                symbol.UnresolvedInterfaceNames.Add(name);
+            foreach (var annotation in cached.UnresolvedInterfaces)
+                symbol.UnresolvedInterfaces.Add(DeserializeTypeAnnotation(annotation));
         }
 
         symbol.Documentation = cached.Documentation;
@@ -1004,7 +1007,7 @@ internal static class SymbolSerializer
                 };
             }
         }
-        // UnresolvedBaseName and UnresolvedInterfaceNames are set during construction
+        // UnresolvedBaseName and UnresolvedInterfaces are set during construction
         // (init-only properties); Phase 4b/4c resolves them (#1309).
 
         // Resolve Interfaces from registry

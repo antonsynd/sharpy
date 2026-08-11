@@ -179,11 +179,18 @@ internal partial class ImportResolver
             Constructors = originalType.Constructors,
             BaseType = originalType.BaseType,
             BaseTypeRef = originalType.BaseTypeRef,
+            // Deliberately ALIASED, not copied — as are Fields/Methods/Constructors/Properties
+            // above and UnresolvedInterfaces below (#1403). A re-export is the same declaration
+            // seen under another name, and inheritance is materialized ONCE, onto whichever object
+            // InheritanceResolver reaches; a defensive copy here would freeze this list at
+            // re-export time and leave the alias permanently interface-less when materialization
+            // runs afterwards. The lists are append-only during resolution and never mutated per
+            // alias, so sharing is the correctness condition rather than a hazard.
             Interfaces = originalType.Interfaces,
             ClrType = originalType.ClrType,
             UnresolvedBaseName = originalType.UnresolvedBaseName,
             UnresolvedBaseTypeArgs = originalType.UnresolvedBaseTypeArgs,
-            UnresolvedInterfaceNames = originalType.UnresolvedInterfaceNames,
+            UnresolvedInterfaces = originalType.UnresolvedInterfaces,
             DeclarationLine = fromImport.LineStart,
             DeclarationColumn = fromImport.ColumnStart,
             NameDeclarationLine = originalType.NameDeclarationLine,

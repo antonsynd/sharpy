@@ -624,6 +624,60 @@ struct Packed:
         Assert.False(packed.Fields.Single(f => f.Name == "other").IsFinal);
     }
 
+    /// <summary>
+    /// #1403: the extraction records the written interface ANNOTATION, not its name.
+    /// <c>class Repo(Base, Comparable[int])</c> means Comparable AT int, and a name-only record
+    /// leaves InheritanceResolver no way to build anything but an argument-less reference. All
+    /// three extractors are cells: the class arm (base list minus the first entry), the struct arm
+    /// and the interface arm each built their own name-only list.
+    /// </summary>
+    [Fact]
+    public void LoadModule_UnresolvedInterfaces_CarryWrittenTypeArguments()
+    {
+        var path = CreateModule("ifaces.spy", @"
+interface Comparable[T]:
+    def compare(self, other: T) -> int:
+        ...
+
+interface Sized:
+    def size(self) -> int:
+        ...
+
+class Repo(Sized, Comparable[int]):
+    def size(self) -> int:
+        return 0
+
+    def compare(self, other: int) -> int:
+        return other
+
+struct Cell(Comparable[str]):
+    def compare(self, other: str) -> int:
+        return 0
+
+interface Ranked(Comparable[float]):
+    def rank(self) -> int:
+        ...
+");
+
+        var moduleInfo = _loader.LoadModule(path, 1, 1);
+
+        // Class: the FIRST base parks in UnresolvedBaseName/UnresolvedBaseTypeArgs (extraction
+        // cannot tell class from interface); the rest are the interface list.
+        var repo = Assert.IsType<TypeSymbol>(moduleInfo!.ExportedSymbols["Repo"]);
+        Assert.Equal("Sized", repo.UnresolvedBaseName);
+        var repoComparable = Assert.Single(repo.UnresolvedInterfaces);
+        Assert.Equal("Comparable", repoComparable.Name);
+        Assert.Equal(new[] { "int" }, repoComparable.TypeArguments.Select(a => a.Name));
+
+        var cell = Assert.IsType<TypeSymbol>(moduleInfo.ExportedSymbols["Cell"]);
+        var cellComparable = Assert.Single(cell.UnresolvedInterfaces);
+        Assert.Equal(new[] { "str" }, cellComparable.TypeArguments.Select(a => a.Name));
+
+        var ranked = Assert.IsType<TypeSymbol>(moduleInfo.ExportedSymbols["Ranked"]);
+        var rankedComparable = Assert.Single(ranked.UnresolvedInterfaces);
+        Assert.Equal(new[] { "float" }, rankedComparable.TypeArguments.Select(a => a.Name));
+    }
+
     private static TypeSymbol NestedNamed(TypeSymbol owner, string name)
         => owner.NestedTypes.Single(n => n.Name == name);
 }

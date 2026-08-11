@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using FluentAssertions;
@@ -56,7 +58,7 @@ public class InheritanceResolverTests
             Name = "Data",
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Class,
-            UnresolvedInterfaceNames = new List<string> { "ISerializable" }
+            UnresolvedInterfaces = new List<TypeAnnotation> { new TypeAnnotation { Name = "ISerializable" } }
         };
 
         symbolTable.Define(iface);
@@ -111,7 +113,7 @@ public class InheritanceResolverTests
             Name = "Baz",
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Class,
-            UnresolvedInterfaceNames = new List<string> { "IFoo", "IBar" }
+            UnresolvedInterfaces = new List<TypeAnnotation> { new TypeAnnotation { Name = "IFoo" }, new TypeAnnotation { Name = "IBar" } }
         };
 
         symbolTable.Define(iface1);
@@ -141,7 +143,7 @@ public class InheritanceResolverTests
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Class,
             UnresolvedBaseName = "Base",
-            UnresolvedInterfaceNames = new List<string> { "IComparable" }
+            UnresolvedInterfaces = new List<TypeAnnotation> { new TypeAnnotation { Name = "IComparable" } }
         };
 
         symbolTable.Define(parent);
@@ -235,7 +237,7 @@ public class InheritanceResolverTests
             Name = "Impl",
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Class,
-            UnresolvedInterfaceNames = new List<string> { "IMissing" }
+            UnresolvedInterfaces = new List<TypeAnnotation> { new TypeAnnotation { Name = "IMissing" } }
         };
         symbolTable.Define(impl);
 
@@ -259,7 +261,7 @@ public class InheritanceResolverTests
             Name = "Foo",
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Class,
-            UnresolvedInterfaceNames = new List<string> { "IFoo" }
+            UnresolvedInterfaces = new List<TypeAnnotation> { new TypeAnnotation { Name = "IFoo" } }
         };
 
         // Pre-add the interface via SemanticBinding
@@ -365,6 +367,141 @@ public class InheritanceResolverTests
         // SemanticBinding should remain empty since Symbol.BaseType was already set
         // (the dual-read pattern found it via fallback)
         binding.GetBaseType(child).Should().BeNull("no new binding should be written when Symbol.BaseType is already set");
+    }
+
+    #endregion
+
+    #region Interface type arguments (#1403)
+
+    /// <summary>
+    /// #1403: the deferred path must carry the WRITTEN arguments onto the reference.
+    /// <c>class Repo(Comparable[int])</c> means Comparable AT int; resolving it to an
+    /// argument-less reference makes every member reached through the interface answer with the
+    /// interface's open type parameter instead of <c>int</c>.
+    /// </summary>
+    [Fact]
+    public void ResolveImportedTypeInheritance_InterfaceReference_CarriesWrittenTypeArguments()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var iface = new TypeSymbol
+        {
+            Name = "Comparable",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Interface,
+            TypeParameters = new List<TypeParameterDef> { new() { Name = "T" } }
+        };
+        var impl = new TypeSymbol
+        {
+            Name = "Repo",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            UnresolvedInterfaces = new List<TypeAnnotation>
+            {
+                new() { Name = "Comparable", TypeArguments = ImmutableArray.Create(new TypeAnnotation { Name = "int" }) }
+            }
+        };
+
+        symbolTable.Define(iface);
+        symbolTable.Define(impl);
+
+        new InheritanceResolver(symbolTable, semanticBinding: binding).ResolveImportedTypeInheritance();
+
+        var reference = binding.GetInterfaces(impl).Should().ContainSingle().Subject;
+        reference.Definition.Should().Be(iface);
+        reference.TypeArgAnnotations.Select(a => a.Name).Should().Equal("int");
+    }
+
+    /// <summary>
+    /// #1403: the SECOND annotation-less <c>AddInterface</c>. When the first base turns out to be
+    /// an interface, extraction has already parked its arguments in
+    /// <see cref="TypeSymbol.UnresolvedBaseTypeArgs"/> — because extraction cannot tell a class
+    /// base from an interface base — and this arm is where that is learned. The issue names only
+    /// the interface-list arm; both dropped the annotations.
+    /// </summary>
+    [Fact]
+    public void ResolveImportedTypeInheritance_InterfaceInUnresolvedBaseName_CarriesWrittenTypeArguments()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var iface = new TypeSymbol
+        {
+            Name = "Container",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Interface,
+            TypeParameters = new List<TypeParameterDef> { new() { Name = "T" } }
+        };
+        var impl = new TypeSymbol
+        {
+            Name = "IntBox",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            UnresolvedBaseName = "Container",
+            UnresolvedBaseTypeArgs = ImmutableArray.Create(new TypeAnnotation { Name = "int" })
+        };
+
+        symbolTable.Define(iface);
+        symbolTable.Define(impl);
+
+        new InheritanceResolver(symbolTable, semanticBinding: binding).ResolveImportedTypeInheritance();
+
+        binding.GetBaseType(impl).Should().BeNull("an interface must not become the base type");
+        var reference = binding.GetInterfaces(impl).Should().ContainSingle().Subject;
+        reference.Definition.Should().Be(iface);
+        reference.TypeArgAnnotations.Select(a => a.Name).Should().Equal("int");
+    }
+
+    /// <summary>
+    /// #1403: arguments belong to each reference individually, so a two-interface base list keeps
+    /// them apart. A shape that stored one argument list per TYPE rather than per REFERENCE would
+    /// pass the single-interface cells above and fail here.
+    /// </summary>
+    [Fact]
+    public void ResolveImportedTypeInheritance_TypeArgumentsArePerReference()
+    {
+        var symbolTable = CreateSymbolTable();
+        var binding = new SemanticBinding();
+
+        var box = new TypeSymbol
+        {
+            Name = "Box",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Interface,
+            TypeParameters = new List<TypeParameterDef> { new() { Name = "T" } }
+        };
+        var tagged = new TypeSymbol
+        {
+            Name = "Tagged",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Interface,
+            TypeParameters = new List<TypeParameterDef> { new() { Name = "T" } }
+        };
+        var impl = new TypeSymbol
+        {
+            Name = "Pair",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            UnresolvedInterfaces = new List<TypeAnnotation>
+            {
+                new() { Name = "Box", TypeArguments = ImmutableArray.Create(new TypeAnnotation { Name = "int" }) },
+                new() { Name = "Tagged", TypeArguments = ImmutableArray.Create(new TypeAnnotation { Name = "str" }) }
+            }
+        };
+
+        symbolTable.Define(box);
+        symbolTable.Define(tagged);
+        symbolTable.Define(impl);
+
+        new InheritanceResolver(symbolTable, semanticBinding: binding).ResolveImportedTypeInheritance();
+
+        var interfaces = binding.GetInterfaces(impl);
+        interfaces.Should().HaveCount(2);
+        interfaces.Single(r => r.Definition == box).TypeArgAnnotations
+            .Select(a => a.Name).Should().Equal("int");
+        interfaces.Single(r => r.Definition == tagged).TypeArgAnnotations
+            .Select(a => a.Name).Should().Equal("str");
     }
 
     #endregion

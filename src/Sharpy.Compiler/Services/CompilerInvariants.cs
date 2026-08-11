@@ -290,7 +290,7 @@ public static class CompilerInvariants
     }
 
     /// <summary>
-    /// Verify all UnresolvedBaseName/UnresolvedInterfaceNames have been resolved
+    /// Verify all UnresolvedBaseName/UnresolvedInterfaces have been resolved
     /// after inheritance resolution. A dangling unresolved name means the inheritance
     /// resolver failed to find or match a type.
     /// </summary>
@@ -319,11 +319,11 @@ public static class CompilerInvariants
                     phase: CompilerPhase.NameResolution);
             }
 
-            // If UnresolvedInterfaceNames has entries but Interfaces count doesn't match
-            if (symbol.UnresolvedInterfaceNames.Count > 0 && symbol.Interfaces.Count < symbol.UnresolvedInterfaceNames.Count)
+            // If UnresolvedInterfaces has entries but Interfaces count doesn't match
+            if (symbol.UnresolvedInterfaces.Count > 0 && symbol.Interfaces.Count < symbol.UnresolvedInterfaces.Count)
             {
                 diagnostics.AddWarning(
-                    $"Internal invariant violation: type '{symbol.Name}' has {symbol.UnresolvedInterfaceNames.Count} unresolved interface names but only {symbol.Interfaces.Count} resolved interfaces after inheritance resolution. This is a compiler bug — please report it.",
+                    $"Internal invariant violation: type '{symbol.Name}' has {symbol.UnresolvedInterfaces.Count} unresolved interface names but only {symbol.Interfaces.Count} resolved interfaces after inheritance resolution. This is a compiler bug — please report it.",
                     code: DiagnosticCodes.Infrastructure.InvariantViolation,
                     phase: CompilerPhase.NameResolution);
             }

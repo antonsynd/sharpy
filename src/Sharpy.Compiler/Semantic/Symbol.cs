@@ -366,9 +366,20 @@ public record TypeSymbol : Symbol
         = ImmutableArray<TypeAnnotation>.Empty;
 
     /// <summary>
-    /// Unresolved interface names from AST, used for deferred inheritance resolution.
+    /// Unresolved interface references from AST, used for deferred inheritance resolution.
     /// </summary>
-    public List<string> UnresolvedInterfaceNames { get; init; } = new();
+    /// <remarks>
+    /// The written <see cref="TypeAnnotation"/>, not just its name (#1403). An interface base is a
+    /// reference like any other — <c>class Repo(Comparable[int])</c> means <c>Comparable</c> AT
+    /// <c>int</c> — and storing only "Comparable" made every deferred resolution produce an
+    /// argument-less <see cref="InterfaceReference"/>, so member lookup through the interface saw
+    /// open type parameters where the source wrote concrete types. Mirrors
+    /// <see cref="UnresolvedBaseTypeArgs"/>, which carries the same information for the base class.
+    /// Names are a projection (<c>.Select(a =&gt; a.Name)</c>) and are deliberately NOT stored
+    /// alongside: a name list and an annotation list are two records of one fact, and the second
+    /// one silently goes stale.
+    /// </remarks>
+    public List<TypeAnnotation> UnresolvedInterfaces { get; init; } = new();
 
     /// <summary>
     /// Builds a MethodOverloads dictionary from a list of methods, excluding dunder methods.

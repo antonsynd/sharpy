@@ -70,7 +70,16 @@ internal class InheritanceResolver
                     {
                         if (!TypeHierarchyService.GetAllInterfaces(type, _semanticBinding).Contains(baseType))
                         {
-                            _semanticBinding.AddInterface(type, baseType);
+                            // The written arguments belong to the reference even when the first
+                            // base turns out to be an interface — `class Repo(Comparable[int])`
+                            // parks its args in UnresolvedBaseTypeArgs because extraction cannot
+                            // tell class from interface, and this arm is where that is learned
+                            // (#1403).
+                            _semanticBinding.AddInterface(type, new InterfaceReference
+                            {
+                                Definition = baseType,
+                                TypeArgAnnotations = type.UnresolvedBaseTypeArgs
+                            });
                         }
                     }
                     else
@@ -92,17 +101,24 @@ internal class InheritanceResolver
 
             // Resolve interfaces
             var resolvedInterfaces = TypeHierarchyService.GetAllInterfaces(type, _semanticBinding);
-            foreach (var ifaceName in type.UnresolvedInterfaceNames)
+            foreach (var ifaceAnnotation in type.UnresolvedInterfaces)
             {
-                var ifaceType = LookupTypeInModuleScopes(ifaceName);
+                var ifaceType = LookupTypeInModuleScopes(ifaceAnnotation.Name);
                 if (ifaceType != null && !resolvedInterfaces.Contains(ifaceType))
                 {
-                    _semanticBinding.AddInterface(type, ifaceType);
+                    // Carry the written arguments onto the reference (#1403). Dropping them here
+                    // made `class Repo(Comparable[int])` resolve to an argument-less Comparable, so
+                    // members reached through the interface kept its open type parameters.
+                    _semanticBinding.AddInterface(type, new InterfaceReference
+                    {
+                        Definition = ifaceType,
+                        TypeArgAnnotations = ifaceAnnotation.TypeArguments
+                    });
                     _logger.LogDebug($"Resolved interface: {type.Name} : {ifaceType.Name}");
                 }
                 else if (ifaceType == null)
                 {
-                    _logger.LogWarning($"Could not resolve interface '{ifaceName}' for {type.Name}", 0, 0);
+                    _logger.LogWarning($"Could not resolve interface '{ifaceAnnotation.Name}' for {type.Name}", 0, 0);
                 }
             }
         }
@@ -138,8 +154,9 @@ internal class InheritanceResolver
                 }
 
                 // Check unresolved interface names
-                foreach (var ifaceName in type.UnresolvedInterfaceNames)
+                foreach (var ifaceAnnotation in type.UnresolvedInterfaces)
                 {
+                    var ifaceName = ifaceAnnotation.Name;
                     if (LookupTypeInModuleScopes(ifaceName) == null)
                     {
                         var found = importResolver.FindTypeInLoadedModules(ifaceName);

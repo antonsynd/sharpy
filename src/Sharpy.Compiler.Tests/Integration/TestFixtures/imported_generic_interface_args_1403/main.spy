@@ -1,0 +1,39 @@
+# #1403: an AGREEMENT cell, not a repro. It asserts that an imported generic interface at a
+# concrete argument works end to end — assignability, argument passing, and a member read at the
+# substituted type.
+#
+# Measured, not assumed: this shape is green with the fix REMOVED. In a project compilation the
+# checker answers from NameResolver's own symbols, whose InterfaceReferences have carried
+# TypeArgAnnotations since before this change (NameResolver.cs:419/465/510), and the deferred
+# path this task fixes (InheritanceResolver over ModuleLoader extractions, which is what
+# ImportResolver/the symbol cache feed) is not on this route. The discriminating cells are
+# InheritanceResolverTests' three #1403 tests, ModuleLoaderTests
+# .LoadModule_UnresolvedInterfaces_CarryWrittenTypeArguments, and SymbolCacheInterfaceArgsTests.
+#
+# It earns its place as a regression net over the whole shape, and as the thing that would break
+# first if the two routes ever stopped agreeing.
+
+from lib import Container
+from lib import IntBox
+from lib import StrCell
+
+
+def read_int(c: Container[int]) -> int:
+    return c.get()
+
+
+def read_str(c: Container[str]) -> str:
+    return c.get()
+
+
+def main():
+    b: IntBox = IntBox(7)
+    print(read_int(b))
+
+    s: StrCell = StrCell("hi")
+    print(read_str(s))
+
+    # The member reached through the interface is typed at the substituted argument, so
+    # arithmetic on it type-checks.
+    via: Container[int] = b
+    print(via.get() + 1)

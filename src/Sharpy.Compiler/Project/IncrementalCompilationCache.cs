@@ -65,7 +65,12 @@ internal class IncrementalCompilationCache
     //      the escaped declaration or the bare one — so a warm build that restored it as false bound
     //      escaped declarations to bare references and emitted the mangled spelling: CS0103 where a
     //      cold build compiles (#1275, #1328)
-    internal const int CurrentSchemaVersion = 23;
+    // v24: CachedSymbol.UnresolvedInterfaces round-trips serialized TypeAnnotations instead of bare
+    //      interface NAMES, so `class Repo(Comparable[int])` keeps its written type arguments across
+    //      a warm build. A v23 entry stores names only; restoring it would produce an argument-less
+    //      InterfaceReference and diverge from the cold build, the same failure #1287 fixed for the
+    //      base class (#1403)
+    internal const int CurrentSchemaVersion = 24;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

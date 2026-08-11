@@ -226,7 +226,11 @@ public class PhaseBoundaryAssertionNegativeTests
             Name = "MyClass",
             Kind = SymbolKind.Type,
             TypeKind = TypeKind.Class,
-            UnresolvedInterfaceNames = new System.Collections.Generic.List<string> { "IFoo", "IBar" }
+            UnresolvedInterfaces = new System.Collections.Generic.List<Sharpy.Compiler.Parser.Ast.TypeAnnotation>
+            {
+                new() { Name = "IFoo" },
+                new() { Name = "IBar" }
+            }
         });
 
         var diagnostics = new DiagnosticBag();
