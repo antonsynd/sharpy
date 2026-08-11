@@ -96,6 +96,126 @@ internal static class GenericInstantiationWalker
     }
 
     /// <summary>
+    /// Enumerates the BASE CLASS chain of <paramref name="symbol"/> instantiated at
+    /// <paramref name="typeArguments"/>, nearest ancestor first, composing each level's
+    /// <see cref="BaseTypeReference"/> substitution into the next (#1408, #1409, #1345).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the base-class half of <see cref="EnumerateSupertypes"/>, split out because its three
+    /// consumers ask a different question. <c>EnumerateSupertypes</c> answers "is X assignable to Y",
+    /// so it walks interfaces too and requires a <see cref="GenericType"/> receiver; member lookup,
+    /// constructor forwarding and constructor-reference pinning ask "what does my ANCESTOR look like
+    /// once my base clause's written arguments are substituted in", and their receiver is frequently
+    /// a NON-generic <see cref="UserDefinedType"/> (<c>class IntList(List[int])</c> has no type
+    /// parameters of its own). Both share <see cref="InstantiateBaseType"/>, so there is exactly one
+    /// reader of <see cref="BaseTypeReference"/> in the compiler.
+    /// </para>
+    /// <para>
+    /// Composition across levels is what makes this more than a one-step lookup:
+    /// <c>class A(B[int])</c> over <c>class B[T](C[T])</c> yields <c>B[int]</c> then <c>C[int]</c>,
+    /// because level 1's <c>{T -> int}</c> map is applied to level 2's written <c>[T]</c>.
+    /// </para>
+    /// <para>
+    /// The walk stops (rather than guessing) wherever <see cref="InstantiateBaseType"/> declines:
+    /// a generic base whose written arguments cannot be read is UNKNOWN, per #1287 Design Decision 2.
+    /// </para>
+    /// </remarks>
+    /// <param name="symbol">The derived type whose ancestors are wanted.</param>
+    /// <param name="typeArguments">
+    /// The derived type's own type arguments. Empty for a non-generic derived type; an arity mismatch
+    /// against <paramref name="symbol"/>'s type parameters yields nothing rather than a wrong answer.
+    /// </param>
+    /// <param name="binding">Optional binding for in-progress (pre-materialization) inheritance data.</param>
+    /// <param name="typeResolver">Optional resolver for source-declared base type arguments.</param>
+    internal static IEnumerable<InstantiatedSupertype> EnumerateBaseChain(
+        TypeSymbol symbol,
+        IReadOnlyList<SemanticType> typeArguments,
+        SemanticBinding? binding = null,
+        TypeResolver? typeResolver = null)
+    {
+        var substitution = BuildSubstitution(symbol.TypeParameters, typeArguments);
+        if (substitution == null)
+            yield break;
+
+        var current = symbol;
+        var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance) { symbol };
+
+        while (true)
+        {
+            var next = InstantiateBaseType(current, substitution, binding, typeResolver);
+            if (next == null)
+                yield break;
+
+            // Reference-identity cycle guard: a malformed hierarchy (A : B, B : A) must terminate.
+            if (!visited.Add(next.Definition))
+                yield break;
+
+            yield return next;
+
+            var nextSubstitution = BuildSubstitution(next.Definition.TypeParameters, next.TypeArguments);
+            if (nextSubstitution == null)
+                yield break;
+
+            current = next.Definition;
+            substitution = nextSubstitution;
+        }
+    }
+
+    /// <summary>
+    /// The nearest ancestor of <paramref name="symbol"/> that is backed by a CLR type, instantiated
+    /// at the arguments written down the base chain (#1409). Returns null when no ancestor is
+    /// CLR-backed, or when the chain's arguments cannot be read.
+    /// </summary>
+    internal static InstantiatedSupertype? FindClrAncestor(
+        TypeSymbol symbol,
+        IReadOnlyList<SemanticType> typeArguments,
+        SemanticBinding? binding = null,
+        TypeResolver? typeResolver = null)
+        => EnumerateBaseChain(symbol, typeArguments, binding, typeResolver)
+            .FirstOrDefault(a => a.Definition.ClrType != null);
+
+    /// <summary>
+    /// The nearest ancestor of <paramref name="symbol"/> that declares constructors, paired with
+    /// those constructors' parameters re-typed through the composed base-clause substitution
+    /// (#1408). Returns null when no ancestor declares a constructor.
+    /// </summary>
+    /// <remarks>
+    /// The ancestor's <see cref="TypeSymbol.Constructors"/> are built once from the OPEN definition
+    /// and shared across every instantiation, so <c>List[T].List(IEnumerable[T])</c> is the same
+    /// <see cref="FunctionSymbol"/> for <c>IntList</c> and for <c>StrList</c>. The substitution
+    /// therefore has to be applied per derived class, here, and not stored back on the ancestor.
+    /// </remarks>
+    internal static (TypeSymbol Ancestor, IReadOnlyList<FunctionSymbol> Constructors)? FindSubstitutedConstructors(
+        TypeSymbol symbol,
+        IReadOnlyList<SemanticType> typeArguments,
+        SemanticBinding? binding = null,
+        TypeResolver? typeResolver = null)
+    {
+        foreach (var ancestor in EnumerateBaseChain(symbol, typeArguments, binding, typeResolver))
+        {
+            if (ancestor.Definition.Constructors.Count == 0)
+                continue;
+
+            var map = BuildSubstitution(ancestor.Definition.TypeParameters, ancestor.TypeArguments);
+            var substituted = ancestor.Definition.Constructors
+                .Select(ctor => map == null || map.Count == 0
+                    ? ctor
+                    : ctor with
+                    {
+                        Parameters = ctor.Parameters
+                            .Select(p => p with { Type = TypeSubstitution.Apply(p.Type, map) })
+                            .ToList()
+                    })
+                .ToList();
+
+            return (ancestor.Definition, substituted);
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Instantiates a symbol's direct base class with the current substitution (#1287).
     /// Reads the base type's written or CLR-resolved arguments from
     /// <see cref="BaseTypeReference"/> and substitutes through them, mirroring
