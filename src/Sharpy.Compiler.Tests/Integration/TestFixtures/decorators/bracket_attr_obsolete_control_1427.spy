@@ -1,0 +1,10 @@
+# #1427 positive control: the working spelling must keep working. `@[obsolete("old api")]`
+# resolves to System.ObsoleteAttribute — C# appends the `Attribute` suffix itself, which is
+# why the semantic-time resolver has to try both spellings before refusing a name.
+@[obsolete("old api")]
+def legacy() -> int:
+    return 1
+
+
+def main() -> None:
+    print(legacy())

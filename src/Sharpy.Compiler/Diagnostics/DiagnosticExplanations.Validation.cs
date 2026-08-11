@@ -815,5 +815,21 @@ public static partial class DiagnosticExplanations
             "Move the check into a '@test' function:\n@test\ndef parse_rejects_junk() -> None:\n    " +
             "with assert_raises(ValueError):\n        parse(\"x\")\n\nOr assert the failure with " +
             "try/except where you are:\ntry:\n    parse(\"x\")\n    assert False\nexcept ValueError:\n    pass");
+
+        Add(dict, DiagnosticCodes.Validation.UnknownBracketAttribute,
+            "Bracket attribute names no type that is in scope",
+            "Validation",
+            "A bracket attribute '@[...]' is a pass-through to a .NET attribute class: the name is " +
+            "mangled to its C# spelling and written into the generated code verbatim, and C# then " +
+            "looks for that name with and without an 'Attribute' suffix. When neither spelling " +
+            "names a type the file can see, nothing in the program declares the attribute. Sharpy " +
+            "refuses the name here so the failure reads as the typo it is — before this check the " +
+            "same mistake came back from the C# compiler as SPY0908 'internal compiler error'. " +
+            "Note that '@[abstract]' is NOT the '@abstract' decorator: bracket syntax always means " +
+            "a .NET attribute, never a Sharpy modifier.",
+            "@[no_such_attr]        # SPY0495 — no 'NoSuchAttr' or 'NoSuchAttrAttribute' in scope\nclass Widget: ...",
+            "Check the spelling and import the namespace that declares the attribute:\n" +
+            "@[system.serializable]\nclass Widget: ...\n\nIf you meant a Sharpy modifier, drop the " +
+            "brackets — '@abstract', '@final', '@override' and '@static' are decorators, not attributes.");
     }
 }

@@ -131,6 +131,64 @@ def main():
     }
 
     [Fact]
+    public void GeneratorTrigger_IsNotRefusedAsAnUnknownBracketAttribute()
+    {
+        // #1427 positive control. Bracket attributes now have to name a type that is in scope,
+        // and a generator trigger names a user generator class rather than a CLR attribute —
+        // exactly the shape the new refusal must never touch. Asserted end to end (not just at
+        // the validator) because the exemption and the symbol-table lookup both live upstream of
+        // the compile, and a regression in either would surface here as SPY0495.
+        var helper = CreateHelper();
+
+        helper.AddSourceFile("gen.spy", @"
+from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
+
+class MyGen(SourceGenerator):
+    def generate(self, context: GeneratorContext) -> GeneratorOutput:
+        return GeneratorOutput('')
+");
+
+        helper.AddSourceFile("main.spy", @"
+from gen import MyGen
+
+@[MyGen]
+class Point:
+    x: int
+
+def main():
+    print('hello')
+");
+
+        helper.WithRootNamespace("GenTriggerTest").WithEntryPoint("main.spy")
+            .WithRuntimeReferences().CreateProjectFile();
+        var result = helper.Compile();
+
+        Assert.DoesNotContain(result.Diagnostics.GetErrors(),
+            e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnknownBracketAttribute);
+
+        // The absence above would pass vacuously if the check simply never ran in this harness, so
+        // the same project with an unknown trigger name is compiled as the positive control.
+        // (The compile itself is not asserted to succeed: a generator trigger is still emitted as
+        // an ordinary C# attribute and comes back as CS0616 — #1431, a defect this check neither
+        // causes nor cures.)
+        using var control = new ProjectCompilationHelper(_output);
+        control.AddSourceFile("main.spy", @"
+@[no_such_generator]
+class Point:
+    x: int
+
+def main():
+    print('hello')
+");
+        control.WithRootNamespace("GenTriggerControl").WithEntryPoint("main.spy")
+            .WithRuntimeReferences().CreateProjectFile();
+        var controlResult = control.Compile();
+
+        Assert.Contains(controlResult.Diagnostics.GetErrors(),
+            e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnknownBracketAttribute);
+    }
+
+    [Fact]
     public void DiagnosticCodes_GeneratorCodesExist()
     {
         Assert.Equal("SPY0550", Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.GeneratorExecutionError);

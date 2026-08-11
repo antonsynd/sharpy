@@ -133,6 +133,10 @@ class Foo:
         Assert.Contains(errors, e => e.Message.Contains("@classmethod"));
     }
 
+    // The bracket-attribute cases below declare the attribute class they name (CustomAttribute,
+    // AttrAttribute). A bracket attribute whose name denotes nothing is refused in its own right
+    // (SPY0495, #1427), and these tests are about ARGUMENT constness — the declaration keeps the
+    // two concerns from colliding so the assertions can stay exact-count.
     #region Decorator argument validation
 
     [Fact]
@@ -183,6 +187,9 @@ class Foo:
     public void Custom_WithArithmeticExpression_ReportsNonConstError()
     {
         var code = @"
+class CustomAttribute:
+    pass
+
 @[custom(1 + 2)]
 def foo():
     pass
@@ -203,6 +210,9 @@ def foo():
     public void Custom_WithFunctionCall_ReportsNonConstError()
     {
         var code = @"
+class CustomAttribute:
+    pass
+
 @[custom(some_func())]
 def foo():
     pass
@@ -223,6 +233,9 @@ def foo():
     public void Custom_WithStringLiteral_NoError()
     {
         var code = @"
+class CustomAttribute:
+    pass
+
 @[custom(""literal"")]
 def foo():
     pass
@@ -239,6 +252,9 @@ def foo():
     public void Custom_WithKeywordArgs_NoError()
     {
         var code = @"
+class AttrAttribute:
+    pass
+
 @[attr(name=""value"")]
 def foo():
     pass
@@ -255,6 +271,9 @@ def foo():
     public void Custom_WithTypeCall_NoError()
     {
         var code = @"
+class CustomAttribute:
+    pass
+
 @[custom(type(int))]
 def foo():
     pass
@@ -271,6 +290,9 @@ def foo():
     public void Custom_WithEnumMemberAccess_NoError()
     {
         var code = @"
+class CustomAttribute:
+    pass
+
 @[custom(StringComparison.ordinal)]
 def foo():
     pass
@@ -287,6 +309,9 @@ def foo():
     public void Custom_WithNonConstKeywordArg_ReportsError()
     {
         var code = @"
+class AttrAttribute:
+    pass
+
 @[attr(name=1 + 2)]
 def foo():
     pass
@@ -307,6 +332,9 @@ def foo():
     public void Custom_WithBoolAndIntLiterals_NoError()
     {
         var code = @"
+class CustomAttribute:
+    pass
+
 @[custom(True, 42)]
 def foo():
     pass
@@ -323,6 +351,9 @@ def foo():
     public void Custom_WithNone_NoError()
     {
         var code = @"
+class CustomAttribute:
+    pass
+
 @[custom(None)]
 def foo():
     pass
@@ -339,6 +370,9 @@ def foo():
     public void Custom_WithVariableReference_ReportsNonConstError()
     {
         var code = @"
+class CustomAttribute:
+    pass
+
 @[custom(some_var)]
 def foo():
     pass
@@ -359,6 +393,9 @@ def foo():
     public void Custom_WithNegativeInt_NoError()
     {
         var code = @"
+class CustomAttribute:
+    pass
+
 @[custom(-42)]
 def foo():
     pass
@@ -375,6 +412,9 @@ def foo():
     public void Custom_WithNegativeFloat_NoError()
     {
         var code = @"
+class CustomAttribute:
+    pass
+
 @[custom(-3.14)]
 def foo():
     pass

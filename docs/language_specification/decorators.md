@@ -236,6 +236,7 @@ bracket_attribute ::= '@[' qualified_name [ '(' [ arguments ] ')' ] ']' NEWLINE
 - **Keyword arguments mangled**: `entry_point="Func"` becomes `EntryPoint = "Func"` in the emitted C#.
 - **Backtick escape**: Use backticks to bypass mangling for non-obvious names: `` @[`SerializableAttribute`] `` emits `[SerializableAttribute]` verbatim.
 - **Unknown `@decorators` are rejected**: `@serializable` is a compile-time error (SPY0444). The error message suggests the bracket equivalent.
+- **The bracket name must resolve to a type**: the mangled name is looked up both as written and with C#'s `Attribute` suffix, against the types the program declares and the namespaces the file has in scope. A name that denotes nothing is a compile-time error (SPY0495) naming both spellings it looked for. An attribute outside the always-in-scope namespaces must be written qualified (`@[system.component_model.default_value(42)]`) or reached through an import of its namespace, exactly as the equivalent C# needs a `using`.
 
 ### Argument Restrictions
 
@@ -256,7 +257,7 @@ Non-constant expressions (e.g., `1 + 2`, variable references, function calls oth
 | Sharpy keyword (`@deprecated`, `@dataclass`, `@test`, etc.) | `@name(...)` | Special Sharpy semantics |
 | C# attribute | `@[name(...)]` | Emitted as C# `[Attribute]` with PascalCase mangling |
 
-**Note:** `@[final]` emits the C# attribute `[Final]` — it is NOT the Sharpy `@final` keyword. Bracket attributes and language decorators are completely separate.
+**Note:** `@[final]` means the C# attribute `[Final]` — it is NOT the Sharpy `@final` keyword. Bracket attributes and language decorators are completely separate. Since no `Final`/`FinalAttribute` type exists, `@[final]` is refused with SPY0495 and a pointer back to the `@final` decorator; the same holds for `@[abstract]`, `@[override]` and `@[static]`.
 
 > **Source generators** also use `@[Name]` syntax. If a bracket attribute resolves to a class extending `SourceGenerator` (from `sharpy.generators`), the compiler invokes the generator at compile time and merges the produced Sharpy source into the compilation. See [source_generators.md](source_generators.md) for details.
 

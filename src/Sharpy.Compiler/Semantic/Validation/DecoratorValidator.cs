@@ -48,6 +48,7 @@ internal partial class DecoratorValidator : ValidatingAstWalker
         _logger = context.Logger;
         _logger.LogDebug("Starting decorator validation");
         _containingType = null;
+        _importedClrNamespaces = CollectImportedClrNamespaces(module);
         base.Validate(module, context);
     }
 
@@ -282,6 +283,7 @@ internal partial class DecoratorValidator : ValidatingAstWalker
                 if (!IsSourceGeneratorBracketAttribute(decorator))
                 {
                     ValidateDecoratorArgumentsAreConstants(decorator);
+                    ValidateBracketAttributeResolves(decorator);
                 }
                 continue;
             }
@@ -425,8 +427,11 @@ internal partial class DecoratorValidator : ValidatingAstWalker
             BooleanLiteral => true,
             NoneLiteral => true,
             // Enum member access or const field: SomeType.Member
-            // Intentionally permissive — we can't resolve types at this validation phase (Order 60).
-            // Invalid cases (non-const fields, instance members) are caught by the C# compiler.
+            // Intentionally permissive: an ARGUMENT's type is not resolved at this validation
+            // phase (Order 60), so invalid cases (non-const fields, instance members) are left to
+            // the C# compiler. This is about argument expressions only — the attribute NAME is
+            // resolved here, via Discovery/ClrAttributeResolver, so that a name denoting nothing
+            // is refused instead of leaking CS0246 behind SPY0908 (#1427).
             MemberAccess { Object: Identifier } => true,
             // type(X) is allowed as typeof equivalent
             FunctionCall { Function: Identifier { Name: "type" }, Arguments.Length: 1, KeywordArguments.Length: 0 } => true,
@@ -461,9 +466,16 @@ internal partial class DecoratorValidator : ValidatingAstWalker
     {
         foreach (var decorator in varDecl.Decorators)
         {
-            // Bracket attributes are always allowed on fields (they're C# attributes)
+            // Bracket attributes are always allowed on fields (they're C# attributes) — but the
+            // name still has to denote something (#1427).
             if (decorator.IsBracketAttribute)
+            {
+                if (!IsSourceGeneratorBracketAttribute(decorator))
+                {
+                    ValidateBracketAttributeResolves(decorator);
+                }
                 continue;
+            }
 
             if (decorator.Name != DecoratorNames.Static
                 && decorator.Name != DecoratorNames.Final

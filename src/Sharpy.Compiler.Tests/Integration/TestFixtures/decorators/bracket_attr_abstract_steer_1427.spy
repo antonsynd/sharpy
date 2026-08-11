@@ -1,0 +1,11 @@
+# #1427 + #1373: `@[abstract]` sits one keystroke from the `@abstract` decorator and
+# deliberately does NOT mean it — bracket syntax is always a .NET attribute pass-through.
+# The refusal names the spellings it looked for and steers to the decorator.
+class Widget:
+    @[abstract]
+    def render(self) -> str:
+        return "widget"
+
+
+def main() -> None:
+    print(Widget().render())

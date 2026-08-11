@@ -1,0 +1,11 @@
+# #1427: a bracket attribute naming a type nothing declares is refused at semantic time.
+# Before this check the mangled name was written into the generated C# verbatim and came back
+# as CS0246 wrapped in SPY0908 — an "internal compiler error" reported for an ordinary typo.
+@[no_such_attr]
+class Widget:
+    def render(self) -> str:
+        return "widget"
+
+
+def main() -> None:
+    print(Widget().render())

@@ -736,6 +736,11 @@ public static class DiagnosticCodes
         // assert_raises used outside a @test function (SPY0494, #1283)
         public const string AssertRaisesOutsideTest = "SPY0494"; // Active
 
+        // A bracket attribute @[...] naming a type that is in scope nowhere (SPY0495, #1427).
+        // Distinct from SPY0444 UnknownDecorator, whose remedy is "use @[...] instead" — advice
+        // that says nothing to a name already written in bracket syntax.
+        public const string UnknownBracketAttribute = "SPY0495"; // Active (#1427)
+
         #endregion
     }
 
