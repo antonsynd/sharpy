@@ -1,0 +1,62 @@
+# Qualified/bare spelling conformance allowlist (ratchet ledger).
+#
+# One `position::shape::sourceSet` cell key per line (see QualifiedBareSpellingConformanceTests).
+# A cell whose two spellings disagree on diagnostics, resolved representation or stdout fails the
+# ratchet UNLESS its key appears here. `#` starts a comment; blank lines are ignored.
+#
+# The contract is Design Decision 3 of the import-fidelity batch: A MODULE QUALIFIER CHANGES LOOKUP
+# SCOPE, NEVER THE PRODUCED REPRESENTATION. `lib.Shape` and a `from lib import Shape`-bound `Shape`
+# name one type, so the two spellings of one program must behave identically. Every entry below is a
+# place where they do not, and each is a defect on the qualified side — that is the direction the
+# history runs (#1366, #1407, #1410, #1411 were all qualified-only failures).
+#
+# DO NOT DELETE THIS FILE. Its presence is what arms the ratchet; the sweep throws if it is missing
+# rather than passing silently, so removing it cannot be mistaken for relaxing it.
+#
+# Rules for adding an entry:
+#   1. It MUST cite a filed GitHub issue explaining the divergence the cell exposes.
+#   2. It MUST correspond to a cell a real run confirms divergent — never allowlist speculatively.
+#   3. It is temporary. Delete the line in the same change that fixes the bug ("drain on fix"). The
+#      sweep FAILS on a stale entry — an allowlisted cell that has started agreeing — so draining is
+#      part of landing the fix rather than a follow-up nobody schedules.
+# Any growth is a regression in the contract, not a fact about the code that can be left standing.
+
+# ---------------------------------------------------------------------------------------------
+# Baseline: 12 divergent / 24 cells, on branch `dev` at edf02bf00 (2026-08-11) — the sweep's
+# first run. Every line is a defect the sweep found, filed the same day; none is a tolerated
+# difference.
+# See .claude/tmp/qualified-bare-conformance-report.json.
+# ---------------------------------------------------------------------------------------------
+
+# #1445 — `case lib.Circle():` is a PARSE error (SPY0100/SPY0103/SPY0104). A dotted name is not
+# accepted as a class pattern at all, so the qualifier changes whether the program parses. Every
+# other type-reference position in the matrix accepts one.
+pattern::plain::inSourceSet
+pattern::plain::outsideSourceSet
+pattern::generic::inSourceSet
+pattern::generic::outsideSourceSet
+
+# #1446 — a module-qualified NON-generic annotation keeps its dotted name. `TypeResolver.cs:721`
+# normalizes `lib.Box[int]` to the bare `Box` (#1134/#1244) and the non-generic arm at `:272` does
+# not, so `lib.Shape` resolves to `UserDefinedType { Name = "lib.Shape" }`. Cosmetic in-source-set,
+# where the two symbols are one object since #1366; outside the source set the name is what remains
+# to compare and the qualified spelling refuses assignment (SPY0220), type-test (SPY0220) and
+# constraint (SPY0237) — the #1366/#1407 symptoms on the path that fix did not cover.
+annotation::plain::inSourceSet
+annotation::plain::outsideSourceSet
+typeTest::plain::outsideSourceSet
+constraint::plain::outsideSourceSet
+declSiteAnnotation::plain::inSourceSet
+
+# #1447 — `isinstance(box, lib.Box[int])` analyzes clean and then leaks CS0305 behind SPY0908: the
+# type arguments are dropped between the resolved annotation and emission, on the qualified
+# spelling only. The CLOSED sibling of #1411, which fixed the open form (`lib.Box`) only.
+typeTest::generic::inSourceSet
+
+# #1448 — `ModuleLoader.ConvertTypeAnnotationToSemanticType` (ModuleLoader.cs:723) builds
+# `new GenericType { Name = typeAnnotation.Name }` — the annotation's name VERBATIM — so a
+# module-qualified annotation written INSIDE an extracted module keeps its qualifier:
+# `inner.Box[int]` where TypeResolver produces `Box[int]`. The generic in-source-set twin AGREES,
+# which is what attributes these two cells to the extractor rather than to #1446.
+declSiteAnnotation::generic::outsideSourceSet
+declSiteAnnotation::plain::outsideSourceSet
