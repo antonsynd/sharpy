@@ -1,0 +1,33 @@
+# The SEQUENCE row of the #1291 char family (#1401). A closed extension signature over a string
+# receiver is a signature over CHARS, so `s.take(3)` is Enumerable.Take<char> — an IEnumerable<char>.
+# Sharpy has no char, so that is a sequence of one-character `str`, and the elements have to be
+# re-represented on the way into a Sharpy collection: `new Sharpy.List<string>(IEnumerable<char>)`
+# does not bind, which is the CS1503 behind SPY0908 the issue reports.
+#
+# The conversion is the "collection whose element the bridge RE-REPRESENTS" case of #1251's
+# materialization rule, so it is stated there and composes with that rule's wrap rather than
+# replacing it: the elements project first, the collection is built second.
+#
+# Recorded on the PRODUCER, like the scalar and array rows, so every slot below is ordinary
+# list[str] handling. Values agree with CPython: list('abcdef'[:3]) is ['a', 'b', 'c'].
+
+
+def main() -> None:
+    s = "abcdef"
+
+    # The reported repro: an explicit list() conversion around the CLR sequence.
+    xs: list[str] = list(s.take(3))
+    print(xs)
+
+    # The same value into an annotated slot, with no list() in the way.
+    ys: list[str] = s.take(3)
+    print(ys)
+
+    # An inferred local is just as much a Sharpy slot, and its element is the same str.
+    zs = s.take(2)
+    print(zs)
+
+    # The element IS a str, so str members and len() apply to it.
+    first: str = xs[0]
+    print(first.upper())
+    print(len(first))

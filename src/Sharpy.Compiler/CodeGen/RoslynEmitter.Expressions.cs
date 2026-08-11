@@ -60,14 +60,17 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Converts a char-based CLR value into the Sharpy <c>str</c> the TypeChecker typed it as: a scalar
     /// becomes <c>.ToString()</c>, a <c>char[]</c> becomes a <c>string[]</c> of one-character strings
-    /// (#1291). The emitter decides nothing here — which expressions carry a conversion, and which of
-    /// the two it is, was decided by the seam that read the reflected signature.
+    /// (#1291), and an <c>IEnumerable&lt;char&gt;</c> becomes an <c>IEnumerable&lt;string&gt;</c> of
+    /// them (#1401). The emitter decides nothing here — which expressions carry a conversion, and
+    /// which of the three it is, was decided by the seam that read the reflected signature.
     /// </summary>
     /// <remarks>
-    /// The array form is <c>Array.ConvertAll&lt;char, string&gt;(xs, char.ToString)</c> — a method
-    /// group rather than a lambda, so the emitted form introduces no parameter name that could collide
-    /// with a Sharpy local in scope, and the explicit type arguments leave no inference to a
-    /// <c>ToString</c> overload set.
+    /// The array and sequence forms are <c>Array.ConvertAll&lt;char, string&gt;(xs, char.ToString)</c>
+    /// and <c>Enumerable.Select&lt;char, string&gt;(xs, char.ToString)</c> — a method group rather
+    /// than a lambda, so the emitted form introduces no parameter name that could collide with a
+    /// Sharpy local in scope, and the explicit type arguments leave no inference to a <c>ToString</c>
+    /// overload set. The sequence form stays lazy; the copy, when one is wanted, is #1251's wrap
+    /// applied on top of it by the caller.
     /// </remarks>
     private static ExpressionSyntax MaterializeChar(ExpressionSyntax value, CharMaterializationKind kind)
     {
@@ -79,6 +82,28 @@ internal partial class RoslynEmitter
                     value,
                     IdentifierName(nameof(object.ToString))))
                 .WithArgumentList(ArgumentList());
+        }
+
+        if (kind == CharMaterializationKind.Sequence)
+        {
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName(nameof(System), nameof(System.Linq), nameof(System.Linq.Enumerable)),
+                    GenericName(Identifier(nameof(System.Linq.Enumerable.Select)))
+                        .WithTypeArgumentList(TypeArgumentList(SeparatedList<TypeSyntax>(new TypeSyntax[]
+                        {
+                            PredefinedType(Token(SyntaxKind.CharKeyword)),
+                            PredefinedType(Token(SyntaxKind.StringKeyword))
+                        })))))
+                .WithArgumentList(ArgumentList(SeparatedList(new[]
+                {
+                    Argument(value),
+                    Argument(MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        PredefinedType(Token(SyntaxKind.CharKeyword)),
+                        IdentifierName(nameof(char.ToString))))
+                })));
         }
 
         var convertAll = MemberAccessExpression(

@@ -1077,6 +1077,43 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Rewrites a reflected CLR SEQUENCE of <c>char</c> into the sequence of one-character <c>str</c>
+    /// it is at the Sharpy surface, recording on <paramref name="producer"/> the per-element
+    /// conversion codegen must apply (#1401). Returns <paramref name="mapped"/> unchanged, and
+    /// records nothing, for every other type.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The sequence row of the #1291 char family, and the one shape that family deliberately left
+    /// alone: converting a CLR sequence's ELEMENT is the case
+    /// <see cref="IsUnmaterializedClrSequence"/>'s "a collection whose element the bridge
+    /// RE-REPRESENTS" comment names, so this states the conversion that makes such a collection
+    /// materializable instead of adding a second mechanism beside #1251's rule. The two compose at
+    /// one choke point: the element projection runs first and #1251's wrap second, which is the order
+    /// <c>RoslynEmitter.GenerateExpression</c> already applies them in.
+    /// </para>
+    /// <para>
+    /// Recorded on the PRODUCER, exactly as the scalar and array rows are, so every downstream
+    /// position — a <c>list()</c> conversion, an annotated slot, an inferred local, an argument — is
+    /// ordinary <c>list[str]</c> handling with nothing further to know. Without it,
+    /// <c>list(s.take(3))</c> emitted <c>new Sharpy.List&lt;string&gt;(IEnumerable&lt;char&gt;)</c>
+    /// and failed as CS1503 behind SPY0908.
+    /// </para>
+    /// </remarks>
+    private SemanticType ProjectClrCharSequence(Expression producer, SemanticType mapped)
+    {
+        if (mapped is not GenericType { TypeArguments: { Count: 1 } elements } sequence
+            || ClrCharProjection(elements[0])?.Kind != CharMaterializationKind.Scalar
+            || !IsUnmaterializedClrSequence(mapped))
+        {
+            return mapped;
+        }
+
+        _semanticInfo.SetCharMaterialization(producer, CharMaterializationKind.Sequence);
+        return sequence with { TypeArguments = new List<SemanticType> { SemanticType.Str } };
+    }
+
+    /// <summary>
     /// Attempts to resolve a CLR <see cref="Type"/> for a <see cref="SemanticType"/>, including
     /// constructing concrete generic types for Sharpy collection generics (list/dict/set). This
     /// enables CLR assignability checks (e.g., passing a <c>list[int]</c> to a method parameter

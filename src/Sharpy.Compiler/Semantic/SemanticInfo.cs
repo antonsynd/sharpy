@@ -1268,7 +1268,20 @@ public enum CharMaterializationKind
     /// exist, so unlike the CLR-sequence materialization next door there is no aliasing alternative
     /// to weigh.
     /// </summary>
-    Array
+    Array,
+
+    /// <summary>
+    /// An <c>IEnumerable&lt;char&gt;</c> — emit an <c>Enumerable.Select</c> to
+    /// <c>IEnumerable&lt;string&gt;</c> of one-character strings (#1401).
+    /// <para>
+    /// This is the element half of the CLR-sequence materialization next door, not a replacement for
+    /// it: the projection re-represents the elements and #1251's rule still wraps the result in the
+    /// Sharpy collection, in that order — which is exactly the order
+    /// <c>RoslynEmitter.GenerateExpression</c> applies the two facts in. Lazy by construction, so a
+    /// value that never lands in a collection slot pays nothing but the <c>Select</c>.
+    /// </para>
+    /// </summary>
+    Sequence
 }
 
 /// <summary>

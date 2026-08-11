@@ -4,8 +4,9 @@
 # difference that does not exist at the Sharpy surface — a refusal, not an ICE, which is why this row
 # outlived the SPY0908 ones.
 #
-# An IEnumerable<char> return (`s.take(3)`) deliberately does NOT project: converting a CLR
-# SEQUENCE's element is a decision the #1251 materialization owns.
+# An IEnumerable<char> return (`s.take(3)`) projects too, but through the rule that owns it:
+# converting a CLR SEQUENCE's element is #1251's materialization decision, so the per-element
+# conversion is stated there and composes with its wrap (#1401, clr_char_sequence_is_str_1401).
 
 
 def main() -> None:

@@ -969,10 +969,13 @@ internal partial class TypeChecker
             // Enumerable.First<char>. Sharpy has no char, so the same projection the builtin-receiver
             // seams apply runs here: without it `x: str = s.first()` was refused as char-vs-str, a
             // refusal for something that is a one-character str in every sense the user means (#1291).
-            // Only the scalar and array shapes project; an IEnumerable<char> return keeps today's type,
-            // because converting a CLR SEQUENCE'S element is a decision #1251's materialization owns
-            // and its re-represented-element rule already speaks to.
-            return ProjectClrChar(call, closedReturnType);
+            // The sequence shape projects too, through the rule that owns it: converting a CLR
+            // SEQUENCE'S element is the "collection whose element the bridge RE-REPRESENTS" case of
+            // #1251's materialization, so ProjectClrCharSequence states the per-element conversion
+            // that makes such a collection materializable rather than lowering it from here (#1401).
+            // The two projections are exclusive by shape, so the composition is just "scalar/array,
+            // else sequence".
+            return ProjectClrCharSequence(call, ProjectClrChar(call, closedReturnType));
         }
 
         // Handle generic function call: identity[int](42)
