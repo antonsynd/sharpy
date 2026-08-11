@@ -1,0 +1,33 @@
+# #1363: a module-level type alias must be importable. Before the TypeAlias arm existed,
+# `from lib import Handle` reported SPY0202 for a name lib plainly declares — the alias was
+# extracted by NameResolver for lib's own file and by nobody for lib's importers.
+#
+# Only the from-import spelling is exercised here: `lib.Handle` is still SPY0202 because
+# ResolveQualifiedType requires a TypeSymbol for the final segment and an alias is not one
+# (#1436). That is a separate fix; this fixture pins the direction that works so the follow-up
+# has a green baseline to extend.
+
+from lib import Handle
+from lib import Pair
+from lib import Marker
+
+
+def twice(h: Handle) -> Handle:
+    return h * 2
+
+
+def sum_pair(p: Pair[int]) -> int:
+    return p[0] + p[1]
+
+
+def main():
+    h: Handle = 7
+    print(h)
+    print(twice(h))
+
+    p: Pair[int] = (3, 4)
+    print(sum_pair(p))
+
+    # The alias travels alongside ordinary exports from the same module.
+    m: Marker = Marker()
+    print(m.label())

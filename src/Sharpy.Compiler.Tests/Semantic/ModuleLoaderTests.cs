@@ -323,4 +323,146 @@ class Widget:
         Assert.Single(spyModules);
         Assert.DoesNotContain(spyModules.Values, m => m.IsNetModule);
     }
+
+    /// <summary>
+    /// #1363: a class declared inside an imported class used to be invisible to the importer —
+    /// the body loop matched only fields, methods, properties and events, so
+    /// <c>TypeSymbol.NestedTypes</c> arrived empty and <c>Outer.Inner</c>, which
+    /// <c>TypeResolver.LookupNestedType</c> answers by walking exactly that list, reported SPY0202.
+    /// All four nested kinds are cells because the extraction dispatches on the statement type.
+    /// </summary>
+    [Fact]
+    public void LoadModule_ExtractsNestedTypes()
+    {
+        var path = CreateModule("nested.spy", @"
+class Registry:
+    class Entry:
+        key: str
+
+    struct Slot:
+        index: int
+
+    interface Visitor:
+        def visit(self) -> None:
+            ...
+
+    enum Kind:
+        FIRST
+        SECOND
+");
+
+        var moduleInfo = _loader.LoadModule(path, 1, 1);
+
+        Assert.NotNull(moduleInfo);
+        var registry = Assert.IsType<TypeSymbol>(moduleInfo!.ExportedSymbols["Registry"]);
+
+        Assert.Equal(
+            new[] { "Entry", "Kind", "Slot", "Visitor" },
+            registry.NestedTypes.Select(n => n.Name).OrderBy(n => n, StringComparer.Ordinal));
+
+        Assert.Equal(TypeKind.Class, NestedNamed(registry, "Entry").TypeKind);
+        Assert.Equal(TypeKind.Struct, NestedNamed(registry, "Slot").TypeKind);
+        Assert.Equal(TypeKind.Interface, NestedNamed(registry, "Visitor").TypeKind);
+        Assert.Equal(TypeKind.Enum, NestedNamed(registry, "Kind").TypeKind);
+
+        // The members of a nested type come along — a name-only nested symbol would resolve
+        // Outer.Inner and then refuse every access through it.
+        Assert.Single(NestedNamed(registry, "Entry").Fields);
+        Assert.Single(NestedNamed(registry, "Visitor").Methods);
+        Assert.Equal(2, NestedNamed(registry, "Kind").Fields.Count);
+
+        // DeclaringType is what codegen and the access validator read to reconstruct the chain;
+        // NameResolver.ResolveNestedTypeDeclaration sets it for the same-file declaration.
+        Assert.All(registry.NestedTypes, n => Assert.Same(registry, n.DeclaringType));
+    }
+
+    /// <summary>
+    /// #1363: nesting is recursive, and so is the extraction — the class extractor calls back into
+    /// the nested-type walk, so an inner type's own inner types are not a second special case.
+    /// </summary>
+    [Fact]
+    public void LoadModule_ExtractsNestedTypes_Recursively()
+    {
+        var path = CreateModule("deep.spy", @"
+class Outer:
+    class Middle:
+        class Inner:
+            value: int
+");
+
+        var moduleInfo = _loader.LoadModule(path, 1, 1);
+
+        var outer = Assert.IsType<TypeSymbol>(moduleInfo!.ExportedSymbols["Outer"]);
+        var middle = Assert.Single(outer.NestedTypes);
+        Assert.Equal("Middle", middle.Name);
+        var inner = Assert.Single(middle.NestedTypes);
+        Assert.Equal("Inner", inner.Name);
+        Assert.Same(middle, inner.DeclaringType);
+        Assert.Single(inner.Fields);
+    }
+
+    /// <summary>
+    /// #1363: struct and interface bodies drop nested types identically to the class body — they
+    /// simply carried no TODO marker, which is why the issue names only the class extractor.
+    /// </summary>
+    [Fact]
+    public void LoadModule_ExtractsNestedTypes_FromStructAndInterfaceBodies()
+    {
+        var path = CreateModule("hosts.spy", @"
+struct Grid:
+    class Cell:
+        value: int
+
+interface Shape:
+    enum Kind:
+        ROUND
+        FLAT
+");
+
+        var moduleInfo = _loader.LoadModule(path, 1, 1);
+
+        var grid = Assert.IsType<TypeSymbol>(moduleInfo!.ExportedSymbols["Grid"]);
+        var cell = Assert.Single(grid.NestedTypes);
+        Assert.Equal("Cell", cell.Name);
+        Assert.Same(grid, cell.DeclaringType);
+
+        var shape = Assert.IsType<TypeSymbol>(moduleInfo.ExportedSymbols["Shape"]);
+        var kind = Assert.Single(shape.NestedTypes);
+        Assert.Equal("Kind", kind.Name);
+        Assert.Equal(TypeKind.Enum, kind.TypeKind);
+        Assert.Same(shape, kind.DeclaringType);
+    }
+
+    /// <summary>
+    /// #1363: a module-level <c>type X = ...</c> is an export like any other declaration. The
+    /// top-level switch had no <c>TypeAlias</c> arm at all, so <c>from lib import Handle</c>
+    /// reported SPY0202 for a name the module plainly declares.
+    /// </summary>
+    [Fact]
+    public void LoadModule_ExtractsTypeAlias()
+    {
+        var path = CreateModule("aliases.spy", @"
+type Handle = int
+type Pair[T] = tuple[T, T]
+");
+
+        var moduleInfo = _loader.LoadModule(path, 1, 1);
+
+        Assert.NotNull(moduleInfo);
+        var handle = Assert.IsType<TypeAliasSymbol>(moduleInfo!.ExportedSymbols["Handle"]);
+        Assert.Equal(SymbolKind.TypeAlias, handle.Kind);
+        Assert.Equal("int", handle.TypeAnnotation?.Name);
+
+        var pair = Assert.IsType<TypeAliasSymbol>(moduleInfo.ExportedSymbols["Pair"]);
+        Assert.Single(pair.TypeParameters);
+        Assert.Equal("T", pair.TypeParameters[0].Name);
+
+        // An alias is not a TypeSymbol, so it does NOT join the types-only view — which is exactly
+        // why the qualified spelling `lib.Handle` still fails (#1436): ResolveQualifiedType needs a
+        // TypeSymbol for the final segment. Pinned so the follow-up fix has a visible starting state.
+        Assert.False(moduleInfo.ExportedSymbols.ContainsType("Handle"));
+    }
+
+    private static TypeSymbol NestedNamed(TypeSymbol owner, string name)
+        => owner.NestedTypes.Single(n => n.Name == name);
 }

@@ -1,0 +1,14 @@
+# #1363: the library half. A module-level `type` declaration is an export like any other
+# declaration; ModuleLoader's top-level switch used to have no TypeAlias arm at all, so these
+# two names were invisible to every importer on the ModuleLoader path.
+
+type Handle = int
+type Pair[T] = tuple[T, T]
+
+
+class Marker:
+    def __init__(self):
+        pass
+
+    def label(self) -> str:
+        return "marker"

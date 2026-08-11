@@ -295,36 +295,7 @@ internal class ModuleLoader
                 break;
 
             case EnumDef enumDef:
-                var enumAccessLevel = GetAccessLevel(enumDef.Name);
-                var enumSymbol = new TypeSymbol
-                {
-                    Name = enumDef.Name,
-                    Kind = SymbolKind.Type,
-                    TypeKind = TypeKind.Enum,
-                    AccessLevel = enumAccessLevel,
-                    DeclarationLine = enumDef.LineStart,
-                    DeclarationColumn = enumDef.ColumnStart,
-                    NameDeclarationLine = enumDef.NameLineStart,
-                    NameDeclarationColumn = enumDef.NameColumnStart,
-                    DefiningModule = moduleInfo.CanonicalModuleName ?? moduleInfo.Path
-                };
-                // Register enum members as static fields for pattern matching resolution
-                foreach (var member in enumDef.Members)
-                {
-                    enumSymbol.Fields.Add(new VariableSymbol
-                    {
-                        Name = member.Name,
-                        Kind = SymbolKind.Variable,
-                        IsStatic = true,
-                        IsConstant = true,
-                        AccessLevel = AccessLevel.Public,
-                        DeclarationLine = member.LineStart,
-                        DeclarationColumn = member.ColumnStart,
-                        NameDeclarationLine = member.LineStart,
-                        NameDeclarationColumn = member.ColumnStart,
-                        DeclarationSpan = member.Span
-                    });
-                }
+                var enumSymbol = ExtractFullEnumSymbol(enumDef, moduleInfo.CanonicalModuleName ?? moduleInfo.Path);
                 moduleInfo.ExportedSymbols.Add(enumDef.Name, enumSymbol);
                 break;
 
@@ -343,6 +314,19 @@ internal class ModuleLoader
                     NameDeclarationColumn = varDecl.NameColumnStart
                 };
                 moduleInfo.ExportedSymbols.Add(varDecl.Name, varSymbol);
+                break;
+
+            case TypeAlias typeAlias:
+                // A module-level alias is an export like any other declaration; without this arm
+                // `from lib import Handle` reported SPY0202 for a name the module plainly declares
+                // (#1363). Built by the same factory NameResolver and the TypeChecker use, so the
+                // imported alias and the same-file one are the same construction.
+                //
+                // Note the qualified spelling `lib.Handle` still does NOT resolve: ModuleSymbol's
+                // ResolveQualifiedType requires a TypeSymbol for the final segment and an alias is
+                // not one (Shared/ModuleSymbolExtensions.cs:88-97). That is tracked separately
+                // (#1436); the export itself is the prerequisite for either spelling.
+                moduleInfo.ExportedSymbols.Add(typeAlias.Name, TypeAliasSymbol.CreateFrom(typeAlias));
                 break;
 
             default:
@@ -406,11 +390,9 @@ internal class ModuleLoader
         // Extract properties and events so imported types carry them — without this,
         // TypeChecker.Utilities resolves event/property access by walking TypeSymbol.Events
         // and .Properties, so imported types with these members silently dropped them (#1267).
-        // TODO(#1363): nested types and TypeAlias declarations are still dropped here.
-        // TODO(#1365): SignatureKey/Documentation/DeprecationMessage/IsMustUse and field
-        // IsFinal/HasDefaultValue are not threaded through the import boundary.
         var properties = ExtractProperties(classDef.Body, TypeKind.Class, isAbstract);
         var events = ExtractEvents(classDef.Body, TypeKind.Class, isAbstract);
+        var nestedTypes = ExtractNestedTypes(classDef.Body, definingModulePath);
 
         var classSymbol = new TypeSymbol
         {
@@ -435,8 +417,11 @@ internal class ModuleLoader
             Constructors = ctors,
             Properties = properties,
             Events = events,
+            NestedTypes = nestedTypes,
             MethodOverloads = TypeSymbol.BuildMethodOverloads(methods)
         };
+
+        LinkNestedTypes(classSymbol, nestedTypes);
 
         if (unresolvedBase != null)
         {
@@ -490,8 +475,9 @@ internal class ModuleLoader
 
         var properties = ExtractProperties(structDef.Body, TypeKind.Struct, false);
         var events = ExtractEvents(structDef.Body, TypeKind.Struct, false);
+        var nestedTypes = ExtractNestedTypes(structDef.Body, definingModulePath);
 
-        return new TypeSymbol
+        var structSymbol = new TypeSymbol
         {
             Name = structDef.Name,
             Kind = SymbolKind.Type,
@@ -511,8 +497,12 @@ internal class ModuleLoader
             Constructors = ctors,
             Properties = properties,
             Events = events,
+            NestedTypes = nestedTypes,
             MethodOverloads = TypeSymbol.BuildMethodOverloads(methods)
         };
+
+        LinkNestedTypes(structSymbol, nestedTypes);
+        return structSymbol;
     }
 
     /// <summary>
@@ -535,8 +525,9 @@ internal class ModuleLoader
 
         var properties = ExtractProperties(interfaceDef.Body, TypeKind.Interface, true);
         var events = ExtractEvents(interfaceDef.Body, TypeKind.Interface, true);
+        var nestedTypes = ExtractNestedTypes(interfaceDef.Body, definingModulePath);
 
-        return new TypeSymbol
+        var interfaceSymbol = new TypeSymbol
         {
             Name = interfaceDef.Name,
             Kind = SymbolKind.Type,
@@ -553,8 +544,100 @@ internal class ModuleLoader
             UnresolvedInterfaceNames = interfaceDef.BaseInterfaces.Select(b => b.Name).ToList(),
             Methods = methods,
             Properties = properties,
-            Events = events
+            Events = events,
+            NestedTypes = nestedTypes
         };
+
+        LinkNestedTypes(interfaceSymbol, nestedTypes);
+        return interfaceSymbol;
+    }
+
+    /// <summary>
+    /// Extracts nested type declarations (class/struct/interface/enum inside a type body) into
+    /// <see cref="TypeSymbol.NestedTypes"/>, the same destination
+    /// <c>NameResolver.ResolveNestedTypeDeclaration</c> fills for a same-file declaration (#1363).
+    /// Without it an imported <c>Outer</c> arrived childless, so <c>Outer.Inner</c> — which
+    /// <c>TypeResolver.LookupNestedType</c> answers by walking exactly this list — reported SPY0202
+    /// for a type the module plainly declares. Recursion is free: the three extractors call back
+    /// into this method, so an inner type's own nested types come along.
+    /// </summary>
+    private List<TypeSymbol> ExtractNestedTypes(
+        ImmutableArray<Statement> body, string definingModulePath)
+    {
+        List<TypeSymbol>? nested = null;
+        foreach (var stmt in body)
+        {
+            TypeSymbol? symbol = stmt switch
+            {
+                ClassDef classDef => ExtractFullClassSymbol(classDef, definingModulePath),
+                StructDef structDef => ExtractFullStructSymbol(structDef, definingModulePath),
+                InterfaceDef interfaceDef => ExtractFullInterfaceSymbol(interfaceDef, definingModulePath),
+                EnumDef enumDef => ExtractFullEnumSymbol(enumDef, definingModulePath),
+                _ => null
+            };
+
+            if (symbol == null)
+                continue;
+
+            (nested ??= new List<TypeSymbol>()).Add(symbol);
+        }
+
+        return nested ?? new List<TypeSymbol>();
+    }
+
+    /// <summary>
+    /// Points each nested type back at its enclosing declaration, mirroring
+    /// <c>NameResolver.ResolveNestedTypeDeclaration</c>'s <c>DeclaringType</c> assignment. Separate
+    /// from the initializer because <see cref="TypeSymbol.DeclaringType"/> is <c>internal set</c>,
+    /// not <c>init</c> — the enclosing symbol does not exist yet while its own initializer runs.
+    /// </summary>
+    private static void LinkNestedTypes(TypeSymbol enclosing, List<TypeSymbol> nestedTypes)
+    {
+        foreach (var nested in nestedTypes)
+            nested.DeclaringType = enclosing;
+    }
+
+    /// <summary>
+    /// Extract full type information from an enum definition. One construction shared by the
+    /// module-level export path, the circular-import stub, and nested extraction (#1363) — the
+    /// first two used to hold byte-identical copies of it.
+    /// </summary>
+    internal TypeSymbol ExtractFullEnumSymbol(EnumDef enumDef, string definingModulePath)
+    {
+        var enumSymbol = new TypeSymbol
+        {
+            Name = enumDef.Name,
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Enum,
+            AccessLevel = GetAccessLevel(enumDef.Name),
+            IsNameBacktickEscaped = enumDef.IsNameBacktickEscaped,
+            DeclarationLine = enumDef.LineStart,
+            DeclarationColumn = enumDef.ColumnStart,
+            NameDeclarationLine = enumDef.NameLineStart,
+            NameDeclarationColumn = enumDef.NameColumnStart,
+            DeclarationSpan = enumDef.Span,
+            DefiningModule = definingModulePath
+        };
+
+        // Register enum members as static fields for pattern matching resolution
+        foreach (var member in enumDef.Members)
+        {
+            enumSymbol.Fields.Add(new VariableSymbol
+            {
+                Name = member.Name,
+                Kind = SymbolKind.Variable,
+                IsStatic = true,
+                IsConstant = true,
+                AccessLevel = AccessLevel.Public,
+                DeclarationLine = member.LineStart,
+                DeclarationColumn = member.ColumnStart,
+                NameDeclarationLine = member.LineStart,
+                NameDeclarationColumn = member.ColumnStart,
+                DeclarationSpan = member.Span
+            });
+        }
+
+        return enumSymbol;
     }
 
     /// <summary>
@@ -974,36 +1057,8 @@ internal class ModuleLoader
                     moduleInfo.ExportedSymbols.Add(interfaceDef.Name, interfaceSymbol);
                     break;
                 case EnumDef enumDef:
-                    var enumAccessLevel = GetAccessLevel(enumDef.Name);
-                    var enumSymbol = new TypeSymbol
-                    {
-                        Name = enumDef.Name,
-                        Kind = SymbolKind.Type,
-                        TypeKind = TypeKind.Enum,
-                        AccessLevel = enumAccessLevel,
-                        DeclarationLine = enumDef.LineStart,
-                        DeclarationColumn = enumDef.ColumnStart,
-                        NameDeclarationLine = enumDef.NameLineStart,
-                        NameDeclarationColumn = enumDef.NameColumnStart,
-                        DefiningModule = canonicalModuleName
-                    };
-                    foreach (var member in enumDef.Members)
-                    {
-                        enumSymbol.Fields.Add(new VariableSymbol
-                        {
-                            Name = member.Name,
-                            Kind = SymbolKind.Variable,
-                            IsStatic = true,
-                            IsConstant = true,
-                            AccessLevel = AccessLevel.Public,
-                            DeclarationLine = member.LineStart,
-                            DeclarationColumn = member.ColumnStart,
-                            NameDeclarationLine = member.LineStart,
-                            NameDeclarationColumn = member.ColumnStart,
-                            DeclarationSpan = member.Span
-                        });
-                    }
-                    moduleInfo.ExportedSymbols.Add(enumDef.Name, enumSymbol);
+                    moduleInfo.ExportedSymbols.Add(
+                        enumDef.Name, ExtractFullEnumSymbol(enumDef, canonicalModuleName));
                     break;
             }
         }
