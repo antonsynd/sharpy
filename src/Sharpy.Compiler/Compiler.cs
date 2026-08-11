@@ -407,6 +407,15 @@ public class ProjectCompilationResult
     public ProjectCompilationMetrics? Metrics { get; init; }
 
     /// <summary>
+    /// CS errors from the generated C# that the SPY0908 net stood down from reporting because this
+    /// compilation had already failed for a reason the user can act on (#1387). Empty on every
+    /// clean compilation. Not user-facing: exposed so tests and the #1146 leak-corpus sweeps can
+    /// still see the evidence a real emitter bug would have left, rather than losing it silently.
+    /// </summary>
+    internal IReadOnlyList<CompilerDiagnostic> SuppressedGeneratedCodeDiagnostics { get; init; }
+        = Array.Empty<CompilerDiagnostic>();
+
+    /// <summary>
     /// File paths of stdlib/reference assemblies actually used during compilation, as
     /// tracked by the <see cref="Semantic.Registry.ModuleRegistry"/>. Enables selective
     /// runtime-dependency copying for the synthetic project-of-one-file path (#1038).

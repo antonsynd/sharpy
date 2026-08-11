@@ -56,10 +56,18 @@ internal class AssemblyCompiler
     /// without one (incremental cache hits, restored as text) are reparsed here.
     /// </param>
     /// <param name="projectConfig">The project configuration.</param>
+    /// <param name="compilationAlreadyFailed">
+    /// True when the compilation's diagnostic bag already carries an error — semantic or codegen —
+    /// before this assembly compile runs. Disarms the SPY0908 net for <c>CSxxxx</c> errors (#1387):
+    /// see <see cref="MapGeneratedCodeDiagnostics"/>. Suppressed diagnostics are logged at debug
+    /// level and returned on
+    /// <see cref="AssemblyCompilationResult.SuppressedGeneratedCodeDiagnostics"/>.
+    /// </param>
     public AssemblyCompilationResult CompileToAssembly(
         Dictionary<string, string> csharpSources,
         IReadOnlyDictionary<string, SyntaxTree> prebuiltTrees,
-        ProjectConfig projectConfig)
+        ProjectConfig projectConfig,
+        bool compilationAlreadyFailed = false)
     {
         _logger.LogInfo($"Compiling {csharpSources.Count} C# files to assembly");
         var metrics = new CompilationMetrics(
@@ -138,8 +146,10 @@ internal class AssemblyCompiler
             }
             metrics.EndPhase();
 
+            var mapping = MapGeneratedCodeDiagnostics(emitResult.Diagnostics, compilationAlreadyFailed);
             var diagnostics = new DiagnosticBag();
-            diagnostics.AddRange(MapGeneratedCodeDiagnostics(emitResult.Diagnostics));
+            diagnostics.AddRange(mapping.Reported);
+            LogSuppressedGeneratedCodeDiagnostics(mapping.Suppressed);
 
             if (!emitResult.Success)
             {
@@ -147,6 +157,7 @@ internal class AssemblyCompiler
                 {
                     Success = false,
                     Diagnostics = diagnostics,
+                    SuppressedGeneratedCodeDiagnostics = mapping.Suppressed,
                     Metrics = metrics
                 };
             }
@@ -167,6 +178,7 @@ internal class AssemblyCompiler
                 Success = true,
                 OutputAssemblyPath = outputPath,
                 Diagnostics = diagnostics,
+                SuppressedGeneratedCodeDiagnostics = mapping.Suppressed,
                 Metrics = metrics
             };
         }
@@ -367,15 +379,44 @@ internal class AssemblyCompiler
     ///   and are internal noise the user cannot act on.</item>
     ///   <item>Info/hidden diagnostics are dropped.</item>
     /// </list>
+    /// <para>
+    /// The net disarms itself when <paramref name="compilationAlreadyFailed"/> is true (#1387).
+    /// SPY0908 says "this is a Sharpy compiler bug"; that claim is only honest when the compiler
+    /// believed the program was good. Once the bag carries an error the user can act on, the
+    /// generated C# handed to Roslyn is knowingly incomplete — a refused unit's C# is dropped
+    /// (<c>ProjectCompiler.CodeGen.cs</c>) — so Roslyn's complaints about it are consequences of
+    /// that refusal, not evidence of a bug. Suppressed CS errors are returned unmapped on
+    /// <see cref="GeneratedCodeDiagnosticMapping.Suppressed"/> and logged at debug level, so the
+    /// leak corpus the #1146 sweeps rely on keeps every diagnostic it had before.
+    /// </para>
     /// </remarks>
-    internal static IReadOnlyList<CompilerDiagnostic> MapGeneratedCodeDiagnostics(
-        IEnumerable<Diagnostic> diagnostics)
+    /// <param name="diagnostics">Roslyn's diagnostics from compiling the generated C#.</param>
+    /// <param name="compilationAlreadyFailed">
+    /// True when an error was already reported for this compilation before Roslyn ran.
+    /// Compilation-wide by design: CS5001 ("no entry point"), the shape that motivated the gate,
+    /// is a compilation-level Roslyn error carrying <see cref="Location.None"/>, so a per-file
+    /// scope could never match it.
+    /// </param>
+    internal static GeneratedCodeDiagnosticMapping MapGeneratedCodeDiagnostics(
+        IEnumerable<Diagnostic> diagnostics,
+        bool compilationAlreadyFailed = false)
     {
         var mapped = new List<CompilerDiagnostic>();
+        List<CompilerDiagnostic>? suppressed = null;
         foreach (var d in diagnostics)
         {
             if (d.Severity == DiagnosticSeverity.Error)
             {
+                if (compilationAlreadyFailed && d.Id.StartsWith("CS", StringComparison.Ordinal))
+                {
+                    // Keep the raw CSxxxx id and text here: this list never reaches the user,
+                    // and a bug report reconstructed from it wants Roslyn's own words, not the
+                    // SPY0908 wrapper.
+                    suppressed ??= new List<CompilerDiagnostic>();
+                    suppressed.Add(ToCompilerDiagnostic(d, applyGeneratedCodeNet: false));
+                    continue;
+                }
+
                 mapped.Add(ToCompilerDiagnostic(d));
             }
             else if (d.Severity == DiagnosticSeverity.Warning
@@ -388,13 +429,43 @@ internal class AssemblyCompiler
             }
         }
 
-        return mapped;
+        return new GeneratedCodeDiagnosticMapping(
+            mapped,
+            (IReadOnlyList<CompilerDiagnostic>?)suppressed ?? Array.Empty<CompilerDiagnostic>());
+    }
+
+    /// <summary>
+    /// Debug-logs the CS errors the SPY0908 net swallowed (#1387) so a genuine emitter bug that
+    /// happened to occur in a compilation the user had already broken is still recoverable from a
+    /// verbose log rather than gone.
+    /// </summary>
+    private void LogSuppressedGeneratedCodeDiagnostics(IReadOnlyList<CompilerDiagnostic> suppressed)
+    {
+        if (suppressed.Count == 0 || !_logger.IsEnabled(CompilerLogLevel.Debug))
+        {
+            return;
+        }
+
+        foreach (var d in suppressed)
+        {
+            _logger.LogDebug(
+                "SPY0908 net disarmed (errors already reported for this compilation, #1387); "
+                + $"generated C# also failed with {d.Code}: {d.Message}");
+        }
     }
 
     /// <summary>
     /// Convert a Roslyn diagnostic to a structured CompilerDiagnostic
     /// </summary>
-    internal static CompilerDiagnostic ToCompilerDiagnostic(Diagnostic diagnostic)
+    /// <param name="diagnostic">The Roslyn diagnostic from compiling generated C#.</param>
+    /// <param name="applyGeneratedCodeNet">
+    /// When true (the default), a <c>CSxxxx</c> error is remapped to SPY0908 so no raw Roslyn code
+    /// can reach the user. Only the suppression path (#1387) passes false, and only for diagnostics
+    /// that are recorded for diagnosis rather than reported.
+    /// </param>
+    internal static CompilerDiagnostic ToCompilerDiagnostic(
+        Diagnostic diagnostic,
+        bool applyGeneratedCodeNet = true)
     {
         var severity = diagnostic.Severity == DiagnosticSeverity.Error
             ? CompilerDiagnosticSeverity.Error
@@ -431,7 +502,8 @@ internal class AssemblyCompiler
         // remap it to the SPY0908 internal-error diagnostic. The mapped .spy location
         // (computed above) is preserved, and the original CS id + text stay in the
         // message so the bug report loses no information.
-        if (diagnostic.Severity == DiagnosticSeverity.Error
+        if (applyGeneratedCodeNet
+            && diagnostic.Severity == DiagnosticSeverity.Error
             && diagnostic.Id.StartsWith("CS", StringComparison.Ordinal))
         {
             code = DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError;
@@ -677,6 +749,24 @@ internal class AssemblyCompilationResult
     /// </summary>
     public DiagnosticBag Diagnostics { get; init; } = new();
 
+    /// <summary>
+    /// CS errors from the generated C# that the SPY0908 net deliberately did not report because
+    /// the compilation had already failed for a reason the user can act on (#1387). Never shown to
+    /// the user; kept so the leak corpus the #1146 sweeps depend on stays observable to tests and
+    /// so a debug log can carry the evidence a real emitter bug would have left.
+    /// </summary>
+    public IReadOnlyList<CompilerDiagnostic> SuppressedGeneratedCodeDiagnostics { get; init; }
+        = Array.Empty<CompilerDiagnostic>();
+
     public string? OutputAssemblyPath { get; init; }
     public CompilationMetrics? Metrics { get; init; }
 }
+
+/// <summary>
+/// Outcome of mapping a generated-C# compile's Roslyn diagnostics (#1387): what the user is told
+/// (<see cref="Reported"/>), and the CS errors the SPY0908 net stood down from because errors were
+/// already reported for this compilation (<see cref="Suppressed"/>, unmapped, for logs and tests).
+/// </summary>
+internal readonly record struct GeneratedCodeDiagnosticMapping(
+    IReadOnlyList<CompilerDiagnostic> Reported,
+    IReadOnlyList<CompilerDiagnostic> Suppressed);

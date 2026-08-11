@@ -286,7 +286,18 @@ internal partial class ProjectCompiler
         _logger.LogInfo("Phase 7: Assembly Compilation");
         var generatedCSharp = generated.Sources;
         var assemblyCompiler = new AssemblyCompiler(_logger);
-        var assemblyResult = assemblyCompiler.CompileToAssembly(generatedCSharp, generated.Trees, config);
+
+        // #1387: read the bag BEFORE the assembly diagnostics are merged in. Any error already
+        // here — semantic or codegen, and SPY0520 module-class collision is a codegen one — means
+        // the C# about to be handed to Roslyn is knowingly incomplete: a refused unit's generated
+        // code was dropped above. Roslyn's resulting complaints (typically CS5001, "no entry
+        // point") are consequences of a refusal the compiler made on purpose, so reporting them as
+        // SPY0908 "internal compiler error" tells the user to file a bug about their own mistake.
+        // Compilation-wide rather than per-file: CS5001 carries Location.None and belongs to no
+        // file. The suppressed CS errors stay observable (debug log + AssemblyCompilationResult).
+        var compilationAlreadyFailed = _diagnostics.HasErrors;
+        var assemblyResult = assemblyCompiler.CompileToAssembly(
+            generatedCSharp, generated.Trees, config, compilationAlreadyFailed);
 
         // Add assembly metrics to project metrics
         if (assemblyResult.Metrics != null)
@@ -311,6 +322,7 @@ internal partial class ProjectCompiler
                 Diagnostics = _diagnostics,
                 // Include generated C# for debugging even on failure
                 GeneratedCSharpFiles = generatedCSharp,
+                SuppressedGeneratedCodeDiagnostics = assemblyResult.SuppressedGeneratedCodeDiagnostics,
                 Metrics = ProjectMetrics,
                 DependencyGraph = _dependencyGraph,
                 ProjectModel = _projectModel,
@@ -332,6 +344,7 @@ internal partial class ProjectCompiler
             Diagnostics = _diagnostics,
             OutputAssemblyPath = assemblyResult.OutputAssemblyPath,
             GeneratedCSharpFiles = generatedCSharp,
+            SuppressedGeneratedCodeDiagnostics = assemblyResult.SuppressedGeneratedCodeDiagnostics,
             Metrics = ProjectMetrics,
             DependencyGraph = _dependencyGraph,
             ProjectModel = _projectModel,

@@ -493,8 +493,14 @@ public class ReplSession
             // C# surfaces as an internal-error diagnostic, never a bare CSxxxx code (#1059).
             // EmitLineDirectives is off in the REPL, so any mapped location is generated-C#
             // coords — that's the documented scope; SPY0908 + preserved CS text is the point.
-            var diagnostics = AssemblyCompiler.MapGeneratedCodeDiagnostics(emitResult.Diagnostics);
-            return (null, diagnostics);
+            //
+            // The net stays fully armed here, and front-end parity holds without threading the
+            // #1387 gate through: CompileAndExecute only reaches this method when the front-end
+            // ProjectCompilationResult reported Success, so the REPL never Roslyn-compiles a
+            // submission whose bag already carries an error. The condition the project path gates
+            // on is unreachable from this seam rather than merely unhandled.
+            var mapping = AssemblyCompiler.MapGeneratedCodeDiagnostics(emitResult.Diagnostics);
+            return (null, mapping.Reported);
         }
 
         return (ms.ToArray(), Array.Empty<CompilerDiagnostic>());

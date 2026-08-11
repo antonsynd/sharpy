@@ -29,7 +29,7 @@ public class GeneratedCodeDiagnosticMappingTests
         var csError = MakeDiagnostic("CS0103", DiagnosticSeverity.Error,
             "The name 'x' does not exist in the current context");
 
-        var mapped = AssemblyCompiler.MapGeneratedCodeDiagnostics(new[] { csError });
+        var mapped = AssemblyCompiler.MapGeneratedCodeDiagnostics(new[] { csError }).Reported;
 
         var diag = Assert.Single(mapped);
         Assert.Equal(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, diag.Code); // SPY0908
@@ -47,7 +47,7 @@ public class GeneratedCodeDiagnosticMappingTests
         var csWarning = MakeDiagnostic("CS0219", DiagnosticSeverity.Warning,
             "The variable 'x' is assigned but its value is never used");
 
-        var mapped = AssemblyCompiler.MapGeneratedCodeDiagnostics(new[] { csWarning });
+        var mapped = AssemblyCompiler.MapGeneratedCodeDiagnostics(new[] { csWarning }).Reported;
 
         // Warnings with a CS id are internal noise from the compiler's own generated C#.
         Assert.Empty(mapped);
@@ -59,7 +59,7 @@ public class GeneratedCodeDiagnosticMappingTests
         var nonCsError = MakeDiagnostic("XY0001", DiagnosticSeverity.Error, "analyzer error");
         var nonCsWarning = MakeDiagnostic("XY0002", DiagnosticSeverity.Warning, "analyzer warning");
 
-        var mapped = AssemblyCompiler.MapGeneratedCodeDiagnostics(new[] { nonCsError, nonCsWarning });
+        var mapped = AssemblyCompiler.MapGeneratedCodeDiagnostics(new[] { nonCsError, nonCsWarning }).Reported;
 
         Assert.Equal(2, mapped.Count);
         Assert.Contains(mapped, d => d.Code == "XY0001" && d.Severity == CompilerDiagnosticSeverity.Error);
@@ -73,8 +73,65 @@ public class GeneratedCodeDiagnosticMappingTests
     {
         var info = MakeDiagnostic("XY0003", DiagnosticSeverity.Info, "info note");
 
-        var mapped = AssemblyCompiler.MapGeneratedCodeDiagnostics(new[] { info });
+        var mapped = AssemblyCompiler.MapGeneratedCodeDiagnostics(new[] { info }).Reported;
 
         Assert.Empty(mapped);
+    }
+
+    /// <summary>
+    /// #1387: the net claims "this is a Sharpy compiler bug". Once the compilation has already
+    /// failed for a reason the user can act on, the generated C# is knowingly incomplete and that
+    /// claim is false, so the CS error is recorded rather than reported.
+    /// </summary>
+    [Fact]
+    public void CsError_WhenCompilationAlreadyFailed_IsSuppressed_NotRemappedToSpy0908()
+    {
+        var csError = MakeDiagnostic("CS5001", DiagnosticSeverity.Error,
+            "Program does not contain a static 'Main' method suitable for an entry point");
+
+        var mapping = AssemblyCompiler.MapGeneratedCodeDiagnostics(
+            new[] { csError }, compilationAlreadyFailed: true);
+
+        Assert.Empty(mapping.Reported);
+
+        // The evidence is kept, unmapped, so the #1146 leak corpus does not quietly shrink.
+        var kept = Assert.Single(mapping.Suppressed);
+        Assert.Equal("CS5001", kept.Code);
+        Assert.Contains("static 'Main' method", kept.Message);
+    }
+
+    /// <summary>
+    /// The exact same input with a clean bag still produces SPY0908 — the control that keeps the
+    /// assertion above from passing for any reason other than the gate.
+    /// </summary>
+    [Fact]
+    public void CsError_WhenCompilationIsOtherwiseClean_IsStillRemappedToSpy0908()
+    {
+        var csError = MakeDiagnostic("CS5001", DiagnosticSeverity.Error,
+            "Program does not contain a static 'Main' method suitable for an entry point");
+
+        var mapping = AssemblyCompiler.MapGeneratedCodeDiagnostics(
+            new[] { csError }, compilationAlreadyFailed: false);
+
+        var diag = Assert.Single(mapping.Reported);
+        Assert.Equal(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, diag.Code);
+        Assert.Empty(mapping.Suppressed);
+    }
+
+    /// <summary>
+    /// The gate disarms the SPY0908 net specifically. A non-CS error never went through the net,
+    /// so nothing about it changes — suppressing it would drop a diagnostic the user can act on.
+    /// </summary>
+    [Fact]
+    public void NonCsError_IsStillReported_WhenCompilationAlreadyFailed()
+    {
+        var nonCsError = MakeDiagnostic("XY0001", DiagnosticSeverity.Error, "analyzer error");
+
+        var mapping = AssemblyCompiler.MapGeneratedCodeDiagnostics(
+            new[] { nonCsError }, compilationAlreadyFailed: true);
+
+        var diag = Assert.Single(mapping.Reported);
+        Assert.Equal("XY0001", diag.Code);
+        Assert.Empty(mapping.Suppressed);
     }
 }
