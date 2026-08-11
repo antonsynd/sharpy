@@ -19,6 +19,33 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// {same-file, imported}, asserting the <em>outcome</em> (<see cref="FunctionSymbol.IsAbstract"/>)
 /// rather than which predicate a call site happens to name.
 ///
+/// <para><b>Every cell asserts THROUGH the authority, not side against side (#1374).</b> Since the
+/// #1374 collapse there is exactly one abstractness formula —
+/// <c>Shared.MemberClassification</c> — and all four classification sites call it. So each cell
+/// makes two separate statements instead of one:
+/// <list type="number">
+/// <item>the FORMULA statement — <c>MemberClassification</c>, given this declaration and this
+/// owner, answers what the cell names; and</item>
+/// <item>the SITE statement — the symbol the site produced carries the authority's answer, so a
+/// site holding a private copy of the rule diverges here and says so.</item>
+/// </list>
+/// Comparing the two sides to each other cannot separate those: when both sides consume one
+/// formula they move together, so a change to the formula leaves every side-vs-side assertion
+/// green while an expected-value cell reddens blaming <em>a site</em> for what the formula did.
+///
+/// <para>Measured 2026-08-10, by running each mutation against this table before and after the
+/// rewrite. Breaking the FORMULA — <c>MemberClassification.IsAbstract(PropertyDef/EventDef, …)</c>
+/// passing <c>canBeImplicitStub: false</c>, which disables the implicit-stub arm for properties
+/// and events — reddens the same 24 of these 66 cells either way; what changed is what the failure
+/// says. Side-vs-side, both property/event import-invariance theories stayed GREEN (the two sides
+/// moved together) and every one of the 24 messages blamed a site — "must classify abstract when
+/// same-file", "…when imported" — for a change made in the rule. Through the authority the FORMULA
+/// assertion fails first and names the rule. Breaking a SITE instead — <c>ModuleLoader</c>'s
+/// property extractor back to decorator-only, the #1368 defect — reddens 11 cells, all of them
+/// imported properties, on the SITE assertion, with every FORMULA assertion still green. The two
+/// mutations are now distinguishable by reading the failure; before, both read as a cell
+/// expectation that had come loose.</para>
+///
 /// <para><b>Why outcomes and not a source scan.</b> The obvious guard — "classification sites must
 /// call <c>IsAbstractStubBody</c>" — is wrong, and would flag correct code. The predicate is keyed
 /// to the <em>owning type kind</em>, and <c>NameResolver.Members.cs:130-139</c> documents the split
@@ -112,15 +139,18 @@ public class StubClassificationTableTests : IDisposable
     [InlineData(AbstractClass, "pass", Imported, Concrete)]  // ...on both sides, which is the point
     public void StubClassification(string ownerKind, string body, string site, string expected)
     {
-        Classify(ownerKind, body, site).Should().Be(
-            expected,
-            "{0} member with a `{1}` body must classify {2} when {3}", ownerKind, body, expected, site);
+        var (observed, authority) = ClassifyMethod(ownerKind, body, site);
+
+        AssertFormula(authority, expected, $"a {ownerKind} method with a `{body}` body");
+        AssertSiteReadsTheAuthority(observed, authority, site, $"a {ownerKind} method with a `{body}` body");
     }
 
     /// <summary>
     /// #1258 stated directly: for an interface member, the classification of one declaration must
     /// not depend on which side of an import it sits. This is the assertion the source-scan guard
-    /// could not express.
+    /// could not express. Routed through the authority (#1374), agreement is no longer the whole
+    /// claim — each side is pinned to the one formula, and the formula's own answer is pinned
+    /// separately, so "both sides moved together" cannot pass for "neither side changed".
     /// </summary>
     [Theory]
     [InlineData("...")]
@@ -128,15 +158,15 @@ public class StubClassificationTableTests : IDisposable
     [InlineData("pass")]
     public void InterfaceStub_ClassifiesTheSameOnBothSidesOfAnImport(string body)
     {
-        var sameFile = Classify(Interface, body, SameFile);
-        var imported = Classify(Interface, body, Imported);
+        AssertImportInvariance(
+            ClassifyMethod(Interface, body, SameFile),
+            ClassifyMethod(Interface, body, Imported),
+            $"an interface method with a `{body}` body",
+            "NameResolver.ResolveMethodDeclaration and ModuleLoader.ExtractFullInterfaceSymbol (#1258)");
 
-        imported.Should().Be(
-            sameFile,
-            "an interface method with a `{0}` body is one declaration with one classification; "
-            + "NameResolver.ResolveMethodDeclaration and ModuleLoader.ExtractFullInterfaceSymbol "
-            + "must reach the same answer (#1258)", body);
-        sameFile.Should().Be(Abstract, "interface members with stub bodies are implicitly abstract");
+        AssertFormula(
+            ClassifyMethod(Interface, body, SameFile).Authority, Abstract,
+            $"an interface method with a `{body}` body");
     }
 
     /// <summary>
@@ -155,15 +185,13 @@ public class StubClassificationTableTests : IDisposable
     [InlineData("pass", Concrete)]
     public void AbstractClassStub_ClassifiesTheSameOnBothSidesOfAnImport(string body, string expected)
     {
-        var sameFile = Classify(AbstractClass, body, SameFile);
-        var imported = Classify(AbstractClass, body, Imported);
+        AssertImportInvariance(
+            ClassifyMethod(AbstractClass, body, SameFile),
+            ClassifyMethod(AbstractClass, body, Imported),
+            $"an @abstract class method with a `{body}` body",
+            "NameResolver.ResolveMethodDeclaration and ModuleLoader.ExtractFullClassSymbol (#1266)");
 
-        imported.Should().Be(
-            sameFile,
-            "an @abstract class method with a `{0}` body is one declaration with one classification; "
-            + "NameResolver.ResolveMethodDeclaration and ModuleLoader.ExtractFullClassSymbol must "
-            + "reach the same answer (#1266)", body);
-        sameFile.Should().Be(
+        ClassifyMethod(AbstractClass, body, SameFile).Authority.Should().Be(
             expected,
             "abstract-class members are implicitly abstract only for an ELLIPSIS body — `pass` is a "
             + "stub for interface members, not for these (TypeChecker enforces it with \"Abstract "
@@ -186,8 +214,8 @@ public class StubClassificationTableTests : IDisposable
     /// confirmed by a body that would have sufficed alone.</para>
     ///
     /// <para>The ten imported cells where the implicit rule (rather than the decorator) decides
-    /// live in <see cref="MemberStubClassification_ImportedImplicitStub"/>; they fail today, for
-    /// one reason, tracked as #1368.</para>
+    /// live in <see cref="MemberStubClassification_ImportedImplicitStub"/>; they reddened when
+    /// first written, tracked as #1368.</para>
     /// </summary>
     [Theory]
     // member,  owner,         body,        site,     expected
@@ -216,10 +244,11 @@ public class StubClassificationTableTests : IDisposable
     public void MemberStubClassification(
         string memberKind, string ownerKind, string body, string site, string expected)
     {
-        ClassifyMember(memberKind, ownerKind, body, site).Should().Be(
-            expected,
-            "a {0} {1} with a `{2}` body must classify {3} when {4}",
-            ownerKind, memberKind, body, expected, site);
+        var (observed, authority) = ClassifyMember(memberKind, ownerKind, body, site);
+        var subject = $"a {ownerKind} {memberKind} with a `{body}` body";
+
+        AssertFormula(authority, expected, subject);
+        AssertSiteReadsTheAuthority(observed, authority, site, subject);
     }
 
     /// <summary>
@@ -231,7 +260,8 @@ public class StubClassificationTableTests : IDisposable
     /// <c>NameResolver</c>'s property and event paths the implicit-stub rule — but
     /// <c>ModuleLoader.ExtractProperties</c>/<c>ExtractEvents</c> stayed decorator-only, taking
     /// <c>ownerKind</c> and <c>ownerIsAbstract</c> and reading neither. Fixed by f9d442c7e,
-    /// which mirrors the implicit-stub arms into both extractors.</para>
+    /// which mirrors the implicit-stub arms into both extractors. In the through-the-authority
+    /// shape that defect is a SITE failure, and these cells now name it as one.</para>
     /// </summary>
     [Theory]
     // member,  owner,         body,    site,     expected
@@ -253,9 +283,11 @@ public class StubClassificationTableTests : IDisposable
     /// The import-invariance assertion stated directly for properties and events, so a failure
     /// names the divergence rather than one arbitrary cell of it. <c>NameResolver</c>'s
     /// <c>ResolvePropertyDeclaration</c>/<c>ResolveEventDeclaration</c> and <c>ModuleLoader</c>'s
-    /// <c>ExtractProperties</c>/<c>ExtractEvents</c> classify the same declaration and must agree.
+    /// <c>ExtractProperties</c>/<c>ExtractEvents</c> classify the same declaration and must agree —
+    /// which, since #1374, means agreeing with <c>MemberClassification</c> rather than with each
+    /// other.
     ///
-    /// <para>Only the two spellings that agree today are live; the rest are in
+    /// <para>Only the two spellings that agreed before f9d442c7e are here; the rest are in
     /// <see cref="MemberStub_ImportedImplicitStubClassifiesTheSameOnBothSides"/> under #1368.</para>
     /// </summary>
     [Theory]
@@ -263,16 +295,11 @@ public class StubClassificationTableTests : IDisposable
     [InlineData(Event, AbstractClass, "pass")]
     public void MemberStub_ClassifiesTheSameOnBothSidesOfAnImport(
         string memberKind, string ownerKind, string body)
-    {
-        var sameFile = ClassifyMember(memberKind, ownerKind, body, SameFile);
-        var imported = ClassifyMember(memberKind, ownerKind, body, Imported);
-
-        imported.Should().Be(
-            sameFile,
-            "a {0} {1} with a `{2}` body is one declaration with one classification; the "
-            + "same-file resolver and ModuleLoader's extraction must reach the same answer (#1267)",
-            ownerKind, memberKind, body);
-    }
+        => AssertImportInvariance(
+            ClassifyMember(memberKind, ownerKind, body, SameFile),
+            ClassifyMember(memberKind, ownerKind, body, Imported),
+            $"a {ownerKind} {memberKind} with a `{body}` body",
+            "the same-file resolver and ModuleLoader's extraction (#1267)");
 
     /// <summary>#1368 (fixed by f9d442c7e): the same invariant for the spellings the implicit
     /// rule decides.</summary>
@@ -294,24 +321,41 @@ public class StubClassificationTableTests : IDisposable
     /// <summary>
     /// A property or event written as two accessors is still one member, and the merge must not
     /// lose its abstractness. Both accessors are stubs here — the disagreeing shape is a diagnostic
-    /// (SPY0424 for events), not a classification question — so the merged symbol is abstract.
+    /// (SPY0424 for events), not a classification question — so the authority classifies each of
+    /// them abstract and the one member they merge into must carry that answer. The merge itself is
+    /// the site's own logic, which is exactly why it is asserted against the authority: nothing in
+    /// <c>MemberClassification</c> knows a merge is happening.
     /// </summary>
     [Theory]
     [InlineData(Property, SameFile)]
     [InlineData(Event, SameFile)]
     public void MergedAccessorStub_IsOneAbstractMember(string memberKind, string site)
     {
-        var owner = MergedAccessorOwner(memberKind, site);
+        var source = MergedAccessorOwnerSource(memberKind);
+        var module = ParseMergedAccessorOwner(source, memberKind);
+        var owner = OwnerAt(site, module, source);
+        AssertOwnerKind(owner, AbstractClass);
+
+        var accessorAuthorities = OwnerMembers(module, memberKind)
+            .Where(m => m.Name == "m")
+            .Select(m => AuthorityFor(m.Def, owner))
+            .Distinct()
+            .ToList();
+
+        accessorAuthorities.Should().HaveCount(
+            1,
+            "both accessors of the {0} are ellipsis stubs in an @abstract class, so MemberClassification "
+            + "gives them ONE answer, not two (#1374)", memberKind);
+        accessorAuthorities[0].Should().Be(
+            Abstract, "an ellipsis stub in an @abstract class is implicitly abstract");
 
         // The merge itself: two declarations, one symbol. If they did not merge, the "exactly one
-        // member named 'm'" check below fails and the abstractness assertion never runs on a
-        // half-built member.
-        var classification = MemberClassificationOf(owner, AbstractClass, memberKind);
-
-        classification.Should().Be(
-            Abstract,
-            "both accessors of the {0} are ellipsis stubs in an @abstract class, so the one member "
-            + "they merge into is abstract — {1} (#1267)", memberKind, site);
+        // member named 'm'" check inside MemberClassificationOf fails and the abstractness
+        // assertion never runs on a half-built member.
+        MemberClassificationOf(owner, memberKind).Should().Be(
+            accessorAuthorities[0],
+            "the one member the accessors merge into must carry the authority's answer for them — "
+            + "{0}, {1} (#1267)", memberKind, site);
     }
 
     /// <summary>
@@ -326,6 +370,60 @@ public class StubClassificationTableTests : IDisposable
     public void MergedAccessorStub_ImportedIsOneAbstractMember(string memberKind, string site)
         => MergedAccessorStub_IsOneAbstractMember(memberKind, site);
 
+    // --- The two statements every cell makes ---------------------------------------------------
+
+    /// <summary>
+    /// The FORMULA statement: <c>MemberClassification</c> — the one abstractness authority (#1374)
+    /// — answers what the cell names, for this declaration under this owner. A cell that changed
+    /// here is a change to the rule itself, wherever it was written.
+    /// </summary>
+    private static void AssertFormula(string authority, string expected, string subject)
+        => authority.Should().Be(
+            expected,
+            "MemberClassification is the one abstractness formula (#1374) and must classify {0} "
+            + "{1} — this statement is about the rule, not about any site that reads it",
+            subject, expected);
+
+    /// <summary>
+    /// The SITE statement: the symbol this site produced carries the authority's answer. A site
+    /// that kept a private copy of the rule — which is how #1258, #1266 and #1368 each happened —
+    /// diverges here, and the failure names the site rather than the rule.
+    /// </summary>
+    private static void AssertSiteReadsTheAuthority(
+        string observed, string authority, string site, string subject)
+        => observed.Should().Be(
+            authority,
+            "the {0} classification of {1} must be the answer MemberClassification gives; a site "
+            + "holding its own copy of the rule is free to drift from it (#1258, #1266, #1368)",
+            site, subject);
+
+    /// <summary>
+    /// Import invariance, routed through the authority: one declaration has one authority answer
+    /// on both sides — which also asserts the owner inputs (<see cref="TypeKind"/> and the owner's
+    /// own abstractness) survive the import, since they are what the formula is fed — and each
+    /// side's symbol carries it. Agreement between the sides then follows rather than being the
+    /// whole claim, so "both sides moved together" cannot pass for "neither side changed".
+    /// </summary>
+    private static void AssertImportInvariance(
+        (string Observed, string Authority) sameFile,
+        (string Observed, string Authority) imported,
+        string subject,
+        string sites)
+    {
+        imported.Authority.Should().Be(
+            sameFile.Authority,
+            "{0} is one declaration with one authority answer; if MemberClassification answers "
+            + "differently across the import the two sides fed it different owner inputs", subject);
+
+        AssertSiteReadsTheAuthority(sameFile.Observed, sameFile.Authority, SameFile, subject);
+        AssertSiteReadsTheAuthority(imported.Observed, imported.Authority, Imported, subject);
+
+        imported.Observed.Should().Be(
+            sameFile.Observed,
+            "{0} is one declaration with one classification; {1} must reach the same answer",
+            subject, sites);
+    }
+
     // --- Arrangement ---------------------------------------------------------------------------
 
     private static string OwnerSource(string ownerKind, string body) => ownerKind switch
@@ -335,32 +433,54 @@ public class StubClassificationTableTests : IDisposable
         _ => throw new ArgumentOutOfRangeException(nameof(ownerKind), ownerKind, "unknown owner kind"),
     };
 
-    private string Classify(string ownerKind, string body, string site) => site switch
+    /// <summary>
+    /// One method cell: what the site produced (<c>Observed</c>) and what the authority says for
+    /// the same declaration under the same owner inputs (<c>Authority</c>). The authority is fed
+    /// the owner symbol's OWN kind and abstractness — literally the arguments
+    /// <c>NameResolver.ResolveMethodDeclaration</c> and <c>ModuleLoader.ExtractMethodSymbol</c>
+    /// pass — so the comparison isolates the classification and cannot be satisfied by feeding the
+    /// formula something the site never saw.
+    /// </summary>
+    private (string Observed, string Authority) ClassifyMethod(string ownerKind, string body, string site)
     {
-        SameFile => ClassifySameFile(ownerKind, body),
-        Imported => ClassifyImported(ownerKind, body),
-        _ => throw new ArgumentOutOfRangeException(nameof(site), site, "unknown site"),
-    };
-
-    /// <summary>Same-file classification: <c>NameResolver.ResolveMethodDeclaration</c>.</summary>
-    private static string ClassifySameFile(string ownerKind, string body)
-    {
+        // Parse through the arrangement checks first, on BOTH sides, so a shape or parse regression
+        // fails identically for same-file and imported rather than only on one of them.
         var module = ParseOwner(ownerKind, body);
-        return Classification(ResolveOwner(module), ownerKind);
+        var def = OwnerMethods(module).Single(f => f.Name == "m");
+
+        var owner = OwnerAt(site, module, OwnerSource(ownerKind, body));
+        AssertOwnerKind(owner, ownerKind);
+
+        return (Classification(owner), AuthorityFor(def, owner));
     }
 
     /// <summary>
-    /// Cross-module classification: <c>ModuleLoader.ExtractFullInterfaceSymbol</c> /
-    /// <c>ExtractFullClassSymbol</c>, the symbols an importing module receives.
+    /// The owner symbol as the site under test produces it: <c>NameResolver</c> for same-file,
+    /// <c>ModuleLoader</c>'s extraction — the symbols an importing module receives — for imported.
     /// </summary>
-    private string ClassifyImported(string ownerKind, string body)
+    private TypeSymbol OwnerAt(string site, Module module, string source) => site switch
     {
-        // Parse the same source through the same arrangement checks first, so a shape or parse
-        // regression fails here identically to the same-file half rather than only on one side.
-        ParseOwner(ownerKind, body);
+        SameFile => ResolveOwner(module),
+        Imported => ExtractOwner(source),
+        _ => throw new ArgumentOutOfRangeException(nameof(site), site, "unknown site"),
+    };
 
-        return Classification(ExtractOwner(OwnerSource(ownerKind, body)), ownerKind);
-    }
+    /// <summary>The authority's answer for a method declaration (<c>MemberClassification.Classify</c>,
+    /// the entry both method sites call).</summary>
+    private static string AuthorityFor(FunctionDef def, TypeSymbol owner)
+        => global::Sharpy.Compiler.Shared.MemberClassification
+            .Classify(def, owner.TypeKind, owner.IsAbstract).IsAbstract ? Abstract : Concrete;
+
+    /// <summary>The authority's answer for a property or event declaration.</summary>
+    private static string AuthorityFor(Statement def, TypeSymbol owner) => def switch
+    {
+        PropertyDef prop => global::Sharpy.Compiler.Shared.MemberClassification
+            .IsAbstract(prop, owner.TypeKind, owner.IsAbstract) ? Abstract : Concrete,
+        EventDef evt => global::Sharpy.Compiler.Shared.MemberClassification
+            .IsAbstract(evt, owner.TypeKind, owner.IsAbstract) ? Abstract : Concrete,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(def), def.GetType().Name, "not a property or event declaration"),
+    };
 
     /// <summary>Runs <c>NameResolver</c> over a parsed module and returns its <c>Owner</c>.</summary>
     private static TypeSymbol ResolveOwner(Module module)
@@ -402,16 +522,9 @@ public class StubClassificationTableTests : IDisposable
         return owner;
     }
 
-    /// <summary>
-    /// Reads the outcome off the symbol, after checking the owner really is the kind the cell
-    /// names — an interface that silently came back as a class, or an "@abstract" class that lost
-    /// its abstractness, would otherwise make a <c>concrete</c> expectation pass for the wrong
-    /// reason.
-    /// </summary>
-    private static string Classification(TypeSymbol owner, string ownerKind)
+    /// <summary>Reads the outcome off the symbol the site produced.</summary>
+    private static string Classification(TypeSymbol owner)
     {
-        AssertOwnerKind(owner, ownerKind);
-
         var methods = owner.Methods.Where(m => m.Name == "m").ToList();
         if (methods.Count != 1)
             throw new InvalidOperationException(
@@ -490,6 +603,11 @@ public class StubClassificationTableTests : IDisposable
         _ => stmt.GetType().Name,
     };
 
+    /// <summary>
+    /// Checks the owner really is the kind the cell names — an interface that silently came back
+    /// as a class, or an "@abstract" class that lost its abstractness, would otherwise feed the
+    /// authority the same wrong inputs the site used and make both agree on the wrong answer.
+    /// </summary>
     private static void AssertOwnerKind(TypeSymbol owner, string ownerKind)
     {
         switch (ownerKind)
@@ -554,45 +672,32 @@ public class StubClassificationTableTests : IDisposable
         };
     }
 
-    private string ClassifyMember(string memberKind, string ownerKind, string body, string site)
+    /// <summary>
+    /// One property/event cell, in the same shape as <see cref="ClassifyMethod"/>: the site's
+    /// answer beside the authority's for the same declaration and the same owner inputs.
+    /// </summary>
+    private (string Observed, string Authority) ClassifyMember(
+        string memberKind, string ownerKind, string body, string site)
     {
         var source = MemberOwnerSource(memberKind, ownerKind, body);
+        // Parse both halves through the same shape checks, so a parse or shape regression fails on
+        // both sides rather than turning one side into a silent constant.
         var module = ParseMemberOwner(source, memberKind, body);
+        var def = OwnerMembers(module, memberKind).Single(m => m.Name == "m").Def;
 
-        var owner = site switch
-        {
-            SameFile => ResolveOwner(module),
-            // Parse the imported half through the same shape checks first, so a parse or shape
-            // regression fails on both sides rather than turning one side into a silent constant.
-            Imported => ExtractOwner(source),
-            _ => throw new ArgumentOutOfRangeException(nameof(site), site, "unknown site"),
-        };
+        var owner = OwnerAt(site, module, source);
+        AssertOwnerKind(owner, ownerKind);
 
-        return MemberClassificationOf(owner, ownerKind, memberKind);
-    }
-
-    private TypeSymbol MergedAccessorOwner(string memberKind, string site)
-    {
-        var source = MergedAccessorOwnerSource(memberKind);
-        var module = ParseMergedAccessorOwner(source, memberKind);
-
-        return site switch
-        {
-            SameFile => ResolveOwner(module),
-            Imported => ExtractOwner(source),
-            _ => throw new ArgumentOutOfRangeException(nameof(site), site, "unknown site"),
-        };
+        return (MemberClassificationOf(owner, memberKind), AuthorityFor(def, owner));
     }
 
     /// <summary>
-    /// Reads <c>IsAbstract</c> off the one property/event named <c>m</c>, after confirming the
-    /// owner is the kind the cell names. "Exactly one" is what makes the merged-accessor cells
-    /// meaningful: two symbols named <c>m</c> would mean the accessors never merged.
+    /// Reads <c>IsAbstract</c> off the one property/event named <c>m</c>. "Exactly one" is what
+    /// makes the merged-accessor cells meaningful: two symbols named <c>m</c> would mean the
+    /// accessors never merged.
     /// </summary>
-    private static string MemberClassificationOf(TypeSymbol owner, string ownerKind, string memberKind)
+    private static string MemberClassificationOf(TypeSymbol owner, string memberKind)
     {
-        AssertOwnerKind(owner, ownerKind);
-
         switch (memberKind)
         {
             case Property:
@@ -625,7 +730,7 @@ public class StubClassificationTableTests : IDisposable
     private static Module ParseMemberOwner(string source, string memberKind, string body)
     {
         var module = ParseOrThrow(source, body);
-        var (name, isFunctionStyle, decorators, parsedBody) =
+        var (_, name, isFunctionStyle, decorators, parsedBody) =
             OwnerMembers(module, memberKind).SingleOrDefault(m => m.Name == "m");
 
         if (name == null)
@@ -679,7 +784,11 @@ public class StubClassificationTableTests : IDisposable
         return module;
     }
 
-    private static IEnumerable<(string? Name, bool IsFunctionStyle, ImmutableArray<Decorator> Decorators, ImmutableArray<Statement> Body)>
+    /// <summary>
+    /// The property/event declarations on <c>Owner</c>. <c>Def</c> is the declaration node itself —
+    /// what the authority is asked about — and the rest is what the arrangement checks read.
+    /// </summary>
+    private static IEnumerable<(Statement Def, string? Name, bool IsFunctionStyle, ImmutableArray<Decorator> Decorators, ImmutableArray<Statement> Body)>
         OwnerMembers(Module module, string memberKind)
     {
         foreach (var stmt in module.Body)
@@ -696,10 +805,10 @@ public class StubClassificationTableTests : IDisposable
                 switch (member)
                 {
                     case PropertyDef prop when memberKind == Property:
-                        yield return (prop.Name, prop.IsFunctionStyle, prop.Decorators, prop.Body);
+                        yield return (prop, prop.Name, prop.IsFunctionStyle, prop.Decorators, prop.Body);
                         break;
                     case EventDef evt when memberKind == Event:
-                        yield return (evt.Name, evt.IsFunctionStyle, evt.Decorators, evt.Body);
+                        yield return (evt, evt.Name, evt.IsFunctionStyle, evt.Decorators, evt.Body);
                         break;
                 }
             }
