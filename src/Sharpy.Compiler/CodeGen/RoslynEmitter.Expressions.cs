@@ -84,6 +84,18 @@ internal partial class RoslynEmitter
                 .WithArgumentList(ArgumentList());
         }
 
+        if (kind == CharMaterializationKind.Literal)
+        {
+            // The call seam that read the reflected `char` parameter already proved this argument is
+            // a ONE-character string literal (#1402), so the conversion is a re-spelling of a value
+            // already in hand: `"a"` -> `'a'`. Nothing is decided here — a literal of any other
+            // length, and every non-literal, is refused at the call and never carries this fact, so
+            // the guard below is a shape assertion rather than a second decision.
+            return (value as LiteralExpressionSyntax)?.Token.ValueText is { Length: 1 } text
+                ? LiteralExpression(SyntaxKind.CharacterLiteralExpression, Literal(text[0]))
+                : value;
+        }
+
         if (kind == CharMaterializationKind.Sequence)
         {
             return InvocationExpression(

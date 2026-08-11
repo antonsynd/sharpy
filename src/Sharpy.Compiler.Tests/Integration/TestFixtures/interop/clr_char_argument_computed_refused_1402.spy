@@ -1,0 +1,11 @@
+# The non-literal twin of clr_char_argument_literal_1402 (#1402). A computed `str` has no
+# compile-time length, so nothing here can prove it is one character; the conversion is refused
+# rather than guessed at with a silent `[0]`.
+
+
+from system import Char
+
+
+def main() -> None:
+    s = "a" + "b"
+    print(Char.to_upper(s))

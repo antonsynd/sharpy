@@ -383,6 +383,12 @@ internal partial class TypeChecker
                 // Sharpy means by it (#1291).
                 if (BclCallTypeOnBuiltinReceiver(call, memberAccessCall, argTypes) is { } bclCallType)
                     return bclCallType;
+
+                // The same silence on a STATIC CLR receiver, for the argument direction the char
+                // family had not covered: a `str` bound to a reflected `char` parameter (#1402).
+                if (ClrStaticCharCallType(call, memberAccessCall, argTypes) is { } staticCharCallType)
+                    return staticCharCallType;
+
             }
         }
 
@@ -4200,6 +4206,103 @@ internal partial class TypeChecker
             return;
 
         CheckClrCallArgumentTypes(call, fitting[0], argTypes, memberDisplay);
+    }
+
+    /// <summary>
+    /// Types a STATIC call on a CLR type name whose sole arity-matching overload takes a
+    /// <c>char</c>, and decides what each such argument converts to (#1402). Returns <c>null</c> —
+    /// leaving the call exactly as permissive as it is today — for every other shape.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The REVERSE direction of the #1291 char family. That issue records a conversion on the
+    /// expression that PRODUCES a char, which is what let one mechanism cover indexing, slicing,
+    /// iteration, arguments and returns at once. A <c>str</c> going the other way has no
+    /// char-producing expression to key on: the fact lives on the PARAMETER, so it is decided here,
+    /// at the call seam, and recorded on the argument node.
+    /// </para>
+    /// <para>
+    /// Only a ONE-character string literal converts. <c>Char.to_upper("abc")</c> has no correct char
+    /// to pass, and a conversion that silently took the first character would be Sharpy inventing a
+    /// truncation .NET never asked for — so a longer literal and a computed <c>str</c> are both
+    /// refused, by name, instead of reaching Roslyn as CS1503 behind SPY0908.
+    /// </para>
+    /// <para>
+    /// Deliberately scoped to candidates that take a <c>char</c>: this is the char row, not the
+    /// static twin of #1290's argument check, and typing every single-candidate static CLR call is a
+    /// far larger change than the row asks for. Every other step defaults to silence for #1290's
+    /// reason — a false refusal here rejects interop .NET binds happily, which is strictly worse than
+    /// the ICE it would replace.
+    /// </para>
+    /// </remarks>
+    private SemanticType? ClrStaticCharCallType(
+        FunctionCall call, MemberAccess memberAccess, List<SemanticType> argTypes)
+    {
+        // A keyword argument binds by CLR parameter name and a spread stands for however many
+        // arguments the sequence holds, so neither the count nor the positions mean here what this
+        // seam would read them as.
+        if (call.KeywordArguments.Length > 0
+            || call.Arguments.Length != argTypes.Count
+            || call.Arguments.Any(argument => argument is SpreadElement))
+        {
+            return null;
+        }
+
+        if (memberAccess.Object is not Identifier typeName
+            || _semanticInfo.GetIdentifierSymbol(typeName) is not TypeSymbol { ClrType: { } clrType })
+        {
+            return null;
+        }
+
+        var methodName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member);
+        if (methodName == null)
+            return null;
+
+        // #1243's selection rule verbatim: exactly one candidate of the call's arity means the
+        // user's intent is not in doubt. Two of the same arity keep silence, because choosing between
+        // them is CLR overload resolution and this seam does not own it.
+        var candidates = clrType
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Where(m => m.Name == methodName
+                && !m.IsGenericMethodDefinition
+                && m.GetParameters().Length == argTypes.Count)
+            .ToList();
+
+        if (candidates.Count != 1)
+            return null;
+
+        var parameters = candidates[0].GetParameters();
+        if (!parameters.Any(p => p.ParameterType == typeof(char)))
+            return null;
+
+        var memberDisplay = $"{Shared.ClrNameHelper.StripArity(clrType.Name)}.{memberAccess.Member}";
+
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            if (parameters[i].ParameterType != typeof(char))
+                continue;
+
+            var argument = ArgumentNodeAt(call, i);
+            if (argument is StringLiteral { Value.Length: 1 })
+            {
+                _semanticInfo.SetCharMaterialization(argument, CharMaterializationKind.Literal);
+                continue;
+            }
+
+            AddError(
+                $"Argument {i + 1} of '{memberDisplay}' takes a CLR 'char', which only a "
+                + "single-character str literal converts to — Sharpy will not truncate a longer or "
+                + "computed str",
+                call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: call.Arguments[i].Span);
+        }
+
+        // The call's own value: a char-returning static is the same one-character str every other
+        // seam in the family projects it to, and typing it is what keeps `x: str = Char.to_upper("a")`
+        // from handing Roslyn a `char` for a `string` slot.
+        var returnType = _bclGenericMethodBridge.MapClrTypeToSemanticType(candidates[0].ReturnType);
+        return returnType is UnknownType ? null : ProjectClrChar(call, returnType);
     }
 
     /// <summary>

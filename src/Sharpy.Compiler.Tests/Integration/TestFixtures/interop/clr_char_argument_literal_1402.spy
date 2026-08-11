@@ -1,0 +1,21 @@
+# The REVERSE direction of the #1291 char family (#1402): a Sharpy `str` going IN to a CLR `char`
+# parameter. #1291 records its conversion on the expression that PRODUCES a char, and an argument
+# going the other way has no such expression — the fact lives on the PARAMETER, so it is decided at
+# the call seam and recorded on the argument node.
+#
+# A one-character str literal converts to the C# char literal it already is. Anything else is
+# refused, by name, rather than reaching Roslyn as CS1503 behind SPY0908 — see the two twins
+# clr_char_argument_multichar_refused_1402 and clr_char_argument_computed_refused_1402.
+#
+# The return comes back through the same family's projection: a CLR `char` is the one-character str
+# Sharpy means by it, so the `str` slot below needs no conversion of its own.
+
+
+from system import Char
+
+
+def main() -> None:
+    x: str = Char.to_upper("a")
+    print(x)
+    print(Char.to_lower("Q"))
+    print(Char.is_digit("7"))

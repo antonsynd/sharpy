@@ -1,0 +1,10 @@
+# The multi-character twin of clr_char_argument_literal_1402 (#1402). `Char.to_upper("abc")` has no
+# correct char to pass, and taking the first character would be Sharpy inventing a truncation .NET
+# never asked for — so it is refused, not silently narrowed.
+
+
+from system import Char
+
+
+def main() -> None:
+    print(Char.to_upper("abc"))

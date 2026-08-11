@@ -1281,7 +1281,20 @@ public enum CharMaterializationKind
     /// value that never lands in a collection slot pays nothing but the <c>Select</c>.
     /// </para>
     /// </summary>
-    Sequence
+    Sequence,
+
+    /// <summary>
+    /// The REVERSE direction (#1402): a one-character <c>str</c> literal bound to a CLR <c>char</c>
+    /// parameter — emit the C# character literal (<c>"a"</c> → <c>'a'</c>).
+    /// <para>
+    /// Recorded on the ARGUMENT rather than on a producer, because a <c>str</c> going IN has no
+    /// char-producing expression to key on: the fact lives on the parameter and is decided at the
+    /// call seam. Only a single-character LITERAL carries it — a computed <c>str</c> and a
+    /// multi-character literal are refused, because taking the first character would be Sharpy
+    /// inventing a truncation .NET never asked for.
+    /// </para>
+    /// </summary>
+    Literal
 }
 
 /// <summary>
