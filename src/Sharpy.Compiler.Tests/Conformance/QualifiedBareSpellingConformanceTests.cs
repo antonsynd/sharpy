@@ -30,10 +30,16 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <para><b>Matrix</b> — <c>position × shape × sourceSet</c>, each cell a PAIR of compilations
 /// differing only in spelling:</para>
 /// <list type="bullet">
-///   <item><description><b>position</b> — the five type-reference positions: <c>annotation</c>,
-///     <c>baseList</c>, <c>typeTest</c>, <c>constraint</c>, <c>pattern</c>, plus
+///   <item><description><b>position</b> — the type-reference positions: <c>annotation</c>,
+///     <c>baseList</c>, <c>typeTest</c> (<c>isinstance</c>), <c>typeTestCast</c> (<c>as?</c>),
+///     <c>typeTestExcept</c> (<c>except</c>), <c>constraint</c>, <c>pattern</c>, plus
 ///     <c>declSiteAnnotation</c>, where the spelling varies inside the IMPORTED module rather than
-///     at the use site (see below).</description></item>
+///     at the use site (see below). Type-testing is three positions rather than one because #1411
+///     has two routes: <c>isinstance</c> parses its operand as a <c>MemberAccess</c> and goes
+///     through <c>ClassifyTypeTestExpressionOperand</c>, while <c>as?</c>/<c>as!</c>,
+///     <c>except</c> and match class patterns classify from a <c>TypeAnnotation</c> via
+///     <c>ClassifyTypeTestAnnotation</c>. A row covering only the first would report a green
+///     position while measuring half of it.</description></item>
 ///   <item><description><b>shape</b> — <c>plain</c> (a non-generic class) and <c>generic</c> (a
 ///     generic class at a concrete argument). The generic column exists because the two spellings
 ///     are made to agree by a deliberate normalization — <c>TypeResolver.cs:721</c> stores the BARE
@@ -68,11 +74,12 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// suite, every listed key cites the issue that will drain it, and a listed cell that has started
 /// AGREEING also fails — deleting the line is part of landing the fix.</para>
 ///
-/// <para><b>Baseline and cost.</b> 24 cells, 48 compilations plus the executing subset, ~1.8 s —
-/// cheap enough for the regular suite, so it carries no <c>GapDiscovery</c> trait. Its first run
-/// found twelve divergent cells and every one was a defect: #1445 (a dotted class pattern does not
-/// parse at all), #1446 (a qualified non-generic annotation keeps its dotted name, and refuses
-/// assignment/type-test/constraint outside the source set), #1447 (a closed qualified generic in
+/// <para><b>Baseline and cost.</b> 30 cells, 60 compilations plus the executing subset, ~2.2 s —
+/// cheap enough for the regular suite, so it carries no <c>GapDiscovery</c> trait. Its first runs
+/// found fourteen divergent cells and every one was a defect: #1445 (a dotted class pattern does
+/// not parse at all), #1446 (a qualified non-generic annotation keeps its dotted name, and outside
+/// the source set refuses assignment, <c>isinstance</c>, constraint, <c>as?</c> and <c>except</c> —
+/// the last a walk to a BUILTIN base coming back empty), #1447 (a closed qualified generic in
 /// type-test position leaks CS0305) and #1448 (the extractor keeps the dotted name — the cell
 /// written deliberately to reach <c>ModuleLoader.cs:723</c>).</para>
 /// </summary>
@@ -134,6 +141,11 @@ class Box[T]:
 
     def get(self) -> T:
         return self.value
+
+
+class AppError(Exception):
+    def __init__(self, msg: str) -> None:
+        super().__init__(msg)
 ";
 
     // --- Scenarios -----------------------------------------------------------------------------
@@ -217,6 +229,46 @@ def main() -> None:
         print(""box"")
     else:
         print(""other"")
+"), null),
+
+        // ---- type test, annotation-shaped arm ----
+        //
+        // #1411 turned out to have TWO arms and the isinstance row above covers only one:
+        // `isinstance` parses its operand as a MemberAccess and routes through
+        // ClassifyTypeTestExpressionOperand -> TryResolveExpressionAsType's QualifiedName arm,
+        // while `as?`/`as!`, `except` and match class patterns classify from a TypeAnnotation via
+        // ClassifyTypeTestAnnotation. A row that exercised only the first would pass while covering
+        // half the position. (The match-pattern spelling is the `pattern` position below, which is
+        // where #1445 surfaced.)
+        new("typeTestCast", "plain", s => Two($@"{s.Imports("Shape", "Circle")}
+
+def main() -> None:
+    shape: {s.Ref("Shape")} = {s.Ref("Circle")}()
+    narrowed = shape as? {s.Ref("Circle")}
+    if narrowed is not None:
+        print(""circle"")
+    else:
+        print(""shape"")
+"), null),
+
+        new("typeTestCast", "generic", s => Two($@"{s.Imports("Box")}
+
+def main() -> None:
+    box: {s.Ref("Box")}[int] = {s.Ref("Box")}(7)
+    narrowed = box as? {s.Ref("Box")}[int]
+    if narrowed is not None:
+        print(""box"")
+    else:
+        print(""other"")
+"), null),
+
+        new("typeTestExcept", "plain", s => Two($@"{s.Imports("AppError")}
+
+def main() -> None:
+    try:
+        raise {s.Ref("AppError")}(""boom"")
+    except {s.Ref("AppError")}:
+        print(""caught"")
 "), null),
 
         // ---- constraint ----

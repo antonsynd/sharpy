@@ -22,9 +22,8 @@
 # Any growth is a regression in the contract, not a fact about the code that can be left standing.
 
 # ---------------------------------------------------------------------------------------------
-# Baseline: 12 divergent / 24 cells, on branch `dev` at edf02bf00 (2026-08-11) — the sweep's
-# first run. Every line is a defect the sweep found, filed the same day; none is a tolerated
-# difference.
+# Baseline: 14 divergent / 30 cells, on branch `dev` at d4147409b (2026-08-11). Every line is a
+# defect the sweep found, filed the same day; none is a tolerated difference.
 # See .claude/tmp/qualified-bare-conformance-report.json.
 # ---------------------------------------------------------------------------------------------
 
@@ -40,11 +39,16 @@ pattern::generic::outsideSourceSet
 # normalizes `lib.Box[int]` to the bare `Box` (#1134/#1244) and the non-generic arm at `:272` does
 # not, so `lib.Shape` resolves to `UserDefinedType { Name = "lib.Shape" }`. Cosmetic in-source-set,
 # where the two symbols are one object since #1366; outside the source set the name is what remains
-# to compare and the qualified spelling refuses assignment (SPY0220), type-test (SPY0220) and
-# constraint (SPY0237) — the #1366/#1407 symptoms on the path that fix did not cover.
+# to compare and the qualified spelling refuses every relation asked of it — assignment (SPY0220),
+# isinstance (SPY0220), constraint (SPY0237), `as?` (SPY0220+SPY0228 InvalidCast) and `except`
+# (SPY0399 TryExceptionTypeNotException, i.e. the walk to Exception came back empty). Those are the
+# #1366/#1407 symptoms on the path that fix did not cover. Note the two annotation-shaped cells
+# AGREE in-source-set, so #1411's fix holds and only the extraction path is affected.
 annotation::plain::inSourceSet
 annotation::plain::outsideSourceSet
 typeTest::plain::outsideSourceSet
+typeTestCast::plain::outsideSourceSet
+typeTestExcept::plain::outsideSourceSet
 constraint::plain::outsideSourceSet
 declSiteAnnotation::plain::inSourceSet
 
