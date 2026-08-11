@@ -1,0 +1,31 @@
+# #1408: the synthesized constructor forwarders substitute the base's WRITTEN type arguments.
+#
+# C# does not inherit constructors, so a class with no __init__ gets one forwarder per base
+# constructor. The ancestor's TypeSymbol.Constructors are built once from the OPEN definition and
+# shared by every instantiation, so copying them verbatim put `Sharpy.List<T>` into a class that has
+# no `T` at all — CS0246 (non-generic derived) or CS1503 (generic derived) behind SPY0908. The
+# substitution is decided per derived class in semantic analysis and materialized on
+# CodeGenInfo.ForwardingConstructors; the emitter reads it and substitutes nothing itself.
+#
+# The parameterless overload was the other half of #1408 and landed separately in 9af4cf581 (#1367);
+# `IntList()` below is its standing cover. The copy forwarder is fed a Sharpy list literal rather than
+# a CLR `List[int]`, because discovery re-expresses the base's `IEnumerable[T]` parameter as `list[T]`
+# and a CLR collection argument therefore does not bind (#1450) — a different defect from this one.
+from system.collections.generic import List
+
+
+class IntList(List[int]):
+    pass
+
+
+def main() -> None:
+    m: IntList = IntList()
+    m.add(1)
+    ok: List[int] = m
+    print(ok.count)
+
+    sized: IntList = IntList(8)
+    print(sized.count)
+
+    copied: IntList = IntList([4, 5])
+    print(copied.count)

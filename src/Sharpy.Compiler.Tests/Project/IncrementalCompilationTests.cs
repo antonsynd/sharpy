@@ -3666,17 +3666,18 @@ def main():
     }
 
     /// <summary>
-    /// A generic class over a CLR generic base pinned at a concrete argument. The explicit
-    /// <c>__init__</c> is load-bearing: without it the shape fails to emit for an unrelated reason
-    /// (CS1503 behind SPY0908 at the constructor), which would make the cell untestable.
+    /// A generic class over a CLR generic base pinned at a concrete argument. It carried an explicit
+    /// <c>__init__</c> until #1408 landed, because the synthesized forwarders copied the base's OPEN
+    /// signatures and the shape could not emit at all (CS1503 behind SPY0908); the workaround is gone
+    /// now that the forwarders substitute the base clause's written arguments, so this cell exercises
+    /// the synthesized path as well as the warm cache.
     /// </summary>
     private const string ClrGenericBaseLibrary = @"
 from system.collections.generic import List
 
 
 class MyList[T](List[int]):
-    def __init__(self) -> None:
-        super().__init__()
+    pass
 ";
 
     private const string SourceGenericBaseLibrary = @"

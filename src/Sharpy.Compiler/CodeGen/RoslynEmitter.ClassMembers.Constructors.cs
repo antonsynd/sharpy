@@ -377,92 +377,119 @@ internal partial class RoslynEmitter
     /// </summary>
     private List<MemberDeclarationSyntax> GenerateForwardingConstructors(string className)
     {
-        var constructors = new List<MemberDeclarationSyntax>();
+        // The forwarders' SIGNATURES are a semantic decision, materialized per derived class on
+        // CodeGenInfo (#1408): the ancestor's Constructors carry the base's OPEN parameter types
+        // (`List[T].List(IEnumerable[T])` is one shared FunctionSymbol across every instantiation), so
+        // emitting them verbatim put a `Sharpy.List<T>` into a class with no `T`. Substituting here
+        // would make the emitter decide a type, which Rule 2 forbids; it reads the frozen fact instead.
+        //
+        // Read from the MATERIALIZED property, not the binding-first GetCodeGenInfo helper: the
+        // bridging happens at MaterializeCodeGenInfo, which writes Symbol.CodeGenInfo, so the raw
+        // binding entry the helper prefers never carries this field. Same reason #1122's
+        // OverridesClrBaseMember is read as `symbol.CodeGenInfo?.…` at
+        // RoslynEmitter.ClassMembers.Methods.cs:155.
+        if (_currentTypeSymbol?.CodeGenInfo?.ForwardingConstructors is { } substituted)
+        {
+            return GenerateForwardersFrom(className, substituted);
+        }
 
-        // Walk up inheritance chain to find nearest ancestor with __init__
+        // No materialized fact — the base chain's arguments could not be read, so there is nothing to
+        // substitute and the ancestor's own signatures are the only answer available (#1287 DD2).
+        // Walk up the inheritance chain to the nearest ancestor with __init__.
         // Use SemanticBinding first (consistent with base list generation at line 1194)
         var ancestor = _currentTypeSymbol is not null
             ? _context.SemanticBinding.GetBaseType(_currentTypeSymbol) ?? _currentTypeSymbol.BaseType
             : null;
         while (ancestor != null)
         {
-            var initMethods = ancestor.Constructors;
-            if (initMethods.Count > 0)
-            {
-                // A parameterless base constructor needs a forwarder only when some OTHER forwarder
-                // is emitted. C# supplies an implicit `E()` for a class that declares no constructor
-                // at all, so emitting one where it is the only forwarder would be noise — but the
-                // moment any parameterised forwarder is declared, the implicit one is gone, and
-                // `E()` stops compiling. That is the shape #1408 reported as a dropped 0-arg
-                // overload, and it is the reason `raise E()` must be re-checked whenever `raise
-                // E('boom')` is fixed (#1367): the two are one decision, not two.
-                var forwardable = initMethods
-                    .Select(m => (Method: m, NonSelf: m.Parameters
-                        .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
-                        .ToList()))
-                    .ToList();
-                var emitsParameterised = forwardable.Any(f => f.NonSelf.Count > 0);
+            if (ancestor.Constructors.Count > 0)
+                return GenerateForwardersFrom(className, ancestor.Constructors);
 
-                foreach (var (initMethod, nonSelfParams) in forwardable)
-                {
-                    if (nonSelfParams.Count == 0 && !emitsParameterised)
-                        continue;
-
-                    // Reorder for C# compliance (required before optional, params last)
-                    var orderedNonSelfParams = ReorderParameterSymbolsForCSharp(nonSelfParams);
-
-                    // Generate parameter list from semantic ParameterSymbol data
-                    var parameters = orderedNonSelfParams.Select(p =>
-                    {
-                        var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
-                        var paramType = p.Type is not null and not UnknownType
-                            ? _typeMapper.MapSemanticType(p.Type)
-                            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
-
-                        // For variadic parameters, wrap the element type in an array
-                        if (p.IsVariadic)
-                        {
-                            paramType = VariadicArrayType(paramType);
-                        }
-
-                        var paramSyntax = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
-
-                        // For variadic parameters, add the 'params' modifier
-                        if (p.IsVariadic)
-                        {
-                            paramSyntax = paramSyntax.WithModifiers(TokenList(Token(SyntaxKind.ParamsKeyword)));
-                        }
-
-                        // Handle default values
-                        if (p.DefaultValue != null)
-                        {
-                            paramSyntax = paramSyntax.WithDefault(
-                                EqualsValueClause(GenerateExpression(p.DefaultValue)));
-                        }
-
-                        return paramSyntax;
-                    }).ToArray();
-
-                    // Generate base constructor call arguments (same reordered order)
-                    var baseArgs = orderedNonSelfParams.Select(p =>
-                    {
-                        var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
-                        return Argument(EscapedIdentifierName(paramName));
-                    }).ToArray();
-
-                    var ctor = ConstructorDeclaration(EscapedIdentifier(className))
-                        .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
-                        .WithParameterList(ParameterList(SeparatedList(parameters)))
-                        .WithInitializer(ConstructorInitializer(
-                            SyntaxKind.BaseConstructorInitializer,
-                            ArgumentList(SeparatedList(baseArgs))))
-                        .WithBody(Block());
-
-                    constructors.Add(ctor);
-                }
-                break; // Only forward from nearest ancestor with constructors
-            }
             ancestor = _context.SemanticBinding.GetBaseType(ancestor) ?? ancestor.BaseType;
+        }
+
+        return new List<MemberDeclarationSyntax>();
+    }
+
+    /// <summary>
+    /// Emits one forwarding constructor per entry of <paramref name="inheritedConstructors"/>, whose
+    /// parameter types are taken verbatim.
+    /// </summary>
+    private List<MemberDeclarationSyntax> GenerateForwardersFrom(
+        string className, IReadOnlyList<FunctionSymbol> inheritedConstructors)
+    {
+        var constructors = new List<MemberDeclarationSyntax>();
+
+        // A parameterless base constructor needs a forwarder only when some OTHER forwarder
+        // is emitted. C# supplies an implicit `E()` for a class that declares no constructor
+        // at all, so emitting one where it is the only forwarder would be noise — but the
+        // moment any parameterised forwarder is declared, the implicit one is gone, and
+        // `E()` stops compiling. That is the shape #1408 reported as a dropped 0-arg
+        // overload, and it is the reason `raise E()` must be re-checked whenever `raise
+        // E('boom')` is fixed (#1367): the two are one decision, not two.
+        var forwardable = inheritedConstructors
+            .Select(m => (Method: m, NonSelf: m.Parameters
+                .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+                .ToList()))
+            .ToList();
+        var emitsParameterised = forwardable.Any(f => f.NonSelf.Count > 0);
+
+        foreach (var (_, nonSelfParams) in forwardable)
+        {
+            if (nonSelfParams.Count == 0 && !emitsParameterised)
+                continue;
+
+            // Reorder for C# compliance (required before optional, params last)
+            var orderedNonSelfParams = ReorderParameterSymbolsForCSharp(nonSelfParams);
+
+            // Generate parameter list from semantic ParameterSymbol data
+            var parameters = orderedNonSelfParams.Select(p =>
+            {
+                var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                var paramType = p.Type is not null and not UnknownType
+                    ? _typeMapper.MapSemanticType(p.Type)
+                    : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+
+                // For variadic parameters, wrap the element type in an array
+                if (p.IsVariadic)
+                {
+                    paramType = VariadicArrayType(paramType);
+                }
+
+                var paramSyntax = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
+
+                // For variadic parameters, add the 'params' modifier
+                if (p.IsVariadic)
+                {
+                    paramSyntax = paramSyntax.WithModifiers(TokenList(Token(SyntaxKind.ParamsKeyword)));
+                }
+
+                // Handle default values
+                if (p.DefaultValue != null)
+                {
+                    paramSyntax = paramSyntax.WithDefault(
+                        EqualsValueClause(GenerateExpression(p.DefaultValue)));
+                }
+
+                return paramSyntax;
+            }).ToArray();
+
+            // Generate base constructor call arguments (same reordered order)
+            var baseArgs = orderedNonSelfParams.Select(p =>
+            {
+                var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                return Argument(EscapedIdentifierName(paramName));
+            }).ToArray();
+
+            var ctor = ConstructorDeclaration(EscapedIdentifier(className))
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
+                .WithParameterList(ParameterList(SeparatedList(parameters)))
+                .WithInitializer(ConstructorInitializer(
+                    SyntaxKind.BaseConstructorInitializer,
+                    ArgumentList(SeparatedList(baseArgs))))
+                .WithBody(Block());
+
+            constructors.Add(ctor);
         }
 
         return constructors;

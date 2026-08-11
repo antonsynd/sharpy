@@ -1,0 +1,36 @@
+# The base-substitution authority composes across a MULTI-LEVEL chain, which a single level cannot
+# show: `class Leaf(Middle[int])` over `class Middle[T](Root[T])` reaches `Root[int]` only because
+# level 1's `{T -> int}` map is applied to level 2's written `[T]`. A one-step reader answers
+# `Root[T]` here, and `Leaf` has no `T` for that to mean anything.
+#
+# Neither Middle nor Leaf declares an __init__, so both are forwarded to. Middle contributes no
+# constructors of its own, so Leaf's nearest ancestor with any is Root — reached through TWO levels
+# of substitution, which is why `Leaf(41)` binds an int rather than an out-of-scope `T`.
+#
+# The values are read back through a method whose return type is concrete: the member side of the
+# same chain is typed at the OPEN `T` (`leaf.value` is `T`, not `int`), which is #1449 and not this
+# fixture's subject.
+class Root[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+    def describe(self) -> str:
+        return str(self.value)
+
+
+class Middle[T](Root[T]):
+    pass
+
+
+class Leaf(Middle[int]):
+    pass
+
+
+def main() -> None:
+    leaf: Leaf = Leaf(41)
+    print(leaf.describe())
+
+    mid: Middle[str] = Middle[str]("mid")
+    print(mid.describe())

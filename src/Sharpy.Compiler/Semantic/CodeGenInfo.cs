@@ -77,6 +77,24 @@ public sealed record CodeGenInfo
     /// </summary>
     public bool OverridesClrBaseMember { get; init; }
 
+    /// <summary>
+    /// For a class that declares no <c>__init__</c> and inherits constructors from an ancestor, the
+    /// forwarders code generation must synthesize — with the base clause's written type arguments
+    /// already substituted into every parameter (#1408). Null when the class declares its own
+    /// constructors, when no ancestor declares any, or when the base chain's arguments cannot be
+    /// read (such a base stays UNKNOWN rather than being guessed from arity — #1287 Design
+    /// Decision 2); code generation then keeps its own nearest-ancestor walk.
+    /// </summary>
+    /// <remarks>
+    /// The one non-scalar fact on this record, and it has to be keyed on the DERIVED symbol:
+    /// <see cref="TypeSymbol.Constructors"/> is built once from the OPEN definition and shared by
+    /// every instantiation, so <c>List[T].List(IEnumerable[T])</c> is the same
+    /// <see cref="FunctionSymbol"/> for <c>IntList</c> and for <c>StrList</c>. Substituting it onto
+    /// the ancestor would corrupt the other derived classes; substituting it in the emitter would be
+    /// the emitter making a type decision (CLAUDE.md Rule 2). Code generation reads this verbatim.
+    /// </remarks>
+    public IReadOnlyList<FunctionSymbol>? ForwardingConstructors { get; init; }
+
     // ============================================================
     // FUTURE EXTENSIBILITY (for v0.2.x+)
     // These fields are reserved for future features. They are

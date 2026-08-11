@@ -57,6 +57,13 @@ public class SemanticBinding
     private readonly ConcurrentDictionary<Symbol, bool> _clrBaseOverrides =
         new(ReferenceEqualityComparer.Instance);
 
+    // Constructor forwarders synthesized for a class with no __init__, with the base clause's written
+    // type arguments already substituted into every parameter (#1408). Written by TypeChecker during
+    // type checking; bridged onto CodeGenInfo.ForwardingConstructors at MaterializeCodeGenInfo.
+    // Symbol-keyed (Rule 2a) with reference equality, mirroring _clrBaseOverrides (#1122).
+    private readonly ConcurrentDictionary<Symbol, IReadOnlyList<FunctionSymbol>> _forwardingConstructors =
+        new(ReferenceEqualityComparer.Instance);
+
     // Maps variable symbols to their resolved types
     private readonly ConcurrentDictionary<VariableSymbol, SemanticType> _variableTypes =
         new(ReferenceEqualityComparer.Instance);
@@ -198,6 +205,27 @@ public class SemanticBinding
     /// </summary>
     public bool OverridesClrBaseMember(Symbol symbol)
         => _clrBaseOverrides.ContainsKey(symbol);
+
+    /// <summary>
+    /// Records the constructor forwarders a derived class inherits, with the base clause's written
+    /// type arguments already substituted into every parameter (#1408). Bridged onto
+    /// <see cref="CodeGenInfo.ForwardingConstructors"/> at <see cref="MaterializeCodeGenInfo"/> so
+    /// code generation emits them from a frozen fact and makes no substitution of its own.
+    /// </summary>
+    public void SetForwardingConstructors(Symbol symbol, IReadOnlyList<FunctionSymbol> constructors)
+    {
+        if (_codeGenInfoFrozen)
+        {
+            AssertNotFrozen("CodeGenInfo", symbol.Name);
+        }
+        _forwardingConstructors[symbol] = constructors;
+    }
+
+    /// <summary>
+    /// The recorded constructor forwarders for a derived class, or null if none were recorded.
+    /// </summary>
+    public IReadOnlyList<FunctionSymbol>? GetForwardingConstructors(Symbol symbol)
+        => _forwardingConstructors.TryGetValue(symbol, out var ctors) ? ctors : null;
 
     #endregion
 
@@ -348,6 +376,12 @@ public class SemanticBinding
             "A CLR-base-override mark exists for a symbol with no CodeGenInfo entry; " +
             "the fact would be silently dropped at materialization (#1122).");
 
+        System.Diagnostics.Debug.Assert(
+            System.Linq.Enumerable.All(_forwardingConstructors.Keys, s => _codeGenInfo.ContainsKey(s)),
+            "Constructor forwarders were recorded for a symbol with no CodeGenInfo entry; " +
+            "the fact would be silently dropped at materialization and the emitter would fall back " +
+            "to the ancestor's OPEN signatures (#1408).");
+
         foreach (var (symbol, info) in _codeGenInfo)
         {
             var effective = info;
@@ -361,6 +395,12 @@ public class SemanticBinding
             // from a frozen fact without re-deriving the base-member match.
             if (_clrBaseOverrides.ContainsKey(symbol) && !effective.OverridesClrBaseMember)
                 effective = effective with { OverridesClrBaseMember = true };
+
+            // Bridge the substituted constructor forwarders (#1408) for the same reason: the base's
+            // written type arguments are a semantic fact, and the emitter must not re-derive them.
+            if (effective.ForwardingConstructors is null
+                && _forwardingConstructors.TryGetValue(symbol, out var forwarders))
+                effective = effective with { ForwardingConstructors = forwarders };
 
             symbol.CodeGenInfo = effective;
         }
@@ -383,6 +423,11 @@ public class SemanticBinding
         // project-level binding after this merge — so per-file marks must carry across (#1122).
         foreach (var (symbol, _) in other._clrBaseOverrides)
             _clrBaseOverrides.TryAdd(symbol, true);
+
+        // Same consumption point, same obligation (#1408): the forwarders are bridged at
+        // MaterializeCodeGenInfo on the project-level binding, after this merge.
+        foreach (var (symbol, forwarders) in other._forwardingConstructors)
+            _forwardingConstructors.TryAdd(symbol, forwarders);
 
         foreach (var (symbol, type) in other._variableTypes)
             _variableTypes.TryAdd(symbol, type);

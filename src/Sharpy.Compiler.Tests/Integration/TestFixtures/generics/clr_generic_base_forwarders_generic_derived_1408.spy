@@ -1,0 +1,19 @@
+# #1408, generic-derived arm: `class MyList[T](List[int])` pins the base at `int` while keeping its
+# OWN `T`. The derived class's type parameters map to themselves, so the forwarder's parameter is
+# `Sharpy.List<int>` (the base's written argument) and not `Sharpy.List<T>` (the shared open one).
+#
+# This is also the shape the #1287 warm-cache pin exists to protect: guessing the base's arguments
+# from arity would answer `List[T]`, which accepts `List[str] = MyList[str]()` and refuses the
+# correct `List[int] = MyList[str]()` (#1287 Design Decision 2).
+from system.collections.generic import List
+
+
+class MyList[T](List[int]):
+    pass
+
+
+def main() -> None:
+    m: MyList[str] = MyList[str]()
+    m.add(7)
+    ok: List[int] = m
+    print(ok.count)

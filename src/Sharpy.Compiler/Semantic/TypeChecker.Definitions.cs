@@ -1128,6 +1128,49 @@ internal partial class TypeChecker
         // Access validation is handled by AccessValidator in the validation pipeline
 
         _symbolTable.ExitScope();
+
+        RecordForwardingConstructors(classSymbol);
+    }
+
+    /// <summary>
+    /// Materializes the constructor forwarders a class with no <c>__init__</c> inherits, with the base
+    /// clause's written type arguments substituted into every parameter (#1408).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// C# does not inherit constructors, so <c>class IntList(List[int])</c> needs one forwarder per
+    /// base constructor. The ancestor's <see cref="TypeSymbol.Constructors"/> are built once from the
+    /// OPEN definition and shared by every instantiation, so copying them verbatim put the base's own
+    /// <c>T</c> into a class that has no <c>T</c> — <c>public IntList(Sharpy.List&lt;T&gt;)</c>,
+    /// CS0246/CS1503 behind SPY0908 (#1408). The substitution therefore belongs per derived class, and
+    /// per CLAUDE.md Rule 2 it is decided here and read verbatim by the emitter.
+    /// </para>
+    /// <para>
+    /// The class's own type parameters map to themselves, so <c>class MyList[T](List[int])</c> pins
+    /// <c>int</c> while <c>class MyList[T](List[T])</c> keeps <c>T</c> — which is the derived class's
+    /// <c>T</c>, in scope at the forwarder.
+    /// </para>
+    /// <para>
+    /// Nothing is recorded when the chain cannot be read; the base then stays UNKNOWN rather than
+    /// being guessed from arity (#1287 Design Decision 2), and the emitter keeps its existing walk.
+    /// </para>
+    /// </remarks>
+    private void RecordForwardingConstructors(TypeSymbol classSymbol)
+    {
+        // A class that declares its own __init__ suppresses forwarding entirely.
+        if (classSymbol.Constructors.Count > 0)
+            return;
+
+        var ownTypeArguments = classSymbol.TypeParameters
+            .Select(tp => (SemanticType)new TypeParameterType { Name = tp.Name })
+            .ToList();
+
+        var forwarded = GenericInstantiationWalker.FindSubstitutedConstructors(
+            classSymbol, ownTypeArguments, SemanticBinding, _typeResolver);
+        if (forwarded == null)
+            return;
+
+        SemanticBinding.SetForwardingConstructors(classSymbol, forwarded.Value.Constructors);
     }
 
     private void CheckStruct(StructDef structDef)
