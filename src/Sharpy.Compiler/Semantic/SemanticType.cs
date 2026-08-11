@@ -75,6 +75,22 @@ public abstract record SemanticType : ITypeInfo
     public static readonly SemanticType Object = new UserDefinedType { Name = "object" };
 
     /// <summary>
+    /// The type of a CLR value whose type discovery could not map — <c>IEnumerable&lt;IGrouping&lt;K,T&gt;&gt;</c>
+    /// from a LINQ <c>group_by</c>, an unrecognized generic. Record-EQUAL to <see cref="Object"/> (same
+    /// name, no symbol), so every assignability and equality answer is exactly what it was; only its
+    /// reference identity differs, and only one question reads that.
+    /// </summary>
+    /// <remarks>
+    /// That question is "did the USER write <c>object</c> here?", asked by the member-absence refusal
+    /// for <c>object</c> receivers (#1389). Sharpy's <c>object</c> and "discovery could not name this
+    /// type" had been the same singleton, so refusing an unknown member on the first also refused
+    /// <c>g.key</c> on the second — a working program rejected, which the corpus caught. Losing the
+    /// identity (through a <c>with</c> expression, say) fails toward permissiveness, which is the safe
+    /// direction; the conflation itself is #1146's to retire.
+    /// </remarks>
+    public static readonly SemanticType UnmappedClr = new UserDefinedType { Name = "object" };
+
+    /// <summary>
     /// Check if this type is assignable to another type
     /// </summary>
     public virtual bool IsAssignableTo(SemanticType other)

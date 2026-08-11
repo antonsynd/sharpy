@@ -204,7 +204,7 @@ internal class ClrTypeBridge
         {
             var elementType = clrType.GetElementType();
             if (elementType == null)
-                return SemanticType.Object; // Defensive fallback for safety
+                return SemanticType.UnmappedClr; // Defensive fallback for safety
 
             var arrayName = BuiltinNames.Array;
             return new GenericType
@@ -274,8 +274,9 @@ internal class ClrTypeBridge
             };
         }
 
-        // Fallback to object for unknown types
-        return SemanticType.Object;
+        // Fallback to object for unknown types — record-equal to object, distinguishable from a
+        // written `object` only by reference, which is what keeps the #1389 refusal off it.
+        return SemanticType.UnmappedClr;
     }
 
     /// <summary>
@@ -663,8 +664,8 @@ internal class ClrTypeBridge
             };
         }
 
-        // Unknown generic type - fallback to object
-        return SemanticType.Object;
+        // Unknown generic type - fallback to object (see SemanticType.UnmappedClr)
+        return SemanticType.UnmappedClr;
     }
 
     private bool IsGenericTypeDefinition(Type type, Type genericTypeDef)

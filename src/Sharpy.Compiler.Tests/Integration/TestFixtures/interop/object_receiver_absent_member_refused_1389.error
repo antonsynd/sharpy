@@ -1,0 +1,1 @@
+Type 'object' has no member 'bit_length'. Narrow the receiver first (if isinstance(x, SomeType):) @13:11

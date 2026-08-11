@@ -201,7 +201,11 @@ internal partial class TypeChecker
                 // Mark error recovery for unhandled symbol types in module exports
                 // (e.g., TypeAliasSymbol) — these are resolved elsewhere, not a compiler bug.
                 if (exportedType is UnknownType)
-                    MarkExpressionAsErrorRecovery(memberAccess);
+                {
+                    MarkExpressionAsErrorRecovery(memberAccess,
+                        ErrorRecoveryReason.DeliberatelyPermissive(
+                            "a module export of an unhandled symbol kind (type alias) is resolved elsewhere"));
+                }
                 // A module-qualified reference to an exported type denotes the type itself,
                 // not a value. Record this so argument validation can accept it for
                 // parameters backed by CLR System.Type (e.g., assert_raises(mod.SomeError)).
@@ -228,7 +232,8 @@ internal partial class TypeChecker
             // root-cause set (threaded in via ImportRootCauses) covers that case.
             if (moduleSymbol.IsErrorRecovery || _diagnostics.IsRootCause(moduleSymbol.Name))
             {
-                MarkExpressionAsErrorRecovery(memberAccess);
+                MarkExpressionAsErrorRecovery(memberAccess,
+                    ErrorRecoveryReason.AlreadyReported("the module failed to load (SPY0300)"));
                 return SemanticType.Unknown;
             }
 
@@ -298,7 +303,9 @@ internal partial class TypeChecker
                 // Member not found on CLR type — fall back to codegen rather than
                 // emitting an error, since the TypeSymbol may be a CLR shadow of a
                 // user-defined type with different members.
-                MarkExpressionAsErrorRecovery(memberAccess);
+                MarkExpressionAsErrorRecovery(memberAccess,
+                    ErrorRecoveryReason.DeliberatelyPermissive(
+                        "a CLR shadow of a user type may declare members discovery did not see"));
                 return SemanticType.Unknown;
             }
 
@@ -595,13 +602,28 @@ internal partial class TypeChecker
         // the permissive channel, and so do the registry's `typeof(object)` placeholders (the dict
         // views, the iterator types), which would otherwise be measured against System.Object's member
         // surface and prove every name absent.
-        if ((memberLookupType is BuiltinType || IsBuiltinContainerReceiver(memberLookupType))
+        //
+        // An `object` receiver joined in #1389 for the same reason and by the same route: once
+        // ResolveBuiltinTypeInfo routes it to the registry's `object` entry, the proof measures a
+        // reference against System.Object's REAL surface, which is the right question for that
+        // receiver. `o.to_string()` and `o.get_hash_code()` are on it and keep working; `o.bit_length()`
+        // is not, and drew CS1061 behind SPY0908 with `emit diagnostics` entirely clean.
+        if ((memberLookupType is BuiltinType
+                || IsBuiltinContainerReceiver(memberLookupType)
+                || IsObjectReceiver(memberLookupType))
             && ClrReflectionProvesMemberAbsent(memberLookupType, memberAccess.Member, out var builtinSuggestion))
         {
             var absentOnBuiltin =
                 $"Type '{memberLookupType.GetDisplayName()}' has no member '{memberAccess.Member}'";
             if (builtinSuggestion != null)
                 absentOnBuiltin += $". Did you mean '{builtinSuggestion}'?";
+
+            // `object` is the one receiver whose remedy is not a spelling fix: the member usually
+            // exists on the value's real type and the reference needs the compiler to be told what
+            // that is. Narrowing is what Sharpy offers for it, and it works on this receiver today
+            // (`if isinstance(o, int):` gives the branch an `int`).
+            if (IsObjectReceiver(memberLookupType))
+                absentOnBuiltin += ". Narrow the receiver first (if isinstance(x, SomeType):)";
 
             AddError(absentOnBuiltin,
                 memberAccess.LineStart, memberAccess.ColumnStart,
@@ -617,6 +639,29 @@ internal partial class TypeChecker
         MarkExpressionAsErrorRecovery(memberAccess);
         return SemanticType.Unknown;
     }
+
+    /// <summary>
+    /// Whether <paramref name="type"/> is an <c>object</c> the USER wrote — the receiver whose unknown
+    /// members #1389 refuses.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Reference identity against <see cref="SemanticType.Object"/>, and it has to be, because two
+    /// different facts wore that type. <c>object</c> WITH a Symbol is the ClrTypeBridge
+    /// generic-collapse placeholder (#955), and a Symbol-less <c>object</c> was BOTH the written
+    /// annotation and discovery's "could not map this CLR type" fallback — so refusing an unknown
+    /// member on the first also refused <c>g.key</c> on a LINQ <c>group_by</c> result, which runs
+    /// (<c>generics/bcl_extension_three_round_1206</c> caught it). The fallback now answers
+    /// <see cref="SemanticType.UnmappedClr"/>, record-equal and reference-distinct.
+    /// </para>
+    /// <para>
+    /// A written <c>object</c> reaches here as the singleton itself: <c>TypeResolver</c> returns it
+    /// verbatim for the annotation and the checker caches types by reference. Any route that rebuilds
+    /// the type loses the identity and takes the permissive channel, which is the safe direction.
+    /// </para>
+    /// </remarks>
+    private static bool IsObjectReceiver(SemanticType type)
+        => ReferenceEquals(type, SemanticType.Object);
 
     /// <summary>
     /// Whether <paramref name="type"/> is one of the builtin CONTAINER receivers the #1141 absence
@@ -889,6 +934,16 @@ internal partial class TypeChecker
     /// Used by CheckMemberAccess and ResolveUserMethodOverload for uniform
     /// property/method resolution across GenericType, ResultType, OptionalType, and BuiltinType.
     /// </summary>
+    /// <remarks>
+    /// <c>object</c> is a <see cref="UserDefinedType"/> with no Symbol (<c>SemanticType.Object</c>),
+    /// so it reached none of the arms below and had no member surface at all: every member access on
+    /// an <c>object</c> receiver typed Unknown in silence and failed, if at all, as CS1061 behind
+    /// SPY0908 (#1389). The registry has held its entry since it was written —
+    /// <c>RegisterType("object", typeof(object), TypeKind.Class)</c> — and nothing routed the
+    /// receiver to it. The Symbol-less shape is the whole match condition: <c>object</c> WITH a
+    /// Symbol is the ClrTypeBridge generic-collapse placeholder (#955), a different type entirely,
+    /// and the shared <c>SemanticType.Object</c> singleton must never be given one.
+    /// </remarks>
     private (TypeSymbol? TypeSymbol, List<SemanticType>? TypeArgs) ResolveBuiltinTypeInfo(SemanticType type)
     {
         return type switch
@@ -899,6 +954,8 @@ internal partial class TypeChecker
             OptionalType ot => (_symbolTable.BuiltinRegistry.GetType(BuiltinNames.Optional),
                                 new List<SemanticType> { ot.UnderlyingType }),
             BuiltinType bt => (_symbolTable.BuiltinRegistry.GetType(bt.Name), null),
+            UserDefinedType { Symbol: null, Name: BuiltinNames.Object } =>
+                (_symbolTable.BuiltinRegistry.GetType(BuiltinNames.Object), null),
             _ => (null, null)
         };
     }

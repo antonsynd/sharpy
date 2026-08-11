@@ -911,7 +911,7 @@ internal class CachedModuleDiscovery
             }
         }
 
-        // Fallback
-        return SemanticType.Object;
+        // Fallback for a signature nothing above could name (see SemanticType.UnmappedClr)
+        return SemanticType.UnmappedClr;
     }
 }

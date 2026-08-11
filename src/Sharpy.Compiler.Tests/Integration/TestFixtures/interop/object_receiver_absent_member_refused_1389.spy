@@ -1,0 +1,13 @@
+# `o.bit_length()` on an `object`-typed receiver typed Unknown in silence — `emit diagnostics` was
+# entirely clean — and failed as CS1061 behind SPY0908, a compiler-bug report for a reference the
+# compiler could have refused (#1389).
+#
+# `object` is a UserDefinedType with no Symbol, so it reached none of the member-resolution arms and
+# had no member surface at all. The registry has held its entry the whole time; nothing routed the
+# receiver to it. The steer is the remedy this receiver actually needs: the member usually exists on
+# the value's real type, and narrowing is how that type is stated.
+
+
+def main() -> None:
+    o: object = 5
+    print(o.bit_length())

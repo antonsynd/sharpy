@@ -1,0 +1,23 @@
+# The permissive twin of object_receiver_absent_member_refused_1389 (#1389). Routing the `object`
+# receiver to its registered symbol is what lets the absence proof answer BOTH directions, so this
+# fixture is the do-no-harm half: these members were never broken, and refusing one of them would be
+# a working program rejected.
+#
+# Narrowing is pinned here too, because the refusal's message tells the user to reach for it.
+#
+# `get_hash_code` takes the fixture out of the differential oracle's shared subset by name — these
+# are .NET's object protocol, not Python's, so there is no CPython counterpart for it to agree with.
+
+
+def main() -> None:
+    o: object = 5
+    print(o.to_string())
+    print(o.equals(5))
+    print(o.get_hash_code() == o.get_hash_code())
+
+    if isinstance(o, int):
+        print(o + 1)
+
+    s: object = "hi"
+    if isinstance(s, str):
+        print(s.upper())

@@ -988,6 +988,14 @@ public class DifferentialExecutionTests : IntegrationTestBase
             "clone",        // System.String.Clone — no CPython counterpart
             "to_char_array",// System.String.ToCharArray — CPython spells it list(s)
             "element_at",   // Enumerable.ElementAt on a string — CPython spells it s[i]
+
+            // System.Object's protocol, reached on an `object` receiver (#1389). CPython's object
+            // has no `get_hash_code`; the fixture that pins the permissive direction for that
+            // receiver is Sharpy-only by construction. `to_string` and `equals` are deliberately NOT
+            // listed beside it for the reason the paragraph below gives for `first`/`contains`: the
+            // one fixture that needs them is already out of the subset on this name, and listing
+            // them would cost the oracle eight other fixtures.
+            "get_hash_code",// System.Object.GetHashCode — no CPython counterpart
         };
 
         // Deliberately NOT listed: `first` and `contains`, which #1291's fixtures also use. Both are
