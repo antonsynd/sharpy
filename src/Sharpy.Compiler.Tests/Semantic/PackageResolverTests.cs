@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
 using Xunit;
@@ -537,6 +538,122 @@ const DEFAULT_NAME: str = 'default'
         var maxSize = packageInfo.ExportedSymbols["MAX_SIZE"];
         maxSize.Should().BeOfType<VariableSymbol>();
         ((VariableSymbol)maxSize).IsConstant.Should().BeTrue();
+    }
+
+    #endregion
+
+    #region Shared extraction (#1364)
+
+    /// <summary>
+    /// #1364's acceptance: a type declared in <c>__init__.spy</c> has the SAME surface as the same
+    /// type loaded as an ordinary module. The deleted third extractor produced a name-and-kind
+    /// shell — no methods, fields, constructors, properties, events, nested types or
+    /// <c>IsAbstract</c> — so a package-exported class was silently thinner than the identical
+    /// declaration one directory over.
+    /// </summary>
+    [Fact]
+    public void ResolvePackage_TypeSurface_AgreesWithOrdinaryModuleLoad()
+    {
+        const string source = @"
+@abstract
+class Widget:
+    """"""A widget.""""""
+    size: int
+
+    @final
+    tag: str = ""t""
+
+    class Inner:
+        depth: int
+
+    def __init__(self, size: int):
+        self.size = size
+
+    def area(self) -> int:
+        return self.size
+
+    property get label(self) -> str:
+        return self.tag
+
+    event on_click
+";
+
+        var packageDir = Path.Combine(_testDir, "surface_pkg");
+        Directory.CreateDirectory(packageDir);
+        var initPath = Path.Combine(packageDir, "__init__.spy");
+        File.WriteAllText(initPath, source);
+
+        // The same declaration as a plain module, loaded through ModuleLoader directly.
+        var plainPath = Path.Combine(_testDir, "plain.spy");
+        File.WriteAllText(plainPath, source);
+
+        var packageInfo = new PackageResolver(_logger).ResolvePackage("surface_pkg", initPath);
+        var plainInfo = new ModuleLoader(_logger).LoadModule(plainPath, 1, 1);
+
+        var fromPackage = (TypeSymbol)packageInfo!.ExportedSymbols["Widget"];
+        var fromModule = (TypeSymbol)plainInfo!.ExportedSymbols["Widget"];
+
+        fromPackage.TypeKind.Should().Be(fromModule.TypeKind);
+        fromPackage.IsAbstract.Should().Be(fromModule.IsAbstract).And.Be(true);
+        fromPackage.Documentation.Should().Be(fromModule.Documentation);
+        fromPackage.Methods.Select(m => m.Name).Should().Equal(fromModule.Methods.Select(m => m.Name));
+        fromPackage.Fields.Select(f => f.Name).Should().Equal(fromModule.Fields.Select(f => f.Name));
+        fromPackage.Fields.Select(f => f.IsFinal).Should().Equal(fromModule.Fields.Select(f => f.IsFinal));
+        fromPackage.Constructors.Should().HaveSameCount(fromModule.Constructors).And.NotBeEmpty();
+        fromPackage.Properties.Select(p => p.Name).Should().Equal(fromModule.Properties.Select(p => p.Name));
+        fromPackage.Events.Select(e => e.Name).Should().Equal(fromModule.Events.Select(e => e.Name));
+        fromPackage.NestedTypes.Select(n => n.Name).Should().Equal(fromModule.NestedTypes.Select(n => n.Name));
+    }
+
+    /// <summary>
+    /// #1364's deliberate behaviour change, pinned so it cannot be settled by accident: the deleted
+    /// switch guarded its variable arm with <c>when varDecl.IsConst</c>, the shared extractor does
+    /// not, so a non-const module-level variable in <c>__init__.spy</c> is now an export.
+    ///
+    /// <para>Chosen rather than preserved because a plain module has always exported its non-const
+    /// module-level variables through the same arm, and CPython does too — <c>name = "hello"</c> in
+    /// <c>__init__.py</c> is importable as <c>from pkg import name</c> (verified against python3).
+    /// A package that wants a narrower surface needs <c>__all__</c>, which is a separate feature.</para>
+    /// </summary>
+    [Fact]
+    public void ResolvePackage_NonConstVariable_IsExported()
+    {
+        var packageDir = Path.Combine(_testDir, "var_pkg");
+        Directory.CreateDirectory(packageDir);
+        var initPath = Path.Combine(packageDir, "__init__.spy");
+        File.WriteAllText(initPath, @"
+const MAX_SIZE: int = 100
+counter: int = 0
+");
+
+        var packageInfo = new PackageResolver(_logger).ResolvePackage("var_pkg", initPath);
+
+        packageInfo!.ExportedSymbols.Should().ContainKey("MAX_SIZE");
+        packageInfo.ExportedSymbols.Should().ContainKey("counter",
+            "the shared extractor has no const guard, and a plain module exports non-const "
+            + "module-level variables through the same arm");
+
+        ((VariableSymbol)packageInfo.ExportedSymbols["MAX_SIZE"]).IsConstant.Should().BeTrue();
+        ((VariableSymbol)packageInfo.ExportedSymbols["counter"]).IsConstant.Should().BeFalse(
+            "the constness itself must still round-trip — widening the surface is not flattening it");
+    }
+
+    /// <summary>
+    /// #1364: the shared extractor stamps <c>DefiningModule</c>, which the old switch never set.
+    /// It must be the canonical package name, not the raw <c>__init__.spy</c> path — that is what
+    /// every other module carries and what a module-qualified reference resolves through.
+    /// </summary>
+    [Fact]
+    public void ResolvePackage_ExportedType_CarriesCanonicalDefiningModule()
+    {
+        var packageDir = Path.Combine(_testDir, "named_pkg");
+        Directory.CreateDirectory(packageDir);
+        var initPath = Path.Combine(packageDir, "__init__.spy");
+        File.WriteAllText(initPath, "class Thing:\n    pass\n");
+
+        var packageInfo = new PackageResolver(_logger).ResolvePackage("named_pkg", initPath);
+
+        ((TypeSymbol)packageInfo!.ExportedSymbols["Thing"]).DefiningModule.Should().Be("named_pkg");
     }
 
     #endregion

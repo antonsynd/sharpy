@@ -10,6 +10,27 @@ namespace Sharpy.Compiler.Semantic;
 /// Resolves package-level symbols from __init__.spy files.
 /// Handles package initialization and re-exports.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Symbol extraction is <see cref="ModuleLoader.ExtractExportedSymbol"/>'s, not a second copy of
+/// it (#1364). This class used to hold a third, thinner extraction whose types carried no methods,
+/// fields, properties, events, nested types or <c>IsAbstract</c>, so a type re-exported through
+/// <c>__init__.spy</c> had a strictly smaller surface than the same type imported directly — the
+/// #1145 Class G shape, where each extractor is fixed independently and nothing fails when they
+/// drift.
+/// </para>
+/// <para>
+/// <b>The collapse deliberately widens what a package exports.</b> The deleted switch guarded its
+/// variable arm with <c>when varDecl.IsConst</c>; the shared extractor has no such guard, so a
+/// non-const module-level variable in <c>__init__.spy</c> is now an export. That is the intended
+/// unification, on three grounds: a plain module has always exported its non-const module-level
+/// variables (the same <c>VariableDeclaration</c> arm), CPython agrees (<c>name = "hello"</c> in
+/// <c>__init__.py</c> is importable as <c>from pkg import name</c> — verified against python3), and
+/// Design Decision 2 of this batch is that there is one extractor. A package that wanted to export
+/// only constants would need an <c>__all__</c>, which is a separate feature. Pinned by
+/// <c>PackageResolverTests.ResolvePackage_NonConstVariable_IsExported</c>.
+/// </para>
+/// </remarks>
 internal class PackageResolver
 {
     private readonly ICompilerLogger _logger;
@@ -58,13 +79,17 @@ internal class PackageResolver
             {
                 Path = initPath,
                 Module = module,
-                ExportedSymbols = new ModuleExports()
+                ExportedSymbols = new ModuleExports(),
+                // Without this the shared extractor would stamp DefiningModule with the raw
+                // __init__.spy path; the canonical name ("pkg", "pkg.sub") is what every other
+                // module carries and what codegen resolves a module-qualified reference through.
+                CanonicalModuleName = _importResolver.ModuleLoader.ComputeCanonicalModuleName(initPath)
             };
 
-            // Extract top-level symbols from __init__.spy
+            // Extract top-level symbols from __init__.spy through the SHARED extractor (#1364).
             foreach (var statement in module.Body)
             {
-                ExtractSymbolFromStatement(statement, moduleInfo);
+                _importResolver.ModuleLoader.ExtractExportedSymbol(statement, moduleInfo);
             }
         }
         catch (OperationCanceledException)
@@ -175,135 +200,6 @@ internal class PackageResolver
         // They're used within __init__.spy but not exposed at package level
         // unless explicitly assigned to __all__ or similar (future feature)
     }
-
-    /// <summary>
-    /// Extract exported symbols from a top-level statement.
-    /// Mirrors the logic in ImportResolver.ExtractExportedSymbol.
-    /// </summary>
-    /// <remarks>
-    /// TODO(#1364): this is a third, thinner extraction — package-re-exported types carry
-    /// no methods, fields, properties/events, or IsAbstract; collapse onto ModuleLoader's.
-    /// </remarks>
-    private void ExtractSymbolFromStatement(Statement statement, ModuleInfo moduleInfo)
-    {
-        switch (statement)
-        {
-            case FunctionDef functionDef:
-                var funcAccessLevel = GetAccessLevel(functionDef.Name);
-                var funcSymbol = new FunctionSymbol
-                {
-                    Name = functionDef.Name,
-                    Kind = SymbolKind.Function,
-                    AccessLevel = funcAccessLevel,
-                    DeclarationLine = functionDef.LineStart,
-                    DeclarationColumn = functionDef.ColumnStart,
-                    NameDeclarationLine = functionDef.NameLineStart,
-                    NameDeclarationColumn = functionDef.NameColumnStart
-                };
-                moduleInfo.ExportedSymbols.Add(functionDef.Name, funcSymbol);
-                break;
-
-            case ClassDef classDef:
-                var classAccessLevel = GetAccessLevel(classDef.Name);
-                var classSymbol = new TypeSymbol
-                {
-                    Name = classDef.Name,
-                    Kind = SymbolKind.Type,
-                    TypeKind = TypeKind.Class,
-                    AccessLevel = classAccessLevel,
-                    DeclarationLine = classDef.LineStart,
-                    DeclarationColumn = classDef.ColumnStart,
-                    NameDeclarationLine = classDef.NameLineStart,
-                    NameDeclarationColumn = classDef.NameColumnStart
-                };
-                moduleInfo.ExportedSymbols.Add(classDef.Name, classSymbol);
-                break;
-
-            case StructDef structDef:
-                var structAccessLevel = GetAccessLevel(structDef.Name);
-                var structSymbol = new TypeSymbol
-                {
-                    Name = structDef.Name,
-                    Kind = SymbolKind.Type,
-                    TypeKind = TypeKind.Struct,
-                    AccessLevel = structAccessLevel,
-                    DeclarationLine = structDef.LineStart,
-                    DeclarationColumn = structDef.ColumnStart,
-                    NameDeclarationLine = structDef.NameLineStart,
-                    NameDeclarationColumn = structDef.NameColumnStart
-                };
-                moduleInfo.ExportedSymbols.Add(structDef.Name, structSymbol);
-                break;
-
-            case InterfaceDef interfaceDef:
-                var interfaceAccessLevel = GetAccessLevel(interfaceDef.Name);
-                var interfaceSymbol = new TypeSymbol
-                {
-                    Name = interfaceDef.Name,
-                    Kind = SymbolKind.Type,
-                    TypeKind = TypeKind.Interface,
-                    AccessLevel = interfaceAccessLevel,
-                    DeclarationLine = interfaceDef.LineStart,
-                    DeclarationColumn = interfaceDef.ColumnStart,
-                    NameDeclarationLine = interfaceDef.NameLineStart,
-                    NameDeclarationColumn = interfaceDef.NameColumnStart
-                };
-                moduleInfo.ExportedSymbols.Add(interfaceDef.Name, interfaceSymbol);
-                break;
-
-            case EnumDef enumDef:
-                var enumAccessLevel = GetAccessLevel(enumDef.Name);
-                var enumSymbol = new TypeSymbol
-                {
-                    Name = enumDef.Name,
-                    Kind = SymbolKind.Type,
-                    TypeKind = TypeKind.Enum,
-                    AccessLevel = enumAccessLevel,
-                    DeclarationLine = enumDef.LineStart,
-                    DeclarationColumn = enumDef.ColumnStart,
-                    NameDeclarationLine = enumDef.NameLineStart,
-                    NameDeclarationColumn = enumDef.NameColumnStart
-                };
-                // Register enum members as static fields for pattern matching resolution
-                foreach (var member in enumDef.Members)
-                {
-                    enumSymbol.Fields.Add(new VariableSymbol
-                    {
-                        Name = member.Name,
-                        Kind = SymbolKind.Variable,
-                        IsStatic = true,
-                        IsConstant = true,
-                        AccessLevel = AccessLevel.Public,
-                        DeclarationLine = member.LineStart,
-                        DeclarationColumn = member.ColumnStart,
-                        NameDeclarationLine = member.LineStart,
-                        NameDeclarationColumn = member.ColumnStart,
-                        DeclarationSpan = member.Span
-                    });
-                }
-                moduleInfo.ExportedSymbols.Add(enumDef.Name, enumSymbol);
-                break;
-
-            case VariableDeclaration varDecl when varDecl.IsConst:
-                var constAccessLevel = GetAccessLevel(varDecl.Name);
-                var constSymbol = new VariableSymbol
-                {
-                    Name = varDecl.Name,
-                    Kind = SymbolKind.Variable,
-                    IsConstant = true,
-                    AccessLevel = constAccessLevel,
-                    DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart,
-                    NameDeclarationLine = varDecl.NameLineStart,
-                    NameDeclarationColumn = varDecl.NameColumnStart
-                };
-                moduleInfo.ExportedSymbols.Add(varDecl.Name, constSymbol);
-                break;
-        }
-    }
-
-    private AccessLevel GetAccessLevel(string name)
-        => Shared.AccessLevelConventions.FromName(name);
 
     /// <summary>
     /// Clear the package cache.
