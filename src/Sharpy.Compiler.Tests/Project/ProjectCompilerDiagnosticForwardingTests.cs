@@ -32,16 +32,30 @@ public class ProjectCompilerDiagnosticForwardingTests : IDisposable
 
     /// <summary>
     /// End-to-end: an inheritance-phase error (raised on the shared NameResolver in phase 4b)
-    /// reaches the project diagnostic bag with the span the resolver stamped. Reconstructing the
-    /// diagnostic from line/column loses that span, and with it the squiggle range every
-    /// span-consuming surface (LSP, the renderer's caret) draws from.
+    /// reaches the project diagnostic bag with the span the resolver stamped, and with the file it
+    /// was declared in. Reconstructing the diagnostic from line/column loses the span, and with it
+    /// the squiggle range every span-consuming surface (LSP, the renderer's caret) draws from.
+    ///
+    /// <para>The file half is #1369. Phase 4b runs on ONE aggregate resolver holding every file's
+    /// definitions, and <c>AggregateTypeDefinitionsFrom</c> used to copy <c>(Def, ModulePath)</c>
+    /// out of the per-file resolvers while dropping their file paths — so the aggregate had no
+    /// identity to stamp and every Phase-4b inheritance diagnostic arrived with a null
+    /// <c>FilePath</c>. A line and column with no file cannot be opened, and the renderer cannot
+    /// group it.</para>
+    ///
+    /// <para>Both files declare a failing class deliberately: with only one, "attributed to
+    /// main.spy" is also what a resolver that stamped a single global path would produce. Two
+    /// errors that must carry two DIFFERENT files can only be satisfied per definition.</para>
     /// </summary>
     [Fact]
-    public void ProjectCompile_InheritanceError_KeepsTheResolverStampedSpan()
+    public void ProjectCompile_InheritanceErrors_KeepTheResolverStampedSpanAndTheirOwnFile()
     {
         _helper = new ProjectCompilationHelper(_output);
         _helper.WithRootNamespace("InheritanceSpan")
             .AddSourceFile("lib.spy", """
+class LibDerived(NoSuchLibBase):
+    pass
+
 def helper() -> int:
     return 1
 """)
@@ -58,16 +72,36 @@ def main():
 
         Assert.False(result.Success, "an unresolved base type is an error");
 
-        var baseTypeErrors = result.Diagnostics.GetAll()
-            .Where(d => d.Message.Contains("Base type 'NoSuchBase' not found"))
-            .ToList();
+        var diagnostics = result.Diagnostics.GetAll();
+        AssertInheritanceErrorAttributed(diagnostics, "Base type 'NoSuchBase' not found", "main.spy");
+        AssertInheritanceErrorAttributed(diagnostics, "Base type 'NoSuchLibBase' not found", "lib.spy");
+    }
 
-        Assert.NotEmpty(baseTypeErrors);
-        Assert.All(baseTypeErrors, d =>
+    /// <summary>
+    /// The per-diagnostic assertions of the test above. The <c>NotEmpty</c> check is the load
+    /// bearing one for everything after it: <c>Assert.All</c> over an empty set passes, so an
+    /// attribution assertion that never met a diagnostic would report a green fix for a
+    /// diagnostic that stopped being raised at all.
+    /// </summary>
+    private void AssertInheritanceErrorAttributed(
+        IEnumerable<CompilerDiagnostic> diagnostics, string message, string expectedFileName)
+    {
+        var errors = diagnostics.Where(d => d.Message.Contains(message)).ToList();
+
+        Assert.True(errors.Count > 0,
+            $"no diagnostic said \"{message}\" — the arrangement stopped producing the error this "
+            + "test attributes, so every assertion below it would have passed vacuously");
+        Assert.All(errors, d =>
         {
             Assert.True(d.Span.HasValue,
                 $"the name resolver stamps a span on this diagnostic; forwarding must preserve it: {d}");
             Assert.Equal(CompilerPhase.NameResolution, d.Phase);
+            Assert.True(!string.IsNullOrEmpty(d.FilePath),
+                $"a Phase-4b inheritance error carries the file it was declared in (#1369): {d}");
+            Assert.Equal(expectedFileName, Path.GetFileName(d.FilePath));
+            Assert.Equal(
+                Path.GetFullPath(Path.Combine(_helper!.SourceDirectory, expectedFileName)),
+                Path.GetFullPath(d.FilePath!));
         });
     }
 

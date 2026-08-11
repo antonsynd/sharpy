@@ -14,9 +14,12 @@ internal partial class NameResolver
     private readonly ICompilerLogger _logger;
     private readonly SemanticBinding _semanticBinding;
     private readonly DiagnosticBag _diagnostics = new();
-    private readonly List<(ClassDef Def, string? ModulePath)> _classDefs = new();
-    private readonly List<(StructDef Def, string? ModulePath)> _structDefs = new();
-    private readonly List<(InterfaceDef Def, string? ModulePath)> _interfaceDefs = new();
+    // Each pending definition carries the file it was declared in as well as its module scope
+    // (#1369): pass 2 can run on an aggregate resolver that has no file of its own, and a
+    // definition that arrives there without its path produces an unattributable diagnostic.
+    private readonly List<(ClassDef Def, string? ModulePath, string? FilePath)> _classDefs = new();
+    private readonly List<(StructDef Def, string? ModulePath, string? FilePath)> _structDefs = new();
+    private readonly List<(InterfaceDef Def, string? ModulePath, string? FilePath)> _interfaceDefs = new();
     private string? _currentFilePath;
     private string? _currentModulePath;
 
@@ -29,14 +32,20 @@ internal partial class NameResolver
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
-    public IReadOnlyList<(ClassDef Def, string? ModulePath)> ClassDefs => _classDefs;
-    public IReadOnlyList<(StructDef Def, string? ModulePath)> StructDefs => _structDefs;
-    public IReadOnlyList<(InterfaceDef Def, string? ModulePath)> InterfaceDefs => _interfaceDefs;
+    public IReadOnlyList<(ClassDef Def, string? ModulePath, string? FilePath)> ClassDefs => _classDefs;
+    public IReadOnlyList<(StructDef Def, string? ModulePath, string? FilePath)> StructDefs => _structDefs;
+    public IReadOnlyList<(InterfaceDef Def, string? ModulePath, string? FilePath)> InterfaceDefs => _interfaceDefs;
 
     /// <summary>
     /// Aggregates type definition lists from per-file resolvers into this resolver.
     /// Used to prepare a merged NameResolver for inheritance resolution after
     /// per-file name resolution and symbol table merge.
+    ///
+    /// <para>The aggregate has no file of its own — it holds every file's definitions at once —
+    /// so each definition brings its declaring resolver's file path along with it (#1369). Copying
+    /// only <c>(Def, ModulePath)</c> is what left every Phase-4b inheritance diagnostic with a null
+    /// <c>FilePath</c>: the per-file resolvers are stamped correctly
+    /// (<c>ProjectCompiler.CollectTypeDeclarations</c>), and the identity was dropped here.</para>
     /// </summary>
     public void AggregateTypeDefinitionsFrom(IEnumerable<NameResolver> perFileResolvers)
     {
@@ -105,65 +114,88 @@ internal partial class NameResolver
     {
         _logger.LogInfo("Starting name resolution pass 2: Inheritance relationships");
 
-        foreach (var (classDef, modulePath) in _classDefs)
+        // Every definition re-stamps the file it was declared in before it is resolved, exactly as
+        // the module scope is re-entered around it (#1369). Pass 2 runs on a resolver that may hold
+        // definitions from many files — ProjectCompiler's aggregate does — and AddError reads
+        // _currentFilePath, so without this a cross-file inheritance error reaches the project bag
+        // with no file to point at. Restored afterwards so a single-file resolver, which stamps
+        // itself once and resolves its own definitions, is left exactly as it was found.
+        var previousFilePath = _currentFilePath;
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (modulePath != null)
-                _symbolTable.EnterModuleScope(modulePath);
-            try
+            foreach (var (classDef, modulePath, filePath) in _classDefs)
             {
-                ResolveClassInheritance(classDef);
-            }
-            finally
-            {
+                cancellationToken.ThrowIfCancellationRequested();
+                _currentFilePath = filePath;
                 if (modulePath != null)
-                    _symbolTable.ExitScope();
+                    _symbolTable.EnterModuleScope(modulePath);
+                try
+                {
+                    ResolveClassInheritance(classDef);
+                }
+                finally
+                {
+                    if (modulePath != null)
+                        _symbolTable.ExitScope();
+                }
             }
-        }
 
-        foreach (var (structDef, modulePath) in _structDefs)
+            foreach (var (structDef, modulePath, filePath) in _structDefs)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                _currentFilePath = filePath;
+                if (modulePath != null)
+                    _symbolTable.EnterModuleScope(modulePath);
+                try
+                {
+                    ResolveStructInheritance(structDef);
+                }
+                finally
+                {
+                    if (modulePath != null)
+                        _symbolTable.ExitScope();
+                }
+            }
+
+            foreach (var (interfaceDef, modulePath, filePath) in _interfaceDefs)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                _currentFilePath = filePath;
+                if (modulePath != null)
+                    _symbolTable.EnterModuleScope(modulePath);
+                try
+                {
+                    ResolveInterfaceInheritance(interfaceDef);
+                }
+                finally
+                {
+                    if (modulePath != null)
+                        _symbolTable.ExitScope();
+                }
+            }
+
+            DetectCircularInheritance();
+        }
+        finally
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (modulePath != null)
-                _symbolTable.EnterModuleScope(modulePath);
-            try
-            {
-                ResolveStructInheritance(structDef);
-            }
-            finally
-            {
-                if (modulePath != null)
-                    _symbolTable.ExitScope();
-            }
+            _currentFilePath = previousFilePath;
         }
-
-        foreach (var (interfaceDef, modulePath) in _interfaceDefs)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (modulePath != null)
-                _symbolTable.EnterModuleScope(modulePath);
-            try
-            {
-                ResolveInterfaceInheritance(interfaceDef);
-            }
-            finally
-            {
-                if (modulePath != null)
-                    _symbolTable.ExitScope();
-            }
-        }
-
-        DetectCircularInheritance();
 
         var totalTypes = _classDefs.Count + _structDefs.Count + _interfaceDefs.Count;
         _logger.LogInfo($"Completed name resolution pass 2 ({totalTypes} types processed)");
     }
 
+    /// <summary>
+    /// Cycle detection, run as the tail of <see cref="ResolveInheritance"/>. Its diagnostics are
+    /// per-definition too, so it re-stamps the declaring file the same way (#1369); the caller
+    /// restores <c>_currentFilePath</c> around the whole pass.
+    /// </summary>
     private void DetectCircularInheritance()
     {
         // Check class base-type chains for cycles
-        foreach (var (classDef, modulePath) in _classDefs)
+        foreach (var (classDef, modulePath, filePath) in _classDefs)
         {
+            _currentFilePath = filePath;
             if (modulePath != null)
                 _symbolTable.EnterModuleScope(modulePath);
             try
@@ -196,8 +228,9 @@ internal partial class NameResolver
         }
 
         // Check struct base-type chains for cycles (structs only implement interfaces)
-        foreach (var (structDef, modulePath) in _structDefs)
+        foreach (var (structDef, modulePath, filePath) in _structDefs)
         {
+            _currentFilePath = filePath;
             if (modulePath != null)
                 _symbolTable.EnterModuleScope(modulePath);
             try
@@ -216,8 +249,9 @@ internal partial class NameResolver
         }
 
         // Check interface chains for cycles
-        foreach (var (interfaceDef, modulePath) in _interfaceDefs)
+        foreach (var (interfaceDef, modulePath, filePath) in _interfaceDefs)
         {
+            _currentFilePath = filePath;
             if (modulePath != null)
                 _symbolTable.EnterModuleScope(modulePath);
             try
