@@ -1,0 +1,19 @@
+# `lst.no_such_method()` reached Roslyn and came back as CS1061 behind SPY0908 — the compiler
+# reporting its own bug for a typo, on the three receivers Python programs use most (#1344).
+#
+# The BuiltinType-only gate that #1291 left behind was not an omission: a container member is
+# reached by spellings the #1141 absence proof did not model, and refusing one of those rejects a
+# working program. The proof was taught those spellings first (see the twin fixture, which pins
+# every one of them); only then did the gate widen to a container receiver whose own constructed
+# CLR type reflection can see.
+
+
+def main() -> None:
+    lst: list[int] = [1, 2, 3]
+    print(lst.no_such_method())
+
+    d: dict[str, int] = {"a": 1}
+    print(d.no_such_method())
+
+    st: set[int] = {1, 2}
+    print(st.no_such_method())

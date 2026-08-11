@@ -584,11 +584,18 @@ internal partial class TypeChecker
         // arm above draws on, asked of the same symbol — it is deliberately hard to satisfy, so it fires
         // only where codegen was certain to fail too.
         //
-        // BuiltinType ONLY, and that restriction is the point rather than an omission. The rest of this
-        // fall-through carries GenericType and TupleType receivers whose members codegen resolves
-        // through discovery paths this proof does not model, and a false refusal rejects a working
-        // program — worse than the ICE it replaces (#1243, #1260).
-        if (memberLookupType is BuiltinType
+        // A builtin CONTAINER receiver (`lst`, `d`, `st`) joined this arm in #1344, and only after the
+        // proof was taught the two spellings codegen reaches a container member by that it did not
+        // model — the #1069 word-boundary table and the dunder map, see CodeGenMemberNameCandidates.
+        // Measured before that teaching, `d.setdefault("b", 2)` was refused: a working program
+        // rejected, which is worse than the ICE it replaces (#1243, #1260), and it is why the gate was
+        // BuiltinType-only until the routes were enumerated.
+        //
+        // The gate is deliberately not "any GenericType": an imported CLR generic and a TupleType keep
+        // the permissive channel, and so do the registry's `typeof(object)` placeholders (the dict
+        // views, the iterator types), which would otherwise be measured against System.Object's member
+        // surface and prove every name absent.
+        if ((memberLookupType is BuiltinType || IsBuiltinContainerReceiver(memberLookupType))
             && ClrReflectionProvesMemberAbsent(memberLookupType, memberAccess.Member, out var builtinSuggestion))
         {
             var absentOnBuiltin =
@@ -609,6 +616,41 @@ internal partial class TypeChecker
         // type checker. Mark as error recovery to suppress SPY0907 false positives.
         MarkExpressionAsErrorRecovery(memberAccess);
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="type"/> is one of the builtin CONTAINER receivers the #1141 absence
+    /// proof may be asked about (#1344): a <c>list</c>, <c>dict</c>, <c>set</c>, <c>frozenset</c> or
+    /// <c>frozendict</c> whose own constructed CLR type reflection can build, so the member surface
+    /// the proof measures is the receiver's.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Named rather than structural, and that is the scope #1344 sanctions. An imported CLR generic
+    /// (<c>system.collections.generic.List[int]</c>) reaches its members through routes this proof
+    /// still does not enumerate, and <c>BclMemberAbsenceTests.UnknownMember_ValueIndexed_StaysPermissive</c>
+    /// pins that it keeps the permissive channel; the residue is #1146's, not this arm's.
+    /// </para>
+    /// <para>
+    /// The <see cref="TryGetClrType"/> requirement is a correctness guard, not a formality: the
+    /// registry records <c>typeof(object)</c> as the CLR type of several generic builtins whose real
+    /// types codegen resolves through <c>CSharpTypeNames</c> (the dict views, the iterator types).
+    /// Measuring a member reference against <c>System.Object</c>'s surface would prove every name
+    /// absent, which is the false-refusal shape #1243/#1260 named.
+    /// </para>
+    /// </remarks>
+    private bool IsBuiltinContainerReceiver(SemanticType type)
+    {
+        if (type is not GenericType container)
+            return false;
+
+        if (container.Name is not (BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set
+            or BuiltinNames.FrozenSet or BuiltinNames.FrozenDict))
+            return false;
+
+        return TryGetClrType(type) is { } clrType
+            && clrType != typeof(object)
+            && !clrType.IsGenericTypeDefinition;
     }
 
     /// <summary>
@@ -1207,10 +1249,15 @@ internal partial class TypeChecker
         clrNames = null;
 
         // Discovered members on the symbol itself settle the question without reflecting: a name that
-        // was discovered exists, whatever the CLR surface says about mangling.
+        // was discovered exists, whatever the CLR surface says about mangling. Operator and protocol
+        // dunders are discovered into their own dictionaries rather than Methods, and the emitter
+        // reaches them without a member of that name at all (`lst.__add__(x)` lowers to `lst + x`),
+        // so a name either dictionary carries is never absent (#1344).
         if (ownerSymbol.Methods.Any(m => m.Name == memberName)
             || ownerSymbol.Properties.Any(p => p.Name == memberName)
-            || ownerSymbol.Fields.Any(f => f.Name == memberName))
+            || ownerSymbol.Fields.Any(f => f.Name == memberName)
+            || ownerSymbol.OperatorMethods.ContainsKey(memberName)
+            || ownerSymbol.ProtocolMethods.ContainsKey(memberName))
             return true;
 
         // Reflect on the constructed receiver when available (List<int> rather than the open List<>),
@@ -1220,8 +1267,31 @@ internal partial class TypeChecker
         if (clrNames == null)
             return true; // reflection inconclusive — cannot rule an instance member out
 
-        return clrNames.Contains(memberName)
-            || clrNames.Contains(NameMangler.ToPascalCase(memberName));
+        return CodeGenMemberNameCandidates(memberName).Any(clrNames.Contains);
+    }
+
+    /// <summary>
+    /// Every CLR spelling code generation can reach a Sharpy member reference by. The absence proof
+    /// must ask exactly this question, or it claims absence for a name that emits and runs — which is
+    /// the false refusal that kept container receivers on the permissive channel until #1344.
+    /// </summary>
+    /// <remarks>
+    /// Two routes live outside <see cref="NameMangler.ToPascalCase"/> and are the ones the corpus
+    /// caught: the #1069 word-boundary table (<c>setdefault</c> → <c>SetDefault</c>, which
+    /// ToPascalCase spells <c>Setdefault</c>) and the dunder map (<c>__len__</c> → <c>Count</c>).
+    /// Every entry here only ADDS a candidate, so teaching a route can only make the proof more
+    /// permissive — never more refusing.
+    /// </remarks>
+    private static IEnumerable<string> CodeGenMemberNameCandidates(string memberName)
+    {
+        yield return memberName;
+        yield return NameMangler.ToPascalCase(memberName);
+
+        if (NameMangler.GetCollectionMethodMapping(memberName) is { } collectionMapped)
+            yield return collectionMapped;
+
+        if (DunderNameMapping.ResolveCSharpName(memberName) is { } dunderMapped)
+            yield return dunderMapped;
     }
 
     /// <summary>

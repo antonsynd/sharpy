@@ -1,0 +1,35 @@
+# The permissive twin of clr_absent_member_on_container_receiver_refused_1344 (#1344). Every
+# spelling below is reached by a route the absence proof has to model, and each one was measured:
+# `setdefault`/`popitem` were REFUSED before the proof learned the #1069 word-boundary table, which
+# is a working program rejected — worse than the ICE the refusal replaces (#1243, #1260).
+#
+# Deliberately written in the Python-shared subset so the differential oracle compares it against
+# CPython too; the interop-only spellings live in the sibling extension fixture.
+
+
+def main() -> None:
+    lst: list[int] = [3, 1, 2]
+
+    # Sharpy's own list API, resolved from the registry symbol.
+    lst.append(4)
+    lst.sort()
+    print(lst)
+
+    d: dict[str, int] = {"a": 1}
+
+    # The #1069 word-boundary table: ToPascalCase spells these Setdefault/Popitem, which do not
+    # exist; only the table reaches the real SetDefault/PopItem.
+    print(d.setdefault("b", 2))
+    print(sorted(d.items()))
+
+    single: dict[str, int] = {"x": 10}
+    print(single.popitem())
+
+    # A dict view — a registry entry whose CLR type is a typeof(object) placeholder, so the
+    # receiver is never measured against System.Object's member surface.
+    for k in d.keys():
+        print(k)
+
+    st: set[int] = {1}
+    st.add(2)
+    print(len(st))

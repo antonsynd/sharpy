@@ -170,4 +170,55 @@ def main() -> None:
         Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
         Assert.Equal(0, CountDiagnostics(result, DiagnosticCodes.Semantic.UndefinedMember));
     }
+
+    [Fact]
+    public void UnknownMember_OnBuiltinContainerReceiver_ReportsMemberNotFound()
+    {
+        // #1344's live half: `list`/`dict`/`set` are GenericType receivers, excluded from the #1291
+        // refusal until the absence proof was taught the spellings codegen reaches a container member
+        // by. This is the positive control for the two permissive assertions below — without it they
+        // would pass on a compiler that had simply stopped refusing anything.
+        var result = CompileAndExecute(@"
+def main() -> None:
+    lst: list[int] = [1, 2, 3]
+    print(lst.no_such_method())
+");
+
+        Assert.Equal(1, CountDiagnostics(result, DiagnosticCodes.Semantic.UndefinedMember));
+    }
+
+    [Fact]
+    public void WordBoundaryMappedMember_OnContainerReceiver_StaysPermissive()
+    {
+        // `setdefault` reaches SetDefault only through the #1069 word-boundary table — ToPascalCase
+        // spells it `Setdefault`, which does not exist. Measured: before the proof was taught that
+        // table, widening the gate refused this program, which runs. A false refusal rejects working
+        // code and is worse than the ICE it replaces (#1243, #1260).
+        var result = CompileAndExecute(@"
+def main() -> None:
+    d: dict[str, int] = {""a"": 1}
+    print(d.setdefault(""b"", 2))
+    print(d.popitem())
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal(0, CountDiagnostics(result, DiagnosticCodes.Semantic.UndefinedMember));
+    }
+
+    [Fact]
+    public void DunderMember_OnContainerReceiver_IsLeftToTheDunderValidator()
+    {
+        // `lst.__len__()` is refused — by SPY0427, whose message names the remedy. The absence proof
+        // must not answer first with a second, worse diagnostic claiming `list[int]` has no `__len__`:
+        // the emitter reaches a dunder through the dunder map (__len__ -> Count) or through operator
+        // lowering, neither of which is ToPascalCase.
+        var result = CompileAndExecute(@"
+def main() -> None:
+    lst: list[int] = [1, 2, 3]
+    print(lst.__len__())
+");
+
+        Assert.Equal(0, CountDiagnostics(result, DiagnosticCodes.Semantic.UndefinedMember));
+        Assert.Equal(1, CountDiagnostics(result, DiagnosticCodes.Validation.DunderDirectInvocation));
+    }
 }

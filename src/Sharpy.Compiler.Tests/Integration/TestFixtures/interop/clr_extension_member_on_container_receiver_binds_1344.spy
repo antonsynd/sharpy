@@ -1,0 +1,14 @@
+# The interop half of clr_present_member_on_container_receiver_binds_1344 (#1344): a container
+# member that no instance member answers, reached through the extension surface instead. The
+# absence proof keeps a name any reachable extension method could supply on the permissive channel,
+# so widening the refusal to container receivers must not disturb these.
+#
+# `element_at` takes the fixture out of the differential oracle's shared subset by name — these are
+# .NET's API, not Python's, so there is no CPython counterpart for it to agree with.
+
+
+def main() -> None:
+    lst: list[int] = [3, 1, 2]
+    print(lst.element_at(0))
+    print(lst.first())
+    print(lst.last())
