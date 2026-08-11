@@ -267,7 +267,16 @@ internal class ModuleLoader
                     DeclarationLine = functionDef.LineStart,
                     DeclarationColumn = functionDef.ColumnStart,
                     NameDeclarationLine = functionDef.NameLineStart,
-                    NameDeclarationColumn = functionDef.NameColumnStart
+                    NameDeclarationColumn = functionDef.NameColumnStart,
+                    // #1365 — the facts NameResolver stamps on the same declaration. An imported
+                    // symbol that lacks them is not the same symbol: overload dedup compares
+                    // SignatureKey, hover reads Documentation, SPY0466 reads DeprecationMessage and
+                    // SPY0480 reads IsMustUse. SignatureKey CALLS NameResolver's formula rather
+                    // than restating it, so the two can never disagree about one signature.
+                    SignatureKey = NameResolver.GetMethodSignatureKey(functionDef),
+                    Documentation = functionDef.DocString,
+                    DeprecationMessage = NameResolver.GetDeprecationMessage(functionDef.Decorators),
+                    IsMustUse = NameResolver.HasMustUse(functionDef.Decorators)
                 };
                 moduleInfo.ExportedSymbols.Add(functionDef.Name, funcSymbol);
 
@@ -307,6 +316,8 @@ internal class ModuleLoader
                     Kind = SymbolKind.Variable,
                     Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
                     IsConstant = varDecl.IsConst,
+                    IsFinal = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Final),
+                    HasDefaultValue = varDecl.InitialValue != null,
                     AccessLevel = varAccessLevel,
                     DeclarationLine = varDecl.LineStart,
                     DeclarationColumn = varDecl.ColumnStart,
@@ -351,26 +362,7 @@ internal class ModuleLoader
             ? classDef.BaseClasses.Skip(1).Select(b => b.Name).ToList()
             : new List<string>();
 
-        var fields = new List<VariableSymbol>();
-        foreach (var stmt in classDef.Body)
-        {
-            if (stmt is VariableDeclaration varDecl)
-            {
-                fields.Add(new VariableSymbol
-                {
-                    Name = varDecl.Name,
-                    Kind = SymbolKind.Variable,
-                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
-                    IsConstant = varDecl.IsConst,
-                    IsStatic = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static),
-                    AccessLevel = GetAccessLevel(varDecl.Name),
-                    DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart,
-                    NameDeclarationLine = varDecl.NameLineStart,
-                    NameDeclarationColumn = varDecl.NameColumnStart
-                });
-            }
-        }
+        var fields = ExtractFields(classDef.Body);
 
         var methods = new List<FunctionSymbol>();
         var ctors = new List<FunctionSymbol>();
@@ -418,7 +410,11 @@ internal class ModuleLoader
             Properties = properties,
             Events = events,
             NestedTypes = nestedTypes,
-            MethodOverloads = TypeSymbol.BuildMethodOverloads(methods)
+            MethodOverloads = TypeSymbol.BuildMethodOverloads(methods),
+            // #1365 — same three facts NameResolver stamps on the same declaration.
+            Documentation = classDef.DocString,
+            DeprecationMessage = NameResolver.GetDeprecationMessage(classDef.Decorators),
+            IsMustUse = NameResolver.HasMustUse(classDef.Decorators)
         };
 
         LinkNestedTypes(classSymbol, nestedTypes);
@@ -438,26 +434,7 @@ internal class ModuleLoader
     {
         var accessLevel = GetAccessLevel(structDef.Name);
 
-        var fields = new List<VariableSymbol>();
-        foreach (var stmt in structDef.Body)
-        {
-            if (stmt is VariableDeclaration varDecl)
-            {
-                fields.Add(new VariableSymbol
-                {
-                    Name = varDecl.Name,
-                    Kind = SymbolKind.Variable,
-                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
-                    IsConstant = varDecl.IsConst,
-                    IsStatic = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static),
-                    AccessLevel = GetAccessLevel(varDecl.Name),
-                    DeclarationLine = varDecl.LineStart,
-                    DeclarationColumn = varDecl.ColumnStart,
-                    NameDeclarationLine = varDecl.NameLineStart,
-                    NameDeclarationColumn = varDecl.NameColumnStart
-                });
-            }
-        }
+        var fields = ExtractFields(structDef.Body);
 
         var methods = new List<FunctionSymbol>();
         var ctors = new List<FunctionSymbol>();
@@ -498,7 +475,10 @@ internal class ModuleLoader
             Properties = properties,
             Events = events,
             NestedTypes = nestedTypes,
-            MethodOverloads = TypeSymbol.BuildMethodOverloads(methods)
+            MethodOverloads = TypeSymbol.BuildMethodOverloads(methods),
+            Documentation = structDef.DocString,
+            DeprecationMessage = NameResolver.GetDeprecationMessage(structDef.Decorators),
+            IsMustUse = NameResolver.HasMustUse(structDef.Decorators)
         };
 
         LinkNestedTypes(structSymbol, nestedTypes);
@@ -545,11 +525,52 @@ internal class ModuleLoader
             Methods = methods,
             Properties = properties,
             Events = events,
-            NestedTypes = nestedTypes
+            NestedTypes = nestedTypes,
+            Documentation = interfaceDef.DocString,
+            DeprecationMessage = NameResolver.GetDeprecationMessage(interfaceDef.Decorators),
+            IsMustUse = NameResolver.HasMustUse(interfaceDef.Decorators)
         };
 
         LinkNestedTypes(interfaceSymbol, nestedTypes);
         return interfaceSymbol;
+    }
+
+    /// <summary>
+    /// Extracts a type body's field declarations. One loop shared by the class and struct
+    /// extractors, which held byte-identical copies of it.
+    /// </summary>
+    /// <remarks>
+    /// <c>IsFinal</c> and <c>HasDefaultValue</c> are threaded here (#1365): the first decides
+    /// whether an assignment outside a constructor is legal and whether the emitted field is
+    /// <c>readonly</c>, the second whether a constructor must initialize it. Dropping them made an
+    /// imported <c>@final</c> field freely assignable and an imported defaulted field look
+    /// mandatory — both on the import path only.
+    /// </remarks>
+    private List<VariableSymbol> ExtractFields(ImmutableArray<Statement> body)
+    {
+        var fields = new List<VariableSymbol>();
+        foreach (var stmt in body)
+        {
+            if (stmt is not VariableDeclaration varDecl)
+                continue;
+
+            fields.Add(new VariableSymbol
+            {
+                Name = varDecl.Name,
+                Kind = SymbolKind.Variable,
+                Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
+                IsConstant = varDecl.IsConst,
+                IsStatic = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static),
+                IsFinal = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Final),
+                HasDefaultValue = varDecl.InitialValue != null,
+                AccessLevel = GetAccessLevel(varDecl.Name),
+                DeclarationLine = varDecl.LineStart,
+                DeclarationColumn = varDecl.ColumnStart,
+                NameDeclarationLine = varDecl.NameLineStart,
+                NameDeclarationColumn = varDecl.NameColumnStart
+            });
+        }
+        return fields;
     }
 
     /// <summary>
@@ -616,7 +637,10 @@ internal class ModuleLoader
             NameDeclarationLine = enumDef.NameLineStart,
             NameDeclarationColumn = enumDef.NameColumnStart,
             DeclarationSpan = enumDef.Span,
-            DefiningModule = definingModulePath
+            DefiningModule = definingModulePath,
+            Documentation = enumDef.DocString,
+            DeprecationMessage = NameResolver.GetDeprecationMessage(enumDef.Decorators),
+            IsMustUse = NameResolver.HasMustUse(enumDef.Decorators)
         };
 
         // Register enum members as static fields for pattern matching resolution
@@ -718,7 +742,13 @@ internal class ModuleLoader
             DeclarationLine = method.LineStart,
             DeclarationColumn = method.ColumnStart,
             NameDeclarationLine = method.NameLineStart,
-            NameDeclarationColumn = method.NameColumnStart
+            NameDeclarationColumn = method.NameColumnStart,
+            // #1365 — see the module-level function arm; SignatureKey is what overload dedup
+            // compares, so an imported overload set without it cannot tell two signatures apart.
+            SignatureKey = NameResolver.GetMethodSignatureKey(method),
+            Documentation = method.DocString,
+            DeprecationMessage = NameResolver.GetDeprecationMessage(method.Decorators),
+            IsMustUse = NameResolver.HasMustUse(method.Decorators)
         };
     }
 

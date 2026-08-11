@@ -250,7 +250,13 @@ internal partial class NameResolver
     /// Builds a signature key from a method's AST parameter type annotations (excluding self).
     /// Used for detecting duplicate method signatures during overload registration.
     /// </summary>
-    private static string GetMethodSignatureKey(FunctionDef method)
+    /// <remarks>
+    /// Internal rather than private because <c>ModuleLoader</c> stamps the same key onto imported
+    /// functions (#1365). Two keys computed by two formulas would compare unequal for the same
+    /// signature, which is the #1145 Class G shape — so the formula stays here and the import path
+    /// CALLS it rather than mirroring it.
+    /// </remarks>
+    internal static string GetMethodSignatureKey(FunctionDef method)
     {
         var paramTypes = method.Parameters
             .Where(p => p.Name != PythonNames.Self)

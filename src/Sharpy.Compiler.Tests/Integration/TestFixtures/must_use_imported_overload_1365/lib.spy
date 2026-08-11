@@ -1,0 +1,14 @@
+# #1365: the library half. Each fact below is one NameResolver stamps on these same
+# declarations for lib's own file; ModuleLoader's re-extraction for importers dropped all of
+# them. @must_use is decorated on ONE overload only, so the cell distinguishes "the resolved
+# overload carries the fact" from "any overload of that name does".
+
+@must_use
+def parse(x: int) -> int:
+    """Parse an int."""
+    return x
+
+
+def parse(x: str) -> str:
+    """Parse a str."""
+    return x

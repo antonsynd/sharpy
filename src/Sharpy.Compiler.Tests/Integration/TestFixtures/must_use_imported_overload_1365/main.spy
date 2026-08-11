@@ -1,0 +1,24 @@
+# #1365: an OVERLOADED imported function is the shape that genuinely reads ModuleLoader's
+# extracted FunctionSymbol rather than the project's own. ImportResolver registers
+# moduleInfo.FunctionOverloads — extraction symbols — via SymbolTable.DefineFunctionOverloads,
+# and overload resolution answers from that set, so an imported @must_use overload used to be
+# discardable in silence.
+#
+# Verified by instrument, not assumed: forcing IsMustUse=true on every extracted symbol changes
+# NOTHING for a non-overloaded imported call (there the checker reads NameResolver's own symbol,
+# which already carried the fact) and changes exactly the cell below. The overload set is the
+# door, which is why this fixture is overloaded rather than the obvious one-function shape.
+
+from lib import parse
+
+
+def main():
+    # The int overload is @must_use — discarding it warns.
+    parse(3)
+
+    # The str overload is not decorated. A .warning sidecar asserts presence, not counts, so the
+    # negative half is pinned exactly by ModuleLoaderTests.LoadModule_ThreadsPerOverloadFacts
+    # rather than here.
+    parse("ab")
+
+    print("done")

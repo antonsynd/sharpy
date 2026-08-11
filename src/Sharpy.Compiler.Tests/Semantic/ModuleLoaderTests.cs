@@ -463,6 +463,167 @@ type Pair[T] = tuple[T, T]
         Assert.False(moduleInfo.ExportedSymbols.ContainsType("Handle"));
     }
 
+    /// <summary>
+    /// #1365: the facts NameResolver stamps on a declaration must survive re-extraction for
+    /// importers. SignatureKey is what overload dedup compares, Documentation is what hover shows,
+    /// DeprecationMessage is SPY0466's text and IsMustUse is SPY0480's trigger — an imported symbol
+    /// missing them is not the same symbol.
+    /// </summary>
+    [Fact]
+    public void LoadModule_ThreadsFunctionFacts()
+    {
+        var path = CreateModule("facts.spy", @"
+@must_use
+@deprecated(""use parse_v2"")
+def parse(text: str, limit: int) -> int:
+    """"""Parse text.""""""
+    return limit
+");
+
+        var moduleInfo = _loader.LoadModule(path, 1, 1);
+
+        var parse = Assert.IsType<FunctionSymbol>(moduleInfo!.ExportedSymbols["parse"]);
+        Assert.Equal("str,int", parse.SignatureKey);
+        Assert.Equal("Parse text.", parse.Documentation);
+        Assert.Equal("use parse_v2", parse.DeprecationMessage);
+        Assert.True(parse.IsMustUse);
+    }
+
+    /// <summary>
+    /// #1365: the facts ride on the RESOLVED overload, not on the name. ImportResolver registers
+    /// this overload list (extraction symbols) through SymbolTable.DefineFunctionOverloads, and
+    /// overload resolution answers from it — which is why an imported overloaded @must_use call is
+    /// the shape that actually reads the extraction rather than the project's own symbol.
+    /// </summary>
+    [Fact]
+    public void LoadModule_ThreadsPerOverloadFacts()
+    {
+        var path = CreateModule("overloads.spy", @"
+@must_use
+def pick(x: int) -> int:
+    return x
+
+
+def pick(x: str) -> str:
+    return x
+");
+
+        var moduleInfo = _loader.LoadModule(path, 1, 1);
+
+        var overloads = moduleInfo!.FunctionOverloads["pick"];
+        Assert.Equal(2, overloads.Count);
+
+        var intOverload = overloads.Single(o => o.SignatureKey == "int");
+        var strOverload = overloads.Single(o => o.SignatureKey == "str");
+
+        Assert.True(intOverload.IsMustUse);
+        Assert.False(strOverload.IsMustUse);
+    }
+
+    /// <summary>
+    /// #1365: type declarations carry the same three decorator/doc facts, and methods carry the
+    /// function set. A @must_use TYPE is SPY0480's other trigger (UserDefinedType.Symbol.IsMustUse).
+    /// </summary>
+    [Fact]
+    public void LoadModule_ThreadsTypeAndMethodFacts()
+    {
+        var path = CreateModule("typefacts.spy", @"
+@must_use
+@deprecated(""use Receipt2"")
+class Receipt:
+    """"""A receipt.""""""
+
+    @must_use
+    def total(self, tax: float) -> float:
+        """"""Total with tax.""""""
+        return tax
+
+
+@must_use
+struct Token:
+    """"""A token.""""""
+    value: int
+
+
+@must_use
+interface Closer:
+    """"""Closes things.""""""
+    def close(self) -> None:
+        ...
+
+
+@must_use
+enum Status:
+    """"""Status codes.""""""
+    OK
+");
+
+        var moduleInfo = _loader.LoadModule(path, 1, 1);
+
+        var receipt = Assert.IsType<TypeSymbol>(moduleInfo!.ExportedSymbols["Receipt"]);
+        Assert.True(receipt.IsMustUse);
+        Assert.Equal("A receipt.", receipt.Documentation);
+        Assert.Equal("use Receipt2", receipt.DeprecationMessage);
+
+        var total = receipt.Methods.Single(m => m.Name == "total");
+        Assert.True(total.IsMustUse);
+        Assert.Equal("Total with tax.", total.Documentation);
+        Assert.Equal("float", total.SignatureKey);
+
+        // Struct, interface and enum are separate extractors and each dropped the facts
+        // independently — one cell per extractor, not one cell for "types".
+        Assert.True(Assert.IsType<TypeSymbol>(moduleInfo.ExportedSymbols["Token"]).IsMustUse);
+        Assert.True(Assert.IsType<TypeSymbol>(moduleInfo.ExportedSymbols["Closer"]).IsMustUse);
+        Assert.True(Assert.IsType<TypeSymbol>(moduleInfo.ExportedSymbols["Status"]).IsMustUse);
+        Assert.Equal("A token.", moduleInfo.ExportedSymbols["Token"].Documentation);
+        Assert.Equal("Closes things.", moduleInfo.ExportedSymbols["Closer"].Documentation);
+        Assert.Equal("Status codes.", moduleInfo.ExportedSymbols["Status"].Documentation);
+    }
+
+    /// <summary>
+    /// #1365: a field's <c>IsFinal</c> decides whether assignment outside a constructor is legal
+    /// and whether the emitted field is <c>readonly</c>; <c>HasDefaultValue</c> decides whether a
+    /// constructor must initialize it. Both dropped at the import boundary, for module-level
+    /// variables and for class/struct fields alike.
+    /// </summary>
+    [Fact]
+    public void LoadModule_ThreadsFieldFacts()
+    {
+        var path = CreateModule("fields.spy", @"
+MODULE_LEVEL: int = 5
+
+class Holder:
+    @final
+    locked: int = 1
+    loose: int
+
+struct Packed:
+    @final
+    tag: str = ""t""
+    other: str
+");
+
+        var moduleInfo = _loader.LoadModule(path, 1, 1);
+
+        var moduleVar = Assert.IsType<VariableSymbol>(moduleInfo!.ExportedSymbols["MODULE_LEVEL"]);
+        Assert.True(moduleVar.HasDefaultValue);
+        Assert.False(moduleVar.IsFinal);
+
+        var holder = Assert.IsType<TypeSymbol>(moduleInfo.ExportedSymbols["Holder"]);
+        var locked = holder.Fields.Single(f => f.Name == "locked");
+        Assert.True(locked.IsFinal);
+        Assert.True(locked.HasDefaultValue);
+        var loose = holder.Fields.Single(f => f.Name == "loose");
+        Assert.False(loose.IsFinal);
+        Assert.False(loose.HasDefaultValue);
+
+        var packed = Assert.IsType<TypeSymbol>(moduleInfo.ExportedSymbols["Packed"]);
+        var tag = packed.Fields.Single(f => f.Name == "tag");
+        Assert.True(tag.IsFinal);
+        Assert.True(tag.HasDefaultValue);
+        Assert.False(packed.Fields.Single(f => f.Name == "other").IsFinal);
+    }
+
     private static TypeSymbol NestedNamed(TypeSymbol owner, string name)
         => owner.NestedTypes.Single(n => n.Name == name);
 }
