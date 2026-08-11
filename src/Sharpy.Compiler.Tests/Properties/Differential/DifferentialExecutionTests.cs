@@ -988,6 +988,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
             "clone",        // System.String.Clone — no CPython counterpart
             "to_char_array",// System.String.ToCharArray — CPython spells it list(s)
             "element_at",   // Enumerable.ElementAt on a string — CPython spells it s[i]
+            "take",         // Enumerable.Take on a string — CPython spells it s[:n]
 
             // System.Object's protocol, reached on an `object` receiver (#1389). CPython's object
             // has no `get_hash_code`; the fixture that pins the permissive direction for that
