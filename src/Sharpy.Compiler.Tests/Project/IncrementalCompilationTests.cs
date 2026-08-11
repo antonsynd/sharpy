@@ -3310,9 +3310,7 @@ def main():
         AssertIncrementalSplit(logger, compiled: 1, skipped: 1);
     }
 
-    [Fact(Skip = "#1366: `lib.Child().greet()` still reports SPY0203 on a COLD build — the type " +
-        "reached through ModuleSymbol.Exports arrives without its base chain, so only INHERITED " +
-        "members go missing. #1309's fix did not reach this path. Written to pass once #1366 is fixed.")]
+    [Fact]
     public void IncrementalMode_PlainImport_InheritedMemberResolves_ColdAndWarm()
     {
         // Shape 4: module-qualified `lib.Child().greet()`. This one is cache-independent — it failed
@@ -3323,6 +3321,12 @@ def main():
         // `c: lib.Child = lib.Child(); c.greet()` fail with SPY0203, while `lib.Child().describe()`
         // (Child's own member) and `lib.Base().greet()` (the base's own member) pass — as does
         // `from lib import Child` + `Child().greet()`, which is why shapes 1 and 3 above are green.
+        //
+        // Un-skipped when #1366 was fixed by making an in-source-set module export the
+        // compilation's OWN symbols instead of a ModuleLoader re-extraction of them. The WARM half
+        // is not incidental: a cache-served file never re-runs NameResolver, so its exports point
+        // at whatever RestoreCachedSymbols defined into the module scope in Phase 2 — this test is
+        // what says that path answers the same as the cold one.
         var libFile = CreateTempFile("lib.spy", BaseChildLibrary);
         var mainFile = CreateTempFile("main.spy", @"
 import lib

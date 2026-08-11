@@ -194,7 +194,7 @@ internal partial class ProjectCompiler
                                     Name = importAlias.AsName,
                                     Kind = SymbolKind.Module,
                                     FilePath = moduleInfo.Path,
-                                    Exports = new ModuleExports(moduleInfo.ExportedSymbols),
+                                    Exports = ImportResolver.BuildExportsFor(moduleInfo),
                                     FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                                     IsNetModule = moduleInfo.IsNetModule,
                                     CanonicalModuleName = moduleInfo.CanonicalModuleName,
@@ -217,7 +217,7 @@ internal partial class ProjectCompiler
                                 Name = parts[^1], // Last part (e.g., "math")
                                 Kind = SymbolKind.Module,
                                 FilePath = moduleInfo.Path,
-                                Exports = new ModuleExports(moduleInfo.ExportedSymbols),
+                                Exports = ImportResolver.BuildExportsFor(moduleInfo),
                                 FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                                 IsNetModule = moduleInfo.IsNetModule,
                                 CanonicalModuleName = moduleInfo.CanonicalModuleName,
@@ -227,7 +227,10 @@ internal partial class ProjectCompiler
                                     ?? _moduleRegistry?.GetModuleDocumentation(importAlias.Name)
                             };
 
-                            // Build nested structure from inside out
+                            // Build nested structure from inside out. The structural parents
+                            // export exactly one thing — the nested ModuleSymbol — so they hold
+                            // no extraction copy and need no ownership substitution; the leaf's
+                            // exports ride along on that symbol.
                             ModuleSymbol currentModule = leafModule;
                             for (int j = parts.Length - 2; j >= 0; j--)
                             {
@@ -554,6 +557,51 @@ internal partial class ProjectCompiler
         }
 
         return reExported;
+    }
+
+    /// <summary>
+    /// The plain-import twin of <see cref="ResolveImportSymbol"/>: given a name that
+    /// <paramref name="moduleInfo"/> exports, returns THIS compilation's own symbol for that
+    /// declaration, or null when the module is not one of ours (a .NET module, a stdlib module,
+    /// any file outside the source set) — in which case the <see cref="ModuleLoader"/> extraction
+    /// stands, because it is the only symbol that exists.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A from-import already prefers the Phase 3 original (that is what
+    /// <see cref="ResolveImportSymbol"/> does), which is exactly why <c>from lib import Child</c>
+    /// sees <c>Child</c>'s base chain while <c>import lib</c> + <c>lib.Child</c> did not: only the
+    /// qualified spelling went through <c>Exports</c>, and those were re-extracted copies that no
+    /// pass ever materialises <c>BaseType</c>/<c>Interfaces</c> onto. Re-pointing them makes both
+    /// spellings name one object, so identity, inheritance and every other symbol fact agree by
+    /// construction rather than by threading (#1366, #1407, #1410).
+    /// </para>
+    /// <para>
+    /// <b>Cache-served files:</b> a file skipped by <c>--incremental</c> has no fresh
+    /// <c>NameResolver</c> run, but <see cref="RestoreCachedSymbols"/> defines its symbols into
+    /// the module scope during Phase 2 — before Phase 3 and well before this runs in Phase 4 — so
+    /// the lookup below answers with the restored symbol on a warm build exactly as it answers
+    /// with the freshly-resolved one on a cold build.
+    /// </para>
+    /// <para>
+    /// The runtime-type guard mirrors <see cref="ResolveImportSymbol"/>'s: a module scope can hold
+    /// a name the extraction produced a different KIND of symbol for (an imported re-export, say),
+    /// and substituting across kinds would change what the name means rather than which object
+    /// answers to it.
+    /// </para>
+    /// </remarks>
+    private Symbol? ResolveOwnExportedSymbol(ModuleInfo moduleInfo, string name, Symbol extracted)
+    {
+        if (moduleInfo.IsNetModule || string.IsNullOrEmpty(moduleInfo.Path))
+            return null;
+
+        var unit = _projectModel?.GetUnit(moduleInfo.Path);
+        if (unit == null)
+            return null;
+
+        var moduleScope = SymbolTable.GetModuleScope(unit.ModulePath);
+        var own = moduleScope?.Lookup(name, searchParent: false);
+        return own != null && own.GetType() == extracted.GetType() ? own : null;
     }
 
     /// <summary>

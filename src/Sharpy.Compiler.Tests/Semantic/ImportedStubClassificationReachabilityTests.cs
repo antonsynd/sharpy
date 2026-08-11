@@ -122,7 +122,12 @@ def main():
             + "legal — the same answer NameResolver gives same-file (#1266)", body);
     }
 
-    // --- The two escapes that survive a module BEING a compilation unit ------------------------
+    // --- Escapes that survive a module BEING a compilation unit --------------------------------
+    //
+    // There were two. The plain-import one is CLOSED (#1366/#1407/#1410): a ModuleSymbol built for
+    // an in-source-set file now exports the compilation's own symbols, so `lib.X` reads exactly
+    // what `from lib import X` reads. The test below that used to pin it now guards its closure.
+    // The aliased from-import escape survives and is still pinned as a defect.
 
     private const string LibInterfaceStub = @"interface Logger:
     def log(self, message: str) -> None:
@@ -215,19 +220,24 @@ def main():
     }
 
     /// <summary>
-    /// Escape 2 — a plain <c>import lib</c>. The <see cref="ModuleSymbol"/> built at
-    /// <c>Phases.cs:215-228</c> (and :192-205 for <c>import lib as l</c>) takes its
-    /// <c>Exports</c> straight from <c>moduleInfo.ExportedSymbols</c>, so every <c>lib.X</c> member
-    /// access reads a <c>ModuleLoader</c>-extracted symbol — again regardless of <c>lib.spy</c>
-    /// being name-resolved as a compilation unit.
+    /// Escape 2, CLOSED — a plain <c>import lib</c>. The <see cref="ModuleSymbol"/> built for an
+    /// in-source-set file used to take its <c>Exports</c> straight from
+    /// <c>moduleInfo.ExportedSymbols</c>, so every <c>lib.X</c> read answered with a
+    /// <c>ModuleLoader</c>-extracted symbol even though <c>lib.spy</c> was itself name-resolved as
+    /// a compilation unit. This test pinned that as an escape; it now guards its closure.
     ///
-    /// <para>The behavior half is a13cf602e's fix: before it, <c>ExtractFullClassSymbol</c> carried
-    /// methods but no properties, so <c>c.name</c> on a module-qualified type could not resolve. The
-    /// module scope's own declaration is asserted present first, so "the exported symbol is a
-    /// different instance" cannot pass because the module scope was empty.</para>
+    /// <para>Why the closure mattered: an extraction is a SEPARATE object from the declaration, and
+    /// only the declaration ever gets <c>BaseType</c>/<c>Interfaces</c> materialised. Every fact the
+    /// twin lacked was a defect on the qualified spelling alone — inherited members invisible
+    /// (#1366), assignment/argument/constraint relations empty (#1407), identity comparisons
+    /// missing so <c>isinstance</c> silently tested the wrong type (#1410).</para>
+    ///
+    /// <para>The behavior half is retained as the arrangement's own control: <c>c.name</c> must
+    /// still resolve through the module-qualified type, so "the exported symbol is the same
+    /// instance" cannot pass on a module scope that never bound anything.</para>
     /// </summary>
     [Fact]
-    public void PlainImport_ModuleExportsComeFromTheExtractedSymbols_NotTheProjectDeclarations()
+    public void PlainImport_ModuleExportsAreTheProjectDeclarations_NotExtractionCopies()
     {
         var result = AnalyzeWithLibInSourceSet(LibClassWithProperty, MainPlainImport);
 
@@ -236,21 +246,48 @@ def main():
             "`import lib` binds a ModuleSymbol in the importing file's module scope").Subject;
 
         module.Exports.TryGetValue("Config", out var exported).Should().BeTrue(
-            "the module's exports are built from moduleInfo.ExportedSymbols, which must carry 'Config'");
-        exported.Should().NotBeSameAs(
+            "the module's export name set still comes from moduleInfo.ExportedSymbols, which must "
+            + "carry 'Config'");
+        exported.Should().BeSameAs(
             declared,
-            "ModuleSymbol.Exports is a copy of ModuleLoader's ExportedSymbols (Phases.cs:220) and "
-            + "never consults the module scope, so `lib.Config` reads the extracted symbol (#1267)");
+            "an in-source-set module exports THIS compilation's symbols, so `lib.Config` and "
+            + "`from lib import Config` name one object — a separate instance here is the "
+            + "extraction copy whose base chain nothing materialises (#1366, #1407, #1410)");
+        module.Exports.TryGetType("Config", out var exportedType).Should().BeTrue(
+            "the types-only view must be substituted too, since annotation-position resolution "
+            + "consults it first (#1092)");
+        exportedType.Should().BeSameAs(declared);
 
-        // The behavior that rides on it: the extracted symbol has to carry properties, not just
-        // methods, or `c.name` cannot resolve through a module-qualified type (#1267/a13cf602e).
+        // Control on the arrangement: reading a function-style property through the qualified
+        // spelling must still analyze cleanly, or "same instance" could pass on an empty scope.
         ErrorCodes(result.Diagnostics).Should().BeEmpty(
-            "reading a function-style property off a plainly-imported type must analyze cleanly — "
-            + "if ExtractFullClassSymbol stopped extracting properties, 'name' would go unresolved");
+            "reading a function-style property off a plainly-imported type must analyze cleanly");
         ((TypeSymbol)exported!).Properties.Should().Contain(
             p => p.Name == "name",
             "the exported TypeSymbol itself must carry the property — an empty Properties list with "
-            + "no diagnostic would mean the member resolved somewhere other than this escape");
+            + "no diagnostic would mean the member resolved somewhere other than this export");
+    }
+
+    /// <summary>
+    /// The same closure stated where it is user-visible rather than structural: a member INHERITED
+    /// from a base class resolves through a module-qualified reference. This is #1366's shape, and
+    /// it is carried here next to its own control — the subclass's OWN member, which resolved
+    /// through the extraction copy all along — so a run in which the import simply failed cannot
+    /// pass as "no error".
+    /// </summary>
+    [Fact]
+    public void PlainImport_InheritedMember_ResolvesThroughTheQualifiedSpelling()
+    {
+        var result = AnalyzeWithLibInSourceSet(
+            libSource: "class Base:\n    def greet(self) -> str:\n        return \"hi\"\n"
+                + "\n\nclass Child(Base):\n    def describe(self) -> str:\n        return \"child\"\n",
+            mainSource: "import lib\n\n\ndef main():\n    print(lib.Child().describe())\n"
+                + "    print(lib.Child().greet())\n");
+
+        ErrorCodes(result.Diagnostics).Should().BeEmpty(
+            "`lib.Child().greet()` reaches Base through the qualified spelling; the extraction copy "
+            + "this used to resolve to never had its BaseType materialised, so only the INHERITED "
+            + "member went missing (SPY0203) while `describe()` on the same line resolved (#1366)");
     }
 
     // --- Arrangement ---------------------------------------------------------------------------

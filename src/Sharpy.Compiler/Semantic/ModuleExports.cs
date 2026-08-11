@@ -59,6 +59,42 @@ public sealed class ModuleExports : IReadOnlyDictionary<string, Symbol>
     }
 
     /// <summary>
+    /// Builds a copy of <paramref name="source"/> in which every export the compilation itself
+    /// declares is replaced by the compilation's OWN symbol object, resolved by
+    /// <paramref name="resolveOwnSymbol"/> (which returns null when the name is not the
+    /// compilation's to own).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A <see cref="ModuleLoader"/> extraction produces a <b>separate</b> <see cref="TypeSymbol"/>
+    /// from the one <c>NameResolver</c> produced for the same declaration, and only the latter has
+    /// its <c>BaseType</c>/<c>Interfaces</c> materialised in Phase 4b/4c. Exporting the extraction
+    /// therefore makes a module-qualified spelling resolve to a base-chain-less twin: inherited
+    /// members go missing (#1366), assignment/argument/constraint relations read empty (#1407), and
+    /// identity comparisons against the declaration miss (#1410) — all on the import path only.
+    /// </para>
+    /// <para>
+    /// The export NAME SET still comes from the extraction, because that is what decides what a
+    /// module exports; only the objects behind the names are re-pointed. Both views are substituted
+    /// independently so a type shadowed in the value view by a same-named field (#1092) keeps its
+    /// separate identity in each.
+    /// </para>
+    /// </remarks>
+    internal static ModuleExports CreateOwnedBy(
+        ModuleExports source, Func<string, Symbol, Symbol?> resolveOwnSymbol)
+    {
+        var result = new ModuleExports();
+
+        foreach (var (name, symbol) in source._symbols)
+            result._symbols[name] = resolveOwnSymbol(name, symbol) ?? symbol;
+
+        foreach (var (name, type) in source._types)
+            result._types[name] = resolveOwnSymbol(name, type) as TypeSymbol ?? type;
+
+        return result;
+    }
+
+    /// <summary>
     /// The types-only view, consulted by annotation-position resolution before the value view
     /// (<see cref="Shared.ModuleSymbolExtensions.TryGetExportedType"/>). Read-only: entries appear
     /// here only by exporting a <see cref="TypeSymbol"/> through <see cref="Add"/> or by merging

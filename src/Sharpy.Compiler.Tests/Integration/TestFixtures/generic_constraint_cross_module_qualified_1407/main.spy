@@ -1,0 +1,35 @@
+# The MODULE-QUALIFIED twin of generic_constraint_cross_module_1289 (#1407). A module qualifier
+# changes lookup scope, never the produced representation, so every cell here must behave exactly
+# as its `from shapes import ...` sibling does — same program, same output.
+#
+# It did not. `import shapes` resolved `shapes.Shape` through ModuleSymbol.Exports, whose entries
+# were ModuleLoader RE-EXTRACTIONS of the declarations rather than the compilation's own symbols,
+# and only the compilation's own symbols ever get BaseType materialised. So the inheritance was
+# invisible through this spelling alone: the assignment and the argument were both refused with
+# SPY0220, and the constraint with SPY0237 — while `c.sides` and `shapes.Circle()` worked, which is
+# what made it a relation defect rather than a resolution one.
+
+import shapes
+
+
+def describe[T: shapes.Shape](shape: T) -> int:
+    return shape.sides
+
+
+def take(s: shapes.Shape) -> int:
+    return s.sides
+
+
+def main() -> None:
+    # Constraint cell: the inferred argument type must satisfy a qualified constraint.
+    print(describe(shapes.Shape(4)))
+    print(describe(shapes.Circle()))
+
+    c: shapes.Circle = shapes.Circle()
+
+    # Assignment cell: a qualified subclass is assignable to its qualified base.
+    s: shapes.Shape = c
+    print(s.sides)
+
+    # Argument cell: a qualified subclass is passable where the qualified base is required.
+    print(take(c))

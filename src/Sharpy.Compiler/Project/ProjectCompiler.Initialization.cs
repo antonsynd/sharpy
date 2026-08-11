@@ -29,6 +29,9 @@ internal partial class ProjectCompiler
         // Create import resolver with all dependencies injected via constructor
         _importResolverBacking = new ImportResolver(_logger, _moduleRegistry,
             semanticBinding: semanticBinding, dependencyRecorder: GraphBuilder);
+        // An import of a file this compilation owns must export THIS compilation's symbols, not
+        // ModuleLoader's re-extraction of them (#1366, #1407, #1410).
+        _importResolverBacking.OwnSymbolResolver = ResolveOwnExportedSymbol;
 
         // Register all parsed files in the dependency graph
         foreach (var sourceFile in _projectModel!.Units.Keys)

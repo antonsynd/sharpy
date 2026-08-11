@@ -66,7 +66,7 @@ internal partial class ImportResolver
                             Name = importAlias.AsName,
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
-                            Exports = new ModuleExports(moduleInfo.ExportedSymbols),
+                            Exports = BuildExportsFor(moduleInfo),
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
@@ -90,7 +90,7 @@ internal partial class ImportResolver
                             Name = parts[^1],
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
-                            Exports = new ModuleExports(moduleInfo.ExportedSymbols),
+                            Exports = BuildExportsFor(moduleInfo),
                             FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
@@ -103,6 +103,9 @@ internal partial class ImportResolver
                             NameDeclarationColumn = importAlias.ColumnStart
                         };
 
+                        // The structural parents below export exactly one thing — the nested
+                        // ModuleSymbol built above — so they hold no extraction copy and need no
+                        // ownership substitution; the leaf's exports ride along on that symbol.
                         ModuleSymbol currentModule = leafModule;
                         for (int j = parts.Length - 2; j >= 0; j--)
                         {

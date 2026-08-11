@@ -102,6 +102,39 @@ internal partial class ImportResolver
         return compilationWide.Enable(GetFileFutureFeatures(filePath).EnabledFeatures);
     }
 
+    /// <summary>
+    /// Resolves a name exported by an in-source-set module to the compilation's OWN symbol for
+    /// that declaration, or null when the module is outside the source set (or the name is not
+    /// one the compilation declares). Installed by <c>ProjectCompiler</c>; left null by the
+    /// single-file front doors, where there is no second symbol to prefer.
+    /// </summary>
+    /// <remarks>
+    /// The seam exists so <see cref="BuildExportsFor"/> is the ONLY place that decides which
+    /// objects a <see cref="ModuleSymbol"/>'s exports point at. Before it, five construction
+    /// sites across two pipelines each wrote <c>new ModuleExports(moduleInfo.ExportedSymbols)</c>
+    /// independently — the #1145 Class G shape, where a fix reaches the site its author knew
+    /// about and nothing fails when a parallel one is added.
+    /// </remarks>
+    internal Func<ModuleInfo, string, Symbol, Symbol?>? OwnSymbolResolver { get; set; }
+
+    /// <summary>
+    /// The exports to hand a <see cref="ModuleSymbol"/> built for <paramref name="moduleInfo"/>.
+    /// For an in-source-set module these reference the compilation's own symbols (the ones
+    /// <c>NameResolver</c> produced and Phase 4b/4c materialised inheritance onto), so a
+    /// module-qualified spelling and a bare one name the same object (#1366, #1407, #1410).
+    /// For anything else — .NET modules, stdlib, files outside the source set — they are the
+    /// <see cref="ModuleLoader"/> extraction, copied as before.
+    /// </summary>
+    internal ModuleExports BuildExportsFor(ModuleInfo moduleInfo)
+    {
+        var resolver = OwnSymbolResolver;
+        if (resolver == null)
+            return new ModuleExports(moduleInfo.ExportedSymbols);
+
+        return ModuleExports.CreateOwnedBy(
+            moduleInfo.ExportedSymbols, (name, extracted) => resolver(moduleInfo, name, extracted));
+    }
+
     private IDependencyRecorder? _dependencyRecorder;
     private SemanticBinding _semanticBinding = new();
 
