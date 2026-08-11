@@ -1,0 +1,23 @@
+# #1377 (#1144 front-end-parity class), star-import shape: a two-file program whose only
+# unusual property is that the second file is a sibling of this one.
+#
+# This program is correct and prints 3. Before the fix `sharpyc emit diagnostics main.spy`
+# reported it as broken -- two errors, exit 1 (measured at 2bdcfbf09):
+#
+#     error SPY0300 (18:1): Cannot find module 'shapes' (in <source>)
+#     error SPY0200 (22:9): Undefined identifier 'Bag'. Did you mean 'bin'?
+#
+# because CompilerApi.Analyze pinned the entry path to "<source>", which has no directory, so
+# the import-closure walk started from the process working directory instead of this file's.
+# The defect is not a missing diagnostic: the door described a DIFFERENT PROGRAM, one in
+# which `Bag` does not exist. The `emit-diagnostics` entry point in FrontEndParityTests is the
+# standing guard; this fixture is one of the cells it reads.
+#
+# The name begins with `emit_` on purpose -- FrontEndParityTests.IsAlwaysIncluded sweeps any
+# fixture whose name mentions `emit` regardless of the sub-sampling stride.
+from shapes import *
+
+
+def main() -> None:
+    b = Bag()
+    print(len(b))

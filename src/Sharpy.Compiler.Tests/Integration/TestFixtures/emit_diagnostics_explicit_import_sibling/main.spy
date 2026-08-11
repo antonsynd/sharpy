@@ -1,0 +1,17 @@
+# #1377 (#1144 front-end-parity class), explicit-import shape and the twin of
+# `emit_diagnostics_star_import_sibling`: that fixture pins a CORRECT program a front door
+# called broken; this one pins a BROKEN program a front door blamed for the wrong reason.
+#
+# The real defect is the argument type -- `twice` takes an int, and `run` says so (SPY0220).
+# Before the fix `sharpyc emit diagnostics main.spy` never reached it, because it could not
+# see calc.spy at all (measured at 2bdcfbf09):
+#
+#     error SPY0300 (13:1): Cannot find module 'calc' (in <source>)
+#
+# Same exit code as `run`, entirely different diagnosis -- which is worse than a crash,
+# because a user reading it would go looking for a missing import that is right there.
+from calc import twice
+
+
+def main() -> None:
+    print(twice("nope"))

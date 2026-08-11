@@ -310,9 +310,6 @@ public sealed class CompilerApi
     public SemanticResult Analyze(string source, CompilerOptions options,
         CompilationMetrics? stageMetrics, CancellationToken cancellationToken)
     {
-        var opts = options ?? CompilerOptionsFactory.ForLibraryAnalysis();
-        MergeDefaultReferences(opts);
-
         // Single-file analyze is a synthetic project-of-one-file driven through the same
         // ProjectCompiler that compile uses (#1087) — no parallel phase sequencer. The entry
         // source is fed in-memory under a virtual path (LSP buffers have no on-disk file);
@@ -321,12 +318,72 @@ public sealed class CompilerApi
         // them as the current document, the historical single-file contract). OutputType flows
         // from the caller's options (the no-options overload keeps its "library" default so LSP
         // analysis gains no entry-point/missing-main diagnostics).
+        //
+        // These two values are the LSP's contract and must stay exactly here: a caller that has a
+        // real on-disk entry file wants the OTHER overload below, not a mutation of this one.
         const string entryPath = "<source>";
+        return AnalyzeCore(source, entryPath, nullifyEntryFilePath: true, options, stageMetrics,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Analyzes an entry file that exists on disk, discovering and resolving its sibling imports
+    /// from the file's own directory exactly as <c>run</c> and <c>project</c> do (#1377).
+    /// </summary>
+    /// <remarks>
+    /// The path-less overloads above pin the entry to the virtual <c>"&lt;source&gt;"</c>, which has
+    /// no directory, so <c>SyntheticProject.BuildConfig</c> rooted the import closure at the process
+    /// working directory and a sibling <c>import lib</c> could not resolve. The analysis then
+    /// described a DIFFERENT program from the one <c>run</c> compiles — SPY0300 plus whatever
+    /// downstream diagnostics the unresolved names produced — which is the #1144 front-end-parity
+    /// class. Supplying the real path is the whole fix; the closure walk it feeds already existed.
+    /// <para>
+    /// Unlike the LSP overload this does NOT nullify the entry file's path identity: an on-disk
+    /// entry has a genuine path, and stripping it would attribute its symbols and diagnostics to
+    /// "the current document" — meaningless outside an editor buffer. The <c>"&lt;source&gt;"</c> +
+    /// <c>nullifyEntryFilePath: true</c> contract the LSP depends on is untouched and still applies
+    /// to every path-less caller.
+    /// </para>
+    /// </remarks>
+    /// <param name="source">
+    /// The entry file's source text. Fed in-memory under <paramref name="entryFilePath"/>, so an
+    /// unsaved editor buffer analyzes as typed while its siblings are read from disk.
+    /// </param>
+    /// <param name="entryFilePath">
+    /// The entry file's path. Null or empty falls back to the path-less contract above.
+    /// </param>
+    /// <param name="options">Compiler options for this analysis.</param>
+    /// <param name="cancellationToken">Cancellation token for cooperative cancellation.</param>
+    /// <returns>A <see cref="SemanticResult"/> with the analysis outcome.</returns>
+    public SemanticResult Analyze(string source, string? entryFilePath, CompilerOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(entryFilePath))
+            return Analyze(source, options, stageMetrics: null, cancellationToken);
+
+        // Same resolution the compile path applies (see Compile): a real file is canonicalized so
+        // the closure walk and the project model agree on identity; anything else is used verbatim
+        // so a virtual path survives into diagnostics unchanged.
+        var resolved = File.Exists(entryFilePath) ? Path.GetFullPath(entryFilePath) : entryFilePath;
+        return AnalyzeCore(source, resolved, nullifyEntryFilePath: false, options,
+            stageMetrics: null, cancellationToken);
+    }
+
+    /// <summary>
+    /// The one analyze body. Both public shapes differ only in the entry path they name and
+    /// whether that entry keeps its path identity.
+    /// </summary>
+    private SemanticResult AnalyzeCore(string source, string entryPath, bool nullifyEntryFilePath,
+        CompilerOptions options, CompilationMetrics? stageMetrics, CancellationToken cancellationToken)
+    {
+        var opts = options ?? CompilerOptionsFactory.ForLibraryAnalysis();
+        MergeDefaultReferences(opts);
+
         ProjectConfig config;
         using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.SyntheticProjectSetup))
         {
             config = SyntheticProject.BuildConfig(source, entryPath, opts, _logger,
-                preserveTrivia: true, nullifyEntryFilePath: true);
+                preserveTrivia: true, nullifyEntryFilePath: nullifyEntryFilePath);
         }
 
         ModuleRegistry? registry;

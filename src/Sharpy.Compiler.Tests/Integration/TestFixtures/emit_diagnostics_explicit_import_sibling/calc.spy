@@ -1,0 +1,4 @@
+# The sibling module. `twice` is deliberately strict about its parameter type: the call in
+# main.spy is wrong, and it is only KNOWN to be wrong by a front door that resolved this file.
+def twice(x: int) -> int:
+    return x * 2

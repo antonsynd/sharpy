@@ -48,6 +48,13 @@ namespace Sharpy.Lsp.Tests.Conformance;
 ///   <item><c>compile-project</c> — <see cref="ProjectCompiler.Compile"/> vs
 ///     <see cref="CompilerApi.AnalyzeProject"/>, for multi-file fixtures only (LSP/REPL are
 ///     single-file surfaces).</item>
+///   <item><c>emit-diagnostics</c> — the seam <c>sharpyc emit diagnostics</c> calls:
+///     <see cref="CompilerApi.Analyze(string, string, CompilerOptions, CancellationToken)"/>,
+///     analysis of an entry file named BY PATH. Added with #1377, where this door could not
+///     resolve sibling imports and therefore reported diagnostics for a different program than
+///     <c>run</c>. Compared on both fixture arities: against the Analyze baseline for single-file
+///     fixtures, and against the AnalyzeProject baseline for multi-file ones — the latter is the
+///     cell that would have caught #1377.</item>
 /// </list>
 /// </para>
 ///
@@ -109,6 +116,7 @@ public class FrontEndParityTests
     private const string EntryLsp = "LSP";
     private const string EntryRepl = "REPL";
     private const string EntryCompileProject = "compile-project";
+    private const string EntryEmitDiagnostics = "emit-diagnostics";
 
     // Diagnostics whose SPYnnnn number is in [1, 499] are front-end (Lexer/Parser/Semantic/
     // Validation). 500-599 = code generation, 900-999 = infrastructure, 1000+ = info notes — all
@@ -239,6 +247,23 @@ public class FrontEndParityTests
             crashes.Add(new CrashRecord(fixture.TestName, EntryCompile, $"{ex.GetType().Name}: {ex.Message}"));
         }
 
+        // --- emit diagnostics (analysis of an entry file named BY PATH, #1377) ---
+        // Exercised through the very seam the CLI command calls, in-process, per this sweep's
+        // no-subprocess rule. Options are identical to the baseline's, so the single variable
+        // under test is that this door is told where the file lives. For a single-file fixture
+        // that is a program of one file either way — the cell exists so the path-carrying
+        // overload cannot regress single-file analysis while fixing the multi-file case.
+        try
+        {
+            var emit = api.Analyze(source, fixture.SpyFilePath,
+                new CompilerOptions { OutputType = "library", Features = features }, ct);
+            comparisons.Add(Compare(EntryEmitDiagnostics, fixture.TestName, baselineSig, Signature(emit.Diagnostics)));
+        }
+        catch (Exception ex)
+        {
+            crashes.Add(new CrashRecord(fixture.TestName, EntryEmitDiagnostics, $"{ex.GetType().Name}: {ex.Message}"));
+        }
+
         // --- LSP (features threaded through the workspace's own configuration source, #1149) ---
         try
         {
@@ -336,6 +361,30 @@ public class FrontEndParityTests
         catch (Exception ex)
         {
             crashes.Add(new CrashRecord(fixture.TestName, EntryCompileProject, $"{ex.GetType().Name}: {ex.Message}"));
+        }
+
+        // --- emit diagnostics: THE #1377 cell ---
+        // `sharpyc emit diagnostics main.spy` is handed one file, not a project. Everything else
+        // about the program — the sibling modules, their symbols, the diagnostics they carry —
+        // has to be discovered from that file's directory, which is exactly what this door failed
+        // to do: it reported SPY0300 for every sibling import and then described whatever program
+        // the unresolved names left behind. The AnalyzeProject baseline above is the program that
+        // actually exists, so this comparison is the standing statement that one file's worth of
+        // input still buys the whole program's diagnostics.
+        //
+        // N2 applies: OutputType is held at the baseline's "exe" so a missing-main difference
+        // cannot masquerade as closure drift.
+        try
+        {
+            var entryFile = Path.Combine(projectDir, entryPoint);
+            var emit = api.Analyze(File.ReadAllText(entryFile), entryFile,
+                new CompilerOptions { OutputType = "exe", Features = features });
+            comparisons.Add(Compare(EntryEmitDiagnostics, fixture.TestName,
+                Signature(baselineDiags), Signature(emit.Diagnostics)));
+        }
+        catch (Exception ex)
+        {
+            crashes.Add(new CrashRecord(fixture.TestName, EntryEmitDiagnostics, $"{ex.GetType().Name}: {ex.Message}"));
         }
     }
 
@@ -558,7 +607,10 @@ public class FrontEndParityTests
             {
                 fixturesDiscovered = discovered,
                 fixturesSwept = swept,
-                entryPointsCompared = new[] { EntryCompile, EntryLsp, EntryRepl, EntryCompileProject },
+                entryPointsCompared = new[]
+                {
+                    EntryCompile, EntryLsp, EntryRepl, EntryCompileProject, EntryEmitDiagnostics,
+                },
                 comparisons = comparisons.Count,
                 matches = comparisons.Count(c => c.Match),
                 justifiedNormalizedSkips = skips.Count,
@@ -572,7 +624,7 @@ public class FrontEndParityTests
             normalizationRules = new[]
             {
                 "N1 (all pairs): compare only Error/Warning diagnostics with SPYnnnn in [0001,0499] (Lexer/Parser/Semantic/Validation), plus SPY0522/SPY0523 — numbered in the codegen band but emitted during semantic analysis/validation; drop the rest of codegen SPY05xx (including emitter-only SPY0520), infra SPY09xx, info SPY1xxx, and uncoded diagnostics.",
-                "N2 (compile): invoke Compile with OutputType=library to match the Analyze baseline; SPY0403 (MissingMainFunction) is OutputType-driven, not pipeline drift.",
+                "N2 (compile, emit-diagnostics): invoke the entry point with the baseline's OutputType (library against Analyze, exe against AnalyzeProject); SPY0403 (MissingMainFunction) is OutputType-driven, not pipeline drift.",
                 "N3 (REPL): compare only when ClassifyInput yields a module-level submission; wrapped-executable and pre-parse-rejected inputs are record-and-skipped.",
                 "N4 (REPL): skip fixtures that define a top-level main() (collide with the REPL's synthesized main()).",
             },

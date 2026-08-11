@@ -12,6 +12,15 @@
 # Format: one `pair::fixture` key per line (text after `#` is a comment). A line containing
 # `*` is a simple glob matched against the whole key. `pair` is one of:
 #   compile::<fixture>   REPL::<fixture>   LSP::<fixture>   compile-project::<fixture>
+#   emit-diagnostics::<fixture>
 #
-# Comments-only (as shipped) means the ratchet holds at ZERO known violations: the sweep is
-# green only if every front end agrees with Analyze on every swept fixture.
+# The ratchet holds at TWO known violations, both of them the baseline's limitation rather
+# than the entry point's: see #1433 below.
+
+# --- #1433: the Analyze baseline is path-blind, so two file-identity-derived diagnostic
+# classes are unproducible on it. `emit-diagnostics` is the first front door in this sweep
+# that carries a real entry path (added with #1377), so it is the first to disagree — and on
+# both fixtures it is the door that agrees with `run`, `project`, and the fixture's own
+# .error sidecar. Delete both lines when #1433 threads the document path into analysis.
+emit-diagnostics::imports/import_self                             # SPY0302 vs baseline SPY0300+SPY0452 (#1433)
+emit-diagnostics::diagnostics/function_module_class_collision     # SPY0523 vs baseline (empty) (#1433)

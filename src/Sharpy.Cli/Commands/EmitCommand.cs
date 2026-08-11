@@ -340,7 +340,25 @@ internal static class EmitCommand
             }
             else
             {
-                var result = api.Analyze(source);
+                // Analyze the entry file BY PATH, so the synthetic project's import closure is
+                // walked from the file's own directory — the same discovery `run` and `project`
+                // perform (#1377). `api.Analyze(source)` pinned the entry to "<source>", rooted the
+                // walk at the process working directory, and therefore reported on a DIFFERENT
+                // program than the one `run` compiles: SPY0300 for every sibling import plus
+                // whatever the resulting unresolved names produced downstream.
+                //
+                // The options are built from the same flags the --include-codegen branch already
+                // threads (#1097's lesson: a front door that drops flags reports a different
+                // program just as surely as one that drops files) — except OutputType, which stays
+                // "library" so an analysis-only inspection never invents a missing-entry-point
+                // refusal for a file the user only asked to check.
+                var analyzeOptions = CompilerOptionsFactory.ForCli(
+                    outputType: "library",
+                    warningsAsErrors: warnAsError,
+                    suppressedWarnings: CliHelpers.ParseNowarnCodes(nowarn),
+                    maxErrors: maxErrors ?? 0,
+                    features: CliHelpers.ParseFeatures(features));
+                var result = api.Analyze(source, inputFile.FullName, analyzeOptions);
                 diagnostics = result.Diagnostics;
             }
 

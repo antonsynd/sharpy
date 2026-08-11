@@ -1,0 +1,11 @@
+# The sibling module `main.spy` star-imports. Its only job is to live in the entry file's
+# DIRECTORY: a front door that does not root its import closure there cannot see this file,
+# and everything it exports becomes an undefined name in the program that door describes.
+class Bag:
+    _items: list[int]
+
+    def __init__(self) -> None:
+        self._items = [1, 2, 3]
+
+    def __len__(self) -> int:
+        return len(self._items)
