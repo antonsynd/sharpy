@@ -1,0 +1,90 @@
+# #1404, the class-base arm: `class Child(Box)` over `class Box[T = int]` is `Box[int]`. The
+# interface arm is type_parameter_default_not_in_base_1286; the struct-interface and
+# interface-base-interface arms are type_parameter_default_base_arms_1404. One helper serves all
+# four, so each arm needs its own cell or three of them are untested.
+#
+# The `Dup` half is the reason the fill substitutes on the ANNOTATION rather than appending the
+# default verbatim: it runs in Pass 1, before any type resolution, and `V = K` parked in the
+# DERIVED class's scope means the derived class's K or nothing at all. Both readings are wrong —
+# ChildStr has no K, and ChildOpen's K is its own.
+
+class Box[T = int]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+class Child(Box):
+    def __init__(self) -> None:
+        super().__init__(5)
+
+
+class Dup[K, V = K]:
+    key: K
+    value: V
+
+    def __init__(self, key: K, value: V) -> None:
+        self.key = key
+        self.value = value
+
+
+# `Dup[str]` fills V from K's ARGUMENT, not from K's name: Dup[str, str].
+class ChildStr(Dup[str]):
+    def __init__(self) -> None:
+        super().__init__("a", "b")
+
+
+# The same fill through a derived class's own parameter: Dup[K, K] stays open.
+class ChildOpen[K](Dup[K]):
+    def __init__(self, k: K) -> None:
+        super().__init__(k, k)
+
+
+# A default may name a parameter that is ITSELF defaulted, so the fill has to bind each position
+# as it completes it, not only the written ones: Trio bare is Trio[int, int, int].
+class Trio[P = int, Q = P, R = Q]:
+    one: P
+    two: Q
+    three: R
+
+    def __init__(self, one: P, two: Q, three: R) -> None:
+        self.one = one
+        self.two = two
+        self.three = three
+
+
+class ChainAll(Trio):
+    def __init__(self) -> None:
+        super().__init__(1, 2, 3)
+
+
+class ChainFromStr(Trio[str]):
+    def __init__(self) -> None:
+        super().__init__("x", "y", "z")
+
+
+def main() -> None:
+    c: Child = Child()
+    print(c.value)
+
+    b: Box[int] = c
+    print(b.value)
+
+    s: ChildStr = ChildStr()
+    print(s.value)
+
+    d: Dup[str, str] = s
+    print(d.value)
+
+    o: ChildOpen[int] = ChildOpen[int](3)
+    print(o.value)
+
+    e: Dup[int, int] = o
+    print(e.key)
+
+    t: Trio[int, int, int] = ChainAll()
+    print(t.three)
+
+    u: Trio[str, str, str] = ChainFromStr()
+    print(u.three)

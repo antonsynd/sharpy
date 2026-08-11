@@ -1,0 +1,24 @@
+# The declaring module also owns the derived classes, so the base lists here are completed by
+# THIS file's own Pass 1 — the cell is about whether the completion survives the per-file to
+# project seam (the symbol cache serializes a reference's type arguments, and the emitter reads
+# a per-file SemanticInfo that is merged into the project's).
+
+class Box[T = int]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+class Child(Box):
+    def __init__(self) -> None:
+        super().__init__(9)
+
+
+interface HolderD[T = str]:
+    def get(self) -> T: ...
+
+
+class Impl(HolderD):
+    def get(self) -> str:
+        return "z"

@@ -1,16 +1,30 @@
-# #1286 x #1245: a type-parameter default fills annotation and reference positions, but a base
-# list has nowhere to materialize the fill (TypeSymbol.BaseType is a bare symbol and the
-# interface reference carries the written annotations verbatim — the same shape gap as #1287),
-# so a defaulted parameter left implicit in a base list is refused, not half-filled. The message
-# says why, so the fix (writing the argument) is one edit away.
+# #1286 x #1245 x #1404 (the stem records the refusal this fixture used to pin): a base-list
+# position fills type-parameter defaults exactly as an annotation position does (#1331), so
+# `class Good(HolderD)` over `interface HolderD[T = str]` is `HolderD[str]`.
+#
+# The fill only became safe once it is materialized everywhere the old refusal said it was not:
+# the reference's own type arguments (what the supertype walk reads, so the base is a real
+# supertype relation and not just an accepted spelling) and the EMITTED base list (the emitter
+# writes the annotation, so an unfilled `HolderD` reaches Roslyn as CS0305 behind SPY0908 —
+# trading a clear diagnostic for an ICE). Each of the three prints below fails on a different
+# one of those.
+#
+# The refusal survives untouched for a parameter with NO default: open_generic_base_1286.
 interface HolderD[T = str]:
     def get(self) -> T: ...
 
 
-class Bad(HolderD):
+class Good(HolderD):
     def get(self) -> str:
         return "d"
 
 
 def main() -> None:
-    pass
+    g: Good = Good()
+    print(g.get())
+
+    h: HolderD = g
+    print(h.get())
+
+    explicit: HolderD[str] = g
+    print(explicit.get())

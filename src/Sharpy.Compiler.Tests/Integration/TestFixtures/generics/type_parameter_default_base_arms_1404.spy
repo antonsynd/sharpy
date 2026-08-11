@@ -1,0 +1,47 @@
+# #1404, the two arms the plan's acceptance did not name: a STRUCT's interface list and an
+# INTERFACE's base-interface list. TryCompleteBaseReferenceArguments is shared by all four
+# base-list arms, so a fill written for the class arms silently changes these two as well —
+# they are pinned here rather than discovered later.
+
+interface HolderS[T = int]:
+    def gets(self) -> T: ...
+
+
+interface HolderX[T = float]:
+    def getx(self) -> T: ...
+
+
+interface Extends(HolderX):
+    def more(self) -> int: ...
+
+
+struct Point(HolderS):
+    x: int
+
+    def gets(self) -> int:
+        return self.x
+
+
+class Impl(Extends):
+    def getx(self) -> float:
+        return 1.5
+
+    def more(self) -> int:
+        return 2
+
+
+def main() -> None:
+    p: Point = Point(7)
+    print(p.gets())
+
+    s: HolderS = p
+    print(s.gets())
+
+    i: Impl = Impl()
+
+    e: Extends = i
+    print(e.more())
+
+    # Reached through the base interface Extends fills from HolderX's default.
+    x: HolderX = i
+    print(x.getx())

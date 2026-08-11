@@ -1,0 +1,16 @@
+# #1404 across a module boundary: a base-list default fill in an IMPORTED module has to reach the
+# importer as a real supertype relation, not just as a spelling the declaring file accepted.
+from shapes import Box, Child, HolderD, Impl
+
+
+def main() -> None:
+    c: Child = Child()
+    print(c.value)
+
+    b: Box[int] = c
+    print(b.value)
+
+    i: Impl = Impl()
+
+    h: HolderD = i
+    print(h.get())

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
@@ -972,6 +973,49 @@ internal partial class TypeChecker
         return (true, 128);
     }
 
+    /// <summary>
+    /// Third of #1404's materialization obligations: the EMITTED base list.
+    ///
+    /// <para>The emitter writes a base list straight from the AST annotation
+    /// (<c>RoslynEmitter.TypeDeclarations</c> maps <c>classDef.BaseClasses</c> through
+    /// <c>TypeSyntaxMapper.MapType</c>), so a base whose type arguments came from a PEP-696
+    /// default fill — arguments the source never spells — would reach Roslyn as a bare generic
+    /// name, i.e. CS0305 behind SPY0908. That is exactly the leak the base-list arity refusal
+    /// used to prevent, so accepting the fill without closing this hole would trade a clear
+    /// diagnostic for an ICE.</para>
+    ///
+    /// <para>No new channel is needed: <c>MapType</c> consults
+    /// <c>SemanticInfo.GetTypeAnnotation</c> FIRST and emits the resolved type when one is
+    /// recorded, so recording the completed type against the base annotation node in the existing
+    /// <c>_typeAnnotations</c> dictionary (already merged by <c>SemanticInfo.MergeFrom</c>) fixes
+    /// the emitter with no emitter change. Only genuinely filled references are recorded, so
+    /// every base list that compiles today keeps its existing spelling.</para>
+    /// </summary>
+    private void RecordCompletedBaseAnnotations(TypeSymbol typeSymbol)
+    {
+        var baseRef = SemanticBinding.GetBaseTypeReference(typeSymbol) ?? typeSymbol.BaseTypeRef;
+        if (baseRef != null)
+            RecordCompletedBaseAnnotation(baseRef.SourceAnnotation, baseRef.TypeArgAnnotations);
+
+        foreach (var iface in SemanticBinding.GetInterfaces(typeSymbol) ?? (IReadOnlyList<InterfaceReference>)typeSymbol.Interfaces)
+            RecordCompletedBaseAnnotation(iface.SourceAnnotation, iface.TypeArgAnnotations);
+    }
+
+    private void RecordCompletedBaseAnnotation(TypeAnnotation? source, ImmutableArray<TypeAnnotation> completed)
+    {
+        // A reference whose arguments are exactly what the source spells needs nothing recorded —
+        // the emitter's own annotation walk already produces it.
+        if (source == null || completed.Length <= source.TypeArguments.Length)
+            return;
+
+        if (_semanticInfo.GetTypeAnnotation(source) != null)
+            return;
+
+        var resolved = _typeResolver.ResolveTypeAnnotation(source with { TypeArguments = completed });
+        if (resolved is not UnknownType)
+            _semanticInfo.SetTypeAnnotation(source, resolved);
+    }
+
     private void CheckClass(ClassDef classDef)
     {
         _logger.LogDebug($"Type checking class: {classDef.Name}");
@@ -1033,6 +1077,8 @@ internal partial class TypeChecker
         var previousClass = _currentClass;
         _currentClass = classSymbol;
         _typeResolver.SetCurrentTypeContext(classSymbol);
+
+        RecordCompletedBaseAnnotations(classSymbol);
 
         // Resolve field types first (before checking methods that might reference them)
         for (int i = 0; i < classSymbol.Fields.Count; i++)
@@ -1141,6 +1187,8 @@ internal partial class TypeChecker
         _currentClass = structSymbol;
         _typeResolver.SetCurrentTypeContext(structSymbol);
 
+        RecordCompletedBaseAnnotations(structSymbol);
+
         // Detect bracket attributes that are source generators
         DetectGeneratorAttributes(structDef);
 
@@ -1237,6 +1285,8 @@ internal partial class TypeChecker
         var previousClass = _currentClass;
         _currentClass = interfaceSymbol;
         _typeResolver.SetCurrentTypeContext(interfaceSymbol);
+
+        RecordCompletedBaseAnnotations(interfaceSymbol);
 
         // Resolve method parameter types and return types
         // Interface methods are registered in NameResolver but with Unknown types

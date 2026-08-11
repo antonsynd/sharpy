@@ -160,27 +160,71 @@ once, at the parameter list, rather than at each site that omits the type argume
 ## Where Defaults Fill
 
 Defaults fill **partially-written annotation and reference positions** (`x: Dup[str]` means
-`Dup[str, str]`) and **call positions** (`echo_pair("a", "b")`). They are **not** filled in a
-**base list**: a base class or interface must be written with all of its type arguments, even
-when the omitted ones have defaults.
+`Dup[str, str]`), **call positions** (`echo_pair("a", "b")`), and **base lists**. A base position
+means what an annotation position means: the omitted trailing arguments fill from the defaults
+(#1404).
 
 ```python
 interface HolderD[T = str]:
     def get(self) -> T: ...
 
 
-class Bad(HolderD):       # ERROR (SPY0224): Type 'HolderD' expects 1 type arguments but got 0;
-    ...                   # type parameter defaults are not filled in a base list — write the
-                          # arguments explicitly
+class Good(HolderD):           # OK — the base is HolderD[str]
+    def get(self) -> str:
+        return "d"
 
 
-class Good(HolderD[str]): # OK
+class Explicit(HolderD[str]):  # OK — the same base, written out
+    def get(self) -> str:
+        return "d"
+```
+
+It is the same fill, so a default written in terms of an earlier parameter closes over the
+arguments the base list supplies:
+
+```python
+class Dup[K, V = K]:
+    key: K
+    value: V
+
+    def __init__(self, key: K, value: V) -> None:
+        self.key = key
+        self.value = value
+
+
+class ChildStr(Dup[str]):      # Dup[str, str]
+    def __init__(self) -> None:
+        super().__init__("a", "b")
+
+
+class ChildOpen[K](Dup[K]):    # Dup[K, K] — K here is ChildOpen's own parameter
+    def __init__(self, k: K) -> None:
+        super().__init__(k, k)
+```
+
+Defaults fill from the **right**, so a base list may omit a defaulted tail but never a leading
+undefaulted parameter — the arity refusal survives for that case:
+
+```python
+class Pair[T, U = str]:
+    first: T
+    second: U
+
+
+class BadPair(Pair):        # ERROR (SPY0224): Type 'Pair' expects 2 type arguments but got 0
+    ...
+
+
+class GoodPair(Pair[int]):  # OK — Pair[int, str]
     ...
 ```
 
-A base list names the concrete shape a declaration is built on, and that shape is materialized
-directly into the generated C# base list — there is no later inference site at which a default
-could be applied (#1286).
+A base list names the concrete shape a declaration is built on, and that shape is read in more
+places than an annotation is: the base/interface reference the supertype walk consults, and the
+generated C# base list itself. The fill is materialized into both, because a base accepted but
+left unfilled would reach Roslyn as `CS0305` behind SPY0908 — worse than the refusal it replaced.
+That is why base lists refused defaults until every one of those channels could carry the fill
+(#1286, #1404).
 
 ## Diagnostics
 
@@ -206,3 +250,4 @@ generates a generic class `Box<T>` in C#. The default is used during type infere
 - *Trailing validation: SPY0395*
 - *Constraint satisfaction: SPY0396*
 - *Earlier-parameter resolution: `TypeResolver.ResolveTypeParameterDefault`; reference validation SPY0347 (#1245)*
+- *Base-list fill: `NameResolver.TryCompleteBaseReferenceArguments` / `FillTypeParameterDefaults`, materialized into the base/interface reference and — via `TypeChecker.RecordCompletedBaseAnnotations` — into `SemanticInfo` for the emitted base list (#1404)*

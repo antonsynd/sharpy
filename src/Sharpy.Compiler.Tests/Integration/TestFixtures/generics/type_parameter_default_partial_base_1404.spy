@@ -1,0 +1,22 @@
+# #1404's boundary: defaults fill from the RIGHT, so a base list can omit a trailing run of
+# defaulted parameters but never a leading undefaulted one. `Pair[T, U = str]` written bare in a
+# base list is deficient for exactly the reason the annotation-position twin is
+# (generic_bare_ref_partial_default_1331), and draws the same arity diagnostic — with no defaults
+# footnote any more, because the tail-only case now fills.
+
+class Pair[T, U = str]:
+    first: T
+    second: U
+
+    def __init__(self, first: T, second: U) -> None:
+        self.first = first
+        self.second = second
+
+
+class BadPair(Pair):
+    def describe(self) -> int:
+        return 1
+
+
+def main() -> None:
+    pass

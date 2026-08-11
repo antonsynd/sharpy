@@ -1,4 +1,5 @@
 extern alias SharpyRT;
+using System.Collections.Immutable;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
@@ -388,7 +389,7 @@ internal partial class NameResolver
                 continue;
             }
 
-            if (!ValidateBaseReferenceArity(baseAnnot, baseSymbol))
+            if (!TryCompleteBaseReferenceArguments(baseAnnot, baseSymbol, out var baseTypeArgs))
                 continue;
 
             if (baseSymbol.TypeKind == TypeKind.Class)
@@ -404,7 +405,8 @@ internal partial class NameResolver
                 _semanticBinding.SetBaseTypeReference(typeSymbol, new BaseTypeReference
                 {
                     Definition = baseSymbol,
-                    TypeArgAnnotations = baseAnnot.TypeArguments
+                    TypeArgAnnotations = baseTypeArgs,
+                    SourceAnnotation = baseAnnot
                 });
                 hasSetBaseType = true;
 
@@ -419,7 +421,8 @@ internal partial class NameResolver
                 _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
                 {
                     Definition = baseSymbol,
-                    TypeArgAnnotations = baseAnnot.TypeArguments
+                    TypeArgAnnotations = baseTypeArgs,
+                    SourceAnnotation = baseAnnot
                 });
             }
         }
@@ -459,13 +462,14 @@ internal partial class NameResolver
                 continue;
             }
 
-            if (!ValidateBaseReferenceArity(baseAnnot, interfaceSymbol))
+            if (!TryCompleteBaseReferenceArguments(baseAnnot, interfaceSymbol, out var interfaceTypeArgs))
                 continue;
 
             _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
             {
                 Definition = interfaceSymbol,
-                TypeArgAnnotations = baseAnnot.TypeArguments
+                TypeArgAnnotations = interfaceTypeArgs,
+                SourceAnnotation = baseAnnot
             });
         }
     }
@@ -504,13 +508,14 @@ internal partial class NameResolver
                 continue;
             }
 
-            if (!ValidateBaseReferenceArity(baseAnnot, baseInterfaceSymbol))
+            if (!TryCompleteBaseReferenceArguments(baseAnnot, baseInterfaceSymbol, out var baseInterfaceTypeArgs))
                 continue;
 
             _semanticBinding.AddInterface(typeSymbol, new InterfaceReference
             {
                 Definition = baseInterfaceSymbol,
-                TypeArgAnnotations = baseAnnot.TypeArguments
+                TypeArgAnnotations = baseInterfaceTypeArgs,
+                SourceAnnotation = baseAnnot
             });
         }
 
@@ -541,34 +546,116 @@ internal partial class NameResolver
     }
 
     /// <summary>
-    /// Base-list arity (#1286): a generic base class or interface must be written with exactly
-    /// its declared number of type arguments. Nothing downstream can repair a mismatch — the
-    /// <see cref="InterfaceReference"/> carries the written annotations verbatim,
-    /// <see cref="GenericInstantiationWalker"/> skips mismatched references by design, and the
-    /// emitter writes the base list as spelled — so an unchecked mismatch reaches Roslyn as
-    /// CS0305 through the SPY0908 net. The wording is the arity authority's own
-    /// (<c>TypeResolver.ResolveTypeAnnotation</c>). Type-parameter defaults (#1245) are
-    /// deliberately NOT filled here: a base list has nowhere to materialize the fill
-    /// (<c>TypeSymbol.BaseType</c> is a bare symbol and the interface reference carries
-    /// annotations, the same shape gap as #1287), and an accepted-but-unmaterialized default is
-    /// exactly the leak this check exists to stop.
+    /// Base-list arity (#1286) and the PEP-696 defaults fill (#1404). A generic base class or
+    /// interface must reach the reference channels with exactly its declared number of type
+    /// arguments: nothing downstream can repair a mismatch — the <see cref="InterfaceReference"/>
+    /// and <see cref="BaseTypeReference"/> carry the annotations,
+    /// <see cref="GenericInstantiationWalker"/> skips references it cannot read by design, and the
+    /// emitter writes the base list from the annotation — so an unfilled reference reaches Roslyn
+    /// as CS0305 through the SPY0908 net. The refusal wording is the arity authority's own
+    /// (<c>TypeResolver.ResolveTypeAnnotation</c>).
+    ///
+    /// <para>A trailing run of parameters that all carry defaults (#1245) is FILLED here rather
+    /// than refused, so a base-list position means what an annotation position means (#1331):
+    /// <c>class Child(Box)</c> over <c>class Box[T = int]</c> is <c>Box[int]</c>. The refusal
+    /// survives untouched for a parameter with NO default, which is the case the #1286 control
+    /// pins. The fill is materialized by returning the completed annotation vector into the
+    /// caller's reference — the earlier "nowhere to materialize" note predates
+    /// <see cref="BaseTypeReference"/> (#1287), which gave the class arm the same two-channel
+    /// carrier the interface arm already had.</para>
     /// </summary>
-    private bool ValidateBaseReferenceArity(TypeAnnotation baseAnnot, TypeSymbol baseSymbol)
+    /// <param name="typeArgAnnotations">
+    /// The effective type arguments for the reference: the written ones, extended with each
+    /// missing parameter's default. Always the written vector when no fill was needed.
+    /// </param>
+    private bool TryCompleteBaseReferenceArguments(
+        TypeAnnotation baseAnnot,
+        TypeSymbol baseSymbol,
+        out ImmutableArray<TypeAnnotation> typeArgAnnotations)
     {
+        typeArgAnnotations = baseAnnot.TypeArguments;
+
         if (!baseSymbol.IsGeneric || baseAnnot.TypeArguments.Length == baseSymbol.TypeParameters.Count)
             return true;
 
-        var message =
-            $"Type '{baseAnnot.Name}' expects {baseSymbol.TypeParameters.Count} type arguments but got {baseAnnot.TypeArguments.Length}";
         if (baseAnnot.TypeArguments.Length < baseSymbol.TypeParameters.Count
             && baseSymbol.TypeParameters.Skip(baseAnnot.TypeArguments.Length).All(tp => tp.DefaultType != null))
         {
-            message += "; type parameter defaults are not filled in a base list — write the arguments explicitly";
+            typeArgAnnotations = FillTypeParameterDefaults(baseAnnot, baseSymbol);
+            return true;
         }
 
-        AddError(message, baseAnnot.LineStart, baseAnnot.ColumnStart,
+        AddError(
+            $"Type '{baseAnnot.Name}' expects {baseSymbol.TypeParameters.Count} type arguments but got {baseAnnot.TypeArguments.Length}",
+            baseAnnot.LineStart, baseAnnot.ColumnStart,
             code: DiagnosticCodes.Semantic.WrongArgumentCount, span: baseAnnot.Span);
         return false;
+    }
+
+    /// <summary>
+    /// Completes a base-list reference's type arguments from the definition's PEP-696 defaults.
+    ///
+    /// <para>The fill runs left to right so a default may be written in terms of the parameters
+    /// declared BEFORE it — <c>class Dup[K, V = K]</c> written as <c>Dup[str]</c> is
+    /// <c>Dup[str, str]</c>, the same answer <c>TypeResolver.ResolveTypeParameterDefault</c> gives
+    /// in an annotation position. This arm substitutes on the ANNOTATION rather than on the
+    /// resolved type because it runs in Pass 1, before any type resolution: appending the default
+    /// verbatim would park the base's own parameter name in the DERIVED class's scope, where it
+    /// means something else or nothing at all.</para>
+    /// </summary>
+    private static ImmutableArray<TypeAnnotation> FillTypeParameterDefaults(
+        TypeAnnotation baseAnnot, TypeSymbol baseSymbol)
+    {
+        var filled = ImmutableArray.CreateBuilder<TypeAnnotation>(baseSymbol.TypeParameters.Count);
+        filled.AddRange(baseAnnot.TypeArguments);
+
+        var bound = new Dictionary<string, TypeAnnotation>(StringComparer.Ordinal);
+        for (int i = 0; i < baseSymbol.TypeParameters.Count; i++)
+        {
+            var parameter = baseSymbol.TypeParameters[i];
+            if (i >= filled.Count)
+                filled.Add(SubstituteTypeParameterNames(parameter.DefaultType!, bound));
+            bound[parameter.Name] = filled[i];
+        }
+
+        return filled.ToImmutable();
+    }
+
+    /// <summary>
+    /// Rewrites the base definition's type-parameter names inside a default annotation to the
+    /// arguments this reference supplies for them. A backtick-escaped spelling denotes the user's
+    /// own type, never a parameter, so it is left alone (#1325).
+    /// </summary>
+    private static TypeAnnotation SubstituteTypeParameterNames(
+        TypeAnnotation annotation, Dictionary<string, TypeAnnotation> bound)
+    {
+        if (bound.Count == 0)
+            return annotation;
+
+        if (!annotation.IsNameBacktickEscaped
+            && annotation.TypeArguments.IsEmpty
+            && annotation.ErrorType == null
+            && bound.TryGetValue(annotation.Name, out var argument))
+        {
+            // `V = K?` under `Dup[str]` is `str?`: the default's own modifiers ride along.
+            return argument with
+            {
+                IsOptional = argument.IsOptional || annotation.IsOptional,
+                IsCSharpNullable = argument.IsCSharpNullable || annotation.IsCSharpNullable
+            };
+        }
+
+        var rewrittenError = annotation.ErrorType == null
+            ? null
+            : SubstituteTypeParameterNames(annotation.ErrorType, bound);
+        var rewrittenArgs = annotation.TypeArguments.IsEmpty
+            ? annotation.TypeArguments
+            : annotation.TypeArguments.Select(a => SubstituteTypeParameterNames(a, bound)).ToImmutableArray();
+
+        if (ReferenceEquals(rewrittenError, annotation.ErrorType) && rewrittenArgs.SequenceEqual(annotation.TypeArguments))
+            return annotation;
+
+        return annotation with { TypeArguments = rewrittenArgs, ErrorType = rewrittenError };
     }
 
     /// <summary>
