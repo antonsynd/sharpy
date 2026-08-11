@@ -1193,7 +1193,10 @@ internal partial class TypeChecker
                 _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
                 _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
                 if (valueElemType is UnknownType)
-                    MarkExpressionAsErrorRecovery(tupleTargetId);
+                {
+                    MarkExpressionAsErrorRecovery(tupleTargetId,
+                        ErrorRecoveryReason.Propagated("the matched tuple element's type"));
+                }
             }
             else if (targetElem is TupleLiteral nestedTuple)
             {

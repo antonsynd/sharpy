@@ -636,7 +636,9 @@ internal partial class TypeChecker
         // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
         // are resolved by the codegen layer through CLR member discovery, not the
         // type checker. Mark as error recovery to suppress SPY0907 false positives.
-        MarkExpressionAsErrorRecovery(memberAccess);
+        MarkExpressionAsErrorRecovery(memberAccess,
+            ErrorRecoveryReason.DeliberatelyPermissive(
+                "codegen resolves this receiver's members through CLR discovery"));
         return SemanticType.Unknown;
     }
 

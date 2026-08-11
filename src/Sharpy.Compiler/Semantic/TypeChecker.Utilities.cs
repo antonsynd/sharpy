@@ -1690,27 +1690,51 @@ internal partial class TypeChecker
         => TypeHierarchyService.GetAncestorChain(type, SemanticBinding).ToList();
 
     /// <summary>
-    /// Marks an expression as error recovery in SemanticInfo and increments the recovery counter.
-    /// The counter enables transitive propagation: when a sub-expression is marked as error
-    /// recovery, parent expressions that return Unknown can detect this and also mark themselves.
-    /// Use this instead of calling <c>_semanticInfo.MarkErrorRecovery()</c> directly.
+    /// Marks an expression as error recovery in SemanticInfo, on the stated
+    /// <paramref name="reason"/>, and increments the recovery counter. The counter enables
+    /// transitive propagation: when a sub-expression is marked as error recovery, parent
+    /// expressions that return Unknown can detect this and also mark themselves. Use this instead
+    /// of calling <c>_semanticInfo.MarkErrorRecovery()</c> directly.
     /// </summary>
-    private void MarkExpressionAsErrorRecovery(Expression expr)
+    /// <remarks>
+    /// <para>
+    /// The reason is required, and that requirement is the contract. This mark tells the invariant
+    /// checker not to raise SPY0907 for an Unknown-typed node — it is the compiler asserting that
+    /// the Unknown is accounted for. A mark with nothing behind it makes that assertion falsely, and
+    /// the reference then reaches code generation unchecked and comes back as SPY0908: #1344's
+    /// container members and #1389's <c>object</c> members were both exactly that. Naming the ground
+    /// (<see cref="ErrorRecoveryReason"/>) makes the unaccounted case unrepresentable rather than
+    /// merely discouraged.
+    /// </para>
+    /// <para>
+    /// Only <see cref="ErrorRecoveryKind.DeliberatelyPermissive"/> is logged. It is the one class
+    /// where nothing is reported to anyone, so it is the one worth being able to watch; the other two
+    /// are already visible as diagnostics.
+    /// </para>
+    /// </remarks>
+    private void MarkExpressionAsErrorRecovery(Expression expr, ErrorRecoveryReason reason)
     {
         _semanticInfo.MarkErrorRecovery(expr);
         _errorRecoveryMarkCount++;
+
+        if (reason.Kind == ErrorRecoveryKind.DeliberatelyPermissive)
+        {
+            _logger.LogDebug(
+                $"Permissive recovery at {expr.LineStart}:{expr.ColumnStart} " +
+                $"({expr.GetType().Name}): {reason.Explanation}");
+        }
     }
 
     /// <summary>
-    /// Sets an expression's type to UnknownType and marks it as error recovery in SemanticInfo.
-    /// Use this when the Unknown type is expected because a user-facing diagnostic was emitted.
-    /// This allows the invariant checker to distinguish intentional error recovery from
-    /// silent type inference failures (compiler bugs).
+    /// Sets an expression's type to UnknownType and marks it as error recovery in SemanticInfo, on
+    /// the stated <paramref name="reason"/>. Use this when the Unknown type is expected because a
+    /// user-facing diagnostic was emitted. This allows the invariant checker to distinguish
+    /// intentional error recovery from silent type inference failures (compiler bugs).
     /// </summary>
-    private void SetErrorRecoveryType(Expression expr)
+    private void SetErrorRecoveryType(Expression expr, ErrorRecoveryReason reason)
     {
         _semanticInfo.SetExpressionType(expr, SemanticType.Unknown);
-        MarkExpressionAsErrorRecovery(expr);
+        MarkExpressionAsErrorRecovery(expr, reason);
     }
 
     /// <summary>

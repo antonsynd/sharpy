@@ -927,7 +927,9 @@ internal partial class TypeChecker
         // (e.g., `1 if cond else "str"`), we return Unknown rather than emitting an error
         // because the LCA (least common ancestor) logic is limited. Mark as error recovery
         // to suppress SPY0907 — a proper fix would compute LCA or emit a type mismatch error.
-        MarkExpressionAsErrorRecovery(cond);
+        MarkExpressionAsErrorRecovery(cond,
+            ErrorRecoveryReason.DeliberatelyPermissive(
+                "a conditional whose branch types have no computed LCA is not reported as a mismatch"));
         return SemanticType.Unknown;
     }
 

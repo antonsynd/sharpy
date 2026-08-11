@@ -272,7 +272,8 @@ internal partial class TypeChecker
                 // for `g = xs.pop` is followed by a bogus "'g' is not callable" at every use (#1170).
                 if (calleeType is UnknownType)
                 {
-                    MarkExpressionAsErrorRecovery(call);
+                    MarkExpressionAsErrorRecovery(call,
+                        ErrorRecoveryReason.Propagated("the callee binding's type"));
                     return SemanticType.Unknown;
                 }
 
@@ -418,7 +419,8 @@ internal partial class TypeChecker
         // Otherwise, the callee evaluated to a non-callable type — emit an error.
         if (calleeType is UnknownType)
         {
-            MarkExpressionAsErrorRecovery(call);
+            MarkExpressionAsErrorRecovery(call,
+                ErrorRecoveryReason.Propagated("the callee's type"));
         }
         else
         {
@@ -3818,7 +3820,8 @@ internal partial class TypeChecker
         else if (targetType is UnknownType)
         {
             // Error recovery — already emitted
-            MarkExpressionAsErrorRecovery(call);
+            MarkExpressionAsErrorRecovery(call,
+                ErrorRecoveryReason.Propagated("the call target's type"));
             return SemanticType.Unknown;
         }
 

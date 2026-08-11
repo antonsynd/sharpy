@@ -197,7 +197,10 @@ internal partial class TypeChecker
             // Cache the expression type for the identifier
             _semanticInfo.SetExpressionType(targetId, inferredType);
             if (inferredType is UnknownType)
-                MarkExpressionAsErrorRecovery(targetId);
+            {
+                MarkExpressionAsErrorRecovery(targetId,
+                    ErrorRecoveryReason.Propagated("the assigned value's type"));
+            }
             return;
         }
 
@@ -812,7 +815,10 @@ internal partial class TypeChecker
 
             _semanticInfo.SetExpressionType(forStmt.Target, elementType);
             if (elementType is UnknownType)
-                MarkExpressionAsErrorRecovery(forStmt.Target);
+            {
+                MarkExpressionAsErrorRecovery(forStmt.Target,
+                    ErrorRecoveryReason.Propagated("the iterated sequence's element type"));
+            }
         }
         // Add loop variable to scope
         // The target is typically an Identifier or TupleExpression
@@ -851,7 +857,10 @@ internal partial class TypeChecker
 
             _semanticInfo.SetExpressionType(forStmt.Target, elementType);
             if (elementType is UnknownType)
-                MarkExpressionAsErrorRecovery(forStmt.Target);
+            {
+                MarkExpressionAsErrorRecovery(forStmt.Target,
+                    ErrorRecoveryReason.Propagated("the iterated sequence's element type"));
+            }
         }
 
         // Check loop body statements
@@ -1733,7 +1742,10 @@ internal partial class TypeChecker
 
                 _semanticInfo.SetExpressionType(targetElem, elemType);
                 if (elemType is UnknownType)
-                    MarkExpressionAsErrorRecovery(targetElem);
+                {
+                    MarkExpressionAsErrorRecovery(targetElem,
+                        ErrorRecoveryReason.Propagated("the unpacked tuple element's type"));
+                }
             }
             else if (targetElem is TupleLiteral nestedTuple)
             {

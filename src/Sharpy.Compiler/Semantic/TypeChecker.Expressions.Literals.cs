@@ -446,7 +446,10 @@ internal partial class TypeChecker
             _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
             _semanticInfo.SetExpressionType(forClause.Target, elemType);
             if (elemType is UnknownType)
-                MarkExpressionAsErrorRecovery(forClause.Target);
+            {
+                MarkExpressionAsErrorRecovery(forClause.Target,
+                    ErrorRecoveryReason.Propagated("the comprehension source's element type"));
+            }
         }
         else if (forClause.Target is TupleLiteral targetTuple)
         {
@@ -471,7 +474,10 @@ internal partial class TypeChecker
 
             _semanticInfo.SetExpressionType(forClause.Target, elemType);
             if (elemType is UnknownType)
-                MarkExpressionAsErrorRecovery(forClause.Target);
+            {
+                MarkExpressionAsErrorRecovery(forClause.Target,
+                    ErrorRecoveryReason.Propagated("the comprehension source's element type"));
+            }
         }
         else
         {

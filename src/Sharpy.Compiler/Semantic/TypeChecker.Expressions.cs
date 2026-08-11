@@ -143,7 +143,9 @@ internal partial class TypeChecker
         if (type is UnknownType &&
             (_diagnostics.ErrorCount > errorsBefore || _errorRecoveryMarkCount > recoveryBefore))
         {
-            MarkExpressionAsErrorRecovery(expr);
+            MarkExpressionAsErrorRecovery(expr,
+                ErrorRecoveryReason.Propagated(
+                    "a sub-expression reported an error or claimed recovery"));
         }
 
         // Cache the result
@@ -252,7 +254,9 @@ internal partial class TypeChecker
             // so SPY0907 doesn't fire (C# var handles the inference at compile time)
             if (resolvedType is UnknownType)
             {
-                MarkExpressionAsErrorRecovery(modArg.Argument);
+                MarkExpressionAsErrorRecovery(modArg.Argument,
+                    ErrorRecoveryReason.DeliberatelyPermissive(
+                        "'auto' defers the inference to C#'s var at compile time"));
             }
 
             // Return the resolved type; CheckExpression caches it on the ModifiedArgument node
@@ -360,7 +364,9 @@ internal partial class TypeChecker
             // Mark as error recovery so the Unknown type doesn't trigger SPY0907.
             if (_diagnostics.IsRootCause(id.Name))
             {
-                MarkExpressionAsErrorRecovery(id);
+                MarkExpressionAsErrorRecovery(id,
+                    ErrorRecoveryReason.AlreadyReported(
+                        "the import that would define this name failed (SPY0300)"));
                 return SemanticType.Unknown;
             }
 
@@ -441,7 +447,9 @@ internal partial class TypeChecker
         {
             _semanticInfo.SetIdentifierSymbol(id, symbol);
             // Mark as error recovery — the import error was already reported upstream
-            MarkExpressionAsErrorRecovery(id);
+            MarkExpressionAsErrorRecovery(id,
+                ErrorRecoveryReason.AlreadyReported(
+                    "the import that defines this symbol failed (SPY0300)"));
             return SemanticType.Unknown;
         }
 
@@ -493,7 +501,9 @@ internal partial class TypeChecker
         // Primitive TypeSymbols get a FunctionType above and should NOT be marked as error recovery.
         if (identifierType is UnknownType && symbol is not null)
         {
-            MarkExpressionAsErrorRecovery(id);
+            MarkExpressionAsErrorRecovery(id,
+                ErrorRecoveryReason.DeliberatelyPermissive(
+                    "a non-primitive type reference is typed at the call site, not here"));
         }
 
         return identifierType;
