@@ -406,7 +406,23 @@ internal class TypeResolver
         return true;
     }
 
-    private TypeSymbol? LookupModuleQualifiedType(string dottedName)
+    /// <summary>
+    /// Resolves a dotted spelling (<c>mod.Type</c>, <c>pkg.mod.Type</c>) to its declaration, or
+    /// null when the leading segment is not an imported module or the tail names no exported type.
+    /// </summary>
+    /// <remarks>
+    /// Internal rather than private because the TypeChecker needs the same answer for a type-test
+    /// operand written with a qualifier: a flat <c>SymbolTable.Lookup</c> cannot resolve a dotted
+    /// name, so before this was reachable the qualified spelling silently skipped the open-generic
+    /// guard the bare spelling meets (#1411). <c>TypeResolver</c>'s public entry points all return
+    /// <see cref="SemanticType"/>, and the guard needs the <see cref="TypeSymbol"/> itself.
+    /// <para>
+    /// Callers must apply the same backtick-escape gate this resolver's own qualified lookup does
+    /// (<c>if (typeSymbol == null &amp;&amp; !escaped)</c>): an escaped spelling names the user's
+    /// own declaration and must never bind a module-qualified type by accident (#1325).
+    /// </para>
+    /// </remarks>
+    internal TypeSymbol? LookupModuleQualifiedType(string dottedName)
     {
         if (!dottedName.Contains('.', StringComparison.Ordinal))
             return null;

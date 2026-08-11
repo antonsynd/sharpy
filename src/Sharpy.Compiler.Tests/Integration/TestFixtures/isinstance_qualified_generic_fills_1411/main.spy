@@ -1,0 +1,19 @@
+# The positive direction of #1411's guard, and the reason it is a guard rather than a blanket
+# refusal: when the subject DOES determine the qualified operand's type arguments, the vector is
+# filled and the test runs. `x: mod_b.Bag[int]` tested against `mod_b.Bag` is the same declaration,
+# so the operand closes to `mod_b.Bag[int]`.
+#
+# Without this cell, "the qualified spelling now reports SPY0345" could be satisfied by refusing
+# every qualified generic operand — which would break working code instead of fixing an escape.
+
+import mod_b
+
+
+def check(x: mod_b.Bag[int]) -> str:
+    if isinstance(x, mod_b.Bag):
+        return "matched mod_b.Bag"
+    return "no match"
+
+
+def main() -> None:
+    print(check(mod_b.Bag[int]()))

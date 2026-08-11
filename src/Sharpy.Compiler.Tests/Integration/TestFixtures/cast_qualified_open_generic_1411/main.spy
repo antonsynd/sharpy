@@ -1,0 +1,20 @@
+# #1411, annotation-shaped half. `as?`/`as!`, `except` and match class patterns classify their type
+# operand from a TypeAnnotation, whose bare-name arm resolved the operand with a FLAT symbol-table
+# lookup — which can never answer a dotted name. So the qualified spelling returned having decided
+# nothing and skipped the open-generic guard, while the bare `x as? Bag` drew SPY0345.
+#
+# The qualifier changes lookup scope, never the rule: same declaration, same refusal.
+
+import mod_a
+import mod_b
+
+
+def check(x: mod_b.Bag[int]) -> str:
+    y = x as? mod_a.Bag
+    if y is not None:
+        return "cast"
+    return "no match"
+
+
+def main() -> None:
+    print(check(mod_b.Bag[int]()))

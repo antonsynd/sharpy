@@ -217,6 +217,15 @@ internal partial class TypeChecker
                 operandSymbol = _symbolTable.BuiltinRegistry.GetType(annotation.Name);
         }
 
+        // A MODULE-QUALIFIED spelling is one string containing dots, which the flat scope lookup
+        // above can never answer. Left there, `x as? mod.Box` returned here having decided nothing
+        // and skipped the guard below, while the bare `x as? Box` drew SPY0345 — the qualifier
+        // silently bought an exemption from a rule about the type, not about how it is named
+        // (#1411). Escaped spellings keep TypeResolver's gate (#1325): `` `mod.Box` `` names the
+        // user's own declaration and must not bind a module-qualified type by accident.
+        if (operandSymbol == null && !annotation.IsNameBacktickEscaped)
+            operandSymbol = _typeResolver.LookupModuleQualifiedType(annotation.Name);
+
         if (operandSymbol is not TypeSymbol typeSymbol)
             return null;
 

@@ -557,8 +557,25 @@ internal partial class TypeChecker
         // (`mod.Type`, #903) or a closed generic spelling (`Box[int]`). Read through the single
         // expression-as-type resolver the generic-construction path uses, so the two cannot drift
         // (#1257).
-        if (TryResolveExpressionAsType(typeOperand, TypeOperandShapes.TypeTestOperand) is { } resolved)
-            _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, resolved));
+        var resolved = TryResolveExpressionAsType(typeOperand, TypeOperandShapes.TypeTestOperand);
+        if (resolved == null)
+            return;
+
+        // ...with one exception the "already names its arguments" reading gets wrong: a QUALIFIED
+        // name whose declaration is generic (`mod.Box`) names no more than a bare `Box` does. The
+        // qualified arm above reads the recorded UserDefinedType and has no counterpart to the bare
+        // arm's "a bare generic name denotes nothing" rule, so the open name was recorded as a
+        // CLOSED test and reached Roslyn as `ModA.Bag<T>` — CS0305 behind SPY0908 — while the bare
+        // spelling drew SPY0345. Same declaration, same rule, whatever the qualifier (#1411).
+        if (resolved is UserDefinedType { Symbol: { IsGeneric: true } openDefinition })
+        {
+            ClassifyResolvedTypeOperand(
+                call, operandNode, typeOperand, openDefinition, DescribeTypeOperand(typeOperand),
+                subjectType);
+            return;
+        }
+
+        _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, resolved));
     }
 
     /// <summary>
@@ -594,6 +611,27 @@ internal partial class TypeChecker
         if (operandSymbol is not TypeSymbol typeSymbol)
             return;
 
+        ClassifyResolvedTypeOperand(call, operandNode, typeId, typeSymbol, typeId.Name, subjectType);
+    }
+
+    /// <summary>
+    /// The three-outcome rule for an <c>isinstance</c> operand once its declaration is in hand,
+    /// shared by the bare spelling (<c>Box</c>) and the module-qualified one (<c>mod.Box</c>) so the
+    /// qualifier cannot buy an exemption from a rule that is about the TYPE (#1411).
+    /// </summary>
+    /// <param name="operandNode">The node the lowering is keyed on (grouping parentheses included,
+    /// since that is the node the emitter looks the decision up by).</param>
+    /// <param name="reportOn">The unwrapped operand a refusal points at.</param>
+    /// <param name="writtenName">
+    /// The operand exactly as the user typed it — what the refusal message must echo, since it is
+    /// the text they have to retype. This is why the shared body takes a name rather than reading
+    /// <c>typeSymbol.Name</c>, which for a qualified spelling would print a name that does not
+    /// resolve at this site.
+    /// </param>
+    private void ClassifyResolvedTypeOperand(
+        FunctionCall call, Expression operandNode, Node reportOn, TypeSymbol typeSymbol,
+        string writtenName, SemanticType? subjectType)
+    {
         // list/set/dict written without type arguments: the test cannot know the element types, so it
         // erases to the non-generic protocol interface. BuildIsInstanceNarrowedType is what narrowing
         // resolves the same operand to, and it fills default `object` arguments so member access on the
@@ -625,9 +663,9 @@ internal partial class TypeChecker
         // example spelling differ, and the example here is the whole call because that is what the
         // reader has to retype.
         ReportOpenGenericTypeOperand(
-            typeId, typeId.Name, siteNoun: "call",
+            reportOn, writtenName, siteNoun: "call",
             remedy: ClosedSpellingRemedy(
-                $"{BuiltinNames.Isinstance}(..., {typeId.Name}[{OpenGenericPlaceholders(typeSymbol)}])"),
+                $"{BuiltinNames.Isinstance}(..., {writtenName}[{OpenGenericPlaceholders(typeSymbol)}])"),
             fallbackSpan: call.Span);
     }
 

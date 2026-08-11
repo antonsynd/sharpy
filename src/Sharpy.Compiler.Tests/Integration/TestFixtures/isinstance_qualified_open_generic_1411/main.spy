@@ -1,0 +1,21 @@
+# #1411: a module-qualified bare generic in a type-test operand must meet the SAME guard the bare
+# spelling meets. `mod_b.Bag[int]` is not a `mod_a.Bag`, so nothing here determines mod_a.Bag's type
+# arguments and the #1235 rule refuses it (SPY0345), naming the closed spelling that would work.
+#
+# The qualified spelling escaped that guard entirely. `isinstance`'s operand is a MemberAccess, and
+# the expression-as-type resolver's qualified arm had no counterpart to the bare arm's "a bare
+# generic name denotes nothing" rule — so the OPEN name was recorded as a closed test and reached
+# Roslyn as `ModA.Bag<T>`: CS0305, surfaced as SPY0908 (an internal-error report for a user error).
+
+import mod_a
+import mod_b
+
+
+def check(x: mod_b.Bag[int]) -> str:
+    if isinstance(x, mod_a.Bag):
+        return "matched mod_a.Bag"
+    return "no match"
+
+
+def main() -> None:
+    print(check(mod_b.Bag[int]()))
