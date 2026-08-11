@@ -1091,7 +1091,36 @@ internal partial class TypeChecker
             case UserDefinedType udt:
                 return udt.Symbol?.ClrType;
             case NullableType nt:
-                return TryGetClrType(nt.UnderlyingType);
+                {
+                    // A `T | None` over a VALUE payload IS `Nullable<T>` at runtime, and answering the
+                    // bare payload here made the CLR fallback in IsAssignable decide a question about a
+                    // value that does not exist — `int.IsAssignableFrom(int)` for a source that is an
+                    // `int?` — so an un-unwrapped `int | None` bound a plain-`int` formal and failed
+                    // downstream as CS1503, reported to the user as a compiler bug (#1399). Same shape
+                    // as the OptionalType arm below (#1397), and the same fix.
+                    //
+                    // A REFERENCE payload stays unwrapped, deliberately: `string?` IS `string` at
+                    // runtime, C# binds `shout(v)` natively, and tagged_unions_optional.md documents
+                    // that looseness as the point of the interop type ("allowed — throws at runtime on
+                    // None"). Telling the truth about the value case costs that cell nothing.
+                    var payloadClr = TryGetClrType(nt.UnderlyingType);
+                    if (payloadClr == null
+                        || !payloadClr.IsValueType
+                        || payloadClr == typeof(void)
+                        || Nullable.GetUnderlyingType(payloadClr) != null)
+                    {
+                        return payloadClr;
+                    }
+
+                    try
+                    {
+                        return typeof(Nullable<>).MakeGenericType(payloadClr);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
             case OptionalType ot:
                 {
                     // An Optional IS `Sharpy.Optional<T>`; it is not its payload. Answering the payload

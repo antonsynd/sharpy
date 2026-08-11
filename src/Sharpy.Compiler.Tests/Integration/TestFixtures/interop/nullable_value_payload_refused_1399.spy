@@ -1,0 +1,19 @@
+# A `T | None` over a VALUE payload is `Nullable[T]` at runtime, and .NET declares no implicit
+# conversion from it to a plain `T` (#1399). Passing one to a plain-`int` formal used to be accepted
+# and then failed as CS1503 behind SPY0908 — the compiler reporting its own bug for a user's type
+# error. It is now the ordinary type mismatch it always was.
+#
+# The reference-payload twin (`str | None` into a `str` formal) stays loose and is pinned by
+# nullable_reference_payload_loose_1399: `string?` IS `string` at runtime, so C# binds that call and
+# fails with an NRE on None, exactly as tagged_unions_optional.md describes.
+#
+# The fix: narrow (`if x is not None`), coalesce (`x ?? 0`), or convert with `maybe`.
+
+
+def twice(v: int) -> int:
+    return v * 2
+
+
+def main() -> None:
+    x: int | None = 5
+    print(twice(x))

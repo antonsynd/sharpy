@@ -1,0 +1,29 @@
+# The control for nullable_value_payload_refused_1399 (#1399): a `T | None` over a REFERENCE payload
+# stays loose. `string?` IS `string` at runtime, C# binds the call natively, and a None fails with a
+# NullReferenceException — the looseness tagged_unions_optional.md documents as the point of the
+# .NET-interop type ("allowed — throws at runtime on None").
+#
+# Refusing the value payload must not touch this cell, so it is pinned as a running program rather
+# than left to inference.
+
+
+def shout(s: str) -> str:
+    return s.upper()
+
+
+def show(v: object) -> str:
+    return str(v)
+
+
+def main() -> None:
+    v: str | None = "hi"
+    print(shout(v))
+
+    # A value payload reaches a boxing target unchanged: C# converts `int?` to `object`.
+    n: int | None = 5
+    print(show(n))
+
+    # ...and the narrow and coalesce routes out of a value payload both still work.
+    if n is not None:
+        print(n * 2)
+    print(n ?? 0)

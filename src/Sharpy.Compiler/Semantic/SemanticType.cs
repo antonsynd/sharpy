@@ -564,6 +564,25 @@ public sealed record NullableType : SemanticType
 
     public override bool IsAssignableTo(SemanticType other)
     {
+        // `T | None` into a plain `T` is this type's documented looseness — "allowed; throws at
+        // runtime on None" (tagged_unions_optional.md) — but only where .NET performs it. A
+        // REFERENCE payload is that case: `string?` IS `string` at runtime, C# binds the call, and a
+        // null fails with the NullReferenceException the spec describes.
+        //
+        // A VALUE payload is `Nullable<T>`, and .NET declares NO implicit conversion from it to its
+        // underlying type. Answering yes here handed Roslyn an `int?` for an `int` formal, and the
+        // resulting CS1503 was reported to the user as a compiler bug (#1399) — the same shape
+        // OptionalType refuses next door (#1397). The caller narrows (`if x is not None`), coalesces
+        // (`x ?? 0`), or converts with `maybe`, which is what the spec's own "only reference types
+        // and Nullable<T>" row means by type safety.
+        //
+        // Only a value-typed target is refused: C# boxes `int?` to `object` and to every interface
+        // `int` implements, so those conversions are real and stay accepted. A nullable target is
+        // decided by the lifted rule below, not here.
+
+        if (other is not NullableType && UnderlyingType.IsValueType && other.IsValueType)
+            return false;
+
         // Nullable T is assignable to T (implicit unwrapping)
         if (UnderlyingType.IsAssignableTo(other))
             return true;
