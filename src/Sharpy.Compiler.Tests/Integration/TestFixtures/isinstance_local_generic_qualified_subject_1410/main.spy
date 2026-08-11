@@ -1,0 +1,30 @@
+# #1410: a local generic that merely SHARES A NAME with an imported one must not be confused with
+# it. The subject here is `mod_b.Bag[int]`; the operand names the LOCAL `Bag`, a different
+# declaration, so the test is against the local type and is always false.
+#
+# It used to test `mod_b.Bag<int>` — always TRUE — with no diagnostic. The qualified annotation
+# resolved to a ModuleSymbol.Exports COPY of mod_b's declaration, so the fill's identity check
+# (NamesSameDeclaration) had nothing it recognised to compare and fell back to a symbol-table
+# lookup BY NAME, which found the local `Bag` and matched it against itself. Exports now reference
+# the compilation's own symbols, so the two declarations are two objects and identity decides.
+#
+# Verified against CPython 3.12: the equivalent program prints `no match`.
+
+import mod_b
+
+
+class Bag[T]:
+    items: list[T]
+
+    def __init__(self) -> None:
+        self.items = []
+
+
+def check(x: mod_b.Bag[int]) -> str:
+    if isinstance(x, Bag[int]):
+        return "matched local Bag"
+    return "no match"
+
+
+def main() -> None:
+    print(check(mod_b.Bag[int]()))

@@ -1,0 +1,28 @@
+# #1410, open half. Same program as isinstance_local_generic_qualified_subject_1410 with the
+# operand written BARE. The local `Bag` is generic and the subject `mod_b.Bag[int]` is a different
+# declaration, so nothing at this site determines `Bag`'s type arguments — the #1235 rule refuses
+# it (SPY0345) and names the closed spelling the sibling fixture writes.
+#
+# This is the same verdict the module-qualified operand gets (#1411): .NET reifies generics, so an
+# open name denotes nothing to test against. Before the Exports-copy fix the fill's identity check
+# fell back to a lookup by NAME, matched the local declaration against itself, and emitted a test
+# against `mod_b.Bag<int>` that is always true — a silently wrong answer with no diagnostic.
+
+import mod_b
+
+
+class Bag[T]:
+    items: list[T]
+
+    def __init__(self) -> None:
+        self.items = []
+
+
+def check(x: mod_b.Bag[int]) -> str:
+    if isinstance(x, Bag):
+        return "matched local Bag"
+    return "no match"
+
+
+def main() -> None:
+    print(check(mod_b.Bag[int]()))
