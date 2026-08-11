@@ -407,6 +407,194 @@ public class InteropConformanceTests
         }
     }
 
+    // ================================================================================
+    // Re-representation matrix (#1146 class)
+    // ================================================================================
+
+    /// <summary>
+    /// One cell of the re-representation matrix: a spelling, the verdict it must draw, and — when
+    /// the verdict is a refusal — a substring of the diagnostic that names the rule.
+    /// </summary>
+    /// <param name="Row">The type family and the direction it crosses in.</param>
+    /// <param name="Seam">Where the value crosses: argument-in, return-out, element, scalar.</param>
+    private sealed record ReRepresentationCell(
+        string Row, string Seam, string Source, bool Compiles, string? Refusal = null)
+    {
+        public string Key => $"{Row}::{Seam}";
+    }
+
+    /// <summary>
+    /// The two type families whose Sharpy spelling and CLR representation DIFFER — a CLR
+    /// <c>char</c> against Sharpy <c>str</c> (Sharpy has no char), and <c>Nullable&lt;T&gt;</c>
+    /// against <c>T | None</c> — swept across every seam a value crosses: an argument going IN to
+    /// .NET, a value coming OUT of it, a collection ELEMENT, and a bare SCALAR.
+    ///
+    /// <para>
+    /// The contract is #1146's, in full: every cell either compiles or is refused by a deliberate
+    /// Sharpy diagnostic. Neither verdict is "unknown", and <b>SPY0908 is a failure whichever way the
+    /// cell is supposed to go</b> — an ICE is the compiler reporting its own bug for a spelling it
+    /// was asked about, which is the class this matrix exists to keep drained.
+    /// </para>
+    ///
+    /// <para>
+    /// Curated rather than generated, and deliberately so: the generated sweep above enumerates
+    /// members, and a re-representation is a property of the TYPE at a POSITION, which no member
+    /// enumeration reaches. The two are complementary and share the same compile-or-refuse bar; this
+    /// one asserts per cell rather than ratcheting, so it needs no allowlist and must never grow one.
+    /// </para>
+    /// </summary>
+    private static IEnumerable<ReRepresentationCell> ReRepresentationCells()
+    {
+        // ── char -> str: a CLR char coming OUT of .NET is the one-character str Sharpy means (#1291).
+        yield return new ReRepresentationCell("char->str", "scalar",
+            "def _use() -> None:\n    s = \"abc\"\n    x: str = s.element_at(1)\n    _n = len(x)\n", true);
+
+        yield return new ReRepresentationCell("char->str", "return-out",
+            "def _use() -> None:\n    cs: array[str] = \"hello\".to_char_array()\n    _n = len(cs)\n", true);
+
+        // The element seam: an IEnumerable<char> materializing into a list[str] slot (#1401).
+        yield return new ReRepresentationCell("char->str", "element",
+            "def _use() -> None:\n    s = \"abcdef\"\n    xs: list[str] = list(s.take(3))\n    _n = len(xs)\n", true);
+
+        yield return new ReRepresentationCell("char->str", "argument-in",
+            "def _take(v: str) -> None:\n    pass\n\n\n"
+            + "def _use() -> None:\n    cs = \"hello\".to_char_array()\n    _take(cs[1])\n", true);
+
+        // ── str -> char: the reverse direction, decided at the call seam on the parameter (#1402).
+        yield return new ReRepresentationCell("str->char", "argument-in",
+            "from system import Char\n\n\ndef _use() -> None:\n    _x = Char.to_upper(\"a\")\n", true);
+
+        yield return new ReRepresentationCell("str->char", "argument-in-multichar",
+            "from system import Char\n\n\ndef _use() -> None:\n    _x = Char.to_upper(\"abc\")\n",
+            false, "takes a CLR 'char'");
+
+        yield return new ReRepresentationCell("str->char", "argument-in-computed",
+            "from system import Char\n\n\ndef _use() -> None:\n    s = \"a\" + \"b\"\n    _x = Char.to_upper(s)\n",
+            false, "takes a CLR 'char'");
+
+        yield return new ReRepresentationCell("str->char", "return-out",
+            "from system import Char\n\n\ndef _use() -> None:\n    x: str = Char.to_upper(\"a\")\n    _n = len(x)\n", true);
+
+        // ── Nullable<T> -> T | None: a CLR nullable coming OUT of .NET.
+        yield return new ReRepresentationCell("nullable->union", "return-out",
+            "from sharpy import SliceSpec\n\n\ndef _use() -> None:\n    s = SliceSpec(1, 5, 2)\n    _n: int | None = s.stop\n", true);
+
+        // A value payload into a plain-T formal is refused: `Nullable<int>` has no implicit
+        // conversion to `int`, and accepting it was CS1503 behind SPY0908 (#1399).
+        yield return new ReRepresentationCell("nullable->union", "scalar-value-payload",
+            "def _twice(v: int) -> int:\n    return v * 2\n\n\n"
+            + "def _use() -> None:\n    x: int | None = 5\n    _y = _twice(x)\n",
+            false, "Cannot pass argument of type 'int?' to parameter of type 'int'");
+
+        // A REFERENCE payload stays loose on purpose: `string?` IS `string` at runtime, and
+        // tagged_unions_optional.md documents the looseness. This cell must never flip.
+        yield return new ReRepresentationCell("nullable->union", "scalar-reference-payload",
+            "def _shout(s: str) -> str:\n    return s.upper()\n\n\n"
+            + "def _use() -> None:\n    v: str | None = \"hi\"\n    _y = _shout(v)\n", true);
+
+        yield return new ReRepresentationCell("nullable->union", "element",
+            "def _use() -> None:\n    xs: list[int | None] = [1, None, 3]\n    _n = len(xs)\n", true);
+
+        // ── T | None -> Nullable<T>: the union going IN to a .NET nullable formal.
+        yield return new ReRepresentationCell("union->nullable", "argument-in",
+            "import collections\n\n\ndef _use() -> None:\n"
+            + "    c = collections.Counter[str]([\"a\", \"b\", \"a\"])\n"
+            + "    n: int | None = 1\n    _x = c.most_common(n)\n", true);
+
+        yield return new ReRepresentationCell("union->nullable", "argument-in-plain",
+            "import collections\n\n\ndef _use() -> None:\n"
+            + "    c = collections.Counter[str]([\"a\", \"b\", \"a\"])\n"
+            + "    _x = c.most_common(1)\n", true);
+
+        // Boxing is a conversion .NET really performs, so it stays accepted.
+        yield return new ReRepresentationCell("union->nullable", "scalar-boxing",
+            "def _show(v: object) -> str:\n    return str(v)\n\n\n"
+            + "def _use() -> None:\n    n: int | None = 5\n    _y = _show(n)\n", true);
+
+        yield return new ReRepresentationCell("union->nullable", "return-out",
+            "def _pick(flag: bool) -> int | None:\n    if flag:\n        return 5\n    return None\n\n\n"
+            + "def _use() -> None:\n    _x: int | None = _pick(True)\n", true);
+    }
+
+    [Fact]
+    public void ReRepresentationMatrix_CharAndNullableSeams_CompileOrRefuseDeliberately()
+    {
+        var (corePath, stdlibPath) = ResolveStdlibAssemblyPaths();
+        Assert.True(File.Exists(corePath), $"Sharpy.Core.dll not found at {corePath}");
+        Assert.True(File.Exists(stdlibPath), $"Sharpy.Stdlib.dll not found at {stdlibPath}");
+
+        var api = new CompilerApi(NullLogger.Instance, new[] { corePath, stdlibPath });
+        var csharpBase = BuildCSharpBaseCompilation();
+
+        var failures = new List<string>();
+        var cells = ReRepresentationCells().ToList();
+
+        foreach (var cell in cells)
+        {
+            CompileResult result;
+            try
+            {
+                result = api.Compile(cell.Source, new CompilerOptions { OutputType = "library" });
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{cell.Key}: crashed — {ex.GetType().Name}: {ex.Message}");
+                continue;
+            }
+
+            var errors = result.Diagnostics
+                .Where(d => d.Severity == CompilerDiagnosticSeverity.Error)
+                .ToList();
+
+            // An ICE fails the cell whichever verdict it was supposed to draw.
+            if (errors.Any(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError))
+            {
+                failures.Add($"{cell.Key}: SPY0908 — {errors[0].Message}");
+                continue;
+            }
+
+            if (cell.Compiles)
+            {
+                if (errors.Count > 0)
+                {
+                    failures.Add($"{cell.Key}: expected to compile but drew {errors[0].Code}: {errors[0].Message}");
+                    continue;
+                }
+
+                // The Sharpy phase being clean is only half the contract: the emitted C# must bind,
+                // or the same disagreement is an SPY0908 waiting for a `run`.
+                if (result.GeneratedCSharp != null)
+                {
+                    var csErrors = BindGeneratedCSharp(csharpBase, result.GeneratedCSharp);
+                    if (csErrors.Count > 0)
+                        failures.Add($"{cell.Key}: generated C# does not bind — {csErrors[0]}");
+                }
+
+                continue;
+            }
+
+            if (errors.Count == 0)
+            {
+                failures.Add($"{cell.Key}: expected a deliberate refusal naming '{cell.Refusal}' but it compiled");
+                continue;
+            }
+
+            if (cell.Refusal != null
+                && !errors.Any(d => d.Message.Contains(cell.Refusal, StringComparison.Ordinal)))
+            {
+                failures.Add(
+                    $"{cell.Key}: refused, but not by the expected rule — wanted '{cell.Refusal}', "
+                    + $"got {errors[0].Code}: {errors[0].Message}");
+            }
+        }
+
+        _output.WriteLine($"Re-representation cells: {cells.Count}  Failures: {failures.Count}");
+
+        Assert.True(failures.Count == 0,
+            "Re-representation matrix (#1146 class): every cell must compile or be refused by a "
+            + "deliberate Sharpy diagnostic — never SPY0908.\n" + string.Join("\n", failures.Select(f => "  " + f)));
+    }
+
     /// <summary>
     /// Compiles one snippet (Sharpy → C#) and, on success, binds the generated C# through
     /// Roslyn. Returns a <see cref="FailureRecord"/> on failure or crash, or null on a clean pass.
