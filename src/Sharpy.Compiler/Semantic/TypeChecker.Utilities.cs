@@ -105,7 +105,7 @@ internal partial class TypeChecker
         // NarrowingConditionInterpreter.RecognizeLeaf (#1042); here we resolve each recognised symbolic
         // fact to a concrete narrowed type and the accessor codegen applies at the read site. Branch
         // polarity has already been flipped through any enclosing `not` by the recursion above.
-        foreach (var fact in NarrowingConditionInterpreter.RecognizeLeaf(condition, isPositiveBranch))
+        foreach (var fact in NarrowingConditionInterpreter.RecognizeLeaf(condition, isPositiveBranch, DenotesBuiltinsModule))
         {
             if (fact.Kind == NarrowingActionKind.RemoveNone)
             {
@@ -368,14 +368,35 @@ internal partial class TypeChecker
     /// of rebuilding.
     /// </summary>
     private NarrowingFlowResult ComputeNarrowingFlow(FunctionDef function) =>
-        NarrowingFlowAnalysis.Analyze(_controlFlowGraphs.GetOrBuild(function));
+        NarrowingFlowAnalysis.Analyze(_controlFlowGraphs.GetOrBuild(function), DenotesBuiltinsModule);
 
     /// <summary>
     /// Runs the statement-level narrowing dataflow analysis (#1042) over a raw statement list
     /// (module body or property accessor body), via the shared <see cref="ControlFlowGraphCache"/>.
     /// </summary>
     private NarrowingFlowResult ComputeNarrowingFlow(IReadOnlyList<Statement> body) =>
-        NarrowingFlowAnalysis.Analyze(_controlFlowGraphs.GetOrBuild(body));
+        NarrowingFlowAnalysis.Analyze(_controlFlowGraphs.GetOrBuild(body), DenotesBuiltinsModule);
+
+    /// <summary>
+    /// Whether <paramref name="receiver"/> denotes the <c>builtins</c> module, so
+    /// <c>builtins.isinstance(x, T)</c> narrows as bare <c>isinstance</c> does (#1381).
+    /// </summary>
+    /// <remarks>
+    /// Resolves the NAME through the symbol table rather than reading
+    /// <see cref="SemanticInfo"/>, and that is an ordering requirement, not a preference:
+    /// <c>ComputeNarrowingFlow</c> runs before the body walk that would populate expression types,
+    /// so a type-based answer — or a mark written during expression checking — does not exist yet.
+    /// A module symbol is available after import resolution (Pass 1.5), which is earlier than both.
+    ///
+    /// <para>Matching the spelling <c>mod.isinstance</c> for an arbitrary <c>mod</c> would be wrong
+    /// for the same reason the recogniser is syntactic everywhere else: a user module named
+    /// <c>builtins</c>-something, or a local shadowing the name, must not narrow.</para>
+    /// </remarks>
+    private bool DenotesBuiltinsModule(Expression receiver) =>
+        UnwrapParenthesized(receiver) is Identifier id
+        && _symbolTable.Lookup(id.Name) is ModuleSymbol moduleSymbol
+        && moduleSymbol.IsNetModule
+        && string.Equals(moduleSymbol.CanonicalModuleName, "builtins", StringComparison.Ordinal);
 
     /// <summary>
     /// Resolves the narrowing facts currently in effect (<see cref="_currentFacts"/>) for a narrowing

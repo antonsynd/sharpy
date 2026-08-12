@@ -113,11 +113,11 @@ public class BuiltinsQualifiedAgreementTests
     /// </summary>
     private static readonly Dictionary<string, string> KnownDisagreements = new(StringComparer.Ordinal)
     {
-        // #1381: narrowing facts come from a purely syntactic recogniser that matches an Identifier
-        // callee, so a qualified `builtins.isinstance(x, T)` would compile WITHOUT narrowing — worse
-        // than the refusal it gets today. Held back deliberately until the recogniser can be told
-        // what the receiver is.
-        ["isinstance"] = "#1381",
+        // Empty, and that is the target state: every spelling the sweep covers now agrees. The last
+        // entry was #1381 (`builtins.isinstance` narrowed nothing, because the recogniser matched an
+        // Identifier callee and could not be told what a member-access receiver denoted); it drained
+        // when the recogniser gained the receiver predicate. Add an entry only with an issue that
+        // will remove it again.
     };
 
     private sealed class CallCollector : AstVisitor

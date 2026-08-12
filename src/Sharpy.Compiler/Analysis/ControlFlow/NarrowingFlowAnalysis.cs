@@ -113,27 +113,36 @@ internal static class NarrowingConditionInterpreter
     /// branch selected by <paramref name="onTrueBranch"/> (<c>true</c> for the then-branch,
     /// <c>false</c> for the else-branch).
     /// </summary>
-    public static IEnumerable<NarrowingFact> Recognize(Expression condition, bool onTrueBranch)
+    /// <param name="denotesBuiltinsModule">Answers whether a member-access receiver denotes the
+    /// <c>builtins</c> module, so <c>builtins.isinstance(x, T)</c> narrows exactly as bare
+    /// <c>isinstance</c> does (#1381, the #1322 agreement contract). REQUIRED, deliberately: an
+    /// optional parameter would mean narrowing recognition knows about qualified spellings down
+    /// some call paths and not others — one rule with two behaviours depending on how you arrived —
+    /// and a missed call site would change narrowing silently instead of failing to build.</param>
+    public static IEnumerable<NarrowingFact> Recognize(
+        Expression condition, bool onTrueBranch, Func<Expression, bool> denotesBuiltinsModule)
     {
         switch (condition)
         {
             case Parenthesized paren:
-                return Recognize(paren.Expression, onTrueBranch);
+                return Recognize(paren.Expression, onTrueBranch, denotesBuiltinsModule);
 
             // `not E` flips the branch polarity.
             case UnaryOp { Operator: UnaryOperator.Not } notOp:
-                return Recognize(notOp.Operand, !onTrueBranch);
+                return Recognize(notOp.Operand, !onTrueBranch, denotesBuiltinsModule);
 
             // then-branch of `A and B`: both hold.
             case BinaryOp { Operator: BinaryOperator.And } andOp when onTrueBranch:
-                return Recognize(andOp.Left, true).Concat(Recognize(andOp.Right, true));
+                return Recognize(andOp.Left, true, denotesBuiltinsModule)
+                    .Concat(Recognize(andOp.Right, true, denotesBuiltinsModule));
 
             // else-branch of `A or B` is the then-branch of `not A and not B` (De Morgan): both hold.
             case BinaryOp { Operator: BinaryOperator.Or } orOp when !onTrueBranch:
-                return Recognize(orOp.Left, false).Concat(Recognize(orOp.Right, false));
+                return Recognize(orOp.Left, false, denotesBuiltinsModule)
+                    .Concat(Recognize(orOp.Right, false, denotesBuiltinsModule));
 
             default:
-                return RecognizeLeaf(condition, onTrueBranch);
+                return RecognizeLeaf(condition, onTrueBranch, denotesBuiltinsModule);
         }
     }
 
@@ -143,7 +152,8 @@ internal static class NarrowingConditionInterpreter
     /// TypeChecker's condition interpreter (which handles the composition and resolves the recognised
     /// facts to concrete types + the emitter decision) so both agree on the leaf grammar (#1042).
     /// </summary>
-    public static IEnumerable<NarrowingFact> RecognizeLeaf(Expression condition, bool onTrueBranch)
+    public static IEnumerable<NarrowingFact> RecognizeLeaf(
+        Expression condition, bool onTrueBranch, Func<Expression, bool> denotesBuiltinsModule)
     {
         switch (condition)
         {
@@ -170,6 +180,19 @@ internal static class NarrowingConditionInterpreter
                 when onTrueBranch && call.Arguments.Length >= 2
                     && AstHelper.UnwrapParenthesized(call.Function) is Identifier { Name: IsInstance }:
                 return IsInstanceFact(call.Arguments[0], call.Arguments[1]);
+
+            // The QUALIFIED spelling narrows identically (#1381). `builtins.isinstance` denotes what
+            // bare `isinstance` denotes (#1322), so refusing to narrow it made the qualifier change
+            // meaning rather than scope. Recognition stays syntactic — the spelling `mod.isinstance`
+            // for an arbitrary `mod` is not enough, which is why the module identity arrives as a
+            // threaded predicate rather than being matched here. It cannot be a pre-marked node:
+            // ComputeNarrowingFlow runs before the body walk that would set the mark.
+            case FunctionCall qualifiedCall
+                when onTrueBranch && qualifiedCall.Arguments.Length >= 2
+                    && AstHelper.UnwrapParenthesized(qualifiedCall.Function)
+                        is MemberAccess { IsMemberBacktickEscaped: false, Member: IsInstance } qualified
+                    && denotesBuiltinsModule(qualified.Object):
+                return IsInstanceFact(qualifiedCall.Arguments[0], qualifiedCall.Arguments[1]);
 
             default:
                 return Enumerable.Empty<NarrowingFact>();
@@ -325,11 +348,11 @@ internal static class NarrowingFlowAnalysis
     /// Runs the analysis over <paramref name="cfg"/> and returns the narrowing facts in effect at each
     /// block entry and before each statement.
     /// </summary>
-    public static NarrowingFlowResult Analyze(ControlFlowGraph cfg)
+    public static NarrowingFlowResult Analyze(ControlFlowGraph cfg, Func<Expression, bool> denotesBuiltinsModule)
     {
         // Universe of all facts that could ever be generated anywhere in the graph. Needed for the
         // optimistic (full-set) initialisation of the intersection fixed point.
-        var universe = CollectUniverse(cfg);
+        var universe = CollectUniverse(cfg, denotesBuiltinsModule);
 
         if (universe.Count == 0)
         {
@@ -361,10 +384,10 @@ internal static class NarrowingFlowAnalysis
                 if (block == cfg.Entry)
                     continue;
 
-                if (!TryComputeInSet(block, outSets, out var inSet))
+                if (!TryComputeInSet(block, outSets, denotesBuiltinsModule, out var inSet))
                     continue; // unreachable block — leave its optimistic out-set untouched
 
-                var newOut = Transfer(block, inSet, recordStatementFacts: null);
+                var newOut = Transfer(block, inSet, recordStatementFacts: null, denotesBuiltinsModule);
 
                 if (!newOut.SetEquals(outSets[block]))
                 {
@@ -386,11 +409,11 @@ internal static class NarrowingFlowAnalysis
             if (block == cfg.Entry)
                 continue;
 
-            if (!TryComputeInSet(block, outSets, out var inSet))
+            if (!TryComputeInSet(block, outSets, denotesBuiltinsModule, out var inSet))
                 continue;
 
             blockEntryFacts[block] = Freeze(inSet);
-            var outSet = Transfer(block, inSet, recordStatementFacts: statementFacts);
+            var outSet = Transfer(block, inSet, recordStatementFacts: statementFacts, denotesBuiltinsModule);
 
             // A conditional branch's condition is evaluated after the block's statements, before the
             // branch facts apply — that is exactly the block out-set.
@@ -416,6 +439,7 @@ internal static class NarrowingFlowAnalysis
     private static bool TryComputeInSet(
         BasicBlock block,
         IReadOnlyDictionary<BasicBlock, HashSet<NarrowingFact>> outSets,
+        Func<Expression, bool> denotesBuiltinsModule,
         out HashSet<NarrowingFact> inSet)
     {
         if (block.ExceptionPredecessors.Count > 0)
@@ -434,7 +458,7 @@ internal static class NarrowingFlowAnalysis
         HashSet<NarrowingFact>? accumulated = null;
         foreach (var pred in block.Predecessors)
         {
-            var edgeFacts = EdgeFacts(pred, block, outSets[pred]);
+            var edgeFacts = EdgeFacts(pred, block, outSets[pred], denotesBuiltinsModule);
             if (accumulated == null)
             {
                 accumulated = edgeFacts;
@@ -454,7 +478,7 @@ internal static class NarrowingFlowAnalysis
     /// predecessor's out-set, plus the branch facts generated by a conditional terminator for the
     /// polarity that reaches this successor.
     /// </summary>
-    private static HashSet<NarrowingFact> EdgeFacts(BasicBlock pred, BasicBlock successor, HashSet<NarrowingFact> predOut)
+    private static HashSet<NarrowingFact> EdgeFacts(BasicBlock pred, BasicBlock successor, HashSet<NarrowingFact> predOut, Func<Expression, bool> denotesBuiltinsModule)
     {
         var facts = new HashSet<NarrowingFact>(predOut);
 
@@ -466,17 +490,17 @@ internal static class NarrowingFlowAnalysis
             if (toTrue && toFalse)
             {
                 // Both polarities reach the same block: only facts common to both edges are known.
-                var trueFacts = new HashSet<NarrowingFact>(NarrowingConditionInterpreter.Recognize(branch.Condition, true));
-                trueFacts.IntersectWith(NarrowingConditionInterpreter.Recognize(branch.Condition, false));
+                var trueFacts = new HashSet<NarrowingFact>(NarrowingConditionInterpreter.Recognize(branch.Condition, true, denotesBuiltinsModule));
+                trueFacts.IntersectWith(NarrowingConditionInterpreter.Recognize(branch.Condition, false, denotesBuiltinsModule));
                 facts.UnionWith(trueFacts);
             }
             else if (toTrue)
             {
-                facts.UnionWith(NarrowingConditionInterpreter.Recognize(branch.Condition, true));
+                facts.UnionWith(NarrowingConditionInterpreter.Recognize(branch.Condition, true, denotesBuiltinsModule));
             }
             else if (toFalse)
             {
-                facts.UnionWith(NarrowingConditionInterpreter.Recognize(branch.Condition, false));
+                facts.UnionWith(NarrowingConditionInterpreter.Recognize(branch.Condition, false, denotesBuiltinsModule));
             }
         }
 
@@ -492,7 +516,8 @@ internal static class NarrowingFlowAnalysis
     private static HashSet<NarrowingFact> Transfer(
         BasicBlock block,
         HashSet<NarrowingFact> inSet,
-        Dictionary<Statement, IReadOnlyCollection<NarrowingFact>>? recordStatementFacts)
+        Dictionary<Statement, IReadOnlyCollection<NarrowingFact>>? recordStatementFacts,
+        Func<Expression, bool> denotesBuiltinsModule)
     {
         var facts = new HashSet<NarrowingFact>(inSet);
 
@@ -507,7 +532,7 @@ internal static class NarrowingFlowAnalysis
                 recordStatementFacts[statement] = Freeze(facts);
 
             Kill(facts, statement);
-            Gen(facts, statement);
+            Gen(facts, statement, denotesBuiltinsModule);
         }
 
         return facts;
@@ -526,11 +551,11 @@ internal static class NarrowingFlowAnalysis
     }
 
     /// <summary>Adds facts implied by an <c>assert</c> statement (its condition must hold afterward).</summary>
-    private static void Gen(HashSet<NarrowingFact> facts, Statement statement)
+    private static void Gen(HashSet<NarrowingFact> facts, Statement statement, Func<Expression, bool> denotesBuiltinsModule)
     {
         if (statement is AssertStatement assert)
         {
-            facts.UnionWith(NarrowingConditionInterpreter.Recognize(assert.Test, true));
+            facts.UnionWith(NarrowingConditionInterpreter.Recognize(assert.Test, true, denotesBuiltinsModule));
         }
     }
 
@@ -586,7 +611,7 @@ internal static class NarrowingFlowAnalysis
     /// Gathers every fact that any conditional branch edge or assert statement in the graph could
     /// generate. Used to seed the optimistic initialisation of the intersection fixed point.
     /// </summary>
-    private static HashSet<NarrowingFact> CollectUniverse(ControlFlowGraph cfg)
+    private static HashSet<NarrowingFact> CollectUniverse(ControlFlowGraph cfg, Func<Expression, bool> denotesBuiltinsModule)
     {
         var universe = new HashSet<NarrowingFact>();
 
@@ -594,14 +619,14 @@ internal static class NarrowingFlowAnalysis
         {
             if (block.Terminator is ConditionalBranchTerminator branch)
             {
-                universe.UnionWith(NarrowingConditionInterpreter.Recognize(branch.Condition, true));
-                universe.UnionWith(NarrowingConditionInterpreter.Recognize(branch.Condition, false));
+                universe.UnionWith(NarrowingConditionInterpreter.Recognize(branch.Condition, true, denotesBuiltinsModule));
+                universe.UnionWith(NarrowingConditionInterpreter.Recognize(branch.Condition, false, denotesBuiltinsModule));
             }
 
             foreach (var statement in block.Statements)
             {
                 if (statement is AssertStatement assert)
-                    universe.UnionWith(NarrowingConditionInterpreter.Recognize(assert.Test, true));
+                    universe.UnionWith(NarrowingConditionInterpreter.Recognize(assert.Test, true, denotesBuiltinsModule));
             }
         }
 

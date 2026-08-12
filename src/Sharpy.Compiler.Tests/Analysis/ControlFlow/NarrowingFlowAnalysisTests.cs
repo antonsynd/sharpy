@@ -51,10 +51,37 @@ public class NarrowingFlowAnalysisTests
             Arguments = ImmutableArray.Create<Expression>(Id(name), Id(typeName))
         };
 
+    private static FunctionCall QualifiedIsInstance(string name, string typeName) =>
+        new FunctionCall
+        {
+            Function = Member("builtins", "isinstance"),
+            Arguments = ImmutableArray.Create<Expression>(Id(name), Id(typeName))
+        };
+
     private static AssertStatement Assert_(Expression test) => new AssertStatement { Test = test };
 
     private static Assignment Assign(Expression target) =>
         new Assignment { Target = target, Value = Int(0) };
+
+    #endregion
+
+    #region builtins-module predicate (#1381)
+
+    /// <summary>
+    /// The answer for every CFG in this file that has no qualified spelling in it: these graphs are
+    /// built from hand-written AST with no symbol table, so no receiver denotes the <c>builtins</c>
+    /// module. Named rather than inlined at each call site so that a test which DOES want the
+    /// qualified arm has to opt in visibly — see
+    /// <see cref="QualifiedIsinstance_NarrowsOnlyWhenTheReceiverDenotesBuiltins"/>.
+    /// </summary>
+    private static readonly Func<Expression, bool> NoBuiltinsModule = _ => false;
+
+    /// <summary>
+    /// The opt-in counterpart, standing in for the compiler's symbol-table lookup: here the
+    /// identifier <c>builtins</c> denotes the module.
+    /// </summary>
+    private static readonly Func<Expression, bool> BuiltinsIsTheModule =
+        receiver => receiver is Identifier { Name: "builtins" };
 
     #endregion
 
@@ -64,9 +91,37 @@ public class NarrowingFlowAnalysisTests
         var stmt = Assign(Id("y"));
         var cfg = CreateLinearCfg(stmt);
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         Assert.Empty(result.FactsBefore(stmt));
+    }
+
+    [Fact]
+    public void QualifiedIsinstance_NarrowsOnlyWhenTheReceiverDenotesBuiltins()
+    {
+        // #1381: `builtins.isinstance(x, Cat)` must narrow exactly as the bare spelling does — the
+        // qualified escape from a shadowed `isinstance` is still the builtin (the #1322 agreement
+        // contract). Leaving it unrecognised would give the escape a type test that compiles
+        // without narrowing.
+        //
+        // Both arms run the SAME graph through the SAME engine and differ only in the predicate, so
+        // this is also the positive control for the `denotesBuiltinsModule` parameter itself: the
+        // other 21 call sites in this file all pass NoBuiltinsModule, and every one of them would
+        // still pass against an engine that ignored the argument entirely. Without the first
+        // assertion below, nothing here distinguishes "consulted and answered false" from
+        // "never consulted."
+        var assertQualified = Assert_(QualifiedIsInstance("x", "Cat"));
+        var after = Assign(Id("z"));
+
+        var recognised = NarrowingFlowAnalysis.Analyze(
+            CreateLinearCfg(assertQualified, after), BuiltinsIsTheModule);
+        Assert.True(HasIsType(recognised.FactsBefore(after), "x", "Cat"));
+
+        // Same source shape, but the receiver does not denote the module — a local named `builtins`,
+        // or a user's own builtins.spy. It must NOT narrow.
+        var notRecognised = NarrowingFlowAnalysis.Analyze(
+            CreateLinearCfg(assertQualified, after), NoBuiltinsModule);
+        Assert.False(HasIsType(notRecognised.FactsBefore(after), "x", "Cat"));
     }
 
     [Fact]
@@ -76,7 +131,7 @@ public class NarrowingFlowAnalysisTests
         var following = Assign(Id("y"));
         var cfg = CreateLinearCfg(assert, following);
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         // The assert itself sees no narrowing yet; the statement after it does.
         Assert.False(HasRemoveNone(result.FactsBefore(assert), "x"));
@@ -90,7 +145,7 @@ public class NarrowingFlowAnalysisTests
             thenStatements: new Statement[] { Pass() },
             elseStatements: new Statement[] { Pass() });
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         var thenBlock = cfg.Blocks.Single(b => b.Label == "then");
         var elseBlock = cfg.Blocks.Single(b => b.Label == "else");
@@ -106,7 +161,7 @@ public class NarrowingFlowAnalysisTests
             thenStatements: new Statement[] { Pass() },
             elseStatements: new Statement[] { Pass() });
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         var thenBlock = cfg.Blocks.Single(b => b.Label == "then");
         var elseBlock = cfg.Blocks.Single(b => b.Label == "else");
@@ -122,7 +177,7 @@ public class NarrowingFlowAnalysisTests
             thenStatements: new Statement[] { Pass() },
             elseStatements: new Statement[] { Pass() });
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         var thenBlock = cfg.Blocks.Single(b => b.Label == "then");
         var elseBlock = cfg.Blocks.Single(b => b.Label == "else");
@@ -139,7 +194,7 @@ public class NarrowingFlowAnalysisTests
             thenStatements: new Statement[] { Assert_(IsNotNone("x")) },
             elseStatements: new Statement[] { Pass() });
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         var mergeBlock = cfg.Blocks.Single(b => b.Label == "merge");
         Assert.False(HasRemoveNone(result.FactsAtEntry(mergeBlock), "x"));
@@ -152,7 +207,7 @@ public class NarrowingFlowAnalysisTests
             thenStatements: new Statement[] { Assert_(IsNotNone("x")) },
             elseStatements: new Statement[] { Assert_(IsNotNone("x")) });
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         var mergeBlock = cfg.Blocks.Single(b => b.Label == "merge");
         Assert.True(HasRemoveNone(result.FactsAtEntry(mergeBlock), "x"));
@@ -166,7 +221,7 @@ public class NarrowingFlowAnalysisTests
         var after = Assign(Id("y"));
         var cfg = CreateLinearCfg(assert, kill, after);
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         // Narrowed just before the reassignment...
         Assert.True(HasRemoveNone(result.FactsBefore(kill), "x"));
@@ -184,7 +239,7 @@ public class NarrowingFlowAnalysisTests
         var after = Assign(Id("z"));
         var cfg = CreateLinearCfg(assertX, assertXy, killX, after);
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         Assert.True(HasRemoveNone(result.FactsBefore(killX), "x"));
         Assert.True(HasRemoveNone(result.FactsBefore(killX), "x.y"));
@@ -202,7 +257,7 @@ public class NarrowingFlowAnalysisTests
         var after = Assign(Id("z"));
         var cfg = CreateLinearCfg(assertX, assertXy, killXy, after);
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         Assert.True(HasRemoveNone(result.FactsBefore(after), "x"));
         Assert.False(HasRemoveNone(result.FactsBefore(after), "x.y"));
@@ -216,7 +271,7 @@ public class NarrowingFlowAnalysisTests
             preheaderStatements: new Statement[] { Assert_(IsNotNone("x")) },
             bodyStatements: new Statement[] { kill });
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         // The narrowing established before the loop does not survive the reassignment on the back edge.
         Assert.False(HasRemoveNone(result.FactsAtEntry(header), "x"));
@@ -229,7 +284,7 @@ public class NarrowingFlowAnalysisTests
             preheaderStatements: new Statement[] { Assert_(IsNotNone("x")) },
             bodyStatements: new Statement[] { Pass() });
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         Assert.True(HasRemoveNone(result.FactsAtEntry(header), "x"));
     }
@@ -254,7 +309,7 @@ public class NarrowingFlowAnalysisTests
             })
         };
 
-        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(outer));
+        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(outer), NoBuiltinsModule);
 
         // The inner branch's condition sees the narrowing established by the enclosing then-branch.
         Assert.True(HasRemoveNone(result.FactsBeforeBranch(innerIf.Test), "x"));
@@ -267,7 +322,7 @@ public class NarrowingFlowAnalysisTests
         // An assert makes the fact universe non-empty, so the analysis tracks every block statement.
         var cfg = CreateLinearCfg(Assert_(IsNotNone("x")), pass);
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         Assert.True(result.IsTracked(pass));
         Assert.False(result.IsTracked(Pass())); // a different node the analysis never saw
@@ -292,8 +347,8 @@ public class NarrowingFlowAnalysisTests
         };
 
         var builder = new ControlFlowGraphBuilder();
-        var outerResult = NarrowingFlowAnalysis.Analyze(builder.Build(outer));
-        var innerResult = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(inner));
+        var outerResult = NarrowingFlowAnalysis.Analyze(builder.Build(outer), NoBuiltinsModule);
+        var innerResult = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(inner), NoBuiltinsModule);
 
         // The nested def's body is not part of the outer CFG, so the outer analysis never tracks it...
         Assert.Empty(outerResult.FactsBefore(innerUse));
@@ -308,7 +363,7 @@ public class NarrowingFlowAnalysisTests
             thenStatements: new Statement[] { Pass() },
             elseStatements: new Statement[] { Pass() });
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         Assert.True(HasRemoveNone(result.FactsAtEntry(cfg.Blocks.Single(b => b.Label == "then")), "x"));
         Assert.False(HasRemoveNone(result.FactsAtEntry(cfg.Blocks.Single(b => b.Label == "else")), "x"));
@@ -321,7 +376,7 @@ public class NarrowingFlowAnalysisTests
             thenStatements: new Statement[] { Pass() },
             elseStatements: new Statement[] { Pass() });
 
-        var result = NarrowingFlowAnalysis.Analyze(cfg);
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         Assert.False(HasRemoveNone(result.FactsAtEntry(cfg.Blocks.Single(b => b.Label == "then")), "x"));
         Assert.True(HasRemoveNone(result.FactsAtEntry(cfg.Blocks.Single(b => b.Label == "else")), "x"));
@@ -341,7 +396,7 @@ public class NarrowingFlowAnalysisTests
                 Body = ImmutableArray.Create<Statement>(useInBody)
             });
 
-        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(func));
+        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(func), NoBuiltinsModule);
 
         Assert.False(HasRemoveNone(result.FactsBefore(useInBody), "x"));
     }
@@ -360,7 +415,7 @@ public class NarrowingFlowAnalysisTests
                 Body = ImmutableArray.Create<Statement>(useInBody)
             });
 
-        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(func));
+        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(func), NoBuiltinsModule);
 
         Assert.True(HasRemoveNone(result.FactsBefore(useInBody), "x"));
     }
@@ -377,7 +432,7 @@ public class NarrowingFlowAnalysisTests
                 Body = ImmutableArray.Create<Statement>(useInBody)
             });
 
-        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(func));
+        var result = NarrowingFlowAnalysis.Analyze(new ControlFlowGraphBuilder().Build(func), NoBuiltinsModule);
 
         Assert.False(HasRemoveNone(result.FactsBefore(useInBody), "x"));
     }

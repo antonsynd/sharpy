@@ -1300,15 +1300,11 @@ internal partial class TypeChecker
 
         var name = memberAccess.Member;
 
-        // `isinstance` is the one name held back (#1381). Narrowing facts are recognised by a purely
-        // syntactic engine (NarrowingFlowAnalysis.RecognizeLeaf) that matches an Identifier callee
-        // and has no way to ask whether a member-access receiver is the builtins module; routing the
-        // qualified spelling here would make it COMPILE without narrowing, and a type test that
-        // compiles but cannot narrow is worse than a clean refusal (ClassifyTypeTestOperand's rule) —
-        // measured, it turns the next member access into an SPY0908. It keeps its existing report
-        // until the recogniser can be given that fact.
-        if (name == BuiltinNames.Isinstance)
-            return null;
+        // `isinstance` was held back here until the recogniser could be told whether a member-access
+        // receiver is the builtins module (#1381). It can now: NarrowingConditionInterpreter takes a
+        // REQUIRED predicate and its leaf arm recognises the qualified spelling, so routing this
+        // through no longer produces a type test that compiles without narrowing — the failure mode
+        // that made the refusal correct. The condition that comment named is the one this satisfies.
 
         var registryType = TryResolveBuiltinsQualifiedType(moduleType.Symbol, name, isMemberBacktickEscaped: false);
         var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(name);
