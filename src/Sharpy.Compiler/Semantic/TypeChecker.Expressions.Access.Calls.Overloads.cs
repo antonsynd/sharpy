@@ -670,9 +670,19 @@ internal partial class TypeChecker
                 null, null);
         }
 
+        // Non-constructibility outranks "unfamilied" for a BUILTIN too (#1346). The two refusals
+        // answer different questions — SPY0346 says no construction exists to refer to, SPY0342 says
+        // one exists but no signature is available to pin it — and until now every builtin got the
+        // second regardless. That was accurate while the registry named typeof(object) placeholders,
+        // which are constructible; it stopped being accurate the moment Iterator named its real
+        // abstract type and the dict views named types whose only constructor is internal.
+        var nonConstructible = NonConstructibleTypeNameOf(typeSymbol);
+        if (nonConstructible is not null)
+            return new ConstructorReferenceClassification(null, nonConstructible, null);
+
         return isBuiltin
             ? new ConstructorReferenceClassification(null, null, writtenName ?? name)
-            : new ConstructorReferenceClassification(null, NonConstructibleTypeNameOf(typeSymbol), null);
+            : new ConstructorReferenceClassification(null, null, null);
     }
 
     /// <summary>
@@ -708,6 +718,13 @@ internal partial class TypeChecker
             TypeKind.Class or TypeKind.Struct when typeSymbol.IsAbstract =>
                 new NonConstructibleTypeName(name, "abstract class", "abstract",
                     "Name a concrete subclass instead, or wrap the construction in a lambda."),
+            // TODO(#1346): the dict views belong here too — `internal DictKeyView(...)` is their
+            // only constructor, so the NAME denotes no construction. An arm keyed on
+            // `ClrType is not null && Constructors.Count == 0` was MEASURED to over-fire: it also
+            // caught `ValueError`, which is constructible (`raise ValueError("boom")` works) but
+            // whose registry constructor surface is empty. The empty surface is therefore not a
+            // reliable proxy for inaccessibility, and the discovered-exception path has to be
+            // understood before this arm lands.
             _ => null,
         };
     }

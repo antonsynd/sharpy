@@ -99,16 +99,18 @@ internal class BuiltinRegistry
         // not by this TypeSymbol's TypeParameters. CLR type is System.ValueTuple (non-generic sentinel).
         RegisterType(BuiltinNames.Tuple, typeof(System.ValueTuple), TypeKind.Struct, isGeneric: true, typeParamCount: 1);
 
-        // Dict view types (returned by dict.items(), .keys(), .values())
-        // ClrType is typeof(object) as a placeholder — codegen resolves actual Sharpy.Core types
-        // via CSharpTypeNames. Registered here for protocol validation metadata only.
-        RegisterType(BuiltinNames.DictItemsView, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 2);
-        RegisterType(BuiltinNames.DictKeyView, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 2);
-        RegisterType(BuiltinNames.DictValuesView, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        // Dict view types (returned by dict.items(), .keys(), .values()).
+        // These named their real CLR types only after #1346: they were registered against
+        // typeof(object) placeholders, which PopulateClrInterfaces skips, so none of them carried a
+        // CLR interface list. Naming the real type is what gives them one.
+        RegisterType(BuiltinNames.DictItemsView, typeof(SharpyRT::Sharpy.DictItemsView<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        RegisterType(BuiltinNames.DictKeyView, typeof(SharpyRT::Sharpy.DictKeyView<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        RegisterType(BuiltinNames.DictValuesView, typeof(SharpyRT::Sharpy.DictValuesView<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
 
-        // Iterator/iterable types (used by generators and reversed())
-        // ClrType is typeof(object) as a placeholder — codegen resolves via CSharpTypeNames.
-        RegisterType(BuiltinNames.Iterator, typeof(object), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        // Iterator/iterable types (used by generators and reversed()). Sharpy.Iterator<T> is
+        // ABSTRACT, which is the fact that makes a reference to it non-constructible (#1346) —
+        // recorded here rather than asserted in prose, so NonConstructibleTypeNameOf reads it.
+        RegisterType(BuiltinNames.Iterator, typeof(SharpyRT::Sharpy.Iterator<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
         RegisterType(BuiltinNames.IEnumerable, typeof(System.Collections.IEnumerable), TypeKind.Interface, isGeneric: true, typeParamCount: 1,
             varianceSource: typeof(IEnumerable<>));
         RegisterType(BuiltinNames.IEnumerator, typeof(System.Collections.IEnumerator), TypeKind.Interface, isGeneric: true, typeParamCount: 1,
@@ -251,6 +253,12 @@ internal class BuiltinRegistry
             ClrType = clrType,
             TypeParameters = typeParams,
             AccessLevel = AccessLevel.Public,
+            // Read from the CLR type rather than declared per-registration, the same way the
+            // discovery path does. `Sharpy.Iterator<T>` is abstract, so a reference to it has no
+            // construction to denote and NonConstructibleTypeNameOf refuses it (SPY0346) instead of
+            // reporting the weaker "no constructor reference form" (#1346). Unreachable while the
+            // registration named a typeof(object) placeholder, which is not abstract.
+            IsAbstract = clrType.IsAbstract && !clrType.IsInterface,
             Methods = methods,
             OperatorMethods = operatorMethods,
             ProtocolMethods = protocolMethods,
