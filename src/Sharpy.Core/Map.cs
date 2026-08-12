@@ -45,6 +45,9 @@ namespace Sharpy
             _current = _function(_iterator.Current);
             return true;
         }
+
+        /// <inheritdoc/>
+        public override string ToString() => "<map object>";
     }
 
     /// <summary>
@@ -116,6 +119,9 @@ namespace Sharpy
             _current = default;
             return false;
         }
+
+        /// <inheritdoc/>
+        public override string ToString() => "<map object>";
     }
 
     /// <summary>
@@ -196,6 +202,9 @@ namespace Sharpy
             _current = default;
             return false;
         }
+
+        /// <inheritdoc/>
+        public override string ToString() => "<map object>";
     }
 
     public static partial class Builtins

@@ -86,8 +86,20 @@ namespace Sharpy
         /// <remarks>
         /// Iterates by UTF-16 code unit, not Unicode code point. See
         /// <see cref="Iterate"/> remarks for Axiom 1 rationale.
+        /// <para>
+        /// Returns <c>Iterator&lt;string&gt;</c>, not <c>IEnumerable&lt;string&gt;</c>, because the
+        /// compiler already TYPES <c>reversed(s)</c> as <c>Iterator[str]</c>
+        /// (<c>BuiltinReturnTypeInference.InferReversed</c>) while emitting a call to this method.
+        /// While the return type disagreed, `a: Iterator[str] = reversed("abc")` produced CS0266
+        /// behind SPY0908 — an internal-error report for ordinary source (#1354). The non-string
+        /// overloads never had the problem because <c>Builtins.Reversed&lt;T&gt;</c> already returned
+        /// <c>Iterator&lt;T&gt;</c>; this was the one unflipped surface in the set.
+        /// </para>
         /// </remarks>
-        public static IEnumerable<string> Reversed(string s)
+        public static Iterator<string> Reversed(string s)
+            => new EnumeratorIterator<string>(ReversedCore(s).GetEnumerator(), "<reversed object>");
+
+        private static IEnumerable<string> ReversedCore(string s)
         {
             for (int i = s.Length - 1; i >= 0; i--)
             {

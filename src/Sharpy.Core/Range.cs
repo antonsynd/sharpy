@@ -76,6 +76,22 @@ namespace Sharpy
             _position += _step;
             return true;
         }
+
+        /// <summary>
+        /// Renders as CPython's <c>range(start, stop[, step])</c>.
+        /// </summary>
+        /// <remarks>
+        /// The one iterator whose CPython repr carries NO address, so this is an exact match rather
+        /// than the address-free approximation the others take. Measured against python3 3.12:
+        /// <c>range(3)</c> and <c>range(0, 3)</c> both render <c>range(0, 3)</c>, and the step is
+        /// shown if and only if it is not 1 — <c>range(1, 5, 1)</c> is <c>range(1, 5)</c> while
+        /// <c>range(2, 2, 3)</c> keeps its step even though it is empty. Reads the original bounds,
+        /// not <c>_position</c>, so a partly-consumed range still renders what it was built from.
+        /// </remarks>
+        public override string ToString()
+            => _step == 1
+                ? $"range({_start}, {_stop})"
+                : $"range({_start}, {_stop}, {_step})";
     }
 
     public static partial class Builtins

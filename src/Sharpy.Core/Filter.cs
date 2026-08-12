@@ -47,6 +47,9 @@ namespace Sharpy
             _current = default;
             return false;
         }
+
+        /// <inheritdoc/>
+        public override string ToString() => "<filter object>";
     }
 
     public static partial class Builtins

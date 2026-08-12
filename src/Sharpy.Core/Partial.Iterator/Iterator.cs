@@ -44,5 +44,24 @@ namespace Sharpy
         /// <returns>true if the enumerator was successfully advanced to the next element;
         /// false if the enumerator has passed the end of the collection.</returns>
         public abstract bool MoveNext();
+
+        /// <summary>
+        /// A Python-shaped rendering of the iterator. Subclasses override with their own name.
+        /// </summary>
+        /// <remarks>
+        /// Without this, printing an iterator rendered .NET's default — the raw CLR type name, e.g.
+        /// <c>Sharpy.MapIterator`2[System.Int32,System.Int32]</c> — which tells a Python reader
+        /// nothing (#1354).
+        /// <para>
+        /// CPython's form for every iterator here EXCEPT <c>range</c> embeds the object's address
+        /// (<c>&lt;map object at 0x102...&gt;</c>). An address can never match byte-for-byte, so
+        /// these deliberately drop the <c>at 0x...</c> tail and are recorded in
+        /// <c>docs/deviations.yaml</c>. Dropping it is what makes the value pinnable at all; keeping
+        /// it would reproduce exactly the untestable-repr class that #1392 removed from frozendict.
+        /// <c>range</c> is not a deviation — CPython's <c>range(0, 3)</c> carries no address and is
+        /// matched exactly.
+        /// </para>
+        /// </remarks>
+        public override string ToString() => "<iterator object>";
     }
 }

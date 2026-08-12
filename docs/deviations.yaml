@@ -778,6 +778,30 @@ deviations:
         next(it, -1)     # 2
         next(it, -1)     # -1 (default — no exception)
 
+  - id: iterator-repr-no-address
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "Most iterator `repr`s embed the object's memory address — `<map object at 0x10372d4e0>` — and name the iterator after the container that produced it (`iter([1,2])` is a `list_iterator`, `iter({1})` a `set_iterator`, `iter('ab')` a `str_ascii_iterator`)."
+    sharpy_behavior: "Iterator `repr`s are stable and address-free — `<map object>` — so they can be pinned by a test. Iterators built by `iter()` render the generic `<iterator object>` rather than naming their source container. `range` is NOT affected: CPython's `range` repr carries no address and Sharpy matches it exactly, including omitting the step when it is 1."
+    spec_ref: docs/language_specification/builtin_functions.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        print(map(abs, [1]))        # <map object at 0x10372d4e0>
+        print(reversed([1, 2]))     # <list_reverseiterator object at 0x10372d420>
+        print(iter([1, 2]))         # <list_iterator object at 0x10372d4e0>
+        print(range(3))             # range(0, 3)      — no address, matched exactly
+        print(range(1, 5, 1))       # range(1, 5)      — step omitted when 1
+      sharpy: |
+        print(map(abs, [1]))        # <map object>
+        print(reversed([1, 2]))     # <list_reverseiterator object>
+        print(iter([1, 2]))         # <iterator object>   — source container not named
+        print(range(3))             # range(0, 3)
+        print(range(1, 5, 1))       # range(1, 5)
+
   - id: no-generator-send-throw
     code: null
     category: semantics

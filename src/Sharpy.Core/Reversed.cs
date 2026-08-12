@@ -32,7 +32,7 @@ namespace Sharpy
             // Check for IReverseEnumerable<T> at runtime (user-defined __reversed__)
             if (sequence is IReverseEnumerable<T> reversible)
             {
-                return new EnumeratorIterator<T>(reversible.GetReverseEnumerator());
+                return new EnumeratorIterator<T>(reversible.GetReverseEnumerator(), "<reversed object>");
             }
 
             // Optimization for IList<T>: iterate backwards without materializing
@@ -42,7 +42,7 @@ namespace Sharpy
             }
 
             // Fallback: materialize and reverse using LINQ
-            return new EnumeratorIterator<T>(sequence.Reverse().GetEnumerator());
+            return new EnumeratorIterator<T>(sequence.Reverse().GetEnumerator(), "<reversed object>");
         }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace Sharpy
                 throw TypeError.ArgNone("reversed", "sequence");
             }
 
-            return new EnumeratorIterator<T>(reversible.GetReverseEnumerator());
+            return new EnumeratorIterator<T>(reversible.GetReverseEnumerator(), "<reversed object>");
         }
     }
 
@@ -85,5 +85,8 @@ namespace Sharpy
             _current = _list[_index--];
             return true;
         }
+
+        /// <inheritdoc/>
+        public override string ToString() => "<list_reverseiterator object>";
     }
 }

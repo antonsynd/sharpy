@@ -39,6 +39,9 @@ namespace Sharpy
             _index++;
             return true;
         }
+
+        /// <inheritdoc/>
+        public override string ToString() => "<enumerate object>";
     }
 
     public static partial class Builtins
