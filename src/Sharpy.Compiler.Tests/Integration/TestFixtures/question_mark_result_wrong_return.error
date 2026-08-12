@@ -1,1 +1,1 @@
-'?' on Result requires function to return Result, but return type is 'int32?'
+'?' on Result requires function to return Result, but return type is 'int?'

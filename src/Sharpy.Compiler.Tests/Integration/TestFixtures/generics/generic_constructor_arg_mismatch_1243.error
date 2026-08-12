@@ -1,1 +1,1 @@
-Cannot pass argument of type 'str' to parameter of type 'int32'; 'Slot[int32, str]' binds 'K' to 'int32' @16:24
+Cannot pass argument of type 'str' to parameter of type 'int'; 'Slot[int, str]' binds 'K' to 'int' @16:24

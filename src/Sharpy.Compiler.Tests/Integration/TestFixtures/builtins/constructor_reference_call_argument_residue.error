@@ -1,3 +1,3 @@
 class 'Many' declares several constructors, and this position supplies no signature to select one. @57:20
-class 'Other' has no constructor signature matching '(int32) -> Point'. @61:26
+class 'Other' has no constructor signature matching '(int) -> Point'. @61:26
 class 'Box' is generic, and its type arguments cannot be determined from this position @65:20

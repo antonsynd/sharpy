@@ -1,1 +1,1 @@
-Cannot assign type 'array[int32]' to variable of type 'list[int32]'
+Cannot assign type 'array[int]' to variable of type 'list[int]'

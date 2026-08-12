@@ -495,22 +495,14 @@ internal partial class RoslynEmitter
             try
             {
                 var ulongVal = ParseIntegerText(text);
-                // Dispatched by CLR type rather than by name: a name switch here was dead code
-                // when the singleton and the catalog disagreed about the spelling (#1304), and
-                // would have gone dead again when the singleton took its canonical name (#1356).
-                // The literal's emitted C# form depends on the CLR type, which has one spelling.
-                //
-                // Read straight off the property, not via PrimitiveCatalog: every BuiltinType
-                // producer sets ClrType (verified — the singletons, ClrTypeBridge's three
-                // construction sites, CachedModuleDiscovery's two), so the lookup would return the
-                // same answer while putting a registry call inside the emitter, which is a type
-                // decision the emitter is not allowed to make (Critical Rule 2).
-                return bt.ClrType switch
+                // NB: the int singleton is named "int", not the catalog's "int32" — the other
+                // widths use the catalog spelling. "int32" here was dead code (#1304, #1356 class).
+                return bt.Name switch
                 {
-                    var t when t == typeof(int) => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)ulongVal)),
-                    var t when t == typeof(long) => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((long)ulongVal)),
-                    var t when t == typeof(uint) => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((uint)ulongVal)),
-                    var t when t == typeof(ulong) => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(ulongVal)),
+                    "int" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)ulongVal)),
+                    "int64" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((long)ulongVal)),
+                    "uint32" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((uint)ulongVal)),
+                    "uint64" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(ulongVal)),
                     _ => GenerateIntegerLiteralFallback(literal, text)
                 };
             }

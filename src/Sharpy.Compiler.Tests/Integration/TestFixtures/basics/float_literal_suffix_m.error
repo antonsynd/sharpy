@@ -1,1 +1,1 @@
-Cannot assign type 'decimal' to variable of type 'float64'
+Cannot assign type 'decimal' to variable of type 'float'

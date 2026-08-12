@@ -1,1 +1,1 @@
-Cannot assign type 'list[int32]' to variable of type 'list[str]' @14:5
+Cannot assign type 'list[int]' to variable of type 'list[str]' @14:5

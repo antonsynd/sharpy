@@ -1,1 +1,1 @@
-Cannot assign type 'Pair[int32]' to variable of type 'Box[int32]'
+Cannot assign type 'Pair[int]' to variable of type 'Box[int]'

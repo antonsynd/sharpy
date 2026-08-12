@@ -93,7 +93,7 @@ singletons.
 ## 4. Readers — the guard's real surface
 
 **15 sites across 8 files** compare a `BuiltinType` by name (non-test), not the three the plan's
-Phase 2 is framed around. **Four** of them are **hand-written alias hedges that exist because of this
+Phase 2 is framed around. Three of them are **hand-written alias hedges that exist because of this
 split** and are load-bearing today, because producers (a) and (b) both reach them:
 
 | site | hedge |
@@ -101,7 +101,6 @@ split** and are load-bearing today, because producers (a) and (b) both reach the
 | `RoslynEmitter.Expressions.Access.Calls.cs:416` | `bt.Name == "uint8" \|\| bt.Name == "byte"` |
 | `SemanticType.cs:430` | same `uint8`/`byte` pair |
 | `TypeUtils.cs:66` | `BuiltinType { Name: "str" or "string" }` |
-| `TypeChecker.Expressions.Operators.cs:1201` | `Name == BuiltinNames.Str \|\| Name == "string"` — **constant-spelled, so a literal grep for `"str"` cannot see it** |
 
 **These cannot be deleted before the collapse.** Deleting a disjunct removes support for whichever
 producer emits that spelling — for the CLR-derived side that is interop, which lands in
@@ -111,13 +110,9 @@ the collapse decides; until then the hedge is the workaround, not the defect.
 ## 5. Display surface
 
 `GetDisplayName() => Name`, so the choice of canonical spelling is user-visible in every diagnostic.
-**84 fixtures** (79 `.error` + 5 `.warning`) actually move when the canonical spellings land —
-measured from the failing set, not from a grep. Earlier estimates of 14 and then ~36 were both too
-low, and for the same reason each time: they searched the **post-change** spellings
-(`float64|int32|uint8`) or the bare word `int`, while the moving surface is every *resolved-type*
-rendering, including generic arguments (`list[int]`, `set[int]`, `int?`) and unquoted signature
-text (`(int) -> Point`). **To find what a rename breaks, grep the OLD spelling — and prefer the
-failing set to any grep.** `IsFloat32LiteralNarrowing`
+**14 `.error` fixtures** assert an affected spelling in diagnostic text, **7** of them `float64`
+specifically. (This was 10 when the plan was written; #1355 added 3 of the 4 new ones, asserting
+`'uint8'` and `'int64'`.) `IsFloat32LiteralNarrowing`
 (`TypeChecker.Statements.cs:1783-1793`) routes around the `Float`/`Double` split explicitly, by
 comparing `ClrType` instead of `Name`, and its comment records why.
 
@@ -136,22 +131,3 @@ The standing guard (ban `Name ==` on `BuiltinType` outside the spelling layer) i
 prevention for #1304's failure mode, not a fix, and must be mutation-tested by reintroducing
 `"int32"` at one of the three former sites. Its allowlist is the 15 sites above minus whatever the
 collapse deletes.
-
-## 7. Addendum — a written-spelling surface that does NOT move (measured)
-
-Not every `int` in a diagnostic is a resolved type. `ConstructorReferenceSubject`
-(`TypeChecker.Expressions.Access.Calls.Overloads.cs:1308`) renders
-`builtin type '{constructorReference.WrittenName}'` — the spelling the USER wrote — while the same
-message's signature comes from `GetDisplayName()`. So one line legitimately reads:
-
-```
-builtin type 'int' has no constructor signature matching '(str, str) -> int32'
-```
-
-`int` and `int32` in one sentence, both correct. Any bulk transform over diagnostic expectations is
-wrong here, which is why expectations must be regenerated from captured output rather than
-substituted.
-
-A second surface worth noting for whoever finishes the collapse: the builtin-constructor candidate
-list renders parameter types in canonical spellings while the whole set now returns `int32` — that
-list is fed from `BuiltinRegistry`, a naming producer this inventory's §3 does not cover.

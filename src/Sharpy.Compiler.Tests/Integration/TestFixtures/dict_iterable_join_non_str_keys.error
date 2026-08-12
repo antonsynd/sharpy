@@ -1,1 +1,1 @@
-Cannot pass argument of type 'dict[int32, str]' to parameter of type 'list[str]' @6:21
+Cannot pass argument of type 'dict[int, str]' to parameter of type 'list[str]' @6:21

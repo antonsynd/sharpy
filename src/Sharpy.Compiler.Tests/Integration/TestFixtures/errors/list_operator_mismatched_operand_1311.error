@@ -1,1 +1,1 @@
-Type 'list[int32]' does not support operator '+' with operand of type 'int32' @11:9
+Type 'list[int]' does not support operator '+' with operand of type 'int' @11:9

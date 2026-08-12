@@ -1,2 +1,2 @@
 Candidates:
-  (int32) -> Box[int32] @16:29
+  (int) -> Box[int] @16:29

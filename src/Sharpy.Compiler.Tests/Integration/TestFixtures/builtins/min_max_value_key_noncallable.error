@@ -1,1 +1,1 @@
-'min' key must be callable; got 'int32' @5:24
+'min' key must be callable; got 'int' @5:24

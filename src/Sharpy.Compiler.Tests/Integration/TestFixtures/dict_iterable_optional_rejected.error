@@ -1,1 +1,1 @@
-No overload of 'sum' matches the argument types (dict[int32, str]?) @13:11
+No overload of 'sum' matches the argument types (dict[int, str]?) @13:11

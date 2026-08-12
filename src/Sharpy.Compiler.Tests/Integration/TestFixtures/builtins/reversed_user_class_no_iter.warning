@@ -1,1 +1,1 @@
-implicitly implements 'Sharpy.IReverseEnumerable<int32>' via '__reversed__'
+implicitly implements 'Sharpy.IReverseEnumerable<int>' via '__reversed__'

@@ -183,29 +183,17 @@ internal class ClrTypeBridge
         var primitiveInfo = PrimitiveCatalog.GetByClrType(clrType);
         if (primitiveInfo != null)
         {
-            // Return the appropriate SemanticType singleton or create BuiltinType.
-            //
-            // The arms dispatch on CANONICAL spellings only, because GetByClrType now answers with
-            // the canonical name for every CLR type (#1356). Before that it answered with the
-            // ALIAS — "int", "long", "double", "string", "void" — which is why the arms used to be
-            // spelled that way and why several accepted both spellings with an `or`. Those arms are
-            // now unreachable, and leaving them would be dead alias dispatch, which is the exact
-            // thing #1356 exists to delete.
-            //
-            // Falling through to the default arm instead of matching would still be record-EQUAL
-            // (BuiltinType equality is by name + CLR type) but a DIFFERENT INSTANCE from the
-            // singleton. Reference-identity reads exist in this codebase — SemanticType.UnmappedClr
-            // is deliberately record-equal to Object and reference-distinct — so returning the
-            // singleton here is load-bearing, not a micro-optimisation.
+            // Return the appropriate SemanticType singleton or create BuiltinType
             return primitiveInfo.SharpyName switch
             {
-                BuiltinNames.Int32 => SemanticType.Int,
-                BuiltinNames.Int64 => SemanticType.Long,
+                BuiltinNames.Int => SemanticType.Int,
+                BuiltinNames.Long => SemanticType.Long,
+                BuiltinNames.Float => SemanticType.Float,       // float -> double (per spec)
                 BuiltinNames.Float32 => SemanticType.Float32,   // float32 -> C# float
-                BuiltinNames.Float64 => SemanticType.Double,    // float64 -> C# double (per spec)
+                BuiltinNames.Float64 or BuiltinNames.Double => SemanticType.Double,
                 BuiltinNames.Bool => SemanticType.Bool,
-                BuiltinNames.Str => SemanticType.Str,
-                BuiltinNames.None => SemanticType.Void,
+                BuiltinNames.Str or "string" => SemanticType.Str,
+                BuiltinNames.Void or BuiltinNames.None => SemanticType.Void,
                 BuiltinNames.Object => SemanticType.Object,
                 _ => new BuiltinType { Name = primitiveInfo.SharpyName, ClrType = clrType }
             };

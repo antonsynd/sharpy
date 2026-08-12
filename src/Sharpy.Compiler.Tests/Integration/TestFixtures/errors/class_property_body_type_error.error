@@ -1,1 +1,1 @@
-Cannot return type 'int32' from function expecting 'str' @3:9
+Cannot return type 'int' from function expecting 'str' @3:9

@@ -1,4 +1,4 @@
-Argument 1 of 'List.add' expects 'int32' but got 'str' @16:12
-Argument 2 of 'List.insert' expects 'int32' but got 'str' @17:18
-Argument 1 of 'HashSet.union_with' expects 'list[int32]' but got 'List[str]' @22:21
+Argument 1 of 'List.add' expects 'int' but got 'str' @16:12
+Argument 2 of 'List.insert' expects 'int' but got 'str' @17:18
+Argument 1 of 'HashSet.union_with' expects 'list[int]' but got 'List[str]' @22:21
 Argument 1 of 'StringBuilder.append_line' expects 'IFormatProvider' but got 'str' @28:20

@@ -1,1 +1,1 @@
-Type 'set[int32]' does not support operator '|' with operand of type 'list[int32]' @12:9
+Type 'set[int]' does not support operator '|' with operand of type 'list[int]' @12:9
