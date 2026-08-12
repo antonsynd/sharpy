@@ -24,7 +24,7 @@ def test_counter_contains_key_after_clear_returns_false():
 @test
 def test_counter_keys_contains_all_added_elements():
     c: collections.Counter[str] = collections.Counter[str](["a", "b", "c", "a"])
-    keys: list[str] = list(c.keys)
+    keys: list[str] = list(c.keys())
     assert "a" in keys
     assert "b" in keys
     assert "c" in keys
@@ -33,7 +33,7 @@ def test_counter_keys_contains_all_added_elements():
 @test
 def test_counter_keys_empty_returns_empty():
     c: collections.Counter[str] = collections.Counter[str]()
-    keys: list[str] = list(c.keys)
+    keys: list[str] = list(c.keys())
     assert len(keys) == 0
 
 # --- MostCommon Edge Cases ---

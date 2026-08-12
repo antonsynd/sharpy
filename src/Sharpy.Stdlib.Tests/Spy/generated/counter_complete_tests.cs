@@ -65,8 +65,8 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (26, 5) - (26, 82) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
                 global::Sharpy.Counter<string> c = new global::Sharpy.Counter<string>(new Sharpy.List<string>() { "a", "b", "c", "a" });
-#line (27, 5) - (27, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-                Sharpy.List<string> keys = new global::Sharpy.List<string>(c.Keys);
+#line (27, 5) - (27, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
+                Sharpy.List<string> keys = new global::Sharpy.List<string>(c.Keys());
 #line (28, 5) - (28, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
                 Xunit.Assert.Contains("a", keys);
 #line (29, 5) - (29, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
@@ -83,8 +83,8 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (35, 5) - (35, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
                 global::Sharpy.Counter<string> c = new global::Sharpy.Counter<string>();
-#line (36, 5) - (36, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
-                Sharpy.List<string> keys = new global::Sharpy.List<string>(c.Keys);
+#line (36, 5) - (36, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
+                Sharpy.List<string> keys = new global::Sharpy.List<string>(c.Keys());
 #line (37, 5) - (37, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/counter_complete_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(keys));
 #line hidden

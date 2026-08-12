@@ -1,23 +1,24 @@
-# #1294 sub-case B: property reads on generic discovered receivers carry provenance.
-# Counter[str].keys resolves as list[str], so append works (was: Unknown, silent no-op).
-# The method call c.keys() must keep working — the emitter's zero-arg-call-onto-property
-# collapse handles it from codegen; the TypeChecker's _currentCallCallee guard prevents
-# SPY0201 by leaving call callees as Unknown.
+# #1294 sub-case B, REWRITTEN for #1391. Property reads on generic discovered receivers still carry
+# provenance — that part of #1294 is intact and is what the middle row proves. What changed is the
+# SURFACE: Counter[str].keys is a METHOD now, so the call form is the only spelling.
+#
+# The retired rows read `ys = c.keys` (no call) and `ys3: list[str] = c.keys`, and the first one
+# appended to the result and printed 3. That pinned CPython-DIVERGENT behavior: in CPython `c.keys`
+# is a bound method and `c.keys.append("c")` raises AttributeError (verified). It was pinned because
+# #1294's acceptance rows were taken from the issue text rather than from python3 — the exact miss
+# Rule 6 exists to prevent.
 from collections import Counter
 
 
 def main() -> None:
     c: Counter[str] = Counter[str](["a", "b", "a"])
 
-    # Property access — typed as list[str], append works
-    ys = c.keys
-    ys.append("c")
+    # The call form — the only spelling now, and unchanged in behavior.
+    ys = c.keys()
     print(len(ys))
 
-    # Method call — still works
-    ys2 = c.keys()
-    print(len(ys2))
-
-    # Annotated target — materializes
-    ys3: list[str] = c.keys
-    print(len(ys3))
+    # The result is a list copy, so appending to it works and does NOT affect the counter.
+    # CPython returns a live dict_keys view instead; see docs/deviations.yaml (dict-views-are-lists).
+    ys.append("c")
+    print(len(ys))
+    print(len(c.keys()))

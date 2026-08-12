@@ -602,8 +602,8 @@ namespace Sharpy.Stdlib.Tests.Spy
                 dd["a"] = 1;
 #line (282, 5) - (282, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["b"] = 2;
-#line (283, 5) - (283, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.List<string> keys = new global::Sharpy.List<string>(dd.Keys);
+#line (283, 5) - (283, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+                Sharpy.List<string> keys = new global::Sharpy.List<string>(dd.Keys());
 #line (284, 5) - (284, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(keys));
 #line (285, 5) - (285, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -622,8 +622,8 @@ namespace Sharpy.Stdlib.Tests.Spy
                 dd["a"] = 1;
 #line (292, 5) - (292, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["b"] = 2;
-#line (293, 5) - (293, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.List<int> vals = new global::Sharpy.List<int>(dd.Values);
+#line (293, 5) - (293, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+                Sharpy.List<int> vals = new global::Sharpy.List<int>(dd.Values());
 #line (294, 5) - (294, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(vals));
 #line (295, 5) - (295, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"

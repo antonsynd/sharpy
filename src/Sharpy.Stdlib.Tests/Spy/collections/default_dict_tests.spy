@@ -52,7 +52,7 @@ def test_default_dict_keys_enumeration_consistent_with_insertion():
     dd["z"] = 1
     dd["a"] = 2
     dd["m"] = 3
-    keys: list[str] = list(dd.keys)
+    keys: list[str] = list(dd.keys())
     assert "z" in keys
     assert "a" in keys
     assert "m" in keys
@@ -64,7 +64,7 @@ def test_default_dict_values_enumeration_includes_all_values():
     dd["a"] = 10
     dd["b"] = 20
     dd["c"] = 30
-    vals: list[int] = list(dd.values)
+    vals: list[int] = list(dd.values())
     assert 10 in vals
     assert 20 in vals
     assert 30 in vals

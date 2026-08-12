@@ -84,12 +84,6 @@ Extend the left side of the deque by appending elements from the iterable.
 A deque (double-ended queue) is a generalization of stacks and queues
 that supports adding and removing elements from either end.
 
-### Properties
-
-| Name | Type | Description |
-|------|------|-------------|
-| `keys` | `Iterable[T]` | The keys of the counter. |
-
 ### `elements() -> Iterable[T]`
 
 Elements are returned in arbitrary order. Each element is repeated count times.
@@ -120,6 +114,10 @@ Return the sum of all counts.
 
 Remove all elements from the counter.
 
+### `keys() -> Iterable[T]`
+
+The keys of the counter. Python: `c.keys()`. Returns a copy, not a live view.
+
 ### `contains(key): T = > ContainsKey(key) -> bool`
 
 Check if the counter contains a key (alias for ContainsKey).
@@ -134,8 +132,6 @@ that supports adding and removing elements from either end.
 
 | Name | Type | Description |
 |------|------|-------------|
-| `keys` | `Iterable[TKey]` | The keys of the dictionary. |
-| `values` | `Iterable[TValue]` | The values of the dictionary. |
 | `default_factory` | `() -> TValue` | The default factory function used for missing keys. |
 | `count` | `int` | The number of items in the defaultdict. |
 | `deque_type` | `Type` | The Deque type. |
@@ -152,6 +148,14 @@ Get the value for a key, or return a default value if the key is not present.
 
 Check if the dictionary contains a key (alias for ContainsKey).
 Used by the `in` operator: `"x" in d` → `d.Contains("x")`.
+
+### `keys() -> Iterable[TKey]`
+
+The keys of the dictionary. Python: `d.keys()`. Returns a copy, not a live view.
+
+### `values() -> Iterable[TValue]`
+
+The values of the dictionary. Python: `d.values()`. Returns a copy, not a live view.
 
 ### `copy() -> DefaultDict[TKey, TValue]`
 

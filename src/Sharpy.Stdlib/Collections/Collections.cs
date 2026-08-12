@@ -278,8 +278,17 @@ namespace Sharpy
             _counts.Clear();
         }
 
-        /// <summary>The keys of the counter.</summary>
-        public IEnumerable<T> Keys => _counts.Keys;
+        /// <summary>
+        /// The keys of the counter. Python: <c>c.keys()</c>. Returns a copy, not a live view.
+        /// </summary>
+        // A METHOD, not a property, because `c.keys` without the call must not be a value (#1391).
+        // While it was a property the #1294 property-read rule typed `c.keys` as `list[str]`, so
+        // `c.keys.append("c")` SUCCEEDED — where CPython raises AttributeError, `c.keys` there being
+        // a bound method. Sibling mapping types already disagreed: ChainMap.Keys() and
+        // OrderedDict.Keys() were methods, so one spelling meant different things by receiver.
+        // Kept out of <remarks> deliberately — docs/stdlib is generated from XML doc comments, and
+        // this paragraph is implementation history, not something a stdlib reader needs.
+        public IEnumerable<T> Keys() => _counts.Keys;
 
         /// <summary>Check if the counter contains a key.</summary>
         public bool ContainsKey(T key) => _counts.ContainsKey(key);
@@ -432,10 +441,16 @@ namespace Sharpy
         /// </summary>
         public bool Contains(TKey key) => ContainsKey(key);
 
-        /// <summary>The keys of the dictionary.</summary>
-        public IEnumerable<TKey> Keys => _dict.Keys;
-        /// <summary>The values of the dictionary.</summary>
-        public IEnumerable<TValue> Values => _dict.Values;
+        /// <summary>
+        /// The keys of the dictionary. Python: <c>d.keys()</c>. Returns a copy, not a live view.
+        /// </summary>
+        // Methods, not properties — see Counter.Keys (#1391).
+        public IEnumerable<TKey> Keys() => _dict.Keys;
+
+        /// <summary>
+        /// The values of the dictionary. Python: <c>d.values()</c>. Returns a copy, not a live view.
+        /// </summary>
+        public IEnumerable<TValue> Values() => _dict.Values;
 
         /// <summary>The default factory function used for missing keys.</summary>
         public Func<TValue> DefaultFactory => _defaultFactory;

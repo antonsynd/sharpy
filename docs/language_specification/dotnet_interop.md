@@ -230,7 +230,13 @@ deferred to the C# compiler:
 **Reading a CLR property is one of those positions.** A property whose declared type is a CLR
 sequence materializes on read under the same rule, so what you get back is a Sharpy collection with
 a Sharpy collection's surface — indexable and `len()`-able — not the bare `IEnumerable<T>` the
-metadata names ([#1294](https://github.com/antonsynd/sharpy/issues/1294)):
+metadata names ([#1294](https://github.com/antonsynd/sharpy/issues/1294)). A property whose CLR type
+is `IEnumerable<T>` therefore reads as `list[T]` — a copy, not a window onto the declaring object.
+
+That rule is about the *type of a read*, and it does **not** make every `.keys` spelling a value. The stdlib mapping types deliberately expose
+`keys()`, `values()` and `items()` as **methods**, matching CPython, so `c.keys` on a `Counter` is
+the method itself and `c.keys()` is the sequence
+([#1391](https://github.com/antonsynd/sharpy/issues/1391)):
 
 ```python
 from collections import Counter
@@ -238,15 +244,13 @@ from collections import Counter
 
 def main() -> None:
     c = Counter[str](["a", "b", "a"])
-    ks = c.keys          # CLR metadata says IEnumerable<str>
-    print(ks)            # ['a', 'b'] — a Sharpy list[str]
-    print(ks[0])         # a — indexable, which IEnumerable is not
+    ks = c.keys()        # call it — this is the sequence
     print(len(ks))       # 2
 ```
 
-What the rule settles here is the *type* of the read. What a write through such a materialized
-property read should mean for the object it came from is a separate question, still open as
-[#1391](https://github.com/antonsynd/sharpy/issues/1391); do not rely on either answer yet.
+The returned sequence is a **copy**, not a live view: mutating the counter afterwards does not
+change `ks`, and appending to `ks` does not change the counter. CPython's `dict_keys` is a live
+view, so this is a documented divergence — see `docs/deviations.yaml`.
 
 **Assigning a .NET collection itself to a Sharpy annotation is refused.** The conversion above
 happens where a *sequence expression* meets a Sharpy slot; naming a CLR collection and annotating it

@@ -109,8 +109,8 @@ namespace Sharpy.Stdlib.Tests.Spy
                 dd["a"] = 2;
 #line (54, 5) - (54, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
                 dd["m"] = 3;
-#line (55, 5) - (55, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
-                Sharpy.List<string> keys = new global::Sharpy.List<string>(dd.Keys);
+#line (55, 5) - (55, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
+                Sharpy.List<string> keys = new global::Sharpy.List<string>(dd.Keys());
 #line (56, 5) - (56, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
                 Xunit.Assert.Contains("z", keys);
 #line (57, 5) - (57, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
@@ -133,8 +133,8 @@ namespace Sharpy.Stdlib.Tests.Spy
                 dd["b"] = 20;
 #line (66, 5) - (66, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
                 dd["c"] = 30;
-#line (67, 5) - (67, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
-                Sharpy.List<int> vals = new global::Sharpy.List<int>(dd.Values);
+#line (67, 5) - (67, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
+                Sharpy.List<int> vals = new global::Sharpy.List<int>(dd.Values());
 #line (68, 5) - (68, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"
                 Xunit.Assert.Contains(10, vals);
 #line (69, 5) - (69, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/default_dict_tests.spy"

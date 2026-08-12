@@ -280,7 +280,7 @@ def test_default_dict_keys_returns_all_keys():
     dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
     dd["a"] = 1
     dd["b"] = 2
-    keys: list[str] = list(dd.keys)
+    keys: list[str] = list(dd.keys())
     assert len(keys) == 2
     assert "a" in keys
     assert "b" in keys
@@ -290,7 +290,7 @@ def test_default_dict_values_returns_all_values():
     dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
     dd["a"] = 1
     dd["b"] = 2
-    vals: list[int] = list(dd.values)
+    vals: list[int] = list(dd.values())
     assert len(vals) == 2
     assert 1 in vals
     assert 2 in vals

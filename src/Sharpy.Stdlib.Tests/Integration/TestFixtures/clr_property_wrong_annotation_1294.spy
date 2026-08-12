@@ -1,13 +1,15 @@
-# The refusal twin of clr_generic_property_access_1294 (#1294). A property read on a generic
-# discovered receiver carries real provenance, so a wrong annotation is an error rather than
-# silence: Counter[str].keys is list[str], and list[str] does not fit a list[int] slot.
+# The refusal twin of clr_generic_property_access_1294, REWRITTEN for #1391.
 #
-# Before #1294 the read was Unknown, and Unknown satisfies every annotation. The positive
-# fixture next door shows the type arrived; only a refusal shows it is being enforced.
+# #1294's point stands: the read carries a real type, so a wrong annotation is an error rather than
+# silence. Before #1294 the read was Unknown, and Unknown satisfies every annotation — the positive
+# fixture next door shows the type arrives; only a refusal shows it is being enforced.
+#
+# What changed is the SUBJECT of the refusal. `c.keys` is a method now, so the wrong-annotation case
+# is written on the CALL — `list[int]` still does not hold a `list[str]`.
 from collections import Counter
 
 
 def main() -> None:
     c: Counter[str] = Counter[str](["a", "b", "a"])
-    bad: list[int] = c.keys
+    bad: list[int] = c.keys()
     print(bad)

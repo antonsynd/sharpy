@@ -802,6 +802,28 @@ deviations:
         print(range(3))             # range(0, 3)
         print(range(1, 5, 1))       # range(1, 5)
 
+  - id: dict-views-are-lists
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`keys()`, `values()` and `items()` on a mapping return LIVE VIEW objects (`dict_keys`, `dict_values`, `dict_items`). A view reflects later mutations of the mapping, and does not support `append`."
+    sharpy_behavior: "They return a list copy taken at the call. Later mutations of the mapping are not reflected, and the copy has a list's full surface, so `append` succeeds and affects only the copy. Call them — `c.keys()`; the bare `c.keys` is the method itself, not a value, matching CPython."
+    spec_ref: docs/language_specification/dotnet_interop.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        d = {"a": 1}
+        k = d.keys()
+        d["b"] = 2
+        print(list(k))   # ['a', 'b'] — the view saw the new key
+      sharpy: |
+        c: Counter[str] = Counter[str](["a"])
+        k = c.keys()
+        c.update(["b"])
+        print(len(k))    # 1 — the copy did not see the new key
+
   - id: no-generator-send-throw
     code: null
     category: semantics
