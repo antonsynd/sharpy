@@ -166,7 +166,7 @@ public partial class Parser
                 LineStart = id.LineStart,
                 ColumnStart = id.ColumnStart,
                 LineEnd = Previous.Line,
-                ColumnEnd = Previous.Column + Previous.Value.Length,
+                ColumnEnd = Previous.Column + Previous.Length,
                 Span = initialValue != null
                     ? CombineSpans(id.Span, initialValue.Span)
                     : id.Span  // TypeAnnotation doesn't have Span yet (A.12)
@@ -785,7 +785,7 @@ public partial class Parser
                 LineStart = paramStartLine,
                 ColumnStart = paramStartColumn,
                 LineEnd = paramEndToken.Line,
-                ColumnEnd = paramEndToken.Column + paramEndToken.Value.Length,
+                ColumnEnd = paramEndToken.Column + paramEndToken.Length,
                 Span = GetSpanFromTokens(paramStartToken, paramEndToken)
             });
 
@@ -910,7 +910,7 @@ public partial class Parser
 
                 var memberEndToken = Previous;
                 var memberEndLine = memberEndToken.Line;
-                var memberEndColumn = memberEndToken.Column + memberEndToken.Value.Length;
+                var memberEndColumn = memberEndToken.Column + memberEndToken.Length;
 
                 members.Add(new EnumMember
                 {
@@ -1061,7 +1061,7 @@ public partial class Parser
                                 LineStart = fieldStartLine,
                                 ColumnStart = fieldStartColumn,
                                 LineEnd = fieldEndToken.Line,
-                                ColumnEnd = fieldEndToken.Column + fieldEndToken.Value.Length,
+                                ColumnEnd = fieldEndToken.Column + fieldEndToken.Length,
                                 Span = GetSpanFromTokens(fieldStartToken, fieldEndToken)
                             });
 
@@ -1086,7 +1086,7 @@ public partial class Parser
                     LineStart = caseStartLine,
                     ColumnStart = caseStartColumn,
                     LineEnd = caseEndToken.Line,
-                    ColumnEnd = caseEndToken.Column + caseEndToken.Value.Length,
+                    ColumnEnd = caseEndToken.Column + caseEndToken.Length,
                     Span = GetSpanFromTokens(caseStartToken, caseEndToken)
                 });
 
@@ -1172,7 +1172,7 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endToken.Line,
-            ColumnEnd = endToken.Column + endToken.Value.Length,
+            ColumnEnd = endToken.Column + endToken.Length,
             Span = GetSpanFromTokens(startToken, endToken)
         };
     }
@@ -1469,7 +1469,7 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = autoEndToken.Line,
-            ColumnEnd = autoEndToken.Column + autoEndToken.Value.Length,
+            ColumnEnd = autoEndToken.Column + autoEndToken.Length,
             Span = CombineSpans(GetSpanFromToken(startToken), GetSpanFromToken(autoEndToken))
         };
     }
@@ -1513,7 +1513,7 @@ public partial class Parser
             LineStart = startToken.Line,
             ColumnStart = startToken.Column,
             LineEnd = endToken.Line,
-            ColumnEnd = endToken.Column + endToken.Value.Length,
+            ColumnEnd = endToken.Column + endToken.Length,
             ParamNameLine = paramToken.Line,
             ParamNameColumn = paramToken.Column,
             Span = GetSpanFromTokens(startToken, endToken)
@@ -1670,7 +1670,7 @@ public partial class Parser
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = autoEndToken.Line,
-            ColumnEnd = autoEndToken.Column + autoEndToken.Value.Length,
+            ColumnEnd = autoEndToken.Column + autoEndToken.Length,
             Span = CombineSpans(GetSpanFromToken(startToken), GetSpanFromToken(autoEndToken))
         };
     }

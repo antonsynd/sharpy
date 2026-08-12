@@ -627,7 +627,7 @@ public partial class Parser
                             LineStart = expr.LineStart,
                             ColumnStart = expr.ColumnStart,
                             LineEnd = Previous.Line,
-                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            ColumnEnd = Previous.Column + Previous.Length,
                             Span = expr.Span
                         };
                         continue;
@@ -662,7 +662,7 @@ public partial class Parser
 
         // Adjacency: the suffix must start exactly where `as` ends, on the same line.
         var isAdjacent = suffix.Line == asToken.Line
-            && suffix.Column == asToken.Column + asToken.Value.Length;
+            && suffix.Column == asToken.Column + asToken.Length;
         if (!isAdjacent)
             return false;
 
@@ -1010,7 +1010,7 @@ public partial class Parser
                         LineStart = expr.LineStart,
                         ColumnStart = expr.ColumnStart,
                         LineEnd = Previous.Line,
-                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        ColumnEnd = Previous.Column + Previous.Length,
                         Span = CombineSpans(expr.Span, GetSpanFromToken(Previous))
                     };
                 }
@@ -1029,7 +1029,7 @@ public partial class Parser
                             LineStart = expr.LineStart,
                             ColumnStart = expr.ColumnStart,
                             LineEnd = Previous.Line,
-                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            ColumnEnd = Previous.Column + Previous.Length,
                             Span = CombineSpans(expr.Span, GetSpanFromToken(closeBracket))
                         };
                     else if (index is SliceAccess sa)
@@ -1039,7 +1039,7 @@ public partial class Parser
                             LineStart = expr.LineStart,
                             ColumnStart = expr.ColumnStart,
                             LineEnd = Previous.Line,
-                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            ColumnEnd = Previous.Column + Previous.Length,
                             Span = CombineSpans(expr.Span, GetSpanFromToken(closeBracket))
                         };
                     else if (index is MultiAxisAccess ma)
@@ -1049,7 +1049,7 @@ public partial class Parser
                             LineStart = expr.LineStart,
                             ColumnStart = expr.ColumnStart,
                             LineEnd = Previous.Line,
-                            ColumnEnd = Previous.Column + Previous.Value.Length,
+                            ColumnEnd = Previous.Column + Previous.Length,
                             Span = CombineSpans(expr.Span, GetSpanFromToken(closeBracket))
                         };
                 }
@@ -1067,7 +1067,7 @@ public partial class Parser
                         LineStart = expr.LineStart,
                         ColumnStart = expr.ColumnStart,
                         LineEnd = Previous.Line,
-                        ColumnEnd = Previous.Column + Previous.Value.Length,
+                        ColumnEnd = Previous.Column + Previous.Length,
                         Span = CombineSpans(expr.Span, GetSpanFromToken(closeParen))
                     };
 

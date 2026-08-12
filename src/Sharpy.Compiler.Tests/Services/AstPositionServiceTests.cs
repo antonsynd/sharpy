@@ -819,4 +819,64 @@ finally:
     }
 
     #endregion
+
+    #region Backtick-Escaped Extents (#1380)
+
+    // This is the user-visible symptom of #1380, expressed the way a user meets it: the cursor is
+    // on a character of the name and the editor answers "no node here". ContainsPosition rejects a
+    // position past ColumnEnd, so an extent sized from the bare name puts the last two characters
+    // of every escaped reference — the closing backtick and the one before it — outside the node.
+    //
+    // The dotted-access shape is deliberate. cb429fdc1 already fixed the three Parser.Primaries.cs
+    // sites, so a plain `zed` reference would pass with or without the sweep; MemberAccess is built
+    // in Parser.Expressions.cs and was still two columns short until it.
+
+    [Fact]
+    public void FindNodeOfType_CursorOnClosingBacktick_FindsEscapedMemberAccess()
+    {
+        // Columns: o=1 b=2 j=3 .=4 `=5 c=6 l=7 a=8 s=9 s=10 `=11
+        var source = "obj.`class`\n";
+        var module = ParseModule(source);
+
+        var access = _service.FindNodeOfType<MemberAccess>(module, line: 1, column: 11);
+
+        Assert.NotNull(access);
+        Assert.Equal("class", access.Member);
+    }
+
+    [Theory]
+    [InlineData(1)]   // 'o'
+    [InlineData(4)]   // '.'
+    [InlineData(5)]   // opening backtick
+    [InlineData(6)]   // 'c'
+    [InlineData(10)]  // final 's'
+    [InlineData(11)]  // closing backtick
+    public void FindNodeOfType_CursorAnywhereInEscapedExtent_FindsMemberAccess(int column)
+    {
+        // ContainsPosition treats ColumnEnd as inclusive, so a bare-name extent of [1, 10] still
+        // answers column 10 — only column 11 distinguished the two. The theory pins the whole
+        // extent rather than one column so a future off-by-one in either direction is visible.
+        var source = "obj.`class`\n";
+        var module = ParseModule(source);
+
+        var access = _service.FindNodeOfType<MemberAccess>(module, line: 1, column: column);
+
+        Assert.NotNull(access);
+        Assert.Equal("class", access.Member);
+    }
+
+    [Fact]
+    public void FindNodeOfType_CursorPastUnescapedMemberEnd_FindsNothing()
+    {
+        // Control: the extent must not have grown for unescaped names. "obj.member" ends at
+        // column 10, so column 11 is past the statement and must still miss — otherwise the fix
+        // would be widening every extent rather than only correcting escaped ones.
+        var source = "obj.member\n";
+        var module = ParseModule(source);
+
+        Assert.NotNull(_service.FindNodeOfType<MemberAccess>(module, line: 1, column: 10));
+        Assert.Null(_service.FindNodeOfType<MemberAccess>(module, line: 1, column: 12));
+    }
+
+    #endregion
 }

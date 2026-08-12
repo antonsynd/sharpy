@@ -902,7 +902,7 @@ public partial class Parser
                     LineStart = decoratorStartLine,
                     ColumnStart = decoratorStartColumn,
                     LineEnd = decoratorEndToken.Line,
-                    ColumnEnd = decoratorEndToken.Column + decoratorEndToken.Value.Length,
+                    ColumnEnd = decoratorEndToken.Column + decoratorEndToken.Length,
                     Span = GetSpanFromTokens(decoratorStartToken, decoratorEndToken)
                 });
                 // Mid-construct, not statement-final: a decorator is a prefix, so the statement it
@@ -941,7 +941,7 @@ public partial class Parser
 
                 var decoratorEndToken = Previous;
                 var decoratorEndLine = decoratorEndToken.Line;
-                var decoratorEndColumn = decoratorEndToken.Column + decoratorEndToken.Value.Length;
+                var decoratorEndColumn = decoratorEndToken.Column + decoratorEndToken.Length;
 
                 decorators.Add(new Decorator
                 {
@@ -1161,7 +1161,7 @@ public partial class Parser
                     Advance();  // Skip =
                     var value = ParseExpression();
                     var kwargEndLine = Peek(-1).Line;
-                    var kwargEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+                    var kwargEndColumn = Peek(-1).Column + Peek(-1).Length;
 
                     kwargs.Add(new KeywordArgument
                     {

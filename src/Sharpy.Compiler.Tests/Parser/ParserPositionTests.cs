@@ -119,6 +119,7 @@ public class ParserPositionTests
         ident.ColumnEnd.Should().Be(4);
     }
 
+
     [Fact]
     public void Position_BinaryOperation_TrackedCorrectly()
     {
@@ -1135,6 +1136,171 @@ def bar():
         var index = call.Arguments[0].Should().BeOfType<IndexAccess>().Subject;
 
         index.ColumnStart.Should().Be(14); // After "result = foo("
+    }
+
+    #endregion
+
+    #region Backtick-Escaped Declaration Extents (#1380)
+
+    // cb429fdc1 fixed the three escapable Identifier/MemberAccess sites in Parser.Primaries.cs —
+    // the reference side. The tests above pin that. These pin the DECLARATION side, which the
+    // remaining 105 sites compute, so the sweep is guarded on the side it actually changes.
+    //
+    // The rule under test is one line wide: a node whose LAST token is a backtick-escaped name
+    // ends two columns past the bare name, because `Token.Length` reads `SourceLength` (which
+    // counts both backticks) where `Token.Value.Length` counts neither. Every case below is
+    // written so the escaped name is terminal and the expected end is `1 + source.Length`, which
+    // makes a two-short extent visible as an off-by-two rather than an opaque number.
+
+    [Fact]
+    public void Position_EscapedImportName_EndSpansClosingBacktick()
+    {
+        const string source = "import `class`";
+        var module = Parse(source);
+        var import = module.Body[0].Should().BeOfType<ImportStatement>().Subject;
+
+        import.Names[0].ColumnEnd.Should().Be(1 + source.Length);
+        import.ColumnEnd.Should().Be(1 + source.Length);
+    }
+
+    [Fact]
+    public void Position_EscapedImportAlias_EndSpansClosingBacktick()
+    {
+        // The `as` target is a declaration in its own right, and it is the statement's last token.
+        const string source = "import mod as `class`";
+        var module = Parse(source);
+        var import = module.Body[0].Should().BeOfType<ImportStatement>().Subject;
+
+        import.Names[0].ColumnEnd.Should().Be(1 + source.Length);
+        import.ColumnEnd.Should().Be(1 + source.Length);
+    }
+
+    [Fact]
+    public void Position_EscapedFromImportName_EndSpansClosingBacktick()
+    {
+        const string source = "from mod import `pass`";
+        var module = Parse(source);
+        var fromImport = module.Body[0].Should().BeOfType<FromImportStatement>().Subject;
+
+        fromImport.Names[0].ColumnEnd.Should().Be(1 + source.Length);
+        fromImport.ColumnEnd.Should().Be(1 + source.Length);
+    }
+
+    [Fact]
+    public void Position_EscapedTypeAliasTarget_EndSpansClosingBacktick()
+    {
+        // Asserted on the aliased TYPE, not on the TypeAlias statement: the statement's ColumnEnd
+        // is `Current.Column` after the statement terminator (Parser.Definitions.cs:1258), which
+        // lands on `1 + source.Length` for a single-line alias whether or not anything is escaped.
+        // Pinning that would pin a coincidence — it is outside the sweep entirely.
+        const string source = "type `Alias` = `int`";
+        var module = Parse(source);
+        var alias = module.Body[0].Should().BeOfType<TypeAlias>().Subject;
+
+        alias.IsNameBacktickEscaped.Should().BeTrue();
+        alias.Type.Should().NotBeNull();
+        alias.Type!.ColumnEnd.Should().Be(16 + "`int`".Length);
+    }
+
+    [Fact]
+    public void Position_EscapedTypeAnnotation_EndSpansClosingBacktick()
+    {
+        // A type reference is where hover and go-to-definition hit-test, so its extent has to
+        // cover the closing backtick for the same reason the identifier reference does.
+        const string source = "x: `int` = 1";
+        var module = Parse(source);
+        var decl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+
+        decl.Type.Should().NotBeNull();
+        decl.Type!.ColumnEnd.Should().Be(4 + "`int`".Length);
+    }
+
+    [Fact]
+    public void Position_EscapedDefParameter_EndSpansClosingBacktick()
+    {
+        // A def parameter with neither annotation nor default: the name token IS the extent.
+        const string source = "def f(`class`):\n    pass\n";
+        var module = Parse(source);
+        var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+
+        func.Parameters[0].IsNameBacktickEscaped.Should().BeTrue();
+        func.Parameters[0].ColumnEnd.Should().Be(7 + "`class`".Length);
+    }
+
+    [Fact]
+    public void Position_EscapedLambdaParameter_EndSpansClosingBacktick()
+    {
+        // The bare-parameter arm of the lambda parser sized the extent from the unescaped `name`
+        // string rather than from the name token — the same defect wearing a different shape, and
+        // the one site in the sweep that a `Value.Length` search does not surface.
+        const string source = "f = lambda `class`: 1";
+        var module = Parse(source);
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var lambda = assign.Value.Should().BeOfType<LambdaExpression>().Subject;
+
+        lambda.Parameters[0].IsNameBacktickEscaped.Should().BeTrue();
+        lambda.Parameters[0].ColumnEnd.Should().Be(12 + "`class`".Length);
+    }
+
+    [Fact]
+    public void Position_EscapedDecorator_EndSpansClosingBacktick()
+    {
+        const string source = "@`deco`\ndef f():\n    pass\n";
+        var module = Parse(source);
+        var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+
+        func.Decorators[0].ColumnEnd.Should().Be(2 + "`deco`".Length);
+    }
+
+    [Fact]
+    public void Position_EscapedEnumMember_EndSpansClosingBacktick()
+    {
+        // The member is written without an explicit value on purpose. With `= 1` the member's last
+        // token is the literal, so the extent never touches the escape and the assertion would
+        // hold with or without the sweep.
+        const string source = "enum E:\n    `class`\n";
+        var module = Parse(source);
+        var enumDef = module.Body[0].Should().BeOfType<EnumDef>().Subject;
+
+        enumDef.Members[0].ColumnEnd.Should().Be(5 + "`class`".Length);
+    }
+
+    [Fact]
+    public void Position_EscapedMemberAccess_EndSpansClosingBacktick()
+    {
+        // The dotted-access site lives in Parser.Expressions.cs, not the Parser.Primaries.cs
+        // subset cb429fdc1 fixed, so this reference shape was still two columns short. It is the
+        // cell AstPositionServiceTests hit-tests a cursor against.
+        const string source = "obj.`class`";
+        var module = Parse(source);
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var access = exprStmt.Expression.Should().BeOfType<MemberAccess>().Subject;
+
+        access.IsMemberBacktickEscaped.Should().BeTrue();
+        access.ColumnEnd.Should().Be(1 + source.Length);
+    }
+
+    // Verify the instrument: the same shapes with UNESCAPED names must be byte-identical before
+    // and after the sweep. Token.Length falls back to Value.Length when SourceLength is null, so
+    // a regression here would mean the sweep changed something other than escaped extents.
+    [Fact]
+    public void Position_BareDeclarations_EndsAreUnchangedByTheSweep()
+    {
+        Parse("import mod").Body[0].Should().BeOfType<ImportStatement>()
+            .Which.ColumnEnd.Should().Be(11);
+
+        Parse("from mod import thing").Body[0].Should().BeOfType<FromImportStatement>()
+            .Which.ColumnEnd.Should().Be(22);
+
+        Parse("x: int = 1").Body[0].Should().BeOfType<VariableDeclaration>()
+            .Which.Type!.ColumnEnd.Should().Be(7);
+
+        Parse("def f(p):\n    pass\n").Body[0].Should().BeOfType<FunctionDef>()
+            .Which.Parameters[0].ColumnEnd.Should().Be(8);
+
+        Parse("obj.member").Body[0].Should().BeOfType<ExpressionStatement>()
+            .Which.Expression.Should().BeOfType<MemberAccess>()
+            .Which.ColumnEnd.Should().Be(11);
     }
 
     #endregion

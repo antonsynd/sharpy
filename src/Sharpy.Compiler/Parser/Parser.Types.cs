@@ -42,7 +42,7 @@ public partial class Parser
 
             var endToken = Previous;
             var endLine = endToken.Line;
-            var endColumn = endToken.Column + endToken.Value.Length;
+            var endColumn = endToken.Column + endToken.Length;
 
             baseType = baseType with
             {
@@ -101,7 +101,7 @@ public partial class Parser
             var endToken = Previous;
 
             var endLine = endToken.Line;
-            var endColumn = endToken.Column + endToken.Value.Length;
+            var endColumn = endToken.Column + endToken.Length;
 
             baseType = new TypeAnnotation
             {
@@ -126,7 +126,7 @@ public partial class Parser
 
             var endToken = Previous;
             var endLine = endToken.Line;
-            var endColumn = endToken.Column + endToken.Value.Length;
+            var endColumn = endToken.Column + endToken.Length;
 
             baseType = baseType with
             {
@@ -143,7 +143,7 @@ public partial class Parser
             Advance();
             var endToken = Previous;
             var endLine = endToken.Line;
-            var endColumn = endToken.Column + endToken.Value.Length;
+            var endColumn = endToken.Column + endToken.Length;
 
             baseType = baseType with
             {
@@ -261,7 +261,7 @@ public partial class Parser
 
         var endToken = Previous;
         var endLine = endToken.Line;
-        var endColumn = endToken.Column + endToken.Value.Length;
+        var endColumn = endToken.Column + endToken.Length;
 
         // Only include element names if there are named elements
         var elementNames = tupleElementNames.Any(n => n != null)
@@ -301,7 +301,7 @@ public partial class Parser
 
         var endToken = Previous;
         var endLine = endToken.Line;
-        var endColumn = endToken.Column + endToken.Value.Length;
+        var endColumn = endToken.Column + endToken.Length;
 
         return new TypeAnnotation
         {
@@ -341,7 +341,7 @@ public partial class Parser
 
             var endToken = Previous;
             var endLine = endToken.Line;
-            var endColumn = endToken.Column + endToken.Value.Length;
+            var endColumn = endToken.Column + endToken.Length;
 
             return new TypeAnnotation
             {
@@ -361,7 +361,7 @@ public partial class Parser
 
         var setEndToken = Previous;
         var setEndLine = setEndToken.Line;
-        var setEndColumn = setEndToken.Column + setEndToken.Value.Length;
+        var setEndColumn = setEndToken.Column + setEndToken.Length;
 
         return new TypeAnnotation
         {
@@ -430,7 +430,7 @@ public partial class Parser
 
             var funcEndToken = Previous;
             var funcEndLine = funcEndToken.Line;
-            var funcEndColumn = funcEndToken.Column + funcEndToken.Value.Length;
+            var funcEndColumn = funcEndToken.Column + funcEndToken.Length;
 
             // For function types, we return a special representation
             // The Name "function" with TypeArguments containing params + return type
@@ -453,7 +453,7 @@ public partial class Parser
         // It's a tuple
         var endToken = Previous;
         var endLine = endToken.Line;
-        var endColumn = endToken.Column + endToken.Value.Length;
+        var endColumn = endToken.Column + endToken.Length;
 
         return new TypeAnnotation
         {
