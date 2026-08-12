@@ -48,8 +48,8 @@ internal partial class RoslynEmitter : ICodeEmitter
     private readonly Dictionary<string, int> _variableVersions = new();
 
     /// <summary>
-    /// Slot base name → the SOURCE spelling that claimed it, for slots whose spelling is known
-    /// (#1276).
+    /// Slot base name → the SOURCE spelling that claimed it. TOTAL: every key in
+    /// <see cref="_variableVersions"/> has an entry here (#1276, #1386).
     /// </summary>
     /// <remarks>
     /// <para>
@@ -59,12 +59,19 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// pairing is legal in both Python and C#; the defect is the lossy lookup, not the program.
     /// </para>
     /// <para>
-    /// A slot whose spelling is recorded here answers only that spelling; a reference spelled
-    /// differently falls through to type and module resolution. Slots seeded by paths that do not
-    /// record a spelling keep the old case-collapsing behavior, so this map only ever makes the
-    /// lookup more precise. Two DISTINCT local spellings can no longer share a slot — SPY0522
-    /// refuses that (LocalNameCollisionValidator) — so a mismatch here always means the reference
-    /// is not a local.
+    /// A slot answers only the spelling that claimed it; a reference spelled differently falls
+    /// through to type and module resolution. This is only sound because the map is total — while
+    /// a third of the seeding paths wrote <see cref="_variableVersions"/> directly and recorded no
+    /// spelling, <see cref="SlotAnswersSpelling"/> had to fail OPEN for them, and those slots kept
+    /// answering any case-variant (#1386). Totality is what lets the lookup fail closed, and it is
+    /// held by construction: the only writers are <see cref="RegisterLocalSlot"/>,
+    /// <see cref="SetSlotVersion"/> and <see cref="RestoreSlotTable"/>, which is enforced by
+    /// <c>LocalSlotRegistrationConformanceTests</c>.
+    /// </para>
+    /// <para>
+    /// Two DISTINCT local spellings can no longer share a slot — SPY0522 refuses that
+    /// (LocalNameCollisionValidator) — so a mismatch here always means the reference is not a
+    /// local.
     /// </para>
     /// </remarks>
     private readonly Dictionary<string, string> _slotSpellings = new(StringComparer.Ordinal);
@@ -419,12 +426,7 @@ internal partial class RoslynEmitter : ICodeEmitter
     {
         _declaredVariables.Clear();
         _declaredVariables.UnionWith(snapshot.DeclaredVariables);
-        _variableVersions.Clear();
-        foreach (var (k, v) in snapshot.VariableVersions)
-            _variableVersions[k] = v;
-        _slotSpellings.Clear();
-        foreach (var (k, v) in snapshot.SlotSpellings)
-            _slotSpellings[k] = v;
+        RestoreSlotTable(snapshot.VariableVersions, snapshot.SlotSpellings);
         _constVariables.Clear();
         _constVariables.UnionWith(snapshot.ConstVariables);
     }
@@ -662,7 +664,9 @@ internal partial class RoslynEmitter : ICodeEmitter
                         name,
                         _variableVersions[baseName],
                         _sourceVariableNames);
-                    _variableVersions[baseName] = newVersion;
+                    // A bump, not a fresh claim: the slot keeps its history and its owner (the
+                    // check above already established that this spelling owns it).
+                    SetSlotVersion(baseName, newVersion, name);
                 }
                 return resolvedName;
             }
@@ -735,8 +739,10 @@ internal partial class RoslynEmitter : ICodeEmitter
     }
 
     /// <summary>
-    /// Records a local slot together with the source spelling that claimed it (#1276), so a
-    /// reference spelled differently is not answered by this slot.
+    /// Claims a FRESH local slot for <paramref name="sourceSpelling"/> (version 0), recording the
+    /// spelling that claimed it (#1276) so a reference spelled differently is not answered by it.
+    /// Every fresh claim goes through here; see <see cref="_slotSpellings"/> for why totality
+    /// matters.
     /// </summary>
     private void RegisterLocalSlot(string baseName, string sourceSpelling)
     {
@@ -745,13 +751,104 @@ internal partial class RoslynEmitter : ICodeEmitter
     }
 
     /// <summary>
-    /// Whether the slot named <paramref name="baseName"/> belongs to <paramref name="spelling"/>.
-    /// Slots whose spelling was never recorded answer any spelling, preserving the pre-#1276
-    /// behavior for seeding paths this map does not cover.
+    /// Moves an EXISTING slot to <paramref name="version"/> under <paramref name="sourceSpelling"/>.
     /// </summary>
+    /// <remarks>
+    /// Distinct from <see cref="RegisterLocalSlot"/> on purpose: the version-bump and scoped
+    /// save/restore paths (a redeclaration, a nested catch variable) must not reset the slot to 0,
+    /// and the owning spelling can change with the bump — <c>except A as e:</c> nested inside
+    /// <c>except B as E:</c> hands the same base name to a differently-spelled binding, and the
+    /// body's references have to be answered by the INNER one.
+    /// </remarks>
+    private void SetSlotVersion(string baseName, int version, string sourceSpelling)
+    {
+        _variableVersions[baseName] = version;
+        _slotSpellings[baseName] = sourceSpelling;
+    }
+
+    /// <summary>
+    /// Releases a slot, dropping the version and the spelling together.
+    /// </summary>
+    /// <remarks>
+    /// Dropping only the version leaves a dead owner behind. That was harmless while the lookup
+    /// failed open (the missing version made <c>ContainsKey</c> fail first), but with a total map
+    /// and a fail-closed lookup, the next claim on the same base name would be REFUSED by the
+    /// corpse of the old one (#1386).
+    /// </remarks>
+    private void ReleaseLocalSlot(string baseName)
+    {
+        _variableVersions.Remove(baseName);
+        _slotSpellings.Remove(baseName);
+    }
+
+    /// <summary>
+    /// Replaces the whole slot table from a snapshot (scope exit, nested-function restore).
+    /// Versions and spellings are restored together — they are one map stored in two, and
+    /// restoring only the versions resurrects slots with no owner.
+    /// </summary>
+    private void RestoreSlotTable(
+        IReadOnlyDictionary<string, int> versions,
+        IReadOnlyDictionary<string, string> spellings)
+    {
+        _variableVersions.Clear();
+        foreach (var (k, v) in versions)
+            _variableVersions[k] = v;
+        _slotSpellings.Clear();
+        foreach (var (k, v) in spellings)
+            _slotSpellings[k] = v;
+    }
+
+    /// <summary>
+    /// Carries one enclosing-scope slot into a nested function's fresh table, so a captured outer
+    /// variable still resolves to the name the enclosing scope emitted. The spelling travels with
+    /// the version: a carried slot with no owner is refused outright once the lookup fails closed,
+    /// which would break every reference to a captured variable (#1386).
+    /// </summary>
+    private void CarryForwardOuterSlot(string baseName, int version, string? sourceSpelling)
+    {
+        // Already claimed by the nested function's own parameter/local: that binding shadows the
+        // captured one, exactly as TryAdd's no-op did.
+        if (_variableVersions.ContainsKey(baseName) || sourceSpelling == null)
+            return;
+
+        SetSlotVersion(baseName, version, sourceSpelling);
+    }
+
+    /// <summary>The state of one local slot, captured so a scoped rebinding can be undone exactly.</summary>
+    private readonly record struct SlotState(bool Existed, int Version, string? Spelling);
+
+    /// <summary>Captures the current state of a slot (or the absence of one).</summary>
+    private SlotState CaptureSlot(string baseName)
+        => _variableVersions.TryGetValue(baseName, out var version)
+            ? new SlotState(true, version, _slotSpellings.TryGetValue(baseName, out var owner) ? owner : null)
+            : default;
+
+    /// <summary>
+    /// Undoes a scoped rebinding, putting back both the version and the owning spelling that
+    /// <see cref="CaptureSlot"/> saw — or releasing the slot outright if there was none.
+    /// </summary>
+    private void RestoreSlot(string baseName, SlotState saved)
+    {
+        if (saved is { Existed: true, Spelling: not null })
+            SetSlotVersion(baseName, saved.Version, saved.Spelling);
+        else
+            ReleaseLocalSlot(baseName);
+    }
+
+    /// <summary>
+    /// Whether the slot named <paramref name="baseName"/> belongs to <paramref name="spelling"/>.
+    /// </summary>
+    /// <remarks>
+    /// Fails CLOSED: a slot with no recorded owner answers nothing. The fail-open form this
+    /// replaced (<c>!TryGetValue(...) || equal</c>) let every unfunneled seeding path keep the
+    /// pre-#1276 case-collapsing behavior, which is what kept the two measured ICE shapes alive
+    /// (#1386). <see cref="_slotSpellings"/> is total, so a missing owner is a bug in a seeding
+    /// path, not a legitimate state — and answering nothing degrades to type/module resolution
+    /// rather than to the wrong local.
+    /// </remarks>
     private bool SlotAnswersSpelling(string baseName, string spelling)
-        => !_slotSpellings.TryGetValue(baseName, out var owner)
-            || string.Equals(owner, spelling, StringComparison.Ordinal);
+        => _slotSpellings.TryGetValue(baseName, out var owner)
+            && string.Equals(owner, spelling, StringComparison.Ordinal);
 
     /// <summary>
     /// Pre-scans statements to collect all variable names that will be declared.

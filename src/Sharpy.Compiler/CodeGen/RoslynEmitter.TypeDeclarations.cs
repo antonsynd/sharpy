@@ -114,7 +114,7 @@ internal partial class RoslynEmitter
             }
             // Also track in version map so assignments to parameters work correctly
             var baseName = NameMangler.ToCamelCase(param.Name);
-            _variableVersions[baseName] = 0;
+            RegisterLocalSlot(baseName, param.Name);
         }
 
         // Generate method body, prepending late-bound default locals

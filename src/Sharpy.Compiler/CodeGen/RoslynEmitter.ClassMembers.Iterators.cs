@@ -52,7 +52,7 @@ internal partial class RoslynEmitter
                 var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                 _declaredVariables.Add(paramName);
                 var baseName = NameMangler.ToCamelCase(param.Name);
-                _variableVersions[baseName] = 0;
+                RegisterLocalSlot(baseName, param.Name);
             }
 
             var body = GenerateSuiteBlock(funcDef.Body);
@@ -153,7 +153,7 @@ internal partial class RoslynEmitter
             var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
             _declaredVariables.Add(paramName);
             var baseName = NameMangler.ToCamelCase(param.Name);
-            _variableVersions[baseName] = 0;
+            RegisterLocalSlot(baseName, param.Name);
         }
 
         // Generate body from user's __reversed__ implementation
@@ -206,7 +206,7 @@ internal partial class RoslynEmitter
             var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
             _declaredVariables.Add(paramName);
             var baseName = NameMangler.ToCamelCase(param.Name);
-            _variableVersions[baseName] = 0;
+            RegisterLocalSlot(baseName, param.Name);
         }
 
         // Set generator and async flags so yield statements and bare returns emit correctly

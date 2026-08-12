@@ -229,7 +229,7 @@ internal partial class RoslynEmitter
                         var tempLoopVar = GenerateTempVarName("loopVar");
 
                         _declaredVariables.Add(loopVar);
-                        _variableVersions[loopVar] = 0;
+                        RegisterLocalSlot(loopVar, id.Name);
 
                         var varInit = LocalDeclarationStatement(
                             VariableDeclaration(IdentifierName("var"))
@@ -252,13 +252,14 @@ internal partial class RoslynEmitter
                     else if (forClause.Target is TupleLiteral tuple && tuple.Elements.All(e => e is Identifier))
                     {
                         var tempLoopVar = GenerateTempVarName("loopVar");
-                        var tupleVars = tuple.Elements.Cast<Identifier>()
-                            .Select(e => NameMangler.ToCamelCase(e.Name)).ToList();
+                        var tupleIds = tuple.Elements.Cast<Identifier>().ToList();
+                        var tupleVars = tupleIds.Select(e => NameMangler.ToCamelCase(e.Name)).ToList();
 
-                        foreach (var tv in tupleVars)
+                        foreach (var tupleId in tupleIds)
                         {
+                            var tv = NameMangler.ToCamelCase(tupleId.Name);
                             _declaredVariables.Add(tv);
-                            _variableVersions[tv] = 0;
+                            RegisterLocalSlot(tv, tupleId.Name);
                         }
 
                         var designations = tupleVars

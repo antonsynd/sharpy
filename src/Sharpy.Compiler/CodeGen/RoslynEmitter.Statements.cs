@@ -347,14 +347,16 @@ internal partial class RoslynEmitter
             var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
             _declaredVariables.Add(paramName);
             var baseName = NameMangler.ToCamelCase(param.Name);
-            _variableVersions[baseName] = 0;
+            RegisterLocalSlot(baseName, param.Name);
         }
 
         // Carry forward captured outer variables/parameters so delegate invocations
-        // inside the nested function resolve to the original (camelCase) name
+        // inside the nested function resolve to the original (camelCase) name. The claiming
+        // spelling travels with the version: a carried slot with no owner answers nothing once
+        // the lookup fails closed (#1386).
         foreach (var (k, v) in savedVersions)
         {
-            _variableVersions.TryAdd(k, v);
+            CarryForwardOuterSlot(k, v, savedSlotSpellings.TryGetValue(k, out var owner) ? owner : null);
             _declaredVariables.Add(k);
         }
 
@@ -386,12 +388,7 @@ internal partial class RoslynEmitter
         // Restore enclosing scope state
         _declaredVariables.Clear();
         _declaredVariables.UnionWith(savedDeclaredVars);
-        _variableVersions.Clear();
-        foreach (var (k, v) in savedVersions)
-            _variableVersions[k] = v;
-        _slotSpellings.Clear();
-        foreach (var (k, v) in savedSlotSpellings)
-            _slotSpellings[k] = v;
+        RestoreSlotTable(savedVersions, savedSlotSpellings);
         _constVariables.Clear();
         _constVariables.UnionWith(savedConsts);
         _sourceVariableNames.Clear();

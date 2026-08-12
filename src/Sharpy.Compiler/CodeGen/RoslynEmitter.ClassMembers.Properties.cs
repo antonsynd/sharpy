@@ -187,7 +187,7 @@ internal partial class RoslynEmitter
                 var paramName = NameMangler.Transform(indexParam.Name, NameContext.Parameter);
                 _declaredVariables.Add(paramName);
                 var baseName = NameMangler.ToCamelCase(indexParam.Name);
-                _variableVersions[baseName] = 0;
+                RegisterLocalSlot(baseName, indexParam.Name);
             }
 
             if (isAbstract)
@@ -217,7 +217,7 @@ internal partial class RoslynEmitter
                 var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                 _declaredVariables.Add(paramName);
                 var baseName = NameMangler.ToCamelCase(param.Name);
-                _variableVersions[baseName] = 0;
+                RegisterLocalSlot(baseName, param.Name);
             }
 
             if (isAbstract)
@@ -405,7 +405,7 @@ internal partial class RoslynEmitter
                 var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                 _declaredVariables.Add(paramName);
                 var baseName = NameMangler.ToCamelCase(param.Name);
-                _variableVersions[baseName] = 0;
+                RegisterLocalSlot(baseName, param.Name);
             }
 
             var bodyStatements = GenerateSuite(customGetter.Body);
@@ -433,12 +433,12 @@ internal partial class RoslynEmitter
                 var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                 _declaredVariables.Add(paramName);
                 var baseName = NameMangler.ToCamelCase(param.Name);
-                _variableVersions[baseName] = 0;
+                RegisterLocalSlot(baseName, param.Name);
             }
 
             // C# setter uses implicit 'value' parameter, so track it
             _declaredVariables.Add("value");
-            _variableVersions["value"] = 0;
+            RegisterLocalSlot("value", "value");
 
             var bodyStatements = GenerateSuite(customSetter.Body);
             accessors.Add(WithAccessorAccess(
@@ -538,7 +538,7 @@ internal partial class RoslynEmitter
                 var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                 _declaredVariables.Add(paramName);
                 var baseName = NameMangler.ToCamelCase(param.Name);
-                _variableVersions[baseName] = 0;
+                RegisterLocalSlot(baseName, param.Name);
             }
 
             SyntaxKind accessorKind;
@@ -921,7 +921,7 @@ internal partial class RoslynEmitter
             var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
             _declaredVariables.Add(paramName);
             var baseName = NameMangler.ToCamelCase(param.Name);
-            _variableVersions[baseName] = 0;
+            RegisterLocalSlot(baseName, param.Name);
         }
 
         var funcStylePropSymbol = _currentTypeSymbol?.Properties.FirstOrDefault(p => p.Name == propDef.Name);
@@ -983,7 +983,7 @@ internal partial class RoslynEmitter
                     var paramName = NameMangler.Transform(valueParam.Name, NameContext.Parameter);
                     // C# setter uses implicit 'value' parameter, so remap
                     _declaredVariables.Add("value");
-                    _variableVersions["value"] = 0;
+                    RegisterLocalSlot("value", "value");
                 }
             }
 
@@ -1078,7 +1078,7 @@ internal partial class RoslynEmitter
                     var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
                     _declaredVariables.Add(paramName);
                     var baseName = NameMangler.ToCamelCase(param.Name);
-                    _variableVersions[baseName] = 0;
+                    RegisterLocalSlot(baseName, param.Name);
                 }
 
                 var bodyStatements = GenerateSuite(propDef.Body);

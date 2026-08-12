@@ -674,9 +674,9 @@ internal partial class RoslynEmitter
         var paramName = NameMangler.ToCamelCase(sourceParam.Name);
         var param = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
 
-        _variableVersions[paramName] = 0;
+        RegisterLocalSlot(paramName, sourceParam.Name);
         var body = GenerateSuiteBlock(funcDef.Body);
-        _variableVersions.Remove(paramName);
+        ReleaseLocalSlot(paramName);
 
         var conversionOp = ConversionOperatorDeclaration(keyword, returnType)
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))

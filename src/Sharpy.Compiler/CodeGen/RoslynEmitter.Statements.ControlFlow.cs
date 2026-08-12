@@ -577,7 +577,7 @@ internal partial class RoslynEmitter
             {
                 _declaredVariables.Add(loopVar);
             }
-            _variableVersions[loopVar] = 0;
+            RegisterLocalSlot(loopVar, varName.Name);
 
             // Generate the body - assignments to loopVar will be updates, not declarations
             var body = GenerateSuiteBlock(bodyStatements);
@@ -638,7 +638,7 @@ internal partial class RoslynEmitter
                 {
                     var name = NameMangler.ToCamelCase(id.Name);
                     _declaredVariables.Add(name);
-                    _variableVersions[name] = 0;
+                    RegisterLocalSlot(name, id.Name);
                 }
 
                 // Now generate the body
@@ -1455,36 +1455,20 @@ internal partial class RoslynEmitter
                 {
                     var baseName = NameMangler.ToCamelCase(handler.Name);
 
-                    // Track exception variable in _variableVersions so nested
-                    // catch clauses with the same name get versioned (e, e_1, ...)
-                    // to avoid CS0136 in generated C#.
-                    var hadPrevious = _variableVersions.TryGetValue(baseName, out var previousVersion);
-                    if (hadPrevious)
-                    {
-                        var newVersion = previousVersion + 1;
-                        _variableVersions[baseName] = newVersion;
-                    }
-                    else
-                    {
-                        _variableVersions[baseName] = 0;
-                    }
+                    // Track exception variable in the slot table so nested catch clauses with the
+                    // same name get versioned (e, e_1, ...) to avoid CS0136 in generated C#. The
+                    // binding is scoped to the handler body, so the previous slot state is captured
+                    // and put back verbatim afterwards — spelling included (#1386).
+                    var saved = CaptureSlot(baseName);
+                    var version = saved.Existed ? saved.Version + 1 : 0;
+                    SetSlotVersion(baseName, version, handler.Name);
 
-                    var exceptionVar = hadPrevious
-                        ? $"{baseName}_{_variableVersions[baseName]}"
-                        : baseName;
+                    var exceptionVar = saved.Existed ? $"{baseName}_{version}" : baseName;
 
                     var catchBlock = GenerateSuiteBlock(handler.Body);
                     var declaration = CatchDeclaration(exceptionType, Identifier(exceptionVar));
 
-                    // Restore previous version state after generating the catch body
-                    if (hadPrevious)
-                    {
-                        _variableVersions[baseName] = previousVersion;
-                    }
-                    else
-                    {
-                        _variableVersions.Remove(baseName);
-                    }
+                    RestoreSlot(baseName, saved);
 
                     result.Add(CatchClause(declaration, filterClause, catchBlock));
                 }
@@ -1544,16 +1528,14 @@ internal partial class RoslynEmitter
 
         // Same versioning as the single-type bound handler below: nested catch clauses binding the
         // same name would otherwise collide (CS0136).
-        var hadPrevious = _variableVersions.TryGetValue(baseName, out var previousVersion);
-        _variableVersions[baseName] = hadPrevious ? previousVersion + 1 : 0;
-        var exceptionVar = hadPrevious ? $"{baseName}_{_variableVersions[baseName]}" : baseName;
+        var saved = CaptureSlot(baseName);
+        var version = saved.Existed ? saved.Version + 1 : 0;
+        SetSlotVersion(baseName, version, handler.Name!);
+        var exceptionVar = saved.Existed ? $"{baseName}_{version}" : baseName;
 
         var catchBlock = GenerateSuiteBlock(handler.Body);
 
-        if (hadPrevious)
-            _variableVersions[baseName] = previousVersion;
-        else
-            _variableVersions.Remove(baseName);
+        RestoreSlot(baseName, saved);
 
         var alternationTest = alternatives
             .Select(alternative => (ExpressionSyntax)BinaryExpression(
@@ -1675,19 +1657,11 @@ internal partial class RoslynEmitter
             {
                 var baseName = NameMangler.ToCamelCase(handler.Name);
 
-                var hadPrevious = _variableVersions.TryGetValue(baseName, out var previousVersion);
-                if (hadPrevious)
-                {
-                    _variableVersions[baseName] = previousVersion + 1;
-                }
-                else
-                {
-                    _variableVersions[baseName] = 0;
-                }
+                var saved = CaptureSlot(baseName);
+                var version = saved.Existed ? saved.Version + 1 : 0;
+                SetSlotVersion(baseName, version, handler.Name);
 
-                var asVar = hadPrevious
-                    ? $"{baseName}_{_variableVersions[baseName]}"
-                    : baseName;
+                var asVar = saved.Existed ? $"{baseName}_{version}" : baseName;
 
                 // var eg = new Sharpy.ExceptionGroup("", __matched_N.Cast<System.Exception>().ToList());
                 var castCall = InvocationExpression(
@@ -1719,14 +1693,7 @@ internal partial class RoslynEmitter
                 handlerBodyStatements.AddRange(GenerateSuite(handler.Body));
 
                 // Restore version state
-                if (hadPrevious)
-                {
-                    _variableVersions[baseName] = previousVersion;
-                }
-                else
-                {
-                    _variableVersions.Remove(baseName);
-                }
+                RestoreSlot(baseName, saved);
             }
             else
             {

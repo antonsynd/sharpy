@@ -905,7 +905,7 @@ internal partial class RoslynEmitter
                     _declaredVariables.Add(paramName);
                 }
                 var baseName = NameMangler.ToCamelCase(param.Name);
-                _variableVersions[baseName] = 0;
+                RegisterLocalSlot(baseName, param.Name);
             }
 
             // Track fixture-injected names as declared variables to avoid versioning collisions.
@@ -913,7 +913,7 @@ internal partial class RoslynEmitter
             {
                 var localName = NameMangler.ToCamelCase(parameter.Name);
                 _declaredVariables.Add(localName);
-                _variableVersions[localName] = 0;
+                RegisterLocalSlot(localName, parameter.Name);
             }
 
             var preamble = GenerateLateBoundPreamble(paramsExcludingFixtures);
