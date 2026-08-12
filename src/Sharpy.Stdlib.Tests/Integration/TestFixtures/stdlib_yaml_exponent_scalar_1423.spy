@@ -1,13 +1,12 @@
-# Oracle guard for #1423: YAML 1.1 requires a '.' in the plain-float form, so PyYAML types
-# "1e-7" as the STRING '1e-7'; Sharpy's YamlScalarResolver is more permissive and returns the
-# float 1e-07. This fixture pins Sharpy's CURRENT (divergent) behavior so the differential
-# oracle guards the divergence live — its allowlist entry cites #1423 and drains when it lands,
-# at which point the expected output becomes "1e-7" / 4 (the string, unchanged by load).
+# Regression pin for #1423: YAML 1.1 requires a '.' in the plain-float form, so "1e-7" is the
+# STRING '1e-7'. Sharpy's YamlScalarResolver used to defer to double.TryParse, which is far more
+# permissive than YAML, and returned the float 1e-07.
 #
-# The LENGTH line is what makes the divergence oracle-visible at all: printed bare, the two
-# arms show `1e-07` vs `1e-7`, which the oracle's float-tolerant OutputComparer deliberately
-# treats as equal formatting of the same number. A type divergence that prints as an equal
-# number is invisible to a stdout oracle — the string's length is not.
+# The LENGTH line is what makes this checkable by a stdout oracle at all: printed bare, the two
+# arms showed `1e-07` vs `1e-7`, which the differential oracle's float-tolerant OutputComparer
+# deliberately treats as equal formatting of the same number. A type divergence that prints as an
+# equal number is invisible to a value comparison — the string's length is not. Keep the length
+# line even though the values now agree; it is what would catch a regression back to float.
 import yaml
 
 def main():

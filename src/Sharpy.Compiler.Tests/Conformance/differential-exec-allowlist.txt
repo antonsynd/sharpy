@@ -124,12 +124,3 @@ fixture::stdlib-tests/stdlib_yaml_ambiguous_scalar_dump_1417
 # #1348 (the oracle re-finding a filed bug is the system working; #1426 closed as its dup).
 # #1348. Delete when it lands; stdlib_yaml's .expected gains the markers if parity is ruled.
 fixture::stdlib-tests/stdlib_yaml
-
-# safe_load types the dotless exponent form "1e-7" as a float where PyYAML — following
-# YAML 1.1's requirement of a '.' in plain floats — returns the STRING '1e-7'. Printed bare,
-# the two spellings (`1e-07` vs `1e-7`) are deliberately equal to the oracle's float-tolerant
-# OutputComparer, which is why an earlier form of this fixture "matched": a type divergence
-# that prints as an equal number is invisible to a stdout oracle. The fixture therefore also
-# prints len(str(v)) — 5 vs 4 — which no numeric tolerance can absorb.
-# #1423. Delete when it lands; the fixture's .expected becomes "1e-7" / 4 then.
-fixture::stdlib-tests/stdlib_yaml_exponent_scalar_1423

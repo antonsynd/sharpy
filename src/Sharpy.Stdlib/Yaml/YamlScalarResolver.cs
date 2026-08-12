@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Sharpy
 {
@@ -84,25 +85,39 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Whether <paramref name="value"/> has the shape of a YAML float: at least one digit, and
-        /// only characters a float spelling may contain. Keeps <c>double.TryParse</c> from claiming
-        /// strings it would accept but YAML would not call numbers.
+        /// YAML 1.1's float production, minus the families deferred to #1465 (underscore digit
+        /// separators and the sexagesimal form). Written as the spec's own regex rather than as a
+        /// character scan, because every previous attempt to paraphrase it got a boundary wrong.
+        ///
+        /// <para>Spec (yaml.org/type/float.html), the two arms that apply here:</para>
+        /// <code>
+        ///   [-+]?([0-9][0-9_]*)\.[0-9_]*([eE][-+][0-9]+)?     # digits, then a REQUIRED dot
+        ///   |\.[0-9_]+([eE][-+][0-9]+)?                        # leading dot, NO sign permitted
+        /// </code>
+        ///
+        /// <para>Three boundaries a paraphrase reliably loses, all measured against PyYAML 6.0.3
+        /// (#1423):</para>
+        /// <list type="bullet">
+        /// <item><description>The mantissa's <b>dot is mandatory</b>: <c>1e-7</c> is a STRING, which
+        /// is the defect this rule exists to fix — <c>double.TryParse</c> happily claimed it.</description></item>
+        /// <item><description>The exponent's <b>sign is mandatory</b>: <c>1.0e7</c> and <c>1.5E3</c>
+        /// are strings; only <c>1.0e+7</c> / <c>1.0e-7</c> are floats.</description></item>
+        /// <item><description>The leading-dot arm <b>admits no sign</b>: <c>.5</c> is a float but
+        /// <c>+.5</c> and <c>-.5</c> are strings.</description></item>
+        /// </list>
+        ///
+        /// <para><c>.inf</c>/<c>.nan</c> are handled by their own arms in <see cref="Resolve"/>
+        /// before this is reached.</para>
         /// </summary>
-        private static bool LooksLikeFloat(string value)
-        {
-            bool hasDigit = false;
-            foreach (char c in value)
-            {
-                if (c >= '0' && c <= '9')
-                {
-                    hasDigit = true;
-                }
-                else if (c != '.' && c != 'e' && c != 'E' && c != '+' && c != '-')
-                {
-                    return false;
-                }
-            }
-            return hasDigit && (value.IndexOf('.') >= 0 || value.IndexOf('e') >= 0 || value.IndexOf('E') >= 0);
-        }
+        private static readonly Regex Yaml11Float = new Regex(
+            @"^(?:[-+]?[0-9]+\.[0-9]*(?:[eE][-+][0-9]+)?|\.[0-9]+(?:[eE][-+][0-9]+)?)$",
+            RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Whether <paramref name="value"/> is spelled as a YAML 1.1 float. Keeps
+        /// <c>double.TryParse</c> — which is far more permissive than YAML — from claiming strings
+        /// YAML does not call numbers.
+        /// </summary>
+        private static bool LooksLikeFloat(string value) => Yaml11Float.IsMatch(value);
     }
 }
