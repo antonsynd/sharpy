@@ -1,0 +1,18 @@
+# The completed member walk (#1385) reads properties from the AST, where a split
+# `property get`/`property set` pair is TWO PropertyDef nodes for ONE C# property. Without the
+# same-name guard the walk would refuse this as a self-collision, so it is pinned as a control.
+class Widget:
+    _n: int = 5
+
+    property get value(self) -> int:
+        return self._n
+
+    property set value(self, value: int):
+        self._n = value
+
+
+def main() -> None:
+    w: Widget = Widget()
+    print(w.value)
+    w.value = 9
+    print(w.value)

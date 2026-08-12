@@ -1,0 +1,12 @@
+# Member-space grid, event-vs-method cell (#1385).
+delegate Handler() -> None
+
+class Bus:
+    event click: Handler
+
+    def Click(self) -> int:
+        return 1
+
+
+def main() -> None:
+    print("unreachable")

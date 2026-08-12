@@ -1,0 +1,11 @@
+# The cell that pins WHICH naming rule the enum walk uses (#1385). An int-backed enum names its
+# members through ToEnumMemberName, which lowercases everything after the first letter, so
+# `darkBlue` and `Darkblue` both become `Darkblue`. Under a string enum's ToConstantCase they stay
+# distinct — see no_collision_enum_member_string_only, the same source with string values.
+enum Color:
+    darkBlue = 1
+    Darkblue = 2
+
+
+def main() -> None:
+    print("unreachable")

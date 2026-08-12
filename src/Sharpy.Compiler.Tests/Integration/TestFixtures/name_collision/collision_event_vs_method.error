@@ -1,0 +1,2 @@
+Name collision: 'click' and 'Click' (line 7) both compile to 'Click'
+Rename one, or backtick-escape the name you need to keep.

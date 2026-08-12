@@ -1,0 +1,12 @@
+# The other half of collision_enum_member_int_only: the identical member names on a STRING-backed
+# enum, which lowers to singleton fields named through ToConstantCase. That rule passes CamelCase
+# through unchanged, so `darkBlue` and `Darkblue` are two distinct C# members and the walk must
+# stay quiet. Keying the enum walk on the int rule would refuse this program.
+enum Color:
+    darkBlue = "a"
+    Darkblue = "b"
+
+
+def main() -> None:
+    print(Color.darkBlue.value)
+    print(Color.Darkblue.value)

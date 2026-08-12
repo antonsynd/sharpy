@@ -1,0 +1,11 @@
+# Member-space grid, property-vs-method cell (#1385). `property count` and `def Count` both
+# mangle to `Count`, which is one C# member name for two declarations.
+class Widget:
+    property count: int = 1
+
+    def Count(self) -> int:
+        return 2
+
+
+def main() -> None:
+    print("unreachable")

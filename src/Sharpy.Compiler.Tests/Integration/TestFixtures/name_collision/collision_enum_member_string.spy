@@ -1,0 +1,11 @@
+# The same enum cell for a STRING-backed enum, which lowers to a class of singleton fields named
+# through NameContext.Constant rather than to a C# enum (#1284). The naming rule differs, so the
+# check has to pick the same one emission does — `red`/`Red` collide under both, and `low`/`LOW`
+# (no_collision_enum_member_string) collides under neither.
+enum Color:
+    red = "red"
+    Red = "RED"
+
+
+def main() -> None:
+    print("unreachable")

@@ -1,0 +1,11 @@
+# Member-space grid, nested-type cell (#1385). A nested class occupies the same C# member
+# namespace as a field, so `count` and `class Count` collide there too.
+class Outer:
+    count: int = 0
+
+    class Count:
+        pass
+
+
+def main() -> None:
+    print("unreachable")

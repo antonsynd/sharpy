@@ -1,0 +1,17 @@
+# Member-space positive control for #1385: a class carrying a field, two properties and a method
+# whose mangled names are all distinct must keep compiling. The completed collision walk converts
+# silent ICEs into refusals, so the failure mode to guard against is refusing this.
+class Widget:
+    _n: int = 5
+    property count: int = 1
+    property name: str = "a"
+
+    def total(self) -> int:
+        return self._n
+
+
+def main() -> None:
+    w: Widget = Widget()
+    print(w.count)
+    print(w.name)
+    print(w.total())

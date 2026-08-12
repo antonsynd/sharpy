@@ -1,0 +1,10 @@
+# Member-space grid, property cell (#1385). A field `Count` and a property `count` both become
+# the C# member `Count` on the same class, so the pair is refused at binding (SPY0522) instead of
+# reaching Roslyn as CS0102/CS0229 behind SPY0908.
+class Widget:
+    Count: int = 0
+    property count: int = 1
+
+
+def main() -> None:
+    print("unreachable")

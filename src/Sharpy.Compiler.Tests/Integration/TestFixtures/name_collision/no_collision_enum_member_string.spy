@@ -1,0 +1,11 @@
+# Positive control for the string-enum arm: ToConstantCase preserves SCREAMING_SNAKE_CASE and
+# title-cases a lowercase word, so `low` becomes `Low` and `LOW` stays `LOW` — two distinct C#
+# members. The enum walk must stay quiet here.
+enum Level:
+    low = "low"
+    LOW = "LOW"
+
+
+def main() -> None:
+    print(Level.low.value)
+    print(Level.LOW.value)

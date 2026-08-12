@@ -1,0 +1,30 @@
+# The event twin of no_collision_property_split_accessors: an `event add`/`event remove` pair is
+# two EventDef nodes for one C# event, and the member walk must not read them as a collision.
+delegate Handler() -> None
+
+
+class Bus:
+    _handlers: list[Handler] = []
+
+    event add on_ping(self, handler: Handler):
+        self._handlers.append(handler)
+
+    event remove on_ping(self, handler: Handler):
+        self._handlers.remove(handler)
+
+    def fire(self) -> None:
+        for h in self._handlers:
+            h.invoke()
+
+
+def ping() -> None:
+    print("ping")
+
+
+def main() -> None:
+    b: Bus = Bus()
+    b.on_ping += ping
+    b.fire()
+    b.on_ping -= ping
+    b.fire()
+    print("done")

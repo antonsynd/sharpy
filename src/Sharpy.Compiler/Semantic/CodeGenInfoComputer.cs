@@ -307,6 +307,8 @@ internal class CodeGenInfoComputer
 
             // Enum members keep their exact names - no CodeGenInfo needed
             // as they are emitted as-is in C#
+
+            DetectEnumMemberCollisions(enumDef, isStringEnum);
         }
     }
 
@@ -386,7 +388,72 @@ internal class CodeGenInfoComputer
     };
 
     /// <summary>
-    /// Detects name collisions among members of a type (fields + methods) after mangling.
+    /// Every member a type contributes to the generated C# type's single member namespace, paired
+    /// with the C# name it compiles to. One enumeration rather than a walk per kind: a member kind
+    /// missing here is a CS0102 the user only ever sees as SPY0908, which is exactly how properties,
+    /// events and nested types escaped the check (#1385).
+    ///
+    /// <para>Two sources, because neither alone is complete. Fields and methods come from the
+    /// symbol table — the only source that also holds implicitly declared fields (<c>self.x = ...</c>
+    /// in <c>__init__</c>, dataclass fields), which have no statement in <paramref name="body"/>.
+    /// Properties, events and nested types come from the AST: <see cref="PropertySymbol"/> and
+    /// <see cref="EventSymbol"/> are standalone records carrying neither an escape flag nor a
+    /// <c>CodeGenInfo</c>, and emission derives their C# names from the AST node itself
+    /// (<c>NameCasing.ResolveMethod(def.Name, def.IsNameBacktickEscaped)</c> — see
+    /// <c>RoslynEmitter.ClassMembers.Properties.cs</c> and <c>.Events.cs</c>), so the check reads
+    /// the same source it has to agree with.</para>
+    ///
+    /// <para>The same Sharpy name may be yielded more than once — method overloads, a split
+    /// <c>property get</c>/<c>property set</c> pair, an <c>event add</c>/<c>event remove</c> pair —
+    /// because those intentionally compile to one C# member. Callers dedupe on the original name.</para>
+    /// </summary>
+    private IEnumerable<(string OriginalName, string CSharpName)> EnumerateMemberNames(
+        TypeSymbol typeSymbol, IEnumerable<Statement> body)
+    {
+        foreach (var symbol in typeSymbol.Fields.Cast<Symbol>().Concat(typeSymbol.Methods))
+        {
+            var info = _semanticBinding.GetCodeGenInfo(symbol);
+            if (info != null)
+                yield return (symbol.Name, info.CSharpName);
+        }
+
+        foreach (var stmt in body)
+        {
+            switch (stmt.UnwrapDecorated())
+            {
+                case PropertyDef propDef:
+                    yield return (propDef.Name,
+                        NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped));
+                    break;
+                case EventDef eventDef:
+                    yield return (eventDef.Name,
+                        NameCasing.ResolveMethod(eventDef.Name, eventDef.IsNameBacktickEscaped));
+                    break;
+                // Nested types occupy the same member namespace as fields and methods.
+                // TypeAlias is deliberately absent: it is compile-time only and emits nothing.
+                case ClassDef nestedClass:
+                    yield return (nestedClass.Name,
+                        NameCasing.ResolveType(nestedClass.Name, nestedClass.IsNameBacktickEscaped));
+                    break;
+                case StructDef nestedStruct:
+                    yield return (nestedStruct.Name,
+                        NameCasing.ResolveType(nestedStruct.Name, nestedStruct.IsNameBacktickEscaped));
+                    break;
+                case EnumDef nestedEnum:
+                    yield return (nestedEnum.Name,
+                        NameCasing.ResolveType(nestedEnum.Name, nestedEnum.IsNameBacktickEscaped));
+                    break;
+                case InterfaceDef nestedInterface:
+                    yield return (nestedInterface.Name,
+                        NameCasing.ResolveInterface(nestedInterface.Name, nestedInterface.IsNameBacktickEscaped));
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Detects name collisions among the members of a type after mangling — fields, methods,
+    /// properties, events and nested types, plus the type's own type parameters.
     /// </summary>
     private void DetectMemberCollisions(TypeSymbol typeSymbol, IEnumerable<Statement> body)
     {
@@ -400,29 +467,29 @@ internal class CodeGenInfoComputer
             seen[CSharpKeywords.EscapeIfNeeded(tp.Name)] = (tp.Name, tp.LineStart > 0 ? tp.LineStart : null);
         }
 
-        // TODO(#1385): properties, events, and enum members are not in this walk, so a case
-        // collision among them reaches the emitter and comes out as CS0102.
-        foreach (var symbol in typeSymbol.Fields.Cast<Symbol>().Concat(typeSymbol.Methods))
+        foreach (var (originalName, csharpName) in EnumerateMemberNames(typeSymbol, body))
         {
-            var info = _semanticBinding.GetCodeGenInfo(symbol);
-            if (info == null)
-                continue;
+            var line = FindMemberLine(body, originalName);
 
-            var line = FindMemberLine(body, symbol.Name);
-
-            if (seen.TryGetValue(info.CSharpName, out var existing))
+            if (seen.TryGetValue(csharpName, out var existing))
             {
+                // One Sharpy name declared more than once — overloads, a split get/set property,
+                // an add/remove event pair — intentionally compiles to a single C# member.
+                // Mirrors the module-level arm's overload guard.
+                if (string.Equals(originalName, existing.originalName, StringComparison.Ordinal))
+                    continue;
+
                 var firstPos = existing.line.HasValue ? $" (line {existing.line})" : "";
                 _diagnostics.AddError(
-                    $"Name collision: '{symbol.Name}' and '{existing.originalName}'{firstPos} both compile to " +
-                    $"'{info.CSharpName}'. Rename one, or backtick-escape the name you need to keep.",
+                    $"Name collision: '{originalName}' and '{existing.originalName}'{firstPos} both compile to " +
+                    $"'{csharpName}'. Rename one, or backtick-escape the name you need to keep.",
                     line: line,
                     code: DiagnosticCodes.CodeGen.MemberNameCollision,
                     phase: CompilerPhase.CodeGeneration);
             }
             else
             {
-                seen[info.CSharpName] = (symbol.Name, line);
+                seen[csharpName] = (originalName, line);
             }
         }
 
@@ -439,27 +506,76 @@ internal class CodeGenInfoComputer
 
         if (hasNext)
         {
-            foreach (var symbol in typeSymbol.Fields.Cast<Symbol>().Concat(typeSymbol.Methods))
+            var reported = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var (originalName, csharpName) in EnumerateMemberNames(typeSymbol, body))
             {
                 // Skip __next__ and __iter__ — they are part of the iterator protocol, not collisions
-                if (symbol.Name == DunderNames.Next || symbol.Name == DunderNames.Iter)
+                if (originalName == DunderNames.Next || originalName == DunderNames.Iter)
                     continue;
 
-                var info = _semanticBinding.GetCodeGenInfo(symbol);
-                if (info == null)
-                    continue;
-
-                if (IteratorProtocolReservedNames.Contains(info.CSharpName))
+                if (IteratorProtocolReservedNames.Contains(csharpName) && reported.Add(originalName))
                 {
-                    var line = FindMemberLine(body, symbol.Name);
+                    var line = FindMemberLine(body, originalName);
                     _diagnostics.AddError(
-                        $"Name collision: '{symbol.Name}' compiles to '{info.CSharpName}', " +
+                        $"Name collision: '{originalName}' compiles to '{csharpName}', " +
                         $"which conflicts with a synthesized iterator protocol member. " +
                         $"Rename the member to avoid the collision.",
                         line: line,
                         code: DiagnosticCodes.CodeGen.MemberNameCollision,
                         phase: CompilerPhase.CodeGeneration);
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// The C# name an enum member compiles to. Two spellings, because an enum lowers two ways:
+    /// an int-backed enum is a real C# enum whose members go through
+    /// <see cref="NameMangler.ToEnumMemberName"/> (<c>GenerateEnumMember</c>), while a string-backed
+    /// enum is a class of singleton fields written through <c>NameContext.Constant</c>
+    /// (<c>GenerateStringEnumClass</c>, #1284). Keying the collision walk on the wrong one would
+    /// make the check disagree with emission — <c>low</c>/<c>LOW</c> collide under one rule and not
+    /// the other.
+    /// </summary>
+    private static string EnumMemberCSharpName(string memberName, bool isStringEnum)
+        => isStringEnum
+            ? NameMangler.ToConstantCase(memberName)
+            : NameMangler.ToEnumMemberName(memberName);
+
+    /// <summary>
+    /// Detects name collisions among an enum's members after mangling. Enums have their own walk
+    /// because their members are not symbols and their naming rule is neither a field's nor a
+    /// method's (#1385).
+    /// </summary>
+    private void DetectEnumMemberCollisions(EnumDef enumDef, bool isStringEnum)
+    {
+        var seen = new Dictionary<string, (string originalName, int? line)>(); // CSharpName → (originalName, line)
+
+        foreach (var member in enumDef.Members)
+        {
+            var csharpName = EnumMemberCSharpName(member.Name, isStringEnum);
+            var line = member.LineStart > 0 ? member.LineStart : (int?)null;
+
+            if (seen.TryGetValue(csharpName, out var existing))
+            {
+                // A member spelled identically twice is a duplicate declaration, not a mangling
+                // collision — leave that to the declaration checks so it is reported once.
+                if (string.Equals(member.Name, existing.originalName, StringComparison.Ordinal))
+                    continue;
+
+                var firstPos = existing.line.HasValue ? $" (line {existing.line})" : "";
+                // No backtick remedy here: EnumMember carries no escape flag, so renaming is the
+                // only fix available to the user.
+                _diagnostics.AddError(
+                    $"Name collision: enum members '{member.Name}' and '{existing.originalName}'{firstPos} " +
+                    $"both compile to '{csharpName}'. Rename one.",
+                    line: line,
+                    code: DiagnosticCodes.CodeGen.MemberNameCollision,
+                    phase: CompilerPhase.CodeGeneration);
+            }
+            else
+            {
+                seen[csharpName] = (member.Name, line);
             }
         }
     }
@@ -593,18 +709,32 @@ internal class CodeGenInfoComputer
     }
 
     /// <summary>
-    /// Finds the line number for a member declaration in the type body.
+    /// Finds the line number for a member declaration in the type body. Covers every kind
+    /// <see cref="EnumerateMemberNames"/> yields — a kind missing here reports the collision with
+    /// no position at all.
     /// </summary>
     private static int? FindMemberLine(IEnumerable<Statement> body, string memberName)
     {
         foreach (var stmt in body)
         {
-            switch (stmt)
+            switch (stmt.UnwrapDecorated())
             {
                 case VariableDeclaration v when v.Name == memberName:
                     return v.LineStart;
                 case FunctionDef f when f.Name == memberName:
                     return f.LineStart;
+                case PropertyDef p when p.Name == memberName:
+                    return p.LineStart;
+                case EventDef e when e.Name == memberName:
+                    return e.LineStart;
+                case ClassDef c when c.Name == memberName:
+                    return c.LineStart;
+                case StructDef s when s.Name == memberName:
+                    return s.LineStart;
+                case EnumDef en when en.Name == memberName:
+                    return en.LineStart;
+                case InterfaceDef i when i.Name == memberName:
+                    return i.LineStart;
             }
         }
         return null;

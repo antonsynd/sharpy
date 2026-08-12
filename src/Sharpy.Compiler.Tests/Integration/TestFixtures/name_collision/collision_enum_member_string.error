@@ -1,0 +1,1 @@
+Name collision: enum members 'Red' and 'red' (line 6) both compile to 'Red'. Rename one.

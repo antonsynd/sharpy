@@ -1,0 +1,10 @@
+# Enum-member cell of #1385's collision space. An int-backed enum is a real C# enum whose members
+# go through NameMangler.ToEnumMemberName, so `red` and `Red` both become `Red`. ProcessEnumDef
+# ran no collision check at all before this, so the pair reached Roslyn as CS0102 behind SPY0908.
+enum Color:
+    red = 1
+    Red = 2
+
+
+def main() -> None:
+    print("unreachable")

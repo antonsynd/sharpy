@@ -1,0 +1,12 @@
+# Member-space grid, event cell (#1385). The event arm was the one shape the issue left
+# UNMEASURED; it behaves exactly like the property cell — `event click` and the field `Click`
+# both compile to the C# member `Click`.
+delegate Handler() -> None
+
+class Bus:
+    Click: int = 0
+    event click: Handler
+
+
+def main() -> None:
+    print("unreachable")

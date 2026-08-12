@@ -1,0 +1,2 @@
+Name collision: 'Count' and 'count' (line 4) both compile to 'Count'
+Rename one, or backtick-escape the name you need to keep.
