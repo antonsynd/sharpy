@@ -5,10 +5,10 @@
 # Float precision is included because #1339 fixed it — safe_load used to take a single-precision
 # detour, so 0.1 came back as 0.10000000149011612 and this fixture could not have existed.
 #
-# NOT pinned here, because it is broken: a string whose text is a YAML scalar of another type
-# ("true", "42", "null", "1.5") is dumped BARE, so it round-trips to a bool/int/null/float instead
-# of a str (#1417). PyYAML quotes all four. Add those cells here when that lands, rather than
-# starting a second fixture.
+# The ambiguous-string cells are pinned below, added when #1417 landed as its header promised: a
+# string whose text is a YAML scalar of another type ("true", "42", "null", "1.5") used to dump
+# BARE and round-trip to a bool/int/null/float instead of a str. They are the cells that make this
+# fixture say something about the two halves AGREEING rather than merely both running.
 #
 # Every value verified against PyYAML on CPython 3.12: each round-trip below is an identity there.
 import yaml
@@ -35,3 +35,8 @@ def main():
 
     fa: bool = yaml.safe_load(yaml.safe_dump(False)) as! bool
     print(fa == False)
+
+    # #1417's cells: each of these is a STRING whose text another YAML type would claim.
+    for amb in ["true", "42", "null", "1.5"]:
+        back: str = yaml.safe_load(yaml.safe_dump(amb)) as! str
+        print(back == amb)

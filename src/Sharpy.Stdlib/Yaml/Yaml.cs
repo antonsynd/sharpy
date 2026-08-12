@@ -215,6 +215,10 @@ namespace Sharpy
             // Unconditional: float spelling is not a style choice (#1229).
             builder = builder.WithTypeConverter(new YamlFloatTypeConverter());
 
+            // Unconditional for the same reason: whether a string needs quotes is not a style
+            // choice either — it is whether the text would read back as something else (#1417).
+            builder = builder.WithTypeConverter(new YamlAmbiguousStringTypeConverter());
+
             if (defaultFlowStyle)
             {
                 builder = builder.WithEventEmitter(next => new FlowStyleEventEmitter(next));
@@ -385,6 +389,63 @@ namespace Sharpy
             // Plain style: every spelling this produces (1.0, 1.0e+20, .inf, .nan) is a valid plain
             // YAML scalar that reloads as a float, so quoting would break the round-trip.
             emitter.Emit(new Scalar(AnchorName.Empty, TagName.Empty, text, ScalarStyle.Plain, true, false));
+        }
+    }
+
+    /// <summary>
+    /// Quotes a string whose text would read back as something other than a string (#1417).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>safe_dump("true")</c> emitted the bare scalar <c>true</c>, which <c>safe_load</c> then
+    /// read as the BOOLEAN — silent type corruption across a serialization boundary, and the
+    /// round trip <c>safe_load(safe_dump(x)) == x</c> that PyYAML holds did not hold here. The same
+    /// went for <c>"42"</c>, <c>"1.5"</c>, <c>"null"</c> and every other text the implicit resolver
+    /// claims.
+    /// </para>
+    /// <para>
+    /// The rule is PyYAML's: quote a plain scalar exactly when the implicit resolver would give it
+    /// a non-<c>str</c> tag. It is asked of <see cref="YamlScalarResolver"/> — the same authority
+    /// <c>safe_load</c> and <c>roundtrip_load</c> resolve through — so the two directions cannot
+    /// disagree by construction. A rule spelled twice is a rule that will disagree with itself
+    /// (#1145); this is the third consumer of that one spelling, not a fourth copy of it.
+    /// </para>
+    /// <para>
+    /// Scope, stated because it is narrower than it looks: this makes dump agree with Sharpy's
+    /// LOAD, not with PyYAML's. Sharpy's resolver implements a strict subset of YAML 1.1 — it
+    /// types <c>yes</c>, <c>0x1A</c>, <c>1_000</c>, <c>12:30</c> and <c>2024-01-01</c> as strings
+    /// where PyYAML types them bool/int/int/int/date and therefore quotes them. Those stay bare
+    /// here, tracked as #1465. Everything the resolver DOES claim is quoted.
+    /// </para>
+    /// <para>
+    /// A type converter rather than a <c>ChainedEventEmitter</c>, for the reason recorded on
+    /// <see cref="YamlFloatTypeConverter"/>: an emitter that sets <c>RenderedValue</c> is
+    /// overwritten by the built-in type-assigning emitter further down the chain. Registered on the
+    /// SERIALIZER only, so reading is untouched.
+    /// </para>
+    /// </remarks>
+    internal sealed class YamlAmbiguousStringTypeConverter : IYamlTypeConverter
+    {
+        /// <inheritdoc />
+        public bool Accepts(Type type) => type == typeof(string);
+
+        /// <inheritdoc />
+        public object? ReadYaml(IParser parser, Type type, ObjectDeserializer rootDeserializer)
+            => throw new NotSupportedException(
+                "YamlAmbiguousStringTypeConverter is registered on the serializer only; parsing strings stays with the deserializer.");
+
+        /// <inheritdoc />
+        public void WriteYaml(IEmitter emitter, object? value, Type type, ObjectSerializer serializer)
+        {
+            string text = value as string ?? string.Empty;
+
+            // Single-quoted is PyYAML's choice for this case, and it is the weakest quoting that
+            // does the job: it suppresses resolution without introducing escape processing.
+            ScalarStyle style = YamlScalarResolver.Resolve(text) is string
+                ? ScalarStyle.Any
+                : ScalarStyle.SingleQuoted;
+
+            emitter.Emit(new Scalar(AnchorName.Empty, TagName.Empty, text, style, true, false));
         }
     }
 

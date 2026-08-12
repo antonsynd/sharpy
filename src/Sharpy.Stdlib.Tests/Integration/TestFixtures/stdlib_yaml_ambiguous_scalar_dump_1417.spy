@@ -1,9 +1,18 @@
-# Oracle guard for #1417: a string whose text is a YAML scalar of another type must be QUOTED
-# on dump or it changes type on the way back in. PyYAML emits 'true' / '42'; Sharpy emits them
-# bare. This fixture pins Sharpy's CURRENT (divergent) behavior so the differential oracle
-# guards the divergence live — its allowlist entry cites #1417 and drains when it lands, at
-# which point the expected output gains the quotes. The round-trip corruption itself is pinned
-# (by absence) in stdlib_yaml_round_trip.spy's header.
+# Regression pin for #1417: a string whose text is a YAML scalar of another type must be QUOTED
+# on dump, or it changes type on the way back in. `safe_dump("true")` emitted the bare scalar
+# `true`, which `safe_load` then read as the BOOLEAN — silent type corruption across a
+# serialization boundary. PyYAML quotes all of these, and now so does Sharpy.
+#
+# The rule is asked of YamlScalarResolver, the same authority safe_load resolves through, so the
+# two directions cannot disagree by construction.
+#
+# The obvious control — that `hello` stays BARE, gaining nothing — cannot live in this fixture
+# until #1348 lands. This fixture is compared against CPython by the differential oracle, and
+# PyYAML terminates a PLAIN scalar document with the `...` marker that Sharpy does not yet emit:
+# CPython prints `hello\n...` where Sharpy prints `hello`, so the control would fail here on
+# #1348's account rather than this one's. It lives in stdlib_yaml_round_trip instead, which
+# compares loaded VALUES and is therefore immune to document-marker differences. Move it here
+# once #1348 lands and both arms agree.
 import yaml
 
 def main():
