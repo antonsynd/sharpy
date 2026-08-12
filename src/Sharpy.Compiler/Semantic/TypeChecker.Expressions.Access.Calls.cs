@@ -707,6 +707,28 @@ internal partial class TypeChecker
         }
 
         // Walk the inheritance chain to find the target as a supertype (#1308)
+        //
+        // TODO(#1412): this walk has no erasable-collection check, and #912's erasure decision is
+        // only kept intact by the fact that nothing can reach it. The hazard would be a scrutinee
+        // whose SUPERTYPE is an erasable collection: it would fill through inheritance where the
+        // pre-#1308 code erased. The cell that would show it — `class MyList[T](list[T])` with a
+        // `MyList[int]` scrutinee against `case list():` — cannot be written, because SPY0325 makes
+        // a Sharpy class hand-implement the entire IList/IDeepCopyable surface to declare that base,
+        // and the CLR-backed spellings are refused earlier by the pattern-compatibility check. For
+        // the pattern to be compatible at all the scrutinee must already BE a list, which the
+        // identity match above claims before the walk is reached.
+        //
+        // The trigger that makes this live: anything letting a Sharpy class declare an erasable
+        // collection as its base — a synthesized or inherited IList implementation, or relaxing
+        // SPY0325 for builtin-collection bases. If that lands, add a BuiltinNames.IsErasableCollection
+        // check here (the shape the boolean type-test sites use in ClassifyBareTypeNameOperand and
+        // in the annotation operand path, both of which erase BEFORE the fill and are unaffected —
+        // only this pattern site reaches the fill with an erasable target) and pin the
+        // `MyList[int]` vs `case list():` cell at the same time.
+        //
+        // No guard is written now on purpose: it would be unreachable code that no test can
+        // exercise and no mutation can prove, which is worse than the coupling it documents
+        // (Batch E's measured rationale). #1412 stays open as the tripwire.
         foreach (var supertype in GenericInstantiationWalker.EnumerateSupertypes(
             generic, _symbolTable, SemanticBinding, _typeResolver))
         {
