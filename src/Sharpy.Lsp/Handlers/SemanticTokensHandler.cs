@@ -230,7 +230,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 PushNameToken(tokens, v.NameLineStart, v.NameColumnStart, v.Name.Length, TVariable, varMods);
                 CollectDecorators(v.Decorators, tokens);
                 if (v.InitialValue != null)
-                    CollectExpressionTokens(v.InitialValue, tokens, parameterNames);
+                    CollectExpressionTokens(v.InitialValue, tokens, parameterNames, semanticQuery);
                 break;
 
             case PropertyDef p:
@@ -249,75 +249,75 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case IfStatement ifStmt:
-                CollectExpressionTokens(ifStmt.Test, tokens, parameterNames);
-                CollectStatementList(ifStmt.ThenBody, tokens, parameterNames);
+                CollectExpressionTokens(ifStmt.Test, tokens, parameterNames, semanticQuery);
+                CollectStatementList(ifStmt.ThenBody, tokens, parameterNames, semanticQuery);
                 foreach (var elif in ifStmt.ElifClauses)
                 {
-                    CollectExpressionTokens(elif.Test, tokens, parameterNames);
-                    CollectStatementList(elif.Body, tokens, parameterNames);
+                    CollectExpressionTokens(elif.Test, tokens, parameterNames, semanticQuery);
+                    CollectStatementList(elif.Body, tokens, parameterNames, semanticQuery);
                 }
-                CollectStatementList(ifStmt.ElseBody, tokens, parameterNames);
+                CollectStatementList(ifStmt.ElseBody, tokens, parameterNames, semanticQuery);
                 break;
 
             case ForStatement forStmt:
-                CollectExpressionTokens(forStmt.Iterator, tokens, parameterNames);
-                CollectStatementList(forStmt.Body, tokens, parameterNames);
-                CollectStatementList(forStmt.ElseBody, tokens, parameterNames);
+                CollectExpressionTokens(forStmt.Iterator, tokens, parameterNames, semanticQuery);
+                CollectStatementList(forStmt.Body, tokens, parameterNames, semanticQuery);
+                CollectStatementList(forStmt.ElseBody, tokens, parameterNames, semanticQuery);
                 break;
 
             case WhileStatement whileStmt:
-                CollectExpressionTokens(whileStmt.Test, tokens, parameterNames);
-                CollectStatementList(whileStmt.Body, tokens, parameterNames);
-                CollectStatementList(whileStmt.ElseBody, tokens, parameterNames);
+                CollectExpressionTokens(whileStmt.Test, tokens, parameterNames, semanticQuery);
+                CollectStatementList(whileStmt.Body, tokens, parameterNames, semanticQuery);
+                CollectStatementList(whileStmt.ElseBody, tokens, parameterNames, semanticQuery);
                 break;
 
             case TryStatement tryStmt:
-                CollectStatementList(tryStmt.Body, tokens, parameterNames);
+                CollectStatementList(tryStmt.Body, tokens, parameterNames, semanticQuery);
                 foreach (var handler in tryStmt.Handlers)
-                    CollectStatementList(handler.Body, tokens, parameterNames);
-                CollectStatementList(tryStmt.ElseBody, tokens, parameterNames);
-                CollectStatementList(tryStmt.FinallyBody, tokens, parameterNames);
+                    CollectStatementList(handler.Body, tokens, parameterNames, semanticQuery);
+                CollectStatementList(tryStmt.ElseBody, tokens, parameterNames, semanticQuery);
+                CollectStatementList(tryStmt.FinallyBody, tokens, parameterNames, semanticQuery);
                 break;
 
             case WithStatement withStmt:
                 foreach (var item in withStmt.Items)
-                    CollectExpressionTokens(item.ContextExpression, tokens, parameterNames);
-                CollectStatementList(withStmt.Body, tokens, parameterNames);
+                    CollectExpressionTokens(item.ContextExpression, tokens, parameterNames, semanticQuery);
+                CollectStatementList(withStmt.Body, tokens, parameterNames, semanticQuery);
                 break;
 
             case MatchStatement matchStmt:
-                CollectExpressionTokens(matchStmt.Scrutinee, tokens, parameterNames);
+                CollectExpressionTokens(matchStmt.Scrutinee, tokens, parameterNames, semanticQuery);
                 foreach (var matchCase in matchStmt.Cases)
-                    CollectStatementList(matchCase.Body, tokens, parameterNames);
+                    CollectStatementList(matchCase.Body, tokens, parameterNames, semanticQuery);
                 break;
 
             case ExpressionStatement exprStmt:
-                CollectExpressionTokens(exprStmt.Expression, tokens, parameterNames);
+                CollectExpressionTokens(exprStmt.Expression, tokens, parameterNames, semanticQuery);
                 break;
 
             case ReturnStatement retStmt:
                 if (retStmt.Value != null)
-                    CollectExpressionTokens(retStmt.Value, tokens, parameterNames);
+                    CollectExpressionTokens(retStmt.Value, tokens, parameterNames, semanticQuery);
                 break;
 
             case Assignment assignStmt:
-                CollectExpressionTokens(assignStmt.Target, tokens, parameterNames);
-                CollectExpressionTokens(assignStmt.Value, tokens, parameterNames);
+                CollectExpressionTokens(assignStmt.Target, tokens, parameterNames, semanticQuery);
+                CollectExpressionTokens(assignStmt.Value, tokens, parameterNames, semanticQuery);
                 break;
 
             case AssertStatement assertStmt:
-                CollectExpressionTokens(assertStmt.Test, tokens, parameterNames);
+                CollectExpressionTokens(assertStmt.Test, tokens, parameterNames, semanticQuery);
                 if (assertStmt.Message != null)
-                    CollectExpressionTokens(assertStmt.Message, tokens, parameterNames);
+                    CollectExpressionTokens(assertStmt.Message, tokens, parameterNames, semanticQuery);
                 break;
 
             case RaiseStatement raiseStmt:
                 if (raiseStmt.Exception != null)
-                    CollectExpressionTokens(raiseStmt.Exception, tokens, parameterNames);
+                    CollectExpressionTokens(raiseStmt.Exception, tokens, parameterNames, semanticQuery);
                 break;
 
             case YieldStatement yieldStmt:
-                CollectExpressionTokens(yieldStmt.Value, tokens, parameterNames);
+                CollectExpressionTokens(yieldStmt.Value, tokens, parameterNames, semanticQuery);
                 break;
 
             case DecoratedStatement decorated:
@@ -332,11 +332,12 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     private static void CollectStatementList(
         IEnumerable<Statement> statements,
         System.Collections.Generic.List<RawToken> tokens,
-        HashSet<string>? parameterNames)
+        HashSet<string>? parameterNames,
+        ISemanticQuery? semanticQuery)
     {
         foreach (var stmt in statements)
         {
-            CollectStatementTokens(stmt, tokens, parameterNames);
+            CollectStatementTokens(stmt, tokens, parameterNames, semanticQuery);
         }
     }
 
@@ -392,7 +393,8 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     private static void CollectExpressionTokens(
         Expression expr,
         System.Collections.Generic.List<RawToken> tokens,
-        HashSet<string>? parameterNames)
+        HashSet<string>? parameterNames,
+        ISemanticQuery? semanticQuery)
     {
         switch (expr)
         {
@@ -402,11 +404,11 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                     // "not" keyword is at the UnaryOp node's start position
                     PushNameToken(tokens, unary.LineStart, unary.ColumnStart, 3, TKeyword, 0);
                 }
-                CollectExpressionTokens(unary.Operand, tokens, parameterNames);
+                CollectExpressionTokens(unary.Operand, tokens, parameterNames, semanticQuery);
                 break;
 
             case BinaryOp binary:
-                CollectExpressionTokens(binary.Left, tokens, parameterNames);
+                CollectExpressionTokens(binary.Left, tokens, parameterNames, semanticQuery);
                 // Emit keyword tokens for logical/membership operators
                 if (binary.OperatorLine > 0)
                 {
@@ -437,13 +439,13 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                             break;
                     }
                 }
-                CollectExpressionTokens(binary.Right, tokens, parameterNames);
+                CollectExpressionTokens(binary.Right, tokens, parameterNames, semanticQuery);
                 break;
 
             case ComparisonChain chain:
                 for (int i = 0; i < chain.Operands.Length; i++)
                 {
-                    CollectExpressionTokens(chain.Operands[i], tokens, parameterNames);
+                    CollectExpressionTokens(chain.Operands[i], tokens, parameterNames, semanticQuery);
                 }
                 // Emit keyword tokens for comparison operators that are keywords
                 for (int i = 0; i < chain.Operators.Length; i++)
@@ -485,103 +487,104 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case ConditionalExpression cond:
-                CollectExpressionTokens(cond.ThenValue, tokens, parameterNames);
-                CollectExpressionTokens(cond.Test, tokens, parameterNames);
-                CollectExpressionTokens(cond.ElseValue, tokens, parameterNames);
+                CollectExpressionTokens(cond.ThenValue, tokens, parameterNames, semanticQuery);
+                CollectExpressionTokens(cond.Test, tokens, parameterNames, semanticQuery);
+                CollectExpressionTokens(cond.ElseValue, tokens, parameterNames, semanticQuery);
                 break;
 
             case FunctionCall call:
-                CollectExpressionTokens(call.Function, tokens, parameterNames);
+                CollectExpressionTokens(call.Function, tokens, parameterNames, semanticQuery);
                 foreach (var arg in call.Arguments)
-                    CollectExpressionTokens(arg, tokens, parameterNames);
+                    CollectExpressionTokens(arg, tokens, parameterNames, semanticQuery);
                 foreach (var kwArg in call.KeywordArguments)
-                    CollectExpressionTokens(kwArg.Value, tokens, parameterNames);
+                    CollectExpressionTokens(kwArg.Value, tokens, parameterNames, semanticQuery);
                 break;
 
             case MemberAccess member:
-                CollectExpressionTokens(member.Object, tokens, parameterNames);
+                CollectExpressionTokens(member.Object, tokens, parameterNames, semanticQuery);
+                PushMemberToken(member, tokens, semanticQuery);
                 break;
 
             case IndexAccess idx:
-                CollectExpressionTokens(idx.Object, tokens, parameterNames);
-                CollectExpressionTokens(idx.Index, tokens, parameterNames);
+                CollectExpressionTokens(idx.Object, tokens, parameterNames, semanticQuery);
+                CollectExpressionTokens(idx.Index, tokens, parameterNames, semanticQuery);
                 break;
 
             case SliceAccess slice:
-                CollectExpressionTokens(slice.Object, tokens, parameterNames);
+                CollectExpressionTokens(slice.Object, tokens, parameterNames, semanticQuery);
                 if (slice.Start != null)
-                    CollectExpressionTokens(slice.Start, tokens, parameterNames);
+                    CollectExpressionTokens(slice.Start, tokens, parameterNames, semanticQuery);
                 if (slice.Stop != null)
-                    CollectExpressionTokens(slice.Stop, tokens, parameterNames);
+                    CollectExpressionTokens(slice.Stop, tokens, parameterNames, semanticQuery);
                 if (slice.Step != null)
-                    CollectExpressionTokens(slice.Step, tokens, parameterNames);
+                    CollectExpressionTokens(slice.Step, tokens, parameterNames, semanticQuery);
                 break;
 
             case MultiAxisAccess multiAxis:
-                CollectExpressionTokens(multiAxis.Object, tokens, parameterNames);
+                CollectExpressionTokens(multiAxis.Object, tokens, parameterNames, semanticQuery);
                 foreach (var dim in multiAxis.Dimensions)
                 {
                     if (dim.IsSlice)
                     {
                         if (dim.Start != null)
-                            CollectExpressionTokens(dim.Start, tokens, parameterNames);
+                            CollectExpressionTokens(dim.Start, tokens, parameterNames, semanticQuery);
                         if (dim.Stop != null)
-                            CollectExpressionTokens(dim.Stop, tokens, parameterNames);
+                            CollectExpressionTokens(dim.Stop, tokens, parameterNames, semanticQuery);
                         if (dim.Step != null)
-                            CollectExpressionTokens(dim.Step, tokens, parameterNames);
+                            CollectExpressionTokens(dim.Step, tokens, parameterNames, semanticQuery);
                     }
                     else if (dim.Index != null)
                     {
-                        CollectExpressionTokens(dim.Index, tokens, parameterNames);
+                        CollectExpressionTokens(dim.Index, tokens, parameterNames, semanticQuery);
                     }
                 }
                 break;
 
             case ListLiteral list:
                 foreach (var el in list.Elements)
-                    CollectExpressionTokens(el, tokens, parameterNames);
+                    CollectExpressionTokens(el, tokens, parameterNames, semanticQuery);
                 break;
 
             case DictLiteral dict:
                 foreach (var entry in dict.Entries)
                 {
                     if (entry.Key != null)
-                        CollectExpressionTokens(entry.Key, tokens, parameterNames);
-                    CollectExpressionTokens(entry.Value, tokens, parameterNames);
+                        CollectExpressionTokens(entry.Key, tokens, parameterNames, semanticQuery);
+                    CollectExpressionTokens(entry.Value, tokens, parameterNames, semanticQuery);
                 }
                 break;
 
             case SetLiteral set:
                 foreach (var el in set.Elements)
-                    CollectExpressionTokens(el, tokens, parameterNames);
+                    CollectExpressionTokens(el, tokens, parameterNames, semanticQuery);
                 break;
 
             case TupleLiteral tuple:
                 foreach (var el in tuple.Elements)
-                    CollectExpressionTokens(el, tokens, parameterNames);
+                    CollectExpressionTokens(el, tokens, parameterNames, semanticQuery);
                 break;
 
             case ListComprehension listComp:
-                CollectExpressionTokens(listComp.Element, tokens, parameterNames);
+                CollectExpressionTokens(listComp.Element, tokens, parameterNames, semanticQuery);
                 foreach (var clause in listComp.Clauses)
-                    CollectComprehensionClauseTokens(clause, tokens, parameterNames);
+                    CollectComprehensionClauseTokens(clause, tokens, parameterNames, semanticQuery);
                 break;
 
             case SetComprehension setComp:
-                CollectExpressionTokens(setComp.Element, tokens, parameterNames);
+                CollectExpressionTokens(setComp.Element, tokens, parameterNames, semanticQuery);
                 foreach (var clause in setComp.Clauses)
-                    CollectComprehensionClauseTokens(clause, tokens, parameterNames);
+                    CollectComprehensionClauseTokens(clause, tokens, parameterNames, semanticQuery);
                 break;
 
             case DictComprehension dictComp:
-                CollectExpressionTokens(dictComp.Key, tokens, parameterNames);
-                CollectExpressionTokens(dictComp.Value, tokens, parameterNames);
+                CollectExpressionTokens(dictComp.Key, tokens, parameterNames, semanticQuery);
+                CollectExpressionTokens(dictComp.Value, tokens, parameterNames, semanticQuery);
                 foreach (var clause in dictComp.Clauses)
-                    CollectComprehensionClauseTokens(clause, tokens, parameterNames);
+                    CollectComprehensionClauseTokens(clause, tokens, parameterNames, semanticQuery);
                 break;
 
             case Parenthesized paren:
-                CollectExpressionTokens(paren.Expression, tokens, parameterNames);
+                CollectExpressionTokens(paren.Expression, tokens, parameterNames, semanticQuery);
                 break;
 
             case LambdaExpression lambda:
@@ -594,11 +597,11 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                     if (param.Type != null)
                         CollectTypeAnnotationTokens(param.Type, tokens);
                 }
-                CollectExpressionTokens(lambda.Body, tokens, lambdaParamNames);
+                CollectExpressionTokens(lambda.Body, tokens, lambdaParamNames, semanticQuery);
                 break;
 
             case TypeCoercion coercion:
-                CollectExpressionTokens(coercion.Value, tokens, parameterNames);
+                CollectExpressionTokens(coercion.Value, tokens, parameterNames, semanticQuery);
                 // Color the cast operator keyword: `as!` / `as?` (3 chars, #1029). The legacy
                 // `to` operator (2 chars) was retired in 0.8.0 (#1127), so the length is fixed.
                 if (coercion.OperatorLine > 0)
@@ -610,18 +613,18 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case TypeCheck check:
-                CollectExpressionTokens(check.Value, tokens, parameterNames);
+                CollectExpressionTokens(check.Value, tokens, parameterNames, semanticQuery);
                 break;
 
             case WalrusExpression walrus:
-                CollectExpressionTokens(walrus.Value, tokens, parameterNames);
+                CollectExpressionTokens(walrus.Value, tokens, parameterNames, semanticQuery);
                 break;
 
             case FStringLiteral fstr:
                 foreach (var part in fstr.Parts)
                 {
                     if (part.Expression != null)
-                        CollectExpressionTokens(part.Expression, tokens, parameterNames);
+                        CollectExpressionTokens(part.Expression, tokens, parameterNames, semanticQuery);
                 }
                 break;
 
@@ -629,31 +632,31 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 foreach (var part in tstr.Parts)
                 {
                     if (part.Expression != null)
-                        CollectExpressionTokens(part.Expression, tokens, parameterNames);
+                        CollectExpressionTokens(part.Expression, tokens, parameterNames, semanticQuery);
                 }
                 break;
 
             case TryExpression tryExpr:
-                CollectExpressionTokens(tryExpr.Operand, tokens, parameterNames);
+                CollectExpressionTokens(tryExpr.Operand, tokens, parameterNames, semanticQuery);
                 break;
 
             case MaybeExpression maybeExpr:
-                CollectExpressionTokens(maybeExpr.Operand, tokens, parameterNames);
+                CollectExpressionTokens(maybeExpr.Operand, tokens, parameterNames, semanticQuery);
                 break;
 
             case QuestionMarkExpression questionMark:
-                CollectExpressionTokens(questionMark.Operand, tokens, parameterNames);
+                CollectExpressionTokens(questionMark.Operand, tokens, parameterNames, semanticQuery);
                 // The postfix "?" sits just before ColumnEnd (which is questionToken.Column + 1).
                 // Highlight it as an operator-keyword, consistent with and/or/not/is/in.
                 PushNameToken(tokens, questionMark.LineEnd, questionMark.ColumnEnd - 1, 1, TKeyword, 0);
                 break;
 
             case StarExpression star:
-                CollectExpressionTokens(star.Operand, tokens, parameterNames);
+                CollectExpressionTokens(star.Operand, tokens, parameterNames, semanticQuery);
                 break;
 
             case SpreadElement spread:
-                CollectExpressionTokens(spread.Value, tokens, parameterNames);
+                CollectExpressionTokens(spread.Value, tokens, parameterNames, semanticQuery);
                 break;
 
             case StringLiteral strLit:
@@ -675,7 +678,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 if (modArg.InlineType != null)
                     CollectTypeAnnotationTokens(modArg.InlineType, tokens);
                 // Recurse into the argument expression
-                CollectExpressionTokens(modArg.Argument, tokens, parameterNames);
+                CollectExpressionTokens(modArg.Argument, tokens, parameterNames, semanticQuery);
                 break;
 
         }
@@ -693,16 +696,17 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     private static void CollectComprehensionClauseTokens(
         ComprehensionClause clause,
         System.Collections.Generic.List<RawToken> tokens,
-        HashSet<string>? parameterNames)
+        HashSet<string>? parameterNames,
+        ISemanticQuery? semanticQuery)
     {
         switch (clause)
         {
             case ForClause forClause:
-                CollectExpressionTokens(forClause.Target, tokens, parameterNames);
-                CollectExpressionTokens(forClause.Iterator, tokens, parameterNames);
+                CollectExpressionTokens(forClause.Target, tokens, parameterNames, semanticQuery);
+                CollectExpressionTokens(forClause.Iterator, tokens, parameterNames, semanticQuery);
                 break;
             case IfClause ifClause:
-                CollectExpressionTokens(ifClause.Condition, tokens, parameterNames);
+                CollectExpressionTokens(ifClause.Condition, tokens, parameterNames, semanticQuery);
                 break;
         }
     }
@@ -881,6 +885,65 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
             // VS Code TextMate grammar will handle the rest.
             PushNameToken(tokens, lineStart, colStart, 200, TString, 0); // conservative length
         }
+    }
+
+    /// <summary>
+    /// Emits a token for the member name of a <see cref="MemberAccess"/> (#1376). The object is
+    /// walked separately; before this, <c>math.pi</c>, <c>obj.field</c> and <c>Module.func</c> all
+    /// left the member name untokenized and editors fell back to plain-identifier coloring.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Classification comes from the expression types, NOT from
+    /// <c>ISemanticQuery.GetMemberAccessResolution</c>, which the issue's acceptance sketch assumed.
+    /// Measured, that map answers only static/const/enum/union shapes — its six recording sites are
+    /// all gated on one — so it returns null for <c>obj.field</c>, <c>obj.method()</c>,
+    /// <c>o.inner.n</c> and every module member, i.e. for essentially everything this arm exists to
+    /// color. Worse, the emitter treats a recorded resolution as a LOWERING DIRECTIVE: a
+    /// <c>VariableSymbol</c> entry makes it rewrite <c>obj.X</c> to <c>Owner.X</c> with no static
+    /// re-check, so populating it for instance members to serve tooling would change emitted C#.
+    /// It is a codegen materialization channel, not a general "what does this resolve to" query.
+    /// </para>
+    /// <para>
+    /// The node's own type is enough and needs no compiler change: a member that resolves to a
+    /// <see cref="FunctionType"/> is a method, anything else is data. That covers instance, module,
+    /// chained and escaped members uniformly, which the resolution map does not.
+    /// </para>
+    /// <para>
+    /// <see cref="MemberAccess"/> has no child node for the member name, so the extent is computed:
+    /// the object's <c>ColumnEnd</c> is the separator's column, and the node's own <c>ColumnEnd</c>
+    /// is one past the member's last character. Null-conditional access spends an extra character
+    /// (<c>?.</c>), which is why the offset is not simply +1 — measured on <c>c?.value</c>, where
+    /// the member begins two columns after the object ends. A backticked member is covered by the
+    /// same arithmetic: the extent includes both backticks, matching the recorded token span
+    /// (cb429fdc1).
+    /// </para>
+    /// <para>
+    /// No token is emitted without a semantic query. <c>Tokenize</c> falls back to a parse-only
+    /// result when analysis is unavailable, and guessing a kind from syntax alone would color a
+    /// method as a property roughly half the time.
+    /// </para>
+    /// </remarks>
+    private static void PushMemberToken(
+        MemberAccess member,
+        System.Collections.Generic.List<RawToken> tokens,
+        ISemanticQuery? semanticQuery)
+    {
+        if (semanticQuery == null)
+            return;
+
+        // Multi-line member chains would make column arithmetic on the object meaningless.
+        if (member.Object.LineEnd != member.LineEnd)
+            return;
+
+        var separatorWidth = member.IsNullConditional ? 2 : 1;
+        var startColumn = member.Object.ColumnEnd + separatorWidth;
+        var length = member.ColumnEnd - startColumn;
+        if (length <= 0)
+            return;
+
+        var tokenType = semanticQuery.GetEffectiveType(member) is Sharpy.Compiler.Semantic.FunctionType ? TMethod : TProperty;
+        PushNameToken(tokens, member.LineEnd, startColumn, length, tokenType, modifiers: 0);
     }
 
     private static void PushNameToken(
