@@ -1,7 +1,13 @@
-# #1272: a builtin type reference in a value position that supplies no signature. Every one of
-# these constructs — the regression fixture next door pins that — so the refusal is SPY0342 ("no
-# signature is available to pin"), never SPY0346 ("cannot be constructed"), which would be false
-# and would send a reader to fix the wrong thing.
+# #1272: a builtin type reference in a value position that supplies no signature. For MOST of these
+# the refusal is SPY0342 ("no signature is available to pin") rather than SPY0346 ("cannot be
+# constructed"), because they do construct — saying otherwise would send a reader to fix the wrong
+# thing.
+#
+# Two of them are NOT in that set, and #1346 is where that was established rather than assumed.
+# `Iterator` is `abstract partial class Iterator<T>` and the dict views' only constructor is
+# `internal`, so neither has a construction for a NAME to denote: both draw SPY0346. This was
+# invisible while the registry registered them against typeof(object) placeholders, which are
+# perfectly constructible — the placeholder was hiding the fact, not expressing it.
 #
 # The second half of #1272 landed: object, decimal, frozenset and frozendict now HAVE
 # families, so `mk: () -> frozenset[int] = frozenset` pins the way `list` does. Unpinned, they draw

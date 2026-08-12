@@ -593,9 +593,12 @@ internal partial class TypeChecker
     /// applies. A user class named <c>int</c> is therefore its own UserType reference pinning
     /// against its own constructors — never the builtin's conversion overload set.</para>
     ///
-    /// <para>A BUILTIN with no family is NOT called non-constructible, because it is not:
-    /// <c>object()</c>, <c>bytes()</c>, <c>decimal()</c>, <c>frozenset()</c> and the view types all
-    /// construct and run. Saying otherwise would send a reader to fix the wrong thing. It is
+    /// <para>A BUILTIN with no family is usually NOT called non-constructible, because usually it
+    /// is not: <c>object()</c>, <c>bytes()</c>, <c>decimal()</c> and <c>frozenset()</c> construct
+    /// and run. Saying otherwise would send a reader to fix the wrong thing. The iterator and view
+    /// types are the exception and DO draw SPY0346 — <c>Iterator&lt;T&gt;</c> is abstract and the
+    /// views' only constructor is <c>internal</c> (#1346); that was invisible while they were
+    /// registered against <c>typeof(object)</c> placeholders, which construct fine. It is
     /// reported instead as an unfamilied builtin, which SPY0342 refuses for the accurate reason —
     /// no signature is available to pin — rather than letting the bare name reach codegen (#1272).
     /// Giving these types families, so that <c>mk: () -&gt; frozenset[int] = frozenset</c> pins the
@@ -702,29 +705,63 @@ internal partial class TypeChecker
     /// treated as constructible — extend the switch when a kind is added, or the new kind's
     /// value uses leak SPY0908 the way #1250's did.</para>
     /// </summary>
+    /// <summary>
+    /// Whether every constructor of the backing CLR type is inaccessible to generated code.
+    /// Reflection rather than <see cref="TypeSymbol.Constructors"/> — see the arm that calls this
+    /// for why that list cannot answer the question (#1346).
+    /// </summary>
+    private static bool HasNoAccessibleConstructor(TypeSymbol typeSymbol)
+        => typeSymbol.ClrType is { } clrType
+            && !clrType.IsAbstract
+            // A VALUE TYPE always has an implicit public parameterless constructor, and
+            // GetConstructors does not enumerate it — so an empty result means "no DECLARED
+            // constructor", not "not constructible". Without this, `tuple` (registered as
+            // System.ValueTuple) was refused: measured, it broke three fixtures, and via SPY0280 at
+            // CALL sites rather than the SPY0346 this arm is written for, because
+            // NonConstructibleTypeNameOf is shared by both.
+            && !clrType.IsValueType
+            && clrType.GetConstructors(
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance).Length == 0;
+
     private static NonConstructibleTypeName? NonConstructibleTypeNameOf(TypeSymbol typeSymbol)
     {
         var name = typeSymbol.Name;
         return typeSymbol.TypeKind switch
         {
-            TypeKind.Interface => new NonConstructibleTypeName(name, "interface", "an interface",
+            TypeKind.Interface => new NonConstructibleTypeName(name, "interface", "an interface and has no constructor",
                 "Name a concrete implementing type instead, or wrap the construction in a lambda."),
-            TypeKind.Enum => new NonConstructibleTypeName(name, "enum", "an enum",
+            TypeKind.Enum => new NonConstructibleTypeName(name, "enum", "an enum and has no constructor",
                 $"A member is the value you want: '{name}.SOME_MEMBER'."),
-            TypeKind.Union => new NonConstructibleTypeName(name, "union", "a union",
+            TypeKind.Union => new NonConstructibleTypeName(name, "union", "a union and has no constructor",
                 $"Construct one of its variants instead: '{name}.SomeCase(...)'."),
-            TypeKind.Delegate => new NonConstructibleTypeName(name, "delegate type", "a delegate type",
+            TypeKind.Delegate => new NonConstructibleTypeName(name, "delegate type", "a delegate type and has no constructor",
                 $"Assign a compatible function or lambda to it instead: 'cb: {name} = handler'."),
             TypeKind.Class or TypeKind.Struct when typeSymbol.IsAbstract =>
-                new NonConstructibleTypeName(name, "abstract class", "abstract",
+                new NonConstructibleTypeName(name, "abstract class", "abstract and has no constructor",
                     "Name a concrete subclass instead, or wrap the construction in a lambda."),
-            // TODO(#1346): the dict views belong here too — `internal DictKeyView(...)` is their
-            // only constructor, so the NAME denotes no construction. An arm keyed on
-            // `ClrType is not null && Constructors.Count == 0` was MEASURED to over-fire: it also
-            // caught `ValueError`, which is constructible (`raise ValueError("boom")` works) but
-            // whose registry constructor surface is empty. The empty surface is therefore not a
-            // reliable proxy for inaccessibility, and the discovered-exception path has to be
-            // understood before this arm lands.
+            // A CLR-backed type whose constructors are all inaccessible to generated code. The dict
+            // views are the case: `internal DictKeyView(Dictionary<K,V>.KeyCollection)` is the only
+            // one, and InternalsVisibleTo covers the test assemblies, never user code — so the NAME
+            // denotes no construction and `d.keys()` is how you obtain one (#1346).
+            //
+            // Asks the CLR TYPE, not TypeSymbol.Constructors, and that distinction is the whole fix.
+            // `Constructors` means two different things depending on which path built the symbol:
+            // RegisterType fills it from ClrConstructorSurface (public instance only), while
+            // LoadBuiltinTypes inserts discovery-built symbols straight into the table and fills it
+            // NOWHERE. So an empty list means "no public constructor" for a registered type and
+            // "never populated" for a discovered one. Keying on it refused `ValueError` — which
+            // declares two public constructors and is reached by the discovery path — measured, and
+            // the reason this arm reads reflection instead.
+            // ASYMMETRY, deliberate: the PREDICATE is general (any CLR-backed type with no accessible
+            // constructor) but the WORDING names the dict views, because they are the only types
+            // that reach it today. The predicate is the half that must not over-fire; the phrase
+            // only has to be true. If the predicate ever admits something else, this wording needs
+            // revisiting — it is specific by choice, not by accident, and leaving that unsaid would
+            // make it one more field whose meaning depends on how you got here (#1473).
+            TypeKind.Class or TypeKind.Struct when HasNoAccessibleConstructor(typeSymbol) =>
+                new NonConstructibleTypeName(name, "type", "obtained from the API that returns it",
+                    $"Call the API that produces one — for a dict view, 'd.keys()', 'd.values()' or "
+                    + $"'d.items()' — rather than naming '{name}'."),
             _ => null,
         };
     }
@@ -774,7 +811,7 @@ internal partial class TypeChecker
             return null;
 
         AddError(
-            $"'{nonConstructible.Name}' is {nonConstructible.Description} and has no constructor, "
+            $"'{nonConstructible.Name}' is {nonConstructible.Description}, "
             + $"so its name is not a value. {nonConstructible.Suggestion}",
             reference.LineStart, reference.ColumnStart,
             code: DiagnosticCodes.Semantic.NonConstructibleTypeReference,
@@ -841,8 +878,9 @@ internal partial class TypeChecker
     /// <para>Interfaces, enums, unions, delegates and abstract classes return null, and none of
     /// them has a construction for a reference to denote: <see cref="NonConstructibleTypeNameOf"/>
     /// refuses all five in a value position (SPY0346, #1250). That is NOT the same posture
-    /// <see cref="ConstructorReferenceFamilyOf"/> takes for <c>object</c>/<c>bytes</c>/the view
-    /// types — those construct, so they fall through unrefused (#1272).</para>
+    /// <see cref="ConstructorReferenceFamilyOf"/> takes for <c>object</c>/<c>bytes</c> — those
+    /// construct, so they fall through unrefused (#1272). The VIEW types no longer belong in that
+    /// list: their only constructor is <c>internal</c>, so they are refused here too (#1346).</para>
     /// </summary>
     private static ConstructorReferenceFamily? UserConstructorReferenceFamilyOf(TypeSymbol typeSymbol)
         => typeSymbol.TypeKind is TypeKind.Class or TypeKind.Struct && !typeSymbol.IsAbstract
@@ -854,9 +892,12 @@ internal partial class TypeChecker
     /// not govern (<c>object</c>, <c>bytes</c>, <c>decimal</c>, <c>frozenset</c>, the view and
     /// iterator types): those keep the behavior they have today.
     ///
-    /// <para>Null here means "no family", NOT "not constructible" — every one of them constructs
-    /// (<c>object()</c>, <c>frozenset()</c> with a target type). A reference to one still falls
-    /// through to the position's typing and reaches codegen as a bare type name; see #1272.</para>
+    /// <para>Null here means "no family", NOT necessarily "not constructible": <c>object()</c> and
+    /// <c>frozenset()</c> (with a target type) construct, and a reference to one falls through to
+    /// the position's typing and reaches codegen as a bare type name (#1272). Constructibility is a
+    /// SEPARATE question answered by <see cref="NonConstructibleTypeNameOf"/>, which now outranks
+    /// this for a builtin — the iterator and view types return null here AND are non-constructible
+    /// (#1346).</para>
     /// </summary>
     private ConstructorReferenceFamily? ConstructorReferenceFamilyOf(TypeSymbol typeSymbol)
     {

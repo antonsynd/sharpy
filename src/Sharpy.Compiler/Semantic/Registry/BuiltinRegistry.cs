@@ -498,9 +498,12 @@ internal class BuiltinRegistry
     /// Protocols (<c>__len__</c>, <c>__iter__</c>, <c>__getitem__</c>) similarly have no CLR surface.
     /// </description></item>
     /// <item><description>
-    /// <b>Iterator/IEnumerable/IEnumerator</b>: Abstract placeholder types registered with
-    /// <c>typeof(object)</c>. They have no real CLR type surface — only the <c>__iter__</c>
-    /// protocol stub is needed for type-checking iteration patterns.
+    /// <b>Iterator/IEnumerable/IEnumerator</b>: <c>Iterator</c> names its real CLR type
+    /// (<c>Sharpy.Iterator&lt;T&gt;</c>) since #1346, so it carries a CLR interface list and its
+    /// abstractness — the two things the old <c>typeof(object)</c> placeholder suppressed.
+    /// <c>IEnumerable</c>/<c>IEnumerator</c> are still registered against the NON-GENERIC
+    /// <c>System.Collections</c> forms with the generic ones supplied as a variance source, so
+    /// their type-parameter variance is read from the generic definition.
     /// </description></item>
     /// <item><description>
     /// <b>int.parse / float.parse</b>: Live on separate utility classes (<c>IntParse</c>,
