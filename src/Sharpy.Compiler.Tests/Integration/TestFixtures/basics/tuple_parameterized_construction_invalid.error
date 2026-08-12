@@ -1,8 +1,8 @@
 # A tuple of the wrong shape is a type mismatch against the written tuple type.
-Cannot convert argument of type 'tuple[int, int, int]' to 'tuple[int, str]' @5:27
+Cannot convert argument of type 'tuple[int32, int32, int32]' to 'tuple[int32, str]' @5:27
 # Bare tuple(t) still names the arity limitation and advises dropping the conversion (#1159).
 'tuple(...)' cannot convert an iterable to a tuple @8:16
 # The conversion takes exactly one argument — a tuple is not built from separate elements here.
-'tuple[int, str](...)' expects exactly 1 argument (the tuple to convert) but got 2 @10:13
+'tuple[int32, str](...)' expects exactly 1 argument (the tuple to convert) but got 2 @10:13
 # Uncalled, it is a type reference like any other and cannot be a value (#1192's rule, #1200's kind).
 a generic type reference must be constructed; 'tuple[...]' cannot be used as a value @12:13

@@ -1,1 +1,1 @@
-Cannot pass argument of type 'List[int]' to parameter of type 'list[int]'
+Cannot pass argument of type 'List[int32]' to parameter of type 'list[int32]'

@@ -1,1 +1,1 @@
-Type 'None' does not support operator '!=' with operand of type 'int'. Did you mean 'is not None'? @5:11
+Type 'None' does not support operator '!=' with operand of type 'int32'. Did you mean 'is not None'? @5:11

@@ -66,6 +66,12 @@ internal static class BuiltinNames
     // ---- Additional type names ----
     public const string Long = "long";
     public const string Double = "double";
+    /// <summary>Canonical spelling of the 32-bit signed integer type (`int` is its alias).</summary>
+    public const string Int32 = "int32";
+
+    /// <summary>Canonical spelling of the 64-bit signed integer type (`long` is its alias).</summary>
+    public const string Int64 = "int64";
+
     public const string Float32 = "float32";
     public const string Float64 = "float64";
     public const string Decimal = "decimal";

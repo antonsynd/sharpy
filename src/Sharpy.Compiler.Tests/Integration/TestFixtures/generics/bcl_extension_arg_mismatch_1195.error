@@ -1,1 +1,1 @@
-Argument 1 of 'select[...]' expects '(int) -> str' but got '(int) -> int' @11:30
+Argument 1 of 'select[...]' expects '(int32) -> str' but got '(int32) -> int32' @11:30

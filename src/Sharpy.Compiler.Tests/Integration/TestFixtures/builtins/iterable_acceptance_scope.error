@@ -1,6 +1,6 @@
-# A user function's list[int] parameter is not an iterable position — a set stays rejected.
-Cannot pass argument of type 'set[int]' to parameter of type 'list[int]' @11:16
+# A user function's list[int32] parameter is not an iterable position — a set stays rejected.
+Cannot pass argument of type 'set[int32]' to parameter of type 'list[int32]' @11:16
 # Ordinary assignment is unaffected by the argument-binding coercion.
-Cannot assign type 'set[int]' to variable of type 'list[int]' @12:5
+Cannot assign type 'set[int32]' to variable of type 'list[int32]' @12:5
 # A tuple whose elements do not unify cannot be bridged to a typed array, so it is not accepted.
-No overload of 'sum' matches the argument types (tuple[int, str]) @13:11
+No overload of 'sum' matches the argument types (tuple[int32, str]) @13:11

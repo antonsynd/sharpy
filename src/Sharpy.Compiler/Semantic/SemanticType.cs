@@ -56,11 +56,25 @@ public abstract record SemanticType : ITypeInfo
     // Singleton instances for common types
     public static readonly SemanticType Unknown = new UnknownType();
     public static readonly SemanticType Void = new VoidType();
-    public static readonly SemanticType Int = new BuiltinType { Name = "int", ClrType = typeof(int) };
+    // Names are the CANONICAL spellings from docs/language_specification/primitive_types.md, whose
+    // first table is the type inventory and whose second is headed "There are aliases present that
+    // help ease both Python and C# developers at the cost of consistency". `int` is an alias for
+    // `int32` and `float` is an alias for `float64`, so neither is a type name here. BuiltinType is
+    // a record whose equality includes Name, so a singleton named with an alias is a DIFFERENT type
+    // from the one the catalog produces for the same CLR type — which is #1356.
+    public static readonly SemanticType Int = new BuiltinType { Name = "int32", ClrType = typeof(int) };
     public static readonly SemanticType Long = new BuiltinType { Name = "int64", ClrType = typeof(long) };
-    // Per spec: Sharpy 'float' maps to C# 'double' (64-bit), 'float32' maps to C# 'float' (32-bit)
-    public static readonly SemanticType Float = new BuiltinType { Name = "float", ClrType = typeof(double) };
+    // Per spec: Sharpy 'float64' maps to C# 'double' (64-bit), 'float32' maps to C# 'float' (32-bit)
     public static readonly SemanticType Double = new BuiltinType { Name = "float64", ClrType = typeof(double) };
+
+    /// <summary>
+    /// The spelling <c>float</c> is an ALIAS for <c>float64</c> (spec), not a second type. This is
+    /// the same object as <see cref="Double"/> — not a second singleton with a different name —
+    /// which is what makes <c>Float == Double</c> true and retires the double-backed pair #1356 is
+    /// named for. Kept as a field so the ~35 existing references read naturally; every one of them
+    /// now denotes <c>float64</c>.
+    /// </summary>
+    public static readonly SemanticType Float = Double;
     public static readonly SemanticType Float32 = new BuiltinType { Name = "float32", ClrType = typeof(float) };
     // CLR numeric types without direct Sharpy syntax — used by PrimitiveCatalog promotion and CLR interop
     public static readonly SemanticType SByte = new BuiltinType { Name = "int8", ClrType = typeof(sbyte) };

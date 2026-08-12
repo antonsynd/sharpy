@@ -438,9 +438,12 @@ internal partial class RoslynEmitter
         if (kind is SyntaxKind.LeftShiftExpression or SyntaxKind.RightShiftExpression)
         {
             var rightType = _context.SemanticInfo?.GetExpressionType(binOp.Right);
-            // "int" is the singleton's name; with "int32" this guard was always true and every
-            // shift count — including int-typed ones — got a redundant cast (#1304).
-            if (rightType is BuiltinType { Name: not "int" })
+            // Compared by CLR type, not by name. Spelling this as a name test is what made #1304:
+            // written against the catalog's "int32" while the singleton was named "int", the guard
+            // was always true and every shift count got a redundant cast — and it inverted again
+            // the moment the singleton took its canonical name (#1356). The CLR type is the thing
+            // the cast actually depends on, and it never had two spellings.
+            if (rightType is BuiltinType { ClrType: var shiftClr } && shiftClr != typeof(int))
             {
                 right = CastExpression(
                     PredefinedType(Token(SyntaxKind.IntKeyword)),
@@ -578,13 +581,13 @@ internal partial class RoslynEmitter
                 try
                 {
                     var ulongMagnitude = ParseIntegerText(text);
-                    // "int" is the singleton's name; "int32" was dead code here (#1304).
-                    if (bt.Name == "int" && ulongMagnitude <= (ulong)int.MaxValue + 1)
+                    // By CLR type for the same reason as the shift guard above (#1304, #1356).
+                    if (bt.ClrType == typeof(int) && ulongMagnitude <= (ulong)int.MaxValue + 1)
                     {
                         return LiteralExpression(SyntaxKind.NumericLiteralExpression,
                             Literal(-(int)(long)ulongMagnitude));
                     }
-                    if (bt.Name == "int64")
+                    if (bt.ClrType == typeof(long))
                     {
                         if (ulongMagnitude == (ulong)long.MaxValue + 1)
                             return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(long.MinValue));

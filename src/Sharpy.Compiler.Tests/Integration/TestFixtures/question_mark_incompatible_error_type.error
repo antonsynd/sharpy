@@ -1,1 +1,1 @@
-'?' error type 'str' is not assignable to function return error type 'int'
+'?' error type 'str' is not assignable to function return error type 'int32'

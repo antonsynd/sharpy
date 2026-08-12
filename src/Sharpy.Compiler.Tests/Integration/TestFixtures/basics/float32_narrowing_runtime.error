@@ -1,1 +1,1 @@
-Cannot assign type 'float' to variable of type 'float32'
+Cannot assign type 'float64' to variable of type 'float32'

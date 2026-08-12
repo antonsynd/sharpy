@@ -1,1 +1,1 @@
-Type 'int?' does not support operator '+' with operand of type 'int' @6:21
+Type 'int32?' does not support operator '+' with operand of type 'int32' @6:21

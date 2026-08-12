@@ -1,1 +1,1 @@
-builtin type 'int' has no constructor signature matching '(str, str) -> int' @4:28
+builtin type 'int' has no constructor signature matching '(str, str) -> int32' @4:28
