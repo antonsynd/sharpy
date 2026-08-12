@@ -741,6 +741,13 @@ public static class DiagnosticCodes
         // that says nothing to a name already written in bracket syntax.
         public const string UnknownBracketAttribute = "SPY0495"; // Active (#1427)
 
+        // An accessor's parameter list is not expressible as a C# accessor's (SPY0496, #1406).
+        // One code, because it is one rule: a property or event accessor receives exactly the
+        // value C# hands it — a setter/init gets the implicit `value`, a getter gets nothing —
+        // so `self` plus at most one value parameter is the entire expressible shape. A variadic
+        // and a getter's extra parameter are the two ways to leave it.
+        public const string AccessorParameterNotExpressible = "SPY0496"; // Active (#1406, #1405)
+
         #endregion
     }
 

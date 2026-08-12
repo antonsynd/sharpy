@@ -1,0 +1,13 @@
+# #1406: a property accessor receives exactly the one value C# hands it, so it has no argument list
+# to vary. Before this refusal the variadic bound as its ELEMENT type, and a body treating it as a
+# sequence was refused with a type error about the element ("Type 'int' does not support len()")
+# that never mentioned the real mistake. The body READS the parameter on purpose: a variadic
+# accessor whose body ignores it compiles clean even today, so a fixture that did not use it would
+# pin nothing.
+class Reading:
+    property set samples(self, *values: int):
+        print(len(values))
+
+
+def main() -> None:
+    pass

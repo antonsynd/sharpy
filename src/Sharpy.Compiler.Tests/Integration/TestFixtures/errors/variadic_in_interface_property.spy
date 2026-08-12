@@ -1,0 +1,14 @@
+# #1406 in an interface default implementation — a fourth shape, found while fixing #1405's
+# interface arm. PropertyValidator's interface branch ran only the observer rule, so this was
+# unreachable too.
+interface IVolume:
+    property set volume(self, *values: int):
+        print(len(values))
+
+
+class Speaker(IVolume):
+    pass
+
+
+def main() -> None:
+    pass

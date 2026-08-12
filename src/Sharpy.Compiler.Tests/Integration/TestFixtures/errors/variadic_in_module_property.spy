@@ -1,0 +1,9 @@
+# #1406 at module level — the third shape, which the issue does not mention and which the plan's
+# recommended home could not even reach: PropertyValidator.Validate dispatches on class/struct/
+# interface, so a module-level PropertyDef was never visited by it at all.
+property set level(*values: int):
+    print(len(values))
+
+
+def main() -> None:
+    pass

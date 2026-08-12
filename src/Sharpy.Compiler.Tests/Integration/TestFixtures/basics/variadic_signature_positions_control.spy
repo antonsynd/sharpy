@@ -1,0 +1,32 @@
+# Control for #1406: the refusal is scoped to ACCESSORS, which have no argument list. Every
+# position that genuinely has one keeps taking a variadic — a module function, a method, a delegate
+# declaration, and an interface method declaration. Verify-by-direction: #1406 converts a
+# misleading type error into a refusal, so the failure mode to guard against is refusing code that
+# works, and these four are the positions the issue's own table says must stay untouched.
+delegate Combine(*nums: int) -> int
+
+
+class Adder:
+    def sum_all(self, *nums: int) -> int:
+        total: int = 0
+        for n in nums:
+            total = total + n
+        return total
+
+
+interface ICounter:
+    def count_all(self, *nums: int) -> int:
+        ...
+
+
+def module_sum(*nums: int) -> int:
+    total: int = 0
+    for n in nums:
+        total = total + n
+    return total
+
+
+def main() -> None:
+    print(module_sum(1, 2, 3))
+    a: Adder = Adder()
+    print(a.sum_all(4, 5))

@@ -22,6 +22,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// 6. @final cannot be combined with @abstract or @virtual (SPY0410)
 /// 7. @override property must have matching virtual/abstract base property (SPY0411)
 /// 8. Init properties without defaults must be assigned in every constructor (SPY0426)
+/// 9. An accessor's parameter list must be expressible as a C# accessor's (SPY0496)
 /// </summary>
 internal class PropertyValidator : SemanticValidatorBase
 {
@@ -56,6 +57,104 @@ internal class PropertyValidator : SemanticValidatorBase
                     break;
             }
         }
+
+        // Rule 9 runs over EVERY property, in whatever declares it. The rules above are container-
+        // shaped — they compare a property against its type's fields and methods — but the shape of
+        // an accessor's own parameter list is a property of the accessor alone, and it is wrong in
+        // exactly the same way at module level and in an interface. Those two are unreachable from
+        // the walk above: `Validate` dispatches only on class/struct/interface, so a module-level
+        // PropertyDef is never visited at all, and the interface arm runs only the observer rule
+        // (#1406).
+        foreach (var propDef in EnumerateAllProperties(module.Body))
+            ValidateAccessorParameterShape(propDef);
+    }
+
+    /// <summary>
+    /// Every <see cref="PropertyDef"/> the module declares, at any depth: module level, and inside
+    /// classes, structs and interfaces including nested ones.
+    /// </summary>
+    private static IEnumerable<PropertyDef> EnumerateAllProperties(IEnumerable<Statement> body)
+    {
+        foreach (var stmt in body)
+        {
+            switch (stmt.UnwrapDecorated())
+            {
+                case PropertyDef propDef:
+                    yield return propDef;
+                    break;
+                case ClassDef classDef:
+                    foreach (var nested in EnumerateAllProperties(classDef.Body))
+                        yield return nested;
+                    break;
+                case StructDef structDef:
+                    foreach (var nested in EnumerateAllProperties(structDef.Body))
+                        yield return nested;
+                    break;
+                case InterfaceDef interfaceDef:
+                    foreach (var nested in EnumerateAllProperties(interfaceDef.Body))
+                        yield return nested;
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Rule 9: a property accessor receives exactly the one value C# hands it — a setter or init
+    /// accessor gets the implicit <c>value</c>, a getter gets nothing — so <c>self</c> plus at most
+    /// one value parameter is the whole expressible shape, fixed by construction (#1406).
+    ///
+    /// <para>A variadic here is not merely unusable: it bound as its ELEMENT type, so a body
+    /// treating it as a sequence was refused with a type error about the element that never
+    /// mentioned the real mistake. #1292's array-wrap cannot fix it the way it fixed ordinary
+    /// parameters, because no C# accessor has the <c>params T[]</c> backing to wrap onto — wrapping
+    /// would type-check and then emit a length call against a single value. A getter's extra
+    /// parameter has nowhere to bind at all and reached codegen as CS0103 behind SPY0908 (#1405).</para>
+    /// </summary>
+    private void ValidateAccessorParameterShape(PropertyDef propDef)
+    {
+        if (!propDef.IsFunctionStyle)
+            return;
+
+        bool writesValue = propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init;
+        var accessorWord = writesValue ? propDef.Accessor.ToString().ToLowerInvariant() : "get";
+        var valueParams = propDef.Parameters
+            .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        foreach (var param in valueParams)
+        {
+            if (!param.IsVariadic)
+                continue;
+
+            AddError(_context,
+                $"Variadic parameter '*{param.Name}' cannot appear in the '{accessorWord}' accessor of "
+                + $"property '{propDef.Name}'. A property accessor receives exactly one value from C# "
+                + "and has no argument list to vary — take a single 'list[T]' parameter instead, or "
+                + "write a method if the caller really has several arguments to pass.",
+                param.LineStart, param.ColumnStart,
+                code: DiagnosticCodes.Validation.AccessorParameterNotExpressible,
+                span: param.Span);
+            return;
+        }
+
+        // A getter has no incoming value, so any non-self parameter is unbindable. Reported on the
+        // first one; naming them all would repeat one fact per parameter.
+        if (!writesValue && valueParams.Count > 0)
+        {
+            var extra = valueParams[0];
+            AddError(_context,
+                $"Parameter '{extra.Name}' cannot appear in the 'get' accessor of property "
+                + $"'{propDef.Name}'. A getter receives no value from C#, so there is nothing for the "
+                + "name to denote — write a method if it needs an argument.",
+                extra.LineStart, extra.ColumnStart,
+                code: DiagnosticCodes.Validation.AccessorParameterNotExpressible,
+                span: extra.Span);
+            return;
+        }
+
+        // More than one value parameter on a setter is the same rule's third face, but nothing in
+        // the corpus reaches it and the parser may not admit it; left unreported rather than
+        // guessed at.
     }
 
     private void ValidateTypeBody(string typeName, IReadOnlyList<Statement> body)

@@ -831,5 +831,34 @@ public static partial class DiagnosticExplanations
             "Check the spelling and import the namespace that declares the attribute:\n" +
             "@[system.serializable]\nclass Widget: ...\n\nIf you meant a Sharpy modifier, drop the " +
             "brackets — '@abstract', '@final', '@override' and '@static' are decorators, not attributes.");
+
+        Add(dict, DiagnosticCodes.Validation.AccessorParameterNotExpressible,
+            "Accessor parameter list is not expressible",
+            "Validation",
+            "A Sharpy accessor's parameter list must be expressible as a C# accessor's: 'self', " +
+            "plus exactly one value parameter for a setter or init accessor and none for a getter. " +
+            "A property or event accessor does not take an argument list — it receives exactly the " +
+            "one value C# hands it. A setter, an init accessor and an event add/remove accessor " +
+            "each receive the implicit 'value'; a getter receives nothing at all. That shape is " +
+            "fixed by construction: there is no C# accessor that takes a variable number of " +
+            "arguments, and none that takes a second one. A variadic parameter here is not merely unused — it " +
+            "used to bind as its ELEMENT type, so a body treating it as a sequence was refused " +
+            "with a type error about the element ('Type 'int' does not support len()') that said " +
+            "nothing about the real mistake. Wrapping it as an array instead would have type-checked " +
+            "and then emitted a length call against a single value, so refusing the declaration is " +
+            "the honest resolution.",
+            "class Reading:\n"
+            + "    property set samples(self, *values: int):   # SPY0496 — no variadic accessor exists\n"
+            + "        print(len(values))\n\n"
+            + "    property get scale(self, factor: int) -> int:   # SPY0496 — a getter takes only self\n"
+            + "        return factor",
+            "Take a single value and let the caller pass a collection:\n"
+            + "property set samples(self, values: list[int]):\n"
+            + "    print(len(values))\n\n"
+            + "For a getter that needs an argument, write a method instead — that is what a method is:\n"
+            + "def scaled(self, factor: int) -> int:\n"
+            + "    return factor\n\n"
+            + "Variadics remain available everywhere an argument list genuinely exists: function and "
+            + "method signatures, delegate declarations, and interface method declarations.");
     }
 }

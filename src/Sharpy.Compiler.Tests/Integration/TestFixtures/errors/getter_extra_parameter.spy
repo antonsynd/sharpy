@@ -1,0 +1,13 @@
+# #1406's sibling, folded in from #1405: a C# getter receives no value, so a non-`self` parameter
+# has nothing to denote. It was a live ICE — CS0103 behind SPY0908 — because #1405 could map a
+# SETTER's parameter onto the implicit `value` but a getter has no such name to map onto. Refusing
+# is the resolution; no PropertyValidator rule constrained accessor parameter count before this.
+class Scaled:
+    _v: int = 3
+
+    property get value(self, factor: int) -> int:
+        return self._v * factor
+
+
+def main() -> None:
+    pass

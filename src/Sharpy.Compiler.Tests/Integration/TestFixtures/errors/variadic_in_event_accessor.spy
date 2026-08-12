@@ -1,0 +1,14 @@
+# #1406, event arm. An event accessor receives exactly one handler as C#'s implicit `value`.
+delegate Handler() -> None
+
+
+class Publisher:
+    event add on_action(self, *handlers: Handler):
+        print(len(handlers))
+
+    event remove on_action(self, handler: Handler):
+        pass
+
+
+def main() -> None:
+    pass

@@ -15,6 +15,7 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// 4. @abstract event must have ellipsis body (SPY0423)
 /// 5. @final cannot be combined with @abstract or @virtual (SPY0410, reuses property code)
 /// 6. @override event must have matching virtual/abstract base event (future)
+/// 7. An accessor's parameter list must be expressible as a C# accessor's (SPY0496)
 /// </summary>
 internal class EventValidator : SemanticValidatorBase
 {
@@ -33,6 +34,72 @@ internal class EventValidator : SemanticValidatorBase
         foreach (var stmt in module.Body)
         {
             ValidateTypeStatement(stmt, _context.SymbolTable.LookupType(TypeStatementName(stmt) ?? string.Empty));
+        }
+
+        // Rule 7 runs over every event regardless of what declares it — see the twin in
+        // PropertyValidator. An event accessor receives exactly the one handler C# hands it as the
+        // implicit `value`, so it has no argument list to vary (#1406).
+        foreach (var eventDef in EnumerateAllEvents(module.Body))
+            ValidateAccessorParameterShape(eventDef);
+    }
+
+    /// <summary>Every <see cref="EventDef"/> the module declares, at any nesting depth.</summary>
+    private static IEnumerable<EventDef> EnumerateAllEvents(IEnumerable<Statement> body)
+    {
+        foreach (var stmt in body)
+        {
+            switch (stmt.UnwrapDecorated())
+            {
+                case EventDef eventDef:
+                    yield return eventDef;
+                    break;
+                case ClassDef classDef:
+                    foreach (var nested in EnumerateAllEvents(classDef.Body))
+                        yield return nested;
+                    break;
+                case StructDef structDef:
+                    foreach (var nested in EnumerateAllEvents(structDef.Body))
+                        yield return nested;
+                    break;
+                case InterfaceDef interfaceDef:
+                    foreach (var nested in EnumerateAllEvents(interfaceDef.Body))
+                        yield return nested;
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Rule 7: an event accessor receives exactly one handler, as C#'s implicit <c>value</c>, so
+    /// <c>self</c> plus one handler parameter is the whole expressible shape (#1406). A variadic
+    /// bound as its ELEMENT type, so a body treating it as a sequence was refused with a type error
+    /// about the delegate rather than about the declaration; wrapping it as an array — #1292's fix
+    /// for ordinary parameters — would type-check and then emit a length call against a single
+    /// delegate, because a C# event accessor has no <c>params T[]</c> backing to wrap onto.
+    /// </summary>
+    private void ValidateAccessorParameterShape(EventDef eventDef)
+    {
+        if (!eventDef.IsFunctionStyle)
+            return;
+
+        var accessorWord = eventDef.Accessor == EventAccessor.Remove ? "remove" : "add";
+
+        foreach (var param in eventDef.Parameters)
+        {
+            if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (!param.IsVariadic)
+                continue;
+
+            AddError(_context,
+                $"Variadic parameter '*{param.Name}' cannot appear in the '{accessorWord}' accessor of "
+                + $"event '{eventDef.Name}'. An event accessor receives exactly one handler from C# "
+                + "and has no argument list to vary — take a single handler parameter, and let the "
+                + "caller subscribe more than once.",
+                param.LineStart, param.ColumnStart,
+                code: DiagnosticCodes.Validation.AccessorParameterNotExpressible,
+                span: param.Span);
+            return;
         }
     }
 

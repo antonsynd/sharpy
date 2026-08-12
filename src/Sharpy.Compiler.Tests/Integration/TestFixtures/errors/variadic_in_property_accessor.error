@@ -1,0 +1,3 @@
+# Pins the refusal, not the absence of the old cascade: SPY0320 still fires beside it, and the
+# .error format cannot express "and nothing else" (#1457).
+Variadic parameter '*values' cannot appear in the 'set' accessor of property 'samples'

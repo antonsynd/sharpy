@@ -1,0 +1,1 @@
+Variadic parameter '*handlers' cannot appear in the 'add' accessor of event 'on_action'
