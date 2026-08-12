@@ -304,7 +304,7 @@ internal partial class RoslynEmitter
         // A builtin type name the TypeChecker pinned to a concrete signature (#1182). The recorded
         // fact decides the shape and supplies the types; nothing is re-derived here.
         if (_context.SemanticInfo?.GetConstructorReferenceLowering(name) is { } constructorReference)
-            return GenerateConstructorReference(name, constructorReference);
+            return GenerateConstructorReference(name.IsNameBacktickEscaped, constructorReference);
 
         // Builtin function references (e.g., key=len, map(int, items)) need full qualification.
         // Shadowing check: if the semantic analysis resolved this identifier to a VariableSymbol,
@@ -384,12 +384,12 @@ internal partial class RoslynEmitter
     /// <c>xs =&gt; new List&lt;int&gt;(xs)</c> for the copy constructor.</para>
     /// </summary>
     private ExpressionSyntax GenerateConstructorReference(
-        Identifier name, ConstructorReferenceLowering lowering)
+        bool isBacktickEscaped, ConstructorReferenceLowering lowering)
     {
         if (lowering.Family == ConstructorReferenceFamily.Conversion)
         {
             return MakeGlobalQualifiedName("Sharpy", "Builtins",
-                NameCasing.ResolveMethod(lowering.Name, name.IsNameBacktickEscaped));
+                NameCasing.ResolveMethod(lowering.Name, isBacktickEscaped));
         }
 
         var constructed = _typeMapper.MapSemanticType(lowering.ConstructedType);

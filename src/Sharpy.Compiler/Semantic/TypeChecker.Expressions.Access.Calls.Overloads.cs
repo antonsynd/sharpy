@@ -612,11 +612,47 @@ internal partial class TypeChecker
         // symbol table, and a plain lookup handed it back for the BARE reference — so this returned
         // "not a type reference" and `h: (str) -> int = int` lost its overload pinning in any scope
         // containing a `` `int` `` binding (#1326).
+        // A builtins-QUALIFIED spelling denotes exactly what the bare spelling denotes (#1322), so it
+        // takes exactly the same tiers — pinned by an expected function type, or refused by SPY0342
+        // naming the spelling actually written (#1382). Resolved here rather than in CheckMemberAccess
+        // so both spellings share one rule instead of one growing a parallel copy.
+        if (reference is MemberAccess qualified
+            && BuiltinsQualifiedTypeOf(qualified) is { } qualifiedSymbol)
+        {
+            return ClassifyResolvedConstructorReference(
+                qualifiedSymbol, qualified.Member, DescribeMemberPath(qualified), isBuiltin: true);
+        }
+
         if (reference is not Identifier id
             || LookupBySpelling(id).Symbol is not TypeSymbol typeSymbol)
             return default;
 
         var isBuiltin = ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(id.Name));
+        return ClassifyResolvedConstructorReference(typeSymbol, id.Name, writtenName: null, isBuiltin);
+    }
+
+    /// <summary>
+    /// The registry type a builtins-qualified member access denotes, or null when it is not one.
+    /// Reads the receiver's already-computed <see cref="ModuleType"/> and defers to the same
+    /// <c>TryResolveBuiltinsQualifiedType</c> the callee position uses, so the two positions cannot
+    /// disagree about what <c>builtins.X</c> names.
+    /// </summary>
+    private TypeSymbol? BuiltinsQualifiedTypeOf(MemberAccess memberAccess)
+        => _semanticInfo.GetExpressionType(memberAccess.Object) is ModuleType moduleType
+            ? TryResolveBuiltinsQualifiedType(
+                moduleType.Symbol, memberAccess.Member, memberAccess.IsMemberBacktickEscaped)
+            : null;
+
+    /// <summary>
+    /// Classifies a reference whose type symbol is already resolved, shared by the bare and the
+    /// builtins-qualified spellings.
+    /// </summary>
+    /// <param name="name">The name the registry and codegen key on — always the BARE name.</param>
+    /// <param name="writtenName">The spelling to name in a diagnostic, or null when it is
+    /// <paramref name="name"/>.</param>
+    private ConstructorReferenceClassification ClassifyResolvedConstructorReference(
+        TypeSymbol typeSymbol, string name, string? writtenName, bool isBuiltin)
+    {
         var family = isBuiltin
             ? ConstructorReferenceFamilyOf(typeSymbol)
             : UserConstructorReferenceFamilyOf(typeSymbol);
@@ -624,12 +660,18 @@ internal partial class TypeChecker
         if (family is { } resolved)
         {
             return new ConstructorReferenceClassification(
-                new ConstructorReferenceType { Name = id.Name, Symbol = typeSymbol, Family = resolved },
+                new ConstructorReferenceType
+                {
+                    Name = name,
+                    WrittenNameOverride = writtenName,
+                    Symbol = typeSymbol,
+                    Family = resolved
+                },
                 null, null);
         }
 
         return isBuiltin
-            ? new ConstructorReferenceClassification(null, null, id.Name)
+            ? new ConstructorReferenceClassification(null, null, writtenName ?? name)
             : new ConstructorReferenceClassification(null, NonConstructibleTypeNameOf(typeSymbol), null);
     }
 
@@ -1210,19 +1252,19 @@ internal partial class TypeChecker
     private static string ConstructorReferenceSubject(ConstructorReferenceType constructorReference)
         => constructorReference.Family == ConstructorReferenceFamily.UserType
             ? $"{(constructorReference.Symbol.TypeKind == TypeKind.Struct ? "struct" : "class")} "
-                + $"'{constructorReference.Name}'"
-            : $"builtin type '{constructorReference.Name}'";
+                + $"'{constructorReference.WrittenName}'"
+            : $"builtin type '{constructorReference.WrittenName}'";
 
     /// <summary>Why a constructor reference has no single signature, for the SPY0342 message.</summary>
     private string ConstructorReferenceAmbiguityReason(ConstructorReferenceType constructorReference)
         => constructorReference.Family switch
         {
-            ConstructorReferenceFamily.Conversion => $"'{constructorReference.Name}' names an overload set",
+            ConstructorReferenceFamily.Conversion => $"'{constructorReference.WrittenName}' names an overload set",
             ConstructorReferenceFamily.UserType =>
                 ResolveInitializerConstructorCandidates(constructorReference.Symbol) is { Count: > 1 } overloads
-                    ? $"'{constructorReference.Name}' declares {overloads.Count} constructor overloads"
+                    ? $"'{constructorReference.WrittenName}' declares {overloads.Count} constructor overloads"
                     : "a constructor reference has no runtime value of its own",
-            _ => $"'{constructorReference.Name}' is generic, so its type arguments are unknown here",
+            _ => $"'{constructorReference.WrittenName}' is generic, so its type arguments are unknown here",
         };
 
     /// <summary>
@@ -1236,11 +1278,15 @@ internal partial class TypeChecker
     private string ConstructorReferenceAnnotationExample(ConstructorReferenceType constructorReference)
         => constructorReference.Family switch
         {
+            // The ANNOTATION half of every hint uses the bare Name and the VALUE half uses the written
+            // spelling: `builtins.dict` is a legal value but not a legal type annotation, so a hint
+            // built entirely from the written spelling would tell the user to write code that does not
+            // parse (#1382).
             ConstructorReferenceFamily.Conversion =>
-                $"f: (str) -> {constructorReference.Name} = {constructorReference.Name}",
+                $"f: (str) -> {constructorReference.Name} = {constructorReference.WrittenName}",
             ConstructorReferenceFamily.UserType when constructorReference.Symbol.TypeParameters.Count == 0 =>
-                $"f: {UserTypeShapeOf(constructorReference).GetDisplayName()} = {constructorReference.Name}",
-            _ => $"f: () -> {constructorReference.Name}[...] = {constructorReference.Name}",
+                $"f: {UserTypeShapeOf(constructorReference).GetDisplayName()} = {constructorReference.WrittenName}",
+            _ => $"f: () -> {constructorReference.Name}[...] = {constructorReference.WrittenName}",
         };
 
     /// <summary>The construction shapes a type offers, for the no-matching-signature message.</summary>
@@ -1249,7 +1295,8 @@ internal partial class TypeChecker
     {
         if (constructorReference.Family == ConstructorReferenceFamily.Collection)
         {
-            return $"'{constructorReference.Name}' can be pinned to its empty constructor "
+            // Naming uses the written spelling; the SIGNATURE shapes are type syntax and stay bare.
+            return $"'{constructorReference.WrittenName}' can be pinned to its empty constructor "
                 + $"(() -> {constructorReference.Name}[...]) or its copy constructor "
                 + $"({constructorReference.Name}[...] -> {constructorReference.Name}[...]).";
         }

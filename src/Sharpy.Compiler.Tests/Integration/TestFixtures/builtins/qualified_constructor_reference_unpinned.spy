@@ -1,0 +1,12 @@
+# #1382: unpinned, the qualified spelling draws the SAME tiered SPY0342 refusal the bare spelling
+# draws — and names the spelling the user actually wrote, `builtins.dict`, not `dict`.
+#
+# The remedy text deliberately mixes the two spellings: the ANNOTATION half is bare (`dict[...]` —
+# `builtins.dict` is a legal value but not a legal type annotation) while the VALUE half is
+# qualified. A hint built entirely from the written spelling would not parse.
+import builtins
+
+
+def main():
+    f = builtins.dict
+    print(1)

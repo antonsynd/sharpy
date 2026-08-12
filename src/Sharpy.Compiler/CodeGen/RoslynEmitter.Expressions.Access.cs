@@ -1396,6 +1396,15 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess, bool applyNarrowing = true)
     {
+        // A builtins-qualified constructor reference pinned by semantic analysis (`builtins.dict`,
+        // #1382). The recorded lowering is the same fact the bare spelling records, keyed on this
+        // node — so this applies it verbatim rather than deciding anything, and the two spellings
+        // emit identically by construction. Must precede every member-access path below: those emit
+        // `<qualifier>.<Member>`, which for the builtins module class is CS0117 ('Builtins' has no
+        // 'Dict') — the SPY0908 this arm exists to prevent.
+        if (_context.SemanticInfo?.GetConstructorReferenceLowering(memberAccess) is { } qualifiedConstructorReference)
+            return GenerateConstructorReference(memberAccess.IsMemberBacktickEscaped, qualifiedConstructorReference);
+
         // A module-qualified type used as a value/type reference (e.g. the receiver
         // `http.HTTPStatus` of `http.HTTPStatus.OK`). The module alias points at the module
         // CLASS (using http = global::Sharpy.HttpModule), which has no such member, so emit the

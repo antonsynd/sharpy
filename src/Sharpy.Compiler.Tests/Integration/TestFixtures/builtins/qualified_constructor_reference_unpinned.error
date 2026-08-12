@@ -1,0 +1,2 @@
+cannot infer a single callable signature for builtin type 'builtins.dict'
+f: () -> dict[...] = builtins.dict

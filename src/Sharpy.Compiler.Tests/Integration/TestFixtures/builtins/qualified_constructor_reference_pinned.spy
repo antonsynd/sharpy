@@ -1,0 +1,24 @@
+# #1382: a builtins-QUALIFIED type name in value position takes the same constructor-reference
+# tiers as the bare spelling (#1182's families). Pinned by an expected function type it denotes the
+# construction and runs — before this it drew SPY0203 "Module 'builtins' has no member 'dict'",
+# because the registry arm resolved only in CALLEE position.
+#
+# This is the #1322 agreement contract: a module qualifier changes lookup SCOPE, never the produced
+# representation. Both cells emit exactly what their bare twins emit.
+#
+# Scoped to REGISTRY types. A primitive-named builtin (`builtins.int`) does not resolve through the
+# registry at all and still disagrees with its bare twin — pre-existing, measured at fb5fc7f43
+# before this change, and reported separately rather than pinned here as if this fixed it.
+import builtins
+
+
+def main():
+    mk: () -> dict[str, int] = builtins.dict
+    d = mk()
+    d["a"] = 1
+    print(len(d))
+
+    mklist: () -> list[int] = builtins.list
+    xs = mklist()
+    xs.append(7)
+    print(xs[0])

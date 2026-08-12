@@ -966,6 +966,21 @@ public sealed record ConstructorReferenceType : SemanticType
     /// </summary>
     public string Name { get; init; } = string.Empty;
 
+    /// <summary>
+    /// The spelling to NAME in a diagnostic, which is not always <see cref="Name"/>: a
+    /// builtins-qualified reference is written <c>builtins.dict</c> but must still emit and resolve
+    /// as <c>dict</c> (#1382). Defaults to <see cref="Name"/>, so every bare reference is unchanged.
+    /// </summary>
+    /// <remarks>
+    /// Kept separate rather than overloading <see cref="Name"/> because <see cref="Name"/> is read
+    /// by codegen (<c>NameCasing.ResolveMethod</c> on the Conversion family) and by the builtin
+    /// registry lookups — a qualified spelling in either would emit or resolve nothing.
+    /// </remarks>
+    public string? WrittenNameOverride { get; init; }
+
+    /// <summary>The spelling a diagnostic should name this reference by.</summary>
+    public string WrittenName => WrittenNameOverride ?? Name;
+
     /// <summary>The type symbol the name resolved to — the builtin registry's instance, or the user
     /// declaration's own symbol when the name is a user class or struct.</summary>
     public TypeSymbol Symbol { get; init; } = null!;

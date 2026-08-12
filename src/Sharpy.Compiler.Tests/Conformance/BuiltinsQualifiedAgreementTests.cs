@@ -271,4 +271,109 @@ public class BuiltinsQualifiedAgreementTests
             "builtins.X(...) must mean exactly what bare X(...) means — same result type, or same "
             + "refusal (#1322)");
     }
+
+    /// <summary>
+    /// The VALUE-position half of the same contract (#1382). The sweep above is call-position only —
+    /// <see cref="BuildSource"/> emits nothing but call shapes — so a builtin type name used as a
+    /// VALUE (<c>f = builtins.dict</c>) was never compared against its bare twin, which is exactly
+    /// where the two spellings diverged: the qualified one drew SPY0203 "no member" while the bare
+    /// one drew the designed SPY0342 constructor-reference refusal.
+    /// </summary>
+    /// <remarks>
+    /// Registry TYPES only, because that is the surface the constructor-reference rule governs. A
+    /// primitive-named builtin (<c>int</c>, <c>str</c>) is not a registry type, so
+    /// <c>builtins.int</c> never resolves through the registry and falls through to the
+    /// <c>Builtins.Int</c> method group — a DIFFERENT #1322 gap, measured as pre-existing at
+    /// fb5fc7f43 and listed below rather than silently swept in.
+    /// </remarks>
+    [Fact]
+    public void EveryRegistryType_QualifiedValuePositionAgreesWithBare()
+    {
+        var probe = NewCompiler().Analyze("import builtins\n\n\ndef main() -> None:\n    pass\n", "probe.spy");
+        probe.Diagnostics.GetErrors().Should().BeEmpty();
+        var registry = probe.SymbolTable!.BuiltinRegistry;
+
+        var names = registry.RegisteredTypes.Keys
+            .Where(name => name.Length > 0 && (char.IsLetter(name[0]) || name[0] == '_'))
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        var disagreements = new List<string>();
+        var stale = new List<string>();
+        foreach (var name in names)
+        {
+            var bare = AnalyzeValuePosition(name, qualified: false);
+            var qualified = AnalyzeValuePosition(name, qualified: true);
+            var agrees = bare.ErrorCodes.SequenceEqual(qualified.ErrorCodes, StringComparer.Ordinal);
+
+            if (KnownValueDisagreements.TryGetValue(name, out var issue))
+            {
+                if (agrees)
+                    stale.Add($"{name}: listed ({issue}) but the spellings now agree — delete the entry");
+                continue;
+            }
+
+            if (!agrees)
+                disagreements.Add($"{name}: bare gave {bare.Describe()}, builtins.{name} gave {qualified.Describe()}");
+        }
+
+        _output.WriteLine($"Swept {names.Count} registry types in value position; {disagreements.Count} disagreements.");
+        foreach (var d in disagreements)
+            _output.WriteLine("  " + d);
+
+        names.Count.Should().BeGreaterThan(10,
+            "a sweep that swept nothing passes for free");
+        names.Should().Contain(new[] { "dict", "list", "set" });
+        stale.Should().BeEmpty("an entry is a debt, not an exemption");
+        disagreements.Should().BeEmpty(
+            "a builtin type name used as a VALUE must mean the same qualified as bare (#1382)");
+    }
+
+    /// <summary>
+    /// Value-position disagreements that are NOT #1382's: each is a name the registry does not hold
+    /// as a type, so the qualified spelling never reaches the constructor-reference rule.
+    /// </summary>
+    private static readonly Dictionary<string, string> KnownValueDisagreements = new(StringComparer.Ordinal)
+    {
+        // A primitive is not a REGISTRY type, so TryResolveBuiltinsQualifiedType never resolves it and
+        // the qualified spelling falls through to the Builtins.X method group. Measured pre-existing
+        // at fb5fc7f43, before #1382: `conv: (str) -> int = builtins.int` fails with SPY0220
+        // ('(ulong) -> int'), while the bare twin compiles and prints. #1382 neither caused nor fixed
+        // it; #1347 is weighing PrimitiveCatalog membership for the adjacent question.
+        ["bool"] = "#1463",
+        ["decimal"] = "#1463",
+        ["double"] = "#1463",
+        ["float"] = "#1463",
+        ["int"] = "#1463",
+        ["long"] = "#1463",
+        ["object"] = "#1463",
+        ["str"] = "#1463",
+
+        // Bare `None` is the none LITERAL and is legal; `builtins.None` names the registry's None type
+        // and is refused as a non-pinnable constructor reference. Strictly better than the SPY0203 it
+        // replaced ("Did you mean 'long'?"), but whether the qualified spelling should be legal at all
+        // is a decision, not an accident of registry membership.
+        ["None"] = "#1463",
+    };
+
+    private static string BuildValueSource(string reference) =>
+        "import builtins\n"
+        + "\n"
+        + "def main() -> None:\n"
+        + $"    f = {reference}\n"
+        + "    print(1)\n";
+
+    private static Outcome AnalyzeValuePosition(string name, bool qualified)
+    {
+        var source = BuildValueSource(qualified ? $"builtins.{name}" : name);
+        var result = NewCompiler().Analyze(source, "agreement_value.spy");
+
+        var errorCodes = result.Diagnostics.GetErrors()
+            .Select(diagnostic => diagnostic.Code ?? "<no-code>")
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(code => code, StringComparer.Ordinal)
+            .ToList();
+
+        return new Outcome(errorCodes, null);
+    }
 }

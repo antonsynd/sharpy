@@ -159,18 +159,29 @@ internal partial class TypeChecker
             // exports so that `builtins.X()` denotes what a bare `X()` denotes. See
             // TryResolveBuiltinsQualifiedType for why the two disagreed in both directions (#1322).
             //
-            // CALLEE position only. A builtin type name written as a VALUE (`f = builtins.dict`) is
-            // the constructor-reference question (#1182's family), which has its own rule and its own
-            // refusal for the bare spelling (SPY0342) — typing the qualified spelling as the type
-            // itself instead would hand codegen a member access with no C# form and turn today's
-            // honest "no member" into an SPY0908. That spelling keeps its current answer until the
-            // constructor-reference rule is extended to it (#1382).
-            if (IsCurrentCallCallee(memberAccess)
-                && TryResolveBuiltinsQualifiedType(moduleSymbol, memberName, memberAccess.IsMemberBacktickEscaped)
+            if (TryResolveBuiltinsQualifiedType(moduleSymbol, memberName, memberAccess.IsMemberBacktickEscaped)
                 is { } builtinsQualifiedType)
             {
-                _semanticInfo.MarkTypeReference(memberAccess);
-                return new UserDefinedType { Name = builtinsQualifiedType.Name, Symbol = builtinsQualifiedType };
+                // CALLEE position: the spelling denotes the type, and the call path resolves it.
+                if (IsCurrentCallCallee(memberAccess))
+                {
+                    _semanticInfo.MarkTypeReference(memberAccess);
+                    return new UserDefinedType { Name = builtinsQualifiedType.Name, Symbol = builtinsQualifiedType };
+                }
+
+                // VALUE position: the constructor-reference rule owns this spelling exactly as it owns
+                // the bare one (#1382). Returning Unknown here is a DEFERRAL, not an answer — the same
+                // node reaches CheckValuePositionReference immediately after (TypeChecker.Expressions.cs
+                // routes `Identifier or MemberAccess` there when it is not a callee), which pins it
+                // against an expected function type or refuses with SPY0342 naming `builtins.dict`.
+                // Both sides resolve through TryResolveBuiltinsQualifiedType, so reaching here
+                // guarantees the classifier resolves too and the deferral cannot fall through silently.
+                //
+                // Deliberately NOT MarkTypeReference: IsConstructorReferenceValueUse excludes a node
+                // recorded as naming a type, so marking it would suppress the very refusal this defers
+                // to. And deliberately not the UserDefinedType above — that would hand codegen a member
+                // access with no C# form, turning the old honest "no member" into an SPY0908.
+                return SemanticType.Unknown;
             }
 
             // For .NET modules, try PascalCase conversion if the exact name isn't found
