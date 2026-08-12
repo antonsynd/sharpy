@@ -180,7 +180,9 @@ public class CompletionLastGoodAnalysisTests : IDisposable
         document.Should().NotBeNull();
         document!.LastGoodAnalysis.Should().NotBeNull("precondition");
 
-        document.InvalidateAnalysis();
+        // The generation argument is what RebuildOptions would stamp (#1375); any advance works
+        // here, since this test is about the snapshot being dropped, not about which options won.
+        document.InvalidateAnalysis(optionsGeneration: 1);
 
         document.LastGoodAnalysis.Should().BeNull();
     }

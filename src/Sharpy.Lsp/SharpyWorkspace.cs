@@ -30,6 +30,12 @@ internal sealed class DocumentState : IDisposable
     private SemanticResult? _previousAnalysis;
     private ParseResult? _previousParseResult;
 
+    // The options generation this document's caches belong to (#1375). _analysisVersion already
+    // discards a result whose analysis STARTED before an invalidation; this discards one that
+    // started after the invalidation but under options captured before it. Those are different
+    // windows, and only the first was covered — see GetOrRunAnalysisAsync's write guard.
+    private int _optionsGeneration;
+
     // The last analysis that actually produced a queryable tree, kept alongside the text it was
     // produced from (#1360). This is NOT _previousAnalysis: that one is "last completed" and is
     // overwritten by a failed parse, which is exactly the state a mid-edit buffer is in. A buffer
@@ -50,11 +56,12 @@ internal sealed class DocumentState : IDisposable
         get { lock (_stateLock) { return _analysisVersion; } }
     }
 
-    public DocumentState(string uri, string text, int version)
+    public DocumentState(string uri, string text, int version, int optionsGeneration)
     {
         Uri = uri;
         SourceText = new SourceText(text, uri);
         Version = version;
+        _optionsGeneration = optionsGeneration;
     }
 
     public void Update(string text, int version)
@@ -119,10 +126,11 @@ internal sealed class DocumentState : IDisposable
     /// Bumping the version means an analysis already in flight under the old options will not be
     /// cached when it completes.
     /// </summary>
-    public void InvalidateAnalysis()
+    public void InvalidateAnalysis(int optionsGeneration)
     {
         lock (_stateLock)
         {
+            _optionsGeneration = optionsGeneration;
             CachedAnalysis = null;
             CachedParseResult = null;
             _previousAnalysis = null;
@@ -154,6 +162,30 @@ internal sealed class DocumentState : IDisposable
             }
         }
     }
+
+    /// <summary>
+    /// Whether an analysis that started at <paramref name="versionAtStart"/> under options
+    /// generation <paramref name="optionsGeneration"/> may still be cached. Caller holds
+    /// <see cref="_stateLock"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Two independent staleness windows, and the second is the one #1375 reported. The version
+    /// check discards a result whose analysis started BEFORE an invalidation and finished after.
+    /// It cannot see the other order: a request that read <c>_workspaceOptions</c>, was descheduled,
+    /// and resumed after the options changed starts its analysis with a version already bumped —
+    /// so the version matches and the result caches, under options the workspace has abandoned.
+    /// The observed symptom was the pre-change SPY0331 being served after
+    /// <c>didChangeConfiguration</c> enabled the feature.
+    /// </para>
+    /// <para>
+    /// Closing it needs both halves: options and generation are read together under
+    /// <c>_optionsLock</c> (so they can never disagree), and the generation is re-checked here at
+    /// the write. Either alone leaves the window open.
+    /// </para>
+    /// </remarks>
+    private bool CanCache(int versionAtStart, int optionsGeneration)
+        => _analysisVersion == versionAtStart && _optionsGeneration == optionsGeneration;
 
     /// <summary>
     /// Whether <paramref name="result"/> can answer a tree-shaped query. A failed parse yields a
@@ -194,8 +226,13 @@ internal sealed class DocumentState : IDisposable
     /// Collects nothing on the incremental fast paths below, which never reach the compiler call —
     /// an empty breakdown is the honest report that no full analysis ran.
     /// </param>
+    /// <param name="optionsGeneration">
+    /// The generation <paramref name="options"/> was read at, captured atomically with it (#1375).
+    /// A result produced under a superseded generation is returned to its caller but never cached:
+    /// it describes the file under options the workspace has already moved on from.
+    /// </param>
     public async Task<SemanticResult> GetOrRunAnalysisAsync(CompilerApi api, CompilerOptions options,
-        CancellationToken ct, CompilationMetrics? stageMetrics = null)
+        int optionsGeneration, CancellationToken ct, CompilationMetrics? stageMetrics = null)
     {
         lock (_stateLock)
         {
@@ -241,7 +278,7 @@ internal sealed class DocumentState : IDisposable
                     // AST is structurally identical — reuse the previous result
                     lock (_stateLock)
                     {
-                        if (_analysisVersion == versionAtStart)
+                        if (CanCache(versionAtStart, optionsGeneration))
                         {
                             _previousParseResult = newParse;
                             CachedAnalysis = previousAnalysis;
@@ -263,7 +300,7 @@ internal sealed class DocumentState : IDisposable
                     {
                         lock (_stateLock)
                         {
-                            if (_analysisVersion == versionAtStart)
+                            if (CanCache(versionAtStart, optionsGeneration))
                             {
                                 _previousAnalysis = partialResult;
                                 _previousParseResult = newParse;
@@ -297,7 +334,7 @@ internal sealed class DocumentState : IDisposable
                 // Only cache if document hasn't changed during analysis
                 // and analysis wasn't cancelled (SPY0901). Cancelled results
                 // would poison the cache — the next caller must retry.
-                if (_analysisVersion == versionAtStart && !IsCancelledResult(result))
+                if (CanCache(versionAtStart, optionsGeneration) && !IsCancelledResult(result))
                 {
                     _previousAnalysis = result;
                     _previousParseResult = parseForCache;
@@ -426,6 +463,13 @@ internal sealed class SharpyWorkspace : IDisposable
     private IReadOnlyList<string> _configuredFeatures = Array.Empty<string>();
     private volatile CompilerOptions _workspaceOptions = CompilerOptionsFactory.ForLsp();
 
+    // Incremented whenever _workspaceOptions is replaced, under _optionsLock, so the pair can be
+    // read atomically (#1375). `volatile` gives visibility, not atomicity of a read-then-use: a
+    // request could read the old options, be descheduled past a whole RebuildOptions, and resume
+    // to analyse under options nobody uses any more. The generation travels with the options into
+    // DocumentState, which refuses to cache a result stamped with a superseded one.
+    private int _optionsGeneration;
+
     // Debounce timers per document
     private readonly ConcurrentDictionary<string, Timer> _debounceTimers = new();
     private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(300);
@@ -500,6 +544,9 @@ internal sealed class SharpyWorkspace : IDisposable
             return false;
 
         _workspaceOptions = rebuilt;
+        // Bumped under _optionsLock together with the options themselves, so a reader that takes
+        // both under the lock can never see one without the other (#1375).
+        _optionsGeneration++;
         _logger.LogInformation(
             "Workspace analysis options updated: features=[{Features}] warningsAsErrors={WarningsAsErrors} noWarn=[{NoWarn}]",
             string.Join(", ", rebuilt.Features.EnabledFeatures),
@@ -508,7 +555,7 @@ internal sealed class SharpyWorkspace : IDisposable
 
         foreach (var kvp in _documents)
         {
-            kvp.Value.InvalidateAnalysis();
+            kvp.Value.InvalidateAnalysis(_optionsGeneration);
             ScheduleAnalysis(kvp.Key);
         }
 
@@ -534,7 +581,12 @@ internal sealed class SharpyWorkspace : IDisposable
 
     public void OpenDocument(string uri, string text, int version)
     {
-        var state = new DocumentState(uri, text, version);
+        // A document opened after an options change starts in the CURRENT generation; one opened
+        // before keeps whatever generation its last invalidation set.
+        int generationAtOpen;
+        lock (_optionsLock)
+            generationAtOpen = _optionsGeneration;
+        var state = new DocumentState(uri, text, version, generationAtOpen);
         _documents[uri] = state;
         ScheduleAnalysis(uri);
     }
@@ -584,7 +636,17 @@ internal sealed class SharpyWorkspace : IDisposable
     {
         if (_documents.TryGetValue(uri, out var state))
         {
-            return await state.GetOrRunAnalysisAsync(_api, _workspaceOptions, ct, stageMetrics)
+            // Options and their generation are read together under the lock; passing them
+            // separately from two unsynchronised reads is the race this closes (#1375).
+            CompilerOptions options;
+            int generation;
+            lock (_optionsLock)
+            {
+                options = _workspaceOptions;
+                generation = _optionsGeneration;
+            }
+
+            return await state.GetOrRunAnalysisAsync(_api, options, generation, ct, stageMetrics)
                 .ConfigureAwait(false);
         }
         return null;
@@ -671,8 +733,33 @@ internal sealed class SharpyWorkspace : IDisposable
             // DocumentAnalyzed handler that publishes diagnostics. Recorded so the LSP
             // incremental-frontend work (#1099) starts from data, not intuition.
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+            // The publish half of #1375. Refusing to CACHE a superseded result is not enough on its
+            // own: this callback also raises DocumentAnalyzed, which is what DiagnosticPublisher
+            // publishes from, so an analysis overtaken by a configuration change would still put
+            // pre-change diagnostics on screen once. RebuildOptions re-arms this timer, so the
+            // correct diagnostics are already coming — dropping the overtaken publish costs nothing
+            // and is the difference between a transient wrong squiggle and none.
+            int generationAtStart;
+            lock (_optionsLock)
+                generationAtStart = _optionsGeneration;
+
             var result = await GetAnalysisAsync(uri, CancellationToken.None, stageMetrics)
                 .ConfigureAwait(false);
+
+            int generationNow;
+            lock (_optionsLock)
+                generationNow = _optionsGeneration;
+
+            if (generationNow != generationAtStart)
+            {
+                _logger.LogDebug(
+                    "Dropping analysis of {Uri}: options moved from generation {Start} to {Now} "
+                    + "while it ran; a re-analysis is already scheduled.",
+                    uri, generationAtStart, generationNow);
+                return;
+            }
+
             if (result != null)
             {
                 var handler = DocumentAnalyzed;
