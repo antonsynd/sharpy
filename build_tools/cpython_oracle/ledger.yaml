@@ -117,6 +117,14 @@ deviations:
   spec_ref: docs/language_specification/flexible_arguments.md
   existing_diagnostic: SPY0123
   planned_diagnostic: null
+- id: dict-views-are-lists
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/dotnet_interop.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: duck-typing-rejected
   category: types
   audience: python
@@ -268,6 +276,14 @@ deviations:
   code: SPY0344
   spec_ref: docs/language_specification/builtin_functions.md
   existing_diagnostic: SPY0344
+  planned_diagnostic: null
+- id: iterator-repr-no-address
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/builtin_functions.md
+  existing_diagnostic: null
   planned_diagnostic: null
 - id: late-bound-default-self-reference
   category: semantics
