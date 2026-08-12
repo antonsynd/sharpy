@@ -76,6 +76,14 @@ internal static class BuiltinNames
     public const string Bytes = "bytes";
     public const string DefaultDict = "defaultdict";
     public const string FrozenDict = "frozendict";
+
+    /// <summary>
+    /// Python's complex-number spelling. The CLR type is <c>Sharpy.Complex</c>, which stays
+    /// reachable under that name too via the <c>Sharpy</c>-namespace discovery rule — this
+    /// registration ADDS the lowercase spelling rather than replacing the uppercase one, so no
+    /// existing source breaks (#1362).
+    /// </summary>
+    public const string Complex = "complex";
     public const string FrozenSet = "frozenset";
     public const string Tuple = "tuple";
     public const string None = "None";

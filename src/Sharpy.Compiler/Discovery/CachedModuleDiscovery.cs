@@ -376,6 +376,7 @@ internal class CachedModuleDiscovery
         ["frozendict"] = "FrozenDict",
         ["str"] = "Str",
         ["tuple"] = "ValueTuple",
+        ["complex"] = "Complex",
     };
 
     /// <summary>

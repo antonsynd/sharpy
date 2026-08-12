@@ -1,0 +1,24 @@
+# #1362's own repro, both spellings. Before this, `a + b` drew
+# `SPY0222: Type 'Complex' does not support operator '+'` — correctly, because Sharpy.Complex
+# declared exactly two operators and BOTH were conversions. And the Python spelling did not
+# resolve at all: `complex` drew SPY0200 + SPY0202 ("Did you mean 'Complex'?").
+#
+# Values verified against python3 3.12, including the repr shape, which is less regular than it
+# looks: a POSITIVE zero real drops the parentheses and the real term (`1j`), while a NEGATIVE
+# zero real keeps them (`(-0+1j)`); components print without a trailing `.0` even though
+# repr(4.0) is "4.0"; and division keeps full round-trip precision.
+def main() -> None:
+    a: complex = complex(1.0, 2.0)
+    b: complex = complex(3.0, -1.0)
+    print(a + b)
+    print(a * b)
+    print(a - b)
+    print(a / b)
+    print(-a)
+
+    # The uppercase spelling still resolves — this registers a name, it does not rename one.
+    c: Complex = Complex(0.0, 1.0)
+    print(c)
+    print(complex(3.0, 0.0))
+    print(complex(-1.0, -2.0))
+    print(a == complex(1.0, 2.0))

@@ -94,6 +94,12 @@ internal class BuiltinRegistry
         // Bytes (non-generic) - immutable byte sequence
         RegisterType("bytes", typeof(SharpyRT::Sharpy.Bytes), TypeKind.Struct);
 
+        // complex: the Python spelling. `Complex` already resolved through the Sharpy-namespace
+        // discovery rule — this is not a rename, it registers the lowercase name a Python reader
+        // actually writes, and both spellings resolve afterwards (#1362). Every other builtin is
+        // lowercase; Complex was the outlier.
+        RegisterType(BuiltinNames.Complex, typeof(SharpyRT::Sharpy.Complex), TypeKind.Struct);
+
         // Tuple: registered for OperatorValidator/ProtocolValidator metadata lookup.
         // typeParamCount=1 is nominal — real tuple arity is tracked by TupleType.ElementTypes,
         // not by this TypeSymbol's TypeParameters. CLR type is System.ValueTuple (non-generic sentinel).
