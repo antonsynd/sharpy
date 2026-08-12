@@ -1,0 +1,2 @@
+class 'Box' has no constructor signature matching '() -> Base[str]' @21:30
+class 'Box' has no constructor signature matching '() -> Other[int]' @22:35

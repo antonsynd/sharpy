@@ -907,22 +907,54 @@ internal partial class TypeChecker
         if (!pinnable)
             return false;
 
-        // The lambda must construct the REFERENCED class, which stopped being the target's return
-        // type once pinning became return-covariant: `f: () -> Animal = Cat` emitting
-        // `() => new Animal()` is a silently wrong VALUE, not a type error (#1270). A generic
-        // construction keeps the target's return, which the substitution arm has already proven is
-        // a construction of this very class.
-        var constructedType = constructorReference.Family == ConstructorReferenceFamily.UserType
-                && target.ReturnType is UserDefinedType targetReturn
-                && !ReferenceEquals(targetReturn.Symbol, constructorReference.Symbol)
-            ? new UserDefinedType { Name = constructorReference.Name, Symbol = constructorReference.Symbol }
-            : target.ReturnType;
-
         _semanticInfo.SetConstructorReferenceLowering(reference,
             new ConstructorReferenceLowering(
                 constructorReference.Family, constructorReference.Name,
-                constructedType, target.ParameterTypes.Count));
+                ConstructedTypeFor(constructorReference, target), target.ParameterTypes.Count));
         return true;
+    }
+
+    /// <summary>
+    /// What a pinned constructor reference's lambda constructs.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// It stopped being the target's return type once pinning became return-covariant:
+    /// <c>f: () -&gt; Animal = Cat</c> emitting <c>() =&gt; new Animal()</c> is a silently wrong VALUE,
+    /// not a type error (#1270). When the target names a construction of the referenced class itself,
+    /// its return type IS what the lambda constructs, type arguments and all.
+    /// </para>
+    /// <para>
+    /// Across a GENERIC base the referenced class must further be constructed at the arguments the
+    /// base clause pinned: <c>f: () -&gt; Base[str] = Pair</c> over <c>class Pair[T](Base[T])</c>
+    /// emits <c>() =&gt; new Pair&lt;string&gt;()</c>, from the very substitution the acceptance test
+    /// solved for (#1345). Emitting the bare <c>Pair</c> there would not compile, and emitting
+    /// <c>Base[str]</c> would be #1270's bug again.
+    /// </para>
+    /// </remarks>
+    private SemanticType ConstructedTypeFor(
+        ConstructorReferenceType constructorReference, FunctionType target)
+    {
+        if (constructorReference.Family != ConstructorReferenceFamily.UserType)
+            return target.ReturnType;
+
+        var typeSymbol = constructorReference.Symbol;
+        var namesThisClass = target.ReturnType switch
+        {
+            UserDefinedType returned => ReferenceEquals(returned.Symbol, typeSymbol),
+            GenericType generic => generic.GenericDefinition is null
+                ? string.Equals(generic.Name, typeSymbol.Name, StringComparison.Ordinal)
+                : ReferenceEquals(generic.GenericDefinition, typeSymbol),
+            _ => false
+        };
+
+        if (namesThisClass)
+            return target.ReturnType;
+
+        var substitute = UserTypeConstructionSubstitutionOf(constructorReference, target.ReturnType);
+        return substitute is null
+            ? new UserDefinedType { Name = constructorReference.Name, Symbol = typeSymbol }
+            : substitute(SelfConstructionOf(typeSymbol));
     }
 
     /// <summary>
@@ -983,6 +1015,10 @@ internal partial class TypeChecker
     /// <para>Identity is by symbol. Only when the target carries no generic definition — an
     /// annotation-produced type need not — does the name decide, which is as precise as that type
     /// allows.</para>
+    ///
+    /// <para>When the target names neither, it may still name a construction of a BASE class, whose
+    /// substitution is solved from the base clause rather than read off the target
+    /// (<see cref="BaseClauseConstructionSubstitutionOf"/>, #1345).</para>
     /// </summary>
     private Func<SemanticType, SemanticType>? UserTypeConstructionSubstitutionOf(
         ConstructorReferenceType constructorReference, SemanticType returnType)
@@ -995,9 +1031,9 @@ internal partial class TypeChecker
                 // because constructing a Cat produces an Animal. This is the `f: () -> Animal = Cat;
                 // if flag: f = Dog` idiom, and it is what `SignatureSatisfiesTarget` — already
                 // return-covariant — never got to judge, since the exactness test here ran first.
-                // Only NON-generic bases: a generic base needs its arguments substituted from the
-                // target, which the arm below does by identity and cannot do across a hierarchy
-                // (#1345). Interfaces count, via InheritsFrom's interface walk.
+                // Non-generic on both sides is answered here, by identity: no substitution is needed
+                // and none is available. Interfaces count, via InheritsFrom's interface walk — the
+                // base-clause arm below walks base CLASSES only.
                 || (typeSymbol.TypeParameters.Count == 0
                     && returned.Symbol is { TypeParameters.Count: 0 }
                     && TypeHierarchyService.InheritsFrom(typeSymbol, returned.Symbol, SemanticBinding))))
@@ -1014,7 +1050,129 @@ internal partial class TypeChecker
             return t => SubstituteTypeParameters(t, typeSymbol.TypeParameters, generic.TypeArguments);
         }
 
+        // The target names a construction of a generic BASE (#1345). Neither arm above can answer it:
+        // the first is identity, which cannot carry `[int]` from a base clause, and the second matches
+        // the target against the class ITSELF. The substitution has to come from the base clause —
+        // `class Box(Base[int])` says `T = int`, `class Pair[T](Base[T])` says `T` is whatever the
+        // target's `Base[…]` argument is — which means walking the chain and composing each level's
+        // map. That is real inference, which is why #1270 refused rather than guessed; the authority
+        // now exists and the restriction can lift.
+        return BaseClauseConstructionSubstitutionOf(typeSymbol, returnType);
+    }
+
+    /// <summary>
+    /// The substitution under which <paramref name="typeSymbol"/>, constructed, produces
+    /// <paramref name="returnType"/> — a construction of one of its BASE classes (#1345). Null when
+    /// no ancestor matches, or when the match leaves any of the class's own type parameters unsolved.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The class's own parameters enter the walk as themselves, so each ancestor comes back expressed
+    /// in terms of them (<c>Base[T]</c> for <c>class Pair[T](Base[T])</c>); unifying that against the
+    /// target's arguments (<c>Base[str]</c>) solves for them. Composition across levels comes free
+    /// from <see cref="GenericInstantiationWalker.EnumerateBaseChain"/>, so a two-level chain resolves
+    /// as readily as a direct base.
+    /// </para>
+    /// <para>
+    /// An unsolved parameter is a REFUSAL, not a guess. #1345's own reasoning is the reason: a wrong
+    /// substitution silently constructs the wrong shape, and #1270's emission bug shows how that
+    /// presents — a wrong value, not a type error. SPY0342 stays for those.
+    /// </para>
+    /// </remarks>
+    private Func<SemanticType, SemanticType>? BaseClauseConstructionSubstitutionOf(
+        TypeSymbol typeSymbol, SemanticType returnType)
+    {
+        TypeSymbol? targetDefinition;
+        string targetName;
+        IReadOnlyList<SemanticType> targetArguments;
+        switch (returnType)
+        {
+            case GenericType generic:
+                targetDefinition = generic.GenericDefinition;
+                targetName = generic.Name;
+                targetArguments = generic.TypeArguments;
+                break;
+            case UserDefinedType user:
+                targetDefinition = user.Symbol;
+                targetName = user.Name;
+                targetArguments = Array.Empty<SemanticType>();
+                break;
+            default:
+                return null;
+        }
+
+        var ownArguments = typeSymbol.TypeParameters
+            .Select(tp => (SemanticType)new TypeParameterType { Name = tp.Name })
+            .ToList();
+
+        foreach (var ancestor in GenericInstantiationWalker.EnumerateBaseChain(
+            typeSymbol, ownArguments, SemanticBinding, _typeResolver))
+        {
+            var matches = targetDefinition != null
+                ? TypeHierarchyService.IsSameType(ancestor.Definition, targetDefinition)
+                : string.Equals(ancestor.Definition.Name, targetName, StringComparison.Ordinal);
+            if (!matches)
+                continue;
+
+            var solved = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+            if (!UnifyAgainstTarget(ancestor.TypeArguments, targetArguments, solved))
+                return null;
+
+            if (typeSymbol.TypeParameters.Any(tp => !solved.ContainsKey(tp.Name)))
+                return null;
+
+            return t => TypeSubstitution.Apply(t, solved);
+        }
+
         return null;
+    }
+
+    /// <summary>
+    /// Solves <paramref name="pattern"/>'s type parameters against <paramref name="concrete"/>,
+    /// accumulating into <paramref name="solved"/>. Structural and one-way: only the pattern side may
+    /// contain type parameters, a parameter bound twice must agree, and everything else must match.
+    /// </summary>
+    private static bool UnifyAgainstTarget(
+        IReadOnlyList<SemanticType> pattern,
+        IReadOnlyList<SemanticType> concrete,
+        Dictionary<string, SemanticType> solved)
+    {
+        if (pattern.Count != concrete.Count)
+            return false;
+
+        for (int i = 0; i < pattern.Count; i++)
+        {
+            if (!UnifyAgainstTarget(pattern[i], concrete[i], solved))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool UnifyAgainstTarget(
+        SemanticType pattern, SemanticType concrete, Dictionary<string, SemanticType> solved)
+    {
+        if (pattern is TypeParameterType typeParameter)
+        {
+            return solved.TryGetValue(typeParameter.Name, out var alreadySolved)
+                ? alreadySolved.Equals(concrete)
+                : Bind(typeParameter.Name, concrete, solved);
+        }
+
+        if (pattern is GenericType patternGeneric && concrete is GenericType concreteGeneric)
+        {
+            return string.Equals(patternGeneric.Name, concreteGeneric.Name, StringComparison.Ordinal)
+                && UnifyAgainstTarget(
+                    patternGeneric.TypeArguments, concreteGeneric.TypeArguments, solved);
+        }
+
+        return pattern.Equals(concrete);
+
+        static bool Bind(string name, SemanticType type, Dictionary<string, SemanticType> into)
+        {
+            into[name] = type;
+            return true;
+        }
     }
 
     /// <summary>
@@ -1136,8 +1294,10 @@ internal partial class TypeChecker
             : UserTypeConstructionSubstitutionOf(constructorReference, targetReturnType);
 
         // With no substitution the class is shown constructing ITSELF, type parameters and all
-        // (`(T) -> Box[T]`). That is the honest answer when the target names a construction of some
-        // BASE, where the arguments cannot be carried across the hierarchy (#1345) — and it is still
+        // (`(T) -> Box[T]`). Since #1345 a base clause's arguments ARE carried across the hierarchy,
+        // so this is the answer only for targets that legitimately yield none: an unrelated return
+        // type, a base whose written arguments cannot be read (#1287 leaves those UNKNOWN rather than
+        // guessing), or a match leaving one of the class's own parameters unsolved. It remains
         // strictly better than the arity-less `Box` this printed before, which named no type at all.
         var map = substitute ?? (static t => t);
         var constructed = substitute != null && targetReturnType != null

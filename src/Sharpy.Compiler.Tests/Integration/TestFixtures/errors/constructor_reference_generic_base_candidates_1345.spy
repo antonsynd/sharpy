@@ -1,10 +1,16 @@
-# The candidate list when NO substitution is available: the target names a construction of a generic
-# BASE, and #1345 records that the arguments cannot be carried across the hierarchy, so the class is
-# shown constructing itself — `(T) -> Box[T]`.
+# #1345: this cell used to pin a REFUSAL. The target names a construction of a generic BASE, and the
+# candidate list printed `(T) -> Box[T]` — the class constructing itself — because the arguments
+# could not be carried across the hierarchy. The header carried a flip note saying that when #1345
+# landed the cell would stop refusing and become an `.expected`; this is that flip.
 #
-# The refusal itself is #1345's, not this fixture's subject; what is pinned here is that the shape
-# still names a type. It used to print the arity-less `(T) -> Box`. When #1345 lands this cell stops
-# refusing and this fixture should become an .expected — that is the intended way for it to fail.
+# `Box[T](Base[T])` now solves `T := int` by unifying its base clause against the target's
+# `Base[int]`, so `mk` pins and lowers to `__ctor_source_0 => new Box<int>(__ctor_source_0)`.
+#
+# The printed line is the DELEGATE's, not a constructed value's: `print(mk)` on a pinned constructor
+# reference reaches `object.ToString()` on a `Func<,>`, so what it pins is that the variable's
+# declared type is the TARGET (`(int) -> Base[int]`) rather than the constructed `Box[int]` — #1270's
+# rule that the pinned Sharpy type is the target itself. The construction is observed instead by
+# builtins/constructor_reference_generic_base_1345.
 
 class Base[T]:
     value: T

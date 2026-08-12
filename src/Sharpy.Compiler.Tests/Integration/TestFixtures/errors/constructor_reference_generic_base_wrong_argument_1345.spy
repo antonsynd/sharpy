@@ -1,0 +1,23 @@
+# #1345 landed covariance across a generic base by SOLVING the base clause's substitution, not by
+# widening the predicate — so the argument the base clause pinned still has to match. `Box(Base[int])`
+# says `T = int`; a `Base[str]` slot names a construction Box cannot produce, and an unrelated generic
+# type is not an ancestor at all.
+#
+# This is the direction that matters: the fix converts a refusal into an acceptance, so what has to
+# stay pinned is that it did not become an acceptance of everything.
+class Base[T]:
+    pass
+
+
+class Box(Base[int]):
+    pass
+
+
+class Other[T]:
+    pass
+
+
+def main() -> None:
+    wrong: () -> Base[str] = Box
+    unrelated: () -> Other[int] = Box
+    print(str(wrong) + str(unrelated))

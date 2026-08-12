@@ -1,0 +1,60 @@
+# #1345: constructor-reference pinning is return-covariant across a GENERIC base, the sibling of
+# #1270's non-generic widening. The substitution cannot come from the target — it comes from the BASE
+# CLAUSE: `Box(Base[int])` says `T = int`, and `Pair[T](Base[T])` says `T` is whatever the target's
+# `Base[...]` argument is, solved by unifying the two.
+#
+# `speak()` is the instrument, exactly as in constructor_reference_covariant_1270: getting the
+# construction wrong is a silently wrong VALUE, not a type error, so the cell has to observe WHICH
+# class the lambda built rather than merely that it type-checked.
+class Base[T]:
+    @virtual
+    def speak(self) -> str:
+        return "base"
+
+
+# Scope bullet 1: a NON-generic class over a closed generic base. Nothing on the target side names
+# `int` for Box; the base clause does.
+class Box(Base[int]):
+    @override
+    def speak(self) -> str:
+        return "box"
+
+
+# Scope bullet 2: a generic class whose own parameter is solved FROM the target's argument, so the
+# lambda must construct `Pair[str]` — the bare `Pair` would not compile and `Base[str]` would be
+# #1270's bug again.
+class Pair[T](Base[T]):
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+    @override
+    def speak(self) -> str:
+        return "pair " + str(self.value)
+
+
+# Two levels: `Leaf -> Mid[int] -> Base[int]` composes level 1's `{T := int}` into level 2, which is
+# what makes this a chain walk rather than a one-step lookup.
+class Mid[T](Base[T]):
+    pass
+
+
+class Leaf(Mid[int]):
+    @override
+    def speak(self) -> str:
+        return "leaf"
+
+
+def main() -> None:
+    f: () -> Base[int] = Box
+    print(f().speak())
+
+    p: (str) -> Base[str] = Pair
+    print(p("hi").speak())
+
+    g: () -> Base[int] = Leaf
+    print(g().speak())
+
+    # The pinned type argument is the one solved from the base clause, not the class's own parameter.
+    print(isinstance(p("x"), Pair[str]))
