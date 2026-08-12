@@ -85,6 +85,35 @@ event remove on_click(self, handler: EventHandler):
 
 Both `event add` and `event remove` must be declared together for a given event name.
 
+### Accessor Parameter Lists
+
+An event accessor takes `self` plus exactly one handler parameter. C# hands the accessor a single
+handler as its implicit `value`, so that is the whole expressible shape — the handler's name is
+*mapped* onto `value` rather than declared, which is why any name works:
+
+```python
+class Bus:
+    _handlers: list[EventHandler] = []
+
+    # ✅ Valid - `listener` denotes the incoming handler
+    event add on_ping(self, listener: EventHandler):
+        self._handlers.append(listener)
+```
+
+A variadic leaves that shape and is refused with **SPY0496** — an accessor has no argument list to
+vary, and subscribing several handlers is what calling `+=` more than once is for:
+
+```python
+class Broken:
+    # ❌ Invalid
+    event add on_ping(self, *handlers: EventHandler):
+        pass
+```
+
+See [Function-Style Properties](properties_function_style.md#accessor-parameter-lists), which states
+the same rule for property accessors, and
+[Function Variadic Arguments](function_variadic_arguments.md#not-in-a-property-or-event-accessor).
+
 *Implementation: ✅ Native*
 ```csharp
 private List<EventHandler> _handlers = new();

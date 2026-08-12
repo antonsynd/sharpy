@@ -82,6 +82,42 @@ def broken(*a: int, *b: str) -> None:  # ERROR
     pass
 ```
 
+### Not in a property or event accessor
+
+An accessor is not called with an argument list. A property setter, an `init` accessor and an
+event `add`/`remove` accessor each receive exactly one value — the one C# hands them — and a
+property getter receives none at all. There is no accessor shape that takes a varying number of
+arguments, so a variadic there is refused at the declaration (**SPY0496**):
+
+```python
+class Reading:
+    # ❌ Invalid - an accessor has no argument list to vary
+    property set samples(self, *values: int):
+        print(len(values))
+
+
+class Publisher:
+    # ❌ Invalid - an event accessor receives exactly one handler
+    event add on_action(self, *handlers: Handler):
+        pass
+```
+
+Take a single parameter and let the caller pass a collection, or write a method — a method is the
+construct that has an argument list:
+
+```python
+class Reading:
+    # ✅ Valid - one value, which happens to be a list
+    property set samples(self, values: list[int]):
+        print(len(values))
+```
+
+Every position that genuinely has an argument list keeps taking a variadic: function and method
+signatures, delegate declarations, and interface method declarations.
+
+See [Function-Style Properties](properties_function_style.md#accessor-parameter-lists) and
+[Events](events.md#accessor-parameter-lists).
+
 ## Type of `*args` Inside the Function
 
 Inside the function body, the `*args` parameter has type `array[T]`, mapping to C#'s `params T[]`:

@@ -98,6 +98,44 @@ The auto half's declared accessor is honored: `property get celsius: float` besi
 
 **No Function-Style `init`:** There is no `property init name(self, value: T):` form because init-only semantics require compiler support for constructor-only assignment, which doesn't compose well with user-defined logic.
 
+## Accessor Parameter Lists
+
+A property accessor's parameter list must be expressible as a C# accessor's: `self`, plus exactly
+one value parameter for a setter or `init` accessor and none for a getter. That is the whole shape,
+and it is fixed by construction — a setter receives the single value C# hands it, and a getter
+receives nothing.
+
+The setter's value parameter may be named anything; the name is *mapped* onto C#'s implicit `value`,
+not declared as a local:
+
+```python
+class Box:
+    _value: int = 0
+
+    # ✅ Valid - `v` denotes the incoming value
+    property set value(self, v: int):
+        self._value = v
+```
+
+Two shapes leave that constraint, and both are refused with **SPY0496**:
+
+```python
+class Broken:
+    # ❌ A getter receives no value, so `factor` has nothing to denote —
+    #    write a method if it needs an argument
+    property get scaled(self, factor: int) -> int:
+        return factor
+
+    # ❌ An accessor has no argument list to vary
+    property set samples(self, *values: int):
+        print(len(values))
+```
+
+The rule applies wherever a property is declared: in a class, a struct, an interface, a nested type,
+and at [module level](#module-level-properties).
+
+See [Function Variadic Arguments](function_variadic_arguments.md#not-in-a-property-or-event-accessor).
+
 ## Mixed Access Modifiers
 
 Getters and setters can have different visibility:
