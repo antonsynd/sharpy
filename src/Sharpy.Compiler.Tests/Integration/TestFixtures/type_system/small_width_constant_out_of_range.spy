@@ -1,0 +1,7 @@
+# The conversion is value-aware in both directions: out of the destination's range it stays refused,
+# exactly as C# refuses `byte b = 300;` (#1355). Without this cell the rule could be implemented as
+# "any integer literal converts to any integral annotation" and every positive test would still pass.
+
+def main() -> None:
+    b: uint8 = 300
+    print(b)

@@ -178,7 +178,9 @@ internal partial class TypeChecker
                     continue;
                 }
 
-                if (!IsArgumentAssignable(context.ArgTypes[i], expectedType, argNode))
+                // Constant conversions are excluded while RANKING: they widen applicability without a
+                // tie-break to match, which made `itertools.repeat` ambiguous (#1355, #1464).
+                if (!IsArgumentAssignable(context.ArgTypes[i], expectedType, argNode, allowConstantConversion: false))
                 {
                     if (IsSystemTypeParameter(expectedType)
                         && context.Call != null

@@ -670,7 +670,8 @@ internal partial class TypeChecker
                 _expectedType = paramType is UnknownType ? null : paramType;
                 var defaultType = CheckExpression(param.DefaultValue);
                 _expectedType = previousExpectedType;
-                if (!IsAssignable(defaultType, paramType))
+                if (!IsAssignable(defaultType, paramType)
+                    && !IsImplicitConstantConversion(param.DefaultValue, defaultType, paramType))
                 {
                     AddError($"Default value type '{defaultType.GetDisplayName()}' is not assignable to parameter type '{paramType.GetDisplayName()}'",
                         param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,

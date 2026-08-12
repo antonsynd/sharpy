@@ -1,0 +1,7 @@
+# §10.2.11 splits on the CONSTANT's type, not on its value: a `long` constant converts implicitly to
+# `uint64` ONLY. `5L` is in uint8's range and still does not convert, which is the cell that pins the
+# rule to C#'s actual shape rather than to "in range, therefore fine" (#1355).
+
+def main() -> None:
+    b: uint8 = 5L
+    print(b)

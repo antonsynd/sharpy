@@ -41,7 +41,9 @@ def main() -> None:
     except OverflowError:
         print("negative-overflow")
 
-    # Widening within the small widths stays a bare cast. The initializer needs the cast because no
-    # literal can initialize a sub-32-bit annotation today (#1355) — `b: uint8 = 200` is SPY0220.
-    b: uint8 = 200 as! uint8
+    # Widening within the small widths stays a bare cast. The initializer no longer needs one: an
+    # in-range integer constant converts implicitly to a small-width annotation (#1355), so this
+    # reads as it does in C#. The `as!` forms above are unaffected — they are the failable and
+    # throwing cast paths this fixture exists for (#1306).
+    b: uint8 = 200
     print(b as! int)

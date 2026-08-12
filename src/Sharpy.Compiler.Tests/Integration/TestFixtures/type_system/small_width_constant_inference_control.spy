@@ -1,0 +1,12 @@
+# Inference is unchanged by #1355: an unannotated `x = 200` still infers `int`, not the narrowest
+# width that fits. Probed by a destination that only an int satisfies — `print(x)` would accept any
+# numeric type and pin nothing.
+
+def main() -> None:
+    x = 200
+    y: int = x
+    print(y)
+
+    big = 4000000000
+    z: int64 = big
+    print(z)

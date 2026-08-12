@@ -1,0 +1,11 @@
+# The rule reaches constant EXPRESSIONS, not values that merely happen to be known. `x` is a
+# variable, so C# refuses `byte b = x;` too (CS0266) — only a constant expression converts. This is
+# the guard against the rule over-reaching from constants to any int-typed source, which would make
+# every narrowing assignment silently legal (#1355).
+#
+# A `const` binding IS a constant expression in C# and is still refused here — that gap is #1460.
+
+def main() -> None:
+    x = 200
+    b: uint8 = x
+    print(b)

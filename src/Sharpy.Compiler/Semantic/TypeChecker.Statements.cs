@@ -445,7 +445,8 @@ internal partial class TypeChecker
                     _semanticInfo.SetTypeAnnotation(varDecl.Type, declaredType);
                 }
             }
-            else if (!IsAssignable(initType, declaredType))
+            else if (!IsAssignable(initType, declaredType)
+                && !IsImplicitConstantConversion(varDecl.InitialValue, initType, declaredType))
             {
                 // Allow implicit narrowing of a double-valued float LITERAL to float32 (#1301).
                 if (IsFloat32LiteralNarrowing(declaredType, initType, varDecl.InitialValue))

@@ -528,6 +528,96 @@ internal partial class TypeChecker
     internal static bool IsStringBackedEnum(SemanticType? type)
         => type is UserDefinedType { Symbol: { TypeKind: TypeKind.Enum, IsStringEnum: true } };
 
+    /// <summary>
+    /// Whether <paramref name="value"/> is an integer constant expression that C# would convert
+    /// implicitly to <paramref name="target"/> because its VALUE is in range (#1355).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// ECMA-334 §10.2.11 *Implicit constant expression conversions*, which this implements verbatim:
+    /// an <c>int</c> constant converts to <c>sbyte</c>/<c>byte</c>/<c>short</c>/<c>ushort</c>/
+    /// <c>uint</c>/<c>ulong</c> when the value is in the destination's range, and a <c>long</c>
+    /// constant converts to <c>ulong</c> only, and only when non-negative. Without it NO literal can
+    /// initialize a sub-32-bit annotation — there are no suffixes for those widths — so
+    /// <c>b: uint8 = 200</c> was SPY0220 and the language specification's own examples
+    /// (<c>integer_literals.md</c>: <c>s: int16 = 42</c>, <c>b: uint8 = 255</c>, <c>sb: int8 = -128</c>)
+    /// were unexecutable. Implementation moves to the spec (Critical Rule 7).
+    /// </para>
+    /// <para>
+    /// This is deliberately NOT folded into <see cref="Registry.PrimitiveCatalog.ImplicitConversionCost"/>,
+    /// which is keyed on types alone and is the single ranking that <c>CanImplicitlyConvert</c> and the
+    /// CLR operator resolver both consume. A conversion that depends on a literal's value cannot be
+    /// expressed there, and widening that function to admit it would silently change overload
+    /// resolution at every numeric call site.
+    /// </para>
+    /// <para>
+    /// Unlike <c>IsFloat32LiteralNarrowing</c> — the value-aware allowance this is modelled on — the
+    /// literal's recorded type is left alone. That one has to re-type its node because C# has no
+    /// implicit <c>double</c>→<c>float</c> literal conversion, so leaving it would turn SPY0220 into
+    /// CS0664. Here C# performs exactly this conversion itself, so <c>byte b = 200;</c> emits and
+    /// compiles as written, and re-typing would be a lie about what the source said.
+    /// </para>
+    /// <para>
+    /// The constant's VALUE comes from <see cref="IntegerConstantEvaluator"/>, the evaluator the
+    /// checker and the lowering pass already share — so parenthesized and folded shapes
+    /// (<c>b: uint8 = 1 + 1</c>, <c>(200)</c>, <c>1 &lt;&lt; 7</c>) come for free and agree with the
+    /// numbers SPY0348 is reported from. Its contract is exactly the half needed here: it decides
+    /// what the value IS and never whether it fits a type, leaving the range decision to callers.
+    /// </para>
+    /// <para>
+    /// A <c>const</c> binding is also a *constant_expression* in C#, so <c>const L: int = 200</c> /
+    /// <c>b: uint8 = L</c> is legal there and stays refused here — the evaluator reads the AST and a
+    /// bare name resolves to nothing, while <see cref="VariableSymbol"/> records <c>IsConstant</c>
+    /// but carries no value. Closing that needs symbol-level constant storage (TODO(#1460)).
+    /// </para>
+    /// </remarks>
+    private bool IsImplicitConstantConversion(Expression? value, SemanticType source, SemanticType target)
+    {
+        if (value == null || !IntegerConstantEvaluator.TryGetConstantInteger(value, out var constant))
+            return false;
+
+        var sourceInfo = Registry.PrimitiveCatalog.GetPrimitiveInfo(source);
+        var targetInfo = Registry.PrimitiveCatalog.GetPrimitiveInfo(target);
+        if (sourceInfo == null || targetInfo == null)
+            return false;
+
+        // §10.2.11 splits on the CONSTANT's type, not on width: a long constant has exactly one
+        // legal destination. Compared by CLR type because the int singleton is named "int" while
+        // the other widths use catalog spellings (#1304/#1356 class).
+        if (sourceInfo.ClrType == typeof(long))
+            return targetInfo.ClrType == typeof(ulong) && constant.Sign >= 0;
+
+        if (sourceInfo.ClrType != typeof(int))
+            return false;
+
+        // int→long is the value-independent standard numeric conversion (§10.2.3), not a constant
+        // conversion; it already works and must not be re-derived here.
+        return targetInfo.Kind is Registry.PrimitiveCatalog.NumericKind.SignedInteger or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger
+            && targetInfo.ClrType != typeof(int)
+            && targetInfo.ClrType != typeof(long)
+            && FitsInRange(constant, targetInfo);
+    }
+
+    /// <summary>
+    /// Whether an exact constant lies in <paramref name="target"/>'s range, derived from
+    /// <see cref="Registry.PrimitiveCatalog.PrimitiveInfo.SizeInBits"/> and <see cref="Registry.PrimitiveCatalog.PrimitiveInfo.IsSigned"/>.
+    /// Those two fields are identical across the catalog's Sharpy-style and C#-style alias
+    /// registrations — only <c>SharpyName</c> differs — so this is unaffected by which alias the CLR
+    /// reverse map happens to canonicalize to (#1356).
+    /// </summary>
+    private static bool FitsInRange(System.Numerics.BigInteger constant, Registry.PrimitiveCatalog.PrimitiveInfo target)
+    {
+        if (target.IsSigned)
+        {
+            // Two's complement: the negative side reaches one further than the positive side, which
+            // is what makes `sb: int8 = -128` legal while `sb: int8 = 128` is not.
+            var limit = System.Numerics.BigInteger.One << (target.SizeInBits - 1);
+            return constant >= -limit && constant < limit;
+        }
+
+        return constant.Sign >= 0 && constant < (System.Numerics.BigInteger.One << target.SizeInBits);
+    }
+
     private bool IsAssignable(SemanticType source, SemanticType target)
     {
         // Allow assignment to UnknownType to avoid cascading errors
@@ -722,9 +812,29 @@ internal partial class TypeChecker
     /// (<c>RoslynEmitter.ApplyArrayBridge</c>, <c>RoslynEmitter.ApplyIterableProjection</c>); the
     /// checker and the emitter must agree on which arguments are coercible.
     /// </summary>
-    private bool IsArgumentAssignable(SemanticType source, SemanticType target, Expression? argument = null)
+    /// <param name="allowConstantConversion">
+    /// Whether an in-range integer constant may satisfy a small-width parameter (#1355). True at the
+    /// argument-binding boundary; <b>false while RANKING overloads</b>. §10.2.11 conversions are
+    /// standard conversions and do participate in C# overload resolution, but C# also has
+    /// better-conversion rules to break the resulting ties, and this resolver does not. Admitting the
+    /// conversion during candidate filtering therefore widens applicability without widening the
+    /// tie-break: measured, `itertools.repeat` became "Ambiguous call to overloaded method 'repeat'"
+    /// because an int constant satisfied two width-differing overloads at once. Ranking is the open
+    /// decision that phase left unmade (#1464).
+    /// </param>
+    private bool IsArgumentAssignable(
+        SemanticType source,
+        SemanticType target,
+        Expression? argument = null,
+        bool allowConstantConversion = true)
     {
         if (IsAssignable(source, target))
+            return true;
+
+        // An in-range integer constant satisfies a small-width parameter, exactly as it does a
+        // small-width annotation — §10.2.11 conversions apply wherever an implicit conversion is
+        // asked, not only at a declaration (#1355).
+        if (allowConstantConversion && IsImplicitConstantConversion(argument, source, target))
             return true;
 
         // list[T] → array[T]: element types must match exactly (UnknownType acts as a

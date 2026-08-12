@@ -1,0 +1,63 @@
+# An in-range integer constant initializes a small-width annotation, matching C#'s implicit constant
+# expression conversions (ECMA-334 §10.2.11, #1355). Before this, NO literal could initialize
+# int8/uint8/int16/uint16 — there are no suffixes for those widths — so the language specification's
+# own examples in integer_literals.md were unexecutable.
+#
+# Every read below is forced to be its declared width by its destination. `print(x)` is not a probe:
+# it accepts anything and would stay green with the rule removed.
+
+def takes_byte(b: uint8) -> None:
+    print(b)
+
+
+def with_default(b: uint8 = 200) -> None:
+    print(b)
+
+
+def main() -> None:
+    # The three specification examples verbatim.
+    s: int16 = 42
+    b: uint8 = 255
+    sb: int8 = -128
+    print(s)
+    print(b)
+    print(sb)
+
+    # Boundaries at each width, both signs. Two's complement reaches one further negative,
+    # which is what makes -128 legal at int8 while 128 is not.
+    lo8: int8 = -128
+    hi8: int8 = 127
+    hiu8: uint8 = 255
+    lo16: int16 = -32768
+    hi16: int16 = 32767
+    hiu16: uint16 = 65535
+    # uint32's own maximum is NOT an int constant — an unsuffixed literal above int's range types
+    # as int64 here, and §10.2.11 gives a long constant only uint64. `4294967295u` (suffixed) is the
+    # spelling for that value; this cell stays inside int's range, which is what the rule covers.
+    hiu32: uint32 = 3000000
+    print(lo8 + hi8)
+    print(hiu8)
+    print(lo16 + hi16)
+    print(hiu16)
+    print(hiu32)
+
+    # uint64 is a legal target for an int constant (§10.2.11 lists it); the plan's original
+    # target set omitted it.
+    u: uint64 = 5
+    print(u)
+
+    # Folded and parenthesized constant expressions are constants too — the value comes from the
+    # same evaluator SPY0348 reports overflow from.
+    folded: uint8 = 100 + 100
+    parens: int16 = (42)
+    shifted: uint8 = 1 << 7
+    hexed: uint8 = 0xFF
+    print(folded)
+    print(parens)
+    print(shifted)
+    print(hexed)
+
+    # The conversion applies wherever an implicit conversion is asked, not only at a declaration.
+    takes_byte(200)
+    with_default()
+    with_default(7)
