@@ -19,6 +19,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <!-- Version pinned to match Sharpy.Compiler.Tests, the project that already carried it. -->
+    <PackageReference Include="CsCheck" Version="4.8.0" />
   </ItemGroup>
 
   <ItemGroup>
