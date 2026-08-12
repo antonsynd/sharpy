@@ -243,6 +243,47 @@ internal partial class RoslynEmitter
                 {
                     // Check if this is a union case pattern (e.g., case Point(): matching Shape)
                     var unionCase = _context.SemanticInfo?.GetPatternUnionCase(typePattern);
+
+                    // #1358: the Some case of an un-narrowed Optional scrutinee. This MUST be tested
+                    // before the general union-case arm below: an Optional's synthetic Some carries
+                    // the synthetic `Optional` union as its BaseType, so BuildUnionCaseTypeSyntax
+                    // would render `Optional<T>.Some` — a nested type Sharpy.Optional<T> does not
+                    // have, with a `T` that is not in scope. That turns #1358's CS8121 into a
+                    // different ICE rather than fixing it, which is why the semantic and emitter
+                    // halves of #1358 cannot land separately.
+                    //
+                    // Optional<T>.Deconstruct(out bool hasValue, out T value), so the Some case is
+                    // the positional subpattern (true, <payload>) over the RAW Optional<T> — the same
+                    // shape `case Some(v):` already emits, and the mirror of `case None:` → (false, _)
+                    // in the LiteralPattern arm above. The subject is never unwrapped.
+                    if (unionCase?.Name == WellKnownCaseNames.Some && scrutineeType is OptionalType)
+                    {
+                        var payloadTypeSyntax = _context.SemanticInfo?.GetPatternType(typePattern) is { } payloadType
+                            ? _typeMapper.MapSemanticType(payloadType)
+                            : _typeMapper.MapType(typePattern.Type);
+
+                        PatternSyntax payloadPattern;
+                        if (typePattern.BindingName != null)
+                        {
+                            var payloadVarName = GetMangledVariableName(typePattern.BindingName.Name,
+                                isNewDeclaration: true, typePattern.BindingName.IsNameBacktickEscaped);
+                            payloadPattern = DeclarationPattern(payloadTypeSyntax,
+                                SingleVariableDesignation(Identifier(payloadVarName)));
+                        }
+                        else
+                        {
+                            payloadPattern = DeclarationPattern(payloadTypeSyntax, DiscardDesignation());
+                        }
+
+                        return RecursivePattern()
+                            .WithPositionalPatternClause(
+                                PositionalPatternClause(SeparatedList(new[]
+                                {
+                                    Subpattern(ConstantPattern(LiteralExpression(SyntaxKind.TrueLiteralExpression))),
+                                    Subpattern(payloadPattern)
+                                })));
+                    }
+
                     if (unionCase != null)
                     {
                         var caseTypeSyntax = BuildUnionCaseTypeSyntax(unionCase, scrutineeType);

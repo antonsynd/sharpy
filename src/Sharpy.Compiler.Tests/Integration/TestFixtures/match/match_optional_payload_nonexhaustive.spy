@@ -1,0 +1,18 @@
+# #1358: exhaustiveness counts a payload type pattern as the Some case, so what is missing from
+# `case str():` alone is exactly `None` — not `Some, None`.
+#
+# This is the assertion that the recording actually reaches ExhaustivenessHelper. Before #1358 the
+# TypePattern arm fell back to the pattern's type NAME, so `case str():` covered "str" — a name that
+# is neither Optional case — and the report named BOTH cases as missing. No validator changed; the
+# helper is the single authority the validator, the CFG builder and the emitter all share.
+
+def probe(x: str?) -> str:
+    match x:
+        case str() as s:
+            return s
+    return "fell-through"
+
+
+def main() -> None:
+    print(probe("hi"))
+    print(probe(None))

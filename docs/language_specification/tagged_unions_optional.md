@@ -52,6 +52,42 @@ match result:
         print("User not found")
 ```
 
+### Matching the payload by type
+
+A bare **type pattern** naming the payload type is an equivalent spelling of the `Some` case, so a
+`T?` can be matched the way Python matches `T | None`:
+
+```python
+def describe(x: str?) -> str:
+    match x:
+        case str():
+            return "a string"
+        case None:
+            return "nothing"
+```
+
+`case str():` matches only when the Optional holds a value, and a `None` value falls through to the
+next arm — `case None:` here, or a wildcard. The two spellings are interchangeable: `case str():` is
+`case Some(str())`, and `case str() as s:` binds `s` at the **payload** type, not at `str?`.
+
+The pattern may name a subtype of the payload, in which case it still discriminates:
+
+```python
+def speak(a: Animal?) -> str:
+    match a:
+        case Dog() as d:
+            return d.bark()
+        case _:
+            return "not a dog"
+```
+
+Exhaustiveness counts a payload type pattern as the `Some` case, so `case str():` paired with
+`case None:` is exhaustive and needs no wildcard. `case str():` alone reports `None` as the missing
+case — a warning for a match statement, an error for a match expression.
+
+The scrutinee is **not** unwrapped to make this work: `unwrap()` throws on an empty Optional, so an
+unwrapped subject could never reach a `None` arm. Both spellings destructure the Optional in place.
+
 ## Common Methods
 
 The `Optional` type provides several useful methods:
@@ -160,7 +196,7 @@ if s is not None:
 # Null-conditional access (?.)
 upper: str? = s?.upper()
 
-# Pattern matching
+# Pattern matching (`case str():` is the equivalent bare-payload spelling of `case Some(v):`)
 match s:
     case Some(v):
         print(len(v))

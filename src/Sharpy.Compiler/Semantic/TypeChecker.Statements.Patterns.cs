@@ -545,6 +545,45 @@ internal partial class TypeChecker
         }
         resolvedType = appliedPatternType;
 
+        // #1358: a payload TYPE pattern against an UN-NARROWED Optional scrutinee tests the Some
+        // case. `case str():` over `x: str?` is the bare spelling of `case Some(str())`, and a None
+        // value falls through to the next arm — which is what Python does for `str | None` and what
+        // `case None:` already reads as here.
+        //
+        // The subject is NOT unwrapped: a C# switch has one governing expression, and
+        // Optional<T>.Unwrap() throws on an empty Optional, so an unwrapped subject would throw
+        // before any arm ran. Instead this records the synthetic Some case through the SAME
+        // node-keyed channel `case None:` uses above, and the emitter turns it into the positional
+        // subpattern `(true, <payload>)` over the raw Optional<T> via Deconstruct. Because the
+        // channel already exists, no new SemanticInfo dictionary joins MergeFrom.
+        //
+        // Recording the case is also what closes exhaustiveness: ExhaustivenessHelper already
+        // reports {Some, None} as an Optional's case space, and its TypePattern arm reads this
+        // union case before falling back to the pattern's type NAME — so `case str():` covered
+        // "str" (matching neither case) and now covers "Some".
+        //
+        // Narrowing is deliberately not involved (the issue: "this is the un-narrowed shape"). Under
+        // an `is not None` guard the scrutinee's type is already the payload, so this branch does not
+        // fire and the #1299 unwrap lowering keeps owning that path.
+        //
+        // The sibling Result spelling (`case int():` over `int !E`) stays refused — see #1476, which
+        // records why the two diverge and asks for a ruling. The divergence is not deliberate design:
+        // `str` IS assignable to `str?` so Optional slipped past the compatibility check below and
+        // reached codegen as an ICE, while `int` is NOT assignable to `int !E` so Result trips it.
+        if (scrutineeType is OptionalType payloadOptional
+            && resolvedType is not UnknownType
+            && IsAssignable(resolvedType, payloadOptional.UnderlyingType))
+        {
+            var optionalUnion = GetSyntheticOptionalUnion();
+            var someCase = optionalUnion.UnionCases.First(c => c.Name == WellKnownCaseNames.Some);
+            _semanticInfo.SetPatternUnionCase(typePattern, someCase);
+            // The payload type the emitter tests inside the Some subpattern. Recorded rather than
+            // re-derived: the emitter reads this fact and maps it, making no type decision of its own.
+            _semanticInfo.SetPatternType(typePattern, resolvedType);
+            BindTypePatternCapture(typePattern, resolvedType);
+            return;
+        }
+
         if (resolvedType is UnknownType)
         {
             // Try to resolve as a union case (e.g., case Point(): when matching Shape)
@@ -574,24 +613,35 @@ internal partial class TypeChecker
                 code: DiagnosticCodes.Semantic.TypePatternIncompatible,
                 span: typePattern.Span);
         }
-        if (typePattern.BindingName != null)
+        BindTypePatternCapture(typePattern, resolvedType);
+    }
+
+    /// <summary>
+    /// Defines the <c>as</c> capture of a type pattern (<c>case str() as s:</c>) at
+    /// <paramref name="capturedType"/>. Shared by the ordinary arm and by #1358's Optional-payload
+    /// arm, which binds at the PAYLOAD type rather than at the Optional: the emitted subpattern
+    /// destructures <c>Optional&lt;T&gt;</c>, so what the name is bound to is the unwrapped value.
+    /// </summary>
+    private void BindTypePatternCapture(TypePattern typePattern, SemanticType capturedType)
+    {
+        if (typePattern.BindingName == null)
+            return;
+
+        var newSymbol = new VariableSymbol
         {
-            var newSymbol = new VariableSymbol
-            {
-                Name = typePattern.BindingName.Name,
-                Kind = SymbolKind.Variable,
-                Type = resolvedType,
-                IsConstant = false,
-                DeclarationLine = typePattern.BindingName.LineStart,
-                DeclarationColumn = typePattern.BindingName.ColumnStart,
-                NameDeclarationLine = typePattern.BindingName.LineStart,
-                NameDeclarationColumn = typePattern.BindingName.ColumnStart,
-                AccessLevel = AccessLevel.Public
-            };
-            _symbolTable.Define(newSymbol);
-            SemanticBinding.SetVariableType(newSymbol, resolvedType);
-            _semanticInfo.SetIdentifierSymbol(typePattern.BindingName, newSymbol);
-        }
+            Name = typePattern.BindingName.Name,
+            Kind = SymbolKind.Variable,
+            Type = capturedType,
+            IsConstant = false,
+            DeclarationLine = typePattern.BindingName.LineStart,
+            DeclarationColumn = typePattern.BindingName.ColumnStart,
+            NameDeclarationLine = typePattern.BindingName.LineStart,
+            NameDeclarationColumn = typePattern.BindingName.ColumnStart,
+            AccessLevel = AccessLevel.Public
+        };
+        _symbolTable.Define(newSymbol);
+        SemanticBinding.SetVariableType(newSymbol, capturedType);
+        _semanticInfo.SetIdentifierSymbol(typePattern.BindingName, newSymbol);
     }
 
     /// <summary>

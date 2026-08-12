@@ -1,0 +1,12 @@
+# #1358: the same non-exhaustive shape is an ERROR for a match EXPRESSION, not a warning — a match
+# expression must produce a value, so a missing case has nowhere to go. The statement twin lives at
+# match/match_optional_payload_nonexhaustive.spy and reports the same missing case as a warning.
+
+
+def probe(x: str?) -> str:
+    return match x:
+        case str() as s: s
+
+
+def main() -> None:
+    print(probe("hi"))
