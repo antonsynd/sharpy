@@ -364,7 +364,13 @@ internal partial class RoslynEmitter
         var body = AttachLineDirectiveToBlock(
             GenerateSuiteBlock(func.Body), func.LineStart);
 
-        var localFunc = LocalFunctionStatement(returnType, Identifier(mangledName))
+        // EscapedIdentifier, not Identifier: a declaration position holding a possibly-@-escaped
+        // name needs the Text/ValueText split Roslyn's parser produces (#1095), or the declaration
+        // binds as "@class" while every reference — built through EscapedIdentifierName — binds as
+        // "class". That mismatch is invisible in printed C# and only appears under direct tree
+        // handoff. Reachable only since nested defs started honouring the escape (#1379): before
+        // that the name was always PascalCased and never carried an @.
+        var localFunc = LocalFunctionStatement(returnType, EscapedIdentifier(mangledName))
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
 
