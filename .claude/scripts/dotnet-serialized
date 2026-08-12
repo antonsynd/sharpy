@@ -41,8 +41,19 @@ LOG_DIR="${SCRIPT_DIR}/tmp"
 LOG_DEQUE_SIZE=3
 LOG_INDEX_FILE="${LOG_DIR}/dotnet-serialized-index"
 
+#: Monotonic count of lock acquisitions, kept OUTSIDE $LOCK_DIR on purpose: cleanup() rm -rf's
+#: that directory on every release, so a counter inside it resets and can never be monotonic.
+GENERATION_FILE="${HOME}/.claude/locks/dotnet.generation"
+
 cleanup() {
     rm -rf "$LOCK_DIR" 2>/dev/null
+}
+
+bump_generation() {
+    local gen
+    gen=$(cat "$GENERATION_FILE" 2>/dev/null)
+    case "$gen" in ''|*[!0-9]*) gen=0 ;; esac
+    echo $((gen + 1)) > "$GENERATION_FILE"
 }
 
 # A lock is stale only when NOTHING it protects is still running, and the owner SHELL is a
@@ -91,6 +102,10 @@ is_lock_stale() {
 }
 
 acquire_lock() {
+    # The pid recorded in the lock is the pid of whatever will HOLD it — this wrapper normally,
+    # but bench_ab under --acquire-lock. Recording the short-lived wrapper's pid for a held lock
+    # would leave one whose owner is already gone, which is the fail-open this file just fixed.
+    local owner_pid="${1:-$$}"
     local waited=0
     local nodir_failures=0
     while ! mkdir "$LOCK_DIR" 2>/dev/null; do
@@ -136,8 +151,11 @@ acquire_lock() {
         sleep 2
         waited=$((waited + 2))
     done
-    echo $$ > "$LOCK_DIR/pid"
-    trap cleanup EXIT
+    echo "$owner_pid" > "$LOCK_DIR/pid"
+    bump_generation
+    if [ "$owner_pid" = "$$" ]; then
+        trap cleanup EXIT
+    fi
 }
 
 next_log_slot() {
@@ -170,6 +188,41 @@ while IFS= read -r line; do
 done < <(ps aux | grep '[c]sharp-ls' 2>/dev/null || true)
 
 mkdir -p "${HOME}/.claude/locks"
+
+# Lock-only modes (#1420). bench_ab compares two arms per round, and with one lock per
+# INVOCATION the mutex is free between them — a queued peer's 15-minute suite can land in the
+# gap, so the two arms end up measured in different machine states, which is the artifact the
+# orchestrator exists to cancel. These let a caller hold the lock across the pair and invoke
+# dotnet itself.
+case "${1:-}" in
+    --acquire-lock)
+        holder="${2:-}"
+        if [ -z "$holder" ] || ! kill -0 "$holder" 2>/dev/null; then
+            echo "ERROR: --acquire-lock needs the LIVE pid of the process that will hold the" >&2
+            echo "lock (e.g. os.getpid()). A dead or missing holder would wedge every peer." >&2
+            exit 2
+        fi
+        acquire_lock "$holder"
+        exit 0
+        ;;
+    --release-lock)
+        holder="${2:-}"
+        current=$(cat "$LOCK_DIR/pid" 2>/dev/null)
+        if [ -n "$current" ] && [ -n "$holder" ] && [ "$current" != "$holder" ]; then
+            echo "ERROR: refusing to release a lock owned by $current (asked by $holder)." >&2
+            exit 2
+        fi
+        cleanup
+        exit 0
+        ;;
+    --lock-generation)
+        # Bumped under the lock on every acquisition. A caller that reads it before and after
+        # its own work can tell whether anyone else acquired in between.
+        cat "$GENERATION_FILE" 2>/dev/null || echo 0
+        exit 0
+        ;;
+esac
+
 acquire_lock
 
 SLOT=$(next_log_slot)

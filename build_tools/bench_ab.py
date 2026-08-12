@@ -190,6 +190,21 @@ class Verdict:
         )
 
 
+def round_was_interrupted(before: Optional[int], after: Optional[int]) -> bool:
+    """
+    Did the lock change hands between a round's two arms? (#1420)
+
+    Unknown is NOT interrupted: when the wrapper cannot report a generation (no wrapper in this
+    checkout, an older copy without the flag), the honest answer is "cannot tell", and dropping
+    every round on that basis would delete the whole run rather than protect it. The detector
+    reports what it can see and stays silent about what it cannot — the opposite of the
+    fail-open that treated unobservable as absent.
+    """
+    if before is None or after is None:
+        return False
+    return before != after
+
+
 def split_discarded(
     measurements: Iterable[Measurement], discard_rounds: int
 ) -> tuple[list[Measurement], list[Measurement]]:
@@ -378,10 +393,75 @@ def _geometric_percent(*ratios: float) -> float:
 SERIALIZED_DOTNET = os.path.join(".claude", "scripts", "dotnet-serialized")
 
 
+def _wrapper_path(repo_root: str) -> Optional[str]:
+    """The serialising wrapper, or None when this checkout has no executable copy."""
+    wrapper = os.path.join(repo_root, SERIALIZED_DOTNET)
+    return wrapper if os.access(wrapper, os.X_OK) else None
+
+
 def _dotnet_command(repo_root: str, args: list[str]) -> list[str]:
     """Prefix a dotnet invocation with the serialising wrapper when the repo provides one."""
-    wrapper = os.path.join(repo_root, SERIALIZED_DOTNET)
-    return [wrapper] + args if os.access(wrapper, os.X_OK) else ["dotnet"] + args
+    wrapper = _wrapper_path(repo_root)
+    return [wrapper] + args if wrapper else ["dotnet"] + args
+
+
+def acquire_round_lock(repo_root: str) -> bool:
+    """
+    Hold the dotnet mutex across a whole (A,B) pair (#1420). Returns False when this checkout
+    has no wrapper to hold.
+
+    One lock per INVOCATION leaves the mutex free between the two arms a round compares, so a
+    queued peer's 15-minute suite can land in the gap. The peer cannot overlap arm B — arm B
+    would queue behind it — but the two arms then get measured in different machine states,
+    which is precisely the artifact this orchestrator exists to cancel. Holding across the pair
+    closes that. The lock is released BETWEEN rounds: holding it for a whole multi-round
+    orchestration would starve every peer for an hour, which is the same failure from the other
+    side.
+    """
+    wrapper = _wrapper_path(repo_root)
+    if wrapper is None:
+        return False
+
+    result = subprocess.run([wrapper, "--acquire-lock", str(os.getpid())])
+    if result.returncode == 125:
+        raise RuntimeError(
+            "the dotnet lock path is not writable from this shell — it is sandboxed. Re-run "
+            "with the sandbox disabled. Do NOT fall back to unserialised dotnet: concurrent "
+            "runs cost 5-10 GB each and OOM the machine.")
+    if result.returncode != 0:
+        raise RuntimeError(f"could not acquire the dotnet lock (exit {result.returncode})")
+    return True
+
+
+def release_round_lock(repo_root: str) -> None:
+    """Release a lock taken by :func:`acquire_round_lock`. Safe to call when already free."""
+    wrapper = _wrapper_path(repo_root)
+    if wrapper is not None:
+        subprocess.run([wrapper, "--release-lock", str(os.getpid())])
+
+
+def lock_generation(repo_root: str) -> Optional[int]:
+    """
+    The wrapper's monotonic count of lock acquisitions, or None when unavailable.
+
+    Read before and after a round, it answers "did anyone else acquire while I was measuring?".
+    With the hold above in place a wrapper-using peer CANNOT interleave, so in the happy path
+    this can never fire — it is kept as a defence against the hold failing (an old wrapper copy
+    without --acquire-lock, exit 125 in a sandboxed shell, a crash between arms). It also cannot
+    see contamination from anything that bypasses the wrapper entirely, so a quiet generation is
+    not proof of a quiet machine. Note that the stale-lock steal which used to make this fire in
+    practice was fixed alongside it: the lock now survives an orphaned child and a pidless
+    directory, which removes the one mechanism by which a wrapper-using peer could jump a held
+    lock.
+    """
+    wrapper = _wrapper_path(repo_root)
+    if wrapper is None:
+        return None
+    result = subprocess.run([wrapper, "--lock-generation"], capture_output=True, text=True)
+    try:
+        return int(result.stdout.strip())
+    except (ValueError, AttributeError):
+        return None
 
 
 def _run(command: list[str], cwd: Optional[str] = None) -> None:
@@ -418,15 +498,22 @@ def prepare_worktree(repo_root: str, ref: str, destination: str) -> str:
 
 
 def run_arm(
-    repo_root: str, worktree: str, artifacts: str, bdn_filter: str, job: Optional[str] = None
+    repo_root: str, worktree: str, artifacts: str, bdn_filter: str, job: Optional[str] = None,
+    lock_held: bool = False,
 ) -> dict[str, float]:
-    """Run one arm's benchmarks and return benchmark -> mean ns."""
-    # Same relative-path-from-inside-the-worktree rule as prepare_worktree.
-    command = _dotnet_command(repo_root, [
+    """
+    Run one arm's benchmarks and return benchmark -> mean ns.
+
+    When *lock_held* is true the caller already owns the mutex for this whole round, so dotnet is
+    invoked RAW — going through the wrapper here would deadlock against the lock we are holding.
+    """
+    args = [
         "run", "--project", os.path.join("src", "Sharpy.Compiler.Benchmarks"),
         "-c", "Release", "--no-build", "--",
         "--filter", bdn_filter, "--exporters", "json", "--artifacts", artifacts,
-    ])
+    ]
+    # Same relative-path-from-inside-the-worktree rule as prepare_worktree.
+    command = ["dotnet"] + args if lock_held else _dotnet_command(repo_root, args)
     # A shorter BenchmarkDotNet job trades per-run precision for more rounds. That is the
     # right trade here: the thing being averaged out is run POSITION, and more A/B pairs
     # cancel it better than longer individual runs do.
@@ -468,14 +555,39 @@ def orchestrate(
     for round_index in range(total_rounds):
         order = (ref_a, ref_b) if round_index % 2 == 0 else (ref_b, ref_a)
         disposition = "discarded" if round_index < discard_rounds else "pooled"
-        for position, ref in enumerate(order):
-            artifacts = os.path.join(workdir, f"artifacts_r{round_index}_p{position}")
-            print(f"[bench_ab] round {round_index + 1}/{total_rounds} ({disposition}), "
-                  f"position {position + 1}: {ref}", flush=True)
-            arm_means = run_arm(repo_root, worktrees[ref], artifacts, bdn_filter, job)
-            for benchmark, mean_ns in arm_means.items():
-                measurements.append(
-                    Measurement(ref, position, benchmark, mean_ns, round_index))
+
+        # One acquisition per ROUND, not per invocation, so the two compared arms cannot be
+        # separated by a peer's run; released in `finally` between rounds so peers can schedule
+        # (and so an exception here cannot wedge every agent for the 45-minute timeout).
+        lock_held = acquire_round_lock(repo_root)
+        round_measurements: list[Measurement] = []
+        try:
+            generation_before = lock_generation(repo_root)
+            for position, ref in enumerate(order):
+                artifacts = os.path.join(workdir, f"artifacts_r{round_index}_p{position}")
+                print(f"[bench_ab] round {round_index + 1}/{total_rounds} ({disposition}), "
+                      f"position {position + 1}: {ref}", flush=True)
+                arm_means = run_arm(repo_root, worktrees[ref], artifacts, bdn_filter, job,
+                                    lock_held=lock_held)
+                for benchmark, mean_ns in arm_means.items():
+                    round_measurements.append(
+                        Measurement(ref, position, benchmark, mean_ns, round_index))
+            generation_after = lock_generation(repo_root)
+        finally:
+            if lock_held:
+                release_round_lock(repo_root)
+
+        if round_was_interrupted(generation_before, generation_after):
+            # Someone acquired the lock between this round's two arms, so the arms were measured
+            # either side of another dotnet run. Dropping the round is the same "this round is
+            # not comparable" mechanism the discard window uses, which is why they share one
+            # pooling path rather than two.
+            print(f"[bench_ab] round {round_index + 1} DROPPED: the lock changed hands between "
+                  f"its arms (generation {generation_before} -> {generation_after}), so the two "
+                  "arms were measured in different machine states", flush=True)
+            continue
+
+        measurements.extend(round_measurements)
 
     return measurements
 
@@ -500,6 +612,7 @@ def report(
     rounds: int,
     discard_rounds: int = 0,
     split_lines: Optional[list[str]] = None,
+    dropped_rounds: int = 0,
 ) -> str:
     measured = [v for v in verdicts if v.measured]
     total_rounds = rounds + discard_rounds
@@ -511,6 +624,10 @@ def report(
         f"{len(measured)} of {len(verdicts)} benchmark(s) produced a measurable delta.",
         "",
     ]
+    if dropped_rounds:
+        lines.insert(2, f"{dropped_rounds} round(s) DROPPED as interrupted — the lock changed "
+                        "hands between their arms, so those arms were measured either side of "
+                        "another dotnet run (#1420).")
     lines.extend(v.describe(arm_a, arm_b) for v in verdicts)
     if split_lines:
         lines.append("")
@@ -576,10 +693,16 @@ def main(argv: Optional[list[str]] = None) -> int:
         # early/late split, because "this run had not settled" is a conclusion no pooled
         # number can express (#1418).
         _, pooled = split_discarded(measurements, args.discard_rounds)
+        # A round dropped as interrupted never reaches `measurements`, so the gap in the
+        # retained round indices is what counts them — reported rather than silently shrinking
+        # the sample.
+        expected_rounds = set(range(args.discard_rounds, args.discard_rounds + args.rounds))
+        dropped = len(expected_rounds - {m.round_index for m in pooled})
         verdicts = evaluate(pooled, args.ref_a, args.ref_b)
         print(report(verdicts, args.ref_a, args.ref_b, args.rounds,
                      discard_rounds=args.discard_rounds,
-                     split_lines=warmup_split_lines(measurements, args.discard_rounds)))
+                     split_lines=warmup_split_lines(measurements, args.discard_rounds),
+                     dropped_rounds=dropped))
     finally:
         if not args.keep_worktrees:
             cleanup_worktrees(repo_root, workdir)

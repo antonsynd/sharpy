@@ -22,6 +22,7 @@ from build_tools.bench_ab import (
     parse_bdn_means,
     pool_by_position,
     report,
+    round_was_interrupted,
     split_discarded,
     warmup_split_lines,
 )
@@ -241,7 +242,43 @@ class TestDiscardWindow:
         assert lines == ["Warm-up split: no rounds discarded (--discard-rounds 0)."]
 
 
+class TestInterruptionDetection:
+    """
+    The lock changing hands between a round's two arms means those arms were measured either
+    side of somebody else's dotnet run (#1420). Same "this round is not comparable" mechanism
+    as the discard window, which is why they share one pooling path.
+    """
+
+    def test_a_generation_bump_between_the_arms_marks_the_round_interrupted(self):
+        assert round_was_interrupted(7, 8) is True
+
+    def test_an_unchanged_generation_is_not_interrupted(self):
+        assert round_was_interrupted(7, 7) is False
+
+    @pytest.mark.parametrize("before,after", [(None, 4), (4, None), (None, None)])
+    def test_unknown_is_not_interrupted(self, before, after):
+        """
+        UNKNOWN must not read as INTERRUPTED. A checkout with no wrapper, or an older wrapper
+        without the flag, reports nothing — and dropping every round on that basis would delete
+        the run rather than protect it. This is the same discipline as the lock fix itself:
+        never conclude a fact from an instrument that cannot observe it.
+        """
+        assert round_was_interrupted(before, after) is False
+
+
 class TestReport:
+    def test_dropped_rounds_are_reported_not_silently_absent(self):
+        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
+        text = report(verdicts, "a", "b", rounds=4, discard_rounds=4, dropped_rounds=2)
+
+        assert "2 round(s) DROPPED as interrupted" in text
+
+    def test_no_drop_line_when_nothing_was_dropped(self):
+        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
+        text = report(verdicts, "a", "b", rounds=4, discard_rounds=4)
+
+        assert "DROPPED" not in text
+
     def test_states_the_artifact_and_the_counts(self):
         verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
         text = report(verdicts, "a", "b", rounds=4, discard_rounds=4)
