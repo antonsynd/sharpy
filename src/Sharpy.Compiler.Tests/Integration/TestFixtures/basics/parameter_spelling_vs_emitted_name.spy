@@ -1,0 +1,62 @@
+# Positive control for the fail-closed slot lookup (#1386): a slot answers only the SOURCE
+# spelling that claimed it, so every fresh-claim site must record what the user wrote and not the
+# mangled name it emits under. Every parameter below is spelled differently from the C# name it
+# is emitted as — `item_count` -> `itemCount`, `Total` -> `total`, `lock` -> `@lock` (ToCamelCase
+# ends in EscapeKeywordIfNeeded) — and every one is READ in its body, which is what forces the
+# lookup. Recording the emitted name as the spelling would refuse each of these reads instead of
+# answering it, and a refusal of a valid program has no crash to make it obvious.
+#
+# The seams are covered one per shape, because each has its own fresh-claim site: module
+# function, class method, constructor, nested def, operator, indexer. The property setter is the
+# one shape that cannot participate — see the comment on it.
+
+class Boxed:
+    total: int
+
+    def __init__(self, start_value: int, lock: int):
+        self.total = start_value + lock
+
+    def scaled(self, item_count: int, Total: int) -> int:
+        return item_count * 10 + Total
+
+    def __add__(self, other_value: int) -> int:
+        return self.total + other_value
+
+    def __getitem__(self, index_key: int) -> int:
+        return self.total + index_key
+
+    # The setter parameter is spelled `value` because a C# setter's parameter IS the implicit
+    # `value` and the emitter discards the Sharpy spelling — any other name is a live ICE
+    # (#1458, measured at e14abc73f, so it predates this change and is not a slot-lookup
+    # problem: the key `value` never matches the key the reference computes, under either the
+    # old fail-open lookup or the new fail-closed one). This cell is therefore the one
+    # declaration space the control below cannot cover.
+    property set bumped(self, value: int):
+        self.total = self.total + value
+
+    property get bumped(self) -> int:
+        return self.total
+
+
+def module_level(item_count: int, lock: int, Total: int) -> int:
+    return item_count + lock + Total
+
+
+def with_nested(outer_value: int) -> int:
+    def inner(inner_value: int) -> int:
+        return inner_value * 2 + outer_value
+
+    return inner(3)
+
+
+def main() -> None:
+    print(module_level(1, 2, 3))
+    print(with_nested(4))
+
+    b: Boxed = Boxed(5, 6)
+    print(b.total)
+    print(b.scaled(1, 2))
+    print(b + 4)
+    print(b[7])
+    b.bumped = 10
+    print(b.bumped)
