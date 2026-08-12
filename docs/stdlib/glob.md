@@ -25,7 +25,7 @@ glob.glob("**/*.cs")        # recursive search for .cs files
 glob.glob("src/[ab]*.py")   # files starting with a or b
 ```
 
-### `glob.iglob(pattern: str) -> Iterable[str]`
+### `glob.iglob(pattern: str) -> Iterator[str]`
 
 Return an iterator which yields the same values as `Glob`
 without actually storing them all simultaneously.
@@ -35,7 +35,9 @@ Similar to Python's `glob.iglob()`.
 
 - `pattern` (str) -- A glob pattern (e.g., "*.txt", "**/*.cs").
 
-**Returns:** An enumerable of matching paths.
+**Returns:** A lazy iterator over matching paths. The directory tree is walked as the result is
+iterated, not at the call — so a file created between the call and the loop is seen,
+matching CPython, where `iglob` is a generator.
 
 ### `glob.escape(pathname: str) -> str`
 

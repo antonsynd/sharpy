@@ -316,9 +316,43 @@ namespace Sharpy.Stdlib.Tests.Spy
             }
 
             [Xunit.FactAttribute]
+            public void TestIglobIsLazilyEvaluated()
+            {
+                string tmpPath = _tmpPathFixture.Value;
+#line (162, 5) - (162, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+                BuildTree(tmpPath);
+#line (163, 5) - (163, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+                var lazy = glob.Iglob(tmpPath + "/*.lazytest");
+#line (164, 5) - (166, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+                using (var f = global::Sharpy.Builtins.Open(tmpPath + "/created_after_call.lazytest", "w"))
+#line hidden
+                {
+#line (165, 9) - (165, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+                    f.Write("x");
+#line hidden
+                }
+
+#line (166, 5) - (166, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+                int count = 0;
+#line (167, 5) - (169, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+                foreach (var __loopVar_2 in lazy)
+#line hidden
+                {
+                    var path = __loopVar_2;
+#line (168, 9) - (168, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+                    count = count + 1;
+#line hidden
+                }
+
+#line (169, 5) - (169, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+                Xunit.Assert.Equal(1, count);
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
             public void TestEscapeEscapesAsterisk()
             {
-#line (178, 5) - (178, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (176, 5) - (176, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Xunit.Assert.Equal("file[*].txt", glob.Escape("file*.txt"));
 #line hidden
             }
@@ -326,7 +360,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestEscapeEscapesQuestionMark()
             {
-#line (183, 5) - (183, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (181, 5) - (181, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Xunit.Assert.Equal("file[?].txt", glob.Escape("file?.txt"));
 #line hidden
             }
@@ -334,7 +368,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestEscapeEscapesBracket()
             {
-#line (188, 5) - (188, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (186, 5) - (186, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Xunit.Assert.Equal("file[[]1].txt", glob.Escape("file[1].txt"));
 #line hidden
             }
@@ -342,7 +376,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestEscapeLeavesNormalCharsUnchanged()
             {
-#line (193, 5) - (193, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (191, 5) - (191, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Xunit.Assert.Equal("normal.txt", glob.Escape("normal.txt"));
 #line hidden
             }
@@ -350,7 +384,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestEscapeEmptyStringReturnsEmpty()
             {
-#line (198, 5) - (198, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (196, 5) - (196, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 Xunit.Assert.Equal("", glob.Escape(""));
 #line hidden
             }

@@ -28,7 +28,8 @@ namespace Sharpy
         /// </example>
         public static List<string> Glob(string pattern)
         {
-            var results = new System.Collections.Generic.List<string>(Iglob(pattern));
+            // IglobCore, not Iglob: the eager path has no use for the Iterator wrapper.
+            var results = new System.Collections.Generic.List<string>(IglobCore(pattern));
             results.Sort(StringComparer.Ordinal);
             return new List<string>(results);
         }
@@ -39,8 +40,26 @@ namespace Sharpy
         /// Similar to Python's <c>glob.iglob()</c>.
         /// </summary>
         /// <param name="pattern">A glob pattern (e.g., "*.txt", "**/*.cs").</param>
-        /// <returns>An enumerable of matching paths.</returns>
-        public static IEnumerable<string> Iglob(string pattern)
+        /// <returns>
+        /// A lazy iterator over matching paths. The directory tree is walked as the result is
+        /// iterated, not at the call — so a file created between the call and the loop is seen,
+        /// matching CPython, where <c>iglob</c> is a generator.
+        /// </returns>
+        // WHY Iterator<string> AND NOT IEnumerable<string> (#1354): the bridge maps a CLR
+        // IEnumerable<T> return onto list[T] and stamps it with its CLR origin, and #1251 then binds
+        // NativeCollectionForm and records a materialization — so `lazy = glob.iglob(...)` emitted
+        // `new Sharpy.List<string>(glob.Iglob(...))` and walked the whole tree before the next
+        // statement ran. A type deriving from Sharpy.Iterator<T> takes a DIFFERENT bridge arm (it maps
+        // to a BuiltinType, not a GenericType), so IsUnmaterializedClrSequence rejects it at its first
+        // check and the rule never fires. The exemption is structural, not a special case.
+        //
+        // The enumerator body lives in IglobCore because a C# iterator method (one with `yield`) must
+        // return IEnumerable/IEnumerator — it cannot itself return Iterator<T>. Builtins.Iter does the
+        // wrapping and adds no eagerness: it defers to the same enumerator.
+        public static Iterator<string> Iglob(string pattern)
+            => Builtins.Iter(IglobCore(pattern));
+
+        private static IEnumerable<string> IglobCore(string pattern)
         {
             if (string.IsNullOrEmpty(pattern))
             {
