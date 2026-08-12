@@ -1540,55 +1540,55 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSafeDumpFloatExponentMatchesPyyaml()
             {
-#line (673, 5) - (673, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("1.0e+20", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e20d)));
-#line (674, 5) - (674, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("1.0e+17", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e17d)));
-#line (675, 5) - (675, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("-1.0e+20", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(-1e20d)));
-#line (676, 5) - (676, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("1.0e+100", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e100d)));
-#line (678, 5) - (678, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("2.5e-10", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(2.5e-10d)));
-#line (679, 5) - (679, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("1.5e+20", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1.5e20d)));
+#line (678, 5) - (678, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("1.0e+20\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e20d)));
+#line (679, 5) - (679, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("1.0e+17\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e17d)));
+#line (680, 5) - (680, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("-1.0e+20\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(-1e20d)));
+#line (681, 5) - (681, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("1.0e+100\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e100d)));
+#line (683, 5) - (683, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("2.5e-10\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(2.5e-10d)));
+#line (684, 5) - (684, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("1.5e+20\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1.5e20d)));
 #line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestSafeDumpFloatLayoutBoundaryMatchesPyyaml()
             {
-#line (685, 5) - (685, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("1.0e+16", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e16d)));
-#line (686, 5) - (686, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("1000000000000000.0", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e15d)));
-#line (688, 5) - (688, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("0.0001", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e-4d)));
-#line (689, 5) - (689, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("1.0e-05", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e-5d)));
+#line (690, 5) - (690, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("1.0e+16\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e16d)));
+#line (691, 5) - (691, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("1000000000000000.0\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e15d)));
+#line (693, 5) - (693, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("0.0001\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e-4d)));
+#line (694, 5) - (694, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("1.0e-05\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e-5d)));
 #line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestSafeDumpWholeFloatKeepsItsPoint()
             {
-#line (695, 5) - (695, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("1.0", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1.0d)));
-#line (696, 5) - (696, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("5.0", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(5.0d)));
-#line (697, 5) - (697, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("0.0", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(0.0d)));
-#line (698, 5) - (698, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("-0.0", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(-0.0d)));
+#line (700, 5) - (700, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("1.0\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1.0d)));
+#line (701, 5) - (701, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("5.0\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(5.0d)));
+#line (702, 5) - (702, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("0.0\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(0.0d)));
+#line (703, 5) - (703, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("-0.0\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(-0.0d)));
 #line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestSafeDumpFloatRoundTripsAsAFloat()
             {
-#line (705, 5) - (705, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (710, 5) - (710, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object parsed = yaml.SafeLoad(yaml.SafeDump(1.0d));
-#line (706, 5) - (706, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (711, 5) - (711, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<double>(parsed);
 #line hidden
             }
@@ -1596,24 +1596,107 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRoundtripDumpFloatMatchesSafeDump()
             {
-#line (714, 5) - (714, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (723, 5) - (723, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.Equal(global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e20d)), global::Sharpy.StringExtensions.Strip(yaml.RoundtripDump(1e20d)));
-#line (715, 5) - (715, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (724, 5) - (724, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.Equal(global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1.0d)), global::Sharpy.StringExtensions.Strip(yaml.RoundtripDump(1.0d)));
-#line (716, 5) - (716, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (725, 5) - (725, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.Equal(global::Sharpy.StringExtensions.Strip(yaml.SafeDump(1e16d)), global::Sharpy.StringExtensions.Strip(yaml.RoundtripDump(1e16d)));
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
+            public void TestSafeDumpPlainScalarEndsWithDocumentMarker()
+            {
+#line (737, 5) - (737, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("hello\n...\n", yaml.SafeDump("hello"));
+#line (738, 5) - (738, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("1.0\n...\n", yaml.SafeDump(1.0d));
+#line (739, 5) - (739, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("42\n...\n", yaml.SafeDump(42));
+#line (740, 5) - (740, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("true\n...\n", yaml.SafeDump(true));
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
+            public void TestSafeDumpQuotedScalarHasNoDocumentMarker()
+            {
+#line (746, 5) - (746, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("'true'\n", yaml.SafeDump("true"));
+#line (747, 5) - (747, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("'42'\n", yaml.SafeDump("42"));
+#line (749, 5) - (749, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("'a: b'\n", yaml.SafeDump("a: b"));
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
+            public void TestSafeDumpCollectionHasNoDocumentMarker()
+            {
+#line (754, 5) - (754, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Sharpy.Dict<string, object> mapping = new Sharpy.Dict<string, object>()
+#line hidden
+                {
+                };
+#line (755, 5) - (755, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                mapping["a"] = 1;
+#line (756, 5) - (756, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("a: 1\n", yaml.SafeDump(mapping));
+#line (758, 5) - (758, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Sharpy.List<object> items = new Sharpy.List<object>()
+#line hidden
+                {
+                };
+#line (759, 5) - (759, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                items.Append(1);
+#line (760, 5) - (760, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                items.Append(2);
+#line (761, 5) - (761, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("- 1\n- 2\n", yaml.SafeDump(items));
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
+            public void TestRoundtripDumpMarksTheSameDocumentsAsSafeDump()
+            {
+#line (774, 5) - (778, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                foreach (var __loopVar_2 in new Sharpy.List<string>()
+#line hidden
+                {
+                    "hello",
+                    "world",
+                    "abc"
+                }
+
+                )
+                {
+                    var value = __loopVar_2;
+#line (775, 9) - (775, 68) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                    Xunit.Assert.Equal(yaml.SafeDump(value), yaml.RoundtripDump(value));
+#line hidden
+                }
+            }
+
+            [Xunit.FactAttribute]
+            public void TestSafeDumpMarkedScalarStillRoundTrips()
+            {
+#line (781, 5) - (781, 74) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.True(@operator.Eq(yaml.SafeLoad(yaml.SafeDump("hello")), "hello"));
+#line (782, 5) - (782, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.True(@operator.Eq(yaml.SafeLoad(yaml.SafeDump(42)), 42));
 #line hidden
             }
 
             [Xunit.FactAttribute]
             public void TestSafeDumpSpecialFloatsKeepYamlSpellings()
             {
-#line (721, 5) - (721, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal(".inf", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(global::Sharpy.Builtins.Float("inf"))));
-#line (722, 5) - (722, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal("-.inf", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(global::Sharpy.Builtins.Float("-inf"))));
-#line (723, 5) - (723, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Equal(".nan", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(global::Sharpy.Builtins.Float("nan"))));
+#line (787, 5) - (787, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal(".inf\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(global::Sharpy.Builtins.Float("inf"))));
+#line (788, 5) - (788, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal("-.inf\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(global::Sharpy.Builtins.Float("-inf"))));
+#line (789, 5) - (789, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+                Xunit.Assert.Equal(".nan\n...", global::Sharpy.StringExtensions.Strip(yaml.SafeDump(global::Sharpy.Builtins.Float("nan"))));
 #line hidden
             }
 

@@ -109,11 +109,3 @@ fixture::stdlib-tests/stdlib_math
 fixture::stdlib-tests/stdlib_from_math
 
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
-
-# safe_dump of a BARE SCALAR omits the '...' document-end marker PyYAML emits, so Sharpy
-# prints `1.0` where PyYAML prints `1.0\n...`. Collections agree (`a: 1`, `- 1`); the marker
-# is specific to the top-level-scalar case. Re-found by the oracle on its first run that could
-# actually reach PyYAML — before the -S fix every yaml cell skipped — and already on file as
-# #1348 (the oracle re-finding a filed bug is the system working; #1426 closed as its dup).
-# #1348. Delete when it lands; stdlib_yaml's .expected gains the markers if parity is ruled.
-fixture::stdlib-tests/stdlib_yaml

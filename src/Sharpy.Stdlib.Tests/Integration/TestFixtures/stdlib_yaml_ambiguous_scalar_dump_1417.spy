@@ -6,15 +6,20 @@
 # The rule is asked of YamlScalarResolver, the same authority safe_load resolves through, so the
 # two directions cannot disagree by construction.
 #
-# The obvious control — that `hello` stays BARE, gaining nothing — cannot live in this fixture
-# until #1348 lands. This fixture is compared against CPython by the differential oracle, and
-# PyYAML terminates a PLAIN scalar document with the `...` marker that Sharpy does not yet emit:
-# CPython prints `hello\n...` where Sharpy prints `hello`, so the control would fail here on
-# #1348's account rather than this one's. It lives in stdlib_yaml_round_trip instead, which
-# compares loaded VALUES and is therefore immune to document-marker differences. Move it here
-# once #1348 lands and both arms agree.
+# The control — that `hello` stays BARE, gaining nothing — is the third cell, and it is here
+# because #1348 landed. It could not live in this fixture before: this fixture is compared against
+# CPython by the differential oracle, and PyYAML terminates a PLAIN scalar document with a `...`
+# marker that Sharpy did not emit, so CPython printed `hello\n...` where Sharpy printed `hello`
+# and the control failed on #1348's account rather than this one's. Both arms now agree, which is
+# exactly the condition the earlier header set for moving it here.
+#
+# It matters that the control is BOTH lines: `hello` bare says the quoting rule did not overreach,
+# and `...` says an unquoted scalar takes the plain-document path that the quoted cells above do
+# not. If #1417's converter ever quoted `hello`, the marker would vanish with the bareness and
+# this fixture would fail twice over.
 import yaml
 
 def main():
     print(yaml.safe_dump("true").strip())
     print(yaml.safe_dump("42").strip())
+    print(yaml.safe_dump("hello").strip())

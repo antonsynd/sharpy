@@ -276,7 +276,12 @@ namespace Sharpy
             emitter.Emit(new DocumentEnd(isImplicit: true));
             emitter.Emit(new StreamEnd());
 
-            return writer.ToString();
+            // Same document-end rule as safe_dump (#1348). Two dump surfaces disagreeing about the
+            // marker would be an inconsistency this codebase invented: ruamel.yaml 0.18.16, which
+            // is what roundtrip_dump models, emits `hello\n...\n` and `1.0\n...\n` exactly where
+            // PyYAML does, and gives `'true'`, mappings and sequences no marker exactly where
+            // PyYAML doesn't. One authority, so they cannot drift apart.
+            return YamlDocumentEnd.Append(writer.ToString(), data);
         }
 
         private static void EmitNode(IEmitter emitter, object? value)

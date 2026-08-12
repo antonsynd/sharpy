@@ -655,6 +655,11 @@ def test_yaml_parse_error_is_yaml_error():
 # ORACLE: PyYAML 6.0.3 under CPython 3.12.13 — NOT `repr` and not json.dumps. Every expected
 # string below was produced by `python3 -c "import yaml; print(yaml.safe_dump(<value>))"`.
 #
+# The trailing "\n..." on each is the document-end marker PyYAML writes after a PLAIN scalar
+# document, which Sharpy emits since #1348. It is not decoration: written without it, these
+# assertions disagreed with the very command the paragraph above names as their oracle, and
+# passed only because Sharpy was missing it too.
+#
 # PyYAML differs from repr in exactly one respect: in EXPONENT form the mantissa is forced to
 # contain a decimal point.
 #
@@ -670,32 +675,32 @@ def test_yaml_parse_error_is_yaml_error():
 
 @test
 def test_safe_dump_float_exponent_matches_pyyaml():
-    assert yaml.safe_dump(1e20).strip() == "1.0e+20"
-    assert yaml.safe_dump(1e17).strip() == "1.0e+17"
-    assert yaml.safe_dump(-1e20).strip() == "-1.0e+20"
-    assert yaml.safe_dump(1e100).strip() == "1.0e+100"
+    assert yaml.safe_dump(1e20).strip() == "1.0e+20\n..."
+    assert yaml.safe_dump(1e17).strip() == "1.0e+17\n..."
+    assert yaml.safe_dump(-1e20).strip() == "-1.0e+20\n..."
+    assert yaml.safe_dump(1e100).strip() == "1.0e+100\n..."
     # A mantissa that already carries digits keeps them.
-    assert yaml.safe_dump(2.5e-10).strip() == "2.5e-10"
-    assert yaml.safe_dump(1.5e20).strip() == "1.5e+20"
+    assert yaml.safe_dump(2.5e-10).strip() == "2.5e-10\n..."
+    assert yaml.safe_dump(1.5e20).strip() == "1.5e+20\n..."
 
 
 @test
 def test_safe_dump_float_layout_boundary_matches_pyyaml():
     # 1e16 is the first exponent-form value; 1e15 is the last positional one.
-    assert yaml.safe_dump(1e16).strip() == "1.0e+16"
-    assert yaml.safe_dump(1e15).strip() == "1000000000000000.0"
+    assert yaml.safe_dump(1e16).strip() == "1.0e+16\n..."
+    assert yaml.safe_dump(1e15).strip() == "1000000000000000.0\n..."
     # Small values cross over between 1e-4 and 1e-5.
-    assert yaml.safe_dump(1e-4).strip() == "0.0001"
-    assert yaml.safe_dump(1e-5).strip() == "1.0e-05"
+    assert yaml.safe_dump(1e-4).strip() == "0.0001\n..."
+    assert yaml.safe_dump(1e-5).strip() == "1.0e-05\n..."
 
 
 @test
 def test_safe_dump_whole_float_keeps_its_point():
     # Previously safe_dump emitted "1" and "5" here, which reload as INTS.
-    assert yaml.safe_dump(1.0).strip() == "1.0"
-    assert yaml.safe_dump(5.0).strip() == "5.0"
-    assert yaml.safe_dump(0.0).strip() == "0.0"
-    assert yaml.safe_dump(-0.0).strip() == "-0.0"
+    assert yaml.safe_dump(1.0).strip() == "1.0\n..."
+    assert yaml.safe_dump(5.0).strip() == "5.0\n..."
+    assert yaml.safe_dump(0.0).strip() == "0.0\n..."
+    assert yaml.safe_dump(-0.0).strip() == "-0.0\n..."
 
 
 @test
@@ -711,13 +716,74 @@ def test_roundtrip_dump_float_matches_safe_dump():
     # The two surfaces formatted floats independently and had drifted: roundtrip_dump got the
     # trailing .0 right but spelled the exponent "1E+20". One shared formatter now serves both,
     # so agreement between them is the property worth pinning.
+    #
+    # #1348 tested that claim rather than restating it: adding the document-end marker to
+    # safe_dump alone broke this test, which is the design saying the two must agree. The marker
+    # went to both surfaces (YamlDocumentEnd) instead of the assertion being narrowed.
     assert yaml.roundtrip_dump(1e20).strip() == yaml.safe_dump(1e20).strip()
     assert yaml.roundtrip_dump(1.0).strip() == yaml.safe_dump(1.0).strip()
     assert yaml.roundtrip_dump(1e16).strip() == yaml.safe_dump(1e16).strip()
 
 
+# --- The document-end marker after a plain scalar (#1348) ---
+#
+# ORACLE: PyYAML 6.0.3 and ruamel.yaml 0.18.16 (round-trip mode) agree on every cell below.
+# The condition is the emitted scalar's STYLE, not the value's kind — a quoted scalar is still a
+# scalar and still gets no marker.
+
+
+@test
+def test_safe_dump_plain_scalar_ends_with_document_marker():
+    assert yaml.safe_dump("hello") == "hello\n...\n"
+    assert yaml.safe_dump(1.0) == "1.0\n...\n"
+    assert yaml.safe_dump(42) == "42\n...\n"
+    assert yaml.safe_dump(True) == "true\n...\n"
+
+
+@test
+def test_safe_dump_quoted_scalar_has_no_document_marker():
+    # Quoted because the text would read back as another type (#1417) ...
+    assert yaml.safe_dump("true") == "'true'\n"
+    assert yaml.safe_dump("42") == "'42'\n"
+    # ... or because the spelling would not survive plain at all.
+    assert yaml.safe_dump("a: b") == "'a: b'\n"
+
+
+@test
+def test_safe_dump_collection_has_no_document_marker():
+    mapping: dict[str, object] = {}
+    mapping["a"] = 1
+    assert yaml.safe_dump(mapping) == "a: 1\n"
+
+    items: list[object] = []
+    items.append(1)
+    items.append(2)
+    assert yaml.safe_dump(items) == "- 1\n- 2\n"
+
+
+@test
+def test_roundtrip_dump_marks_the_same_documents_as_safe_dump():
+    # One authority for the rule, so the two dump surfaces cannot drift apart on it.
+    #
+    # Plain scalars only, and that is a finding rather than a convenience: written over the
+    # ambiguous corpus this failed on `'true'` vs `"true"`. The two surfaces agree on WHICH
+    # strings need quoting — both ask YamlScalarResolver — and disagree on HOW, because
+    # YamlRoundtrip.QuotedScalar hardcodes DoubleQuoted where safe_dump and PyYAML emit single
+    # quotes. Pre-existing, unrelated to the marker, measured on a clean tree with #1348 absent,
+    # and filed as #1472. Widening this loop back to ["true", "a: b"] is #1472's acceptance.
+    for value in ["hello", "world", "abc"]:
+        assert yaml.roundtrip_dump(value) == yaml.safe_dump(value)
+
+
+@test
+def test_safe_dump_marked_scalar_still_round_trips():
+    # The marker is part of the document the loader must accept, not decoration on the outside.
+    assert operator.eq(yaml.safe_load(yaml.safe_dump("hello")), "hello")
+    assert operator.eq(yaml.safe_load(yaml.safe_dump(42)), 42)
+
+
 @test
 def test_safe_dump_special_floats_keep_yaml_spellings():
-    assert yaml.safe_dump(float("inf")).strip() == ".inf"
-    assert yaml.safe_dump(float("-inf")).strip() == "-.inf"
-    assert yaml.safe_dump(float("nan")).strip() == ".nan"
+    assert yaml.safe_dump(float("inf")).strip() == ".inf\n..."
+    assert yaml.safe_dump(float("-inf")).strip() == "-.inf\n..."
+    assert yaml.safe_dump(float("nan")).strip() == ".nan\n..."

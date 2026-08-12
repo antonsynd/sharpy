@@ -52,7 +52,9 @@ namespace Sharpy
         /// <param name="sortKeys">Whether to sort mapping keys.</param>
         /// <param name="allowUnicode">Whether to allow non-ASCII characters unescaped.</param>
         /// <param name="width">Preferred maximum line width before wrapping.</param>
-        /// <returns>The YAML string representation of <paramref name="data"/>.</returns>
+        /// <returns>The YAML string representation of <paramref name="data"/>. A document that is a
+        /// single plain scalar is terminated with YAML's document-end marker <c>...</c>, matching
+        /// PyYAML; a quoted scalar, a mapping and a sequence are not.</returns>
         public static string SafeDump(
             object? data,
             bool defaultFlowStyle = false,
@@ -164,6 +166,20 @@ namespace Sharpy
                 throw new TypeError("expected list, got NoneType");
             }
 
+            // Excluded from the per-document end-marker rule (#1348), and the exclusion is the
+            // conservative choice rather than the cheap one. PyYAML writes `1.0` / `--- hello` /
+            // `...` — ONE marker, at stream end, with the separator folded inline. Letting each
+            // document append its own would give `1.0\n...\n---\nhello\n...\n`: markers BETWEEN
+            // documents, which is neither today's output nor PyYAML's, and which a conforming
+            // parser reads differently again. That is a divergence #1348 would have MANUFACTURED
+            // rather than closed, and getting it right is not a marker append at all — it is a
+            // change to how this method concatenates.
+            //
+            // Suppressing it leaves multi-document output byte-identical to its pre-#1348 form.
+            // The two residues — no stream-end marker, and `---\nhello` where PyYAML writes
+            // `--- hello` — are both pre-existing, both about the STREAM rather than the document,
+            // and both filed as #1471. `YamlDumpAllStreamShapeTests` pins this output, so the
+            // exclusion flips loudly when #1471 lands instead of becoming folklore.
             var builder = new StringBuilder();
             bool first = true;
             foreach (object? document in documents)
@@ -173,7 +189,8 @@ namespace Sharpy
                     builder.Append("---\n");
                 }
 
-                builder.Append(DumpSingle(document, defaultFlowStyle, indent, sortKeys, allowUnicode, width));
+                builder.Append(DumpSingle(document, defaultFlowStyle, indent, sortKeys, allowUnicode, width,
+                    emitDocumentEndMarker: false));
                 first = false;
             }
 
@@ -208,7 +225,8 @@ namespace Sharpy
             int indent,
             bool sortKeys,
             bool allowUnicode,
-            int width)
+            int width,
+            bool emitDocumentEndMarker = true)
         {
             SerializerBuilder builder = new SerializerBuilder().DisableAliases();
 
@@ -243,7 +261,9 @@ namespace Sharpy
             using var writer = new StringWriter(CultureInfo.InvariantCulture);
             var emitter = new Emitter(writer, settings);
             serializer.Serialize(emitter, converted);
-            return writer.ToString();
+            return emitDocumentEndMarker
+                ? YamlDocumentEnd.Append(writer.ToString(), converted)
+                : writer.ToString();
         }
 
         private static object? SortKeys(object? value)
@@ -303,7 +323,9 @@ namespace Sharpy
         /// </summary>
         /// <param name="data">The data to serialize (may include commented nodes).</param>
         /// <param name="indent">Number of spaces per indentation level.</param>
-        /// <returns>The YAML string with comments preserved.</returns>
+        /// <returns>The YAML string with comments preserved. The document-end marker follows the
+        /// same rule as <c>safe_dump</c> — the two dump surfaces share one authority for it, so
+        /// they cannot disagree about whether a given document carries <c>...</c>.</returns>
         public static string RoundtripDump(object? data, int indent = 2)
         {
             return YamlRoundtrip.RoundtripDump(data, indent);

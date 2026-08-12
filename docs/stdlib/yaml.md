@@ -37,7 +37,9 @@ Serialize *data* to a YAML formatted string.
 - `allow_unicode` (bool) -- Whether to allow non-ASCII characters unescaped.
 - `width` (int) -- Preferred maximum line width before wrapping.
 
-**Returns:** The YAML string representation of *data*.
+**Returns:** The YAML string representation of *data*. A document that is a
+single plain scalar is terminated with YAML's document-end marker `...`, matching
+PyYAML; a quoted scalar, a mapping and a sequence are not.
 
 ### `yaml.safe_load_file(fp: TextFile) -> object | None`
 
@@ -123,7 +125,9 @@ Serialize data to YAML, re-emitting any comments stored in
 - `data` (object | None) -- The data to serialize (may include commented nodes).
 - `indent` (int) -- Number of spaces per indentation level.
 
-**Returns:** The YAML string with comments preserved.
+**Returns:** The YAML string with comments preserved. The document-end marker follows the
+same rule as `SafeDump` — the two dump surfaces share one authority for it,
+so they cannot disagree about whether a given document carries `...`.
 
 ### `yaml.safe_load_typed(text: str) -> Result[T, YAMLError]`
 
