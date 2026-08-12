@@ -298,6 +298,21 @@ internal sealed class LanguageService : IDisposable
     }
 
     /// <summary>
+    /// The document's last analysis that produced a queryable tree, with the text it came from
+    /// (#1360). For handlers that must answer while the buffer does not parse — a trailing dot is
+    /// the normal state of a buffer at the instant an editor requests completion.
+    /// </summary>
+    /// <remarks>
+    /// Not a fallback inside <see cref="GetAnalysisAsync"/>, and must not become one: that path
+    /// feeds diagnostic publishing and the front-end parity sweep, which require the CURRENT
+    /// text's diagnostics. Callers opt in, and owe a drift check against the returned text.
+    /// </remarks>
+    public (SemanticResult Analysis, SourceText SourceText)? GetLastGoodAnalysis(string uri)
+    {
+        return _workspace.GetLastGoodAnalysis(uri);
+    }
+
+    /// <summary>
     /// Returns source text for a file. Checks workspace for open docs first,
     /// then reads from disk for project files not currently open.
     /// </summary>

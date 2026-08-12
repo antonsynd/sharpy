@@ -30,6 +30,17 @@ internal sealed class DocumentState : IDisposable
     private SemanticResult? _previousAnalysis;
     private ParseResult? _previousParseResult;
 
+    // The last analysis that actually produced a queryable tree, kept alongside the text it was
+    // produced from (#1360). This is NOT _previousAnalysis: that one is "last completed" and is
+    // overwritten by a failed parse, which is exactly the state a mid-edit buffer is in. A buffer
+    // with a trailing dot analyzes to Ast=null/SymbolTable=null/SemanticQuery=null (measured:
+    // SPY0101), so every handler that needs a tree has nothing to answer from at the instant an
+    // editor asks. Holding the text too is what lets a consumer verify the stale tree still
+    // describes the code it is being asked about instead of guessing — see
+    // SharpyCompletionHandler's drift check.
+    private SemanticResult? _lastGoodAnalysis;
+    private SourceText? _lastGoodSourceText;
+
     /// <summary>
     /// Monotonically increasing version counter. Incremented on every edit.
     /// Used to detect and discard stale analysis results.
@@ -116,7 +127,54 @@ internal sealed class DocumentState : IDisposable
             CachedParseResult = null;
             _previousAnalysis = null;
             _previousParseResult = null;
+            // The last-good snapshot goes too: it was produced under the PREVIOUS options, so
+            // serving it after a feature/.spyproj change would reintroduce the staleness this
+            // method exists to remove. An edit (Update/ApplyIncrementalChanges) deliberately keeps
+            // it — surviving edits is the entire point — but an options change does not.
+            _lastGoodAnalysis = null;
+            _lastGoodSourceText = null;
             _analysisVersion++;
+        }
+    }
+
+    /// <summary>
+    /// The most recent analysis that produced a queryable tree, with the source text it was
+    /// produced from. Both or neither: a consumer that cannot check drift should not be answering
+    /// from a stale tree at all.
+    /// </summary>
+    public (SemanticResult Analysis, SourceText SourceText)? LastGoodAnalysis
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _lastGoodAnalysis != null && _lastGoodSourceText != null
+                    ? (_lastGoodAnalysis, _lastGoodSourceText)
+                    : null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Whether <paramref name="result"/> can answer a tree-shaped query. A failed parse yields a
+    /// result with every one of these null, which is what makes "last completed" useless as a
+    /// fallback and "last good" worth tracking separately.
+    /// </summary>
+    private static bool IsQueryable(SemanticResult result)
+        => result.Ast != null && result.SymbolTable != null && result.SemanticQuery != null;
+
+    /// <summary>
+    /// Records <paramref name="result"/> as the last-good snapshot when it is queryable. Caller
+    /// holds <see cref="_stateLock"/>. Called from every cache-write site so a result that reaches
+    /// the cache by ANY path — full analysis, unchanged-AST reuse, or scoped body re-check — is a
+    /// candidate; missing one would make the fallback silently depend on which path ran.
+    /// </summary>
+    private void RecordLastGood(SemanticResult result, SourceText sourceText)
+    {
+        if (IsQueryable(result))
+        {
+            _lastGoodAnalysis = result;
+            _lastGoodSourceText = sourceText;
         }
     }
 
@@ -152,12 +210,14 @@ internal sealed class DocumentState : IDisposable
             int versionAtStart;
             SemanticResult? previousAnalysis;
             ParseResult? previousParse;
+            SourceText sourceTextAtStart;
             lock (_stateLock)
             {
                 // Double-check after acquiring lock
                 if (CachedAnalysis != null)
                     return CachedAnalysis;
-                text = SourceText.ToString();
+                sourceTextAtStart = SourceText;
+                text = sourceTextAtStart.ToString();
                 versionAtStart = _analysisVersion;
                 previousAnalysis = _previousAnalysis;
                 previousParse = _previousParseResult;
@@ -186,6 +246,7 @@ internal sealed class DocumentState : IDisposable
                             _previousParseResult = newParse;
                             CachedAnalysis = previousAnalysis;
                             CachedParseResult = newParse;
+                            RecordLastGood(previousAnalysis, sourceTextAtStart);
                         }
                     }
                     return previousAnalysis;
@@ -208,6 +269,7 @@ internal sealed class DocumentState : IDisposable
                                 _previousParseResult = newParse;
                                 CachedAnalysis = partialResult;
                                 CachedParseResult = newParse;
+                                RecordLastGood(partialResult, sourceTextAtStart);
                             }
                             // Note: If version changed, we still return the result (best-effort).
                             // The next analysis cycle will produce a fresh result for the new version.
@@ -241,6 +303,7 @@ internal sealed class DocumentState : IDisposable
                     _previousParseResult = parseForCache;
                     CachedAnalysis = result;
                     CachedParseResult = parseForCache;
+                    RecordLastGood(result, sourceTextAtStart);
                 }
             }
             return result;
@@ -534,6 +597,20 @@ internal sealed class SharpyWorkspace : IDisposable
             return await state.GetOrRunParseAsync(_api, ct).ConfigureAwait(false);
         }
         return null;
+    }
+
+    /// <summary>
+    /// The document's last analysis that produced a queryable tree, with the text it came from
+    /// (#1360). Deliberately a SEPARATE accessor: <see cref="GetAnalysisAsync"/> must never fall
+    /// back to this. That method is what <c>DiagnosticPublisher</c> publishes from and what
+    /// <c>FrontEndParityTests</c> compares against the <c>CompilerApi.Analyze</c> baseline, so a
+    /// fallback there would serve stale diagnostics for every non-parsing document — a parity
+    /// violation by construction, and visible to users as diagnostics for text they already fixed.
+    /// Only handlers that can tolerate (and check) staleness may call this.
+    /// </summary>
+    public (SemanticResult Analysis, SourceText SourceText)? GetLastGoodAnalysis(string uri)
+    {
+        return _documents.TryGetValue(uri, out var state) ? state.LastGoodAnalysis : null;
     }
 
     public DocumentState? GetDocument(string uri)
