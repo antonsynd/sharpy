@@ -22,6 +22,8 @@ from build_tools.bench_ab import (
     parse_bdn_means,
     pool_by_position,
     report,
+    split_discarded,
+    warmup_split_lines,
 )
 
 
@@ -164,11 +166,109 @@ class TestParsing:
             parse_bdn_means(directory)
 
 
+def one_round(round_index: int, first_arm: str, first_ns: float,
+              second_arm: str, second_ns: float) -> list[Measurement]:
+    """One round: *first_arm* ran in position 0, *second_arm* in position 1."""
+    return [
+        Measurement(first_arm, 0, "Bench", first_ns, round_index),
+        Measurement(second_arm, 1, "Bench", second_ns, round_index),
+    ]
+
+
+def unsettled_then_settled() -> list[Measurement]:
+    """
+    A run whose opening rounds carry the #1418 session transient and whose settled tail
+    contains a real 30% regression in arm "b".
+
+    Rounds 0-1 are inflated and, because the arms alternate position, inflated UNEQUALLY —
+    which is the property that makes the transient survive interleaving. Rounds 2-3 are the
+    steady state: b is 30% slower in both orderings.
+    """
+    return (
+        one_round(0, "a", 170.0, "b", 130.0)
+        + one_round(1, "b", 160.0, "a", 100.0)
+        + one_round(2, "a", 100.0, "b", 130.0)
+        + one_round(3, "b", 130.0, "a", 100.0)
+    )
+
+
+class TestDiscardWindow:
+    def test_pooling_the_settled_tail_finds_the_real_regression(self):
+        _, pooled = split_discarded(unsettled_then_settled(), discard_rounds=2)
+        verdicts = evaluate(pooled, "a", "b")
+
+        assert verdicts[0].measured
+        assert verdicts[0].pooled_delta_percent == pytest.approx(30.0)
+
+    def test_without_the_window_the_same_regression_is_lost(self):
+        """
+        The mutation check for this feature. Same data, discard window disabled: the unsettled
+        opening rounds push the two orderings to opposite signs, the sign gate refuses the
+        comparison, and a real 30% regression is reported as position-dominated. If this test
+        ever agrees with the one above, the window has stopped doing anything.
+        """
+        _, pooled = split_discarded(unsettled_then_settled(), discard_rounds=0)
+        verdicts = evaluate(pooled, "a", "b")
+
+        assert not verdicts[0].measured
+        assert "position-dominated" in verdicts[0].reason
+
+    def test_whole_rounds_are_dropped_so_positions_stay_balanced(self):
+        _, pooled = split_discarded(unsettled_then_settled(), discard_rounds=2)
+
+        cells: dict[tuple[str, int], int] = {}
+        for m in pooled:
+            cells[(m.arm, m.position)] = cells.get((m.arm, m.position), 0) + 1
+
+        assert cells == {("a", 0): 1, ("a", 1): 1, ("b", 0): 1, ("b", 1): 1}
+
+    def test_split_report_shows_the_gap_the_pooled_delta_cannot(self):
+        lines = warmup_split_lines(unsettled_then_settled(), discard_rounds=2)
+        text = "\n".join(lines)
+
+        assert "2 discarded round(s)" in text
+        # Discarded median 145 ns vs pooled median 115 ns: the transient is visible as a
+        # positive gap even though both arms carry it and the pooled delta cannot show it.
+        assert "discarded 145 ns" in text
+        assert "pooled 115 ns" in text
+        assert "+26.1%" in text
+
+    def test_split_report_is_printed_even_when_nothing_is_discarded(self):
+        """An unconditional report: a reader must never have to wonder whether it was omitted
+        because the run was settled or because the window was off."""
+        lines = warmup_split_lines(unsettled_then_settled(), discard_rounds=0)
+
+        assert lines == ["Warm-up split: no rounds discarded (--discard-rounds 0)."]
+
+
 class TestReport:
     def test_states_the_artifact_and_the_counts(self):
         verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
-        text = report(verdicts, "a", "b", rounds=4)
+        text = report(verdicts, "a", "b", rounds=4, discard_rounds=4)
 
         assert "1 of 1 benchmark(s) produced a measurable delta" in text
         assert "7-10%" in text
-        assert "4 round(s)" in text
+        # 4 pooled of 8 run: the invocation count must follow the discard window, or the
+        # header understates what the machine actually did.
+        assert "4 pooled round(s) of 8 run" in text
+        assert "16 benchmark invocations" in text
+        assert "(8 discarded as unsettled)" in text
+
+    def test_report_carries_the_split_lines(self):
+        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
+        text = report(verdicts, "a", "b", rounds=4, discard_rounds=4,
+                      split_lines=["Warm-up split: MARKER"])
+
+        assert "Warm-up split: MARKER" in text
+
+    def test_report_says_the_threshold_was_not_re_derived(self):
+        """
+        The floor is unchanged after #1418 and the reason is deferral, not a measurement.
+        Stating that in the output is what stops the next reader from assuming the number
+        was re-validated against the settled rounds.
+        """
+        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
+        text = report(verdicts, "a", "b", rounds=4, discard_rounds=4)
+
+        assert "has NOT been re-derived" in text
+        assert "BASELINE.md" in text

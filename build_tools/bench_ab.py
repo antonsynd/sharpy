@@ -23,6 +23,14 @@ Two remedies, both built in here:
    pools agree on its direction. When they disagree, the honest answer is
    "unmeasured: position-dominated", not a number with a confidence interval.
 
+3. **Discard the unsettled opening rounds** (``--discard-rounds``, #1418). The artifact
+   turned out to have a session component as well as a positional one: on identical code
+   the first ~8 invocations run measurably slower and far noisier than everything after
+   them, ACROSS both arms. Interleaving cannot cancel that, because it inflates whichever
+   arm happens to be measured early. So the opening rounds are run and then dropped, and
+   the early-vs-late split is printed on every run — a pooled delta cannot tell you that
+   the machine had not settled, and that is exactly what a reader needs to know.
+
 What it does not do
 -------------------
 It does not decide whether a delta matters, and it does not touch allocations, which
@@ -64,9 +72,26 @@ from typing import Iterable, Optional
 DEFAULT_FILTER = "*CompilerBenchmarks*"
 DEFAULT_ROUNDS = 3
 
+#: Opening rounds discarded before pooling (#1418). The position artifact turned out to have a
+#: SESSION component: measured on identical code (HEAD vs HEAD), the parse mean decayed
+#: 7.632 6.991 6.140 6.017 5.542 5.468 4.955 4.408 | 4.416 4.385 ... µs — flat from the ninth
+#: INVOCATION, with StdDev collapsing 3.45 -> 0.04. A round is TWO invocations, so the settling
+#: point is the fourth round boundary: N=4 discards 8 invocations. N=2 would still pool
+#: invocations 5-8, which sit 26%/24%/12%/0% above the settled floor — most of the artifact this
+#: exists to remove. The transient spans ARMS, which is why #1318's pre-warm-each-arm remedy made
+#: it worse rather than better.
+DEFAULT_DISCARD_ROUNDS = 4
+
 #: Below this, a pooled difference is reported as noise regardless of sign agreement.
 #: Chosen from the measured position effect (7-10%): a delta the artifact alone can
 #: produce is not evidence, so the floor sits above it.
+#:
+#: Deliberately NOT lowered when the discard window landed (#1418). Settled rounds agree to
+#: ±0.3% on identical code, so a smaller floor is plausible — but "plausible" is not a
+#: measurement, and re-deriving this number requires an A/A run on a QUIET machine, which is
+#: the one condition an agent-shared checkout cannot supply. Deferred with its reason recorded
+#: in benchmarks/BASELINE.md; until then the floor keeps its pre-#1418 value and the early/late
+#: split below is what tells a reader whether a given run had settled at all.
 SIGNIFICANCE_THRESHOLD_PERCENT = 15.0
 
 
@@ -135,6 +160,10 @@ class Measurement:
     position: int  # 0 = ran first in its round, 1 = ran second
     benchmark: str
     mean_ns: float
+    #: Which round produced this, counted from 0 across the whole orchestration. Carried so the
+    #: opening rounds can be dropped from the pool (#1418) and shown separately; defaulted so
+    #: hand-built measurements in tests stay valid.
+    round_index: int = 0
 
 
 @dataclass
@@ -159,6 +188,62 @@ class Verdict:
             f"({arm_a} first: {self.delta_first_percent:+.1f}%, "
             f"{arm_b} first: {self.delta_second_percent:+.1f}%)"
         )
+
+
+def split_discarded(
+    measurements: Iterable[Measurement], discard_rounds: int
+) -> tuple[list[Measurement], list[Measurement]]:
+    """
+    Partition into (discarded opening rounds, pooled tail) by round index (#1418).
+
+    Whole ROUNDS are dropped, never individual invocations: a round is one A and one B, so
+    dropping rounds keeps every (arm, position) cell balanced in the tail for any window size,
+    while dropping invocations would bias the pool toward whichever arm survived the cut.
+    """
+    measurements = list(measurements)
+    early = [m for m in measurements if m.round_index < discard_rounds]
+    late = [m for m in measurements if m.round_index >= discard_rounds]
+    return early, late
+
+
+def warmup_split_lines(
+    measurements: Iterable[Measurement], discard_rounds: int
+) -> list[str]:
+    """
+    Per-benchmark medians of the discarded rounds vs the pooled tail.
+
+    Printed on EVERY run, including when nothing was discarded. The transient this window exists
+    for is invisible in a pooled delta — it inflates both arms — so a reader who cannot see the
+    early-vs-late gap has no way to tell a settled run from an unsettled one (#1418, option 3).
+    """
+    early, late = split_discarded(measurements, discard_rounds)
+    if not early:
+        return [f"Warm-up split: no rounds discarded (--discard-rounds {discard_rounds})."]
+
+    early_by_benchmark: dict[str, list[float]] = {}
+    late_by_benchmark: dict[str, list[float]] = {}
+    for measurement in early:
+        early_by_benchmark.setdefault(measurement.benchmark, []).append(measurement.mean_ns)
+    for measurement in late:
+        late_by_benchmark.setdefault(measurement.benchmark, []).append(measurement.mean_ns)
+
+    lines = [
+        f"Warm-up split: {discard_rounds} discarded round(s) vs the pooled tail "
+        "(a large positive gap means the run had not settled; the pooled delta cannot show this)",
+    ]
+    for benchmark in sorted(set(early_by_benchmark) | set(late_by_benchmark)):
+        early_values = early_by_benchmark.get(benchmark)
+        late_values = late_by_benchmark.get(benchmark)
+        if not early_values or not late_values:
+            lines.append(f"  {benchmark}: not present in both halves")
+            continue
+        early_median = statistics.median(early_values)
+        late_median = statistics.median(late_values)
+        lines.append(
+            f"  {benchmark}: discarded {early_median:,.0f} ns vs pooled {late_median:,.0f} ns "
+            f"({_percent(late_median, early_median):+.1f}% in the discarded rounds)"
+        )
+    return lines
 
 
 def pool_by_position(measurements: Iterable[Measurement]) -> dict[tuple[str, str, int], float]:
@@ -359,6 +444,7 @@ def orchestrate(
     bdn_filter: str,
     workdir: str,
     job: Optional[str] = None,
+    discard_rounds: int = 0,
 ) -> list[Measurement]:
     """
     Alternate the arms so each is measured in each position an equal number of times.
@@ -366,6 +452,11 @@ def orchestrate(
     Round parity decides which arm goes first, so over an even number of rounds every
     (arm, position) cell gets the same count. An odd round count leaves one cell short
     and ``evaluate`` will say so rather than pooling an unbalanced comparison.
+
+    Runs ``discard_rounds + rounds`` rounds and tags each measurement with its round index;
+    the opening ``discard_rounds`` are dropped before pooling (#1418). They are still RUN —
+    the transient is a property of the machine warming up, so the only way to get past it is
+    to spend the invocations.
     """
     worktrees = {
         ref_a: prepare_worktree(repo_root, ref_a, os.path.join(workdir, "arm_a")),
@@ -373,15 +464,18 @@ def orchestrate(
     }
 
     measurements: list[Measurement] = []
-    for round_index in range(rounds):
+    total_rounds = discard_rounds + rounds
+    for round_index in range(total_rounds):
         order = (ref_a, ref_b) if round_index % 2 == 0 else (ref_b, ref_a)
+        disposition = "discarded" if round_index < discard_rounds else "pooled"
         for position, ref in enumerate(order):
             artifacts = os.path.join(workdir, f"artifacts_r{round_index}_p{position}")
-            print(f"[bench_ab] round {round_index + 1}/{rounds}, "
+            print(f"[bench_ab] round {round_index + 1}/{total_rounds} ({disposition}), "
                   f"position {position + 1}: {ref}", flush=True)
             arm_means = run_arm(repo_root, worktrees[ref], artifacts, bdn_filter, job)
             for benchmark, mean_ns in arm_means.items():
-                measurements.append(Measurement(ref, position, benchmark, mean_ns))
+                measurements.append(
+                    Measurement(ref, position, benchmark, mean_ns, round_index))
 
     return measurements
 
@@ -399,21 +493,36 @@ def cleanup_worktrees(repo_root: str, workdir: str) -> None:
 # --------------------------------------------------------------------------------------
 
 
-def report(verdicts: list[Verdict], arm_a: str, arm_b: str, rounds: int) -> str:
+def report(
+    verdicts: list[Verdict],
+    arm_a: str,
+    arm_b: str,
+    rounds: int,
+    discard_rounds: int = 0,
+    split_lines: Optional[list[str]] = None,
+) -> str:
     measured = [v for v in verdicts if v.measured]
+    total_rounds = rounds + discard_rounds
     lines = [
         "",
-        f"Interleaved A/B: {arm_a} (A) vs {arm_b} (B), {rounds} round(s), "
-        f"{rounds * 2} benchmark invocations",
+        f"Interleaved A/B: {arm_a} (A) vs {arm_b} (B), {rounds} pooled round(s) of "
+        f"{total_rounds} run, {total_rounds * 2} benchmark invocations "
+        f"({discard_rounds * 2} discarded as unsettled)",
         f"{len(measured)} of {len(verdicts)} benchmark(s) produced a measurable delta.",
         "",
     ]
     lines.extend(v.describe(arm_a, arm_b) for v in verdicts)
+    if split_lines:
+        lines.append("")
+        lines.extend(split_lines)
     lines.extend([
         "",
         "A delta is reported only when both positions agree in sign AND the pooled "
         f"magnitude clears {SIGNIFICANCE_THRESHOLD_PERCENT:.0f}%. Run position alone moves "
         "wall clock 7-10% on this corpus (#1318), so anything smaller is unmeasured, not zero.",
+        "The floor has NOT been re-derived since the discard window landed (#1418): settled "
+        "rounds agree far more tightly, but lowering it needs an A/A run on a quiet machine. "
+        "Deferred — see benchmarks/BASELINE.md.",
     ])
     return "\n".join(lines)
 
@@ -426,8 +535,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("ref_a", help="baseline git ref (A)")
     parser.add_argument("ref_b", help="candidate git ref (B)")
     parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS,
-                        help=f"A/B round pairs (default {DEFAULT_ROUNDS}); "
+                        help=f"A/B round pairs to POOL (default {DEFAULT_ROUNDS}); "
                              "an EVEN count balances the positions")
+    parser.add_argument("--discard-rounds", type=int, default=DEFAULT_DISCARD_ROUNDS,
+                        help=f"opening rounds run but not pooled (default "
+                             f"{DEFAULT_DISCARD_ROUNDS}); the machine needs ~8 invocations to "
+                             "settle (#1418). 0 pools everything and prints the split anyway")
     parser.add_argument("--filter", dest="bdn_filter", default=DEFAULT_FILTER,
                         help=f"BenchmarkDotNet --filter (default {DEFAULT_FILTER!r})")
     parser.add_argument("--job", default=None,
@@ -446,6 +559,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"[bench_ab] note: {args.rounds} rounds leaves the positions unbalanced; "
               "an even count gives every (arm, position) cell the same sample count.",
               file=sys.stderr)
+    if args.discard_rounds < 0:
+        print("--discard-rounds cannot be negative.", file=sys.stderr)
+        return 2
 
     repo_root = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
@@ -454,9 +570,16 @@ def main(argv: Optional[list[str]] = None) -> int:
     workdir = tempfile.mkdtemp(prefix="sharpy_bench_ab_")
     try:
         measurements = orchestrate(
-            repo_root, args.ref_a, args.ref_b, args.rounds, args.bdn_filter, workdir, args.job)
-        verdicts = evaluate(measurements, args.ref_a, args.ref_b)
-        print(report(verdicts, args.ref_a, args.ref_b, args.rounds))
+            repo_root, args.ref_a, args.ref_b, args.rounds, args.bdn_filter, workdir, args.job,
+            discard_rounds=args.discard_rounds)
+        # Pool the settled tail only; the discarded rounds still reach the reader, as the
+        # early/late split, because "this run had not settled" is a conclusion no pooled
+        # number can express (#1418).
+        _, pooled = split_discarded(measurements, args.discard_rounds)
+        verdicts = evaluate(pooled, args.ref_a, args.ref_b)
+        print(report(verdicts, args.ref_a, args.ref_b, args.rounds,
+                     discard_rounds=args.discard_rounds,
+                     split_lines=warmup_split_lines(measurements, args.discard_rounds)))
     finally:
         if not args.keep_worktrees:
             cleanup_worktrees(repo_root, workdir)

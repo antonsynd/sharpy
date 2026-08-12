@@ -23,13 +23,23 @@
 > minutes on every PR to re-measure rows nobody reads between releases buys little. Revisit if a
 > row's regression is ever found late.
 >
-> **How to compare two revisions** (#1318): `python3 -m build_tools.bench_ab <refA> <refB>
+> **How to compare two revisions** (#1318, #1418): `python3 -m build_tools.bench_ab <refA> <refB>
 > --rounds 4`. It interleaves the arms, pools by position, and reports a delta only when both
-> positions agree in sign. A **single-sequence before/after delta under ~15% is unmeasured** —
+> positions agree in sign. It also runs four extra opening rounds and **discards** them
+> (`--discard-rounds`, default 4) because the machine needs about eight invocations to settle,
+> and it always prints the early-vs-late split so an unsettled run is visible rather than
+> silently pooled. A **single-sequence before/after delta under ~15% is unmeasured** —
 > that is inside the range run position alone produces, so it is neither a regression nor a win.
 > Every wall-clock number recorded in this file before the orchestrator existed is
 > position-uncontrolled and should be read as an order of magnitude, not a measurement; the
 > allocation figures are unaffected.
+>
+> **The ~15% floor has not been re-derived, and that is deliberate.** Settled rounds agree to
+> ±0.3% on identical code (the null control below), so a lower floor is plausible — but plausible
+> is not measured. Re-deriving it needs an A/A run on a **quiet** machine, and this checkout is
+> worked by several agents at once, each capable of a multi-GB build. A number produced under
+> that load would be worse than no number, so the floor keeps its pre-#1418 value until someone
+> can measure it on an idle machine. `bench_ab`'s own report says so on every run.
 >
 > **Null control, 2026-08-09** (Apple M4 Max, `--job short`, HEAD vs HEAD, 4 rounds — identical
 > code in both arms, so every difference is artifact):
@@ -76,9 +86,20 @@
 >
 > **What this changes.** The instrument is capable of near-exact agreement (±0.3% on identical
 > code) once warm; the first rounds are what carry the artifact. So the useful remedy is to
-> **discard the opening rounds** rather than to prepend one pass per arm. Filed as #1418. Until
-> that lands, the "under ~15% is unmeasured" rule stands unchanged — it is what protects a
-> reader from the early-round swing.
+> **discard the opening rounds** rather than to prepend one pass per arm. Filed as #1418 and
+> **landed**: `bench_ab --discard-rounds` (default 4) runs the opening rounds and drops them
+> before pooling, and prints the early-vs-late split on every run.
+>
+> The default is 4 rather than the issue's suggested ~2 because a round is **two** invocations
+> while the decay above runs about **eight**: N=2 discards only four and still pools invocations
+> 5-8, which sit 26%/24%/12%/0% above the settled floor — most of the artifact the window exists
+> to remove. N=4 is the first round boundary at or past the settling point. Whole rounds are
+> dropped, never individual invocations, so the retained tail keeps every (arm, position) cell
+> balanced.
+>
+> The "under ~15% is unmeasured" rule **still stands unchanged**, now for a different reason: not
+> because the artifact is unaddressed, but because re-deriving the floor against the settled
+> rounds requires a quiet machine (see the rule above).
 >
 > **Caveats, stated because they bound the claim.** The machine was not quiet, and the no-warm-up
 > run's parse row drifted *upward* across the session (4.4 → 5.7 µs) as peer load rose — that is
