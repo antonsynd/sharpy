@@ -1,0 +1,17 @@
+# Control for #1405: an accessor body that never READS its parameter compiles today and must keep
+# compiling. This is the contrast case from the issue — the defect is invisible until the accessor
+# actually uses the value it was handed, which is why the shape survived so long.
+class Box:
+    _value: int = 0
+
+    property get flag(self) -> int:
+        return self._value
+
+    property set flag(self, v: int):
+        self._value = 1
+
+
+def main() -> None:
+    b: Box = Box()
+    b.flag = 99
+    print(b.flag)

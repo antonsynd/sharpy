@@ -1,0 +1,20 @@
+# #1405 at module level. A module-level property has no TypeSymbol and therefore no PropertySymbol,
+# which is why the type fix reads the written annotation rather than a materialized symbol type —
+# the symbol route cannot reach this shape at all. Routes through the same single-accessor generator
+# as the class form (GenerateModuleLevelProperty delegates to GenerateGroupedProperty).
+#
+# The SPY0451 in the .warning sidecar is a separate, pre-existing defect (#1459), not this one.
+_backing: int = 0
+
+
+property set level(v: int):
+    _backing = v + 1
+
+
+def read_level() -> int:
+    return _backing
+
+
+def main() -> None:
+    level = 6
+    print(read_level())

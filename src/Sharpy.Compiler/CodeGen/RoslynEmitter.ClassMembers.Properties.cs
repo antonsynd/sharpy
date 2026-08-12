@@ -426,19 +426,15 @@ internal partial class RoslynEmitter
             ResetMethodScope();
             CollectSourceVariableNames(customSetter.Body);
 
-            foreach (var param in customSetter.Parameters)
-            {
-                if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
-                    continue;
-                var paramName = ParameterCSharpName(param);
-                _declaredVariables.Add(paramName);
-                var baseName = ParameterCSharpName(param);
-                RegisterLocalSlot(baseName, param.Name);
-            }
-
             // C# setter uses implicit 'value' parameter, so track it
             _declaredVariables.Add("value");
             RegisterLocalSlot("value", "value");
+
+            // The setter's declared parameter is MAPPED onto that implicit `value`, never declared
+            // (#1405). Registering it as a local was the defect: it made the slot lookup answer the
+            // Sharpy spelling with a name no C# declaration introduces.
+            using var setterRewrite =
+                AccessorParamRewrite(AccessorValueParamName(customSetter.Parameters), "value");
 
             var bodyStatements = GenerateSuite(customSetter.Body);
             accessors.Add(WithAccessorAccess(
@@ -531,28 +527,41 @@ internal partial class RoslynEmitter
             ResetMethodScope();
             CollectSourceVariableNames(prop.Body);
 
-            foreach (var param in prop.Parameters)
-            {
-                if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
-                    continue;
-                var paramName = ParameterCSharpName(param);
-                _declaredVariables.Add(paramName);
-                var baseName = ParameterCSharpName(param);
-                RegisterLocalSlot(baseName, param.Name);
-            }
-
             SyntaxKind accessorKind;
+            bool writesValue;
             switch (prop.Accessor)
             {
                 case PropertyAccessor.Set:
                     accessorKind = SyntaxKind.SetAccessorDeclaration;
+                    writesValue = true;
                     break;
                 case PropertyAccessor.Init:
                     accessorKind = SyntaxKind.InitAccessorDeclaration;
+                    writesValue = true;
                     break;
                 default:
                     accessorKind = SyntaxKind.GetAccessorDeclaration;
+                    writesValue = false;
                     break;
+            }
+
+            if (writesValue)
+            {
+                _declaredVariables.Add("value");
+                RegisterLocalSlot("value", "value");
+            }
+            else
+            {
+                // A getter has no incoming value and so no C# name to map its parameters onto. They
+                // are registered here only to keep today's behavior; a non-`self` parameter on a
+                // getter is a shape C# cannot express and is refused in #1406, not mapped here.
+                foreach (var param in prop.Parameters)
+                {
+                    if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    _declaredVariables.Add(ParameterCSharpName(param));
+                    RegisterLocalSlot(ParameterCSharpName(param), param.Name);
+                }
             }
 
             var accessor = AccessorDeclaration(accessorKind);
@@ -567,6 +576,9 @@ internal partial class RoslynEmitter
             }
             else
             {
+                // The setter's declared parameter maps onto C#'s implicit `value` (#1405).
+                using var valueRewrite = AccessorParamRewrite(
+                    writesValue ? AccessorValueParamName(prop.Parameters) : null, "value");
                 var bodyStatements = GenerateSuite(prop.Body);
                 accessor = accessor.WithBody(Block(bodyStatements));
             }
@@ -876,52 +888,71 @@ internal partial class RoslynEmitter
         ResetMethodScope();
         CollectSourceVariableNames(observer.Body);
 
-        var previousRewrite = _observerParamRewrite;
-        _observerParamRewrite = (observer.ParamName, targetName);
-        try
-        {
-            return GenerateSuiteBlock(observer.Body);
-        }
-        finally
-        {
-            _observerParamRewrite = previousRewrite;
-        }
+        using var rewrite = AccessorParamRewrite(observer.ParamName, targetName);
+        return GenerateSuiteBlock(observer.Body);
     }
 
     /// <summary>
     /// Generates a C# property with a function-style body (custom getter/setter).
     /// </summary>
+    /// <summary>
+    /// The accessor's named incoming value — its first non-<c>self</c> parameter — or null when it
+    /// declares none. C# hands that value to the accessor as the implicit <c>value</c>, so the
+    /// Sharpy name is MAPPED onto it rather than declared; see <c>AccessorParamRewrite</c>.
+    /// </summary>
+    private static string? AccessorValueParamName(IEnumerable<Parameter> parameters)
+        => parameters.FirstOrDefault(p =>
+            !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))?.Name;
+
+    /// <summary>
+    /// The C# type of a single-accessor function-style property, read from the annotation the user
+    /// WROTE: a getter's return type, else a setter's value-parameter type.
+    ///
+    /// <para>The setter arm is what was missing (#1405): consulting only <c>ReturnType</c> then
+    /// <c>Type</c> — both null for a setter — fell through to <c>object</c>, so
+    /// <c>property set doubled(self, v: int)</c> emitted <c>public object Doubled</c>. Derived from
+    /// the AST rather than from <c>PropertySymbol.Type</c> because a MODULE-LEVEL property has no
+    /// <c>TypeSymbol</c> and therefore no <c>PropertySymbol</c> to read — the symbol route cannot
+    /// reach that shape at all, while this one serves every shape and already resolves aliases and
+    /// type parameters (it is what the combined-accessor generator has always used).</para>
+    /// </summary>
+    private TypeSyntax FunctionStylePropertyType(PropertyDef propDef)
+    {
+        if (propDef.ReturnType != null)
+            return _typeMapper.MapType(propDef.ReturnType);
+        if (propDef.Type != null)
+            return _typeMapper.MapType(propDef.Type);
+
+        var valueParam = propDef.Parameters.FirstOrDefault(p =>
+            !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
+        if (valueParam?.Type != null)
+            return _typeMapper.MapType(valueParam.Type);
+
+        return PredefinedType(Token(SyntaxKind.ObjectKeyword));
+    }
+
     private PropertyDeclarationSyntax GenerateFunctionStyleProperty(PropertyDef propDef)
     {
         var propertyName = NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped);
 
-        TypeSyntax propertyType;
-        if (propDef.ReturnType != null)
-        {
-            propertyType = _typeMapper.MapType(propDef.ReturnType);
-        }
-        else if (propDef.Type != null)
-        {
-            propertyType = _typeMapper.MapType(propDef.Type);
-        }
-        else
-        {
-            propertyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        }
+        var propertyType = FunctionStylePropertyType(propDef);
 
         // Clear method scope tracking
         ResetMethodScope();
         CollectSourceVariableNames(propDef.Body);
 
-        // Track parameters (skip self)
-        foreach (var param in propDef.Parameters)
+        bool writesValue = propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init;
+
+        // A getter's parameters have no C# name to map onto; see GenerateCombinedFunctionStyleProperty.
+        if (!writesValue)
         {
-            if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
-                continue;
-            var paramName = ParameterCSharpName(param);
-            _declaredVariables.Add(paramName);
-            var baseName = ParameterCSharpName(param);
-            RegisterLocalSlot(baseName, param.Name);
+            foreach (var param in propDef.Parameters)
+            {
+                if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                _declaredVariables.Add(ParameterCSharpName(param));
+                RegisterLocalSlot(ParameterCSharpName(param), param.Name);
+            }
         }
 
         var funcStylePropSymbol = _currentTypeSymbol?.Properties.FirstOrDefault(p => p.Name == propDef.Name);
@@ -973,19 +1004,15 @@ internal partial class RoslynEmitter
         else
         {
             // For setter, track the 'value' parameter
-            if (accessorKind == SyntaxKind.SetAccessorDeclaration || accessorKind == SyntaxKind.InitAccessorDeclaration)
+            if (writesValue)
             {
-                var valueParam = propDef.Parameters
-                    .FirstOrDefault(p =>
-                        !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
-                if (valueParam != null)
-                {
-                    var paramName = ParameterCSharpName(valueParam);
-                    // C# setter uses implicit 'value' parameter, so remap
-                    _declaredVariables.Add("value");
-                    RegisterLocalSlot("value", "value");
-                }
+                _declaredVariables.Add("value");
+                RegisterLocalSlot("value", "value");
             }
+
+            // The setter's declared parameter maps onto that implicit `value` (#1405).
+            using var valueRewrite = AccessorParamRewrite(
+                writesValue ? AccessorValueParamName(propDef.Parameters) : null, "value");
 
             var bodyStatements = GenerateSuite(propDef.Body);
             accessor = accessor.WithBody(Block(bodyStatements));
@@ -1025,19 +1052,12 @@ internal partial class RoslynEmitter
     {
         var propertyName = NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped);
 
-        TypeSyntax propertyType;
-        if (propDef.Type != null)
-        {
-            propertyType = _typeMapper.MapType(propDef.Type);
-        }
-        else if (propDef.ReturnType != null)
-        {
-            propertyType = _typeMapper.MapType(propDef.ReturnType);
-        }
-        else
-        {
-            propertyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        }
+        // Same derivation as the class-level single-accessor generator, including the setter arm a
+        // lone `property set` needs (#1405); Type is preferred first here because an interface
+        // auto-property carries its annotation there.
+        var propertyType = propDef.Type != null
+            ? _typeMapper.MapType(propDef.Type)
+            : FunctionStylePropertyType(propDef);
 
         var accessors = new List<AccessorDeclarationSyntax>();
 
@@ -1071,15 +1091,27 @@ internal partial class RoslynEmitter
                 ResetMethodScope();
                 CollectSourceVariableNames(propDef.Body);
 
-                foreach (var param in propDef.Parameters)
+                bool writesValue = propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init;
+                if (writesValue)
                 {
-                    if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    var paramName = ParameterCSharpName(param);
-                    _declaredVariables.Add(paramName);
-                    var baseName = ParameterCSharpName(param);
-                    RegisterLocalSlot(baseName, param.Name);
+                    // This arm registered no `value` at all before #1405 — it is the one accessor
+                    // shape where neither the Sharpy name nor the C# one was ever introduced.
+                    _declaredVariables.Add("value");
+                    RegisterLocalSlot("value", "value");
                 }
+                else
+                {
+                    foreach (var param in propDef.Parameters)
+                    {
+                        if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
+                            continue;
+                        _declaredVariables.Add(ParameterCSharpName(param));
+                        RegisterLocalSlot(ParameterCSharpName(param), param.Name);
+                    }
+                }
+
+                using var valueRewrite = AccessorParamRewrite(
+                    writesValue ? AccessorValueParamName(propDef.Parameters) : null, "value");
 
                 var bodyStatements = GenerateSuite(propDef.Body);
                 accessors.Add(AccessorDeclaration(accessorKind)

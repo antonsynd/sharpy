@@ -1,0 +1,18 @@
+# #1405, single-accessor form: a lone `property set` routes through GenerateFunctionStyleProperty
+# rather than the combined-pair generator. Two defects meet here — the parameter is unbound (CS0103)
+# AND the property is emitted as `object`, because that generator consults only the AST's ReturnType
+# then Type, both null for a setter, and falls through. The .expected.cs pins the declared type.
+class Box:
+    _value: int = 0
+
+    property set doubled(self, v: int):
+        self._value = v * 2
+
+    def get_value(self) -> int:
+        return self._value
+
+
+def main() -> None:
+    b: Box = Box()
+    b.doubled = 5
+    print(b.get_value())

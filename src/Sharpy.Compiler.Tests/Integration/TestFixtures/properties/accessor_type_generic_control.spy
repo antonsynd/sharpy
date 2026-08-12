@@ -1,0 +1,20 @@
+# The type-parameter half of the same control: an accessor typed by its class's type parameter must
+# keep emitting as that parameter, not as `object`. Setter parameter spelled `value` for the same
+# reason as the alias control.
+class Holder[T]:
+    _v: T
+
+    def __init__(self, v: T):
+        self._v = v
+
+    property get item(self) -> T:
+        return self._v
+
+    property set item(self, value: T):
+        self._v = value
+
+
+def main() -> None:
+    h: Holder[int] = Holder(3)
+    h.item = 9
+    print(h.item)

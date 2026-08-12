@@ -1,0 +1,17 @@
+# #1405 in the mixed auto + function-style form, where the auto-property supplies the backing field
+# and a custom accessor replaces one half. Its registration loops are separate from the other three
+# generators', so this is the cell that proves those sites are independently load-bearing.
+class Account:
+    property balance: int
+
+    property set balance(self, amount: int):
+        self._balance = amount + 1
+
+    def __init__(self):
+        self._balance = 0
+
+
+def main() -> None:
+    a: Account = Account()
+    a.balance = 41
+    print(a.balance)

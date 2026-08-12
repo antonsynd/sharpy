@@ -237,15 +237,54 @@ internal partial class RoslynEmitter : ICodeEmitter
     // Used for inlining dunder bodies into static operators (self → left/value).
     private string? _selfReplacementIdentifier;
 
-    // When set, identifier references to this name are rewritten to C#'s implicit `value`
-    // keyword in event accessor bodies. In Sharpy, function-style events declare an explicit
-    // handler parameter, but C# event accessors use implicit `value`.
-    private string? _eventHandlerParamName;
+    // When set, identifier references to Source are rewritten to Target inside an accessor body.
+    // Sharpy lets an accessor NAME its incoming value; C# does not — a setter and an event
+    // accessor both receive an implicit `value`, and nothing declares the Sharpy spelling. So the
+    // name is a mapping, not a declaration. Three shapes share the rule:
+    //   - event add/remove: the handler parameter → `value`
+    //   - property set/init: the value parameter → `value` (#1405)
+    //   - property observers (#416): before_set's parameter → `value`, after_set's → the captured
+    //     old-value local
+    // One field rather than one per shape: it was two, and the third was about to be added when
+    // #1405 showed that "the rule exists for one arm and is missing for its siblings" is the defect
+    // class this whole area keeps producing.
+    private (string Source, string Target)? _accessorParamRewrite;
 
-    // When set, identifier references to Source are rewritten to Target inside a property
-    // observer body (#416): before_set's parameter maps to the setter's implicit `value`;
-    // after_set's parameter maps to the captured old-value local.
-    private (string Source, string Target)? _observerParamRewrite;
+    /// <summary>
+    /// Opens an accessor-parameter rewrite for the duration of one body's generation: while it is
+    /// alive, identifier references to <paramref name="source"/> emit as <paramref name="target"/>.
+    /// Restores the previous rewrite on dispose, so nesting (an observer inside a setter) is safe.
+    /// A null or empty <paramref name="source"/> installs nothing — accessors with no named value
+    /// parameter take the same code path without a special case.
+    /// </summary>
+    private IDisposable AccessorParamRewrite(string? source, string target)
+    {
+        var previous = _accessorParamRewrite;
+        if (!string.IsNullOrEmpty(source))
+            _accessorParamRewrite = (source!, target);
+        return new AccessorParamRewriteScope(this, previous);
+    }
+
+    private sealed class AccessorParamRewriteScope : IDisposable
+    {
+        private readonly RoslynEmitter _emitter;
+        private readonly (string Source, string Target)? _previous;
+        private bool _disposed;
+
+        public AccessorParamRewriteScope(RoslynEmitter emitter, (string Source, string Target)? previous)
+        {
+            _emitter = emitter;
+            _previous = previous;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            _emitter._accessorParamRewrite = _previous;
+        }
+    }
 
     /// <summary>
     /// Snapshot of local scope tracking state, used for block-scoped constructs (for loops).

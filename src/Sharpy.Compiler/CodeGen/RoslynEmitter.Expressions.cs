@@ -289,16 +289,13 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax GenerateIdentifierExpression(Identifier name)
     {
-        // In event accessor bodies, rewrite the explicit handler parameter to C#'s implicit 'value'
-        if (_eventHandlerParamName != null
-            && string.Equals(name.Name, _eventHandlerParamName, StringComparison.Ordinal))
-        {
-            return IdentifierName("value");
-        }
-
-        // In a property observer body, rewrite the observer parameter to its C# target
-        // (before_set → the setter's implicit `value`; after_set → the captured old-value local).
-        if (_observerParamRewrite is { } rewrite
+        // In an accessor body, the accessor's named incoming value is a MAPPING onto the C# name
+        // that carries it, not a declaration — an event handler parameter and a property setter's
+        // value parameter both become C#'s implicit `value`, and an observer's parameter becomes
+        // `value` or the captured old-value local. Nothing declares the Sharpy spelling, so a
+        // reference that reaches the slot lookup below emits an undeclared name (CS0103 behind
+        // SPY0908 — #1405). One branch for all three shapes; see AccessorParamRewrite.
+        if (_accessorParamRewrite is { } rewrite
             && string.Equals(name.Name, rewrite.Source, StringComparison.Ordinal))
         {
             return IdentifierName(rewrite.Target);

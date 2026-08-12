@@ -1,0 +1,20 @@
+# #1405: a function-style accessor's named parameter is never bound in the emitted C#, so reading it
+# in the body is CS0103 behind SPY0908. This is the SPEC'S OWN example — docs/language_specification/
+# properties_function_style.md writes `property set value(self, v: int): self._value = v` — and it
+# was broken at HEAD. The whole fixture corpus spells the parameter `value`, which is C#'s implicit
+# setter parameter, so the un-declared name coincided with the declared one everywhere and nothing
+# caught it. Any other spelling reproduces.
+class Box:
+    _value: int = 0
+
+    property get value(self) -> int:
+        return self._value
+
+    property set value(self, v: int):
+        self._value = v
+
+
+def main() -> None:
+    b: Box = Box()
+    b.value = 5
+    print(b.value)

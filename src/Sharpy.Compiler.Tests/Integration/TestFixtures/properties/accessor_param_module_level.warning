@@ -1,0 +1,5 @@
+# Spurious, and NOT part of #1405: `level = 6` is a store through the module-level property setter,
+# not a local declaration — the program prints the setter's effect, so the assignment plainly has
+# one. Measured identical before and after #1405's fix. Pinned here so the behavior is visible
+# rather than silently tolerated; empty this file when #1459 is fixed.
+Local variable 'level' is assigned but never used

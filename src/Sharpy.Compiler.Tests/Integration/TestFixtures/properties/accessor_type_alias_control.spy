@@ -1,0 +1,23 @@
+# Control for the type half of #1405. The fix derives a function-style property's C# type from the
+# WRITTEN annotation rather than from a materialized PropertySymbol.Type, because a module-level
+# property has no PropertySymbol for the symbol route to read. This pins that the written-annotation
+# route still resolves a type ALIAS — `Celsius` emits as `double` — which is the objection that
+# would otherwise argue for the symbol route. Green before the change and after; the setter
+# parameter is spelled `value` on purpose so the parameter-binding half is not in play.
+type Celsius = float
+
+
+class Thermostat:
+    _c: Celsius = 0.0
+
+    property get target(self) -> Celsius:
+        return self._c
+
+    property set target(self, value: Celsius):
+        self._c = value
+
+
+def main() -> None:
+    t: Thermostat = Thermostat()
+    t.target = 21.5
+    print(t.target)

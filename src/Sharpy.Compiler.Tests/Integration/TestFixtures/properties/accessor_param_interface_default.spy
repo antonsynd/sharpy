@@ -1,0 +1,16 @@
+# #1405 in an interface default implementation. GenerateInterfacePropertyFromDef is the arm the
+# original issue and the batch plan both missed, and it is the most broken of the five: unlike the
+# other setter arms it registers no `value` slot at all, and it has the same `object` type
+# fallthrough as the single-accessor generator.
+interface IVolume:
+    property set volume(self, v: int):
+        print(v * 2)
+
+
+class Speaker(IVolume):
+    pass
+
+
+def main() -> None:
+    s: IVolume = Speaker()
+    s.volume = 4
