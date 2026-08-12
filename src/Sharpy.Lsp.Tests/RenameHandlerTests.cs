@@ -928,13 +928,16 @@ public class RenameHandlerTests : IDisposable
     /// module-level counterpart in <c>NameResolver.Members.cs</c> sets it.
     /// </summary>
     /// <remarks>
-    /// MEASURED: the declaration edit comes out <c>(1,8)-(1,13)</c> — sized from the bare name —
-    /// while the reference edit is <c>(3,11)-(3,18)</c> and correct, because reference extents are
-    /// read from the recorded token span rather than from the flag. The same missing flag makes
-    /// this program fail to compile at all (the nested def is emitted <c>int Event()</c> and called
-    /// <c>@event()</c>, CS0103), so the rename gap is the smaller half of #1379.
+    /// MEASURED before the fix: the declaration edit came out <c>(1,8)-(1,13)</c> — sized from the
+    /// bare name — while the reference edit was <c>(3,11)-(3,18)</c> and correct, because reference
+    /// extents are read from the recorded token span rather than from the flag. The same missing
+    /// flag made this program fail to compile at all (the nested def was emitted <c>int Event()</c>
+    /// and called <c>@event()</c>, CS0103), so the rename gap is the smaller half of #1379 — and the
+    /// two halves needed two edits, because the emitter mangles the AST node's name directly and
+    /// never consults the symbol. The codegen half is pinned separately by the
+    /// <c>basics/backtick_nested_def</c> fixture.
     /// </remarks>
-    [Fact(Skip = "#1379: nested function symbols drop IsNameBacktickEscaped")]
+    [Fact]
     public async Task Rename_NestedEscapedDef_ReplacesWholeBacktickedExtent()
     {
         // Line 1: "    def `event`() -> int:"  — '`' at col 8, extent [8, 15)

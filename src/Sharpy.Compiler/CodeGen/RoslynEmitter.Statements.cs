@@ -302,8 +302,13 @@ internal partial class RoslynEmitter
         using var _ = SetGeneratorScope(_context.Ir?.IsGenerator(func) == true);
         using var _async = SetAsyncScope(func.IsAsync);
 
-        // Mangle name: snake_case → PascalCase
-        var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
+        // Mangle name: snake_case → PascalCase, unless the name was backtick-escaped.
+        // Must agree with the call site, which resolves a nested def through
+        // NameCasing.ResolveMethod (RoslynEmitter.Expressions.Access.cs:306) because a nested
+        // FunctionSymbol has no CodeGenInfo. Mangling here escape-blind declared `Zed` while the
+        // call emitted `zed` — CS0103 behind SPY0908 (#1379). For unescaped names this is a no-op:
+        // NameContext.Method and ResolveMethod's unescaped arm are both ToPascalCase.
+        var mangledName = NameCasing.ResolveMethod(func.Name, func.IsNameBacktickEscaped);
 
         // Determine return type
         TypeSyntax returnType = func.ReturnType != null

@@ -1,0 +1,40 @@
+# A nested `def` dropped the escape flag on the DECLARATION side while the call site kept it, so
+# the two never met: `def `zed`` inside a function declared `Zed` and its call emitted `zed()` —
+# CS0103 behind SPY0908 (#1379). This is the nested-scope twin of the module-level gap in
+# `backtick_module_def_and_const`; the two share one cause but sit on separate regression surfaces,
+# because a nested FunctionSymbol has no CodeGenInfo and the call resolves through NameCasing
+# instead.
+#
+# The same four name classes as the module-level twin: a plain name, a builtin type name, a builtin
+# function name, and a C# keyword.
+def main():
+    def `zed`() -> int:
+        return 1
+
+    def `str`() -> int:
+        return 2
+
+    def `class`() -> int:
+        return 3
+
+    def `len`() -> int:
+        return 4
+
+    print(`zed`())
+    print(`str`())
+    print(`class`())
+    print(`len`())
+
+    # A nested def referenced as a delegate rather than called resolves through the emitter's
+    # local-function name map, a second surface that must carry the same spelling.
+    f = `zed`
+    print(f())
+
+    # Nested-nested: the escape survives another scope level down.
+    def outer() -> int:
+        def `event`() -> int:
+            return 6
+
+        return `event`()
+
+    print(outer())

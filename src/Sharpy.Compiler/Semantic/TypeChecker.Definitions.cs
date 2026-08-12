@@ -158,6 +158,7 @@ internal partial class TypeChecker
                 {
                     Name = functionDef.Name,
                     Kind = SymbolKind.Function,
+                    IsNameBacktickEscaped = functionDef.IsNameBacktickEscaped,
                     AccessLevel = AccessLevel.Private,
                     Parameters = parameters,
                     TypeParameters = functionDef.TypeParameters.ToList(),
