@@ -276,6 +276,66 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Split <paramref name="a"/> along <paramref name="axis"/> into <paramref name="sections"/>
+        /// equal parts. Mirrors NumPy's <c>numpy.split(a, N)</c>.
+        /// </summary>
+        /// <param name="a">Input array.</param>
+        /// <param name="sections">Number of equal sections. The axis length must divide evenly.</param>
+        /// <param name="axis">Axis along which to split. Default 0.</param>
+        /// <returns>A <see cref="List{T}"/> of <paramref name="sections"/> sub-arrays.</returns>
+        /// <exception cref="ValueError">
+        /// If the axis length is not divisible by <paramref name="sections"/>, or if
+        /// <paramref name="sections"/> is not positive.
+        /// </exception>
+        /// <remarks>
+        /// Measured against numpy 2.5.1 rather than assumed: <c>np.split(np.arange(6.0), 3)</c> gives
+        /// three parts of two, and <c>np.split(a, 4)</c> raises
+        /// <c>ValueError: array split does not result in an equal division</c> — reproduced verbatim.
+        /// <c>np.array_split</c> is the lenient variant that tolerates uneven division; it does not
+        /// exist here yet and is deliberately not added with this (#1422 scopes only <c>split</c>).
+        ///
+        /// <para>
+        /// ONE DELIBERATE DIVERGENCE, measured: numpy raises <c>ZeroDivisionError: integer modulo by
+        /// zero</c> for <c>sections=0</c> and <c>ValueError: number sections must be larger than 0.</c>
+        /// for negatives. The former is an artifact of numpy computing <c>N % sections</c> before it
+        /// validates the argument, not a contract worth reproducing; both non-positive cases raise the
+        /// ValueError here.
+        /// </para>
+        /// </remarks>
+        public static List<NdArray<double>> Split(NdArray<double> a, int sections, int axis = 0)
+        {
+            if (a == null)
+            {
+                throw new ArgumentNullException(nameof(a));
+            }
+
+            if (sections <= 0)
+            {
+                throw new ValueError("number sections must be larger than 0.");
+            }
+
+            int normalizedAxis = NormalizeAxisForRank(axis, a.Ndim);
+            int axisLen = a.Shape[normalizedAxis];
+
+            if (axisLen % sections != 0)
+            {
+                throw new ValueError("array split does not result in an equal division");
+            }
+
+            // Delegate to the indices form so there is exactly one splitting implementation. The
+            // boundaries are the interior multiples of the section width; `split(a, 1)` passes an
+            // empty array and correctly yields the whole array as one part.
+            int width = axisLen / sections;
+            var indices = new int[sections - 1];
+            for (int i = 0; i < indices.Length; i++)
+            {
+                indices[i] = width * (i + 1);
+            }
+
+            return Split(a, indices, axis);
+        }
+
+        /// <summary>
         /// Return an array whose elements are taken from <paramref name="x"/> where
         /// <paramref name="condition"/> is true, and <paramref name="y"/> otherwise.
         /// All three inputs are broadcast to a common shape.

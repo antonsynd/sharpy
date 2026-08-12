@@ -276,6 +276,30 @@ returning a list of sub-arrays. Mirrors NumPy's `numpy.split`.
 - `indices` (list[int]) -- Sorted strictly-increasing list of split points.
 - `axis` (int) -- Axis along which to split. Default 0.
 
+### `numpy.split(a: NdArray[float], sections: int, axis: int = 0) -> list[NdArray[float]]`
+
+Split *a* along *axis* into *sections* equal parts. Mirrors NumPy's `numpy.split(a, N)`.
+The axis length must divide evenly by *sections*, else `ValueError` is raised with NumPy's
+message, `array split does not result in an equal division`.
+
+**Parameters:**
+
+- `a` (NdArray[float]) -- Input array.
+- `sections` (int) -- Number of equal sections. Must be positive.
+- `axis` (int) -- Axis along which to split. Default 0.
+
+```python
+a = np.arange(0.0, 6.0)
+parts = np.split(a, 3)     # three arrays of two elements
+print(len(parts))          # 3
+```
+
+!!! note
+    `numpy.array_split`, NumPy's lenient variant that tolerates uneven division, is not
+    implemented. `numpy.arange` also has no single-argument form yet — write
+    `np.arange(0.0, 6.0)` rather than `np.arange(6.0)`
+    ([#1469](https://github.com/antonsynd/sharpy/issues/1469)).
+
 ### `numpy.where(condition: NdArray[bool], x: NdArray[float], y: NdArray[float]) -> NdArray[float]`
 
 Return an array whose elements are taken from *x* where

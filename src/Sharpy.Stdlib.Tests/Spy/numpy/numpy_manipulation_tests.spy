@@ -1,8 +1,9 @@
 # Ported from src/Sharpy.Stdlib.Tests/NumpyManipulationTests.cs (#843).
 #
 # Concatenate, stack/hstack/vstack, split, where (via np.greater for bool mask),
-# clip. Arrays built via np.array([...]).reshape(...). Split results are C# arrays
-# of NdArray; element access via parts[i] works when codegen uses var.
+# clip. Arrays built via np.array([...]).reshape(...). Split returns a Sharpy list of
+# NdArray since #1293, so both parts[i] and len(parts) work; the note this replaces
+# said "C# arrays of NdArray", which predated that fix.
 #
 # Omissions (4 of 22 C# cases):
 #   - Concatenate_EmptyArray_Throws (1): System.Array.Empty<NdArray<double>>()
@@ -145,6 +146,68 @@ def test_split_2d_axis1():
     assert parts[0].shape[1] == 2
     assert parts[1].shape[0] == 2
     assert parts[1].shape[1] == 2
+
+# -- split, equal-sections int form (#1422) --
+#
+# `np.split(a, N)` is NumPy's more common spelling and drew SPY0220 until #1422: the only overload
+# took `int[] indices`. Values verified against numpy 2.5.1, not assumed:
+#   np.split(np.arange(6.0), 3) -> [[0,1], [2,3], [4,5]]
+#   np.split(a, 4)              -> ValueError('array split does not result in an equal division')
+#   np.split(b_3x4, 2, axis=1)  -> two (3, 2) parts
+
+@test
+def test_split_int_sections_1d():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    parts = np.split(a, 3)
+    assert len(parts) == 3
+    assert parts[0].shape[0] == 2
+    assert parts[1].shape[0] == 2
+    assert parts[2].shape[0] == 2
+    assert parts[0][0] == 1.0
+    assert parts[1][0] == 3.0
+    assert parts[2][1] == 6.0
+
+@test
+def test_split_int_sections_one_returns_whole_array():
+    a = np.array([1.0, 2.0, 3.0])
+    parts = np.split(a, 1)
+    assert len(parts) == 1
+    assert parts[0].shape[0] == 3
+
+@test
+def test_split_int_sections_2d_axis1():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]).reshape(2, 4)
+    parts = np.split(a, 2, 1)
+    assert len(parts) == 2
+    assert parts[0].shape[0] == 2
+    assert parts[0].shape[1] == 2
+    assert parts[1].shape[1] == 2
+
+@test
+def test_split_int_sections_uneven_raises():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    with assert_raises(ValueError):
+        np.split(a, 4)
+
+@test
+def test_split_int_sections_non_positive_raises():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    with assert_raises(ValueError):
+        np.split(a, 0)
+
+@test
+def test_split_indices_form_still_binds_the_indices_overload():
+    # The control for the added overload: adding an arity-3 `int` sibling beside the `int[]` one
+    # must not shift which overload a list argument resolves to. Same array, same expectations as
+    # test_split_1d_multiple_indices — if resolution moved, [2, 4] would be read as a section count
+    # and this would fail rather than silently splitting differently.
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    parts = np.split(a, [2, 4])
+    assert len(parts) == 3
+    assert parts[0].shape[0] == 2
+    assert parts[1].shape[0] == 2
+    assert parts[2].shape[0] == 2
+    assert parts[2][1] == 6.0
 
 # -- where (via np.greater for bool mask) --
 
