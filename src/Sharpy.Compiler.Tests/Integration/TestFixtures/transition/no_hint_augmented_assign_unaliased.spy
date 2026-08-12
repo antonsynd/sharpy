@@ -1,0 +1,11 @@
+# The precision claim: with NO second binding the rebinding is unobservable, so the hint must stay
+# silent. An empty .warning sidecar asserts that — absent, nothing would be asserted at all and the
+# cell would pass whether or not the hint fired.
+
+def main() -> None:
+    s: set[int] = {1, 2}
+    s |= {3}
+    xs: list[int] = [1]
+    xs += [2]
+    print(len(s))
+    print(len(xs))

@@ -578,7 +578,7 @@ public static partial class DiagnosticExplanations
             "MAX: Final[int] = 100\nmatch x:\n    case MAX:  # matches value 100, does NOT capture into MAX",
             "Rename the capture variable to avoid ambiguity with the constant.");
 
-        // ── Validation transition hints (SPY0470-SPY0489) ──────────────
+        // ── Validation transition hints (SPY0470-SPY0479) ──────────────
         // Hint-severity advisories about behavioral differences from Python/C#.
         // Suppressible like warnings, but never promoted to errors under -Werror.
 
@@ -601,6 +601,18 @@ public static partial class DiagnosticExplanations
             "want shared mutation.",
             "@struct\nclass Point:\n    x: int = 0\n\np = Point()\nq = p          # copy — q.x = 5 won't change p.x\nq.x = 5",
             "Use `ref` parameters for in-place mutation, or model the type as a class if reference semantics are required.");
+
+        Add(dict, DiagnosticCodes.Validation.AliasedCollectionAugmentedAssignmentHint,
+            "Augmented assignment on a collection rebinds; it does not mutate through an alias",
+            "Validation",
+            "In CPython, `s |= {3}` on a set (or `xs += [1]` on a list, `d |= other` on a dict) calls the in-place " +
+            "dunder and mutates the object, so every other name bound to it sees the change. Sharpy compiles " +
+            "augmented assignment on a collection to a rebinding of the target, so a second binding keeps the old " +
+            "value. The hint fires only where a second binding is actually visible, because that is the only " +
+            "situation in which the difference is observable. The method forms (`.update()`, `.extend()`, " +
+            "`.add()`) mutate in place in both languages and never draw this hint.",
+            "s: set[int] = {1, 2}\nt: set[int] = s\ns |= {3}\n# CPython: len(t) == 3 (t sees the mutation)\n# Sharpy:  len(t) == 2 (s was rebound)",
+            "Use the mutating method — `s.update({3})`, `xs.extend([1])` — when other bindings must see the change.");
 
         Add(dict, DiagnosticCodes.Validation.HomogeneousVariadicHint,
             "Variadic parameters in Sharpy are homogeneous and statically typed",

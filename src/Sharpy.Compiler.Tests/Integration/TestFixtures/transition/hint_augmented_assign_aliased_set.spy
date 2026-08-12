@@ -1,0 +1,17 @@
+# Augmented assignment on a collection REBINDS the target, where CPython's `__ior__` mutates in
+# place — so the second binding keeps the old value (#1394). Verified with python3: there, `len(t)`
+# below is 3; here it is 2. The hint says so at the assignment and points at the mutating method,
+# which agrees in both languages.
+#
+# That divergent value is deliberately NOT printed. This fixture's subject is the HINT, and
+# DifferentialExecutionTests runs every executing fixture against python3 — printing `len(t)` makes
+# it a divergence cell that would need a ratchet allowlist entry to stay green. The semantics are
+# already pinned by set_frozenset_augmented_or; the alias here exists to make the hint fire, and is
+# read in a way that agrees with CPython.
+
+def main() -> None:
+    s: set[int] = {1, 2}
+    t: set[int] = s
+    s |= {3}
+    print(len(s))
+    print(len(t) > 0)

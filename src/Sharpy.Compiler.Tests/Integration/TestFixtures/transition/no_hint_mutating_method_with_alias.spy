@@ -1,0 +1,14 @@
+# The method forms mutate in place in both languages, so they never diverge and never draw the
+# hint — even with an alias present, which is what distinguishes this cell from the positive one.
+
+def main() -> None:
+    s: set[int] = {1, 2}
+    t: set[int] = s
+    s.update({3})
+
+    xs: list[int] = [1]
+    ys: list[int] = xs
+    xs.extend([2])
+
+    print(len(t))
+    print(len(ys))

@@ -87,15 +87,26 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     public override void VisitAssignment(Assignment node)
     {
         CheckStructValueSemantics(node);
+        CheckAliasedCollectionAugmentedAssignment(node);
         base.VisitAssignment(node);
     }
+
+    /// <summary>
+    /// The function body currently being walked, which is the scope the alias query searches.
+    /// Null at module level; saved and restored so a nested def does not leak its body outward.
+    /// </summary>
+    private IReadOnlyList<Statement>? _enclosingBody;
 
     public override void VisitFunctionDef(FunctionDef node)
     {
         CheckUnnecessaryStaticDecorator(node);
         CheckHomogeneousVariadic(node);
         CheckNoClassmethod(node);
+
+        var enclosing = _enclosingBody;
+        _enclosingBody = node.Body;
         base.VisitFunctionDef(node);
+        _enclosingBody = enclosing;
     }
 
     public override void VisitIndexAccess(IndexAccess node)
@@ -348,6 +359,35 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     // ──────────────────────────────────────────────────────────────────────
     // SPY0476 — Negative tuple index hint
     // ──────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Augmented assignment on a list/set/dict REBINDS the target where CPython mutates in place,
+    /// so a second binding keeps the old value (#1394). Fires only where a second binding is
+    /// visible — that is the only situation in which the difference is observable, and a hint that
+    /// fires on every augmented collection assignment trains users to ignore the band.
+    /// </summary>
+    private void CheckAliasedCollectionAugmentedAssignment(Assignment node)
+    {
+        if (node.Target is not Identifier target)
+            return;
+
+        var targetType = Context.SemanticInfo.GetExpressionType(node.Target)
+            ?? Context.SemanticInfo.GetExpressionType(node.Value);
+
+        if (!AugmentedCollectionAssignment.IsAliasObservable(node, targetType, _enclosingBody))
+            return;
+
+        var mutator = targetType is GenericType { Name: "list" } ? "extend" : "update";
+
+        AddHint(
+            $"'{target.Name}' has another binding in this function, and augmented assignment on a "
+                + $"collection rebinds rather than mutating in place — the other binding keeps the "
+                + $"old value. CPython mutates through the alias here. Use '{target.Name}.{mutator}(...)' "
+                + "if the other binding should see the change.",
+            node.LineStart, node.ColumnStart,
+            code: DiagnosticCodes.Validation.AliasedCollectionAugmentedAssignmentHint,
+            span: node.Span);
+    }
 
     private void CheckNegativeTupleIndex(IndexAccess node)
     {

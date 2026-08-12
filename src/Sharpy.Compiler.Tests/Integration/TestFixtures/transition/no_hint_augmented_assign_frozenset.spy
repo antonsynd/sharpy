@@ -1,0 +1,11 @@
+# frozenset is excluded: verified with python3, `f |= frozenset({3})` REBINDS in CPython too, so
+# Sharpy already agrees and a hint would be a false positive. The alias is present, so this cell
+# fails if the query keys on "augmented assignment on a collection" instead of on the types whose
+# operators actually mutate in place.
+
+def main() -> None:
+    f: frozenset[int] = frozenset({1, 2})
+    g: frozenset[int] = f
+    f |= frozenset({3})
+    print(len(g))
+    print(len(f))

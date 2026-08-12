@@ -680,8 +680,14 @@ public static class DiagnosticCodes
         public const string SingleIsinstanceTypeHint = "SPY0475";     // Retired — superseded by SPY0344 (#1213): the rejection is a semantic-time error, not a hint, so the tuple form never reaches codegen; reserved, never reused
         public const string NegativeTupleIndexHint = "SPY0476";       // Active (emitted by TransitionWarningValidator)
         public const string UnnecessaryStaticDecoratorHint = "SPY0477"; // Active
-        // SPY0478: Reserved for future transition diagnostics
+        public const string AliasedCollectionAugmentedAssignmentHint = "SPY0478"; // Active (emitted by TransitionWarningValidator)
         // SPY0479: Retired (#1127 — `to` cast operator removed in 0.8.0); reserved, never reused
+        // The transition-hint band is now FULL: 0470-0473, 0476-0478 active; 0474/0475/0479
+        // retired-and-never-reused. It does NOT extend into SPY0480-SPY0489 — that is the
+        // validation-WARNING overflow band (SPY0480-0484 active, see below). The LSP's
+        // DiagnosticPublisher.IsTransitionHintCode nevertheless treats 470-489 as transition
+        // hints by range, which over-claims those five warnings (#1466). The next transition
+        // hint needs a band decision, not a free slot.
 
         #endregion
 
