@@ -1,0 +1,23 @@
+# A parameter whose name equals its OWN function's name resolved to the function, not the
+# parameter (#1393): return types are resolved with the function's scope already pushed and its
+# parameters registered, and the symbol-table update walked to the first scope holding the name —
+# which is the parameter — and overwrote it. Every later read of `month` typed as `(int) -> None`,
+# so a correct program was refused.
+#
+# `print(month)` is NOT a probe for this: print accepts anything and stays green with the bug
+# fully present. Each read below is forced to be an int by its destination — an argument of
+# declared type, a typed declaration, and an operator.
+
+def take_int(v: int) -> None:
+    print(v)
+
+
+def month(month: int) -> None:
+    take_int(month)
+    x: int = month
+    if month > 0:
+        take_int(x + 1)
+
+
+def main() -> None:
+    month(3)

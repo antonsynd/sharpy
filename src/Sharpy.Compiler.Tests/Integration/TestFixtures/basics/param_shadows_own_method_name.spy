@@ -1,0 +1,24 @@
+# The method face of #1393. The overwrite reached one scope further out here: the method's symbol
+# comes from TypeSymbol.Methods, not from a scope, so the name-keyed walk replaced whatever
+# `month` it found first — the parameter inside the method, and failing that a module-level
+# `month`. Both are covered: the module function below is called after the method, and would
+# return the wrong thing if the method's symbol had displaced it.
+
+def take_int(v: int) -> None:
+    print(v)
+
+
+def month(scale: int) -> int:
+    return scale * 100
+
+
+class Holder:
+    def month(self, month: int) -> None:
+        y: int = month
+        take_int(y)
+        take_int(y * 2)
+
+
+def main() -> None:
+    Holder().month(5)
+    print(month(2))

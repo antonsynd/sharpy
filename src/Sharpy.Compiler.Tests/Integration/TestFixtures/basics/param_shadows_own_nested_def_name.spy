@@ -1,0 +1,18 @@
+# The nested-def face of #1393. It is the SAME defect, not a separate scope question: a nested
+# def's own scope is pushed with its parameters registered before its symbol is updated, so the
+# nearest `month` is again the parameter, and reading it in the body typed as `(int) -> None`.
+
+def take_int(v: int) -> None:
+    print(v)
+
+
+def outer() -> None:
+    def month(month: int) -> None:
+        z: int = month
+        take_int(z + 1)
+
+    month(9)
+
+
+def main() -> None:
+    outer()

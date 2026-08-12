@@ -1,0 +1,27 @@
+# Controls for #1393, so the fix cannot be "stop updating the symbol at all". A parameter
+# shadowing an UNRELATED function was always correct and must stay correct, and recursion must
+# keep resolving the function through its own body — which is the read the fix must not break,
+# since it is the one case where a name inside a function body legitimately means the function.
+
+def take_int(v: int) -> None:
+    print(v)
+
+
+def helper() -> None:
+    print("helper")
+
+
+def other(helper: int) -> None:
+    take_int(helper)
+
+
+def fact(n: int) -> int:
+    if n <= 1:
+        return 1
+    return n * fact(n - 1)
+
+
+def main() -> None:
+    helper()
+    other(4)
+    print(fact(5))

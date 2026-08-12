@@ -281,12 +281,15 @@ public class SymbolTable : IGlobalSymbolTable
     }
 
     /// <summary>
-    /// Updates an existing symbol in the scope chain.
-    /// Used to update function symbols with resolved return types during type checking.
+    /// Replaces the binding <paramref name="previous"/> occupies in the scope chain with
+    /// <paramref name="updated"/>. Used to update function symbols with resolved return types
+    /// during type checking. <paramref name="previous"/> is required so the walk can tell the
+    /// binding being updated from a different declaration that merely shares its name — see
+    /// <see cref="Scope.Update"/> (#1393).
     /// </summary>
-    public bool UpdateSymbol(Symbol symbol)
+    public bool UpdateSymbol(Symbol previous, Symbol updated)
     {
-        return CurrentScope.Update(symbol);
+        return CurrentScope.Update(previous, updated);
     }
 
     /// <summary>

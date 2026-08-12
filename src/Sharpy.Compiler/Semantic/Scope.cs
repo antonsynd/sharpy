@@ -68,20 +68,45 @@ public class Scope
     }
 
     /// <summary>
-    /// Updates an existing symbol in this scope or a parent scope.
-    /// Used to update function symbols with resolved return types during type checking.
+    /// Replaces the binding that <paramref name="previous"/> occupies, in this scope or a parent
+    /// scope, with <paramref name="updated"/>. Used to update function symbols with resolved
+    /// return types during type checking.
     /// </summary>
-    public bool Update(Symbol symbol)
+    /// <remarks>
+    /// <para>
+    /// The walk stops at the first scope holding the name, so it used to overwrite whatever
+    /// binding that was. Return types are resolved with the function's OWN scope pushed and its
+    /// parameters already registered, so <c>def month(month: int)</c> found the PARAMETER
+    /// <c>month</c> and replaced it with the function symbol: every later read of <c>month</c> in
+    /// the body typed as <c>(int) -&gt; None</c>, and a correct program was refused
+    /// (SPY0220/SPY0222, #1393). The same overwrite reached one scope further out for a method —
+    /// <c>class C: def month(self, month: int)</c> — where it could replace a module-level
+    /// <c>month</c> with the method's symbol.
+    /// </para>
+    /// <para>
+    /// So the replacement happens only where <paramref name="previous"/> ITSELF is bound —
+    /// reference identity, which <see cref="Symbol"/> overrides record equality to provide. Matching
+    /// on the name plus <see cref="Symbol.Kind"/> instead is not enough, and the difference is
+    /// measurable: a method's symbol comes from <c>TypeSymbol.Methods</c> and is in no scope at all,
+    /// so a kind match sends <c>class C: def month(...)</c> past its own parameter and into the
+    /// module scope, where it replaces a module-level <c>def month</c> with the method — the same
+    /// overwrite, one scope further out. A caller whose symbol is in no scope (a method, or an
+    /// overload past the first, since the scope holds only the first) correctly updates nothing
+    /// here; those are synced through <c>TypeSymbol.Methods</c> and the overload list instead.
+    /// </para>
+    /// </remarks>
+    public bool Update(Symbol previous, Symbol updated)
     {
-        if (_symbols.ContainsKey(symbol.Name))
+        if (_symbols.TryGetValue(updated.Name, out var occupant)
+            && ReferenceEquals(occupant, previous))
         {
-            _symbols[symbol.Name] = symbol;
+            _symbols[updated.Name] = updated;
             return true;
         }
 
         if (_parent != null)
         {
-            return _parent.Update(symbol);
+            return _parent.Update(previous, updated);
         }
 
         return false;

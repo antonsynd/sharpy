@@ -689,8 +689,11 @@ internal partial class TypeChecker
 
         // Create a new FunctionSymbol with updated return type
         var updatedSymbol = functionSymbol with { ReturnType = returnType };
-        // Update the symbol in the symbol table
-        _symbolTable.UpdateSymbol(updatedSymbol);
+        // Update the symbol in the symbol table. The pre-update instance is passed so the scope
+        // walk replaces THIS declaration and not a same-named one it reaches first: this runs with
+        // the function's own scope pushed and its parameters already registered, so for
+        // `def month(month: int)` the nearest `month` is the PARAMETER (#1393).
+        _symbolTable.UpdateSymbol(functionSymbol, updatedSymbol);
 
         // Key the definition node to the symbol so the declaration itself resolves — a nested def
         // nothing calls is in no reference collection and not in module scope, so the
