@@ -45,9 +45,38 @@ cleanup() {
     rm -rf "$LOCK_DIR" 2>/dev/null
 }
 
+# A lock is stale only when NOTHING it protects is still running, and the owner SHELL is a
+# poor proxy for that: kill an agent — or let it hit a usage limit — and its dotnet/testhost
+# children are reparented to init and keep consuming their 5-10 GB while the shell that
+# started them is gone. Judging staleness by the shell alone therefore FAILS OPEN in exactly
+# the case the lock exists for: the next wrapper read "owner PID gone", removed the lock, and
+# admitted a SECOND concurrent run. Reproduced 2026-08-12 in an isolated harness (fake HOME,
+# fake dotnet), with 13 orphaned dotnet processes (PPID 1) on the machine at the time. So the
+# dotnet process records its own PID below, and a live child keeps the lock alive.
+#
+# KNOWN-UNFIXED: PID reuse — a recycled owner or child PID reads as live and wedges peers for
+# the full TIMEOUT. Bounded by that timeout rather than by correctness; probability unmeasured.
 is_lock_stale() {
+    local child_file="$LOCK_DIR/child"
+    if [ -f "$child_file" ]; then
+        local child_pid
+        child_pid=$(cat "$child_file" 2>/dev/null)
+        if [ -n "$child_pid" ] && kill -0 "$child_pid" 2>/dev/null; then
+            return 1
+        fi
+    fi
+
     local pid_file="$LOCK_DIR/pid"
     if [ ! -f "$pid_file" ]; then
+        # A lock directory with no pid file is usually one taken MICROSECONDS ago, not an
+        # abandoned one: mkdir is the atomic acquire and the owner writes its pid immediately
+        # after. Treating that as stale is a thundering-herd bug, because every peer that just
+        # lost the mkdir race checks at exactly the moment the winner has not written yet —
+        # they are synchronised on it. Measured 2026-08-12 with 8 concurrent wrappers: FOUR ran
+        # at once. Re-check after a beat; the window is microseconds wide, so a directory still
+        # pidless a second later really is abandoned.
+        sleep 1
+        [ -f "$pid_file" ] && return 1
         return 0
     fi
     local lock_pid
@@ -149,7 +178,11 @@ LOG_FILE="${LOG_DIR}/dotnet-serialized-${SLOT}.log"
 : > "$LOG_FILE"
 ln -sf "dotnet-serialized-${SLOT}.log" "${LOG_DIR}/dotnet-serialized-latest.log"
 
-dotnet "$@" 2>&1 | tee "$LOG_FILE"
+# Record the dotnet process's OWN pid where is_lock_stale can find it (see there): `bash -c`
+# starts a shell whose $$ is its own, and `exec` then replaces that shell with dotnet, keeping
+# the pid. Written by the child rather than the parent because /bin/bash here is 3.2, which has
+# no $BASHPID. ${PIPESTATUS[0]} is still dotnet's own exit code — the exec'd shell IS dotnet.
+bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_DIR/child" "$@" 2>&1 | tee "$LOG_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
 
 # A `test` run that produced NO results but exited 0 is the worst false green available
