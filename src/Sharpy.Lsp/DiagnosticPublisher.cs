@@ -59,7 +59,10 @@ internal sealed class DiagnosticPublisher
         foreach (var diag in diagnostics)
         {
             // Filter out transition hints when disabled.
-            // Transition hints are Hint-severity diagnostics in the SPY0470-SPY0489 range.
+            // Transition hints are Hint-severity diagnostics in the SPY0470-SPY0479 range. BOTH
+            // conjuncts are load-bearing: the severity check is what kept the over-wide range
+            // (#1466) from suppressing the SPY0480-0484 warnings, and it stays the authority even
+            // now that the range is right — severity is never inferred from a code number here.
             if (!transitionHintsEnabled
                 && diag.Severity == CompilerDiagnosticSeverity.Hint
                 && IsTransitionHintCode(diag.Code))
@@ -356,10 +359,19 @@ internal sealed class DiagnosticPublisher
 
     private const string DiagnosticCodePrefix = "SPY";
     private const int TransitionHintRangeStart = 470;
-    private const int TransitionHintRangeEnd = 489;
+
+    // The transition band ends at 0479, not 0489. SPY0480-SPY0489 is the validation-WARNING
+    // overflow band (SPY0480-0484 active — MustUseValueDiscarded, UnusedSuppression,
+    // InvalidSuppressionCode, BuiltinNameShadowedInValuePosition, BuiltinRebornByExplicitImport),
+    // whose own declaration says severity is "set explicitly at emission via AddWarning, never
+    // inferred from the code range". This predicate inferred from the range anyway and claimed
+    // all five (#1466). Nothing was actually suppressed — the only caller also requires
+    // Hint severity and those five emit at Warning — so the bug was latent, a trap for the next
+    // caller rather than a live defect. It is fixed here at the source of the claim.
+    private const int TransitionHintRangeEnd = 479;
 
     /// <summary>
-    /// Returns true if the diagnostic code is a transition hint (SPY0470-SPY0489).
+    /// Returns true if the diagnostic code is a transition hint (SPY0470-SPY0479).
     /// </summary>
     internal static bool IsTransitionHintCode(string? code)
     {

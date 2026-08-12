@@ -201,7 +201,14 @@ public class DiagnosticPublisherTests
     [Theory]
     [InlineData("SPY0470", true)]
     [InlineData("SPY0477", true)]
-    [InlineData("SPY0489", true)]
+    [InlineData("SPY0478", true)]
+    [InlineData("SPY0479", true)]   // last code in the band (retired, but in range)
+    // SPY0480-SPY0489 is the validation-WARNING overflow band, not part of the transition band.
+    // These four cells are the discriminating half of #1466: every one of them answered `true`
+    // before the range was narrowed to 479.
+    [InlineData("SPY0480", false)]  // MustUseValueDiscarded (#1022)
+    [InlineData("SPY0484", false)]  // BuiltinRebornByExplicitImport (#1324)
+    [InlineData("SPY0489", false)]  // reserved tail of the warning-overflow band
     [InlineData("SPY0469", false)]
     [InlineData("SPY0490", false)]
     [InlineData("SPY0100", false)]
@@ -211,6 +218,50 @@ public class DiagnosticPublisherTests
     public void IsTransitionHintCode_RecognizesRange(string? code, bool expected)
     {
         DiagnosticPublisher.IsTransitionHintCode(code).Should().Be(expected);
+    }
+
+    [Fact]
+    public void ConvertDiagnostics_KeepsValidationWarningOverflowBandWhenTransitionHintsDisabled()
+    {
+        // The user-visible contract of #1466: with transition hints off, the editor and the
+        // command line still agree about SPY0480-0484.
+        //
+        // Be honest about what this pins. It is green under EITHER single regression on its own —
+        // widening the range back to 489 leaves these five untouched because they emit at Warning,
+        // and dropping the severity conjunct leaves them untouched because 0480-0484 is now out of
+        // range. It fails only if both regress together. The discriminating guard for the range
+        // itself is IsTransitionHintCode_RecognizesRange's 0480/0484/0489 cells, which flip the
+        // moment TransitionHintRangeEnd goes back to 489; this test is the end-to-end backstop
+        // behind them, kept because it states the contract in the terms a user would.
+        var configuration = new LspConfiguration();
+        configuration.UpdateFrom(JToken.Parse("""{"transitionHints":{"enabled":false}}"""));
+
+        // Named through the constants, not literals, so renumbering one of these into the
+        // transition band fails here rather than silently re-opening #1466.
+        var overflowWarnings = new[]
+        {
+            DiagnosticCodes.Validation.MustUseValueDiscarded,
+            DiagnosticCodes.Validation.UnusedSuppression,
+            DiagnosticCodes.Validation.InvalidSuppressionCode,
+            DiagnosticCodes.Validation.BuiltinNameShadowedInValuePosition,
+            DiagnosticCodes.Validation.BuiltinRebornByExplicitImport,
+        };
+
+        var diagnostics = overflowWarnings
+            .Select((code, i) => new CompilerDiagnostic(
+                "overflow-band warning", CompilerDiagnosticSeverity.Warning,
+                Line: i + 1, Column: 1, Code: code))
+            .Append(new CompilerDiagnostic(
+                "genuine transition hint", CompilerDiagnosticSeverity.Hint,
+                Line: 6, Column: 1,
+                Code: DiagnosticCodes.Validation.UnnecessaryStaticDecoratorHint))
+            .ToArray();
+
+        var result = DiagnosticPublisher.ConvertDiagnostics(diagnostics, null, configuration);
+
+        result.Select(d => d.Code?.String).Should().BeEquivalentTo(overflowWarnings,
+            "the editor and the command line must agree about SPY0480-0484; only the genuine "
+            + "transition hint (SPY0477) is advisory enough to hide");
     }
 
     [Fact]
