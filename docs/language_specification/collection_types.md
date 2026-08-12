@@ -206,8 +206,16 @@ def main() -> None:
     print(d)                        # {'a': 1, 'b': 2}  — unchanged
 ```
 
-The `frozendict` results are read by key rather than printed whole because a `frozendict` does not
-carry `dict`'s insertion order — see [#1392](https://github.com/antonsynd/sharpy/issues/1392).
+A `frozendict` carries `dict`'s insertion order, so these results can equally be printed whole; the
+examples above read by key only because that is what they are illustrating. A repeated key keeps its
+first position and takes the last value, and under `|` a key present on both sides keeps its
+left-hand position and takes the right-hand value — the same rules `dict` follows
+([#1392](https://github.com/antonsynd/sharpy/issues/1392)).
+
+Order is an iteration and rendering property only: `==` and hashing ignore it, so two `frozendict`s
+built from the same pairs in different orders are equal, hash alike, and collapse to one element in
+a `set` — while their `repr`s differ. That is the same split `dict` has, and it is what keeps a
+`frozendict` usable as a `dict` key.
 
 Both mixed directions were unreachable until [#1361](https://github.com/antonsynd/sharpy/issues/1361):
 `dict` was the one builtin collection still registered against `System.Collections.Generic.Dictionary<,>`

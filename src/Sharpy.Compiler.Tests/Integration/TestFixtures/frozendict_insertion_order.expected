@@ -1,0 +1,4 @@
+frozendict({'b': 2, 'a': 1, 'c': 3})
+frozendict({'a': 1, 'b': 9, 'c': 3})
+True
+frozendict({'b': 2, 'a': 1})

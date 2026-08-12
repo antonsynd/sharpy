@@ -14,9 +14,26 @@ namespace Sharpy
     /// set, similar to Python's proposed <c>frozendict</c> (PEP 814).
     /// </summary>
     /// <remarks>
-    /// Backed by <see cref="ImmutableDictionary{TKey, TValue}"/> for
-    /// .NET Standard 2.0/2.1 compatibility. Provides a Python-style API on
-    /// top of the immutable .NET type.
+    /// <para>
+    /// Backed by <see cref="ImmutableDictionary{TKey, TValue}"/> for lookup and by an
+    /// <see cref="ImmutableArray{T}"/> of keys for ORDER, both available on .NET Standard 2.1.
+    /// Provides a Python-style API on top of the immutable .NET types.
+    /// </para>
+    /// <para>
+    /// The key array is what makes iteration insertion-ordered, matching <c>dict</c> (#1392).
+    /// <see cref="ImmutableDictionary{TKey, TValue}"/> alone is a hash-array-mapped trie with no
+    /// defined enumeration order, and .NET randomizes string hash seeds per process — so before
+    /// this, the same program printed a two-key frozendict in a different order run to run, and no
+    /// fixture could pin a multi-key <c>repr</c>. Every enumeration path below walks
+    /// <see cref="_order"/>; the dictionary is consulted only for lookup.
+    /// </para>
+    /// <para>
+    /// EQUALITY AND HASHING DELIBERATELY DO NOT READ THE ORDER. Two frozendicts with the same pairs
+    /// inserted in different orders are equal and hash alike, which is what lets a frozendict be a
+    /// dict key or a set element — the type's entire reason to exist. Order is a rendering and
+    /// iteration property only. <c>repr</c> may differ where <c>==</c> says equal; that is the same
+    /// split <c>dict</c> has.
+    /// </para>
     /// </remarks>
     /// <typeparam name="TKey">The type of keys.</typeparam>
     /// <typeparam name="TValue">The type of values.</typeparam>
@@ -28,14 +45,24 @@ namespace Sharpy
     {
         private readonly ImmutableDictionary<TKey, TValue> _dict;
 
+        /// <summary>
+        /// The keys in insertion order. Always the same length as <see cref="_dict"/> and holding
+        /// exactly its keys — the two are built together and never assigned apart.
+        /// </summary>
+        private readonly ImmutableArray<TKey> _order;
+
         /// <summary>Create an empty frozendict.</summary>
         public FrozenDict()
         {
             _dict = ImmutableDictionary<TKey, TValue>.Empty;
+            _order = ImmutableArray<TKey>.Empty;
         }
 
         /// <summary>Create a frozendict from an iterable of key-value pairs.</summary>
-        /// <remarks>Later duplicate keys overwrite earlier ones, matching Python semantics.</remarks>
+        /// <remarks>
+        /// Later duplicate keys overwrite earlier ones, matching Python semantics — and the repeated
+        /// key keeps its FIRST position in iteration order, which is also Python's rule (#1392).
+        /// </remarks>
         public FrozenDict(IEnumerable<KeyValuePair<TKey, TValue>> items)
         {
             if (items is null)
@@ -43,14 +70,7 @@ namespace Sharpy
                 throw TypeError.IsNotInterface("NoneType", "iterable");
             }
 
-            var builder = ImmutableDictionary.CreateBuilder<TKey, TValue>();
-
-            foreach (var kv in items)
-            {
-                builder[kv.Key] = kv.Value;
-            }
-
-            _dict = builder.ToImmutable();
+            Build(items, out _dict, out _order);
         }
 
         /// <summary>Create a frozendict from an existing <see cref="Dict{K, V}"/>.</summary>
@@ -61,20 +81,46 @@ namespace Sharpy
                 throw TypeError.IsNotInterface("NoneType", "iterable");
             }
 
-            var builder = ImmutableDictionary.CreateBuilder<TKey, TValue>();
-
-            foreach (var kv in (IEnumerable<KeyValuePair<TKey, TValue>>)dict)
-            {
-                builder[kv.Key] = kv.Value;
-            }
-
-            _dict = builder.ToImmutable();
+            Build((IEnumerable<KeyValuePair<TKey, TValue>>)dict, out _dict, out _order);
         }
 
         // Private constructor for internal operations (e.g. union).
-        private FrozenDict(ImmutableDictionary<TKey, TValue> dict)
+        private FrozenDict(ImmutableDictionary<TKey, TValue> dict, ImmutableArray<TKey> order)
         {
             _dict = dict;
+            _order = order;
+        }
+
+        /// <summary>
+        /// Builds the lookup map and the insertion-ordered key array from one pass over
+        /// <paramref name="items"/>. Both outputs come from here so they cannot disagree.
+        /// </summary>
+        /// <remarks>
+        /// A repeated key overwrites the value but KEEPS ITS ORIGINAL POSITION, which is CPython's
+        /// rule and was verified rather than assumed: <c>dict([('a',1),('b',2),('a',3)])</c> is
+        /// <c>{'a': 3, 'b': 2}</c>, not <c>{'b': 2, 'a': 3}</c>. Appending on every write instead
+        /// would put <c>a</c> last and duplicate it in the array.
+        /// </remarks>
+        private static void Build(
+            IEnumerable<KeyValuePair<TKey, TValue>> items,
+            out ImmutableDictionary<TKey, TValue> dict,
+            out ImmutableArray<TKey> order)
+        {
+            var mapBuilder = ImmutableDictionary.CreateBuilder<TKey, TValue>();
+            var orderBuilder = ImmutableArray.CreateBuilder<TKey>();
+
+            foreach (var kv in items)
+            {
+                if (!mapBuilder.ContainsKey(kv.Key))
+                {
+                    orderBuilder.Add(kv.Key);
+                }
+
+                mapBuilder[kv.Key] = kv.Value;
+            }
+
+            dict = mapBuilder.ToImmutable();
+            order = orderBuilder.ToImmutable();
         }
 
         /// <summary>Gets the number of key/value pairs in the frozendict.</summary>
@@ -121,21 +167,27 @@ namespace Sharpy
 
         // Explicit interface implementations satisfy IReadOnlyDictionary<TKey, TValue>
         // while keeping the Sharpy-style method API (Keys() / Values()) public.
-        IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => _dict.Keys;
-        IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => _dict.Values;
+        IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => _order;
+        IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => Values();
 
         /// <summary>Returns an iterable of the frozendict's keys. Python: <c>d.keys()</c>.</summary>
-        public IEnumerable<TKey> Keys() => _dict.Keys;
+        public IEnumerable<TKey> Keys() => _order;
 
         /// <summary>Returns an iterable of the frozendict's values. Python: <c>d.values()</c>.</summary>
-        public IEnumerable<TValue> Values() => _dict.Values;
+        public IEnumerable<TValue> Values()
+        {
+            foreach (var key in _order)
+            {
+                yield return _dict[key];
+            }
+        }
 
         /// <summary>Returns the key-value pairs as an iterable of tuples.</summary>
         public IEnumerable<(TKey, TValue)> Items()
         {
-            foreach (var kv in _dict)
+            foreach (var key in _order)
             {
-                yield return (kv.Key, kv.Value);
+                yield return (key, _dict[key]);
             }
         }
 
@@ -145,11 +197,20 @@ namespace Sharpy
         /// <summary>
         /// Returns an enumerator that iterates through the keys (Python semantics).
         /// </summary>
-        public IEnumerator<TKey> GetEnumerator() => _dict.Keys.GetEnumerator();
+        public IEnumerator<TKey> GetEnumerator() => Keys().GetEnumerator();
 
         /// <summary>Returns an enumerator that iterates through the key/value pairs.</summary>
         IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
-            => _dict.GetEnumerator();
+            => Pairs().GetEnumerator();
+
+        /// <summary>The key/value pairs in insertion order.</summary>
+        private IEnumerable<KeyValuePair<TKey, TValue>> Pairs()
+        {
+            foreach (var key in _order)
+            {
+                yield return new KeyValuePair<TKey, TValue>(key, _dict[key]);
+            }
+        }
 
         /// <inheritdoc/>
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -180,13 +241,7 @@ namespace Sharpy
                 throw new ArgumentNullException(nameof(right));
             }
 
-            var builder = left._dict.ToBuilder();
-            foreach (var key in right.Keys())
-            {
-                builder[key] = right[key];
-            }
-
-            return new FrozenDict<TKey, TValue>(builder.ToImmutable());
+            return Merge(left, right.Items());
         }
 
         /// <summary>
@@ -207,14 +262,37 @@ namespace Sharpy
                 throw new ArgumentNullException(nameof(right));
             }
 
-            var builder = left._dict.ToBuilder();
+            return Merge(left, right.Items());
+        }
 
-            foreach (var kv in right._dict)
+        /// <summary>
+        /// <paramref name="left"/> merged with <paramref name="rightItems"/>, right values winning.
+        /// </summary>
+        /// <remarks>
+        /// The ORDER rule is <c>dict</c>'s, verified against CPython rather than assumed:
+        /// <c>{'a':1,'b':2} | {'b':9,'c':3}</c> is <c>{'a': 1, 'b': 9, 'c': 3}</c> — a key present on
+        /// both sides keeps its LEFT position and takes the RIGHT value, and keys new on the right
+        /// append in their own order. Rebuilding from left-then-right pairs gets exactly that,
+        /// because <see cref="Build"/> already keeps a repeated key's first position.
+        /// </remarks>
+        private static FrozenDict<TKey, TValue> Merge(
+            FrozenDict<TKey, TValue> left,
+            IEnumerable<(TKey, TValue)> rightItems)
+        {
+            var pairs = new System.Collections.Generic.List<KeyValuePair<TKey, TValue>>();
+
+            foreach (var kv in left.Pairs())
             {
-                builder[kv.Key] = kv.Value;
+                pairs.Add(kv);
             }
 
-            return new FrozenDict<TKey, TValue>(builder.ToImmutable());
+            foreach (var (key, value) in rightItems)
+            {
+                pairs.Add(new KeyValuePair<TKey, TValue>(key, value));
+            }
+
+            Build(pairs, out var dict, out var order);
+            return new FrozenDict<TKey, TValue>(dict, order);
         }
 
         /// <summary>
@@ -315,7 +393,7 @@ namespace Sharpy
 
             int i = 0;
 
-            foreach (var kv in _dict)
+            foreach (var kv in Pairs())
             {
                 if (i > 0)
                 {

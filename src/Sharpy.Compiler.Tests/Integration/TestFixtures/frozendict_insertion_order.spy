@@ -1,0 +1,26 @@
+# frozendict iterates and renders in insertion order, like dict (#1392).
+#
+# THIS FIXTURE COULD NOT BE WRITTEN BEFORE THE FIX. FrozenDict was backed by an ImmutableDictionary
+# alone — a hash-array-mapped trie with no defined enumeration order — and .NET randomizes string
+# hash seeds per process, so printing a multi-key frozendict whole gave a different answer run to
+# run (measured: 6 runs, 3 each way). Every existing frozendict fixture reads by key to dodge that.
+# Printing one WHOLE is therefore the assertion: it is exactly what nondeterministic order breaks.
+#
+# The orderings below are dict's, verified against CPython (python3 3.12) rather than assumed:
+#   {'b':2,'a':1}                      -> insertion order, not sorted
+#   dict([('a',1),('b',2),('a',3)])    -> {'a': 3, 'b': 2}  — repeat keeps its FIRST position
+#   {'a':1,'b':2} | {'b':9,'c':3}      -> {'a': 1, 'b': 9, 'c': 3} — left position, right value
+def main() -> None:
+    fd: frozendict[str, int] = frozendict({"b": 2, "a": 1, "c": 3})
+    print(fd)
+
+    left: frozendict[str, int] = frozendict({"a": 1, "b": 2})
+    right: frozendict[str, int] = frozendict({"b": 9, "c": 3})
+    print(left | right)
+
+    # Equality ignores order even though repr shows it — the property that keeps a frozendict
+    # usable as a dict key or set element.
+    forward: frozendict[str, int] = frozendict({"a": 1, "b": 2})
+    backward: frozendict[str, int] = frozendict({"b": 2, "a": 1})
+    print(forward == backward)
+    print(backward)
