@@ -1,7 +1,0 @@
-class Foo:
-    @abstract
-    def greet(self) -> str:
-        ...
-
-def main():
-    pass

@@ -1,1 +1,8 @@
-Abstract method 'area' can only be declared in an abstract class
+# SPY0493 (AbstractMemberValidator) owns "@abstract member in a non-abstract class". This pinned
+# SPY0247's wording until #1414, when the duplicate TypeChecker arm was dropped — a deliberate
+# behaviour change, not an expected-value edit.
+#
+# This fixture ALSO draws SPY0464 (deprecated body-less syntax), so it is not a single-diagnostic
+# cell. Exclusivity is asserted programmatically in AbstractPlacementSingleReportTests, because the
+# .error format has no way to say "and nothing else" (#1457).
+@abstract method 'area' in non-abstract class 'Shape'

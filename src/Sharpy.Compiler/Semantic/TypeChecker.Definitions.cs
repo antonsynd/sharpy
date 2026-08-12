@@ -507,12 +507,14 @@ internal partial class TypeChecker
                 span: functionDef.Span);
         }
 
-        if (hasAbstractDecorator && !isInAbstractClass && _currentClass != null)
-        {
-            AddError($"Abstract method '{functionDef.Name}' can only be declared in an abstract class. Add @abstract decorator to class '{_currentClass.Name}'",
-                functionDef.LineStart, functionDef.ColumnStart, code: DiagnosticCodes.Semantic.MissingMethodBody,
-                span: functionDef.Span);
-        }
+        // "@abstract member in a non-abstract class" is AbstractMemberValidator's rule (SPY0493,
+        // Order 146). It used to be reported here as well, under SPY0247 — one rule, two
+        // diagnostics at the same position (#1414). The validator is the right owner: it covers
+        // methods, properties AND events, where this arm only ever saw methods, so keeping this
+        // one made the method cell inconsistent with its own siblings.
+        //
+        // The arm above stays. "@abstract without a '...' body" is a different rule and is
+        // genuinely MissingMethodBody, which is what keeps SPY0247 Active.
 
         // Note: Ellipsis body in concrete class is valid (generates NotImplementedException)
         // So we don't error on that case - it generates a stub that throws at runtime
@@ -668,7 +670,8 @@ internal partial class TypeChecker
                 _expectedType = paramType is UnknownType ? null : paramType;
                 var defaultType = CheckExpression(param.DefaultValue);
                 _expectedType = previousExpectedType;
-                if (!IsAssignable(defaultType, paramType))
+                if (!IsAssignable(defaultType, paramType)
+                    && !IsImplicitConstantConversion(param.DefaultValue, defaultType, paramType))
                 {
                     AddError($"Default value type '{defaultType.GetDisplayName()}' is not assignable to parameter type '{paramType.GetDisplayName()}'",
                         param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
