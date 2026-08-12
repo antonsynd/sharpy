@@ -48,17 +48,17 @@ internal partial class RoslynEmitter
             .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
             .ToDictionary(
                 p => p.Name,
-                p => NameMangler.Transform(p.Name, NameContext.Parameter));
+                p => ParameterCSharpName(p));
 
         // Track parameters as declared variables
         foreach (var param in func.Parameters)
         {
             if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                 continue;
-            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            var paramName = ParameterCSharpName(param);
             _declaredVariables.Add(paramName);
             // Also track in version map so assignments to parameters work correctly
-            var baseName = NameMangler.ToCamelCase(param.Name);
+            var baseName = ParameterCSharpName(param);
             RegisterLocalSlot(baseName, param.Name);
         }
 
@@ -445,7 +445,7 @@ internal partial class RoslynEmitter
             // Generate parameter list from semantic ParameterSymbol data
             var parameters = orderedNonSelfParams.Select(p =>
             {
-                var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(p);
                 var paramType = p.Type is not null and not UnknownType
                     ? _typeMapper.MapSemanticType(p.Type)
                     : PredefinedType(Token(SyntaxKind.ObjectKeyword));
@@ -477,7 +477,7 @@ internal partial class RoslynEmitter
             // Generate base constructor call arguments (same reordered order)
             var baseArgs = orderedNonSelfParams.Select(p =>
             {
-                var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(p);
                 return Argument(EscapedIdentifierName(paramName));
             }).ToArray();
 

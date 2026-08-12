@@ -10,10 +10,11 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The emitter keys its local-variable slots on the MANGLED base name, so <c>zed</c> and <c>Zed</c>
-/// share one slot: the second binding was emitted as a plain assignment into the first's storage and
-/// the program printed <c>7 7</c> where CPython prints <c>6 7</c>. Only SPY0453 fired — a style
-/// warning standing in for a correctness refusal.
+/// The emitter keys its local-variable slots on the name a binding is EMITTED under, and an
+/// unescaped local is emitted camelCased — so bare <c>zed</c> and bare <c>Zed</c> share one slot:
+/// the second binding was emitted as a plain assignment into the first's storage and the program
+/// printed <c>7 7</c> where CPython prints <c>6 7</c>. Only SPY0453 fired — a style warning standing
+/// in for a correctness refusal.
 /// </para>
 /// <para>
 /// This extends to function bodies the rule the module level and the class member space already
@@ -21,6 +22,14 @@ namespace Sharpy.Compiler.Semantic.Validation;
 /// refused. Deterministic renaming was rejected for the other spaces because it silently changes
 /// interop-visible names; locals are not interop-visible, but consistency of the refusal is worth
 /// more than the convenience, and the backtick escape is the sanctioned way to keep both spellings.
+/// </para>
+/// <para>
+/// The escape is a real remedy here since #1357: a backtick-escaped local is emitted VERBATIM, so
+/// <c>`Zed`</c> comes out as <c>Zed</c> and no longer collides with <c>zed</c>. That is why this
+/// check keys on <see cref="NameCasing.ResolveVariable"/> — the same function the emitter resolves
+/// the binding through — rather than on <c>ToCamelCase</c>. Keying on the mangled name regardless
+/// would refuse a pair that now compiles; keying on the source spelling would miss the pair that
+/// still collides.
 /// </para>
 /// <para>
 /// Same-spelling rebinding is exempt by construction — the check compares distinct spellings only,
@@ -193,14 +202,12 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
             return;
         }
 
-        // MEASURED, not assumed: a backtick-escaped LOCAL is still mangled at emission —
-        // `` `Zed`: int = 7 `` emits `int zed = 7`. The escape means "this denotes my symbol, not
-        // the builtin", which for a local is a resolution question, not a spelling one; the
-        // case-preserving behavior the escape has for TYPES does not extend here (#1357). So an
-        // escaped local collides exactly as a bare one does, and the remedy is a rename. Treating
-        // it as verbatim would have let a real CS0128 through.
-        _ = isEscaped;
-        var emitted = NameMangler.ToCamelCase(spelling);
+        // The check is on the EMITTED name, which is what the C# declaration space is keyed on, so
+        // it has to be computed exactly as the emitter computes it — through NameCasing, escape and
+        // all. A backtick-escaped local is emitted verbatim (owner decision on #1357), so `` `Zed` ``
+        // occupies `Zed` and is no longer in the way of `zed`; an unescaped one is camelCased and
+        // still is. Anything else here either refuses a legal program or lets a CS0128 through.
+        var emitted = NameCasing.ResolveVariable(spelling, isEscaped);
 
         if (!_scope.TryGetValue(emitted, out var first))
         {
@@ -215,8 +222,8 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
 
         AddError(
             $"Name collision: local '{spelling}' and '{first.Spelling}' (line {first.Line}) both "
-            + $"compile to '{emitted}', so they would share one variable. Rename one of them "
-            + $"(a backtick escape does not help here — a local is mangled either way).",
+            + $"compile to '{emitted}', so they would share one variable. Rename one of them, or "
+            + $"backtick-escape one to keep its spelling — an escaped local is emitted verbatim.",
             line,
             column,
             code: DiagnosticCodes.CodeGen.MemberNameCollision);

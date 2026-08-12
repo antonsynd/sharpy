@@ -344,9 +344,9 @@ internal partial class RoslynEmitter
         // Track parameters as declared variables in the local function scope
         foreach (var param in func.Parameters)
         {
-            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            var paramName = ParameterCSharpName(param);
             _declaredVariables.Add(paramName);
-            var baseName = NameMangler.ToCamelCase(param.Name);
+            var baseName = ParameterCSharpName(param);
             RegisterLocalSlot(baseName, param.Name);
         }
 

@@ -225,7 +225,7 @@ internal partial class RoslynEmitter
 
                     if (forClause.Target is Identifier id)
                     {
-                        var loopVar = NameMangler.ToCamelCase(id.Name);
+                        var loopVar = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
                         var tempLoopVar = GenerateTempVarName("loopVar");
 
                         _declaredVariables.Add(loopVar);
@@ -253,11 +253,11 @@ internal partial class RoslynEmitter
                     {
                         var tempLoopVar = GenerateTempVarName("loopVar");
                         var tupleIds = tuple.Elements.Cast<Identifier>().ToList();
-                        var tupleVars = tupleIds.Select(e => NameMangler.ToCamelCase(e.Name)).ToList();
+                        var tupleVars = tupleIds.Select(e => LocalBaseName(e.Name, e.IsNameBacktickEscaped)).ToList();
 
                         foreach (var tupleId in tupleIds)
                         {
-                            var tv = NameMangler.ToCamelCase(tupleId.Name);
+                            var tv = LocalBaseName(tupleId.Name, tupleId.IsNameBacktickEscaped);
                             _declaredVariables.Add(tv);
                             RegisterLocalSlot(tv, tupleId.Name);
                         }

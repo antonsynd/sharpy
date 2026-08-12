@@ -43,15 +43,15 @@ internal partial class RoslynEmitter
             && assign.Value is LambdaExpression lambdaWithDefaults
             && HasDefaultParameters(lambdaWithDefaults))
         {
-            var baseName = NameMangler.ToCamelCase(lambdaTargetId.Name);
+            var baseName = LocalBaseName(lambdaTargetId.Name, lambdaTargetId.IsNameBacktickEscaped);
             var symbol = _context.LookupSymbol(lambdaTargetId.Name);
             var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
-            var existsAsLocal = _variableVersions.ContainsKey(baseName);
+            var existsAsLocal = IsLocalSlotInScope(lambdaTargetId.Name, lambdaTargetId.IsNameBacktickEscaped);
 
             if (!existsAsModuleLevel && !existsAsLocal)
             {
                 // First declaration — emit as local function
-                var localFuncName = GetMangledVariableName(lambdaTargetId.Name, isNewDeclaration: true);
+                var localFuncName = GetMangledVariableName(lambdaTargetId.Name, isNewDeclaration: true, lambdaTargetId.IsNameBacktickEscaped);
                 _declaredVariables.Add(localFuncName);
                 return GenerateLambdaAsLocalFunction(lambdaWithDefaults, localFuncName);
             }
@@ -69,14 +69,14 @@ internal partial class RoslynEmitter
                 // In Sharpy, assignments can be redefinitions with type changes
                 // However, inside a function/loop, we should update existing vars
                 // Get the base name to check if already declared
-                var baseName = NameMangler.ToCamelCase(name.Name);
+                var baseName = LocalBaseName(name.Name, name.IsNameBacktickEscaped);
 
                 // Check if this variable was already declared in current scope
                 // _variableVersions tracks local variables by base name
                 // Also check if this is a module-level variable via CodeGenInfo
                 var symbol = _context.LookupSymbol(name.Name);
                 var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
-                var existsAsLocal = _variableVersions.ContainsKey(baseName);
+                var existsAsLocal = IsLocalSlotInScope(name.Name, name.IsNameBacktickEscaped);
 
                 if (existsAsModuleLevel || existsAsLocal)
                 {
@@ -325,10 +325,10 @@ internal partial class RoslynEmitter
                 // Check which variables already exist (mirrors simple assignment path)
                 var existenceFlags = identifiers.Select(id =>
                 {
-                    var baseName = NameMangler.ToCamelCase(id.Name);
+                    var baseName = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
                     var symbol = _context.LookupSymbol(id.Name);
                     var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
-                    var existsAsLocal = _variableVersions.ContainsKey(baseName);
+                    var existsAsLocal = IsLocalSlotInScope(id.Name, id.IsNameBacktickEscaped);
                     return existsAsModuleLevel || existsAsLocal;
                 }).ToList();
 
@@ -341,7 +341,7 @@ internal partial class RoslynEmitter
                     var variables = identifiers
                         .Select(id =>
                         {
-                            var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                            var varName = GetMangledVariableName(id.Name, isNewDeclaration: true, id.IsNameBacktickEscaped);
                             _declaredVariables.Add(varName);
                             return SingleVariableDesignation(EscapedIdentifier(varName));
                         })
@@ -366,7 +366,7 @@ internal partial class RoslynEmitter
                     var arguments = identifiers
                         .Select(id =>
                         {
-                            var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                            var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false, id.IsNameBacktickEscaped);
                             return Argument(EscapedIdentifierName(currentName));
                         })
                         .ToList();
@@ -410,7 +410,7 @@ internal partial class RoslynEmitter
 
                             if (existenceFlags[i])
                             {
-                                var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                                var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false, id.IsNameBacktickEscaped);
                                 stmts.Add(ExpressionStatement(
                                     AssignmentExpression(
                                         SyntaxKind.SimpleAssignmentExpression,
@@ -419,7 +419,7 @@ internal partial class RoslynEmitter
                             }
                             else
                             {
-                                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true, id.IsNameBacktickEscaped);
                                 _declaredVariables.Add(varName);
                                 stmts.Add(LocalDeclarationStatement(
                                     VariableDeclaration(IdentifierName("var"))
@@ -452,7 +452,7 @@ internal partial class RoslynEmitter
 
                             if (existenceFlags[i])
                             {
-                                var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                                var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false, id.IsNameBacktickEscaped);
                                 stmts.Add(ExpressionStatement(
                                     AssignmentExpression(
                                         SyntaxKind.SimpleAssignmentExpression,
@@ -461,7 +461,7 @@ internal partial class RoslynEmitter
                             }
                             else
                             {
-                                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                                var varName = GetMangledVariableName(id.Name, isNewDeclaration: true, id.IsNameBacktickEscaped);
                                 _declaredVariables.Add(varName);
                                 stmts.Add(LocalDeclarationStatement(
                                     VariableDeclaration(IdentifierName("var"))
@@ -782,7 +782,7 @@ internal partial class RoslynEmitter
         if (varDecl.InitialValue is LambdaExpression lambdaWithDefaults
             && HasDefaultParameters(lambdaWithDefaults))
         {
-            var localFuncName = GetMangledVariableName(varDecl.Name, isNewDeclaration: true);
+            var localFuncName = GetMangledVariableName(varDecl.Name, isNewDeclaration: true, varDecl.IsNameBacktickEscaped);
             _declaredVariables.Add(localFuncName);
             return GenerateLambdaAsLocalFunction(lambdaWithDefaults, localFuncName);
         }
@@ -824,7 +824,7 @@ internal partial class RoslynEmitter
         // can target Optional<T>.None when the variable is Optional.
         if (declaredType is not null and not UnknownType)
         {
-            _localVariableTypes[NameMangler.ToCamelCase(varDecl.Name)] = declaredType;
+            _localVariableTypes[LocalBaseName(varDecl.Name, varDecl.IsNameBacktickEscaped)] = declaredType;
         }
 
         // Handle 'auto' type annotation - use 'var' in C#
@@ -1116,14 +1116,14 @@ internal partial class RoslynEmitter
                                 Literal(i))))));
                 }
 
-                var baseName = NameMangler.ToCamelCase(id.Name);
+                var baseName = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
                 var sym = _context.LookupSymbol(id.Name);
                 var existsAsModuleLevel = sym != null && GetCodeGenInfo(sym)?.IsModuleLevel == true;
-                var existsAsLocal = _variableVersions.ContainsKey(baseName);
+                var existsAsLocal = IsLocalSlotInScope(id.Name, id.IsNameBacktickEscaped);
 
                 if (existsAsModuleLevel || existsAsLocal)
                 {
-                    var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                    var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false, id.IsNameBacktickEscaped);
                     statements.Add(ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
@@ -1132,7 +1132,7 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                    var varName = GetMangledVariableName(id.Name, isNewDeclaration: true, id.IsNameBacktickEscaped);
                     _declaredVariables.Add(varName);
                     statements.Add(LocalDeclarationStatement(
                         VariableDeclaration(IdentifierName("var"))
@@ -1146,10 +1146,10 @@ internal partial class RoslynEmitter
         // Star element: rest = __t.GetSlice(...) or new Sharpy.List<T> { __t.ItemN, ... } (for tuples)
         if (elements[starIndex] is StarExpression starExpr && starExpr.Operand is Identifier starId)
         {
-            var starBaseName = NameMangler.ToCamelCase(starId.Name);
+            var starBaseName = LocalBaseName(starId.Name, starId.IsNameBacktickEscaped);
             var starSym = _context.LookupSymbol(starId.Name);
             var starExistsAsModuleLevel = starSym != null && GetCodeGenInfo(starSym)?.IsModuleLevel == true;
-            var starExistsAsLocal = _variableVersions.ContainsKey(starBaseName);
+            var starExistsAsLocal = IsLocalSlotInScope(starId.Name, starId.IsNameBacktickEscaped);
             var starIsExisting = starExistsAsModuleLevel || starExistsAsLocal;
 
             ExpressionSyntax starValueExpr;
@@ -1201,7 +1201,7 @@ internal partial class RoslynEmitter
 
             if (starIsExisting)
             {
-                var currentStarName = GetMangledVariableName(starId.Name, isNewDeclaration: false);
+                var currentStarName = GetMangledVariableName(starId.Name, isNewDeclaration: false, starId.IsNameBacktickEscaped);
                 statements.Add(ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
@@ -1210,7 +1210,7 @@ internal partial class RoslynEmitter
             }
             else
             {
-                var starVarName = GetMangledVariableName(starId.Name, isNewDeclaration: true);
+                var starVarName = GetMangledVariableName(starId.Name, isNewDeclaration: true, starId.IsNameBacktickEscaped);
                 _declaredVariables.Add(starVarName);
                 statements.Add(LocalDeclarationStatement(
                     VariableDeclaration(IdentifierName("var"))
@@ -1249,14 +1249,14 @@ internal partial class RoslynEmitter
                                     Literal(negIndex)))))));
                 }
 
-                var baseName = NameMangler.ToCamelCase(id.Name);
+                var baseName = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
                 var sym = _context.LookupSymbol(id.Name);
                 var existsAsModuleLevel = sym != null && GetCodeGenInfo(sym)?.IsModuleLevel == true;
-                var existsAsLocal = _variableVersions.ContainsKey(baseName);
+                var existsAsLocal = IsLocalSlotInScope(id.Name, id.IsNameBacktickEscaped);
 
                 if (existsAsModuleLevel || existsAsLocal)
                 {
-                    var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                    var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false, id.IsNameBacktickEscaped);
                     statements.Add(ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
@@ -1265,7 +1265,7 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                    var varName = GetMangledVariableName(id.Name, isNewDeclaration: true, id.IsNameBacktickEscaped);
                     _declaredVariables.Add(varName);
                     statements.Add(LocalDeclarationStatement(
                         VariableDeclaration(IdentifierName("var"))
@@ -1289,15 +1289,15 @@ internal partial class RoslynEmitter
 
             if (targets[i] is Identifier id)
             {
-                var baseName = NameMangler.ToCamelCase(id.Name);
+                var baseName = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
                 var symbol = _context.LookupSymbol(id.Name);
                 var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
-                var existsAsLocal = _variableVersions.ContainsKey(baseName);
+                var existsAsLocal = IsLocalSlotInScope(id.Name, id.IsNameBacktickEscaped);
 
                 if (existsAsModuleLevel || existsAsLocal)
                 {
                     // Existing variable — update
-                    var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false);
+                    var currentName = GetMangledVariableName(id.Name, isNewDeclaration: false, id.IsNameBacktickEscaped);
                     statements.Add(ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
@@ -1307,7 +1307,7 @@ internal partial class RoslynEmitter
                 else
                 {
                     // New variable — declare
-                    var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                    var varName = GetMangledVariableName(id.Name, isNewDeclaration: true, id.IsNameBacktickEscaped);
                     _declaredVariables.Add(varName);
                     statements.Add(LocalDeclarationStatement(
                         VariableDeclaration(IdentifierName("var"))

@@ -184,9 +184,9 @@ internal partial class RoslynEmitter
             // Track the index parameter as a declared variable
             if (indexParam != null)
             {
-                var paramName = NameMangler.Transform(indexParam.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(indexParam);
                 _declaredVariables.Add(paramName);
-                var baseName = NameMangler.ToCamelCase(indexParam.Name);
+                var baseName = ParameterCSharpName(indexParam);
                 RegisterLocalSlot(baseName, indexParam.Name);
             }
 
@@ -214,9 +214,9 @@ internal partial class RoslynEmitter
                 if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(param.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))
                     continue;
-                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(param);
                 _declaredVariables.Add(paramName);
-                var baseName = NameMangler.ToCamelCase(param.Name);
+                var baseName = ParameterCSharpName(param);
                 RegisterLocalSlot(baseName, param.Name);
             }
 
@@ -402,9 +402,9 @@ internal partial class RoslynEmitter
             {
                 if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                     continue;
-                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(param);
                 _declaredVariables.Add(paramName);
-                var baseName = NameMangler.ToCamelCase(param.Name);
+                var baseName = ParameterCSharpName(param);
                 RegisterLocalSlot(baseName, param.Name);
             }
 
@@ -430,9 +430,9 @@ internal partial class RoslynEmitter
             {
                 if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                     continue;
-                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(param);
                 _declaredVariables.Add(paramName);
-                var baseName = NameMangler.ToCamelCase(param.Name);
+                var baseName = ParameterCSharpName(param);
                 RegisterLocalSlot(baseName, param.Name);
             }
 
@@ -535,9 +535,9 @@ internal partial class RoslynEmitter
             {
                 if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                     continue;
-                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(param);
                 _declaredVariables.Add(paramName);
-                var baseName = NameMangler.ToCamelCase(param.Name);
+                var baseName = ParameterCSharpName(param);
                 RegisterLocalSlot(baseName, param.Name);
             }
 
@@ -918,9 +918,9 @@ internal partial class RoslynEmitter
         {
             if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                 continue;
-            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            var paramName = ParameterCSharpName(param);
             _declaredVariables.Add(paramName);
-            var baseName = NameMangler.ToCamelCase(param.Name);
+            var baseName = ParameterCSharpName(param);
             RegisterLocalSlot(baseName, param.Name);
         }
 
@@ -980,7 +980,7 @@ internal partial class RoslynEmitter
                         !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
                 if (valueParam != null)
                 {
-                    var paramName = NameMangler.Transform(valueParam.Name, NameContext.Parameter);
+                    var paramName = ParameterCSharpName(valueParam);
                     // C# setter uses implicit 'value' parameter, so remap
                     _declaredVariables.Add("value");
                     RegisterLocalSlot("value", "value");
@@ -1075,9 +1075,9 @@ internal partial class RoslynEmitter
                 {
                     if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                         continue;
-                    var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                    var paramName = ParameterCSharpName(param);
                     _declaredVariables.Add(paramName);
-                    var baseName = NameMangler.ToCamelCase(param.Name);
+                    var baseName = ParameterCSharpName(param);
                     RegisterLocalSlot(baseName, param.Name);
                 }
 

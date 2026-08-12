@@ -743,7 +743,7 @@ internal partial class RoslynEmitter
         var parameters = funcSymbol.Parameters
             .Select(p =>
             {
-                var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(p);
                 var paramType = _typeMapper.MapSemanticType(p.Type);
                 return Parameter(EscapedIdentifier(paramName)).WithType(paramType);
             })
@@ -751,7 +751,7 @@ internal partial class RoslynEmitter
 
         // Generate arguments to pass to the delegate call
         var arguments = funcSymbol.Parameters
-            .Select(p => Argument(IdentifierName(NameMangler.Transform(p.Name, NameContext.Parameter))))
+            .Select(p => Argument(IdentifierName(ParameterCSharpName(p))))
             .ToArray();
 
         // Map return type
@@ -894,7 +894,7 @@ internal partial class RoslynEmitter
 
             foreach (var param in paramsExcludingFixtures)
             {
-                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(param);
                 if (param.IsLateBound)
                 {
                     _declaredVariables.Add(paramName + LateBoundSuffix);
@@ -904,14 +904,14 @@ internal partial class RoslynEmitter
                 {
                     _declaredVariables.Add(paramName);
                 }
-                var baseName = NameMangler.ToCamelCase(param.Name);
+                var baseName = ParameterCSharpName(param);
                 RegisterLocalSlot(baseName, param.Name);
             }
 
             // Track fixture-injected names as declared variables to avoid versioning collisions.
             foreach (var (parameter, _) in consumedForFunc)
             {
-                var localName = NameMangler.ToCamelCase(parameter.Name);
+                var localName = ParameterCSharpName(parameter);
                 _declaredVariables.Add(localName);
                 RegisterLocalSlot(localName, parameter.Name);
             }

@@ -644,7 +644,7 @@ internal partial class RoslynEmitter
             ? Token(SyntaxKind.ImplicitKeyword)
             : Token(SyntaxKind.ExplicitKeyword);
 
-        var paramName = NameMangler.ToCamelCase(sourceParam.Name);
+        var paramName = ParameterCSharpName(sourceParam);
         var param = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
 
         var body = GenerateSuiteBlock(funcDef.Body);
@@ -671,7 +671,7 @@ internal partial class RoslynEmitter
             ? Token(SyntaxKind.ImplicitKeyword)
             : Token(SyntaxKind.ExplicitKeyword);
 
-        var paramName = NameMangler.ToCamelCase(sourceParam.Name);
+        var paramName = ParameterCSharpName(sourceParam);
         var param = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
 
         RegisterLocalSlot(paramName, sourceParam.Name);

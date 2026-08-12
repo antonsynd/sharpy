@@ -304,13 +304,13 @@ internal partial class RoslynEmitter
         }
         else if (cachedParams.Count == 1)
         {
-            keyExpr = IdentifierName(NameMangler.Transform(cachedParams[0].Name, NameContext.Parameter));
+            keyExpr = IdentifierName(ParameterCSharpName(cachedParams[0]));
         }
         else
         {
             keyExpr = TupleExpression(SeparatedList(
                 cachedParams.Select(p => Argument(
-                    IdentifierName(NameMangler.Transform(p.Name, NameContext.Parameter))))));
+                    IdentifierName(ParameterCSharpName(p))))));
         }
 
         // Build the factory body: _key => __Name(args).

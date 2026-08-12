@@ -565,7 +565,7 @@ internal partial class RoslynEmitter
     {
         if (target is Identifier varName)
         {
-            var loopVar = NameMangler.ToCamelCase(varName.Name);
+            var loopVar = LocalBaseName(varName.Name, varName.IsNameBacktickEscaped);
             var tempLoopVar = GenerateTempVarName("loopVar");
 
             // Check if the variable is already declared in an enclosing scope
@@ -636,7 +636,7 @@ internal partial class RoslynEmitter
                 // tuple unpacking path which must distinguish new vs existing variables.
                 foreach (var id in identifiers)
                 {
-                    var name = NameMangler.ToCamelCase(id.Name);
+                    var name = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
                     _declaredVariables.Add(name);
                     RegisterLocalSlot(name, id.Name);
                 }
@@ -648,7 +648,7 @@ internal partial class RoslynEmitter
                 var variables = identifiers
                     .Select(id =>
                     {
-                        var name = NameMangler.ToCamelCase(id.Name);
+                        var name = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
                         return SingleVariableDesignation(EscapedIdentifier(name));
                     })
                     .ToList();
@@ -726,7 +726,11 @@ internal partial class RoslynEmitter
             if (ctxExpr is FunctionCall call && IsAssertRaisesCall(call)
                 && call.Arguments.Length == 1 && GetAssertRaisesMatchArgument(call) == null)
             {
-                return GenerateAssertThrows(call.Arguments[0], withStmt.Body, withStmt.Items[0].Name);
+                return GenerateAssertThrows(
+                    call.Arguments[0],
+                    withStmt.Body,
+                    withStmt.Items[0].Name,
+                    withStmt.Items[0].IsNameBacktickEscaped);
             }
         }
 
@@ -875,7 +879,11 @@ internal partial class RoslynEmitter
             return false;
 
         statements = GenerateAssertThrowsStatements(
-            call.Arguments[0], withStmt.Body, withStmt.Items[0].Name, matchExpr);
+            call.Arguments[0],
+            withStmt.Body,
+            withStmt.Items[0].Name,
+            matchExpr,
+            withStmt.Items[0].IsNameBacktickEscaped);
         return true;
     }
 
@@ -905,10 +913,12 @@ internal partial class RoslynEmitter
     private StatementSyntax GenerateAssertThrows(
         Expression exceptionTypeExpr,
         IReadOnlyList<Statement> body,
-        string? captureName = null)
+        string? captureName = null,
+        bool captureIsEscaped = false)
     {
         // No match → exactly one statement.
-        return GenerateAssertThrowsStatements(exceptionTypeExpr, body, captureName, matchExpr: null)[0];
+        return GenerateAssertThrowsStatements(
+            exceptionTypeExpr, body, captureName, matchExpr: null, captureIsEscaped)[0];
     }
 
     /// <summary>
@@ -926,7 +936,8 @@ internal partial class RoslynEmitter
         Expression exceptionTypeExpr,
         IReadOnlyList<Statement> body,
         string? captureName,
-        Expression? matchExpr)
+        Expression? matchExpr,
+        bool captureIsEscaped = false)
     {
         TypeSyntax exceptionType = exceptionTypeExpr switch
         {
@@ -964,7 +975,7 @@ internal partial class RoslynEmitter
         string? localName = null;
         if (captureName != null)
         {
-            localName = GetMangledVariableName(captureName, isNewDeclaration: true);
+            localName = GetMangledVariableName(captureName, isNewDeclaration: true, captureIsEscaped);
             _declaredVariables.Add(localName);
         }
         else if (matchExpr != null)
@@ -1015,7 +1026,7 @@ internal partial class RoslynEmitter
         {
             // with expr as name: -> using (var name = expr) { ... }
             // async with expr as name: -> await using (var name = expr) { ... }
-            var varName = GetMangledVariableName(item.Name, isNewDeclaration: true);
+            var varName = GetMangledVariableName(item.Name, isNewDeclaration: true, item.IsNameBacktickEscaped);
             _declaredVariables.Add(varName);
 
             var declaration = VariableDeclaration(IdentifierName("var"))
@@ -1093,7 +1104,7 @@ internal partial class RoslynEmitter
         if (item.Name != null)
         {
             // var asVar = __ctx_N.Enter();  (or await __ctx_N.AenterAsync())
-            var varName = GetMangledVariableName(item.Name, isNewDeclaration: true);
+            var varName = GetMangledVariableName(item.Name, isNewDeclaration: true, item.IsNameBacktickEscaped);
             _declaredVariables.Add(varName);
             statements.Add(LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
@@ -1453,7 +1464,7 @@ internal partial class RoslynEmitter
 
                 if (handler.Name != null)
                 {
-                    var baseName = NameMangler.ToCamelCase(handler.Name);
+                    var baseName = LocalBaseName(handler.Name, handler.IsNameBacktickEscaped);
 
                     // Track exception variable in the slot table so nested catch clauses with the
                     // same name get versioned (e, e_1, ...) to avoid CS0136 in generated C#. The
@@ -1524,7 +1535,7 @@ internal partial class RoslynEmitter
         IReadOnlyList<SemanticType> alternatives,
         CatchFilterClauseSyntax? userFilter)
     {
-        var baseName = NameMangler.ToCamelCase(handler.Name!);
+        var baseName = LocalBaseName(handler.Name!, handler.IsNameBacktickEscaped);
 
         // Same versioning as the single-type bound handler below: nested catch clauses binding the
         // same name would otherwise collide (CS0136).
@@ -1655,7 +1666,7 @@ internal partial class RoslynEmitter
             // If there's an 'as' variable, create the ExceptionGroup wrapper
             if (handler.Name != null)
             {
-                var baseName = NameMangler.ToCamelCase(handler.Name);
+                var baseName = LocalBaseName(handler.Name, handler.IsNameBacktickEscaped);
 
                 var saved = CaptureSlot(baseName);
                 var version = saved.Existed ? saved.Version + 1 : 0;

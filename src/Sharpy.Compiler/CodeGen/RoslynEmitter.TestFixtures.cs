@@ -310,7 +310,7 @@ internal partial class RoslynEmitter
     {
         foreach (var (parameter, fixture) in consumed)
         {
-            var localName = NameMangler.ToCamelCase(parameter.Name);
+            var localName = ParameterCSharpName(parameter);
             yield return LocalDeclarationStatement(
                 VariableDeclaration(fixture.ValueType)
                     .WithVariables(SingletonSeparatedList(

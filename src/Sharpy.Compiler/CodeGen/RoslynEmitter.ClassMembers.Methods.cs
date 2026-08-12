@@ -219,7 +219,7 @@ internal partial class RoslynEmitter
             if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(param.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))
                 continue;
-            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            var paramName = ParameterCSharpName(param);
             if (param.IsLateBound)
             {
                 // The C# parameter is named `y__lb`; the preamble local is named `y`
@@ -231,7 +231,7 @@ internal partial class RoslynEmitter
                 _declaredVariables.Add(paramName);
             }
             // Also track in version map so assignments to parameters work correctly
-            var baseName = NameMangler.ToCamelCase(param.Name);
+            var baseName = ParameterCSharpName(param);
             RegisterLocalSlot(baseName, param.Name);
         }
 
@@ -287,7 +287,7 @@ internal partial class RoslynEmitter
 
                 if (otherParam != null)
                 {
-                    var paramName = NameMangler.Transform(otherParam.Name, NameContext.Parameter);
+                    var paramName = ParameterCSharpName(otherParam);
                     var nullGuard = IfStatement(
                         IsPatternExpression(
                             IdentifierName(paramName),
@@ -652,9 +652,9 @@ internal partial class RoslynEmitter
             {
                 if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                     continue;
-                var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(param);
                 _declaredVariables.Add(paramName);
-                var baseName = NameMangler.ToCamelCase(param.Name);
+                var baseName = ParameterCSharpName(param);
                 RegisterLocalSlot(baseName, param.Name);
             }
 

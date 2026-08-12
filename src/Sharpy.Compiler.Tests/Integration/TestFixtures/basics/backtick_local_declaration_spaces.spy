@@ -1,0 +1,74 @@
+# The backtick escape preserves a LOCAL's spelling in every declaration space it can appear in
+# (#1357), not only on the annotated-assignment path where the flag first reached the emitter.
+# Each pair below binds an escaped name whose camelCased twin is also live, which only compiles
+# because the escaped binding is emitted verbatim and gets its own C# local.
+
+def takes(`Arg`: int, arg: int) -> int:
+    return `Arg` * 10 + arg
+
+def main() -> None:
+    # Parameters
+    print(takes(1, 2))
+
+    # Annotated declaration
+    `Zed`: int = 7
+    zed: int = 6
+    print(zed)
+    print(`Zed`)
+
+    # For target
+    total: int = 0
+    for `Item` in [1, 2, 3]:
+        total = total + `Item`
+    print(total)
+
+    # Tuple unpack
+    `Left`, right = (8, 9)
+    print(`Left`)
+    print(right)
+
+    # Star unpack
+    head, *`Rest` = [1, 2, 3]
+    print(head)
+    print(`Rest`)
+
+    # With target
+    with open_counter() as `Ctx`:
+        print(`Ctx`)
+
+    # Pattern binding
+    value: object = 42
+    match value:
+        case int() as `Bound`:
+            print(`Bound`)
+        case _:
+            print(0)
+
+    # Comprehension target
+    squares: list[int] = [`Cell` * `Cell` for `Cell` in [2, 3]]
+    print(squares)
+
+    # Except-handler binding. The escaped binding is re-bound to a second escaped local so the
+    # cell asserts the SLOT resolved, not how an exception stringifies.
+    try:
+        raise ValueError("boom")
+    except ValueError as `Err`:
+        `Caught`: ValueError = `Err`
+        print(len(str(`Caught`)) > 0)
+
+
+class Counter:
+    value: int
+
+    def __init__(self) -> None:
+        self.value = 5
+
+    def __enter__(self) -> int:
+        return self.value
+
+    def __exit__(self) -> None:
+        pass
+
+
+def open_counter() -> Counter:
+    return Counter()

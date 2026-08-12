@@ -74,7 +74,8 @@ internal sealed class NameResolutionService
                 symbol.Name,
                 isNewDeclaration,
                 variableVersions,
-                sourceVariableNames);
+                sourceVariableNames,
+                symbol.IsNameBacktickEscaped);
 
             if (localResult != null)
             {
@@ -98,14 +99,19 @@ internal sealed class NameResolutionService
     /// <param name="isNewDeclaration">True if this is a new declaration/redefinition.</param>
     /// <param name="variableVersions">Mutable dictionary tracking version numbers per variable.</param>
     /// <param name="sourceVariableNames">Set of source variable names to avoid collisions.</param>
+    /// <param name="isBacktickEscaped">
+    /// True when the binding this name resolves to was declared backtick-escaped, which makes its
+    /// slot key the verbatim spelling rather than the camelCased one (#1357).
+    /// </param>
     /// <returns>The C# variable name with version suffix, or null if not a local variable.</returns>
     public string? ResolveLocalName(
         string originalName,
         bool isNewDeclaration,
         IReadOnlyDictionary<string, int> variableVersions,
-        IReadOnlySet<string> sourceVariableNames)
+        IReadOnlySet<string> sourceVariableNames,
+        bool isBacktickEscaped = false)
     {
-        var baseName = NameMangler.ToCamelCase(originalName);
+        var baseName = GetBaseName(originalName, isBacktickEscaped);
 
         // Check if this is a known local variable
         if (!variableVersions.ContainsKey(baseName))
@@ -146,13 +152,15 @@ internal sealed class NameResolutionService
     /// <param name="originalName">The original Sharpy variable name.</param>
     /// <param name="currentVersion">The current version number.</param>
     /// <param name="sourceVariableNames">Set of source variable names to avoid collisions.</param>
+    /// <param name="isBacktickEscaped">See <see cref="ResolveLocalName"/>.</param>
     /// <returns>The next version number to use.</returns>
     public int ComputeNextVersion(
         string originalName,
         int currentVersion,
-        IReadOnlySet<string> sourceVariableNames)
+        IReadOnlySet<string> sourceVariableNames,
+        bool isBacktickEscaped = false)
     {
-        var baseName = NameMangler.ToCamelCase(originalName);
+        var baseName = GetBaseName(originalName, isBacktickEscaped);
         var newVersion = currentVersion + 1;
         var candidateName = $"{baseName}_{newVersion}";
 
@@ -166,11 +174,22 @@ internal sealed class NameResolutionService
     }
 
     /// <summary>
-    /// Gets the base C# name for a variable (camelCase) without version suffix.
+    /// Gets the base C# name for a local variable — the name it is emitted under, and the key its
+    /// slot is filed under — without the version suffix.
     /// </summary>
-    public string GetBaseName(string originalName)
+    /// <remarks>
+    /// This is the one place a local's base name is computed, and it is escape-aware because the
+    /// key and the emitted name must be the same string: a backtick-escaped local emits verbatim
+    /// (owner decision on #1357), so <c>`Zed`</c> keys and emits <c>Zed</c> while a plain
+    /// <c>zed</c> keys and emits <c>zed</c>. Keying on the camelCase base regardless would give
+    /// the two ONE slot — the escaped binding would take the redeclaration path and come out as
+    /// <c>zed_1</c> — and would leave the declaration emitting <c>Zed</c> while every reference
+    /// resolved to <c>zed</c> (CS0103). Unescaped names are unaffected:
+    /// <see cref="NameCasing.ResolveVariable"/>'s plain arm is <c>ToCamelCase</c>.
+    /// </remarks>
+    public string GetBaseName(string originalName, bool isBacktickEscaped = false)
     {
-        return NameMangler.ToCamelCase(originalName);
+        return NameCasing.ResolveVariable(originalName, isBacktickEscaped);
     }
 
     /// <summary>

@@ -151,7 +151,8 @@ internal partial class RoslynEmitter
                         return ConstantPattern(IdentifierName(constName));
                     }
 
-                    var varName = GetMangledVariableName(binding.Name.Name, isNewDeclaration: true);
+                    var varName = GetMangledVariableName(binding.Name.Name, isNewDeclaration: true,
+                        binding.Name.IsNameBacktickEscaped);
                     return VarPattern(SingleVariableDesignation(Identifier(varName)));
                 }
 
@@ -247,7 +248,8 @@ internal partial class RoslynEmitter
                         var caseTypeSyntax = BuildUnionCaseTypeSyntax(unionCase, scrutineeType);
                         if (typePattern.BindingName != null)
                         {
-                            var varName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true);
+                            var varName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true,
+                                typePattern.BindingName.IsNameBacktickEscaped);
                             return DeclarationPattern(caseTypeSyntax, SingleVariableDesignation(Identifier(varName)));
                         }
                         return DeclarationPattern(caseTypeSyntax, DiscardDesignation());
@@ -266,7 +268,8 @@ internal partial class RoslynEmitter
                         var arrayTypeSyntax = _typeMapper.MapSemanticType(arrayPatternType);
                         if (typePattern.BindingName != null)
                         {
-                            var arrayVarName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true);
+                            var arrayVarName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true,
+                                typePattern.BindingName.IsNameBacktickEscaped);
                             return DeclarationPattern(arrayTypeSyntax, SingleVariableDesignation(Identifier(arrayVarName)));
                         }
                         return DeclarationPattern(arrayTypeSyntax, DiscardDesignation());
@@ -292,7 +295,8 @@ internal partial class RoslynEmitter
                         {
                             if (typePattern.BindingName != null)
                             {
-                                var bindVarName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true);
+                                var bindVarName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true,
+                                    typePattern.BindingName.IsNameBacktickEscaped);
                                 return DeclarationPattern(nonGenericInterface, SingleVariableDesignation(Identifier(bindVarName)));
                             }
                             return DeclarationPattern(nonGenericInterface, DiscardDesignation());
@@ -309,7 +313,8 @@ internal partial class RoslynEmitter
                         : _typeMapper.MapType(typePattern.Type);
                     if (typePattern.BindingName != null)
                     {
-                        var varName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true);
+                        var varName = GetMangledVariableName(typePattern.BindingName.Name, isNewDeclaration: true,
+                                typePattern.BindingName.IsNameBacktickEscaped);
                         return DeclarationPattern(typeSyntax, SingleVariableDesignation(Identifier(varName)));
                     }
                     return DeclarationPattern(typeSyntax, DiscardDesignation());

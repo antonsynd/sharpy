@@ -101,7 +101,7 @@ internal partial class RoslynEmitter
         // Track parameters as declared variables
         foreach (var param in func.Parameters)
         {
-            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            var paramName = ParameterCSharpName(param);
             if (param.IsLateBound)
             {
                 // The C# parameter is named `y__lb`; the preamble local is named `y`
@@ -113,7 +113,7 @@ internal partial class RoslynEmitter
                 _declaredVariables.Add(paramName);
             }
             // Also track in version map so assignments to parameters work correctly
-            var baseName = NameMangler.ToCamelCase(param.Name);
+            var baseName = ParameterCSharpName(param);
             RegisterLocalSlot(baseName, param.Name);
         }
 
@@ -162,7 +162,7 @@ internal partial class RoslynEmitter
 
     private ParameterSyntax GenerateParameter(Parameter param)
     {
-        var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+        var paramName = ParameterCSharpName(param);
 
         // Late-bound default (PEP 671): emit as nullable sentinel parameter.
         // E.g., `y: int => x + 1` becomes `int? y__lb = null` in the C# signature.
@@ -270,7 +270,7 @@ internal partial class RoslynEmitter
             if (!param.IsLateBound || param.DefaultValue == null)
                 continue;
 
-            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            var paramName = ParameterCSharpName(param);
             var lbParamName = paramName + LateBoundSuffix;
             var defaultExpr = GenerateExpression(param.DefaultValue);
 
@@ -880,7 +880,7 @@ internal partial class RoslynEmitter
 
             foreach (var p in ordered)
             {
-                var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(p);
                 TypeSyntax paramType = p.Type is UnknownType or null
                     ? PredefinedType(Token(SyntaxKind.ObjectKeyword))
                     : _typeMapper.MapSemanticType(p.Type);
@@ -977,7 +977,7 @@ internal partial class RoslynEmitter
         var parameters = orderedStubParams
             .Select(p =>
             {
-                var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                var paramName = ParameterCSharpName(p);
                 TypeSyntax paramType = p.Type is UnknownType or null
                     ? PredefinedType(Token(SyntaxKind.ObjectKeyword))
                     : _typeMapper.MapSemanticType(p.Type);

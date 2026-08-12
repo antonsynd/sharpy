@@ -627,7 +627,7 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// </remarks>
     private string GetMangledVariableName(string name, bool isNewDeclaration, bool isBacktickEscaped = false)
     {
-        var baseName = _nameResolutionService.GetBaseName(name);
+        var baseName = _nameResolutionService.GetBaseName(name, isBacktickEscaped);
 
         // Check parameter name overrides (used for inlined operator bodies: "other" → "right")
         if (_parameterNameOverrides != null
@@ -644,16 +644,17 @@ internal partial class RoslynEmitter : ICodeEmitter
         // FIRST: Check if this is a local variable (including parameters)
         // Local variables take precedence over module-level variables and CodeGenInfo
         // This handles parameter shadowing correctly (parameter x shadows global x).
-        // The slot must belong to THIS spelling: mangling collapses case, so without the check a
-        // reference to the class `Zed` was answered by a local `zed`'s slot (#1276).
-        if (_variableVersions.ContainsKey(baseName) && SlotAnswersSpelling(baseName, name))
+        if (TryFindLocalSlot(name, isBacktickEscaped, out var slotEscape))
         {
+            var slotKey = _nameResolutionService.GetBaseName(name, slotEscape);
+
             // There's a local variable with this name - use local resolution via service
             var resolvedName = _nameResolutionService.ResolveLocalName(
                 name,
                 isNewDeclaration,
                 _variableVersions,
-                _sourceVariableNames);
+                _sourceVariableNames,
+                slotEscape);
 
             if (resolvedName != null)
             {
@@ -662,11 +663,12 @@ internal partial class RoslynEmitter : ICodeEmitter
                 {
                     var newVersion = _nameResolutionService.ComputeNextVersion(
                         name,
-                        _variableVersions[baseName],
-                        _sourceVariableNames);
+                        _variableVersions[slotKey],
+                        _sourceVariableNames,
+                        slotEscape);
                     // A bump, not a fresh claim: the slot keeps its history and its owner (the
                     // check above already established that this spelling owns it).
-                    SetSlotVersion(baseName, newVersion, name);
+                    SetSlotVersion(slotKey, newVersion, name);
                 }
                 return resolvedName;
             }
@@ -851,6 +853,93 @@ internal partial class RoslynEmitter : ICodeEmitter
             && string.Equals(owner, spelling, StringComparison.Ordinal);
 
     /// <summary>
+    /// Finds the local slot claimed by the exact source spelling <paramref name="name"/>, reporting
+    /// through <paramref name="slotEscape"/> whether that slot is filed under the verbatim or the
+    /// camelCased form of the name. Returns false when no local answers this spelling.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A local's slot is keyed on the name it is EMITTED under (<see cref="NameResolutionService.GetBaseName"/>),
+    /// which is escape-aware since #1357 — <c>zed</c> files under <c>zed</c> and <c>`Zed`</c> under
+    /// <c>Zed</c>. The escape is a property of the OCCURRENCE, not of the symbol, so a reference may
+    /// spell it either way; both candidate keys are therefore probed, the reference's own spelling
+    /// first so a name bound both ways resolves to the binding written the same way. Only a slot
+    /// whose recorded owner is this exact spelling is accepted (#1276), which is what keeps a local
+    /// <c>zed</c> from answering a reference to a class <c>Zed</c>.
+    /// </para>
+    /// <para>
+    /// For an unescaped name with no escaped twin in scope this is the pre-#1357 lookup verbatim:
+    /// the first probe is the camelCase key and the second finds nothing.
+    /// </para>
+    /// </remarks>
+    private bool TryFindLocalSlot(string name, bool isBacktickEscaped, out bool slotEscape)
+    {
+        if (ProbeLocalSlot(name, isBacktickEscaped))
+        {
+            slotEscape = isBacktickEscaped;
+            return true;
+        }
+
+        if (ProbeLocalSlot(name, !isBacktickEscaped))
+        {
+            slotEscape = !isBacktickEscaped;
+            return true;
+        }
+
+        slotEscape = isBacktickEscaped;
+        return false;
+    }
+
+    private bool ProbeLocalSlot(string name, bool escapeCandidate)
+    {
+        var key = _nameResolutionService.GetBaseName(name, escapeCandidate);
+        return _variableVersions.ContainsKey(key) && SlotAnswersSpelling(key, name);
+    }
+
+    /// <summary>
+    /// Whether a local slot claimed by this exact spelling is in scope. The declaration paths use
+    /// this to tell a new binding from an assignment to an existing one; it has to agree with
+    /// <see cref="TryFindLocalSlot"/> or an escaped local whose camelCase base is taken by a
+    /// different local would be emitted as an assignment to a variable that was never declared.
+    /// </summary>
+    private bool IsLocalSlotInScope(string name, bool isBacktickEscaped)
+        => TryFindLocalSlot(name, isBacktickEscaped, out _);
+
+    /// <summary>
+    /// The C# name a local binding is emitted under, and the key its slot is filed under. Shorthand
+    /// for <see cref="NameResolutionService.GetBaseName"/>; every declaration path that computes a
+    /// local's base name itself must go through here, or its slot key and its emitted name disagree
+    /// for a backtick-escaped spelling (#1357).
+    /// </summary>
+    private string LocalBaseName(string name, bool isBacktickEscaped)
+        => _nameResolutionService.GetBaseName(name, isBacktickEscaped);
+
+    /// <summary>
+    /// The C# name a parameter is emitted under. A parameter is a local binding, so the escape
+    /// means the same thing there as anywhere else: <c>def f(`Zed`: int)</c> declares <c>Zed</c>,
+    /// which is what the body's references resolve to (#1357). Unescaped names are unchanged —
+    /// <see cref="NameCasing.ResolveVariable"/>'s plain arm is the <c>ToCamelCase</c> that
+    /// <c>NameMangler.Transform(..., NameContext.Parameter)</c> already applied.
+    /// </summary>
+    private static string ParameterCSharpName(Parameter param)
+        => NameCasing.ResolveVariable(param.Name, param.IsNameBacktickEscaped);
+
+    /// <summary>
+    /// The C# name for a parameter known only through its SEMANTIC symbol — constructor and
+    /// module-class forwarders, delegate stubs.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ParameterSymbol"/> is a standalone record, not a <c>Symbol</c> subclass, so it
+    /// carries no <c>IsNameBacktickEscaped</c> and an escaped spelling cannot reach here
+    /// (TODO(#1455)). These sites stay camelCased, which is what they already emitted; each
+    /// forwarder declares AND passes the parameter through this same string, so it is internally
+    /// consistent. What it cannot do is carry a <c>`Zed`</c> parameter's spelling across a
+    /// forwarder.
+    /// </remarks>
+    private static string ParameterCSharpName(ParameterSymbol param)
+        => NameCasing.ResolveVariable(param.Name, false);
+
+    /// <summary>
     /// Pre-scans statements to collect all variable names that will be declared.
     /// This is used to avoid generating versioned names (x_1, x_2) that collide
     /// with user-declared variables.
@@ -875,7 +964,7 @@ internal partial class RoslynEmitter : ICodeEmitter
                 break;
 
             case VariableDeclaration varDecl:
-                var mangledName = NameMangler.ToCamelCase(varDecl.Name);
+                var mangledName = LocalBaseName(varDecl.Name, varDecl.IsNameBacktickEscaped);
                 _sourceVariableNames.Add(mangledName);
                 break;
 
@@ -912,7 +1001,7 @@ internal partial class RoslynEmitter : ICodeEmitter
                 {
                     if (handler.Name != null)
                     {
-                        var handlerMangledName = NameMangler.ToCamelCase(handler.Name);
+                        var handlerMangledName = LocalBaseName(handler.Name, handler.IsNameBacktickEscaped);
                         _sourceVariableNames.Add(handlerMangledName);
                     }
                     CollectSourceVariableNames(handler.Body);
@@ -948,7 +1037,7 @@ internal partial class RoslynEmitter : ICodeEmitter
         switch (expr)
         {
             case Identifier id:
-                var mangledName = NameMangler.ToCamelCase(id.Name);
+                var mangledName = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
                 _sourceVariableNames.Add(mangledName);
                 break;
 
@@ -960,7 +1049,7 @@ internal partial class RoslynEmitter : ICodeEmitter
                 break;
 
             case WalrusExpression walrus:
-                var walrusMangledName = NameMangler.ToCamelCase(walrus.Target);
+                var walrusMangledName = LocalBaseName(walrus.Target, walrus.IsNameBacktickEscaped);
                 _sourceVariableNames.Add(walrusMangledName);
                 CollectVariableNamesFromExpression(walrus.Value);
                 break;
@@ -1026,7 +1115,7 @@ internal partial class RoslynEmitter : ICodeEmitter
         switch (pattern)
         {
             case BindingPattern binding:
-                var mangledName = NameMangler.ToCamelCase(binding.Name.Name);
+                var mangledName = LocalBaseName(binding.Name.Name, binding.Name.IsNameBacktickEscaped);
                 _sourceVariableNames.Add(mangledName);
                 break;
 
@@ -1059,7 +1148,8 @@ internal partial class RoslynEmitter : ICodeEmitter
                 break;
 
             case TypePattern typePattern when typePattern.BindingName != null:
-                var typeBindingName = NameMangler.ToCamelCase(typePattern.BindingName.Name);
+                var typeBindingName = LocalBaseName(
+                    typePattern.BindingName.Name, typePattern.BindingName.IsNameBacktickEscaped);
                 _sourceVariableNames.Add(typeBindingName);
                 break;
 
@@ -1142,7 +1232,7 @@ internal partial class RoslynEmitter : ICodeEmitter
         // Variables need special handling due to local state tracking
         if (symbol.Kind == Semantic.SymbolKind.Variable)
         {
-            return GetMangledVariableName(symbol.Name, isNewDeclaration);
+            return GetMangledVariableName(symbol.Name, isNewDeclaration, symbol.IsNameBacktickEscaped);
         }
 
         // For non-variable symbols, delegate to NameResolutionService

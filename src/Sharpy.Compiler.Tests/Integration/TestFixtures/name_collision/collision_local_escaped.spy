@@ -1,7 +1,7 @@
-# A backtick-escaped LOCAL is still mangled at emission (#1357), so it collides with its
-# case-differing twin exactly as a bare name would — `zed` and `Zed` both emit `zed`, and the
-# generated C# would be CS0128. The refusal says so rather than pointing at a remedy that does not
-# work for locals; for TYPES the escape does preserve the spelling.
+# A backtick-escaped LOCAL is emitted VERBATIM (#1357), so it does not collide with its
+# case-differing twin: `zed` emits `zed` and `` `Zed` `` emits `Zed`, which are two distinct C#
+# locals. The escape means the same thing in every declaration space — it preserves the spelling —
+# and it is the remedy SPY0522's local-arm message points at for the bare pair (collision_local).
 
 def main() -> None:
     zed: int = 6
