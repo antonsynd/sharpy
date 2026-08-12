@@ -1,3 +1,4 @@
-# Same two-position shape as the module-variable cell, one line further down.
-Name collision: 'h' and 'H' (line 5) both compile to 'H' @7:0
+# Same two-position shape as the module-variable cell, one line further down. The column lands on
+# the name (`h` at column 7), past the `const ` keyword — not on the start of the statement.
+Name collision: 'h' and 'H' (line 5) both compile to 'H' @7:7
 Rename one, or backtick-escape the name you need to keep.

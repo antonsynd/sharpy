@@ -356,4 +356,78 @@ public class DiagnosticPublisherTests
 
         result.Select(d => d.Message).Should().Equal("error one", "error two");
     }
+
+    [Fact]
+    public void ConvertDiagnostic_PublishesRelatedLocationsAsRelatedInformation()
+    {
+        // SPY0522 names TWO declarations. The second is the diagnostic's own position; the first
+        // used to exist only as "(line N)" prose inside the message, which an editor cannot
+        // navigate to. It now also rides along structurally (#1388).
+        var diag = new CompilerDiagnostic(
+            Message: "Name collision: 'h' and 'H' (line 4) both compile to 'H'.",
+            Severity: CompilerDiagnosticSeverity.Error,
+            Line: 6,
+            Column: 1,
+            FilePath: "/tmp/grid.spy",
+            Code: "SPY0522",
+            RelatedLocations: new[]
+            {
+                new DiagnosticRelatedLocation("'H' is first declared here", 4, 10, "/tmp/grid.spy")
+            });
+
+        var result = DiagnosticPublisher.ConvertDiagnostic(diag, null);
+
+        result.RelatedInformation.Should().NotBeNull();
+        var related = result.RelatedInformation!.Single();
+        related.Message.Should().Be("'H' is first declared here");
+        related.Location.Range.Start.Line.Should().Be(3, "LSP positions are zero-based");
+        related.Location.Range.Start.Character.Should().Be(9, "so is the character offset");
+        related.Location.Uri.GetFileSystemPath().Should().Be("/tmp/grid.spy");
+    }
+
+    [Fact]
+    public void ConvertDiagnostic_NoRelatedLocations_LeavesRelatedInformationNull()
+    {
+        // The overwhelming majority of diagnostics name one position. Publishing an empty
+        // container instead of null would put a stray "0 related" affordance on every one.
+        var diag = new CompilerDiagnostic(
+            Message: "unexpected token",
+            Severity: CompilerDiagnosticSeverity.Error,
+            Line: 1,
+            Column: 1,
+            Code: "SPY0100");
+
+        var result = DiagnosticPublisher.ConvertDiagnostic(diag, null);
+
+        result.RelatedInformation.Should().BeNull();
+    }
+
+    [Fact]
+    public void ConvertDiagnostic_GeneratedOriginAndRelatedLocations_PublishesBoth()
+    {
+        // The generated-origin branch owned RelatedInformation outright before #1388; both
+        // sources must now coexist rather than one clobbering the other.
+        var diag = new CompilerDiagnostic(
+            Message: "Name collision",
+            Severity: CompilerDiagnosticSeverity.Error,
+            Line: 6,
+            Column: 1,
+            FilePath: "/tmp/grid.spy",
+            Code: "SPY0522",
+            RelatedLocations: new[]
+            {
+                new DiagnosticRelatedLocation("'H' is first declared here", 4, 10, "/tmp/grid.spy")
+            });
+        var origin = new CompilerDiagnostic(
+            Message: "origin",
+            Severity: CompilerDiagnosticSeverity.Error,
+            Line: 2,
+            Column: 3,
+            FilePath: "Foo:Bar");
+
+        var result = DiagnosticPublisher.ConvertDiagnostic(diag, null, origin);
+
+        result.RelatedInformation!.Select(r => r.Message).Should().Equal(
+            "In generated source Foo:Bar", "'H' is first declared here");
+    }
 }

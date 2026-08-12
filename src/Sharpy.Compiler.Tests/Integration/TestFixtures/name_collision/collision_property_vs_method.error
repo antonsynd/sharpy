@@ -1,2 +1,2 @@
-Name collision: 'count' and 'Count' (line 6) both compile to 'Count'
+Name collision: 'count' and 'Count' (line 6) both compile to 'Count' @4:14
 Rename one, or backtick-escape the name you need to keep.

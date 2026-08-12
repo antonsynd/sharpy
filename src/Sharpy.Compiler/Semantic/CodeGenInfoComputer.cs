@@ -388,6 +388,57 @@ internal class CodeGenInfoComputer
     };
 
     /// <summary>
+    /// Where a declaration is, for a diagnostic to point at. A collision names two declarations and
+    /// both positions are real source locations; carrying only a line (all these walks tracked
+    /// before #1388) forced every consumer to render column 0.
+    /// </summary>
+    private readonly record struct DeclarationPosition(int Line, int Column)
+    {
+        /// <summary>
+        /// Prefers the NAME token's position over the statement's, so the caret lands on the
+        /// identifier the user has to rename rather than on the <c>def</c>/<c>class</c>/
+        /// <c>property</c> keyword in front of it. Falls back to the statement when the name
+        /// position is not tracked, and to nothing when neither is.
+        /// </summary>
+        public static DeclarationPosition? From(int nameLine, int nameColumn, int stmtLine, int stmtColumn)
+            => nameLine > 0 ? new DeclarationPosition(nameLine, nameColumn)
+                : stmtLine > 0 ? new DeclarationPosition(stmtLine, stmtColumn)
+                : null;
+
+        /// <summary>For nodes that carry a single position (type parameters, enum members).</summary>
+        public static DeclarationPosition? From(int line, int column)
+            => line > 0 ? new DeclarationPosition(line, column) : null;
+    }
+
+    /// <summary>
+    /// The <c>(line N)</c> the collision messages append for the FIRST of the two declarations.
+    ///
+    /// <para>Kept alongside the structured related location rather than replaced by it: an editor
+    /// reads <see cref="CompilerDiagnostic.RelatedLocations"/>, but <c>DiagnosticRenderer</c> and
+    /// the <c>.error</c> fixture sidecars have no channel for a second position, and dropping the
+    /// prose would lose it for them entirely (#1388).</para>
+    /// </summary>
+    private static string FirstDeclarationProse(DeclarationPosition? position)
+        => position.HasValue ? $" (line {position.Value.Line})" : "";
+
+    /// <summary>
+    /// The structured form of the same fact — what an editor turns into a clickable
+    /// "first declared here" beside the primary squiggle.
+    /// </summary>
+    private IReadOnlyList<DiagnosticRelatedLocation>? FirstDeclarationRelatedLocations(
+        string originalName, DeclarationPosition? position)
+        => position.HasValue
+            ? new[]
+            {
+                new DiagnosticRelatedLocation(
+                    $"'{originalName}' is first declared here",
+                    position.Value.Line,
+                    position.Value.Column,
+                    _sourceFilePath)
+            }
+            : null;
+
+    /// <summary>
     /// Every member a type contributes to the generated C# type's single member namespace, paired
     /// with the C# name it compiles to. One enumeration rather than a walk per kind: a member kind
     /// missing here is a CS0102 the user only ever sees as SPY0908, which is exactly how properties,
@@ -457,19 +508,21 @@ internal class CodeGenInfoComputer
     /// </summary>
     private void DetectMemberCollisions(TypeSymbol typeSymbol, IEnumerable<Statement> body)
     {
-        var seen = new Dictionary<string, (string originalName, int? line)>(); // CSharpName → (originalName, line)
+        // CSharpName → (originalName, where it was first declared)
+        var seen = new Dictionary<string, (string originalName, DeclarationPosition? position)>();
 
         foreach (var tp in typeSymbol.TypeParameters)
         {
             // Key on the name the emitter writes, not the source spelling: type parameters go out
             // through CSharpKeywords.EscapeIfNeeded (`class` → `@class`), which is the same form a
             // member's CSharpName takes, so a raw key could not match one.
-            seen[CSharpKeywords.EscapeIfNeeded(tp.Name)] = (tp.Name, tp.LineStart > 0 ? tp.LineStart : null);
+            seen[CSharpKeywords.EscapeIfNeeded(tp.Name)] =
+                (tp.Name, DeclarationPosition.From(tp.LineStart, tp.ColumnStart));
         }
 
         foreach (var (originalName, csharpName) in EnumerateMemberNames(typeSymbol, body))
         {
-            var line = FindMemberLine(body, originalName);
+            var position = FindMemberPosition(body, originalName);
 
             if (seen.TryGetValue(csharpName, out var existing))
             {
@@ -479,17 +532,19 @@ internal class CodeGenInfoComputer
                 if (string.Equals(originalName, existing.originalName, StringComparison.Ordinal))
                     continue;
 
-                var firstPos = existing.line.HasValue ? $" (line {existing.line})" : "";
-                _diagnostics.AddError(
-                    $"Name collision: '{originalName}' and '{existing.originalName}'{firstPos} both compile to " +
+                _diagnostics.AddErrorWithRelatedLocations(
+                    $"Name collision: '{originalName}' and '{existing.originalName}'" +
+                    $"{FirstDeclarationProse(existing.position)} both compile to " +
                     $"'{csharpName}'. Rename one, or backtick-escape the name you need to keep.",
-                    line: line,
+                    FirstDeclarationRelatedLocations(existing.originalName, existing.position),
+                    line: position?.Line,
+                    column: position?.Column,
                     code: DiagnosticCodes.CodeGen.MemberNameCollision,
                     phase: CompilerPhase.CodeGeneration);
             }
             else
             {
-                seen[csharpName] = (originalName, line);
+                seen[csharpName] = (originalName, position);
             }
         }
 
@@ -515,12 +570,13 @@ internal class CodeGenInfoComputer
 
                 if (IteratorProtocolReservedNames.Contains(csharpName) && reported.Add(originalName))
                 {
-                    var line = FindMemberLine(body, originalName);
+                    var position = FindMemberPosition(body, originalName);
                     _diagnostics.AddError(
                         $"Name collision: '{originalName}' compiles to '{csharpName}', " +
                         $"which conflicts with a synthesized iterator protocol member. " +
                         $"Rename the member to avoid the collision.",
-                        line: line,
+                        line: position?.Line,
+                        column: position?.Column,
                         code: DiagnosticCodes.CodeGen.MemberNameCollision,
                         phase: CompilerPhase.CodeGeneration);
                 }
@@ -549,12 +605,13 @@ internal class CodeGenInfoComputer
     /// </summary>
     private void DetectEnumMemberCollisions(EnumDef enumDef, bool isStringEnum)
     {
-        var seen = new Dictionary<string, (string originalName, int? line)>(); // CSharpName → (originalName, line)
+        // CSharpName → (originalName, where it was first declared)
+        var seen = new Dictionary<string, (string originalName, DeclarationPosition? position)>();
 
         foreach (var member in enumDef.Members)
         {
             var csharpName = EnumMemberCSharpName(member.Name, isStringEnum);
-            var line = member.LineStart > 0 ? member.LineStart : (int?)null;
+            var position = DeclarationPosition.From(member.LineStart, member.ColumnStart);
 
             if (seen.TryGetValue(csharpName, out var existing))
             {
@@ -563,19 +620,20 @@ internal class CodeGenInfoComputer
                 if (string.Equals(member.Name, existing.originalName, StringComparison.Ordinal))
                     continue;
 
-                var firstPos = existing.line.HasValue ? $" (line {existing.line})" : "";
                 // No backtick remedy here: EnumMember carries no escape flag, so renaming is the
                 // only fix available to the user.
-                _diagnostics.AddError(
-                    $"Name collision: enum members '{member.Name}' and '{existing.originalName}'{firstPos} " +
-                    $"both compile to '{csharpName}'. Rename one.",
-                    line: line,
+                _diagnostics.AddErrorWithRelatedLocations(
+                    $"Name collision: enum members '{member.Name}' and '{existing.originalName}'" +
+                    $"{FirstDeclarationProse(existing.position)} both compile to '{csharpName}'. Rename one.",
+                    FirstDeclarationRelatedLocations(existing.originalName, existing.position),
+                    line: position?.Line,
+                    column: position?.Column,
                     code: DiagnosticCodes.CodeGen.MemberNameCollision,
                     phase: CompilerPhase.CodeGeneration);
             }
             else
             {
-                seen[csharpName] = (member.Name, line);
+                seen[csharpName] = (member.Name, position);
             }
         }
     }
@@ -594,17 +652,19 @@ internal class CodeGenInfoComputer
             foreach (var stmt in module.Body)
             {
                 string? symbolName = null;
-                int? stmtLine = null;
+                DeclarationPosition? stmtPos = null;
 
                 switch (stmt)
                 {
                     case FunctionDef funcDef:
                         symbolName = funcDef.Name;
-                        stmtLine = funcDef.LineStart;
+                        stmtPos = DeclarationPosition.From(
+                            funcDef.NameLineStart, funcDef.NameColumnStart, funcDef.LineStart, funcDef.ColumnStart);
                         break;
                     case VariableDeclaration varDecl:
                         symbolName = varDecl.Name;
-                        stmtLine = varDecl.LineStart;
+                        stmtPos = DeclarationPosition.From(
+                            varDecl.NameLineStart, varDecl.NameColumnStart, varDecl.LineStart, varDecl.ColumnStart);
                         break;
                 }
 
@@ -625,49 +685,60 @@ internal class CodeGenInfoComputer
                         $"Function '{symbolName}' compiles to '{info.CSharpName}', which conflicts " +
                         $"with the module class name derived from the filename. Rename the function " +
                         $"to avoid the collision.",
-                        line: stmtLine,
+                        line: stmtPos?.Line,
+                        column: stmtPos?.Column,
                         code: DiagnosticCodes.CodeGen.FunctionModuleClassCollision,
                         phase: CompilerPhase.CodeGeneration);
                 }
             }
         }
 
-        var seen = new Dictionary<string, (string originalName, int? line)>(); // CSharpName → (originalName, line)
+        // CSharpName → (originalName, where it was first declared)
+        var seen = new Dictionary<string, (string originalName, DeclarationPosition? position)>();
 
         foreach (var stmt in module.Body)
         {
             string? symbolName = null;
-            int? stmtLine = null;
+            DeclarationPosition? stmtPos = null;
 
             switch (stmt)
             {
                 case FunctionDef funcDef:
                     symbolName = funcDef.Name;
-                    stmtLine = funcDef.LineStart;
+                    stmtPos = DeclarationPosition.From(
+                        funcDef.NameLineStart, funcDef.NameColumnStart, funcDef.LineStart, funcDef.ColumnStart);
                     break;
                 case VariableDeclaration varDecl:
                     symbolName = varDecl.Name;
-                    stmtLine = varDecl.LineStart;
+                    stmtPos = DeclarationPosition.From(
+                        varDecl.NameLineStart, varDecl.NameColumnStart, varDecl.LineStart, varDecl.ColumnStart);
                     break;
                 case ClassDef classDef:
                     symbolName = classDef.Name;
-                    stmtLine = classDef.LineStart;
+                    stmtPos = DeclarationPosition.From(
+                        classDef.NameLineStart, classDef.NameColumnStart, classDef.LineStart, classDef.ColumnStart);
                     break;
                 case StructDef structDef:
                     symbolName = structDef.Name;
-                    stmtLine = structDef.LineStart;
+                    stmtPos = DeclarationPosition.From(
+                        structDef.NameLineStart, structDef.NameColumnStart, structDef.LineStart, structDef.ColumnStart);
                     break;
                 case InterfaceDef interfaceDef:
                     symbolName = interfaceDef.Name;
-                    stmtLine = interfaceDef.LineStart;
+                    stmtPos = DeclarationPosition.From(
+                        interfaceDef.NameLineStart, interfaceDef.NameColumnStart,
+                        interfaceDef.LineStart, interfaceDef.ColumnStart);
                     break;
                 case EnumDef enumDef:
                     symbolName = enumDef.Name;
-                    stmtLine = enumDef.LineStart;
+                    stmtPos = DeclarationPosition.From(
+                        enumDef.NameLineStart, enumDef.NameColumnStart, enumDef.LineStart, enumDef.ColumnStart);
                     break;
                 case DelegateDef delegateDef:
                     symbolName = delegateDef.Name;
-                    stmtLine = delegateDef.LineStart;
+                    stmtPos = DeclarationPosition.From(
+                        delegateDef.NameLineStart, delegateDef.NameColumnStart,
+                        delegateDef.LineStart, delegateDef.ColumnStart);
                     break;
             }
 
@@ -693,48 +764,55 @@ internal class CodeGenInfoComputer
                 if (symbolName == existing.originalName)
                     continue;
 
-                var firstPos = existing.line.HasValue ? $" (line {existing.line})" : "";
-                _diagnostics.AddError(
-                    $"Name collision: '{symbolName}' and '{existing.originalName}'{firstPos} both compile to " +
+                _diagnostics.AddErrorWithRelatedLocations(
+                    $"Name collision: '{symbolName}' and '{existing.originalName}'" +
+                    $"{FirstDeclarationProse(existing.position)} both compile to " +
                     $"'{csharpName}'. Rename one, or backtick-escape the name you need to keep.",
-                    line: stmtLine,
+                    FirstDeclarationRelatedLocations(existing.originalName, existing.position),
+                    line: stmtPos?.Line,
+                    column: stmtPos?.Column,
                     code: DiagnosticCodes.CodeGen.MemberNameCollision,
                     phase: CompilerPhase.CodeGeneration);
             }
             else
             {
-                seen[csharpName] = (symbolName, stmtLine);
+                seen[csharpName] = (symbolName, stmtPos);
             }
         }
     }
 
     /// <summary>
-    /// Finds the line number for a member declaration in the type body. Covers every kind
+    /// Finds where a member is declared in the type body. Covers every kind
     /// <see cref="EnumerateMemberNames"/> yields — a kind missing here reports the collision with
     /// no position at all.
+    ///
+    /// <para>The column comes from the NAME token, not the statement start, so the caret lands on
+    /// the identifier the user has to rename rather than on the <c>def</c>/<c>property</c> keyword.
+    /// Returning a line alone (which is all this did before #1388) forced every consumer to render
+    /// column 0.</para>
     /// </summary>
-    private static int? FindMemberLine(IEnumerable<Statement> body, string memberName)
+    private static DeclarationPosition? FindMemberPosition(IEnumerable<Statement> body, string memberName)
     {
         foreach (var stmt in body)
         {
             switch (stmt.UnwrapDecorated())
             {
                 case VariableDeclaration v when v.Name == memberName:
-                    return v.LineStart;
+                    return DeclarationPosition.From(v.NameLineStart, v.NameColumnStart, v.LineStart, v.ColumnStart);
                 case FunctionDef f when f.Name == memberName:
-                    return f.LineStart;
+                    return DeclarationPosition.From(f.NameLineStart, f.NameColumnStart, f.LineStart, f.ColumnStart);
                 case PropertyDef p when p.Name == memberName:
-                    return p.LineStart;
+                    return DeclarationPosition.From(p.NameLineStart, p.NameColumnStart, p.LineStart, p.ColumnStart);
                 case EventDef e when e.Name == memberName:
-                    return e.LineStart;
+                    return DeclarationPosition.From(e.NameLineStart, e.NameColumnStart, e.LineStart, e.ColumnStart);
                 case ClassDef c when c.Name == memberName:
-                    return c.LineStart;
+                    return DeclarationPosition.From(c.NameLineStart, c.NameColumnStart, c.LineStart, c.ColumnStart);
                 case StructDef s when s.Name == memberName:
-                    return s.LineStart;
+                    return DeclarationPosition.From(s.NameLineStart, s.NameColumnStart, s.LineStart, s.ColumnStart);
                 case EnumDef en when en.Name == memberName:
-                    return en.LineStart;
+                    return DeclarationPosition.From(en.NameLineStart, en.NameColumnStart, en.LineStart, en.ColumnStart);
                 case InterfaceDef i when i.Name == memberName:
-                    return i.LineStart;
+                    return DeclarationPosition.From(i.NameLineStart, i.NameColumnStart, i.LineStart, i.ColumnStart);
             }
         }
         return null;

@@ -1,6 +1,6 @@
 # #1268's own repro. The pin used to be the bare substring "Name collision", which would have
 # survived the message losing either spelling, the first declaration's line, or the mangled name
-# they share — so it is spelled out here. The reported location is the second declaration;
-# SPY0522 from the module-level collision check carries a line but no column, hence column 0.
-Name collision: 'H' and 'h' (line 1) both compile to 'H' @3:0
+# they share — so it is spelled out here. The reported location is the second declaration's name
+# token (`H` at column 5); it read column 0 until #1388.
+Name collision: 'H' and 'h' (line 1) both compile to 'H' @3:5
 Rename one, or backtick-escape the name you need to keep.

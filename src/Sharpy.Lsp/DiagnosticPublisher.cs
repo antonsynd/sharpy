@@ -129,24 +129,64 @@ internal sealed class DiagnosticPublisher
     {
         var range = PositionConverter.DiagnosticToRange(diag, sourceText);
 
-        Container<DiagnosticRelatedInformation>? relatedInfo = null;
+        // Two sources of related information, both rendered by editors as a clickable "see also"
+        // beside the primary squiggle: the rerouted-from-generated-source origin, and the
+        // diagnostic's own structured related locations (e.g. the FIRST of the two declarations a
+        // name collision refuses, #1388).
+        var related = new List<DiagnosticRelatedInformation>();
+
         if (generatedOrigin != null)
         {
             // Attach the original (synthetic) location as related information so editors
             // can show "Also see: <generated:Foo:Bar>" alongside the rerouted diagnostic.
             var origRange = PositionConverter.DiagnosticToRange(generatedOrigin, sourceText: null);
             var originPath = generatedOrigin.FilePath ?? "<generated>";
-            relatedInfo = new Container<DiagnosticRelatedInformation>(
-                new DiagnosticRelatedInformation
+            related.Add(new DiagnosticRelatedInformation
+            {
+                Location = new Location
+                {
+                    Uri = DocumentUri.From(new Uri($"sharpy-generated:{Uri.EscapeDataString(originPath)}", UriKind.Absolute)),
+                    Range = origRange,
+                },
+                Message = $"In generated source {originPath}",
+            });
+        }
+
+        if (diag.RelatedLocations is { Count: > 0 } relatedLocations)
+        {
+            foreach (var location in relatedLocations)
+            {
+                var path = location.FilePath ?? diag.FilePath;
+                if (string.IsNullOrEmpty(path))
+                    continue;
+
+                // A related location in the file being published shares its SourceText, so a
+                // recorded Span resolves to a real range; one in another file has only line/column.
+                var sameFile = string.Equals(path, diag.FilePath, StringComparison.Ordinal);
+                var locationRange = PositionConverter.DiagnosticToRange(
+                    new CompilerDiagnostic(
+                        location.Message,
+                        diag.Severity,
+                        location.Line,
+                        location.Column,
+                        path,
+                        Span: location.Span),
+                    sameFile ? sourceText : null);
+
+                related.Add(new DiagnosticRelatedInformation
                 {
                     Location = new Location
                     {
-                        Uri = DocumentUri.From(new Uri($"sharpy-generated:{Uri.EscapeDataString(originPath)}", UriKind.Absolute)),
-                        Range = origRange,
+                        Uri = DocumentUri.FromFileSystemPath(path),
+                        Range = locationRange,
                     },
-                    Message = $"In generated source {originPath}",
+                    Message = location.Message,
                 });
+            }
         }
+
+        Container<DiagnosticRelatedInformation>? relatedInfo =
+            related.Count > 0 ? new Container<DiagnosticRelatedInformation>(related) : null;
 
         var lspDiag = new Diagnostic
         {

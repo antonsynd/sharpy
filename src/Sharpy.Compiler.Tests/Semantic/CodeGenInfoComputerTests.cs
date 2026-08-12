@@ -391,6 +391,36 @@ class Foo:
     }
 
     [Fact]
+    public void ComputeForModule_MemberCollision_CarriesBothPositions()
+    {
+        // The member arm's position source returned a line and nothing else until #1388, so the
+        // refusal rendered at column 0 and the FIRST declaration existed only as "(line N)" prose.
+        // Both are pinned here: a real column on the reported declaration, and the other one as a
+        // structured related location an editor can navigate to.
+        var source = "\nclass Foo:\n    foo_bar: int = 1\n    def FooBar(self) -> None:\n        pass\n";
+        var (module, symbolTable, semanticBinding) = ParseAndResolve(source);
+        var diagnostics = new DiagnosticBag();
+        var computer = new CodeGenInfoComputer(symbolTable, semanticBinding, diagnostics);
+
+        computer.ComputeForModule(module);
+
+        var collision = diagnostics.GetErrors()
+            .Single(d => d.Code == DiagnosticCodes.CodeGen.MemberNameCollision);
+
+        // `def FooBar` on line 4; the caret sits on the NAME, not on the `def` keyword at column 5.
+        collision.Line.Should().Be(4);
+        collision.Column.Should().Be(9);
+
+        collision.Message.Should().Contain("(line 3)", "the prose form stays for renderers and .error sidecars");
+
+        collision.RelatedLocations.Should().NotBeNull();
+        var first = collision.RelatedLocations!.Single();
+        first.Message.Should().Contain("foo_bar");
+        first.Line.Should().Be(3);
+        first.Column.Should().Be(5);
+    }
+
+    [Fact]
     public void ComputeForModule_MethodAndFieldSameMangledName_EmitsSPY0522()
     {
         var source = @"

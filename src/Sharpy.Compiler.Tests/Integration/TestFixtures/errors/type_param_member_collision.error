@@ -1,1 +1,4 @@
-Name collision: 't' and 'T' (line 1) both compile to 'T' @2:0
+# The member arm's two positions: the message names the type parameter's line, and the diagnostic
+# points at the member that collides with it — `t` at line 2, column 5. The column read 0 until
+# #1388 widened FindMemberLine into FindMemberPosition.
+Name collision: 't' and 'T' (line 1) both compile to 'T' @2:5

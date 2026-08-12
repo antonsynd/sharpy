@@ -31,6 +31,23 @@ public enum CompilerPhase
 }
 
 /// <summary>
+/// A secondary source position attached to a diagnostic — the "see also" an editor renders beside
+/// the primary squiggle, published as LSP <c>relatedInformation</c>.
+///
+/// <para>Structured rather than folded into the message text: a collision names two declarations,
+/// and a consumer that can navigate to the other one should not have to parse a line number back
+/// out of prose. The prose form stays in the message for renderers and <c>.error</c> sidecars,
+/// which have no channel for a second position (#1388).</para>
+/// </summary>
+public record DiagnosticRelatedLocation(
+    string Message,
+    int? Line = null,
+    int? Column = null,
+    string? FilePath = null,
+    TextSpan? Span = null
+);
+
+/// <summary>
 /// A single diagnostic message with location and severity.
 /// Named CompilerDiagnostic to avoid conflict with Microsoft.CodeAnalysis.Diagnostic.
 /// </summary>
@@ -43,7 +60,8 @@ public record CompilerDiagnostic(
     string? Code = null,
     CompilerPhase Phase = CompilerPhase.Unknown,
     TextSpan? Span = null,
-    IReadOnlyDictionary<string, string>? Data = null
+    IReadOnlyDictionary<string, string>? Data = null,
+    IReadOnlyList<DiagnosticRelatedLocation>? RelatedLocations = null
 )
 {
     public bool IsError => Severity == CompilerDiagnosticSeverity.Error;
@@ -341,6 +359,25 @@ public class DiagnosticBag
         string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
     {
         Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Error, line, column, filePath, code, phase));
+    }
+
+    /// <summary>
+    /// Adds an error that also names one or more secondary positions (see
+    /// <see cref="DiagnosticRelatedLocation"/>) — for example, the first of the two declarations a
+    /// name collision refuses.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not an <c>AddError</c> overload: a second positional parameter of a nullable
+    /// reference type is ambiguous with the existing <c>AddError(string, TextSpan?, ...)</c> at
+    /// every call site that passes its span positionally (CS0121).
+    /// </remarks>
+    public void AddErrorWithRelatedLocations(string message,
+        IReadOnlyList<DiagnosticRelatedLocation>? relatedLocations,
+        int? line = null, int? column = null, string? filePath = null,
+        string? code = null, CompilerPhase phase = CompilerPhase.Unknown)
+    {
+        Add(new CompilerDiagnostic(message, CompilerDiagnosticSeverity.Error, line, column, filePath, code, phase,
+            RelatedLocations: relatedLocations));
     }
 
     public void AddError(string message, TextSpan? span, int? line = null, int? column = null,

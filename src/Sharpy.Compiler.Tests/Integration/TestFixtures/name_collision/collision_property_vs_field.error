@@ -1,2 +1,5 @@
-Name collision: 'count' and 'Count' (line 5) both compile to 'Count'
+# Both positions: the message names the FIRST declaration's line (the field), and the diagnostic
+# points at the SECOND declaration's name token (`count` at 6:14). The first position also rides
+# along structurally as a related location (#1388).
+Name collision: 'count' and 'Count' (line 5) both compile to 'Count' @6:14
 Rename one, or backtick-escape the name you need to keep.

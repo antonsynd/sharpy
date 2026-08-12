@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Diagnostics;
@@ -124,9 +125,19 @@ public class ManglingCollisionGridTests
             Assert.True(collision != null, $"{cellKey}: expected SPY0522, got: {Describe(errors)}");
             Assert.Contains("'h'", collision!.Message, StringComparison.Ordinal);
             Assert.Contains("'H'", collision.Message, StringComparison.Ordinal);
-            // Both positions: the reported line, plus the first declaration's line in the message.
+            // Both positions, in both forms. The message keeps naming the first declaration's line
+            // as prose, for renderers and `.error` sidecars that have no channel for a second
+            // position; the same fact also rides along structurally for editors (#1388).
             Assert.Contains("(line 1)", collision.Message, StringComparison.Ordinal);
             Assert.True(collision.Line.HasValue, $"{cellKey}: SPY0522 carries no line");
+            Assert.True(collision.Column is > 0,
+                $"{cellKey}: SPY0522 carries no column (got {collision.Column?.ToString(CultureInfo.InvariantCulture) ?? "null"})");
+            var related = collision.RelatedLocations;
+            Assert.True(related is { Count: 1 },
+                $"{cellKey}: SPY0522 carries no structured related location for the first declaration");
+            Assert.Equal(1, related![0].Line);
+            Assert.True(related[0].Column is > 0,
+                $"{cellKey}: the related location carries no column");
             return;
         }
 

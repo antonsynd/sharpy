@@ -1,5 +1,6 @@
 # Both spellings, the first declaration's line, and the C# name they share. The reported location
-# is the second declaration; SPY0522 from the module-level collision check carries a line but no
-# column, which is why the sidecar says column 0.
-Name collision: 'h' and 'H' (line 4) both compile to 'H' @6:0
+# is the SECOND declaration, on its name token — `h` at column 1. The column read 0 until #1388,
+# because the module-level collision check tracked a line and nothing else; the first
+# declaration's position now also rides along structurally, as a related location.
+Name collision: 'h' and 'H' (line 4) both compile to 'H' @6:1
 Rename one, or backtick-escape the name you need to keep.
