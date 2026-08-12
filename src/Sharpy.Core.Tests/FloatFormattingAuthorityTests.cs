@@ -101,6 +101,14 @@ public class FloatFormattingAuthorityTests
         // because its hand-rolled append is deleted, and Yaml.cs needs none — it formats nothing
         // itself, it delegates.
         new("YamlFloatFormat.cs", "#1229 — PyYAML's exponent mantissa rule, applied on top of the authority"),
+        // NOT a second float renderer, same shape as YamlFloatFormat above: Complex.Component calls
+        // the authority and then applies the one respect in which CPython's COMPLEX components
+        // differ from its float repr — the trailing ".0" is REMOVED, not appended. Measured against
+        // python3 3.12: repr(4.0) is "4.0" but repr(complex(4,1)) is "(4+1j)", while precision is
+        // otherwise untouched (complex(1,2)/complex(3,-1) is "(0.1+0.7000000000000001j)"). This
+        // matches the guard's regex because that regex looks for the STRING ".0", not for an
+        // append; the direction is opposite to the shape it was calibrated against.
+        new("Complex.cs", "#1362 — CPython's complex components drop the trailing .0, applied on top of the authority"),
     };
 
     private static readonly Exemption[] FormatFloatDeclarationExemptions =
