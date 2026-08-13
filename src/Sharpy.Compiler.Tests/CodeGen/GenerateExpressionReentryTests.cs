@@ -161,11 +161,17 @@ public class GenerateExpressionReentryTests
     /// about re-entry changed — the sweep still reports 0 re-entries — and the fixture is swept by
     /// the file-based harness, which does register the module.</para>
     ///
+    /// <para>Raised to <b>8</b> for <c>builtins_isinstance_qualified_1381</c>, the eighth of the
+    /// same shape: it spells <c>import builtins</c> + <c>builtins.isinstance(...)</c>, the module
+    /// reference this seam does not register. Nothing about re-entry changed — the sweep still
+    /// reports 0 re-entries — and the fixture is swept by the file-based harness plus the
+    /// metamorphic and differential sweeps, which do register the module.</para>
+    ///
     /// <para>Lower this whenever the real number drops; never raise it without saying why in the
     /// same commit. A rise means either a regression or a deliberate scope change, and both are
     /// things a reader must be told rather than left to infer from a silently larger skip list.</para>
     /// </summary>
-    private const int MaxUncompilableFixtures = 7;
+    private const int MaxUncompilableFixtures = 8;
 
     // ----------------------------------------------------------------------------------------- //
 

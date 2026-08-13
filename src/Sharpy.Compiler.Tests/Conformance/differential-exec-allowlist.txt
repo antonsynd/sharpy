@@ -108,4 +108,12 @@ fixture::generics/variadic_args_empty_1292
 fixture::stdlib-tests/stdlib_math
 fixture::stdlib-tests/stdlib_from_math
 
+# Iterator reprs are deliberately address-free (`<map object>` where CPython prints
+# `<map object at 0x...>`) so they can be pinned by tests; range matches CPython exactly and
+# the payload line (`cba`) agrees, so the divergence is ONLY the embedded addresses, which can
+# never match byte-for-byte. Landed with #1354's repr work (c165cb7e0); the fixture was added
+# by the 2026-08-13 second verification round to close that commit's coverage gap.
+# deviations.yaml: iterator-repr-no-address. Permanent.
+fixture::builtins/builtin_iterator_reprs_1354
+
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
