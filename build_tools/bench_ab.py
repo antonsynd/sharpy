@@ -417,6 +417,11 @@ def acquire_round_lock(repo_root: str) -> bool:
     closes that. The lock is released BETWEEN rounds: holding it for a whole multi-round
     orchestration would starve every peer for an hour, which is the same failure from the other
     side.
+
+    KNOWN-UNFIXED (#1508): this hold records only bench_ab's own pid, never the benchmark
+    dotnet child's — ``--acquire-lock`` exits before the wrapper's ``$LOCK_DIR/child`` write.
+    SIGKILL bench_ab mid-arm and the orphaned benchmark keeps its 5-10 GB while the lock reads
+    stale and gets reclaimed — the exact steal 58c82ffa5 closed for the wrapper's own path.
     """
     wrapper = _wrapper_path(repo_root)
     if wrapper is None:
