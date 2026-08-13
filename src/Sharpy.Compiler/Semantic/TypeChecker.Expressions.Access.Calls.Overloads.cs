@@ -1186,6 +1186,17 @@ internal partial class TypeChecker
     /// substitution silently constructs the wrong shape, and #1270's emission bug shows how that
     /// presents — a wrong value, not a type error. SPY0342 stays for those.
     /// </para>
+    /// <para>
+    /// This deliberately does NOT reuse <see cref="GenericTypeInferenceService.UnifyTypes"/>. That
+    /// service is call-site inference: it truncates arity mismatches (<c>Math.Min</c>) and solves
+    /// nested arguments through supertype walks, which is right where a compatibility check
+    /// re-judges the result afterwards. Here the solution IS the result — it constructs the pinned
+    /// type — and generic arguments are invariant, so a supertype-walk solution would pin a
+    /// construction the target does not accept (measured 2026-08-13: <c>class Holder[T](Base[Sub[T]])</c>
+    /// against <c>() -&gt; Base[Inner[int]]</c> where <c>Sub[T](Inner[T])</c> — SPY0342 today, and
+    /// rightly, because <c>Base[Sub[int]]</c> is not a <c>Base[Inner[int]]</c>). The strict local
+    /// unifier is the decision, not an oversight.
+    /// </para>
     /// </remarks>
     private Func<SemanticType, SemanticType>? BaseClauseConstructionSubstitutionOf(
         TypeSymbol typeSymbol, SemanticType returnType)

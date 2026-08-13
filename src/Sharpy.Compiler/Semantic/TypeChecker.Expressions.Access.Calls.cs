@@ -4315,6 +4315,10 @@ internal partial class TypeChecker
                 continue;
 
             var argument = ArgumentNodeAt(call, i);
+            // "Single character" is a single UTF-16 code unit (Value.Length == 1), per Axiom 1's
+            // string model. A non-BMP scalar ("😀", Length == 2) is refused below alongside longer
+            // strings — not as pedantry but because a surrogate pair cannot fit a CLR `char` at
+            // all, so there is no truncation-free conversion Sharpy could emit.
             if (argument is StringLiteral { Value.Length: 1 })
             {
                 _semanticInfo.SetCharMaterialization(argument, CharMaterializationKind.Literal);

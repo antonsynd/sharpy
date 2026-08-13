@@ -1,0 +1,12 @@
+# The non-BMP twin of clr_char_argument_multichar_refused_1402 (#1402). "😀" is one Python
+# character but TWO UTF-16 code units, and a surrogate pair cannot fit a CLR `char` at all — so
+# the single-character rule (Value.Length == 1, Axiom 1's string model) refuses it exactly as it
+# refuses "abc". Pinned so the boundary is a stated decision, not an accident of Length.
+# Measured 2026-08-13: SPY0220 with the truncation wording.
+
+
+from system import Char
+
+
+def main() -> None:
+    print(Char.to_upper("😀"))

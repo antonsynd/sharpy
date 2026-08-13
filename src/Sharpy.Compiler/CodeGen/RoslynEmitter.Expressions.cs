@@ -90,10 +90,17 @@ internal partial class RoslynEmitter
             // a ONE-character string literal (#1402), so the conversion is a re-spelling of a value
             // already in hand: `"a"` -> `'a'`. Nothing is decided here — a literal of any other
             // length, and every non-literal, is refused at the call and never carries this fact, so
-            // the guard below is a shape assertion rather than a second decision.
-            return (value as LiteralExpressionSyntax)?.Token.ValueText is { Length: 1 } text
-                ? LiteralExpression(SyntaxKind.CharacterLiteralExpression, Literal(text[0]))
-                : value;
+            // the guard below is a shape assertion rather than a second decision. Asserting loudly:
+            // passing `value` through unconverted would hand Roslyn a string for a char slot, i.e.
+            // CS1503 behind SPY0908 — the exact shape this fact exists to prevent.
+            if ((value as LiteralExpressionSyntax)?.Token.ValueText is { Length: 1 } text)
+                return LiteralExpression(SyntaxKind.CharacterLiteralExpression, Literal(text[0]));
+
+            throw new InvalidOperationException(
+                "CharMaterializationKind.Literal on a node that is not a one-character string "
+                + "literal — the #1402 call-seam gate only records this fact for "
+                + "StringLiteral { Value.Length: 1 }, so semantic analysis and emission disagree "
+                + "about this node's shape");
         }
 
         if (kind == CharMaterializationKind.Sequence)
