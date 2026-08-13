@@ -79,26 +79,44 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestConstructorInvalidZoneThrowsZoneInfoNotFoundError()
             {
 #line (36, 5) - (39, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.ZoneInfoNotFoundError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (37, 9) - (37, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                     new global::Sharpy.ZoneInfo("Invalid/Zone");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.ZoneInfoNotFoundError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ZoneInfoNotFoundError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestConstructorInvalidZoneCaptureExposesException()
             {
 #line (42, 5) - (44, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                var exc = Xunit.Assert.Throws<global::Sharpy.ZoneInfoNotFoundError>((global::System.Action)(() =>
+                global::Sharpy.ZoneInfoNotFoundError exc = null!;
 #line hidden
+                bool __raised_1 = false;
+                try
                 {
 #line (43, 9) - (43, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                     new global::Sharpy.ZoneInfo("Invalid/Zone");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.ZoneInfoNotFoundError __caught_2)
+                {
+                    __raised_1 = true;
+                    exc = __caught_2;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ZoneInfoNotFoundError to be raised, but no exception was raised");
 #line (44, 5) - (44, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 Xunit.Assert.NotNull(exc);
 #line (45, 5) - (45, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
@@ -110,13 +128,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestConstructorEmptyKeyThrowsZoneInfoNotFoundError()
             {
 #line (49, 5) - (52, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.ZoneInfoNotFoundError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (50, 9) - (50, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                     new global::Sharpy.ZoneInfo("");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.ZoneInfoNotFoundError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ZoneInfoNotFoundError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

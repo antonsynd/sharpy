@@ -75,13 +75,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestUuidParseFromStringInvalidThrowsValueError()
             {
 #line (29, 5) - (32, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/uuid/uuid_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (30, 9) - (30, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/uuid/uuid_module_tests.spy"
                     new global::Sharpy.UUID("not-a-uuid");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

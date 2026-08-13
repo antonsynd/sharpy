@@ -457,26 +457,42 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDumpsInfinityWithAllowNanFalseThrowsValueError()
             {
 #line (182, 5) - (185, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (183, 9) - (183, 45) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Dumps(math.Inf, allowNan: false);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestDumpsNanWithAllowNanFalseThrowsValueError()
             {
 #line (187, 5) - (190, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (188, 9) - (188, 45) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Dumps(math.Nan, allowNan: false);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -521,13 +537,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDumpsNonSerializableTypeThrowsTypeError()
             {
 #line (210, 5) - (215, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (211, 9) - (211, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Dumps(new Unserializable());
 #line hidden
-                }));
+                }
+                catch (TypeError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected TypeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -952,117 +976,191 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsEmptyStringThrowsJsonDecodeError()
             {
 #line (415, 5) - (418, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (416, 9) - (416, 23) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.JSONDecodeError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected JSONDecodeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestLoadsInvalidJsonThrowsJsonDecodeError()
             {
 #line (420, 5) - (423, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (421, 9) - (421, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("invalid");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.JSONDecodeError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected JSONDecodeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestLoadsTrailingCommaInObjectThrowsJsonDecodeError()
             {
 #line (425, 5) - (428, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (426, 9) - (426, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("{\"a\": 1,}");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.JSONDecodeError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected JSONDecodeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestLoadsTrailingCommaInArrayThrowsJsonDecodeError()
             {
 #line (430, 5) - (433, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (431, 9) - (431, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("[1, 2,]");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.JSONDecodeError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected JSONDecodeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestLoadsExtraDataThrowsJsonDecodeError()
             {
 #line (435, 5) - (438, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (436, 9) - (436, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("1 2");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.JSONDecodeError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected JSONDecodeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestLoadsUnclosedStringThrowsJsonDecodeError()
             {
 #line (440, 5) - (443, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
+                bool __raised_8 = false;
 #line hidden
+                try
                 {
 #line (441, 9) - (441, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("\"unclosed");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.JSONDecodeError)
+                {
+                    __raised_8 = true;
+                }
+
+                if (!__raised_8)
+                    throw new global::Sharpy.AssertionError("Expected JSONDecodeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestLoadsUnclosedObjectThrowsJsonDecodeError()
             {
 #line (445, 5) - (448, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
+                bool __raised_9 = false;
 #line hidden
+                try
                 {
 #line (446, 9) - (446, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("{\"a\": 1");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.JSONDecodeError)
+                {
+                    __raised_9 = true;
+                }
+
+                if (!__raised_9)
+                    throw new global::Sharpy.AssertionError("Expected JSONDecodeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestLoadsUnclosedArrayThrowsJsonDecodeError()
             {
 #line (450, 5) - (453, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
+                bool __raised_10 = false;
 #line hidden
+                try
                 {
 #line (451, 9) - (451, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("[1, 2");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.JSONDecodeError)
+                {
+                    __raised_10 = true;
+                }
+
+                if (!__raised_10)
+                    throw new global::Sharpy.AssertionError("Expected JSONDecodeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestJsonDecodeErrorIsValueError()
             {
 #line (455, 5) - (457, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                var ex = Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
+                global::Sharpy.JSONDecodeError ex = null!;
 #line hidden
+                bool __raised_11 = false;
+                try
                 {
 #line (456, 9) - (456, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("invalid");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.JSONDecodeError __caught_12)
+                {
+                    __raised_11 = true;
+                    ex = __caught_12;
+                }
+
+                if (!__raised_11)
+                    throw new global::Sharpy.AssertionError("Expected JSONDecodeError to be raised, but no exception was raised");
 #line (457, 5) - (457, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<global::Sharpy.ValueError>(ex);
 #line hidden
@@ -1072,13 +1170,23 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestJsonDecodeErrorHasPositionInfo()
             {
 #line (461, 5) - (463, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                var ex = Xunit.Assert.Throws<global::Sharpy.JSONDecodeError>((global::System.Action)(() =>
+                global::Sharpy.JSONDecodeError ex = null!;
 #line hidden
+                bool __raised_13 = false;
+                try
                 {
 #line (462, 9) - (462, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Loads("invalid");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.JSONDecodeError __caught_14)
+                {
+                    __raised_13 = true;
+                    ex = __caught_14;
+                }
+
+                if (!__raised_13)
+                    throw new global::Sharpy.AssertionError("Expected JSONDecodeError to be raised, but no exception was raised");
 #line (463, 5) - (463, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 Xunit.Assert.Equal("invalid", ex.Doc);
 #line (464, 5) - (464, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
@@ -1872,13 +1980,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (774, 5) - (774, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var stamp = new Stamp();
 #line (775, 5) - (778, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
+                bool __raised_15 = false;
 #line hidden
+                try
                 {
 #line (776, 9) - (776, 53) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Dumps(stamp, @default: IdentityCallback!);
 #line hidden
-                }));
+                }
+                catch (TypeError)
+                {
+                    __raised_15 = true;
+                }
+
+                if (!__raised_15)
+                    throw new global::Sharpy.AssertionError("Expected TypeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -1887,13 +2003,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (780, 5) - (780, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                 var stamp = new Stamp();
 #line (781, 5) - (784, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
-                Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
+                bool __raised_16 = false;
 #line hidden
+                try
                 {
 #line (782, 9) - (782, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_module_tests.spy"
                     json.Dumps(stamp);
 #line hidden
-                }));
+                }
+                catch (TypeError)
+                {
+                    __raised_16 = true;
+                }
+
+                if (!__raised_16)
+                    throw new global::Sharpy.AssertionError("Expected TypeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

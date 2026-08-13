@@ -248,13 +248,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                     2
                 };
 #line (119, 5) - (122, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (120, 9) - (120, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                     random.Sample(population, 5);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -267,13 +275,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                     1
                 };
 #line (125, 5) - (128, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (126, 9) - (126, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                     random.Sample(population, -1);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

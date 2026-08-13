@@ -122,13 +122,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestZerosNegativeDimensionThrows()
             {
 #line (69, 5) - (74, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
-                Xunit.Assert.Throws<ArgumentException>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (70, 9) - (70, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
                     np.Zeros(-1);
 #line hidden
-                }));
+                }
+                catch (ArgumentException)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -207,13 +215,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestEyeNegativeThrows()
             {
 #line (116, 5) - (121, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
-                Xunit.Assert.Throws<ArgumentException>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (117, 9) - (117, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
                     np.Eye(-1);
 #line hidden
-                }));
+                }
+                catch (ArgumentException)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -266,13 +282,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestArangeZeroStepThrows()
             {
 #line (146, 5) - (149, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
-                Xunit.Assert.Throws<ArgumentException>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (147, 9) - (147, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
                     np.Arange(0.0d, 5.0d, 0.0d);
 #line hidden
-                }));
+                }
+                catch (ArgumentException)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -345,13 +369,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLinspaceNegativeNumThrows()
             {
 #line (186, 5) - (191, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
-                Xunit.Assert.Throws<ArgumentException>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (187, 9) - (187, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
                     np.Linspace(0.0d, 1.0d, -1);
 #line hidden
-                }));
+                }
+                catch (ArgumentException)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

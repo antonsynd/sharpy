@@ -436,13 +436,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (229, 5) - (235, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
-                Xunit.Assert.Throws<FileNotFoundError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (230, 9) - (230, 54) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                     new global::Sharpy.Path(tmpPath + "/nope.txt").Unlink();
 #line hidden
-                }));
+                }
+                catch (FileNotFoundError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected FileNotFoundError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -520,13 +528,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (276, 5) - (282, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
-                Xunit.Assert.Throws<FileNotFoundError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (277, 9) - (277, 82) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                     new global::Sharpy.Path(tmpPath + "/nonexistent.txt").Rename(tmpPath + "/dst.txt");
 #line hidden
-                }));
+                }
+                catch (FileNotFoundError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected FileNotFoundError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -613,13 +629,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRelativeToThrowsWhenNotRelative()
             {
 #line (320, 5) - (324, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (321, 9) - (321, 73) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                     new global::Sharpy.Path("/completely/different").RelativeTo("/other/base");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -794,13 +818,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (425, 5) - (431, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
-                Xunit.Assert.Throws<FileExistsError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (426, 9) - (426, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                     new global::Sharpy.Path(path).Touch(false);
 #line hidden
-                }));
+                }
+                catch (FileExistsError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected FileExistsError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -845,13 +877,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (450, 5) - (456, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
-                Xunit.Assert.Throws<FileNotFoundError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (451, 9) - (451, 55) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                     new global::Sharpy.Path(tmpPath + "/nonexistent").Stat();
 #line hidden
-                }));
+                }
+                catch (FileNotFoundError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected FileNotFoundError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -915,10 +955,10 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (480, 5) - (482, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
-                foreach (var __loopVar_3 in new global::Sharpy.Path(tmpPath).Rglob("*.txt"))
+                foreach (var __loopVar_8 in new global::Sharpy.Path(tmpPath).Rglob("*.txt"))
 #line hidden
                 {
-                    var p = __loopVar_3;
+                    var p = __loopVar_8;
 #line (481, 9) - (481, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                     matches.Append(p.Name);
 #line hidden

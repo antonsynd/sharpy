@@ -294,13 +294,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (171, 5) - (171, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 var a = np.Zeros(0);
 #line (172, 5) - (177, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-                Xunit.Assert.Throws<InvalidOperationException>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (173, 9) - (173, 18) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                     np.Min(a);
 #line hidden
-                }));
+                }
+                catch (InvalidOperationException)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected InvalidOperationException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -395,13 +403,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (227, 5) - (227, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 var a = np.Zeros(6).Reshape(2, 3);
 #line (228, 5) - (230, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
-                Xunit.Assert.Throws<ArgumentOutOfRangeException>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (229, 9) - (229, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                     np.Sum(a, 5);
 #line hidden
-                }));
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentOutOfRangeException to be raised, but no exception was raised");
             }
         }
     }

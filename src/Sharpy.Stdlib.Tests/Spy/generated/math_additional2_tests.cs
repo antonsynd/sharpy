@@ -567,26 +567,42 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestFactorialNegativeThrowsValueError()
             {
 #line (299, 5) - (302, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (300, 9) - (300, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                     math.Factorial(-1);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestFactorialTooLargeThrowsOverflowError()
             {
 #line (304, 5) - (309, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
-                Xunit.Assert.Throws<OverflowError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (305, 9) - (305, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                     math.Factorial(21);
 #line hidden
-                }));
+                }
+                catch (OverflowError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected OverflowError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

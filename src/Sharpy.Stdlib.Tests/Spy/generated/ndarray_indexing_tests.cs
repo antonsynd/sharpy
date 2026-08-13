@@ -57,13 +57,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (35, 5) - (35, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
 #line (36, 5) - (39, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (37, 9) - (37, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
                     var _ = arr[3];
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -72,13 +80,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (41, 5) - (41, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
 #line (42, 5) - (47, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (43, 9) - (43, 20) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
                     var _ = arr[-4];
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -115,13 +131,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (66, 5) - (66, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d }).Reshape(2, 2);
 #line (67, 5) - (70, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (68, 9) - (68, 22) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
                     var _ = arr[2, 0];
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -130,13 +154,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (72, 5) - (72, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d }).Reshape(2, 2);
 #line (73, 5) - (78, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (74, 9) - (74, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_indexing_tests.spy"
                     var _ = arr[1];
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

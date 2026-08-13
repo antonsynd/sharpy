@@ -83,13 +83,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (35, 5) - (35, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 parser.AddArgument("filename");
 #line (36, 5) - (41, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<ArgumentError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (37, 9) - (37, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     parser.ParseArgs(new Sharpy.List<string>() { });
 #line hidden
-                }));
+                }
+                catch (ArgumentError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -158,13 +166,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (73, 5) - (73, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 parser.AddOptionalArgument("--name", required: true);
 #line (74, 5) - (79, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<ArgumentError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (75, 9) - (75, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     parser.ParseArgs(new Sharpy.List<string>() { });
 #line hidden
-                }));
+                }
+                catch (ArgumentError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -284,13 +300,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (133, 5) - (133, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 parser.AddOptionalArgument("--level", choices: choices);
 #line (134, 5) - (139, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<ArgumentError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (135, 9) - (135, 48) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     parser.ParseArgs(new Sharpy.List<string>() { "--level", "error" });
 #line hidden
-                }));
+                }
+                catch (ArgumentError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -333,13 +357,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (158, 5) - (158, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 parser.AddArgument("files", nargs: "+");
 #line (159, 5) - (162, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<ArgumentError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (160, 9) - (160, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     parser.ParseArgs(new Sharpy.List<string>() { });
 #line hidden
-                }));
+                }
+                catch (ArgumentError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -386,13 +418,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (185, 5) - (185, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (186, 5) - (191, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<ArgumentError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (187, 9) - (187, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     parser.ParseArgs(new Sharpy.List<string>() { "--unknown" });
 #line hidden
-                }));
+                }
+                catch (ArgumentError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -401,13 +441,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (193, 5) - (193, 93) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(description: "A test program");
 #line (194, 5) - (197, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<SystemExit>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (195, 9) - (195, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     parser.ParseArgs(new Sharpy.List<string>() { "--help" });
 #line hidden
-                }));
+                }
+                catch (SystemExit)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected SystemExit to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -500,13 +548,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (243, 5) - (243, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 global::Sharpy.Namespace ns = parser.ParseArgs(new Sharpy.List<string>() { });
 #line (244, 5) - (247, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<AttributeError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (245, 9) - (245, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     var _ = ns["missing"];
 #line hidden
-                }));
+                }
+                catch (AttributeError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected AttributeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -569,13 +625,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (280, 5) - (280, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 parser.AddArgument("count", type: "int");
 #line (281, 5) - (284, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<ArgumentError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (282, 9) - (282, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     parser.ParseArgs(new Sharpy.List<string>() { "abc" });
 #line hidden
-                }));
+                }
+                catch (ArgumentError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -586,13 +650,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (287, 5) - (287, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 parser.AddArgument("value", type: "float");
 #line (288, 5) - (293, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<ArgumentError>((global::System.Action)(() =>
+                bool __raised_8 = false;
 #line hidden
+                try
                 {
 #line (289, 9) - (289, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     parser.ParseArgs(new Sharpy.List<string>() { "abc" });
 #line hidden
-                }));
+                }
+                catch (ArgumentError)
+                {
+                    __raised_8 = true;
+                }
+
+                if (!__raised_8)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -655,13 +727,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (322, 5) - (322, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 parser.AddSubparsers();
 #line (323, 5) - (328, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<ArgumentError>((global::System.Action)(() =>
+                bool __raised_9 = false;
 #line hidden
+                try
                 {
 #line (324, 9) - (324, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     parser.AddSubparsers();
 #line hidden
-                }));
+                }
+                catch (ArgumentError)
+                {
+                    __raised_9 = true;
+                }
+
+                if (!__raised_9)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -736,13 +816,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (365, 5) - (365, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 group.AddOptionalArgument("--quiet", action: "store_true");
 #line (366, 5) - (369, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<ArgumentError>((global::System.Action)(() =>
+                bool __raised_10 = false;
 #line hidden
+                try
                 {
 #line (367, 9) - (367, 52) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     parser.ParseArgs(new Sharpy.List<string>() { "--verbose", "--quiet" });
 #line hidden
-                }));
+                }
+                catch (ArgumentError)
+                {
+                    __raised_10 = true;
+                }
+
+                if (!__raised_10)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -757,13 +845,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (374, 5) - (374, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                 group.AddOptionalArgument("--quiet", action: "store_true");
 #line (375, 5) - (377, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
-                Xunit.Assert.Throws<ArgumentError>((global::System.Action)(() =>
+                bool __raised_11 = false;
 #line hidden
+                try
                 {
 #line (376, 9) - (376, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_tests.spy"
                     parser.ParseArgs(new Sharpy.List<string>() { });
 #line hidden
-                }));
+                }
+                catch (ArgumentError)
+                {
+                    __raised_11 = true;
+                }
+
+                if (!__raised_11)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentError to be raised, but no exception was raised");
             }
         }
     }

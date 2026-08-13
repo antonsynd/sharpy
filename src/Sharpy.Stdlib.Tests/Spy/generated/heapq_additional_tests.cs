@@ -273,13 +273,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (88, 5) - (88, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                 heapq.Heappop(h);
 #line (89, 5) - (91, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (90, 9) - (90, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                     heapq.Heappop(h);
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
         }
     }

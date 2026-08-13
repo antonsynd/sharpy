@@ -155,13 +155,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (67, 5) - (73, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
-                Xunit.Assert.Throws<OSError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (68, 9) - (68, 68) 20 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                     shutil.Copy2(tmpPath + "/nope.txt", tmpPath + "/dst.txt");
 #line hidden
-                }));
+                }
+                catch (OSError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected OSError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

@@ -280,13 +280,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                     1
                 };
 #line (104, 5) - (107, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (105, 9) - (105, 48) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                     new global::Sharpy.List<Sharpy.List<int>>(itertools.Combinations(items, -1));
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

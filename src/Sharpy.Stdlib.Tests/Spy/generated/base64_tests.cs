@@ -83,13 +83,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (32, 5) - (32, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
                 Sharpy.Bytes inputData = new Sharpy.Bytes(new byte[] { 110, 98, 115, 119, 121, 51, 100, 112 });
 #line (33, 5) - (36, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (34, 9) - (34, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
                     base64.B32decode(inputData);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -120,13 +128,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (49, 5) - (49, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
                 Sharpy.Bytes inputData = new Sharpy.Bytes(new byte[] { 100, 101, 97, 100 });
 #line (50, 5) - (53, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (51, 9) - (51, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
                     base64.B16decode(inputData);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

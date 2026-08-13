@@ -73,13 +73,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestFromValueUnknownCodeThrowsValueError()
             {
 #line (30, 5) - (33, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (31, 9) - (31, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
                     global::Sharpy.HTTPStatus.FromValue(999);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -174,13 +182,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestHttpConnectionEmptyHostThrowsInvalidUrl()
             {
 #line (86, 5) - (89, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.InvalidURL>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (87, 9) - (87, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
                     new global::Sharpy.HTTPConnection("");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.InvalidURL)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected InvalidURL to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -189,13 +205,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (91, 5) - (91, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
                 global::Sharpy.HTTPConnection conn = new global::Sharpy.HTTPConnection("example.com");
 #line (92, 5) - (100, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.NotConnected>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (93, 9) - (93, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
                     conn.Getresponse();
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.NotConnected)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected NotConnected to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

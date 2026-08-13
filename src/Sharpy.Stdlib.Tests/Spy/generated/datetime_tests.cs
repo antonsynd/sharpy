@@ -97,13 +97,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDateInvalidDateThrowsArgumentOutOfRange()
             {
 #line (66, 5) - (71, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
-                Xunit.Assert.Throws<ArgumentOutOfRangeException>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (67, 9) - (67, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
                     new global::Sharpy.Date(2024, 13, 1);
 #line hidden
-                }));
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentOutOfRangeException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

@@ -117,13 +117,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRandintThrowsWhenHighEqualsLow()
             {
 #line (71, 5) - (76, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (72, 9) - (72, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
                     global::Sharpy.NumpyRandom.Randint(5, 5, (new Sharpy.List<int>() { 4 }).ToArray());
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -146,13 +154,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestNormalThrowsWhenScaleNegative()
             {
 #line (86, 5) - (91, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (87, 9) - (87, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
                     global::Sharpy.NumpyRandom.Normal(0.0d, -1.0d, (new Sharpy.List<int>() { 5 }).ToArray());
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -175,13 +191,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestUniformThrowsWhenHighLessThanLow()
             {
 #line (101, 5) - (106, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (102, 9) - (102, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
                     global::Sharpy.NumpyRandom.Uniform(5.0d, 0.0d, (new Sharpy.List<int>() { 4 }).ToArray());
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

@@ -91,13 +91,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (55, 5) - (55, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var b = np.Zeros(4).Reshape(2, 2);
 #line (56, 5) - (61, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Throws<ArgumentException>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (57, 9) - (57, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                     np.Concatenate((new Sharpy.List<global::Sharpy.NdArray<double>>() { a, b }).ToArray(), 0);
 #line hidden
-                }));
+                }
+                catch (ArgumentException)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -336,13 +344,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (188, 5) - (188, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d });
 #line (189, 5) - (192, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (190, 9) - (190, 23) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                     np.Split(a, 4);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -351,13 +367,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (194, 5) - (194, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d });
 #line (195, 5) - (198, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (196, 9) - (196, 23) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                     np.Split(a, 0);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -446,13 +470,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (248, 5) - (248, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d });
 #line (249, 5) - (253, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
-                Xunit.Assert.Throws<ArgumentException>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (250, 9) - (250, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                     np.Clip(a, 5.0d, 2.0d);
 #line hidden
-                }));
+                }
+                catch (ArgumentException)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

@@ -262,13 +262,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (131, 5) - (131, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.AddSection("section");
 #line (132, 5) - (135, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.DuplicateSectionError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (133, 9) - (133, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.AddSection("section");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.DuplicateSectionError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected DuplicateSectionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -277,13 +285,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (137, 5) - (137, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
 #line (138, 5) - (141, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (139, 9) - (139, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.AddSection("DEFAULT");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -292,13 +308,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (143, 5) - (143, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
 #line (144, 5) - (147, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.NoSectionError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (145, 9) - (145, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("nonexistent", "key");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.NoSectionError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected NoSectionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -309,13 +333,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (150, 5) - (150, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.AddSection("section");
 #line (151, 5) - (154, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.NoOptionError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (152, 9) - (152, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "missing");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.NoOptionError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected NoOptionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -336,13 +368,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (162, 5) - (162, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
 #line (163, 5) - (166, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.NoSectionError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (164, 9) - (164, 50) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Set("nonexistent", "key", "value");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.NoSectionError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected NoSectionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -419,13 +459,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (202, 5) - (202, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
 #line (203, 5) - (208, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.MissingSectionHeaderError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (204, 9) - (204, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.ReadString("key = value");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.MissingSectionHeaderError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected MissingSectionHeaderError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -460,13 +508,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (223, 5) - (223, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
 #line (224, 5) - (227, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.NoSectionError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (225, 9) - (225, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config["nonexistent"].Keys();
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.NoSectionError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected NoSectionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -543,13 +599,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (265, 5) - (265, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %(b)s\nb = %(a)s");
 #line (268, 5) - (271, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.InterpolationDepthError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (269, 9) - (269, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.InterpolationDepthError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected InterpolationDepthError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -608,13 +672,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (300, 5) - (300, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nval = notint");
 #line (301, 5) - (304, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_8 = false;
 #line hidden
+                try
                 {
 #line (302, 9) - (302, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.GetInt("section", "val");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_8 = true;
+                }
+
+                if (!__raised_8)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -663,13 +735,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (326, 5) - (326, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nval = maybe");
 #line (327, 5) - (332, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_9 = false;
 #line hidden
+                try
                 {
 #line (328, 9) - (328, 45) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.GetBoolean("section", "val");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_9 = true;
+                }
+
+                if (!__raised_9)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -820,13 +900,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (411, 5) - (411, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\npath = %(missing)s");
 #line (414, 5) - (417, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.InterpolationMissingOptionError>((global::System.Action)(() =>
+                bool __raised_10 = false;
 #line hidden
+                try
                 {
 #line (415, 9) - (415, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "path");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.InterpolationMissingOptionError)
+                {
+                    __raised_10 = true;
+                }
+
+                if (!__raised_10)
+                    throw new global::Sharpy.AssertionError("Expected InterpolationMissingOptionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -857,13 +945,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (433, 5) - (433, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %(b)s\nb = %(a)s");
 #line (434, 5) - (437, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.InterpolationDepthError>((global::System.Action)(() =>
+                bool __raised_11 = false;
 #line hidden
+                try
                 {
 #line (435, 9) - (435, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.InterpolationDepthError)
+                {
+                    __raised_11 = true;
+                }
+
+                if (!__raised_11)
+                    throw new global::Sharpy.AssertionError("Expected InterpolationDepthError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -874,13 +970,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (440, 5) - (440, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\npath = %(missing)s");
 #line (441, 5) - (444, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.InterpolationMissingOptionError>((global::System.Action)(() =>
+                bool __raised_12 = false;
 #line hidden
+                try
                 {
 #line (442, 9) - (442, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "path");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.InterpolationMissingOptionError)
+                {
+                    __raised_12 = true;
+                }
+
+                if (!__raised_12)
+                    throw new global::Sharpy.AssertionError("Expected InterpolationMissingOptionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -891,13 +995,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (447, 5) - (447, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %(b");
 #line (448, 5) - (451, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.InterpolationSyntaxError>((global::System.Action)(() =>
+                bool __raised_13 = false;
 #line hidden
+                try
                 {
 #line (449, 9) - (449, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.InterpolationSyntaxError)
+                {
+                    __raised_13 = true;
+                }
+
+                if (!__raised_13)
+                    throw new global::Sharpy.AssertionError("Expected InterpolationSyntaxError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -908,13 +1020,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (454, 5) - (454, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %z");
 #line (455, 5) - (458, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.InterpolationSyntaxError>((global::System.Action)(() =>
+                bool __raised_14 = false;
 #line hidden
+                try
                 {
 #line (456, 9) - (456, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.InterpolationSyntaxError)
+                {
+                    __raised_14 = true;
+                }
+
+                if (!__raised_14)
+                    throw new global::Sharpy.AssertionError("Expected InterpolationSyntaxError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -925,13 +1045,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (461, 5) - (461, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = ${b");
 #line (462, 5) - (465, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.InterpolationSyntaxError>((global::System.Action)(() =>
+                bool __raised_15 = false;
 #line hidden
+                try
                 {
 #line (463, 9) - (463, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.InterpolationSyntaxError)
+                {
+                    __raised_15 = true;
+                }
+
+                if (!__raised_15)
+                    throw new global::Sharpy.AssertionError("Expected InterpolationSyntaxError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -942,13 +1070,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (468, 5) - (468, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = ${x:y:z}");
 #line (469, 5) - (472, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.InterpolationSyntaxError>((global::System.Action)(() =>
+                bool __raised_16 = false;
 #line hidden
+                try
                 {
 #line (470, 9) - (470, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                     config.Get("section", "a");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.InterpolationSyntaxError)
+                {
+                    __raised_16 = true;
+                }
+
+                if (!__raised_16)
+                    throw new global::Sharpy.AssertionError("Expected InterpolationSyntaxError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

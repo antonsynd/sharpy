@@ -75,13 +75,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (48, 5) - (48, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
 #line (49, 5) - (52, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
-                Xunit.Assert.Throws<InvalidOperationException>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (50, 9) - (50, 22) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                     arr.GetRow(0);
 #line hidden
-                }));
+                }
+                catch (InvalidOperationException)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected InvalidOperationException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -90,13 +98,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (54, 5) - (54, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d }).Reshape(2, 2);
 #line (55, 5) - (60, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (56, 9) - (56, 22) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                     arr.GetRow(5);
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -147,13 +163,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (83, 5) - (83, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
 #line (84, 5) - (87, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
-                Xunit.Assert.Throws<InvalidOperationException>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (85, 9) - (85, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                     arr.GetColumn(0);
 #line hidden
-                }));
+                }
+                catch (InvalidOperationException)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected InvalidOperationException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -162,13 +186,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (89, 5) - (89, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d }).Reshape(2, 2);
 #line (90, 5) - (92, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (91, 9) - (91, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                     arr.GetColumn(5);
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
         }
     }

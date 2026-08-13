@@ -131,13 +131,23 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSleepNegativeValueThrowsValueError()
             {
 #line (102, 5) - (104, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                var exc = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                ValueError exc = null!;
 #line hidden
+                bool __raised_0 = false;
+                try
                 {
 #line (103, 9) - (103, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
                     time.Sleep(-1.0d);
 #line hidden
-                }));
+                }
+                catch (ValueError __caught_1)
+                {
+                    __raised_0 = true;
+                    exc = __caught_1;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
 #line (104, 5) - (104, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
                 Xunit.Assert.Contains("sleep length must be non-negative", global::Sharpy.Builtins.Str(exc));
 #line hidden
@@ -151,19 +161,19 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (111, 5) - (111, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
                 Xunit.Assert.True(t.TmYear >= 2024);
 #line (112, 5) - (112, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(1 <= (t.TmMon is var __cmp_0 ? __cmp_0 : __cmp_0) && __cmp_0 <= 12);
+                Xunit.Assert.True(1 <= (t.TmMon is var __cmp_2 ? __cmp_2 : __cmp_2) && __cmp_2 <= 12);
 #line (113, 5) - (113, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(1 <= (t.TmMday is var __cmp_1 ? __cmp_1 : __cmp_1) && __cmp_1 <= 31);
+                Xunit.Assert.True(1 <= (t.TmMday is var __cmp_3 ? __cmp_3 : __cmp_3) && __cmp_3 <= 31);
 #line (114, 5) - (114, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(0 <= (t.TmHour is var __cmp_2 ? __cmp_2 : __cmp_2) && __cmp_2 <= 23);
+                Xunit.Assert.True(0 <= (t.TmHour is var __cmp_4 ? __cmp_4 : __cmp_4) && __cmp_4 <= 23);
 #line (115, 5) - (115, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(0 <= (t.TmMin is var __cmp_3 ? __cmp_3 : __cmp_3) && __cmp_3 <= 59);
+                Xunit.Assert.True(0 <= (t.TmMin is var __cmp_5 ? __cmp_5 : __cmp_5) && __cmp_5 <= 59);
 #line (116, 5) - (116, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(0 <= (t.TmSec is var __cmp_4 ? __cmp_4 : __cmp_4) && __cmp_4 <= 61);
+                Xunit.Assert.True(0 <= (t.TmSec is var __cmp_6 ? __cmp_6 : __cmp_6) && __cmp_6 <= 61);
 #line (117, 5) - (117, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(0 <= (t.TmWday is var __cmp_5 ? __cmp_5 : __cmp_5) && __cmp_5 <= 6);
+                Xunit.Assert.True(0 <= (t.TmWday is var __cmp_7 ? __cmp_7 : __cmp_7) && __cmp_7 <= 6);
 #line (118, 5) - (118, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(1 <= (t.TmYday is var __cmp_6 ? __cmp_6 : __cmp_6) && __cmp_6 <= 366);
+                Xunit.Assert.True(1 <= (t.TmYday is var __cmp_8 ? __cmp_8 : __cmp_8) && __cmp_8 <= 366);
 #line (119, 5) - (119, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
                 Xunit.Assert.Equal(0, t.TmIsdst);
 #line hidden
@@ -177,21 +187,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (124, 5) - (124, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
                 Xunit.Assert.True(t.TmYear >= 2024);
 #line (125, 5) - (125, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(1 <= (t.TmMon is var __cmp_7 ? __cmp_7 : __cmp_7) && __cmp_7 <= 12);
+                Xunit.Assert.True(1 <= (t.TmMon is var __cmp_9 ? __cmp_9 : __cmp_9) && __cmp_9 <= 12);
 #line (126, 5) - (126, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(1 <= (t.TmMday is var __cmp_8 ? __cmp_8 : __cmp_8) && __cmp_8 <= 31);
+                Xunit.Assert.True(1 <= (t.TmMday is var __cmp_10 ? __cmp_10 : __cmp_10) && __cmp_10 <= 31);
 #line (127, 5) - (127, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(0 <= (t.TmHour is var __cmp_9 ? __cmp_9 : __cmp_9) && __cmp_9 <= 23);
+                Xunit.Assert.True(0 <= (t.TmHour is var __cmp_11 ? __cmp_11 : __cmp_11) && __cmp_11 <= 23);
 #line (128, 5) - (128, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(0 <= (t.TmMin is var __cmp_10 ? __cmp_10 : __cmp_10) && __cmp_10 <= 59);
+                Xunit.Assert.True(0 <= (t.TmMin is var __cmp_12 ? __cmp_12 : __cmp_12) && __cmp_12 <= 59);
 #line (129, 5) - (129, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(0 <= (t.TmSec is var __cmp_11 ? __cmp_11 : __cmp_11) && __cmp_11 <= 61);
+                Xunit.Assert.True(0 <= (t.TmSec is var __cmp_13 ? __cmp_13 : __cmp_13) && __cmp_13 <= 61);
 #line (130, 5) - (130, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(0 <= (t.TmWday is var __cmp_12 ? __cmp_12 : __cmp_12) && __cmp_12 <= 6);
+                Xunit.Assert.True(0 <= (t.TmWday is var __cmp_14 ? __cmp_14 : __cmp_14) && __cmp_14 <= 6);
 #line (131, 5) - (131, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(1 <= (t.TmYday is var __cmp_13 ? __cmp_13 : __cmp_13) && __cmp_13 <= 366);
+                Xunit.Assert.True(1 <= (t.TmYday is var __cmp_15 ? __cmp_15 : __cmp_15) && __cmp_15 <= 366);
 #line (132, 5) - (132, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(-1 <= (t.TmIsdst is var __cmp_14 ? __cmp_14 : __cmp_14) && __cmp_14 <= 1);
+                Xunit.Assert.True(-1 <= (t.TmIsdst is var __cmp_16 ? __cmp_16 : __cmp_16) && __cmp_16 <= 1);
 #line hidden
             }
 
@@ -283,13 +293,13 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (186, 5) - (186, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
                 var t = time.Localtime(0.0d);
 #line (187, 5) - (187, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(1969 <= (t.TmYear is var __cmp_15 ? __cmp_15 : __cmp_15) && __cmp_15 <= 1970);
+                Xunit.Assert.True(1969 <= (t.TmYear is var __cmp_17 ? __cmp_17 : __cmp_17) && __cmp_17 <= 1970);
 #line (188, 5) - (188, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(1 <= (t.TmMon is var __cmp_16 ? __cmp_16 : __cmp_16) && __cmp_16 <= 12);
+                Xunit.Assert.True(1 <= (t.TmMon is var __cmp_18 ? __cmp_18 : __cmp_18) && __cmp_18 <= 12);
 #line (189, 5) - (189, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(1 <= (t.TmMday is var __cmp_17 ? __cmp_17 : __cmp_17) && __cmp_17 <= 31);
+                Xunit.Assert.True(1 <= (t.TmMday is var __cmp_19 ? __cmp_19 : __cmp_19) && __cmp_19 <= 31);
 #line (190, 5) - (190, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/time/time_module_tests.spy"
-                Xunit.Assert.True(0 <= (t.TmHour is var __cmp_18 ? __cmp_18 : __cmp_18) && __cmp_18 <= 23);
+                Xunit.Assert.True(0 <= (t.TmHour is var __cmp_20 ? __cmp_20 : __cmp_20) && __cmp_20 <= 23);
 #line hidden
             }
 

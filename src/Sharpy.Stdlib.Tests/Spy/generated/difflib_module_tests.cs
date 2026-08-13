@@ -629,13 +629,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRestoreInvalidWhichThrows()
             {
 #line (233, 5) - (236, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (234, 9) - (234, 45) 20 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                     new global::Sharpy.List<string>(difflib.Restore(new Sharpy.List<string>() { "  line" }, 3));
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -660,10 +668,10 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (242, 5) - (242, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                 bool hasNew = false;
 #line (243, 5) - (248, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                foreach (var __loopVar_7 in diff)
+                foreach (var __loopVar_8 in diff)
 #line hidden
                 {
-                    var l = __loopVar_7;
+                    var l = __loopVar_8;
 #line (244, 9) - (246, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                     if (l.Contains("old.txt"))
 #line hidden
@@ -699,10 +707,10 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (256, 5) - (258, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                foreach (var __loopVar_8 in global::Sharpy.Builtins.Range(1, 41))
+                foreach (var __loopVar_9 in global::Sharpy.Builtins.Range(1, 41))
 #line hidden
                 {
-                    var i = __loopVar_8;
+                    var i = __loopVar_9;
 #line (257, 9) - (257, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                     a.Append("line" + global::Sharpy.Builtins.Str(i) + "\n");
 #line hidden

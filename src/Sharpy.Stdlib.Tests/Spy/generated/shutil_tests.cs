@@ -104,13 +104,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (53, 5) - (59, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-                Xunit.Assert.Throws<OSError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (54, 9) - (54, 67) 20 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                     shutil.Copy(tmpPath + "/nope.txt", tmpPath + "/dst.txt");
 #line hidden
-                }));
+                }
+                catch (OSError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected OSError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -194,13 +202,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (92, 5) - (98, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-                Xunit.Assert.Throws<OSError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (93, 9) - (93, 63) 20 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                     shutil.Copytree(tmpPath + "/nope", tmpPath + "/dst");
 #line hidden
-                }));
+                }
+                catch (OSError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected OSError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -241,13 +257,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (112, 5) - (118, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-                Xunit.Assert.Throws<OSError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (113, 9) - (113, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                     shutil.Rmtree(tmpPath + "/nope");
 #line hidden
-                }));
+                }
+                catch (OSError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected OSError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -328,13 +352,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (150, 5) - (156, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
-                Xunit.Assert.Throws<OSError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (151, 9) - (151, 67) 20 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                     shutil.Move(tmpPath + "/nope.txt", tmpPath + "/dst.txt");
 #line hidden
-                }));
+                }
+                catch (OSError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected OSError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

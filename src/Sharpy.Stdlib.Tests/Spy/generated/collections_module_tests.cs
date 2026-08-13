@@ -93,13 +93,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (39, 5) - (39, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>();
 #line (40, 5) - (43, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (41, 9) - (41, 16) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                     d.Pop();
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -108,13 +116,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (45, 5) - (45, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>();
 #line (46, 5) - (49, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (47, 9) - (47, 20) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                     d.Popleft();
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -214,10 +230,10 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (97, 5) - (99, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                foreach (var __loopVar_0 in d)
+                foreach (var __loopVar_2 in d)
 #line hidden
                 {
-                    var item = __loopVar_0;
+                    var item = __loopVar_2;
 #line (98, 9) - (98, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                     items.Append(item);
 #line hidden
@@ -298,10 +314,10 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (138, 5) - (138, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 int aCount = 0;
 #line (139, 5) - (142, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                foreach (var __loopVar_1 in elements)
+                foreach (var __loopVar_3 in elements)
 #line hidden
                 {
-                    var e = __loopVar_1;
+                    var e = __loopVar_3;
 #line (140, 9) - (142, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                     if (e == "a")
 #line hidden
@@ -317,10 +333,10 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (143, 5) - (143, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 int bCount = 0;
 #line (144, 5) - (147, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                foreach (var __loopVar_2 in elements)
+                foreach (var __loopVar_4 in elements)
 #line hidden
                 {
-                    var e = __loopVar_2;
+                    var e = __loopVar_4;
 #line (145, 9) - (147, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                     if (e == "b")
 #line hidden
@@ -572,13 +588,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictNullFactoryThrowsTypeError()
             {
 #line (269, 5) - (272, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (270, 9) - (270, 90) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                     Sharpy.DefaultDict<string, int> _dd = new global::Sharpy.DefaultDict<string, int>(null);
 #line hidden
-                }));
+                }
+                catch (TypeError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected TypeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -695,13 +719,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (328, 5) - (328, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (329, 5) - (332, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Xunit.Assert.Throws<KeyError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (330, 9) - (330, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                     dd.Pop("missing");
 #line hidden
-                }));
+                }
+                catch (KeyError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -863,13 +895,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (405, 5) - (405, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (406, 5) - (409, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Xunit.Assert.Throws<KeyError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (407, 9) - (407, 22) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                     dd.PopItem();
 #line hidden
-                }));
+                }
+                catch (KeyError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -896,13 +936,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (420, 5) - (420, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (421, 5) - (424, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Xunit.Assert.Throws<KeyError>((global::System.Action)(() =>
+                bool __raised_8 = false;
 #line hidden
+                try
                 {
 #line (422, 9) - (422, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                     dd.Remove("missing");
 #line hidden
-                }));
+                }
+                catch (KeyError)
+                {
+                    __raised_8 = true;
+                }
+
+                if (!__raised_8)
+                    throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

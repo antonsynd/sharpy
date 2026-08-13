@@ -299,13 +299,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGethostbynameInvalidHostRaisesGaierror()
             {
 #line (202, 5) - (207, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.SocketModule.Gaierror>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (203, 9) - (203, 65) 20 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                     socket.Gethostbyname("this.host.does.not.exist.invalid");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.SocketModule.Gaierror)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected gaierror to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

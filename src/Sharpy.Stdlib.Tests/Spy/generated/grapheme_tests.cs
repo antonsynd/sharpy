@@ -157,39 +157,63 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestAtIndexEqualsLengthThrowsIndexError()
             {
 #line (79, 5) - (82, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (80, 9) - (80, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
                     grapheme.At("abc", 3);
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestAtNegativeBeyondStartThrowsIndexError()
             {
 #line (84, 5) - (87, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (85, 9) - (85, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
                     grapheme.At("abc", -4);
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestAtEmptyStringThrowsIndexError()
             {
 #line (89, 5) - (94, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (90, 9) - (90, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
                     grapheme.At("", 0);
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

@@ -267,13 +267,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (139, 5) - (143, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
-                Xunit.Assert.Throws<FileNotFoundError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (140, 9) - (140, 43) 20 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
                     Getsize(tmpPath + "/nonexistent");
 #line hidden
-                }));
+                }
+                catch (FileNotFoundError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected FileNotFoundError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

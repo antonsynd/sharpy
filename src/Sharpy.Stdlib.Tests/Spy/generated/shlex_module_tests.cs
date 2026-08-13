@@ -167,52 +167,84 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSplitUnclosedSingleQuoteThrows()
             {
 #line (77, 5) - (80, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (78, 9) - (78, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
                     shlex.Split("echo 'hello");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestSplitUnclosedDoubleQuoteThrows()
             {
 #line (82, 5) - (85, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (83, 9) - (83, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
                     shlex.Split("echo \"hello");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestSplitTrailingBackslashThrows()
             {
 #line (87, 5) - (90, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (88, 9) - (88, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
                     shlex.Split("echo test\\");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestSplitNonPosixModeThrows()
             {
 #line (92, 5) - (95, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (93, 9) - (93, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
                     shlex.Split("test", posix: false);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

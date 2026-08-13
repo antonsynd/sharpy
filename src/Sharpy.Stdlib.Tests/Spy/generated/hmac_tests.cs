@@ -151,13 +151,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestUnsupportedAlgorithmThrowsValueError()
             {
 #line (68, 5) - (71, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (69, 9) - (69, 49) 20 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
                     hmac.New("key", digestmod: "unsupported");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

@@ -79,13 +79,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestFromstringInvalidXmlThrowsParseError()
             {
 #line (60, 5) - (63, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Throws<ParseError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (61, 9) - (61, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                     xml.Fromstring("<unclosed>");
 #line hidden
-                }));
+                }
+                catch (ParseError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ParseError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -99,10 +107,10 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (67, 5) - (69, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                foreach (var __loopVar_0 in root)
+                foreach (var __loopVar_1 in root)
 #line hidden
                 {
-                    var child = __loopVar_0;
+                    var child = __loopVar_1;
 #line (68, 9) - (68, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                     tags.Append(child.Tag);
 #line hidden
@@ -216,13 +224,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (120, 5) - (120, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 var root = xml.Fromstring("<root><a/></root>");
 #line (121, 5) - (124, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (122, 9) - (122, 16) 20 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                     _ = root[5];
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -435,13 +451,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (234, 5) - (234, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 var other = new global::Sharpy.Element("other");
 #line (235, 5) - (238, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (236, 9) - (236, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                     root.Remove(other);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -550,10 +574,10 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (291, 5) - (294, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                foreach (var __loopVar_1 in root.Iter())
+                foreach (var __loopVar_4 in root.Iter())
 #line hidden
                 {
-                    var el = __loopVar_1;
+                    var el = __loopVar_4;
 #line (292, 9) - (292, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                     tags.Append(el.Tag);
 #line hidden
@@ -583,10 +607,10 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (304, 5) - (306, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                foreach (var __loopVar_2 in root.Iter("a"))
+                foreach (var __loopVar_5 in root.Iter("a"))
 #line hidden
                 {
-                    var el = __loopVar_2;
+                    var el = __loopVar_5;
 #line (305, 9) - (305, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                     tags.Append(el.Tag);
 #line hidden
@@ -608,10 +632,10 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (312, 5) - (314, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                foreach (var __loopVar_3 in root.IterText())
+                foreach (var __loopVar_6 in root.IterText())
 #line hidden
                 {
-                    var text = __loopVar_3;
+                    var text = __loopVar_6;
 #line (313, 9) - (313, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                     texts.Append(text);
 #line hidden
@@ -920,13 +944,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (472, 5) - (472, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 f.Close();
 #line (473, 5) - (475, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Throws<ParseError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (474, 9) - (474, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                     xml.Parse(tempFile);
 #line hidden
-                }));
+                }
+                catch (ParseError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected ParseError to be raised, but no exception was raised");
 #line (475, 5) - (475, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 os.Remove(tempFile);
 #line hidden
@@ -971,10 +1003,10 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (495, 5) - (497, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                foreach (var __loopVar_4 in tree.Iter())
+                foreach (var __loopVar_8 in tree.Iter())
 #line hidden
                 {
-                    var el = __loopVar_4;
+                    var el = __loopVar_8;
 #line (496, 9) - (496, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                     tags.Append(el.Tag);
 #line hidden
@@ -1253,13 +1285,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestElementTreeParseStringInvalidXmlThrowsParseError()
             {
 #line (639, 5) - (644, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Throws<ParseError>((global::System.Action)(() =>
+                bool __raised_9 = false;
 #line hidden
+                try
                 {
 #line (640, 9) - (640, 46) 20 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                     global::Sharpy.ElementTree.ParseString("<invalid>");
 #line hidden
-                }));
+                }
+                catch (ParseError)
+                {
+                    __raised_9 = true;
+                }
+
+                if (!__raised_9)
+                    throw new global::Sharpy.AssertionError("Expected ParseError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -1276,13 +1316,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (654, 5) - (654, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 var el = new global::Sharpy.Element("root");
 #line (655, 5) - (657, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_10 = false;
 #line hidden
+                try
                 {
 #line (656, 9) - (656, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                     xml.Tostring(el, method: "html");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_10 = true;
+                }
+
+                if (!__raised_10)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
         }
     }

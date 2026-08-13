@@ -78,13 +78,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (26, 5) - (29, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (27, 9) - (27, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                     heapq.Heappop(h);
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -187,13 +195,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (64, 5) - (67, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (65, 9) - (65, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                     heapq.Heapreplace(h, 1);
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -405,10 +421,10 @@ namespace Sharpy.Stdlib.Tests.Spy
                     6
                 };
 #line (134, 5) - (136, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                foreach (var __loopVar_0 in inputs)
+                foreach (var __loopVar_2 in inputs)
 #line hidden
                 {
-                    var item = __loopVar_0;
+                    var item = __loopVar_2;
 #line (135, 9) - (135, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                     heapq.Heappush(h, item);
 #line hidden
@@ -681,20 +697,20 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (212, 5) - (214, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                foreach (var __loopVar_1 in a)
+                foreach (var __loopVar_3 in a)
 #line hidden
                 {
-                    var s = __loopVar_1;
+                    var s = __loopVar_3;
 #line (213, 9) - (213, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                     combined.Append(s);
 #line hidden
                 }
 
 #line (214, 5) - (216, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                foreach (var __loopVar_2 in b)
+                foreach (var __loopVar_4 in b)
 #line hidden
                 {
-                    var s = __loopVar_2;
+                    var s = __loopVar_4;
 #line (215, 9) - (215, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                     combined.Append(s);
 #line hidden
@@ -732,20 +748,20 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (225, 5) - (227, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                foreach (var __loopVar_3 in a)
+                foreach (var __loopVar_5 in a)
 #line hidden
                 {
-                    var s = __loopVar_3;
+                    var s = __loopVar_5;
 #line (226, 9) - (226, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                     combined.Append(s);
 #line hidden
                 }
 
 #line (227, 5) - (229, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                foreach (var __loopVar_4 in b)
+                foreach (var __loopVar_6 in b)
 #line hidden
                 {
-                    var s = __loopVar_4;
+                    var s = __loopVar_6;
 #line (228, 9) - (228, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                     combined.Append(s);
 #line hidden

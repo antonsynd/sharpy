@@ -95,13 +95,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (62, 5) - (62, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
 #line (63, 5) - (65, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.Sqlite3OperationalError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (64, 9) - (64, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                     conn.Execute("NOT VALID SQL");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.Sqlite3OperationalError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected OperationalError to be raised, but no exception was raised");
 #line (65, 5) - (65, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 conn.Close();
 #line hidden
@@ -117,13 +125,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (72, 5) - (72, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 conn.Execute("INSERT INTO t VALUES (1)");
 #line (73, 5) - (75, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.Sqlite3IntegrityError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (74, 9) - (74, 49) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                     conn.Execute("INSERT INTO t VALUES (1)");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.Sqlite3IntegrityError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected IntegrityError to be raised, but no exception was raised");
 #line (75, 5) - (75, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 conn.Close();
 #line hidden

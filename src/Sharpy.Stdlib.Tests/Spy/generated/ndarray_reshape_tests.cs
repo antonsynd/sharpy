@@ -101,13 +101,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (64, 5) - (64, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d });
 #line (65, 5) - (68, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Throws<ArgumentException>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (66, 9) - (66, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                     arr.Reshape(3, 2);
 #line hidden
-                }));
+                }
+                catch (ArgumentException)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -116,13 +124,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (70, 5) - (70, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d });
 #line (71, 5) - (74, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Throws<ArgumentException>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (72, 9) - (72, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                     arr.Reshape(-1, -1);
 #line hidden
-                }));
+                }
+                catch (ArgumentException)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -131,13 +147,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (76, 5) - (76, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d });
 #line (77, 5) - (82, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
-                Xunit.Assert.Throws<ArgumentException>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (78, 9) - (78, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                     arr.Reshape(-1, 2);
 #line hidden
-                }));
+                }
+                catch (ArgumentException)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ArgumentException to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

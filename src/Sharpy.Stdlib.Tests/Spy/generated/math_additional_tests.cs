@@ -155,21 +155,37 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIscloseNegativeToleranceThrows()
             {
 #line (73, 5) - (75, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (74, 9) - (74, 44) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                     math.Isclose(1.0d, 1.0d, relTol: -1.0d);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
 #line (75, 5) - (80, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (76, 9) - (76, 44) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                     math.Isclose(1.0d, 1.0d, absTol: -1.0d);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -198,26 +214,42 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCombNegativeNThrows()
             {
 #line (93, 5) - (96, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (94, 9) - (94, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                     math.Comb(-1, 2);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestCombNegativeKThrows()
             {
 #line (98, 5) - (101, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (99, 9) - (99, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                     math.Comb(5, -1);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -254,26 +286,42 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestPermNegativeNThrows()
             {
 #line (120, 5) - (123, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (121, 9) - (121, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                     math.Perm(-1, 2);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestPermNegativeKThrows()
             {
 #line (125, 5) - (128, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (126, 9) - (126, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                     math.Perm(5, -1);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -476,26 +524,42 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLog1pNegativeOneThrows()
             {
 #line (227, 5) - (230, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (228, 9) - (228, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                     math.Log1p(-1.0d);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestLog1pBelowNegativeOneThrows()
             {
 #line (232, 5) - (237, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (233, 9) - (233, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                     math.Log1p(-2.0d);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -518,13 +582,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRemainderZeroDivisorThrows()
             {
 #line (247, 5) - (250, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_8 = false;
 #line hidden
+                try
                 {
 #line (248, 9) - (248, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                     math.Remainder(10.0d, 0.0d);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_8 = true;
+                }
+
+                if (!__raised_8)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

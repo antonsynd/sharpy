@@ -1455,65 +1455,107 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSafeLoadUndefinedAliasThrowsParseError()
             {
 #line (619, 5) - (624, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.YAMLParseError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (620, 9) - (620, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                     yaml.SafeLoad("ref: *missing\n");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.YAMLParseError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected YAMLParseError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestSafeLoadMalformedYamlThrowsParseError()
             {
 #line (626, 5) - (629, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.YAMLParseError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (627, 9) - (627, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                     yaml.SafeLoad("key: [1, 2");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.YAMLParseError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected YAMLParseError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestSafeLoadUnterminatedQuoteThrowsParseError()
             {
 #line (631, 5) - (634, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.YAMLParseError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (632, 9) - (632, 47) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                     yaml.SafeLoad("key: 'unterminated\n");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.YAMLParseError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected YAMLParseError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestSafeLoadTabIndentationThrowsParseError()
             {
 #line (636, 5) - (639, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.YAMLParseError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (637, 9) - (637, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                     yaml.SafeLoad("a:\n\t- 1\n");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.YAMLParseError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected YAMLParseError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestYamlParseErrorHasLineAndColumn()
             {
 #line (641, 5) - (643, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                var exc = Xunit.Assert.Throws<global::Sharpy.YAMLParseError>((global::System.Action)(() =>
+                global::Sharpy.YAMLParseError exc = null!;
 #line hidden
+                bool __raised_6 = false;
+                try
                 {
 #line (642, 9) - (642, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                     yaml.SafeLoad("key: [1, 2");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.YAMLParseError __caught_7)
+                {
+                    __raised_6 = true;
+                    exc = __caught_7;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected YAMLParseError to be raised, but no exception was raised");
 #line (643, 5) - (643, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.True(exc.Line >= 0);
 #line (644, 5) - (644, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
@@ -1525,13 +1567,23 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestYamlParseErrorIsYamlError()
             {
 #line (648, 5) - (650, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                var exc = Xunit.Assert.Throws<global::Sharpy.YAMLParseError>((global::System.Action)(() =>
+                global::Sharpy.YAMLParseError exc = null!;
 #line hidden
+                bool __raised_8 = false;
+                try
                 {
 #line (649, 9) - (649, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                     yaml.SafeLoad("key: [1, 2");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.YAMLParseError __caught_9)
+                {
+                    __raised_8 = true;
+                    exc = __caught_9;
+                }
+
+                if (!__raised_8)
+                    throw new global::Sharpy.AssertionError("Expected YAMLParseError to be raised, but no exception was raised");
 #line (650, 5) - (650, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<global::Sharpy.YAMLError>(exc);
 #line hidden
@@ -1661,7 +1713,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRoundtripDumpMarksTheSameDocumentsAsSafeDump()
             {
 #line (774, 5) - (778, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
-                foreach (var __loopVar_2 in new Sharpy.List<string>()
+                foreach (var __loopVar_10 in new Sharpy.List<string>()
 #line hidden
                 {
                     "hello",
@@ -1671,7 +1723,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                 )
                 {
-                    var value = __loopVar_2;
+                    var value = __loopVar_10;
 #line (775, 9) - (775, 68) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                     Xunit.Assert.Equal(yaml.SafeDump(value), yaml.RoundtripDump(value));
 #line hidden

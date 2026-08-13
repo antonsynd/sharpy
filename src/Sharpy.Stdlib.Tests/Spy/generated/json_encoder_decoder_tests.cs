@@ -139,13 +139,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (55, 5) - (55, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 var encoder = new global::Sharpy.JSONEncoder();
 #line (56, 5) - (61, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-                Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (57, 9) - (57, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                     encoder.Default(new Unserializable());
 #line hidden
-                }));
+                }
+                catch (TypeError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected TypeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

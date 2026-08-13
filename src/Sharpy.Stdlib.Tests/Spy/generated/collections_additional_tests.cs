@@ -109,13 +109,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (47, 5) - (47, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 od["a"] = 1;
 #line (48, 5) - (51, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
-                Xunit.Assert.Throws<KeyError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (49, 9) - (49, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                     od.MoveToEnd("z");
 #line hidden
-                }));
+                }
+                catch (KeyError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -172,13 +180,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (77, 5) - (77, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 global::Sharpy.OrderedDict<string, int> od = new global::Sharpy.OrderedDict<string, int>();
 #line (78, 5) - (81, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
-                Xunit.Assert.Throws<KeyError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (79, 9) - (79, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                     od.Popitem();
 #line hidden
-                }));
+                }
+                catch (KeyError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -207,13 +223,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (93, 5) - (93, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 global::Sharpy.OrderedDict<string, int> od = new global::Sharpy.OrderedDict<string, int>();
 #line (94, 5) - (97, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
-                Xunit.Assert.Throws<KeyError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (95, 9) - (95, 20) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                     od.Pop("z");
 #line hidden
-                }));
+                }
+                catch (KeyError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -334,13 +358,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (156, 5) - (156, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 global::Sharpy.OrderedDict<string, int> od = new global::Sharpy.OrderedDict<string, int>();
 #line (157, 5) - (162, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
-                Xunit.Assert.Throws<KeyError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (158, 9) - (158, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                     int _val = od["z"];
 #line hidden
-                }));
+                }
+                catch (KeyError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -447,13 +479,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (191, 5) - (191, 75) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 global::Sharpy.ChainMap<string, int> cm = new global::Sharpy.ChainMap<string, int>();
 #line (192, 5) - (195, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
-                Xunit.Assert.Throws<KeyError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (193, 9) - (193, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                     int _val = cm["z"];
 #line hidden
-                }));
+                }
+                catch (KeyError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

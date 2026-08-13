@@ -168,13 +168,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (94, 5) - (94, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                 sio.Close();
 #line (95, 5) - (99, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (96, 9) - (96, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                     sio.Read();
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -185,13 +193,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (103, 5) - (103, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                 sio.Close();
 #line (104, 5) - (108, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (105, 9) - (105, 23) 20 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                     sio.Write("x");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -224,13 +240,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (124, 5) - (124, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                 var sio = new global::Sharpy.StringIO();
 #line (125, 5) - (127, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (126, 9) - (126, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                     sio.Seek(-1);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
         }
     }

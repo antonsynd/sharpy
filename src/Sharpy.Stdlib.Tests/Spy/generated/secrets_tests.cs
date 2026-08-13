@@ -61,13 +61,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestTokenBytesNegativeThrows()
             {
 #line (22, 5) - (25, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (23, 9) - (23, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                     secrets.TokenBytes(-1);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -88,10 +96,10 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (34, 5) - (34, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 bool valid = true;
 #line (35, 5) - (38, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
-                foreach (var __loopVar_0 in global::Sharpy.StringHelpers.Iterate(result))
+                foreach (var __loopVar_1 in global::Sharpy.StringHelpers.Iterate(result))
 #line hidden
                 {
-                    var c = __loopVar_0;
+                    var c = __loopVar_1;
 #line (36, 9) - (38, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                     if (!"0123456789abcdef".Contains(c))
 #line hidden
@@ -125,10 +133,10 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (49, 5) - (49, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 bool valid = true;
 #line (50, 5) - (53, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
-                foreach (var __loopVar_1 in global::Sharpy.StringHelpers.Iterate(result))
+                foreach (var __loopVar_2 in global::Sharpy.StringHelpers.Iterate(result))
 #line hidden
                 {
-                    var c = __loopVar_1;
+                    var c = __loopVar_2;
 #line (51, 9) - (53, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                     if (!"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-".Contains(c))
 #line hidden
@@ -196,26 +204,42 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRandbelowZeroThrows()
             {
 #line (78, 5) - (81, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (79, 9) - (79, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                     secrets.Randbelow(0);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestRandbelowNegativeThrows()
             {
 #line (83, 5) - (86, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (84, 9) - (84, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                     secrets.Randbelow(-5);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -245,13 +269,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (95, 5) - (98, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (96, 9) - (96, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                     secrets.Choice(items);
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

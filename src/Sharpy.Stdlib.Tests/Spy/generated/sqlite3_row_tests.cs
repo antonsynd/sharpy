@@ -140,13 +140,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (104, 5) - (104, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var row = _MakeRow();
 #line (105, 5) - (109, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (106, 9) - (106, 20) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                     var _ = row[10];
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -155,13 +163,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (111, 5) - (111, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var row = _MakeRow();
 #line (112, 5) - (118, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (113, 9) - (113, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                     var _ = row[-10];
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -208,13 +224,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (142, 5) - (142, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var row = _MakeRow();
 #line (143, 5) - (149, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (144, 9) - (144, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                     var _ = row["nonexistent"];
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -427,10 +451,10 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (256, 5) - (256, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var cursor = conn.Execute("SELECT id, name FROM t_rf3");
 #line (257, 5) - (263, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
-                foreach (var __loopVar_0 in cursor)
+                foreach (var __loopVar_3 in cursor)
 #line hidden
                 {
-                    var row = __loopVar_0;
+                    var row = __loopVar_3;
 #line (258, 9) - (263, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                     switch (row)
 #line hidden

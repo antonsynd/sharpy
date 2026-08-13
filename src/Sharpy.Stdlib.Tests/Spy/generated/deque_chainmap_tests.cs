@@ -37,13 +37,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (11, 5) - (11, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
                 Xunit.Assert.Equal(0, n);
 #line (12, 5) - (15, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (13, 9) - (13, 16) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
                     d.Pop();
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -218,13 +226,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (91, 5) - (91, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
                 global::Sharpy.ChainMap<string, int> cm = new global::Sharpy.ChainMap<string, int>(d1, d2);
 #line (92, 5) - (97, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
-                Xunit.Assert.Throws<KeyError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (93, 9) - (93, 20) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
                     cm.Pop("b");
 #line hidden
-                }));
+                }
+                catch (KeyError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

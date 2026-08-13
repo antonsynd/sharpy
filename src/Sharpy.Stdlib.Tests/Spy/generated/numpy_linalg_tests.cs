@@ -119,13 +119,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (62, 5) - (62, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
 #line (63, 5) - (66, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (64, 9) - (64, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Dot(a, b);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -136,13 +144,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (69, 5) - (69, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d }).Reshape(2, 2);
 #line (70, 5) - (73, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (71, 9) - (71, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Dot(a, b);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -153,13 +169,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (76, 5) - (76, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Zeros(8).Reshape(2, 2, 2);
 #line (77, 5) - (80, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (78, 9) - (78, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Dot(a, b);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -274,13 +298,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (137, 5) - (137, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 2.0d, 4.0d }).Reshape(2, 2);
 #line (138, 5) - (141, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (139, 9) - (139, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Inv(a);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -289,13 +321,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (143, 5) - (143, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d }).Reshape(2, 3);
 #line (144, 5) - (147, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (145, 9) - (145, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Inv(a);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -304,13 +344,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (149, 5) - (149, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
 #line (150, 5) - (155, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (151, 9) - (151, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Inv(a);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -349,13 +397,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (172, 5) - (172, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d }).Reshape(2, 3);
 #line (173, 5) - (178, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (174, 9) - (174, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Det(a);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -402,13 +458,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (199, 5) - (199, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d }).Reshape(2, 3);
 #line (200, 5) - (205, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (201, 9) - (201, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Eig(a);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -457,13 +521,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (229, 5) - (229, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d });
 #line (230, 5) - (233, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_8 = false;
 #line hidden
+                try
                 {
 #line (231, 9) - (231, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Solve(a, b);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_8 = true;
+                }
+
+                if (!__raised_8)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -474,13 +546,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (236, 5) - (236, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d });
 #line (237, 5) - (240, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_9 = false;
 #line hidden
+                try
                 {
 #line (238, 9) - (238, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Solve(a, b);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_9 = true;
+                }
+
+                if (!__raised_9)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -491,13 +571,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (243, 5) - (243, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
 #line (244, 5) - (249, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_10 = false;
 #line hidden
+                try
                 {
 #line (245, 9) - (245, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Solve(a, b);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_10 = true;
+                }
+
+                if (!__raised_10)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -546,13 +634,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (271, 5) - (271, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Zeros(8).Reshape(2, 2, 2);
 #line (272, 5) - (274, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_11 = false;
 #line hidden
+                try
                 {
 #line (273, 9) - (273, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                     global::Sharpy.NumpyLinalg.Norm(a);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_11 = true;
+                }
+
+                if (!__raised_11)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
         }
     }

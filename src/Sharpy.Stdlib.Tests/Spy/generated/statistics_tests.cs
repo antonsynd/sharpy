@@ -52,13 +52,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (19, 5) - (22, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
-                Xunit.Assert.Throws<StatisticsError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (20, 9) - (20, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
                     statistics.Mean(empty);
 #line hidden
-                }));
+                }
+                catch (StatisticsError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected StatisticsError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -118,13 +126,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (53, 5) - (56, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
-                Xunit.Assert.Throws<StatisticsError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (54, 9) - (54, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
                     statistics.Median(empty);
 #line hidden
-                }));
+                }
+                catch (StatisticsError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected StatisticsError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -208,13 +224,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (101, 5) - (106, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
-                Xunit.Assert.Throws<StatisticsError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (102, 9) - (102, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
                     statistics.Mode(empty);
 #line hidden
-                }));
+                }
+                catch (StatisticsError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected StatisticsError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -231,13 +255,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestStdevSingleElementThrowsStatisticsError()
             {
 #line (113, 5) - (116, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
-                Xunit.Assert.Throws<StatisticsError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (114, 9) - (114, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
                     statistics.Stdev(new Sharpy.List<double>() { 1.0d });
 #line hidden
-                }));
+                }
+                catch (StatisticsError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected StatisticsError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -274,13 +306,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestVarianceSingleElementThrowsStatisticsError()
             {
 #line (137, 5) - (142, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
-                Xunit.Assert.Throws<StatisticsError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (138, 9) - (138, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
                     statistics.Variance(new Sharpy.List<double>() { 1.0d });
 #line hidden
-                }));
+                }
+                catch (StatisticsError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected StatisticsError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

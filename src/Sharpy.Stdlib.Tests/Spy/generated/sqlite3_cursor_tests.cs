@@ -842,13 +842,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (453, 5) - (453, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
 #line (454, 5) - (456, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.Throws<Sqlite3OperationalError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (455, 9) - (455, 46) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     conn.Execute("INVALID SQL STATEMENT");
 #line hidden
-                }));
+                }
+                catch (Sqlite3OperationalError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected Sqlite3OperationalError to be raised, but no exception was raised");
 #line (456, 5) - (456, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
@@ -864,13 +872,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (463, 5) - (463, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("INSERT INTO t VALUES (1)");
 #line (464, 5) - (466, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.Throws<Sqlite3IntegrityError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (465, 9) - (465, 49) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     conn.Execute("INSERT INTO t VALUES (1)");
 #line hidden
-                }));
+                }
+                catch (Sqlite3IntegrityError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected Sqlite3IntegrityError to be raised, but no exception was raised");
 #line (466, 5) - (466, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
@@ -886,13 +902,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (473, 5) - (473, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("INSERT INTO t VALUES ('Alice')");
 #line (474, 5) - (476, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.Throws<Sqlite3IntegrityError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (475, 9) - (475, 55) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     conn.Execute("INSERT INTO t VALUES ('Alice')");
 #line hidden
-                }));
+                }
+                catch (Sqlite3IntegrityError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected Sqlite3IntegrityError to be raised, but no exception was raised");
 #line (476, 5) - (476, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
@@ -906,13 +930,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (482, 5) - (482, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Execute("CREATE TABLE t (name TEXT NOT NULL)");
 #line (483, 5) - (485, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.Throws<Sqlite3IntegrityError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (484, 9) - (484, 52) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     conn.Execute("INSERT INTO t VALUES (NULL)");
 #line hidden
-                }));
+                }
+                catch (Sqlite3IntegrityError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected Sqlite3IntegrityError to be raised, but no exception was raised");
 #line (485, 5) - (485, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
@@ -928,13 +960,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (494, 5) - (494, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 cursor.Close();
 #line (495, 5) - (497, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.Throws<Sqlite3ProgrammingError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (496, 9) - (496, 35) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     cursor.Execute("SELECT 1");
 #line hidden
-                }));
+                }
+                catch (Sqlite3ProgrammingError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected Sqlite3ProgrammingError to be raised, but no exception was raised");
 #line (497, 5) - (497, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
@@ -950,13 +990,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (504, 5) - (504, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 cursor.Close();
 #line (505, 5) - (507, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.Throws<Sqlite3ProgrammingError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (506, 9) - (506, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     cursor.Fetchone();
 #line hidden
-                }));
+                }
+                catch (Sqlite3ProgrammingError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected Sqlite3ProgrammingError to be raised, but no exception was raised");
 #line (507, 5) - (507, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
@@ -972,13 +1020,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (514, 5) - (514, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 cursor.Close();
 #line (515, 5) - (517, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.Throws<Sqlite3ProgrammingError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (516, 9) - (516, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     cursor.Fetchall();
 #line hidden
-                }));
+                }
+                catch (Sqlite3ProgrammingError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected Sqlite3ProgrammingError to be raised, but no exception was raised");
 #line (517, 5) - (517, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
@@ -994,13 +1050,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (524, 5) - (524, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 cursor.Close();
 #line (525, 5) - (527, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.Throws<Sqlite3ProgrammingError>((global::System.Action)(() =>
+                bool __raised_8 = false;
 #line hidden
+                try
                 {
 #line (526, 9) - (526, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     cursor.Fetchmany(5);
 #line hidden
-                }));
+                }
+                catch (Sqlite3ProgrammingError)
+                {
+                    __raised_8 = true;
+                }
+
+                if (!__raised_8)
+                    throw new global::Sharpy.AssertionError("Expected Sqlite3ProgrammingError to be raised, but no exception was raised");
 #line (527, 5) - (527, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden
@@ -1044,13 +1108,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (554, 5) - (554, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 var cursor = conn.Cursor();
 #line (555, 5) - (557, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
-                Xunit.Assert.Throws<Sqlite3OperationalError>((global::System.Action)(() =>
+                bool __raised_9 = false;
 #line hidden
+                try
                 {
 #line (556, 9) - (556, 51) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                     cursor.Executescript("INVALID; SQL; HERE");
 #line hidden
-                }));
+                }
+                catch (Sqlite3OperationalError)
+                {
+                    __raised_9 = true;
+                }
+
+                if (!__raised_9)
+                    throw new global::Sharpy.AssertionError("Expected Sqlite3OperationalError to be raised, but no exception was raised");
 #line (557, 5) - (557, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_cursor_tests.spy"
                 conn.Close();
 #line hidden

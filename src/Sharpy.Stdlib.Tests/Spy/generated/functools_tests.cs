@@ -66,13 +66,21 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (25, 5) - (28, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (26, 9) - (26, 52) 20 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
                     functools.Reduce((x, y) => x + y, items);
 #line hidden
-                }));
+                }
+                catch (TypeError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected TypeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -217,16 +225,16 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestReduceLargeListWithoutInitial()
             {
-                var __src_1 = global::Sharpy.Builtins.Range(1, 1001);
-                var __comp_0 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_1).Count);
-                foreach (var __loopVar_2 in __src_1)
+                var __src_2 = global::Sharpy.Builtins.Range(1, 1001);
+                var __comp_1 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_2).Count);
+                foreach (var __loopVar_3 in __src_2)
                 {
-                    var i = __loopVar_2;
-                    __comp_0.Add(i);
+                    var i = __loopVar_3;
+                    __comp_1.Add(i);
                 }
 
 #line (88, 5) - (88, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
-                Sharpy.List<int> items = __comp_0;
+                Sharpy.List<int> items = __comp_1;
 #line (89, 5) - (89, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
                 int result = functools.Reduce((x, y) => x + y, items);
 #line (90, 5) - (90, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"

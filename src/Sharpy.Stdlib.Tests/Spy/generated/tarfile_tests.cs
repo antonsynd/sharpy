@@ -364,13 +364,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
 #line (141, 9) - (145, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                    Xunit.Assert.Throws<KeyError>((global::System.Action)(() =>
+                    bool __raised_0 = false;
 #line hidden
+                    try
                     {
 #line (142, 13) - (142, 40) 24 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                         tr.Getmember("nonexistent");
 #line hidden
-                    }));
+                    }
+                    catch (KeyError)
+                    {
+                        __raised_0 = true;
+                    }
+
+                    if (!__raised_0)
+                        throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
                 }
             }
 
@@ -510,13 +518,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (200, 5) - (204, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (201, 9) - (201, 50) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tarfile.Open(tmpPath + "/bad.tar", "x:");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -524,13 +540,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (206, 5) - (210, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.CompressionError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (207, 9) - (207, 57) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tarfile.Open(tmpPath + "/bad.tar.bz2", "r:bz2");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.CompressionError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected CompressionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -538,13 +562,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (212, 5) - (216, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.CompressionError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (213, 9) - (213, 55) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tarfile.Open(tmpPath + "/bad.tar.xz", "w:xz");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.CompressionError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected CompressionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -552,13 +584,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 string tmpPath = _tmpPathFixture.Value;
 #line (218, 5) - (224, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.Throws<FileNotFoundError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (219, 9) - (219, 58) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     tarfile.Open(tmpPath + "/nonexistent.tar", "r:");
 #line hidden
-                }));
+                }
+                catch (FileNotFoundError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected FileNotFoundError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -592,13 +632,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (233, 5) - (233, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 readTar.Close();
 #line (234, 5) - (240, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (235, 9) - (235, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     readTar.Getnames();
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

@@ -299,13 +299,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestShortenVerySmallWidthThrows()
             {
 #line (151, 5) - (154, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (152, 9) - (152, 43) 20 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
                     textwrap.Shorten("Hello World", 3);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

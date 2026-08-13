@@ -347,13 +347,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (185, 5) - (185, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (186, 5) - (189, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (187, 9) - (187, 20) 20 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                     m.Group(99);
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -364,13 +372,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (192, 5) - (192, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (193, 5) - (196, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (194, 9) - (194, 20) 20 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                     m.Group(-1);
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -677,13 +693,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (367, 5) - (367, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
 #line (368, 5) - (373, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
-                Xunit.Assert.Throws<IndexError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (369, 9) - (369, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                     m.Group("nonexistent");
 #line hidden
-                }));
+                }
+                catch (IndexError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected IndexError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

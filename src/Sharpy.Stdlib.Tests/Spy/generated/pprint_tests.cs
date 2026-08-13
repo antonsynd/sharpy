@@ -426,26 +426,42 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestConstructorNegativeIndentThrows()
             {
 #line (180, 5) - (183, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (181, 9) - (181, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
                     new global::Sharpy.PrettyPrinter(indent: -1);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestConstructorZeroWidthThrows()
             {
 #line (185, 5) - (188, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (186, 9) - (186, 38) 20 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
                     new global::Sharpy.PrettyPrinter(width: 0);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

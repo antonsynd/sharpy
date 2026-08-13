@@ -616,26 +616,42 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDumpsNonDictThrowsTypeError()
             {
 #line (284, 5) - (287, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (285, 9) - (285, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                     toml.Dumps("not a dict");
 #line hidden
-                }));
+                }
+                catch (TypeError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected TypeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestDumpsNullThrowsTypeError()
             {
 #line (289, 5) - (294, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.Throws<TypeError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (290, 9) - (290, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                     toml.Dumps(null);
 #line hidden
-                }));
+                }
+                catch (TypeError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected TypeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -711,26 +727,44 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsMalformedTomlThrowsTomlDecodeError()
             {
 #line (326, 5) - (329, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.TOMLDecodeError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (327, 9) - (327, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                     toml.Loads("invalid = [");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.TOMLDecodeError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected TOMLDecodeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestLoadsMalformedTomlErrorIsValueError()
             {
 #line (331, 5) - (333, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                var ex = Xunit.Assert.Throws<global::Sharpy.TOMLDecodeError>((global::System.Action)(() =>
+                global::Sharpy.TOMLDecodeError ex = null!;
 #line hidden
+                bool __raised_3 = false;
+                try
                 {
 #line (332, 9) - (332, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                     toml.Loads("invalid = [");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.TOMLDecodeError __caught_4)
+                {
+                    __raised_3 = true;
+                    ex = __caught_4;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected TOMLDecodeError to be raised, but no exception was raised");
 #line (333, 5) - (333, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<global::Sharpy.ValueError>(ex);
 #line hidden
@@ -740,13 +774,23 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadsMalformedTomlErrorMessageContainsLineColumn()
             {
 #line (337, 5) - (339, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                var ex = Xunit.Assert.Throws<global::Sharpy.TOMLDecodeError>((global::System.Action)(() =>
+                global::Sharpy.TOMLDecodeError ex = null!;
 #line hidden
+                bool __raised_5 = false;
+                try
                 {
 #line (338, 9) - (338, 45) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                     toml.Loads("valid = 1\ninvalid = [");
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.TOMLDecodeError __caught_6)
+                {
+                    __raised_5 = true;
+                    ex = __caught_6;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected TOMLDecodeError to be raised, but no exception was raised");
 #line (339, 5) - (339, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.Contains("line", global::Sharpy.Builtins.Str(ex));
 #line (340, 5) - (340, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
@@ -812,13 +856,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestLoadFileNonexistentThrowsFileNotFoundError()
             {
 #line (368, 5) - (374, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.Throws<FileNotFoundError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (369, 9) - (369, 54) 20 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                     toml.LoadFile("/nonexistent/path/file.toml");
 #line hidden
-                }));
+                }
+                catch (FileNotFoundError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected FileNotFoundError to be raised, but no exception was raised");
             }
 
             public void Dispose()

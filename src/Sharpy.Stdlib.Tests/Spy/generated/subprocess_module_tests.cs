@@ -79,13 +79,23 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (61, 5) - (61, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 var cp = new global::Sharpy.CompletedProcess(new Sharpy.List<string>() { "false" }, 1);
 #line (62, 5) - (64, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                var ex = Xunit.Assert.Throws<global::Sharpy.CalledProcessError>((global::System.Action)(() =>
+                global::Sharpy.CalledProcessError ex = null!;
 #line hidden
+                bool __raised_0 = false;
+                try
                 {
 #line (63, 9) - (63, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                     cp.CheckReturncode();
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.CalledProcessError __caught_1)
+                {
+                    __raised_0 = true;
+                    ex = __caught_1;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected CalledProcessError to be raised, but no exception was raised");
 #line (64, 5) - (64, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 Xunit.Assert.Equal(1, ex.Returncode);
 #line hidden
@@ -211,13 +221,23 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRunCheckModeFailure()
             {
 #line (138, 5) - (140, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                var ex = Xunit.Assert.Throws<global::Sharpy.CalledProcessError>((global::System.Action)(() =>
+                global::Sharpy.CalledProcessError ex = null!;
 #line hidden
+                bool __raised_2 = false;
+                try
                 {
 #line (139, 9) - (139, 46) 20 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                     subprocess.Run(new Sharpy.List<string>() { "false" }, check: true);
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.CalledProcessError __caught_3)
+                {
+                    __raised_2 = true;
+                    ex = __caught_3;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected CalledProcessError to be raised, but no exception was raised");
 #line (140, 5) - (140, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 Xunit.Assert.NotEqual(0, ex.Returncode);
 #line hidden
@@ -237,13 +257,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRunTimeoutThrows()
             {
 #line (151, 5) - (155, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.TimeoutExpired>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (152, 9) - (152, 53) 20 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                     subprocess.Run(new Sharpy.List<string>() { "sleep", "10" }, timeout: 0.5d);
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.TimeoutExpired)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected TimeoutExpired to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -299,13 +327,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCheckOutputFailureThrows()
             {
 #line (184, 5) - (190, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.CalledProcessError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (185, 9) - (185, 43) 20 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                     subprocess.CheckOutput(new Sharpy.List<string>() { "false" });
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.CalledProcessError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected CalledProcessError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -320,13 +356,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCheckCallFailureThrows()
             {
 #line (197, 5) - (203, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.Throws<global::Sharpy.CalledProcessError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (198, 9) - (198, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                     subprocess.CheckCall(new Sharpy.List<string>() { "false" });
 #line hidden
-                }));
+                }
+                catch (global::Sharpy.CalledProcessError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected CalledProcessError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -483,39 +527,63 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestPopenStderrStdoutThrowsNotImplemented()
             {
 #line (278, 5) - (282, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.Throws<NotImplementedError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (279, 9) - (279, 69) 20 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                     new global::Sharpy.Popen(new Sharpy.List<string>() { "echo", "test" }, stderr: subprocess.STDOUT);
 #line hidden
-                }));
+                }
+                catch (NotImplementedError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected NotImplementedError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestRunTextFalseThrowsNotImplemented()
             {
 #line (284, 5) - (288, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.Throws<NotImplementedError>((global::System.Action)(() =>
+                bool __raised_8 = false;
 #line hidden
+                try
                 {
 #line (285, 9) - (285, 53) 20 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                     subprocess.Run(new Sharpy.List<string>() { "echo", "test" }, text: false);
 #line hidden
-                }));
+                }
+                catch (NotImplementedError)
+                {
+                    __raised_8 = true;
+                }
+
+                if (!__raised_8)
+                    throw new global::Sharpy.AssertionError("Expected NotImplementedError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestCheckOutputTextFalseThrowsNotImplemented()
             {
 #line (290, 5) - (292, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
-                Xunit.Assert.Throws<NotImplementedError>((global::System.Action)(() =>
+                bool __raised_9 = false;
 #line hidden
+                try
                 {
 #line (291, 9) - (291, 62) 20 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                     subprocess.CheckOutput(new Sharpy.List<string>() { "echo", "test" }, text: false);
 #line hidden
-                }));
+                }
+                catch (NotImplementedError)
+                {
+                    __raised_9 = true;
+                }
+
+                if (!__raised_9)
+                    throw new global::Sharpy.AssertionError("Expected NotImplementedError to be raised, but no exception was raised");
             }
         }
     }

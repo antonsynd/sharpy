@@ -238,13 +238,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (132, 5) - (132, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var lk = new global::Sharpy.Lock();
 #line (133, 5) - (139, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                Xunit.Assert.Throws<RuntimeError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (134, 9) - (134, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     lk.Release();
 #line hidden
-                }));
+                }
+                catch (RuntimeError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected RuntimeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -269,13 +277,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (150, 5) - (150, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var rl = new global::Sharpy.RLock();
 #line (151, 5) - (155, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                Xunit.Assert.Throws<RuntimeError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (152, 9) - (152, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     rl.Release();
 #line hidden
-                }));
+                }
+                catch (RuntimeError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected RuntimeError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -286,8 +302,8 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (158, 5) - (165, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
 #line hidden
-                    var __ctx_1 = rl;
-                    __ctx_1.Enter();
+                    var __ctx_3 = rl;
+                    __ctx_3.Enter();
                     try
                     {
 #line (159, 9) - (159, 29) 24 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
@@ -298,7 +314,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     }
                     finally
                     {
-                        __ctx_1.Exit();
+                        __ctx_3.Exit();
                     }
                 }
             }
@@ -396,13 +412,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSemaphoreNegativeValueThrowsValueError()
             {
 #line (218, 5) - (222, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (219, 9) - (219, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     new global::Sharpy.Semaphore(-1);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -413,8 +437,8 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (225, 5) - (227, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
 #line hidden
-                    var __ctx_2 = sem;
-                    __ctx_2.Enter();
+                    var __ctx_5 = sem;
+                    __ctx_5.Enter();
                     try
                     {
 #line (226, 9) - (226, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
@@ -423,7 +447,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     }
                     finally
                     {
-                        __ctx_2.Exit();
+                        __ctx_5.Exit();
                     }
                 }
 
@@ -444,13 +468,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (237, 5) - (237, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 sem.Release();
 #line (238, 5) - (242, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (239, 9) - (239, 22) 20 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     sem.Release();
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -479,8 +511,8 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (255, 5) - (257, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
 #line hidden
-                    var __ctx_3 = sem;
-                    __ctx_3.Enter();
+                    var __ctx_7 = sem;
+                    __ctx_7.Enter();
                     try
                     {
 #line (256, 9) - (256, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
@@ -489,7 +521,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     }
                     finally
                     {
-                        __ctx_3.Exit();
+                        __ctx_7.Exit();
                     }
                 }
 
@@ -530,30 +562,30 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (276, 5) - (278, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                foreach (var __loopVar_4 in global::Sharpy.Builtins.Range(3))
+                foreach (var __loopVar_8 in global::Sharpy.Builtins.Range(3))
 #line hidden
                 {
-                    var i = __loopVar_4;
+                    var i = __loopVar_8;
 #line (277, 9) - (277, 49) 20 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     threads.Append(new global::Sharpy.Thread(Worker));
 #line hidden
                 }
 
 #line (278, 5) - (280, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                foreach (var __loopVar_5 in threads)
+                foreach (var __loopVar_9 in threads)
 #line hidden
                 {
-                    var t = __loopVar_5;
+                    var t = __loopVar_9;
 #line (279, 9) - (279, 18) 20 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     t.Start();
 #line hidden
                 }
 
 #line (280, 5) - (282, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                foreach (var __loopVar_6 in threads)
+                foreach (var __loopVar_10 in threads)
 #line hidden
                 {
-                    var t = __loopVar_6;
+                    var t = __loopVar_10;
 #line (281, 9) - (281, 28) 20 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     t.Join(timeout: 5.0d);
 #line hidden
@@ -672,13 +704,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (347, 5) - (347, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 timer.Start();
 #line (348, 5) - (350, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
-                Xunit.Assert.Throws<RuntimeError>((global::System.Action)(() =>
+                bool __raised_11 = false;
 #line hidden
+                try
                 {
 #line (349, 9) - (349, 22) 20 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                     timer.Start();
 #line hidden
-                }));
+                }
+                catch (RuntimeError)
+                {
+                    __raised_11 = true;
+                }
+
+                if (!__raised_11)
+                    throw new global::Sharpy.AssertionError("Expected RuntimeError to be raised, but no exception was raised");
 #line (350, 5) - (350, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 timer.Cancel();
 #line hidden

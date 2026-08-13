@@ -79,13 +79,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestFractionZeroDenominatorThrows()
             {
 #line (34, 5) - (37, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Throws<ZeroDivisionError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (35, 9) - (35, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                     new global::Sharpy.Fraction(1, 0);
 #line hidden
-                }));
+                }
+                catch (ZeroDivisionError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -128,26 +136,42 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestFractionFromNanThrows()
             {
 #line (58, 5) - (61, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (59, 9) - (59, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                     new global::Sharpy.Fraction(math.Nan);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
             public void TestFractionFromInfinityThrows()
             {
 #line (63, 5) - (66, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (64, 9) - (64, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                     new global::Sharpy.Fraction(math.Inf);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -228,13 +252,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestFractionFromStringEmptyThrows()
             {
 #line (107, 5) - (110, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (108, 9) - (108, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                     new global::Sharpy.Fraction("");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -313,13 +345,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestFractionDivisionByZeroThrows()
             {
 #line (150, 5) - (153, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Throws<ZeroDivisionError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (151, 9) - (151, 57) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                     _ = new global::Sharpy.Fraction(1, 2) / new global::Sharpy.Fraction(0);
 #line hidden
-                }));
+                }
+                catch (ZeroDivisionError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -378,13 +418,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestFractionFloorDivByZeroThrows()
             {
 #line (184, 5) - (189, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Throws<ZeroDivisionError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (185, 9) - (185, 66) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                     new global::Sharpy.Fraction(1, 2).FloorDiv(new global::Sharpy.Fraction(0));
 #line hidden
-                }));
+                }
+                catch (ZeroDivisionError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -401,13 +449,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestFractionModByZeroThrows()
             {
 #line (196, 5) - (201, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Throws<ZeroDivisionError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (197, 9) - (197, 77) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                     global::Sharpy.Fraction.Mod(new global::Sharpy.Fraction(1), new global::Sharpy.Fraction(0));
 #line hidden
-                }));
+                }
+                catch (ZeroDivisionError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -684,13 +740,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (350, 5) - (350, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                 var f = new global::Sharpy.Fraction(1, 3);
 #line (351, 5) - (354, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_7 = false;
 #line hidden
+                try
                 {
 #line (352, 9) - (352, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                     f.LimitDenominator(0);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_7 = true;
+                }
+
+                if (!__raised_7)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

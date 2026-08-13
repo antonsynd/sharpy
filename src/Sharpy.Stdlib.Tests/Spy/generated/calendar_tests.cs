@@ -343,21 +343,37 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestSetfirstweekdayInvalidValueThrows()
             {
 #line (184, 5) - (186, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (185, 9) - (185, 36) 20 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                     calendar.Setfirstweekday(7);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
 #line (186, 5) - (191, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (187, 9) - (187, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                     calendar.Setfirstweekday(-1);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -397,15 +413,15 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                 };
 #line (208, 5) - (212, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                foreach (var __loopVar_5 in cal)
+                foreach (var __loopVar_7 in cal)
 #line hidden
                 {
-                    var week = __loopVar_5;
+                    var week = __loopVar_7;
 #line (209, 9) - (212, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
-                    foreach (var __loopVar_6 in week)
+                    foreach (var __loopVar_8 in week)
 #line hidden
                     {
-                        var d = __loopVar_6;
+                        var d = __loopVar_8;
 #line (210, 13) - (212, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                         if (d != 0)
 #line hidden

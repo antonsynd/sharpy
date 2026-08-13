@@ -248,13 +248,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (156, 5) - (156, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                 sio.Close();
 #line (157, 5) - (161, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (158, 9) - (158, 23) 20 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                     sio.Getvalue();
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -265,13 +273,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (164, 5) - (164, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                 sio.Close();
 #line (165, 5) - (169, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (166, 9) - (166, 20) 20 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                     sio.Seek(0);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -282,13 +298,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (172, 5) - (172, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                 sio.Close();
 #line (173, 5) - (177, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (174, 9) - (174, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                     sio.Write("data");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -299,13 +323,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (180, 5) - (180, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                 sio.Close();
 #line (181, 5) - (185, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (182, 9) - (182, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                     sio.Read();
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -316,13 +348,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (188, 5) - (188, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                 sio.Close();
 #line (189, 5) - (193, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_4 = false;
 #line hidden
+                try
                 {
 #line (190, 9) - (190, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                     sio.Tell();
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_4 = true;
+                }
+
+                if (!__raised_4)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -333,13 +373,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (196, 5) - (196, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                 sio.Close();
 #line (197, 5) - (203, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_5 = false;
 #line hidden
+                try
                 {
 #line (198, 9) - (198, 23) 20 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                     sio.Truncate();
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_5 = true;
+                }
+
+                if (!__raised_5)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -348,13 +396,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (205, 5) - (205, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                 var sio = new global::Sharpy.StringIO("hello");
 #line (206, 5) - (212, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_6 = false;
 #line hidden
+                try
                 {
 #line (207, 9) - (207, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/io/io_stringio_tests.spy"
                     sio.Seek(-1);
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_6 = true;
+                }
+
+                if (!__raised_6)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]

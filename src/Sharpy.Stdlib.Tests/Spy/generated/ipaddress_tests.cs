@@ -53,13 +53,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIpv4AddressInvalid()
             {
 #line (24, 5) - (27, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_0 = false;
 #line hidden
+                try
                 {
 #line (25, 9) - (25, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                     new global::Sharpy.IPv4Address("invalid");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_0 = true;
+                }
+
+                if (!__raised_0)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -212,13 +220,21 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (101, 5) - (101, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 global::Sharpy.IPv4Address addr = new global::Sharpy.IPv4Address("255.255.255.255");
 #line (102, 5) - (109, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_1 = false;
 #line hidden
+                try
                 {
 #line (103, 9) - (103, 21) 20 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                     var _ = addr + 1;
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_1 = true;
+                }
+
+                if (!__raised_1)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -455,13 +471,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIpv4NetworkStrictHostBitsSet()
             {
 #line (232, 5) - (235, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_2 = false;
 #line hidden
+                try
                 {
 #line (233, 9) - (233, 48) 20 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                     new global::Sharpy.IPv4Network("192.168.1.1/24");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_2 = true;
+                }
+
+                if (!__raised_2)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
@@ -596,13 +620,21 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIpAddressInvalid()
             {
 #line (315, 5) - (318, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+                bool __raised_3 = false;
 #line hidden
+                try
                 {
 #line (316, 9) - (316, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                     ipaddress.IpAddress("invalid");
 #line hidden
-                }));
+                }
+                catch (ValueError)
+                {
+                    __raised_3 = true;
+                }
+
+                if (!__raised_3)
+                    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
             }
 
             [Xunit.FactAttribute]
