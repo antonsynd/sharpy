@@ -142,19 +142,17 @@ internal static class RunCommand
         }
 
         var outputPath = output?.FullName;
-        var isTempOutput = false;
-        var tempBaseName = "";
+        string? tempRunDir = null;
 
         if (outputPath == null)
         {
-            var tempDir = Path.GetTempPath();
+            tempRunDir = CreateTemporaryRunDirectory();
             var inputFileName = Path.GetFileNameWithoutExtension(inputFile.Name);
-            tempBaseName = $"{inputFileName}_{Guid.NewGuid():N}";
-            outputPath = Path.Combine(tempDir, tempBaseName + ".exe");
-            isTempOutput = true;
+            // The assembly name still carries a GUID even inside a private directory: a
+            // --self-contained publish writes a project whose own AssemblyName is the input file's
+            // stem and which references this assembly by file name, so the two must differ.
+            outputPath = Path.Combine(tempRunDir, $"{inputFileName}_{Guid.NewGuid():N}.exe");
         }
-
-        IReadOnlySet<string>? copiedDeps = null;
 
         try
         {
@@ -184,11 +182,11 @@ internal static class RunCommand
             }
 
             var outputDir = Path.GetDirectoryName(outputPath)!;
-            copiedDeps = RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, usedAssemblyPaths);
+            RuntimeDependencyHelper.CopyRuntimeDependencies(outputDir, usedAssemblyPaths);
 
             if (selfContained)
             {
-                return HandleSelfContainedRun(inputFile, outputPath, args, isTempOutput, usedAssemblyPaths, copiedDeps);
+                return HandleSelfContainedRun(inputFile, outputPath, args, usedAssemblyPaths);
             }
 
             Console.WriteLine();
@@ -211,46 +209,53 @@ internal static class RunCommand
             if (process != null)
             {
                 process.WaitForExit();
-
-                if (isTempOutput)
-                {
-                    try
-                    {
-                        var basePath = Path.GetDirectoryName(outputPath)!;
-                        File.Delete(outputPath);
-                        File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
-                        File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
-                        File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
-                        CleanupRuntimeDependencies(basePath, copiedDeps);
-                    }
-                    catch
-                    {
-                    }
-                }
-
                 return process.ExitCode;
             }
 
             return 0;
         }
-        catch (Exception)
+        finally
         {
-            if (isTempOutput && File.Exists(outputPath))
-            {
-                try
-                {
-                    var basePath = Path.GetDirectoryName(outputPath)!;
-                    File.Delete(outputPath);
-                    File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
-                    File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
-                    File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
-                    CleanupRuntimeDependencies(basePath, copiedDeps);
-                }
-                catch
-                {
-                }
-            }
-            throw;
+            // In a finally, not after the wait: a compile that fails returns from the middle of the
+            // try, and every such path used to leave its staged output behind.
+            CleanupTemporaryRunDirectory(tempRunDir);
+        }
+    }
+
+    /// <summary>
+    /// Creates a fresh private directory under the temp root for a <c>run</c> that was given no
+    /// <c>--output</c>. The executable is never staged in the temp root itself: <c>run</c> copies
+    /// the whole runtime closure (Sharpy.Core.dll, the used stdlib assemblies, their transitive
+    /// managed and native dependencies) beside it under fixed file names and removes them
+    /// afterwards, so two concurrent runs sharing that directory overwrite each other's mapped
+    /// assemblies and delete each other's dependencies (#1419).
+    /// </summary>
+    internal static string CreateTemporaryRunDirectory()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"sharpy_run_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
+
+    /// <summary>
+    /// Removes the private directory a temporary <c>run</c> staged its output in, contents and all.
+    /// Removing the directory rather than the copied file names is what keeps cleanup from reaching
+    /// a concurrent run's files (#1419). Best-effort: a run that cannot clean up still returns its
+    /// program's exit code.
+    /// </summary>
+    static void CleanupTemporaryRunDirectory(string? tempRunDir)
+    {
+        if (tempRunDir == null)
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.Delete(tempRunDir, recursive: true);
+        }
+        catch
+        {
         }
     }
 
@@ -258,65 +263,42 @@ internal static class RunCommand
         FileInfo inputFile,
         string compiledExePath,
         string[] args,
-        bool isTempOutput,
-        IReadOnlySet<string> usedAssemblyPaths,
-        IReadOnlySet<string>? copiedDeps)
+        IReadOnlySet<string> usedAssemblyPaths)
     {
         var entryTypeName = Path.GetFileNameWithoutExtension(inputFile.Name);
         var publishDir = Path.Combine(Path.GetTempPath(), $"sharpy_publish_{Guid.NewGuid():N}");
 
-        try
+        // No cleanup of the compiled executable here: the caller staged it in a directory of its own
+        // and removes that directory in a finally, whichever way this returns (#1419).
+        var publishedExe = SelfContainedPublisher.Publish(compiledExePath, entryTypeName, publishDir, usedAssemblyPaths);
+        if (publishedExe == null)
         {
-            var publishedExe = SelfContainedPublisher.Publish(compiledExePath, entryTypeName, publishDir, usedAssemblyPaths);
-            if (publishedExe == null)
-            {
-                return 1;
-            }
-
-            Console.WriteLine($"Published to: {publishDir}");
-            Console.WriteLine();
-            Console.WriteLine("=== Running Program ===");
-            Console.WriteLine();
-
-            var runInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = publishedExe,
-                UseShellExecute = false
-            };
-
-            foreach (var arg in args)
-                runInfo.ArgumentList.Add(arg);
-
-            var runProcess = System.Diagnostics.Process.Start(runInfo);
-            if (runProcess != null)
-            {
-                runProcess.WaitForExit();
-                return runProcess.ExitCode;
-            }
-
-            return 0;
+            return 1;
         }
-        finally
+
+        Console.WriteLine($"Published to: {publishDir}");
+        Console.WriteLine();
+        Console.WriteLine("=== Running Program ===");
+        Console.WriteLine();
+
+        var runInfo = new System.Diagnostics.ProcessStartInfo
         {
-            if (isTempOutput)
-            {
-                try
-                {
-                    var basePath = Path.GetDirectoryName(compiledExePath)!;
-                    var tempBaseName = Path.GetFileNameWithoutExtension(compiledExePath);
-                    File.Delete(compiledExePath);
-                    File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
-                    File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
-                    File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
-                    CleanupRuntimeDependencies(basePath, copiedDeps);
-                }
-                catch { }
-            }
+            FileName = publishedExe,
+            UseShellExecute = false
+        };
+
+        foreach (var arg in args)
+            runInfo.ArgumentList.Add(arg);
+
+        var runProcess = System.Diagnostics.Process.Start(runInfo);
+        if (runProcess != null)
+        {
+            runProcess.WaitForExit();
+            return runProcess.ExitCode;
         }
+
+        return 0;
     }
-
-    static void CleanupRuntimeDependencies(string dir, IReadOnlySet<string>? copiedDeps)
-        => RuntimeDependencyHelper.CleanupRuntimeDependencies(dir, copiedDeps);
 
     /// <summary>
     /// Compile the entry file through a keep-alive server (#1049), producing the binary at

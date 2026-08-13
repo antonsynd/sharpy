@@ -22,8 +22,14 @@ internal static class RuntimeDependencyHelper
     /// <summary>
     /// Copies Sharpy.Core.dll plus the full transitive runtime closure of every used stdlib
     /// assembly (managed assemblies and native assets, flat) into <paramref name="outputDir"/>.
-    /// Returns the set of copied file names (relative to the output directory) so callers can
-    /// clean them up later.
+    /// Returns the set of copied file names, relative to the output directory.
+    ///
+    /// <para>
+    /// There is deliberately no name-keyed counterpart that deletes them again: the copies land
+    /// under fixed file names, so removing them by name from a directory shared with another
+    /// compilation deletes that one's dependencies too. A caller staging into a temporary location
+    /// gives that location its own directory and removes the directory (#1419).
+    /// </para>
     /// </summary>
     internal static HashSet<string> CopyRuntimeDependencies(string outputDir, IReadOnlySet<string> usedAssemblyPaths)
     {
@@ -63,22 +69,5 @@ internal static class RuntimeDependencyHelper
         }
 
         return copiedFiles;
-    }
-
-    /// <summary>
-    /// Deletes the runtime dependency files previously copied into
-    /// <paramref name="dir"/> (as returned by <see cref="CopyRuntimeDependencies"/>).
-    /// </summary>
-    internal static void CleanupRuntimeDependencies(string dir, IReadOnlySet<string>? copiedFiles)
-    {
-        if (copiedFiles == null)
-            return;
-
-        foreach (var dep in copiedFiles)
-        {
-            var path = Path.Combine(dir, dep);
-            if (File.Exists(path))
-                File.Delete(path);
-        }
     }
 }
