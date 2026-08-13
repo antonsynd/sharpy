@@ -126,8 +126,8 @@ Serialize data to YAML, re-emitting any comments stored in
 - `indent` (int) -- Number of spaces per indentation level.
 
 **Returns:** The YAML string with comments preserved. The document-end marker follows the
-same rule as `SafeDump` — the two dump surfaces share one authority for it,
-so they cannot disagree about whether a given document carries `...`.
+same rule as `safe_dump` — the two dump surfaces share one authority for it, so
+they cannot disagree about whether a given document carries `...`.
 
 ### `yaml.safe_load_typed(text: str) -> Result[T, YAMLError]`
 
