@@ -4372,14 +4372,13 @@ internal partial class TypeChecker
             // parameter, a bare `None` whose target decides its meaning) is skipped rather than
             // guessed at.
             //
-            // So is a FUNCTION-typed argument, for a reason that is not about lambdas: a parameter
-            // whose name equals its own function's name currently resolves to the function rather
-            // than the parameter (#1393), and that mis-resolution reaches here as a function type
-            // where the user wrote an ordinary value. `calendar_module.spy`'s
-            // `def month(year, month, ...)` calling `cal.formatmonth(year, month, w, l)` is exactly
-            // that shape, and it emits and runs correctly — refusing it would report this seam's
-            // diagnosis of someone else's bug. Narrow this back to unresolved lambdas when #1393
-            // lands; the stdlib module is the pin.
+            // So is a FUNCTION-typed argument. The original reason is GONE: #1393 (a parameter
+            // named like its own function mis-resolving to the function) landed in 1fbf87e21, so
+            // the mis-resolution this skip was shielding no longer reaches here.
+            // TODO(#1501): narrow to unresolved lambdas (`FunctionType ft && ft.HasUnresolvedTypes()`,
+            // the :1116 predicate) — until then a genuine FunctionType argument to a CLR call is
+            // never arity/argument-checked, the one shape of #1290's gap still open.
+            // `calendar_module.spy` stays the regression pin.
             if (argTypes[i] is UnknownType or TypeParameterType or FunctionType
                 || call.Arguments[i] is NoneLiteral)
             {
