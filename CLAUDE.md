@@ -152,6 +152,7 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 65**: `SourceGeneratorValidator` — Source generator attribute validation
 - **Order 140**: `ConstructorOverloadValidator` — Duplicate constructor signatures
 - **Order 145**: `StructRulesValidator` — Struct constructor field initialization
+- **Order 146**: `AbstractMemberValidator` — Abstract member in non-abstract class (SPY0493)
 - **Order 147**: `EnumRulesValidator` — Enum value type consistency
 - **Order 150**: `SignatureValidator` — Dunder method signatures
 - **Order 152**: `ConversionOperatorValidator` — Conversion operator validation

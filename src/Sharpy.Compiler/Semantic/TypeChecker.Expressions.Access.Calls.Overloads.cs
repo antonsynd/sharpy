@@ -601,9 +601,13 @@ internal partial class TypeChecker
     /// registered against <c>typeof(object)</c> placeholders, which construct fine. It is
     /// reported instead as an unfamilied builtin, which SPY0342 refuses for the accurate reason —
     /// no signature is available to pin — rather than letting the bare name reach codegen (#1272).
-    /// Giving these types families, so that <c>mk: () -&gt; frozenset[int] = frozenset</c> pins the
-    /// way <c>list</c> already does, is the other half of #1272 and a language ADDITION; it stays
-    /// open deliberately.</para>
+    /// The family grants that were once "the other half of #1272" have since LANDED for four of the
+    /// seven: <c>mk: () -&gt; frozenset[int] = frozenset</c> pins the way <c>list</c> does, and so do
+    /// <c>frozendict</c>, <c>object</c> and <c>decimal</c> (504a8eb25; fixture
+    /// <c>builtins/constructor_reference_families_1272</c>). What is still unfamilied is
+    /// <c>bytes</c> — its <c>Builtins.Bytes</c> overload set would shadow the TYPE in a
+    /// static-member qualifier (#1347) — and <c>Iterator</c>/the view types, which are
+    /// non-constructible and now draw SPY0346 instead (#1346).</para>
     /// </summary>
     private ConstructorReferenceClassification ClassifyConstructorReference(
         Expression reference, SemanticType type)
@@ -841,7 +845,9 @@ internal partial class TypeChecker
     /// <para>What it protects there is narrower than it looks, and worth naming so the next reader
     /// does not widen this gate on a wrong premise. An ordinary call argument naming one of these
     /// types still leaks: <c>takes(ValueError)</c> for <c>def takes(t: object)</c> produces CS0119
-    /// behind SPY0908 today, and so does <c>map(bytes, xs)</c> — both stay under #1272's open half.
+    /// behind SPY0908 today (#1490), and so does <c>map(bytes, xs)</c> (#1347). #1272 is CLOSED —
+    /// it recorded both as deferred with their blockers measured — so do not read "#1272" here as an
+    /// open work item.
     /// The position that WORKS is <c>with assert_raises(ValueError):</c>, a special form whose
     /// argument the emitter lowers to a TYPE ARGUMENT of <c>Xunit.Assert.Throws</c> rather than to a
     /// value. Refusing here broke ten shipped unittest tests — the #1170 over-fire again.</para>

@@ -702,11 +702,18 @@ internal partial class TypeChecker
 
         // Identity match — the subject is already the target type.
         //
-        // TODO(#1410): identity only decides here when the subject carries a resolvable definition. A
-        // module-qualified subject (`x: mod_b.Bag[int]`) arrives without one, so ResolveDefinition
-        // falls through to a name lookup that finds a same-named LOCAL declaration and compares it
-        // against itself — `isinstance(x, Bag)` then emits a test against mod_b's Bag. The fix is
-        // upstream, where the qualified annotation is resolved; this comparison is already strict.
+        // TODO(#1448): identity only decides here when the subject carries a resolvable definition.
+        // A subject without one makes ResolveDefinition fall through to a name lookup that finds a
+        // same-named LOCAL declaration and compares it against itself, so `isinstance(x, Bag)` emits
+        // a test against the wrong Bag. The fix is upstream, where the annotation is resolved; this
+        // comparison is already strict.
+        //
+        // The IN-SOURCE-SET half of this was #1410, closed by the Exports-copy elimination
+        // (a804d4f5e): a module-qualified annotation now resolves to the compilation's own symbol,
+        // which IS the definition. What remains is the extraction path — ModuleLoader's
+        // ConvertTypeAnnotationToSemanticType (ModuleLoader.cs:838) builds a definition-less
+        // GenericType for every variable, field, parameter and return annotation of a module that is
+        // imported but not compiled, and keeps the annotation's name verbatim (#1448).
         if (generic.TypeArguments.Count == typeSymbol.TypeParameters.Count
             && NamesSameDeclaration(generic, typeSymbol))
         {
