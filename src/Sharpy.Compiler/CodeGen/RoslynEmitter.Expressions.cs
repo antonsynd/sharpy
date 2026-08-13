@@ -302,6 +302,10 @@ internal partial class RoslynEmitter
         // `value` or the captured old-value local. Nothing declares the Sharpy spelling, so a
         // reference that reaches the slot lookup below emits an undeclared name (CS0103 behind
         // SPY0908 — #1405). One branch for all three shapes; see AccessorParamRewrite.
+        // TODO(#1500): this match is SPELLING-keyed and runs before symbol resolution, so it
+        // reaches inside a shadowing binder — a lambda parameter of the same name inside the
+        // accessor body is rewritten too, computing silently wrong values (measured: Python 106,
+        // Sharpy 300). Suspend the rewrite across re-binding scopes or key it on the symbol.
         if (_accessorParamRewrite is { } rewrite
             && string.Equals(name.Name, rewrite.Source, StringComparison.Ordinal))
         {

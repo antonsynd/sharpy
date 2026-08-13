@@ -893,9 +893,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates a C# property with a function-style body (custom getter/setter).
-    /// </summary>
-    /// <summary>
     /// The accessor's named incoming value — its first non-<c>self</c> parameter — or null when it
     /// declares none. C# hands that value to the accessor as the implicit <c>value</c>, so the
     /// Sharpy name is MAPPED onto it rather than declared; see <c>AccessorParamRewrite</c>.
@@ -931,6 +928,9 @@ internal partial class RoslynEmitter
         return PredefinedType(Token(SyntaxKind.ObjectKeyword));
     }
 
+    /// <summary>
+    /// Generates a C# property with a function-style body (custom getter/setter).
+    /// </summary>
     private PropertyDeclarationSyntax GenerateFunctionStyleProperty(PropertyDef propDef)
     {
         var propertyName = NameCasing.ResolveMethod(propDef.Name, propDef.IsNameBacktickEscaped);
