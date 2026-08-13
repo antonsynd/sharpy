@@ -35,6 +35,17 @@ namespace Sharpy
             if (obj is bool b)
                 return b ? "True" : "False";
 
+            // Python: repr(ValueError('boom')) is "ValueError('boom')" — the type name and the
+            // args, where str() gives the message alone (#1415). Handled here as well as in Str so
+            // the two do not disagree: fixing only str() would leave repr(e), and every container
+            // holding an exception, still printing a stack trace and an absolute path.
+            //
+            // Sharpy exceptions carry ONE message rather than Python's args tuple, so this renders
+            // the single-arg form. A Python exception built with zero or several args
+            // (`ValueError()`, `ValueError('a','b')`) has no equivalent here.
+            if (obj is System.Exception ex)
+                return ex.GetType().Name + "(" + ReprString(ex.Message) + ")";
+
             // Boxed floats must route through the Python float formatter, otherwise
             // .NET's default ToString() drops the trailing ".0" on whole values and
             // every container element (list/set/dict/tuple all funnel through Repr)

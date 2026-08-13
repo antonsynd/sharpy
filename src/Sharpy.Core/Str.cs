@@ -36,6 +36,24 @@ namespace Sharpy
                 return b ? "True" : "False";
             }
 
+            // An exception stringifies to its MESSAGE, as in Python — not to .NET's
+            // Exception.ToString(), which concatenates the type name, the message AND the stack
+            // trace (#1415). The stack trace embeds an ABSOLUTE SOURCE PATH, so anything printing a
+            // caught exception was machine-dependent: unpinnable by a fixture, and leaking build
+            // paths into a user's stdout or logs. It is also multi-line, which silently breaks the
+            // `print(f"failed: {e}")` shape.
+            //
+            // The .NET rendering stays available through the object itself for anyone who wants it.
+            //
+            // SCOPE, STATED: this arm is reached by `str(e)` and by `print(e)` (Builtins.Print
+            // formats each value through Str). It is NOT reached by an f-string — `f"{e}"` lowers to
+            // a C# interpolated string, which calls e.ToString() directly and never consults this
+            // method. #1415 stays open for that half.
+            if (x is Exception ex)
+            {
+                return ex.Message;
+            }
+
             if (x is double d)
             {
                 return FormatFloat(d);

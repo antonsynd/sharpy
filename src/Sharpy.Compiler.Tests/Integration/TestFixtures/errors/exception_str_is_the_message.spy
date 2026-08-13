@@ -1,0 +1,17 @@
+# #1415's own repro. `str(e)` fell through to .NET's Exception.ToString(), which concatenates
+# the type name, the message AND the stack trace — including an ABSOLUTE SOURCE PATH. That made
+# any program printing a caught exception machine-dependent: this fixture could not have been
+# written before the fix, because its output contained the build machine's directory layout.
+#
+# Verified against python3 3.12: str(e) is the message alone, repr(e) is "ValueError('builtin msg')".
+#
+# NOT COVERED HERE, DELIBERATELY: f"{e}" still renders the .NET form, because an f-string lowers
+# to a C# interpolated string and calls e.ToString() directly rather than going through
+# Builtins.Str. #1415 stays open for that half; see the issue for the compiler-side fix.
+def main() -> None:
+    try:
+        raise ValueError('builtin msg')
+    except ValueError as e:
+        print(str(e))
+        print(e)
+        print(repr(e))

@@ -1,0 +1,3 @@
+builtin msg
+builtin msg
+ValueError('builtin msg')
