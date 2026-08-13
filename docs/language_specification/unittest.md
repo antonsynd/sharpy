@@ -218,13 +218,27 @@ def test_division_by_zero():
 
 Generated C#:
 ```csharp
-Xunit.Assert.Throws<ZeroDivisionError>(() =>
+bool __raised_0 = false;
+try
 {
-    var x = 1 / 0;
-});
+    var x = (double)(1) / 0;
+}
+catch (ZeroDivisionError)
+{
+    __raised_0 = true;
+}
+
+if (!__raised_0)
+    throw new global::Sharpy.AssertionError("Expected ZeroDivisionError to be raised, but no exception was raised");
 ```
 
-`assert_raises` is a codegen transform — the compiler replaces the entire `with` block with `Assert.Throws<T>(() => { ... })`, which is the correct xUnit idiom for exception assertions.
+`assert_raises` is a codegen transform — the compiler replaces the entire `with` block. The
+lowering names no test framework, so **the form is available in any function, not only a `@test`
+one** (#1413). The raised flag is not decoration: a naive `try { body; throw AssertionError }
+catch (E) { }` self-swallows whenever `E` is `AssertionError` or a base of it, such as `Exception`,
+and a body that raised nothing would pass silently. The flag is read *after* the try, where no
+catch can reach it. An exception of the wrong type is deliberately not caught — it propagates with
+its own message and stack, which says more than a wrapper would.
 
 ### Capturing the exception (`as`)
 
@@ -241,12 +255,26 @@ def test_message():
 
 Generated C#:
 ```csharp
-var exc = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+ValueError exc = null!;
+bool __raised_1 = false;
+try
 {
     throw new global::Sharpy.ValueError("bad input");
-}));
+}
+catch (ValueError __caught_2)
+{
+    __raised_1 = true;
+    exc = __caught_2;
+}
+
+if (!__raised_1)
+    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
 Xunit.Assert.Equal("bad input", exc.Message);
 ```
+
+The capture is declared *ahead* of the try and assigned in the catch, so it stays visible to the
+statements that follow the `with`. Without an `as` name nothing reads the caught exception, and the
+catch clause does not name it at all.
 
 ### Matching the exception message
 
@@ -265,19 +293,33 @@ def test_match():
 
 Generated C#:
 ```csharp
-var __ex_0 = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+ValueError __ex_3 = null!;
+bool __raised_4 = false;
+try
 {
     throw new global::Sharpy.ValueError("bad input");
-}));
-Xunit.Assert.Matches("bad.*input", __ex_0.Message);
+}
+catch (ValueError __caught_5)
+{
+    __raised_4 = true;
+    __ex_3 = __caught_5;
+}
+
+if (!__raised_4)
+    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+if (!(global::System.Text.RegularExpressions.Regex.IsMatch(__ex_3.Message, "bad.*input")))
+    throw new global::Sharpy.AssertionError("Expected the raised ValueError's message to match " + "bad.*input" + ", but it was: " + __ex_3.Message);
 ```
+
+Note the argument order: `Regex.IsMatch(input, pattern)` is the reverse of the
+`Assert.Matches(pattern, actual)` this replaced.
 
 > **Spelling:** the pytest-style keyword form `assert_raises(ValueError, match="bad.*input")` is
 > also accepted by code generation, but `match` is currently a reserved keyword in the parser, so
 > the keyword-argument spelling does not yet parse (tracked by issue #872). Use the **positional**
 > form shown above for now.
 
-The match argument combines with `as`: the captured name is reused for the `Assert.Matches` call.
+The match argument combines with `as`: the captured name is reused for the message check.
 
 ```python
 with assert_raises(ValueError, "bad") as exc:
@@ -287,11 +329,22 @@ assert exc.message == "bad input"
 
 Generated C#:
 ```csharp
-var exc = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+ValueError exc = null!;
+bool __raised_0 = false;
+try
 {
     throw new global::Sharpy.ValueError("bad input");
-}));
-Xunit.Assert.Matches("bad", exc.Message);
+}
+catch (ValueError __caught_1)
+{
+    __raised_0 = true;
+    exc = __caught_1;
+}
+
+if (!__raised_0)
+    throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+if (!(global::System.Text.RegularExpressions.Regex.IsMatch(exc.Message, "bad")))
+    throw new global::Sharpy.AssertionError("Expected the raised ValueError's message to match " + "bad" + ", but it was: " + exc.Message);
 ```
 
 ## `assert_almost_equal`

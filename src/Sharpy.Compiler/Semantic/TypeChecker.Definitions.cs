@@ -255,9 +255,6 @@ internal partial class TypeChecker
         var previousIsAsync = _currentFunctionIsAsync;
         _currentFunctionIsAsync = functionDef.IsAsync;
 
-        var previousIsTest = _currentFunctionIsTest;
-        _currentFunctionIsTest = Shared.AssertRaisesForm.IsTestFunction(functionDef.Decorators);
-
         var previousIsGenerator = _currentFunctionIsGenerator;
         var isGenerator = ContainsYield(functionDef.Body);
         _currentFunctionIsGenerator = isGenerator;
@@ -312,7 +309,6 @@ internal partial class TypeChecker
         _currentMethodIsDunder = previousMethodIsDunder;
         _currentFunctionIsGenerator = previousIsGenerator;
         _currentFunctionIsAsync = previousIsAsync;
-        _currentFunctionIsTest = previousIsTest;
         _controlFlowDepth = previousControlFlowDepth;
         _superInitCalled = previousSuperInitCalled;
 
@@ -1997,8 +1993,6 @@ internal partial class TypeChecker
         _controlFlowDepth = 0;
         _currentFunctionIsGenerator = false;
         _currentFunctionIsAsync = false;
-        var previousIsTest = _currentFunctionIsTest;
-        _currentFunctionIsTest = false;
 
         var previousFlow = _narrowingFlow;
         var previousFacts = _currentFacts;
@@ -2016,7 +2010,6 @@ internal partial class TypeChecker
         _controlFlowDepth = previousControlFlowDepth;
         _currentFunctionIsGenerator = previousIsGenerator;
         _currentFunctionIsAsync = previousIsAsync;
-        _currentFunctionIsTest = previousIsTest;
         _currentFunctionReturnType = previousFunctionReturnType;
 
         _symbolTable.ExitScope();

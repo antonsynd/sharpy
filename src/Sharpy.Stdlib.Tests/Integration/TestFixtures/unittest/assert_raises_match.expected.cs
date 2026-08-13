@@ -25,28 +25,50 @@ public partial class AssertRaisesMatchTests
     public void TestMatchBasic()
     {
 #line (5, 5) - (8, 1) 8 "assert_raises_match.spy"
-        var __ex_0 = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+        ValueError __ex_0 = null!;
 #line hidden
+        bool __raised_1 = false;
+        try
         {
 #line (6, 9) - (6, 39) 12 "assert_raises_match.spy"
             throw new global::Sharpy.ValueError("bad input");
 #line hidden
-        }));
-        Xunit.Assert.Matches("bad.*input", __ex_0.Message);
+        }
+        catch (ValueError __caught_2)
+        {
+            __raised_1 = true;
+            __ex_0 = __caught_2;
+        }
+
+        if (!__raised_1)
+            throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+        if (!(global::System.Text.RegularExpressions.Regex.IsMatch(__ex_0.Message, "bad.*input")))
+            throw new global::Sharpy.AssertionError("Expected the raised ValueError's message to match " + "bad.*input" + ", but it was: " + __ex_0.Message);
     }
 
     [Xunit.FactAttribute]
     public void TestMatchSubstring()
     {
 #line (10, 5) - (13, 1) 8 "assert_raises_match.spy"
-        var __ex_1 = Xunit.Assert.Throws<RuntimeError>((global::System.Action)(() =>
+        RuntimeError __ex_3 = null!;
 #line hidden
+        bool __raised_4 = false;
+        try
         {
 #line (11, 9) - (11, 48) 12 "assert_raises_match.spy"
             throw new global::Sharpy.RuntimeError("operation failed");
 #line hidden
-        }));
-        Xunit.Assert.Matches("fail", __ex_1.Message);
+        }
+        catch (RuntimeError __caught_5)
+        {
+            __raised_4 = true;
+            __ex_3 = __caught_5;
+        }
+
+        if (!__raised_4)
+            throw new global::Sharpy.AssertionError("Expected RuntimeError to be raised, but no exception was raised");
+        if (!(global::System.Text.RegularExpressions.Regex.IsMatch(__ex_3.Message, "fail")))
+            throw new global::Sharpy.AssertionError("Expected the raised RuntimeError's message to match " + "fail" + ", but it was: " + __ex_3.Message);
     }
 }
 #line default

@@ -16,8 +16,9 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 ///    continue to emit <c>System.Diagnostics.Debug.Assert(...)</c>.
 ///
 /// 2. Unittest module transforms (Plan Task 22):
-///    <c>with assert_raises(E):</c> compiles to <c>Xunit.Assert.Throws&lt;E&gt;</c>
-///    around a lambda; <c>assert_almost_equal(a, b)</c> compiles to
+///    <c>with assert_raises(E):</c> compiles to a raised flag, a try/catch and a
+///    <c>Sharpy.AssertionError</c> — naming no test framework, which is what lets it
+///    appear outside a <c>@test</c> function (#1413); <c>assert_almost_equal(a, b)</c> compiles to
 ///    <c>Xunit.Assert.Equal(b, a, 7)</c>; <c>TestCase</c> lifecycle methods
 ///    are wired up via a generated constructor/Dispose pair; and
 ///    module-level <c>@test</c> functions are lifted into a sibling
@@ -613,7 +614,7 @@ def main():
     #region Unittest transforms (Plan Task 22)
 
     [Fact]
-    public void AssertRaises_GeneratesXunitAssertThrows()
+    public void AssertRaises_LowersToATryCatchGuardedByARaisedFlag()
     {
         var source = @"
 from unittest import assert_raises
@@ -627,10 +628,13 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source, requiresSharpyCore: true);
-        // `with assert_raises(E):` becomes a call to Xunit.Assert.Throws<E>
-        // wrapping the suite as a lambda. We only assert on the call shape;
-        // the lambda formatting may vary across normalizations.
-        code.Should().Contain("Xunit.Assert.Throws<ValueError>");
+        // #1413: the lowering names no test framework — a raised flag, a try/catch over the suite,
+        // and a Sharpy.AssertionError when the flag is still false. That is what lets the form
+        // appear outside a @test function, so the absence of Xunit here is the point, not a detail.
+        code.Should().MatchRegex(@"bool __raised_\d+ = false;");
+        code.Should().Contain("catch (ValueError)");
+        code.Should().Contain("throw new global::Sharpy.AssertionError(");
+        code.Should().NotContain("Xunit.Assert.Throws");
     }
 
     [Fact]
@@ -649,9 +653,11 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source, requiresSharpyCore: true);
-        // `with assert_raises(E) as exc:` captures the thrown exception:
-        //   var exc = Xunit.Assert.Throws<E>((Action)(() => { ... }));
-        code.Should().Contain("var exc = Xunit.Assert.Throws<ValueError>");
+        // `with assert_raises(E) as exc:` declares the capture ahead of the try and assigns it in
+        // the catch, so it outlives the block.
+        code.Should().Contain("ValueError exc = null!;");
+        code.Should().MatchRegex(@"catch \(ValueError __caught_\d+\)");
+        code.Should().MatchRegex(@"exc = __caught_\d+;");
         // The captured variable must be usable in subsequent assertions
         code.Should().Contain("Xunit.Assert.Contains(\"bad input\", global::Sharpy.Builtins.Str(exc))");
     }
@@ -671,9 +677,11 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source, requiresSharpyCore: true);
-        // No `as` name → plain expression statement, no local declaration
-        code.Should().Contain("Xunit.Assert.Throws<ValueError>");
-        code.Should().NotContain("= Xunit.Assert.Throws");
+        // No `as` name → nothing reads the caught exception, so it is not named at all and no
+        // exception local is declared. Only the raised flag exists.
+        code.Should().Contain("catch (ValueError)");
+        code.Should().NotContain("ValueError exc");
+        code.Should().NotMatchRegex(@"catch \(ValueError __caught_\d+\)");
     }
 
     [Fact]
@@ -696,8 +704,8 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source, requiresSharpyCore: true);
-        code.Should().Contain("Xunit.Assert.Throws<global::Sharpy.ZoneInfoNotFoundError>");
-        code.Should().NotContain("Xunit.Assert.Throws<object>");
+        code.Should().Contain("catch (global::Sharpy.ZoneInfoNotFoundError)");
+        code.Should().NotContain("catch (object)");
     }
 
     [Fact]
@@ -719,7 +727,8 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source, requiresSharpyCore: true);
-        code.Should().Contain("var exc = Xunit.Assert.Throws<global::Sharpy.ZoneInfoNotFoundError>");
+        code.Should().Contain("global::Sharpy.ZoneInfoNotFoundError exc = null!;");
+        code.Should().MatchRegex(@"catch \(global::Sharpy\.ZoneInfoNotFoundError __caught_\d+\)");
         code.Should().Contain("global::Sharpy.Builtins.Str(exc)");
     }
 
@@ -740,8 +749,12 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source, requiresSharpyCore: true);
-        code.Should().Contain("= Xunit.Assert.Throws<ValueError>");
-        code.Should().MatchRegex(@"Xunit\.Assert\.Matches\(""bad\.\*input"", __ex_\d+\.Message\)");
+        // NOTE the argument order: Regex.IsMatch(input, pattern), the reverse of the
+        // Assert.Matches(pattern, actual) this replaced.
+        code.Should().MatchRegex(@"ValueError __ex_\d+ = null!;");
+        code.Should().MatchRegex(
+            @"Regex\.IsMatch\(__ex_\d+\.Message, ""bad\.\*input""\)");
+        code.Should().NotContain("Xunit.Assert.Matches");
     }
 
     [Fact]
@@ -762,8 +775,8 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source, requiresSharpyCore: true);
-        code.Should().Contain("var exc = Xunit.Assert.Throws<ValueError>");
-        code.Should().Contain("Xunit.Assert.Matches(\"bad\", exc.Message)");
+        code.Should().Contain("ValueError exc = null!;");
+        code.Should().Contain("Regex.IsMatch(exc.Message, \"bad\")");
         // exc is still visible afterward → assert str(exc) == ... lowers using exc
         code.Should().Contain("global::Sharpy.Builtins.Str(exc)");
     }

@@ -93,6 +93,26 @@ internal partial class RoslynEmitter
             _ => null
         };
 
+        // The BUILTINS-QUALIFIED spelling reaches the same three rewrites (#1381). `builtins.isinstance`
+        // denotes what bare `isinstance` denotes (#1322), so a @test body spelling it qualified must
+        // lower identically — otherwise the phase establishes agreement everywhere EXCEPT here, and a
+        // documented exception is the residue that becomes folklore.
+        //
+        // Reads the routing the TypeChecker RECORDED rather than deciding what the receiver is: a
+        // builtins-qualified call carries CalleeRouting.Builtin, so Critical Rule 2 holds. Computed
+        // once and consumed by all three arms, so a fourth arm inherits it instead of carrying its
+        // own copy of the pattern.
+        var isinstanceCall = test switch
+        {
+            UnaryOp { Operator: UnaryOperator.Not, Operand: FunctionCall negatedIsinstance } => negatedIsinstance,
+            FunctionCall directIsinstance => directIsinstance,
+            _ => null
+        };
+        var isIsinstanceCallee = testCallee is Identifier { Name: "isinstance" }
+            || (testCallee is MemberAccess { IsMemberBacktickEscaped: false, Member: "isinstance" }
+                && isinstanceCall != null
+                && _context.SemanticInfo?.GetCalleeRouting(isinstanceCall) == CalleeRouting.Builtin);
+
         // assert x == approx(y[, places=n | abs=d]) → tolerance/precision-based Xunit.Assert.Equal.
         // Checked ahead of the generic `==` pattern. abs (a double) selects
         // Assert.Equal(double, double, double tolerance); places (an int) selects
@@ -219,7 +239,7 @@ internal partial class RoslynEmitter
         // Tuples are excluded so the tuple arm below still claims them: that spelling is refused in
         // expression position (SPY0344) but lowered correctly here to `a is T1 || a is T2`, and the
         // classifier skips exactly that shape under a @test assert for the same reason.
-        if (testCallee is Identifier { Name: "isinstance" } && test is FunctionCall isinstCall
+        if (isIsinstanceCallee && test is FunctionCall isinstCall
             && isinstCall.Arguments.Length == 2
             && isinstCall.Arguments[1] is not TupleLiteral)
         {
@@ -232,7 +252,7 @@ internal partial class RoslynEmitter
         }
 
         // assert isinstance(a, (T1, T2, ...)) → Xunit.Assert.True(a is T1 || a is T2 || ...)
-        if (testCallee is Identifier { Name: "isinstance" } && test is FunctionCall isinstTupleCall
+        if (isIsinstanceCallee && test is FunctionCall isinstTupleCall
             && isinstTupleCall.Arguments.Length == 2
             && isinstTupleCall.Arguments[1] is TupleLiteral typeTuple)
         {
@@ -248,7 +268,7 @@ internal partial class RoslynEmitter
         }
 
         // assert not isinstance(a, T) → Xunit.Assert.False(a is T)
-        if (testCallee is Identifier { Name: "isinstance" }
+        if (isIsinstanceCallee
             && test is UnaryOp { Operator: UnaryOperator.Not, Operand: FunctionCall negIsinstCall }
             && negIsinstCall.Arguments.Length == 2)
         {
@@ -712,27 +732,13 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateWith(WithStatement withStmt)
     {
-        // Special case for @test functions:
         //   with assert_raises(ExceptionType): body
-        // is rewritten to xUnit:
-        //   Xunit.Assert.Throws<ExceptionType>(() => { body });
-        // assert_raises is a marker (no runtime implementation) — codegen handles it.
-        // Note: the assert_raises(..., match=...) form (which emits two flat statements so
-        // an `as` capture stays visible) is intercepted earlier in GenerateBodyStatements.
-        // Here we only handle the simple no-match form.
-        if (_isInTestFunction && withStmt.Items.Length == 1)
-        {
-            var ctxExpr = withStmt.Items[0].ContextExpression;
-            if (ctxExpr is FunctionCall call && IsAssertRaisesCall(call)
-                && call.Arguments.Length == 1 && GetAssertRaisesMatchArgument(call) == null)
-            {
-                return GenerateAssertThrows(
-                    call.Arguments[0],
-                    withStmt.Body,
-                    withStmt.Items[0].Name,
-                    withStmt.Items[0].IsNameBacktickEscaped);
-            }
-        }
+        // is a marker with no runtime implementation — codegen rewrites it into a flag, a try/catch
+        // and a `Sharpy.AssertionError` (#1413). Every form of it is intercepted in
+        // GenerateBodyStatements, which can emit the several FLAT statements that lowering needs;
+        // GenerateWith returns a single StatementSyntax, and a block to hold them would hide an
+        // `as` capture from the statements that follow the `with`. So there is deliberately no
+        // assert_raises arm here.
 
         // Generate the body block
         var bodyStatements = GenerateSuite(withStmt.Body).ToList();
@@ -862,27 +868,26 @@ internal partial class RoslynEmitter
         => AssertRaisesForm.IsCall(call);
 
     /// <summary>
-    /// If the statement is <c>with assert_raises(E, match=...) [as exc]:</c> inside a @test
-    /// function, emits the two flat statements (captured Throws + Assert.Matches) and returns
-    /// true. Returns false for the no-match form (handled by <see cref="GenerateWith"/>).
+    /// If the statement is <c>with assert_raises(E[, match=...]) [as exc]:</c>, emits the flat
+    /// statements it lowers to and returns true. Both forms come here: the lowering is several
+    /// statements either way, and emitting them flat is what keeps an `as` capture visible to the
+    /// statements after the <c>with</c>.
     /// </summary>
-    private bool TryGenerateAssertRaisesWithMatch(WithStatement withStmt, out List<StatementSyntax> statements)
+    private bool TryGenerateAssertRaises(WithStatement withStmt, out List<StatementSyntax> statements)
     {
         statements = null!;
-        if (!_isInTestFunction || withStmt.Items.Length != 1)
+        if (withStmt.Items.Length != 1)
             return false;
         if (withStmt.Items[0].ContextExpression is not FunctionCall call || !IsAssertRaisesCall(call))
             return false;
-
-        var matchExpr = GetAssertRaisesMatchArgument(call);
-        if (matchExpr == null)
+        if (call.Arguments.Length == 0)
             return false;
 
         statements = GenerateAssertThrowsStatements(
             call.Arguments[0],
             withStmt.Body,
             withStmt.Items[0].Name,
-            matchExpr,
+            GetAssertRaisesMatchArgument(call),
             withStmt.Items[0].IsNameBacktickEscaped);
         return true;
     }
@@ -905,32 +910,18 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates xUnit's Assert.Throws&lt;TException&gt;(() =&gt; { body }) for assert_raises blocks.
-    /// When <paramref name="captureName"/> is provided (from <c>with assert_raises(E) as exc:</c>),
-    /// the thrown exception is captured into a local variable:
-    /// <c>var exc = Xunit.Assert.Throws&lt;TException&gt;((Action)(() =&gt; { body }));</c>.
-    /// </summary>
-    private StatementSyntax GenerateAssertThrows(
-        Expression exceptionTypeExpr,
-        IReadOnlyList<Statement> body,
-        string? captureName = null,
-        bool captureIsEscaped = false)
-    {
-        // No match → exactly one statement.
-        return GenerateAssertThrowsStatements(
-            exceptionTypeExpr, body, captureName, matchExpr: null, captureIsEscaped)[0];
-    }
-
-    /// <summary>
     /// Generates the statement(s) for an assert_raises block, supporting an optional
     /// regex <paramref name="matchExpr"/> (re.search semantics, like pytest's
     /// <c>raises(E, match=...)</c>). Returns a flat list (never a wrapping block) so that an
     /// <c>as</c> capture remains visible to statements following the <c>with</c>:
     /// <code>
-    /// var exc = Xunit.Assert.Throws&lt;E&gt;((System.Action)(() =&gt; { body }));
-    /// Xunit.Assert.Matches(matchExpr, exc.Message);
+    /// bool raised_1 = false;
+    /// try { body } catch (E caught_1) { raised_1 = true; exc = caught_1; }
+    /// if (!raised_1) throw new Sharpy.AssertionError("Expected E to be raised, ...");
+    /// if (!Regex.IsMatch(exc.Message, matchExpr)) throw new Sharpy.AssertionError(...);
     /// </code>
-    /// When there is no capture but a match is present, a temporary local is introduced.
+    /// When there is no capture but a match is present, a temporary local is introduced. Nothing
+    /// here names a test framework, which is what lets the form appear outside a @test (#1413).
     /// </summary>
     private List<StatementSyntax> GenerateAssertThrowsStatements(
         Expression exceptionTypeExpr,
@@ -950,28 +941,22 @@ internal partial class RoslynEmitter
             _ => _typeMapper.MapTypeFromExpression(exceptionTypeExpr)
         };
 
+        // The user's own spelling of the exception, for the failure message. `exceptionType` is the
+        // MANGLED C# name (and may be fully qualified), which is not what the user wrote.
+        var exceptionDisplayName = exceptionTypeExpr switch
+        {
+            Identifier typeId => typeId.Name,
+            MemberAccess memberAccess => memberAccess.Member,
+            _ => exceptionType.ToString()
+        };
+
         var bodyStatements = GenerateSuite(body).ToList();
-        // Cast the lambda to System.Action to avoid overload ambiguity with the
-        // obsolete Xunit.Assert.Throws<T>(Func<Task>) overload (which would otherwise
-        // be selected when the body is throw-only and the compiler cannot infer
-        // a return type for the lambda).
-        var lambda = CastExpression(
-            MakeGlobalQualifiedName("System", "Action"),
-            ParenthesizedExpression(ParenthesizedLambdaExpression(Block(bodyStatements))));
-
-        var throwsCall = InvocationExpression(
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    ParseQualifiedName("Xunit.Assert"),
-                    GenericName(Identifier("Throws"))
-                        .WithTypeArgumentList(TypeArgumentList(
-                            SingletonSeparatedList(exceptionType)))))
-            .AddArgumentListArguments(Argument(lambda));
-
         var result = new List<StatementSyntax>();
 
-        // A local variable is needed when the caller captures the exception (`as exc`)
-        // or when a match assertion must reference the thrown exception's Message.
+        // A local is needed when the caller captures the exception (`as exc`) or when a match
+        // assertion must reference the raised exception's Message. It is declared ABOVE the try —
+        // not inside it — so an `as` capture stays visible to statements FOLLOWING the with, which
+        // is the scope the TypeChecker's capture arm defines it in.
         string? localName = null;
         if (captureName != null)
         {
@@ -986,30 +971,106 @@ internal partial class RoslynEmitter
         if (localName != null)
         {
             result.Add(LocalDeclarationStatement(
-                VariableDeclaration(IdentifierName("var"))
+                VariableDeclaration(exceptionType)
                     .WithVariables(SingletonSeparatedList(
                         VariableDeclarator(EscapedIdentifier(localName))
-                            .WithInitializer(EqualsValueClause(throwsCall))))));
+                            .WithInitializer(EqualsValueClause(
+                                PostfixUnaryExpression(
+                                    SyntaxKind.SuppressNullableWarningExpression,
+                                    LiteralExpression(SyntaxKind.NullLiteralExpression))))))));
         }
-        else
+
+        // A FLAG, not a bare `try { body; throw ... } catch (E) { }`. The naive shape self-swallows:
+        // when E is AssertionError — or any base of it, such as Exception — the synthetic
+        // AssertionError thrown at the end of the try is caught by the same catch, and a body that
+        // raised nothing passes silently. The flag is read after the try, where no catch can reach it.
+        var raisedFlag = GenerateTempVarName("raised");
+        result.Add(LocalDeclarationStatement(
+            VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(raisedFlag))
+                        .WithInitializer(EqualsValueClause(
+                            LiteralExpression(SyntaxKind.FalseLiteralExpression)))))));
+
+        var catchBody = new List<StatementSyntax>
         {
-            result.Add(ExpressionStatement(throwsCall));
+            ExpressionStatement(AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                IdentifierName(raisedFlag),
+                LiteralExpression(SyntaxKind.TrueLiteralExpression)))
+        };
+
+        // The caught exception is named only when something reads it — an `as` capture, or the
+        // temporary a match= introduces. Naming it unconditionally would leave an unused identifier
+        // in every plain `with assert_raises(E):`.
+        var catchDeclaration = CatchDeclaration(exceptionType);
+        if (localName != null)
+        {
+            var caughtName = GenerateTempVarName("caught");
+            catchDeclaration = catchDeclaration.WithIdentifier(Identifier(caughtName));
+            catchBody.Add(ExpressionStatement(AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                EscapedIdentifierName(localName),
+                IdentifierName(caughtName))));
         }
+
+        result.Add(TryStatement(
+            Block(bodyStatements),
+            SingletonList(CatchClause()
+                .WithDeclaration(catchDeclaration)
+                .WithBlock(Block(catchBody))),
+            @finally: null));
+
+        // An exception of the WRONG type is deliberately not caught — it propagates with its own
+        // message and stack, which says more than a wrapper would.
+        result.Add(IfStatement(
+            PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, IdentifierName(raisedFlag)),
+            ThrowStatement(
+                ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "AssertionError"))
+                    .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                        Argument(LiteralExpression(
+                            SyntaxKind.StringLiteralExpression,
+                            Literal($"Expected {exceptionDisplayName} to be raised, but no exception was raised")))))))));
 
         if (matchExpr != null)
         {
-            // Xunit.Assert.Matches(matchExpr, localName.Message);  (re.search semantics)
-            result.Add(ExpressionStatement(InvocationExpression(
+            // re.search semantics — the pattern matches anywhere in .Message, unanchored, which is
+            // what pytest's raises(match=...) does and what Xunit.Assert.Matches did here before.
+            // NOTE the argument order flips: Assert.Matches(pattern, actual) vs
+            // Regex.IsMatch(input, pattern).
+            var messageAccess = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                EscapedIdentifierName(localName!),
+                IdentifierName("Message"));
+
+            var isMatchCall = InvocationExpression(
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
-                        ParseQualifiedName("Xunit.Assert"),
-                        IdentifierName("Matches")))
+                        MakeGlobalQualifiedName("System", "Text", "RegularExpressions", "Regex"),
+                        IdentifierName("IsMatch")))
                 .AddArgumentListArguments(
-                    Argument(GenerateExpression(matchExpr)),
-                    Argument(MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(localName!),
-                        IdentifierName("Message"))))));
+                    Argument(messageAccess),
+                    Argument(GenerateExpression(matchExpr)));
+
+            // "Expected the raised {E}'s message to match <pattern>, but it was: <message>"
+            var failureMessage = BinaryExpression(
+                SyntaxKind.AddExpression,
+                BinaryExpression(
+                    SyntaxKind.AddExpression,
+                    BinaryExpression(
+                        SyntaxKind.AddExpression,
+                        LiteralExpression(
+                            SyntaxKind.StringLiteralExpression,
+                            Literal($"Expected the raised {exceptionDisplayName}'s message to match ")),
+                        GenerateExpression(matchExpr)),
+                    LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(", but it was: "))),
+                messageAccess);
+
+            result.Add(IfStatement(
+                PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(isMatchCall)),
+                ThrowStatement(
+                    ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "AssertionError"))
+                        .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(failureMessage)))))));
         }
 
         return result;

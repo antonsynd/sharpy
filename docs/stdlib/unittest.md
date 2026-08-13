@@ -26,16 +26,17 @@ Return the text captured so far, mirroring `io.StringIO.getvalue()`.
 ### `unittest.assert_raises(exception_type: Type, match: str | None = None) -> AssertRaisesMarker`
 
 Marker for assert_raises context manager. The compiler transforms
-`with assert_raises(ExceptionType): body` into
-`Xunit.Assert.Throws<ExceptionType>(() => { body })`.
+`with assert_raises(ExceptionType): body` into a raised flag, a try/catch, and a
+`Sharpy.AssertionError` thrown when the body raised nothing. The lowering names no
+test framework, so the form is available in any function, not only a `@test` one.
 
 **Parameters:**
 
 - `exception_type` (Type) -- The expected exception type.
 - `match` (str | None) -- Optional regular expression applied to the exception message with
 `re.search` semantics. When provided, the compiler appends a
-`Xunit.Assert.Matches(match, exception.Message)` check after the
-`Xunit.Assert.Throws<ExceptionType>` call.
+`Regex.IsMatch(exception.Message, match)` check, which throws its own
+`Sharpy.AssertionError` naming the message that did not match.
 
 !!! note
     This method exists for type resolution only. It should never be called at runtime.
@@ -159,7 +160,7 @@ on output from modules that write to stderr, such as `logging`.
 
 Marker type returned by unittest.assert_raises(). Implements IDisposable
 so the with-statement type checking passes. The compiler replaces the
-entire with-block with Xunit.Assert.Throws during codegen.
+entire with-block during codegen with a try/catch guarded by a raised flag.
 
 ## TestCase
 

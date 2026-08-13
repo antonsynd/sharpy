@@ -1295,27 +1295,16 @@ internal partial class TypeChecker
         }
 
         // `assert_raises` is a marker with no runtime — `Unittest.AssertRaises` throws
-        // NotSupportedException and its Dispose is empty by design. It works only because the
-        // emitter rewrites `with assert_raises(E):` into `Xunit.Assert.Throws<E>`, and only inside
-        // a @test function. Outside one, nothing rewrote it and the bare marker name reached
-        // codegen as CS0119 behind SPY0908; refuse it here instead (#1283).
-        if (!_currentFunctionIsTest && AssertRaisesForm.IsSpelling(withStmt))
-        {
-            AddError(
-                "'assert_raises' is only available inside a '@test' function — it is a marker the "
-                + "compiler rewrites there, not a context manager with a runtime. Move the check "
-                + "into a '@test' function, or use try/except to assert the failure here.",
-                withStmt.LineStart, withStmt.ColumnStart,
-                code: DiagnosticCodes.Validation.AssertRaisesOutsideTest,
-                span: withStmt.Span);
-        }
+        // NotSupportedException and its Dispose is empty by design. It works because the emitter
+        // rewrites `with assert_raises(E):` away entirely. That rewrite used to name Xunit, so it
+        // only ran inside a @test function and SPY0494 refused the form anywhere else (#1283); it
+        // now lowers to a flag, a try/catch and a `Sharpy.AssertionError`, which any function can
+        // hold, so the restriction is gone and SPY0494 is retired (#1413).
 
-        // For `with assert_raises(E) as exc:`, define the capture variable in the
-        // enclosing scope so it's accessible after the with block. The codegen
-        // transforms this to `var exc = Assert.Throws<E>(...)` which is in the
-        // enclosing scope — a rewrite that happens only in a @test function, which is why the
-        // scope decision is gated on the same condition the emitter uses (#1283).
-        if (_currentFunctionIsTest && withStmt.Items.Length == 1 && withStmt.Items[0].Name != null
+        // For `with assert_raises(E) as exc:`, define the capture variable in the enclosing scope so
+        // it's accessible after the with block: codegen emits the capture as a flat statement there
+        // rather than inside a block, in every function.
+        if (withStmt.Items.Length == 1 && withStmt.Items[0].Name != null
             && IsAssertRaisesExpression(withStmt.Items[0].ContextExpression))
         {
             var item = withStmt.Items[0];

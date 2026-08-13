@@ -25,13 +25,21 @@ public partial class TestAssertRaisesNoCaptureTests
     public void TestNoCapture()
     {
 #line (5, 5) - (8, 1) 8 "test_assert_raises_no_capture.spy"
-        Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+        bool __raised_0 = false;
 #line hidden
+        try
         {
 #line (6, 9) - (6, 34) 12 "test_assert_raises_no_capture.spy"
             throw new global::Sharpy.ValueError("oops");
 #line hidden
-        }));
+        }
+        catch (ValueError)
+        {
+            __raised_0 = true;
+        }
+
+        if (!__raised_0)
+            throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
     }
 }
 #line default

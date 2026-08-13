@@ -739,8 +739,9 @@ public static class DiagnosticCodes
         // Abstract member in non-abstract class (SPY0493, #1307)
         public const string AbstractMemberInNonAbstractClass = "SPY0493"; // Active
 
-        // assert_raises used outside a @test function (SPY0494, #1283)
-        public const string AssertRaisesOutsideTest = "SPY0494"; // Active
+        // SPY0494: Retired (#1413 — assert_raises lowers to a flag/try-catch/Sharpy.AssertionError
+        // that names no test framework, so the @test-only restriction it enforced for #1283 no
+        // longer has anything to protect); reserved, never reused
 
         // A bracket attribute @[...] naming a type that is in scope nowhere (SPY0495, #1427).
         // Distinct from SPY0444 UnknownDecorator, whose remedy is "use @[...] instead" — advice

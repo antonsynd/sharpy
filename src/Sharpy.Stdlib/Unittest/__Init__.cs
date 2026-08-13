@@ -14,8 +14,9 @@ namespace Sharpy
     {
         /// <summary>
         /// Marker for assert_raises context manager. The compiler transforms
-        /// <c>with assert_raises(ExceptionType): body</c> into
-        /// <c>Xunit.Assert.Throws&lt;ExceptionType&gt;(() =&gt; { body })</c>.
+        /// <c>with assert_raises(ExceptionType): body</c> into a raised flag, a try/catch, and a
+        /// <c>Sharpy.AssertionError</c> thrown when the body raised nothing. The lowering names no
+        /// test framework, so the form is available in any function, not only a <c>@test</c> one.
         /// </summary>
         /// <remarks>
         /// This method exists for type resolution only. It should never be called at runtime.
@@ -25,8 +26,8 @@ namespace Sharpy
         /// <param name="match">
         /// Optional regular expression applied to the exception message with
         /// <c>re.search</c> semantics. When provided, the compiler appends a
-        /// <c>Xunit.Assert.Matches(match, exception.Message)</c> check after the
-        /// <c>Xunit.Assert.Throws&lt;ExceptionType&gt;</c> call.
+        /// <c>Regex.IsMatch(exception.Message, match)</c> check, which throws its own
+        /// <c>Sharpy.AssertionError</c> naming the message that did not match.
         /// </param>
         public static AssertRaisesMarker AssertRaises(System.Type exceptionType, string? match = null)
         {

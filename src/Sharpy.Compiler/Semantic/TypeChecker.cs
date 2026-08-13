@@ -193,11 +193,6 @@ internal partial class TypeChecker
     private bool _currentFunctionIsGenerator = false;
     private bool _currentFunctionIsAsync = false;
 
-    /// <summary>
-    /// Whether the function being checked is a <c>@test</c> entry point. The <c>assert_raises</c>
-    /// special form exists only inside one — outside, the marker has no runtime (#1283).
-    /// </summary>
-    private bool _currentFunctionIsTest = false;
     private int _controlFlowDepth = 0;
     private bool _superInitCalled = false;  // Track if super().__init__() was called
 

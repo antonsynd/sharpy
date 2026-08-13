@@ -10,9 +10,15 @@ namespace Sharpy.Compiler.Shared;
 /// <para>
 /// <c>assert_raises</c> is a MARKER, not a context manager: <c>Unittest.AssertRaises</c> throws
 /// <c>NotSupportedException</c> and its <c>Dispose</c> is empty by design. The only thing that
-/// makes it work is the emitter's rewrite of <c>with assert_raises(E): body</c> into
-/// <c>Xunit.Assert.Throws&lt;E&gt;(() =&gt; { body })</c>, and that rewrite fires only inside a
-/// <c>@test</c> function.
+/// makes it work is the emitter's rewrite of <c>with assert_raises(E): body</c> into a flag, a
+/// try/catch and a <c>Sharpy.AssertionError</c>.
+/// </para>
+///
+/// <para>
+/// That rewrite used to name <c>Xunit.Assert.Throws</c>, so it fired only inside a <c>@test</c>
+/// function and SPY0494 refused the form anywhere else. The lowering names no test framework as of
+/// #1413, so the <c>@test</c> condition is gone from every layer — leaving the SPELLING as the
+/// whole predicate, which is why there is now one method here instead of two.
 /// </para>
 ///
 /// <para>
@@ -60,24 +66,11 @@ internal static class AssertRaisesForm
         };
 
     /// <summary>
-    /// Whether a <c>with</c> statement's single context manager is an <c>assert_raises</c> call.
-    /// This is the SPELLING only — see <see cref="IsRewritten"/> for whether the emitter will
-    /// actually lower it.
+    /// Whether the emitter will rewrite this <c>with</c> away. The arity/match conditions are
+    /// deliberately absent: the <c>match=</c> form is rewritten too, by a different arm that emits
+    /// two flat statements. What both arms share — and what the CFG and the <c>as</c>-capture
+    /// actually depend on — is the spelling, and nothing else.
     /// </summary>
-    internal static bool IsSpelling(WithStatement statement)
+    internal static bool IsRewritten(WithStatement statement)
         => statement.Items.Length == 1 && IsCall(statement.Items[0].ContextExpression);
-
-    /// <summary>
-    /// Whether the emitter will rewrite this <c>with</c> into <c>Xunit.Assert.Throws</c>. The
-    /// arity/match conditions are deliberately absent: the <c>match=</c> form is rewritten too,
-    /// by a different arm that emits two flat statements. What both arms share — and what the
-    /// CFG and the <c>as</c>-capture actually depend on — is the spelling plus being inside a
-    /// <c>@test</c> function.
-    /// </summary>
-    internal static bool IsRewritten(WithStatement statement, bool inTestFunction)
-        => inTestFunction && IsSpelling(statement);
-
-    /// <summary>Whether a function's decorators register it as a test entry point.</summary>
-    internal static bool IsTestFunction(IEnumerable<Decorator> decorators)
-        => decorators.Any(DecoratorNames.IsTestDecorator);
 }

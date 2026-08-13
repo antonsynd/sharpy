@@ -123,12 +123,12 @@ public class ControlFlowAnalysisTests
     }
 
     [Fact]
-    public void FindUnreachableCode_AssertRaisesOutsideTestFunction_NotEmpty()
+    public void FindUnreachableCode_AssertRaisesOutsideTestFunction_Empty()
     {
-        // #1283: outside a @test function nothing rewrites `with assert_raises(...)` — the
-        // semantic layer refuses it (SPY0494) — so the CFG must NOT pretend the body's raise is
-        // caught. Before the three gates were unified, the CFG tested the name alone and modelled
-        // a catch-all edge for a lowering that would never be emitted.
+        // #1413 inverts #1283's expectation here. The rewrite no longer names a test framework, so
+        // it fires outside a @test function too, and the CFG must model the same catch-all edge it
+        // models inside one — a statement after the block is reachable however the body ends. The
+        // gates stay unified: what changed is that all three now ask only about the spelling.
         var func = new FunctionDef
         {
             Name = "not_a_test",
@@ -156,7 +156,7 @@ public class ControlFlowAnalysisTests
         var cfg = _builder.Build(func);
         var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);
 
-        Assert.NotEmpty(unreachable);
+        Assert.Empty(unreachable);
     }
 
     [Fact]

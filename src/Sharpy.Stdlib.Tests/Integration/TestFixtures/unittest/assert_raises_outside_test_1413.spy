@@ -1,0 +1,36 @@
+# #1413: `assert_raises` lowers to a flag, a try/catch and a `Sharpy.AssertionError`. Nothing in
+# that shape names a test framework, so the form compiles in ANY function — SPY0494, which refused
+# it outside a `@test` for #1283, is retired. The #1283 hazard it guarded (the bare marker name
+# reaching codegen as CS0119 behind SPY0908) is gone because the rewrite now always fires.
+from unittest import assert_raises
+
+
+def parse(text: str) -> int:
+    if text == "":
+        raise ValueError("empty input")
+    return len(text)
+
+
+def main() -> None:
+    with assert_raises(ValueError):
+        parse("")
+    print("raised")
+
+    # The `as` capture stays visible after the with — the rewrite emits flat statements rather
+    # than a scope-introducing block.
+    with assert_raises(ValueError) as exc:
+        parse("")
+    print(exc.message)
+
+    with assert_raises(ValueError, match="empty"):
+        parse("")
+    print("matched")
+
+    # The flag is read AFTER the try, where no catch can reach it. A naive
+    # `try { body; throw AssertionError } catch (E) { }` would self-swallow here, since the
+    # expected exception is a base of AssertionError, and a body that raised nothing would pass.
+    try:
+        with assert_raises(Exception):
+            print("nothing raised here")
+    except AssertionError as failure:
+        print(failure.message)

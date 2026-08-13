@@ -27,13 +27,6 @@ internal class ControlFlowGraphBuilder
     // Exception handler tracking for re-raise
     private readonly Stack<BasicBlock> _handlerStack = new();
 
-    /// <summary>
-    /// Whether the function being built is a <c>@test</c> — the condition the emitter's
-    /// <c>assert_raises</c> rewrite is gated on, mirrored here so the CFG models only lowerings
-    /// that will actually be emitted (#1283). Module-level bodies are never test functions.
-    /// </summary>
-    private bool _inTestFunction;
-
     public ControlFlowGraphBuilder() : this((HashSet<MatchStatement>?)null) { }
 
     public ControlFlowGraphBuilder(HashSet<MatchStatement>? exhaustiveMatches)
@@ -56,7 +49,6 @@ internal class ControlFlowGraphBuilder
     public ControlFlowGraph Build(FunctionDef function)
     {
         Reset();
-        _inTestFunction = AssertRaisesForm.IsTestFunction(function.Decorators);
 
         _entry = CreateBlock("entry");
         _exit = CreateBlock("exit");
@@ -110,7 +102,6 @@ internal class ControlFlowGraphBuilder
         _loopStack.Clear();
         _handlerStack.Clear();
         _currentBlock = null!;
-        _inTestFunction = false;
     }
 
     private BasicBlock CreateBlock(string label = "")
@@ -731,11 +722,11 @@ internal class ControlFlowGraphBuilder
 
     private void BuildWith(WithStatement stmt)
     {
-        // `with assert_raises(E):` (unittest) compiles to Xunit.Assert.Throws
-        // wrapping the body in a lambda, so an exception raised anywhere in the
-        // body is caught and control always continues after the block. Model it
-        // like a try with a catch-all handler so statements after the block are
-        // not reported as unreachable when the body unconditionally raises.
+        // `with assert_raises(E):` (unittest) compiles to a try/catch, so an exception raised
+        // anywhere in the body is caught and control always continues after the block. Model it
+        // like a try with a catch-all handler so statements after the block are not reported as
+        // unreachable when the body unconditionally raises. Not gated on @test: as of #1413 the
+        // lowering fires in every function.
         if (IsAssertRaisesWith(stmt))
         {
             var bodyBlock = CreateBlock("assert_raises_body");
@@ -833,7 +824,7 @@ internal class ControlFlowGraphBuilder
     /// so modelling the catch-all edge would describe a lowering that never happens (#1283).
     /// </summary>
     private bool IsAssertRaisesWith(WithStatement stmt)
-        => AssertRaisesForm.IsRewritten(stmt, _inTestFunction);
+        => AssertRaisesForm.IsRewritten(stmt);
 
     private void BuildMatch(MatchStatement stmt)
     {

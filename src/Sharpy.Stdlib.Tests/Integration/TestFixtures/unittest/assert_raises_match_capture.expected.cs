@@ -25,14 +25,25 @@ public partial class AssertRaisesMatchCaptureTests
     public void TestMatchCapture()
     {
 #line (5, 5) - (7, 1) 8 "assert_raises_match_capture.spy"
-        var exc = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+        ValueError exc = null!;
 #line hidden
+        bool __raised_0 = false;
+        try
         {
 #line (6, 9) - (6, 39) 12 "assert_raises_match_capture.spy"
             throw new global::Sharpy.ValueError("bad input");
 #line hidden
-        }));
-        Xunit.Assert.Matches("bad", exc.Message);
+        }
+        catch (ValueError __caught_1)
+        {
+            __raised_0 = true;
+            exc = __caught_1;
+        }
+
+        if (!__raised_0)
+            throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
+        if (!(global::System.Text.RegularExpressions.Regex.IsMatch(exc.Message, "bad")))
+            throw new global::Sharpy.AssertionError("Expected the raised ValueError's message to match " + "bad" + ", but it was: " + exc.Message);
 #line (7, 5) - (7, 36) 8 "assert_raises_match_capture.spy"
         Xunit.Assert.Equal("bad input", global::Sharpy.Builtins.Str(exc));
 #line hidden

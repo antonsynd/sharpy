@@ -25,13 +25,23 @@ public partial class TestAssertRaisesCaptureTests
     public void TestCaptureException()
     {
 #line (5, 5) - (7, 1) 8 "test_assert_raises_capture.spy"
-        var exc = Xunit.Assert.Throws<ValueError>((global::System.Action)(() =>
+        ValueError exc = null!;
 #line hidden
+        bool __raised_0 = false;
+        try
         {
 #line (6, 9) - (6, 39) 12 "test_assert_raises_capture.spy"
             throw new global::Sharpy.ValueError("bad input");
 #line hidden
-        }));
+        }
+        catch (ValueError __caught_1)
+        {
+            __raised_0 = true;
+            exc = __caught_1;
+        }
+
+        if (!__raised_0)
+            throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
 #line (7, 5) - (7, 36) 8 "test_assert_raises_capture.spy"
         Xunit.Assert.Contains("bad input", global::Sharpy.Builtins.Str(exc));
 #line hidden
