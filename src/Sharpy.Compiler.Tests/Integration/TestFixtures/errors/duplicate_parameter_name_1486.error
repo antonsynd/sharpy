@@ -1,2 +1,6 @@
 Duplicate parameter name 'b' @10:22
 Duplicate parameter name 'value' @15:34
+# Exactly two: `first` and `second` share the name `shared` across DIFFERENT signatures, which must
+# stay silent. Without this line that claim is untested (#1457).
+!count 2
+!Duplicate parameter name 'shared'

@@ -1,2 +1,6 @@
 Assert condition must be boolean, got 'bytes' @11:12
 Assert condition must be boolean, got 'int' @16:12
+# The boundary is load-bearing, not decorative: exactly two diagnostics means the str, the string
+# literal and the __bool__ operand in truth_testable_operands_are_accepted() emitted none (#1457).
+!count 2
+!Assert condition must be boolean, got 'str'

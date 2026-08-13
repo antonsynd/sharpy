@@ -2,3 +2,5 @@ Cannot raise a value of type 'float64' — 'raise' requires an exception @10:11
 Cannot raise a value of type 'bytes' — 'raise' requires an exception @14:11
 Cannot raise a value of type 'int' — 'raise' requires an exception @18:11
 Cannot raise a value of type 'str' — 'raise' requires an exception @22:11
+# Exactly four: the check must not cascade into the surrounding functions (#1457 form).
+!count 4
