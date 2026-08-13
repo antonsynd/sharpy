@@ -1,0 +1,16 @@
+# The #1354 repr surface, pinned (c165cb7e0 landed the ToString overrides with zero fixture
+# coverage — this is that coverage, added by the 2026-08-13 second verification round).
+# CPython embeds object addresses (`<map object at 0x...>`); Sharpy deliberately prints the
+# address-free form — the `iterator-repr-no-address` entry in docs/deviations.yaml. `range`
+# has a deterministic CPython repr and matches it exactly. The first line is also the #1354
+# reversed(str) pin: `reversed("abc")` binds an Iterator[str] annotation (CS0266 before
+# c165cb7e0) and still iterates. Output measured 2026-08-13.
+def main() -> None:
+    r: Iterator[str] = reversed("abc")
+    print(r)
+    print("".join(r))
+    print(map(lambda x: x + 1, [1, 2]))
+    print(filter(lambda x: x > 1, [1, 2]))
+    print(zip([1, 2], ["a", "b"]))
+    print(enumerate(["a", "b"]))
+    print(range(3))
