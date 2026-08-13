@@ -36,17 +36,55 @@ public class PerModuleAssemblyTests
         return refs.ToArray();
     }
 
+    /// <summary>
+    /// The per-module output directory, asserted rather than assumed. This suite reasons about
+    /// artifacts built by a DIFFERENT project — the 60 csprojs under <c>src/Sharpy.Stdlib/modules/</c>
+    /// — and nothing in this test project's graph makes them exist.
+    ///
+    /// <para>Seven of the nine tests used to <c>return</c> silently when the directory was absent,
+    /// which a project-scoped <c>dotnet test</c> produces. A silent return is indistinguishable
+    /// from a pass, so the suite's outcome was decided by how the tree happened to be built, and it
+    /// could have been one build-configuration change away from testing nothing, permanently and
+    /// invisibly (#1479). Unlike #1432 there was not even a 0/0 counter to tip anyone off.</para>
+    ///
+    /// <para>Declaring the 60 projects as build-order references was measured first and rejected:
+    /// it tripled a project-scoped build of this project, 5.8s to 17.8s, on a build lock that is a
+    /// shared machine-wide bottleneck — to guarantee something <c>dotnet build sharpy.sln</c>
+    /// already guarantees, since all 60 are in the solution. Failing loudly costs nothing and says
+    /// the same thing.</para>
+    /// </summary>
+    private static string RequirePerModuleDir()
+    {
+        Assert.True(Directory.Exists(PerModuleDir),
+            $"Per-module output directory not found: {PerModuleDir}\n"
+            + "These tests assert on assemblies built by src/Sharpy.Stdlib/modules/*.csproj, which "
+            + "a project-scoped build does not produce. Run 'dotnet build sharpy.sln' first.\n"
+            + "This is deliberately a failure and not a silent skip: passing here would mean "
+            + "reporting success for assertions that never ran (#1479).");
+
+        return PerModuleDir;
+    }
+
+    /// <summary>
+    /// One per-module assembly, asserted present. Covers the narrow third state that produced an
+    /// intermittent-looking red in five-project gates: the directory exists but holds no
+    /// <c>Sharpy.Stdlib.*.dll</c>, from a cleaned or half-built modules output.
+    /// </summary>
+    private static string RequireModuleAssembly(string fileName)
+    {
+        var path = Path.Combine(RequirePerModuleDir(), fileName);
+        Assert.True(File.Exists(path),
+            $"{fileName} not found in {PerModuleDir}\n"
+            + "The per-module output directory exists but does not hold this assembly — a cleaned "
+            + "or half-built modules output. Run 'dotnet build sharpy.sln'.");
+
+        return path;
+    }
+
     [Fact]
     public void PerModuleAssemblies_ExistInModulesOutputDir()
     {
-        if (!Directory.Exists(PerModuleDir))
-        {
-            _output.WriteLine($"Per-module output dir not found: {PerModuleDir}");
-            _output.WriteLine("Run 'dotnet build sharpy.sln' first.");
-            return;
-        }
-
-        var perModuleDlls = Directory.GetFiles(PerModuleDir, "Sharpy.Stdlib.*.dll");
+        var perModuleDlls = Directory.GetFiles(RequirePerModuleDir(), "Sharpy.Stdlib.*.dll");
         Assert.NotEmpty(perModuleDlls);
         _output.WriteLine($"Found {perModuleDlls.Length} per-module assemblies in {PerModuleDir}");
 
@@ -59,15 +97,7 @@ public class PerModuleAssemblyTests
     [Fact]
     public void PerModuleAssemblies_LoadIndependently()
     {
-        if (!Directory.Exists(PerModuleDir))
-            return;
-
-        var mathDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Math.dll");
-        if (!File.Exists(mathDll))
-        {
-            _output.WriteLine("Sharpy.Stdlib.Math.dll not found");
-            return;
-        }
+        var mathDll = RequireModuleAssembly("Sharpy.Stdlib.Math.dll");
 
         var registry = new ModuleRegistry(NullLogger.Instance);
         Assert.True(registry.LoadReference(mathDll));
@@ -82,16 +112,8 @@ public class PerModuleAssemblyTests
     [Fact]
     public void UsedAssemblyPaths_TracksOnlyAccessedModules()
     {
-        if (!Directory.Exists(PerModuleDir))
-            return;
-
-        var mathDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Math.dll");
-        var randomDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Random.dll");
-        if (!File.Exists(mathDll) || !File.Exists(randomDll))
-        {
-            _output.WriteLine("Per-module DLLs not found");
-            return;
-        }
+        var mathDll = RequireModuleAssembly("Sharpy.Stdlib.Math.dll");
+        var randomDll = RequireModuleAssembly("Sharpy.Stdlib.Random.dll");
 
         var registry = new ModuleRegistry(NullLogger.Instance);
         registry.LoadReference(mathDll);
@@ -155,15 +177,7 @@ def main():
     [Fact]
     public void GroupedModule_NumpyLinalg_LoadsNumpyAssembly()
     {
-        if (!Directory.Exists(PerModuleDir))
-            return;
-
-        var numpyDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Numpy.dll");
-        if (!File.Exists(numpyDll))
-        {
-            _output.WriteLine("Sharpy.Stdlib.Numpy.dll not found");
-            return;
-        }
+        var numpyDll = RequireModuleAssembly("Sharpy.Stdlib.Numpy.dll");
 
         var registry = new ModuleRegistry(NullLogger.Instance);
         registry.LoadReference(numpyDll);
@@ -181,15 +195,7 @@ def main():
     [Fact]
     public void GroupedModule_OsPath_LoadsOsAssembly()
     {
-        if (!Directory.Exists(PerModuleDir))
-            return;
-
-        var osDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Os.dll");
-        if (!File.Exists(osDll))
-        {
-            _output.WriteLine("Sharpy.Stdlib.Os.dll not found");
-            return;
-        }
+        var osDll = RequireModuleAssembly("Sharpy.Stdlib.Os.dll");
 
         var registry = new ModuleRegistry(NullLogger.Instance);
         registry.LoadReference(osDll);
@@ -210,12 +216,13 @@ def main():
         // The hand-maintained numpy→MathNet NuGet map is gone (#1084); the dependency is now
         // derived mechanically. MathNet.Numerics must appear in the transitive managed closure
         // of the stdlib references (numpy is implemented on top of MathNet).
+        // Unlike the per-module directory, this one IS guaranteed by the project graph: numpy's
+        // MathNet dependency flows through the Sharpy.Stdlib ProjectReference into this test's own
+        // output. Asserted rather than skipped for the same reason as the rest (#1479).
         var mathNetDll = Path.Combine(CoreDir, "MathNet.Numerics.dll");
-        if (!File.Exists(mathNetDll))
-        {
-            _output.WriteLine("MathNet.Numerics.dll not found in test host output dir; skipping.");
-            return;
-        }
+        Assert.True(File.Exists(mathNetDll),
+            $"MathNet.Numerics.dll not found in the test host output dir: {CoreDir}\n"
+            + "It should arrive transitively via the Sharpy.Stdlib project reference.");
 
         var references = GetStdlibReferences();
         var closure = RuntimeClosureResolver.Resolve(references);
@@ -228,17 +235,9 @@ def main():
     [Fact]
     public void MultipleModuleImports_TracksAllUsedAssemblies()
     {
-        if (!Directory.Exists(PerModuleDir))
-            return;
-
-        var mathDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Math.dll");
-        var randomDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Random.dll");
-        var osDll = Path.Combine(PerModuleDir, "Sharpy.Stdlib.Os.dll");
-        if (!File.Exists(mathDll) || !File.Exists(randomDll) || !File.Exists(osDll))
-        {
-            _output.WriteLine("Required per-module DLLs not found");
-            return;
-        }
+        var mathDll = RequireModuleAssembly("Sharpy.Stdlib.Math.dll");
+        var randomDll = RequireModuleAssembly("Sharpy.Stdlib.Random.dll");
+        var osDll = RequireModuleAssembly("Sharpy.Stdlib.Os.dll");
 
         var registry = new ModuleRegistry(NullLogger.Instance);
         registry.LoadReference(mathDll);
