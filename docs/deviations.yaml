@@ -1551,3 +1551,21 @@ deviations:
         print(s | f)                # {1} — the set OPERATIONS do take mixed operands
         print(s == set(f))          # True — convert one side to say what you mean
         print(frozenset(s) == f)    # True
+
+  - id: np-split-nonpositive-sections-valueerror
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "numpy raises `ZeroDivisionError: integer modulo by zero` for `np.split(a, 0)` and `ValueError: number sections must be larger than 0.` for a negative sections count — the ZeroDivisionError is an artifact of numpy computing `N % sections` before validating the argument (measured against numpy 2.5.1)."
+    sharpy_behavior: "Both non-positive sections counts raise the ValueError, with numpy's own message. The ZeroDivisionError is an implementation accident, not a contract worth reproducing; unifying on the validated error is deliberate (recorded in 3c4db7803 at the call site: \"Say so if you want it faithful instead\")."
+    spec_ref: null
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        np.split(np.arange(6.0), 0)    # ZeroDivisionError: integer modulo by zero
+        np.split(np.arange(6.0), -1)   # ValueError: number sections must be larger than 0.
+      sharpy: |
+        np.split(a6, 0)                # ValueError: number sections must be larger than 0.
+        np.split(a6, -1)               # ValueError: number sections must be larger than 0.
