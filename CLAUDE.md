@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 dotnet build sharpy.sln                              # Build all
-dotnet test                                          # Run all tests (prefer per-project runs; the sln-level run can hit cross-project races — #1419)
+dotnet test                                          # Run all tests (sln-level; the #1419 staging race was fixed in 1c29513a8 and three sln gates ran green 2026-08-13 — per-project filters remain faster for iteration)
 dotnet format whitespace                             # Format code (auto-formatted on save by Claude hook)
 dotnet run --project src/Sharpy.Cli -- run file.spy # Compile and execute
 dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C#
