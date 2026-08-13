@@ -205,7 +205,13 @@ namespace Sharpy
             // Case sensitivity comes along for free and matches CPython, which accepts only the
             // exact spellings: `[infinity]`, `[nan]` and `[NAN]` all raise there and stay errors
             // here.
-            NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals
+            NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals,
+
+            // Stated rather than inherited. This happens to be System.Text.Json's own default, but
+            // leaving it implicit is what let the two doors drift: the untyped parser had no limit
+            // at all and died of stack exhaustion on documents this one merely refuses (#1425).
+            // Naming the shared constant makes a change to either door a change to both.
+            MaxDepth = JsonParser.MaxDepth
         };
 
         /// <summary>

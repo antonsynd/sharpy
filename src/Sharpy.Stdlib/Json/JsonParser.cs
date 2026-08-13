@@ -13,6 +13,28 @@ namespace Sharpy
     internal static class JsonParser
     {
         /// <summary>
+        /// Deepest container nesting this parser will descend into before refusing the document.
+        ///
+        /// <para>
+        /// Recursive descent with no limit is a crash, not a permissive parser: a document nesting
+        /// a few thousand containers deep exhausted the thread stack inside
+        /// <see cref="ParseValue"/>, and .NET stack overflow is uncatchable — it takes the process
+        /// down, so no <c>try</c> at any layer can turn it back into a diagnostic. Untrusted JSON
+        /// could therefore kill the host (measured: 5,000 levels, found by the #1425 agreement
+        /// corpus).
+        /// </para>
+        ///
+        /// <para>
+        /// CPython bounds this too, and its failure stays catchable — <c>RecursionError</c> at a
+        /// measured 9,998 levels. The number here is System.Text.Json's default depth rather than
+        /// CPython's, because the typed door (<c>json.loads[T]</c>) already enforced it and Axiom 1
+        /// puts the .NET reader's answer first; the point of naming it once is that both doors now
+        /// refuse the same documents instead of one crashing where the other returns an error.
+        /// </para>
+        /// </summary>
+        internal const int MaxDepth = 64;
+
+        /// <summary>
         /// Deserialize a JSON string to a Sharpy object.
         /// </summary>
         public static object? Parse(string json)
@@ -31,7 +53,7 @@ namespace Sharpy
             }
 
             int index = 0;
-            object? result = ParseValue(json, ref index, objectHook);
+            object? result = ParseValue(json, ref index, objectHook, 0);
             SkipWhitespace(json, ref index);
             if (index < json.Length)
             {
@@ -44,7 +66,8 @@ namespace Sharpy
             return result;
         }
 
-        private static object? ParseValue(string json, ref int index, Func<Dict<string, object?>, object?>? objectHook = null)
+        // `depth` is the number of containers already entered; see MaxDepth.
+        private static object? ParseValue(string json, ref int index, Func<Dict<string, object?>, object?>? objectHook, int depth)
         {
             SkipWhitespace(json, ref index);
 
@@ -63,14 +86,20 @@ namespace Sharpy
                 return ParseString(json, ref index);
             }
 
-            if (c == '{')
+            if (c == '{' || c == '[')
             {
-                return ParseObject(json, ref index, objectHook);
-            }
+                // Checked here, before either container recurses, so both are bounded by one test.
+                if (depth >= MaxDepth)
+                {
+                    throw new JSONDecodeError(
+                        "Exceeded maximum nesting depth of " + MaxDepth.ToString(CultureInfo.InvariantCulture),
+                        json,
+                        index);
+                }
 
-            if (c == '[')
-            {
-                return ParseArray(json, ref index, objectHook);
+                return c == '{'
+                    ? ParseObject(json, ref index, objectHook, depth + 1)
+                    : ParseArray(json, ref index, objectHook, depth + 1);
             }
 
             if (c == 't')
@@ -333,7 +362,7 @@ namespace Sharpy
             throw new JSONDecodeError("Invalid number: " + numStr, json, start);
         }
 
-        private static object? ParseObject(string json, ref int index, Func<Dict<string, object?>, object?>? objectHook = null)
+        private static object? ParseObject(string json, ref int index, Func<Dict<string, object?>, object?>? objectHook, int depth)
         {
             // Skip opening brace
             index++;
@@ -373,7 +402,7 @@ namespace Sharpy
                 index++; // skip colon
                 SkipWhitespace(json, ref index);
 
-                object? value = ParseValue(json, ref index, objectHook);
+                object? value = ParseValue(json, ref index, objectHook, depth);
                 dict[key] = value;
 
                 SkipWhitespace(json, ref index);
@@ -404,7 +433,7 @@ namespace Sharpy
             }
         }
 
-        private static List<object?> ParseArray(string json, ref int index, Func<Dict<string, object?>, object?>? objectHook = null)
+        private static List<object?> ParseArray(string json, ref int index, Func<Dict<string, object?>, object?>? objectHook, int depth)
         {
             // Skip opening bracket
             index++;
@@ -421,7 +450,7 @@ namespace Sharpy
             while (true)
             {
                 SkipWhitespace(json, ref index);
-                object? value = ParseValue(json, ref index, objectHook);
+                object? value = ParseValue(json, ref index, objectHook, depth);
                 list.Append(value);
 
                 SkipWhitespace(json, ref index);
