@@ -1,0 +1,2 @@
+Assert condition must be boolean, got 'bytes' @11:12
+Assert condition must be boolean, got 'int' @16:12

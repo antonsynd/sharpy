@@ -1,0 +1,26 @@
+# #1477: `raise <non-exception>` passed semantic analysis and codegen emitted `throw <value>`, so
+# the user got a C# error naming a C# type (CS0029) for a Sharpy-level mistake. It is the whole
+# class, not one literal — every spelling below reached Roslyn before the check existed.
+#
+# CPython agrees: `raise b"abc"` is `TypeError: exceptions must derive from BaseException`.
+#
+# Found by ILCompilesPropertyTests once #1432 stopped it passing on zero emitted programs: the
+# generator produced `raise 701.5625` and `raise b"abc"` on separate runs.
+def bad_float() -> None:
+    raise 701.5625
+
+
+def bad_bytes() -> None:
+    raise b"abc"
+
+
+def bad_int() -> None:
+    raise 42
+
+
+def bad_str() -> None:
+    raise "oops"
+
+
+def main() -> None:
+    print("unreachable")

@@ -1,0 +1,29 @@
+# #1486: nothing checked for a repeated parameter name, so the duplicate reached codegen and Roslyn
+# reported "The parameter name 'b' is a duplicate" (CS0100) against generated C# the user never
+# wrote. Registering the second parameter simply overwrote the first in the scope map, so the
+# collision was unobservable.
+#
+# Both axioms agree here, so there is nothing to trade off: python3 refuses it with
+# `SyntaxError: duplicate argument 'b' in function definition`, and C# refuses it with CS0100.
+#
+# Found by ILCompilesPropertyTests at 250 samples (two of six runs).
+def check_it(b: int, b: int) -> None:
+    pass
+
+
+class Box:
+    def method(self, value: int, value: int) -> None:
+        pass
+
+
+# The boundary: the same name in DIFFERENT signatures is ordinary and must stay silent.
+def first(shared: int) -> None:
+    pass
+
+
+def second(shared: int) -> None:
+    pass
+
+
+def main() -> None:
+    print("unreachable")

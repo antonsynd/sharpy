@@ -552,6 +552,22 @@ internal partial class TypeChecker
     /// </summary>
     private void RegisterFunctionParameters(FunctionDef functionDef, FunctionSymbol? functionSymbol)
     {
+        // Python refuses `def f(b, b)` outright — `SyntaxError: duplicate argument 'b' in function
+        // definition` — and so does C# (CS0100). Nothing here did, so the duplicate reached codegen
+        // and Roslyn reported "The parameter name 'b' is a duplicate" against generated C# the user
+        // never wrote (#1486, the #1035 class). Both axioms point the same way, so this is a
+        // conflict-free error rather than a judgement call.
+        var seenParameterNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var param in functionDef.Parameters)
+        {
+            if (!string.IsNullOrEmpty(param.Name) && !seenParameterNames.Add(param.Name))
+            {
+                AddError($"Duplicate parameter name '{param.Name}'",
+                    param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateParameter,
+                    span: param.Span);
+            }
+        }
+
         // Validate parameter ordering: non-default parameters cannot follow default parameters
         // Keyword-only params (after * or *args) reset the default tracking since they
         // may be required even when previous normal/positional-only params have defaults

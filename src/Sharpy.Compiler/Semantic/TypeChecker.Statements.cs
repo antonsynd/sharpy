@@ -1034,12 +1034,56 @@ internal partial class TypeChecker
         if (raiseStmt.Exception != null)
         {
             CheckExpression(raiseStmt.Exception);
+            RequireRaisedValueIsException(raiseStmt.Exception);
         }
 
         if (raiseStmt.Cause != null)
         {
             CheckExpression(raiseStmt.Cause);
         }
+    }
+
+    /// <summary>
+    /// Requires the operand of <c>raise</c> to be an exception. Nothing checked this, so
+    /// <c>raise b"abc"</c>, <c>raise 42</c> and <c>raise 701.5625</c> all passed semantic analysis
+    /// and codegen faithfully emitted <c>throw &lt;non-Exception&gt;</c> — leaving the user a C#
+    /// error naming a C# type (CS0029) for a Sharpy-level mistake (#1477, the #1035 class).
+    ///
+    /// <para>
+    /// CPython agrees the program is wrong (<c>TypeError: exceptions must derive from
+    /// BaseException</c>), and Axiom 1 makes it a compile-time error rather than a runtime one
+    /// because <c>throw</c> requires <c>System.Exception</c>.
+    /// </para>
+    ///
+    /// <para>
+    /// Deliberately FAILS OPEN in three cases, so that a check whose job is to catch obvious
+    /// nonsense cannot start refusing valid programs: when <c>Exception</c> itself does not
+    /// resolve, when the operand's type is unknown (an error is already reported elsewhere), and
+    /// when it is a type parameter — <c>raise t</c> for <c>t: T</c> carries no symbol to inherit
+    /// from here, and an over-strict answer would be a new false positive rather than a fix.
+    /// </para>
+    /// </summary>
+    private void RequireRaisedValueIsException(Expression raised)
+    {
+        var exceptionSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType("Exception");
+        if (exceptionSymbol == null)
+        {
+            return;
+        }
+
+        var raisedType = _semanticInfo.GetExpressionType(raised);
+        if (raisedType == null || raisedType is UnknownType or TypeParameterType
+            || IsExceptionSubtype(raisedType, exceptionSymbol))
+        {
+            return;
+        }
+
+        AddError(
+            $"Cannot raise a value of type '{raisedType.GetDisplayName()}' — 'raise' requires an "
+            + "exception, a value whose type derives from 'Exception'",
+            raised.LineStart, raised.ColumnStart,
+            code: DiagnosticCodes.Semantic.InvalidRaise,
+            span: raised.Span);
     }
 
     private void CheckTry(TryStatement tryStmt)
@@ -1613,8 +1657,23 @@ internal partial class TypeChecker
         // Inside a @test function the emitter rewrites the whole assert into an xUnit assertion
         // rather than lowering its test as an ordinary expression, so the type-test classifier
         // steps aside for exactly this expression (see _testAssertTest).
+        SemanticType testType;
         using (ScopedValue.Push(ref _testAssertTest, _inTestFunction ? assertStmt.Test : null))
-            CheckExpression(assertStmt.Test);
+            testType = CheckExpression(assertStmt.Test);
+
+        // The same condition rule `if`/`while` enforce, which `assert` was missing: Sharpy has no
+        // implicit truthiness, so a non-boolean test is an error rather than an emptiness check.
+        // Without it, codegen emitted `if (!(<non-bool>))` and Roslyn reported CS0023 "Operator '!'
+        // cannot be applied to operand of type 'Bytes'" — a C# error naming a C# type, for a
+        // Sharpy-level mistake (#1485, the #1035 class). Skipped inside a @test function, where the
+        // emitter rewrites the whole assert into a framework assertion and the test expression is
+        // deliberately not lowered as an ordinary boolean expression.
+        if (!_inTestFunction && !IsTruthTestable(testType))
+        {
+            AddError($"Assert condition must be boolean, got '{testType.GetDisplayName()}'",
+                assertStmt.LineStart, assertStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: assertStmt.Test.Span);
+        }
 
         if (assertStmt.Message != null)
         {

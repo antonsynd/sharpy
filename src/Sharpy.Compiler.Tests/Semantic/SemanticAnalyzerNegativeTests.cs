@@ -1,6 +1,7 @@
 using System.Linq;
 using Xunit;
 using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
@@ -839,17 +840,21 @@ def foo():
     }
 
     [Fact]
-    public void DocumentsRaiseWithInvalidTypeBehavior()
+    public void RejectsRaiseOfANonException()
     {
         var source = @"
 def foo():
-    raise 42  # can only raise exceptions
+    raise 42
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        // Raise type validation is not enforced
-        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+        // This test used to assert the opposite, under the name DocumentsRaiseWithInvalidTypeBehavior
+        // and the comment "Raise type validation is not enforced" — while its own source carried
+        // "# can only raise exceptions". It recorded a gap, and #1477 closed it: the operand reached
+        // codegen and Roslyn reported CS0029 against generated C# the user never wrote.
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle()
+            .Which.Code.Should().Be(DiagnosticCodes.Semantic.InvalidRaise);
     }
 
     [Fact]
