@@ -592,7 +592,9 @@ internal partial class TypeChecker
         // returns an EMPTY collection (not null) for an unknown key — the `?? _currentFacts` would
         // not fire and the copy would CLEAR the facts this subject correctly inherits from its
         // enclosing tracked statement. That inheritance is why the expression form already narrowed
-        // when the statement form did not (#1299). Add the resolution only together with a CFG entry.
+        // when the statement form did not (#1299). Add the resolution only together with a CFG
+        // entry — that work is #1502 (teach the builder to model match EXPRESSIONS), and this
+        // comment retires with it.
         SemanticType scrutineeType;
         using (ScopedValue.Push(ref _matchSubjectOperand, UnwrapParenthesized(matchExpr.Scrutinee)))
             scrutineeType = CheckExpression(matchExpr.Scrutinee);
