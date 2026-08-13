@@ -43,7 +43,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// holds, and <see cref="InSourceSetFromImportOfAFunction_StillBindsTheExtraction"/> pins the one
 /// shape where it does not — an imported FUNCTION, which comes from
 /// <c>moduleInfo.FunctionOverloads</c> and is therefore an extraction even on the ordinary
-/// path (#1365).</para>
+/// path (#1365; extending the type-side identity fix to functions is #1491).</para>
 ///
 /// <para><b>Two guards, not one.</b> A fact table that nobody maintains rots into a subset of the
 /// real surface, and then the mirror is green because it stopped looking.
@@ -839,7 +839,8 @@ def main() -> None:
             declared,
             "a from-imported function comes from moduleInfo.FunctionOverloads, which holds "
             + "ModuleLoader's extraction — so every fact the extraction drops is dropped on the "
-            + "ORDINARY import path too, not just outside the source set (#1365)");
+            + "ORDINARY import path too, not just outside the source set (#1365). When #1491 "
+            + "extends identity sharing to functions, flip this to BeSameAs and rename");
     }
 
     /// <summary>

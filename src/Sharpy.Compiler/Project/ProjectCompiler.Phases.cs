@@ -600,6 +600,14 @@ internal partial class ProjectCompiler
     /// and substituting across kinds would change what the name means rather than which object
     /// answers to it.
     /// </para>
+    /// <para>
+    /// <b>Ordering contract:</b> Exports are built here in Phase 4, BEFORE Phase 4b materialises
+    /// <c>BaseType</c>/<c>Interfaces</c> onto the Phase-3 symbols. That is safe only because the
+    /// symbol returned below is the SAME object Phase 4b later mutates (symbols share by
+    /// reference), so by the time Phase 5 reads a relation through <c>Exports</c> the mutation has
+    /// already landed. Returning a clone here — or reordering 4b ahead of Exports built from
+    /// clones — silently reverts the qualified spelling to relation-less symbols (#1366's shape).
+    /// </para>
     /// </remarks>
     private Symbol? ResolveOwnExportedSymbol(ModuleInfo moduleInfo, string name, Symbol extracted)
     {
