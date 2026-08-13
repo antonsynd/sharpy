@@ -61,6 +61,28 @@ public static class FixtureDiscoveryHelper
     public static IEnumerable<TestFixtureInfo> DiscoverFixturesFrom(params FixtureRoot[] roots)
         => roots.SelectMany(DiscoverFrom);
 
+    /// <summary>
+    /// Path segments that hold build output or compiler scratch rather than corpus. A multi-file
+    /// fixture is compiled in place, so <c>bin</c>/<c>obj</c> appear inside the tree; and when a
+    /// compilation CRASHES the bundle it writes under <c>&lt;output&gt;/.sharpy-crash/&lt;stamp&gt;/</c>
+    /// includes <em>copies of the sources</em>. Without this exclusion the next run discovers those
+    /// copies as fixtures, and since a crash bundle carries no expectation file they fail as
+    /// "Missing expected output file" — a red suite caused by an earlier run rather than by any
+    /// change under test, self-inflicted and reproducible only after a crash (#1484).
+    /// </summary>
+    private static readonly string[] NonCorpusSegments = ["bin", "obj", ".sharpy-crash"];
+
+    /// <summary>
+    /// Whether <paramref name="path"/> lies under a build-output or scratch directory relative to
+    /// the corpus root. Checked on the RELATIVE path so a root that itself sits under, say, a
+    /// <c>bin</c> directory — which is exactly where the test host runs from — is not excluded
+    /// wholesale.
+    /// </summary>
+    private static bool IsNonCorpus(string basePath, string path)
+        => Path.GetRelativePath(basePath, path)
+            .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Any(segment => NonCorpusSegments.Contains(segment, StringComparer.OrdinalIgnoreCase));
+
     private static IEnumerable<TestFixtureInfo> DiscoverFrom(FixtureRoot root)
     {
         var basePath = root.Path;
@@ -74,13 +96,19 @@ public static class FixtureDiscoveryHelper
         var multiFileTestRoots = new HashSet<string>();
         foreach (var dir in Directory.EnumerateDirectories(basePath, "*", SearchOption.AllDirectories))
         {
+            if (IsNonCorpus(basePath, dir))
+            {
+                continue;
+            }
+
             var hasMainSpy = File.Exists(Path.Combine(dir, "main.spy"));
             var hasMainExpected = File.Exists(Path.Combine(dir, "main.expected"));
             var hasMainError = File.Exists(Path.Combine(dir, "main.error"));
 
             if (hasMainSpy || hasMainExpected || hasMainError)
             {
-                var spyFilesCount = Directory.GetFiles(dir, "*.spy", SearchOption.AllDirectories).Length;
+                var spyFilesCount = Directory.GetFiles(dir, "*.spy", SearchOption.AllDirectories)
+                    .Count(f => !IsNonCorpus(basePath, f));
                 if (spyFilesCount > 1)
                 {
                     multiFileTestRoots.Add(dir);
@@ -92,6 +120,11 @@ public static class FixtureDiscoveryHelper
 
         foreach (var spyFile in Directory.EnumerateFiles(basePath, "*.spy", SearchOption.AllDirectories))
         {
+            if (IsNonCorpus(basePath, spyFile))
+            {
+                continue;
+            }
+
             var spyDir = Path.GetDirectoryName(spyFile)!;
             var multiFileRoot = FindMultiFileTestRoot(spyDir, multiFileTestRoots);
 
