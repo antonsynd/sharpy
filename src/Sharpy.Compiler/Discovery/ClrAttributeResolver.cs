@@ -51,6 +51,10 @@ internal static class ClrAttributeResolver
     /// Cache of full type name -> "some loaded assembly declares it". Content-addressed: the
     /// answer is a function of the key and the loaded assembly set, and the one event that can
     /// change the latter (<see cref="EnsureFrameworkAssembliesLoaded"/>) clears the cache.
+    /// TODO(#1493): that premise fails for OTHER load events — ModuleRegistry.LoadReference (or
+    /// any later assembly load) never clears this, so a long-lived process (the LSP) can serve a
+    /// stale "absent" verdict forever. Scope per compilation like TypeChecker._bclMemberAbsenceMemo,
+    /// or invalidate on the AppDomain's loaded-assembly count.
     /// </summary>
     private static readonly ConcurrentDictionary<string, bool> _typeExistsCache = new(StringComparer.Ordinal);
 
@@ -103,6 +107,10 @@ internal static class ClrAttributeResolver
     /// <summary>
     /// True when at least one candidate spelling of <paramref name="mangledName"/> names a type
     /// that exists. False is a proof of absence and is safe to refuse on.
+    /// TODO(#1492): "safe to refuse on" overstates the evidence base — the proof consults loaded
+    /// assemblies and the shared framework only, never the project's .spyproj References/
+    /// PackageReferences (those are consumed first in Phase 7, AssemblyCompiler). An attribute
+    /// type living only in a project-referenced assembly is falsely refused with SPY0495.
     /// </summary>
     internal static bool ResolvesToClrType(string mangledName, IEnumerable<string>? importedNamespaces = null)
     {

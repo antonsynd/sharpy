@@ -487,6 +487,10 @@ internal static class CliHelpers
         }
     }
 
+    // TODO(#1494): a position-less diagnostic (FilePath null — e.g. an unmappable SPY0908 after
+    // 90c6b7c35) renders with no file name at all: sourceText stays null below, so the renderer's
+    // own sourceText?.FilePath fallback can never fire. Thread the entry file as a last-resort
+    // context so the user at least learns which program produced it.
     internal static void RenderDiagnosticFromFile(CompilerDiagnostic diagnostic, Dictionary<string, SourceText?> sourceCache, TextWriter writer)
     {
         SourceText? sourceText = null;
