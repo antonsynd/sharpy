@@ -131,7 +131,35 @@ public class GenerateExpressionReentryTests
         offenders.Should().BeEmpty(
             "an expression generated more than once in a statement emits its side effects more "
             + "than once — correct value, wrong effect count (#1334)");
+
+        // A fixture that does not compile through this seam is SKIPPED, and a skipped fixture
+        // witnesses nothing. That was reported and never asserted, which is the same defect as
+        // #1432 (a property suite whose samples were all rejected by the front end reported
+        // "0/0 emitted" and passed): the corpus guard above catches an EMPTY corpus, but not one
+        // where every fixture was silently dropped. ITestOutputHelper output is invisible on a
+        // passing test, so nobody would see the count climb. Ratcheted instead — if a change
+        // makes more fixtures uncompilable through this seam, that is either a real regression
+        // or a deliberate move that should lower this number in the same commit.
+        uncompilable.Count.Should().BeLessThanOrEqualTo(MaxUncompilableFixtures,
+            $"fixtures skipped by this sweep are not swept; the baseline is "
+            + $"{MaxUncompilableFixtures} and these did not compile:\n  "
+            + string.Join("\n  ", uncompilable.OrderBy(u => u, StringComparer.Ordinal).Take(20)));
     }
+
+    /// <summary>
+    /// How many fixtures may fail to compile through the recording seam, which lacks the fixture
+    /// harness's extra references. Measured at <c>8c09a923f</c>: <b>6 of 1,824</b>, and all six are
+    /// the same shape — <c>builtins/qualified_constructor_reference_pinned</c>,
+    /// <c>builtins_from_import_resolves</c>, <c>builtins_qualified_call</c>,
+    /// <c>builtins_qualified_construction</c>, <c>builtins_qualified_escapes_shadow</c>,
+    /// <c>builtins_qualified_type</c>. They reference the <c>builtins</c> module, which this seam
+    /// does not register, so they cannot compile here and have nothing to say about re-entry.
+    ///
+    /// <para>Lower this whenever the real number drops; never raise it without saying why in the
+    /// same commit. A rise means either a regression or a deliberate scope change, and both are
+    /// things a reader must be told rather than left to infer from a silently larger skip list.</para>
+    /// </summary>
+    private const int MaxUncompilableFixtures = 6;
 
     // ----------------------------------------------------------------------------------------- //
 
