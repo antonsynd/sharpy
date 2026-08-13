@@ -43,6 +43,68 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
                 public double Ratio = 0.0d;
             }
+
+            public class DataclassConfig
+            {
+                public double Ratio { get; set; }
+
+                public DataclassConfig(double ratio)
+                {
+                    this.Ratio = ratio;
+                }
+
+                public override bool Equals(object? obj)
+                {
+                    if (obj is not DataclassConfig other)
+                        return false;
+                    return Equals(Ratio, other.Ratio);
+                }
+
+                public override int GetHashCode()
+                {
+                    return HashCode.Combine(Ratio);
+                }
+
+                public static bool operator ==(DataclassConfig? left, DataclassConfig? right) => Equals(left, right);
+                public static bool operator !=(DataclassConfig? left, DataclassConfig? right) => !Equals(left, right);
+                public override string ToString()
+                {
+                    return $"DataclassConfig(ratio={Ratio})";
+                }
+            }
+
+            public class DataclassMultiField
+            {
+                public string ServiceName { get; set; }
+                public int MaxConnections { get; set; }
+                public bool Enabled { get; set; }
+
+                public DataclassMultiField(string service_name, int max_connections, bool enabled)
+                {
+                    this.ServiceName = service_name;
+                    this.MaxConnections = max_connections;
+                    this.Enabled = enabled;
+                }
+
+                public override bool Equals(object? obj)
+                {
+                    if (obj is not DataclassMultiField other)
+                        return false;
+                    return Equals(ServiceName, other.ServiceName) && Equals(MaxConnections, other.MaxConnections) && Equals(Enabled, other.Enabled);
+                }
+
+                public override int GetHashCode()
+                {
+                    return HashCode.Combine(ServiceName, MaxConnections, Enabled);
+                }
+
+                public static bool operator ==(DataclassMultiField? left, DataclassMultiField? right) => Equals(left, right);
+                public static bool operator !=(DataclassMultiField? left, DataclassMultiField? right) => !Equals(left, right);
+                public override string ToString()
+                {
+                    return $"DataclassMultiField(service_name={ServiceName}, max_connections={MaxConnections}, enabled={Enabled})";
+                }
+            }
         }
     }
 
@@ -155,6 +217,40 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var cfg = result.Unwrap();
 #line (102, 5) - (102, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
                 Xunit.Assert.Equal(-0.30000000000000004d, cfg.Ratio);
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
+            public void TestSafeLoadTypedDataclassTargetDeserializes()
+            {
+#line (131, 5) - (131, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+                var result = yaml.SafeLoadTyped<DataclassConfig>("ratio: 0.1");
+#line (132, 5) - (132, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+                Xunit.Assert.True(result.IsOk);
+#line (133, 5) - (133, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+                var cfg = result.Unwrap();
+#line (134, 5) - (134, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+                Xunit.Assert.Equal(0.1d, cfg.Ratio);
+#line hidden
+            }
+
+            [Xunit.FactAttribute]
+            public void TestSafeLoadTypedDataclassBindsEveryFieldByName()
+            {
+#line (141, 5) - (141, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+                var doc = "service_name: api\nmax_connections: 100\nenabled: true\n";
+#line (142, 5) - (142, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+                var result = yaml.SafeLoadTyped<DataclassMultiField>(doc);
+#line (143, 5) - (143, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+                Xunit.Assert.True(result.IsOk);
+#line (144, 5) - (144, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+                var cfg = result.Unwrap();
+#line (145, 5) - (145, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+                Xunit.Assert.Equal("api", cfg.ServiceName);
+#line (146, 5) - (146, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+                Xunit.Assert.Equal(100, cfg.MaxConnections);
+#line (147, 5) - (147, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_typed_deserialization_tests.spy"
+                Xunit.Assert.True(cfg.Enabled);
 #line hidden
             }
         }

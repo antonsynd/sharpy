@@ -351,6 +351,7 @@ namespace Sharpy
                 // Mirror the json module's snake_case, lenient mapping for typed loads.
                 IDeserializer deserializer = new DeserializerBuilder()
                     .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.UnderscoredNamingConvention.Instance)
+                    .WithObjectFactory(new AllFieldsConstructorObjectFactory())
                     .IgnoreUnmatchedProperties()
                     .Build();
                 T value = deserializer.Deserialize<T>(text);
@@ -363,6 +364,59 @@ namespace Sharpy
             catch (System.Exception ex)
             {
                 return Result<T, YAMLError>.Err(new YAMLError(ex.Message, ex));
+            }
+        }
+
+        /// <summary>
+        /// Constructs deserialization targets that have no parameterless constructor, by calling
+        /// their single constructor with default arguments and letting the deserializer set the
+        /// properties afterwards.
+        ///
+        /// <para>This is what makes <c>safe_load_typed[T]</c> work for a <c>@dataclass</c>, the
+        /// idiomatic Sharpy spelling for the config record this function exists to produce. A
+        /// dataclass lowers to settable properties plus an all-fields constructor and nothing else,
+        /// so YamlDotNet's default factory — which calls <c>Activator.CreateInstance</c> — failed
+        /// with <c>MissingMethodException</c>, surfaced through the Result's error arm as a .NET
+        /// reflection message mentioning neither YAML nor dataclasses (#1424).</para>
+        ///
+        /// <para>THE DECIDING MEASUREMENT: <c>json.loads[T]</c> already deserializes into a
+        /// dataclass, because System.Text.Json matches constructor parameters to property names.
+        /// Refusing the shape in yaml would have left the two serializers giving opposite answers
+        /// for the same user type; emitting a parameterless constructor for every dataclass would
+        /// have changed the language, and its immutability rules, for one consumer. Making the
+        /// loader construct what the language already emits is the only option that leaves both
+        /// alone.</para>
+        ///
+        /// <para>Only a SINGLE constructor is used. A type with several is ambiguous, and guessing
+        /// would be worse than the default factory's own error, so those fall through to it.</para>
+        /// </summary>
+        private sealed class AllFieldsConstructorObjectFactory : YamlDotNet.Serialization.ObjectFactories.DefaultObjectFactory
+        {
+            public override object Create(System.Type type)
+            {
+                if (type.GetConstructor(System.Type.EmptyTypes) != null)
+                {
+                    return base.Create(type);
+                }
+
+                var constructors = type.GetConstructors();
+                if (constructors.Length != 1)
+                {
+                    return base.Create(type);
+                }
+
+                var parameters = constructors[0].GetParameters();
+                var arguments = new object?[parameters.Length];
+                for (var i = 0; i < parameters.Length; i++)
+                {
+                    arguments[i] = parameters[i].HasDefaultValue
+                        ? parameters[i].DefaultValue
+                        : parameters[i].ParameterType.IsValueType
+                            ? System.Activator.CreateInstance(parameters[i].ParameterType)
+                            : null;
+                }
+
+                return constructors[0].Invoke(arguments);
             }
         }
 #endif

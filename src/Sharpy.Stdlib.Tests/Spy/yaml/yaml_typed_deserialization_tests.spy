@@ -100,3 +100,48 @@ def test_safe_load_typed_float_field_survives_non_float32_exact_values():
     assert result.IsOk
     cfg = result.Unwrap()
     assert cfg.ratio == -0.30000000000000004
+
+
+# --- SafeLoadTyped — @dataclass targets (#1424) ---
+# Every class above carries field DEFAULTS, which is what gives it a parameterless constructor. A
+# @dataclass has none: it lowers to settable properties plus an all-fields constructor and nothing
+# else, so YamlDotNet's default factory — which calls Activator.CreateInstance — failed with
+# MissingMethodException, surfaced through the Result's error arm as a .NET reflection message
+# mentioning neither YAML nor dataclasses.
+#
+# Measured before choosing a fix: json.loads[T] ALREADY accepts this shape, because System.Text.Json
+# matches constructor parameters to property names. Refusing it here would have left the two
+# serializers giving opposite answers for the same user type.
+
+
+@dataclass
+class DataclassConfig:
+    ratio: float
+
+
+@dataclass
+class DataclassMultiField:
+    service_name: str
+    max_connections: int
+    enabled: bool
+
+
+@test
+def test_safe_load_typed_dataclass_target_deserializes():
+    result = yaml.safe_load_typed[DataclassConfig]("ratio: 0.1")
+    assert result.IsOk
+    cfg = result.Unwrap()
+    assert cfg.ratio == 0.1
+
+
+@test
+def test_safe_load_typed_dataclass_binds_every_field_by_name():
+    # The constructor is called with PLACEHOLDER arguments and the deserializer sets the properties
+    # afterwards, so this fails loudly if construction order were ever mistaken for binding order.
+    doc = "service_name: api\nmax_connections: 100\nenabled: true\n"
+    result = yaml.safe_load_typed[DataclassMultiField](doc)
+    assert result.IsOk
+    cfg = result.Unwrap()
+    assert cfg.service_name == "api"
+    assert cfg.max_connections == 100
+    assert cfg.enabled
