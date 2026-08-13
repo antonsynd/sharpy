@@ -2800,6 +2800,12 @@ internal partial class TypeChecker
     /// doubt, so a wrong argument there is exactly as diagnosable as it is for a single
     /// <c>__init__</c>. Two overloads of the same arity keep the pre-#1243 silence — a real
     /// remaining gap, but a narrower one than "no overloaded constructor is ever checked".</para>
+    ///
+    /// <para>This path keeps <c>allowConstantConversion: true</c> (the single-candidate default)
+    /// and is exempt from the #1464 ranking exclusion on purpose: arity already did the selecting,
+    /// so a constant conversion here can only widen what the ONE chosen signature accepts — it
+    /// never chooses between candidates. Two overloads of the same arity bail out above before any
+    /// type check runs, so no ambiguity can be created.</para>
     /// </summary>
     private void ValidateSoleArityMatchingOverload(
         FunctionCall call, IReadOnlyList<FunctionSymbol> initMethods,
