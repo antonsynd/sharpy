@@ -27,6 +27,10 @@ def main():
     e = frozendict
     f = Iterator
     g = DictKeyView
+    # The sibling views migrated with DictKeyView (#1346, owner-confirmed) — exercised
+    # literally, not assumed from the shared CLR-reflection predicate.
+    ii = DictItemsView
+    jj = DictValuesView
 
     # An EXCEPTION type is a builtin with no family too, and refusing it as a value is the same
     # improvement. Its call-argument position is deliberately NOT refused — `assertRaises(ValueError,

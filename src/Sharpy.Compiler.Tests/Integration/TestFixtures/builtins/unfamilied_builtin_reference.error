@@ -5,4 +5,6 @@ cannot infer a single callable signature for builtin type 'frozenset': 'frozense
 cannot infer a single callable signature for builtin type 'frozendict': 'frozendict' is generic, so its type arguments are unknown here, and this position supplies no signature to select one. @27:9
 'Iterator' is abstract and has no constructor, so its name is not a value @28:9
 'DictKeyView' is obtained from the API that returns it, so its name is not a value @29:9
-cannot infer a callable signature for builtin type 'ValueError': it has no constructor reference form, so no position can supply one. @36:9
+'DictItemsView' is obtained from the API that returns it, so its name is not a value @32:10
+'DictValuesView' is obtained from the API that returns it, so its name is not a value @33:10
+cannot infer a callable signature for builtin type 'ValueError': it has no constructor reference form, so no position can supply one. @40:9
