@@ -13,8 +13,9 @@ namespace Sharpy.Lsp;
 internal sealed class LspConfiguration
 {
     /// <summary>
-    /// When false, transition hints (SPY0470-SPY0489) are filtered out before
-    /// diagnostics are published to the editor. Default: true.
+    /// When false, transition hints (SPY0470-SPY0479) are filtered out before
+    /// diagnostics are published to the editor. Default: true. (SPY0480-0489 is the
+    /// validation-warning overflow band and is NOT part of the toggle — #1466.)
     /// </summary>
     private volatile bool _transitionHintsEnabled = true;
 

@@ -936,6 +936,10 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         if (member.Object.LineEnd != member.LineEnd)
             return;
 
+        // TODO(#1503): this arithmetic also assumes NO whitespace around the separator —
+        // `obj . field` is legal (the lexer skips whitespace unconditionally) and would land the
+        // span on the gap. Detect the gap and bail like the multi-line case above, or take the
+        // #1454 name-extent fields when they exist.
         var separatorWidth = member.IsNullConditional ? 2 : 1;
         var startColumn = member.Object.ColumnEnd + separatorWidth;
         var length = member.ColumnEnd - startColumn;
