@@ -219,14 +219,21 @@ internal partial class TypeChecker
             if (shadowsBuiltin && _semanticInfo != null)
                 _semanticInfo.SetCalleeRouting(call, CalleeRouting.UserSymbol);
 
+            // `from builtins import len as blen` binds the alias's SPELLING to the registry's own
+            // symbol. The inference below is keyed by the builtin's NAME, which the alias is not, so
+            // dispatch on what the symbol IS. Without this the call falls through to ordinary
+            // overload ranking, where Len(ICollection)/Len(ISized)/Len(object) all match a
+            // list[int] equally well and the program gets SPY0353 (#1383).
+            var builtinName = symbol?.BuiltinAliasOf?.Name ?? id.Name;
+
             // Data-driven builtin function return type inference (len, hash, reversed, sorted, min, max)
             if (!id.IsNameBacktickEscaped && !shadowsBuiltin)
             {
                 var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
-                    id.Name, argTypes, _typeInference);
+                    builtinName, argTypes, _typeInference);
                 if (builtinReturn != null)
                 {
-                    ValidateMinMaxValueFormKey(id.Name, call, argTypes, kwargTypes);
+                    ValidateMinMaxValueFormKey(builtinName, call, argTypes, kwargTypes);
                     return builtinReturn;
                 }
             }

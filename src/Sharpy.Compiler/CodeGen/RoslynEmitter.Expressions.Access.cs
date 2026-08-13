@@ -97,6 +97,20 @@ internal partial class RoslynEmitter
             if (symbol != null && funcName.IsNameBacktickEscaped != symbol.IsNameBacktickEscaped)
                 symbol = null;
 
+            // `from builtins import len as blen` binds the alias's SPELLING to the registry's own
+            // symbol. Every arm below is keyed by the callee's NAME — the generic-builtin list, the
+            // str-len special case, the mangled Builtins.<Name> call — so become the builtin's
+            // spelling here rather than teaching each of them about aliases. This is the same
+            // rewrite the builtins-qualified arm above performs, for the same reason: the semantic
+            // phase already decided what this call targets, and the emitter applies that decision
+            // (#1383). The span is untouched, so diagnostics still point at what the user wrote.
+            if (symbol?.BuiltinAliasOf is { } aliasedBuiltin)
+            {
+                funcName = funcName with { Name = aliasedBuiltin.Name };
+                isBuiltinFunc = calleeRouting != CalleeRouting.UserSymbol
+                                && !funcName.IsNameBacktickEscaped;
+            }
+
             // The one thing the qualified spelling changes is WHERE the symbol comes from: the
             // registry, never the scope. Everything after this is bare's own derivation, unchanged,
             // so the two spellings emit the same C# for the same name — including the split that

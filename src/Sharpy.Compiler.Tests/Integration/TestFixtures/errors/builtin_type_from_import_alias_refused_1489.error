@@ -1,0 +1,5 @@
+Type 'bint' not found. Did you mean 'int'?
+# The steer is the point, and so is what is NOT here: an aliased builtin type must never reach
+# Roslyn and come back as an internal error naming a generated C# type the user cannot see. This
+# negative is the guard on the #1383 restriction (#1457, #1146 class).
+!SPY0908

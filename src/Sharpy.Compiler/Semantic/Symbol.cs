@@ -48,6 +48,29 @@ public abstract record Symbol
     public string? DeclaringFilePath { get; init; }
 
     /// <summary>
+    /// The builtin this symbol dispatches as, when it is bound under a DIFFERENT spelling — set
+    /// only by <c>from builtins import len as blen</c> and friends.
+    ///
+    /// <para>
+    /// Every builtin-vs-user decision is made by reference identity against the registry
+    /// (<c>BuiltinRegistry.IsBuiltinSymbol</c>, the #1241 rule), and the registry is keyed by the
+    /// builtin's own name. An alias needs both halves at once: it must BIND as <c>blen</c>, so the
+    /// name resolves, while still BEING <c>len</c>, so dispatch, return-type inference and the
+    /// emitter's builtin arm all recognize it. Cloning the registry symbol under the new name gave
+    /// the first half and destroyed the second — the clone looked like a user function shadowing
+    /// the builtin, so the call was ranked against the raw discovered overload set where
+    /// <c>Len(ICollection)</c>, <c>Len(ISized)</c> and <c>Len(object)</c> all match a
+    /// <c>list[int]</c> equally well, and the program got SPY0353 (#1383).
+    /// </para>
+    ///
+    /// <para>
+    /// This is the same identity-vs-spelling split the backtick escape uses (#1281/#1326): the
+    /// spelling lives in <see cref="Name"/>, the identity lives here.
+    /// </para>
+    /// </summary>
+    public Symbol? BuiltinAliasOf { get; init; }
+
+    /// <summary>
     /// Indicates if this symbol is re-exported from another module (e.g., via "from .submodule import func")
     /// </summary>
     public bool IsReExport { get; init; }

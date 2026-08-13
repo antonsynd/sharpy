@@ -454,6 +454,13 @@ def main() -> None:
             + "module the re-export came FROM, which the declaration itself has no notion of",
         ["TypeSymbol.DefiningModule"] = "provenance — null for a type in the current module and the "
             + "module name for an imported one; that difference IS the fact, not a violation",
+        ["Symbol.BuiltinAliasOf"] = "provenance of the BINDING — set only on the clone a "
+            + "`from builtins import len as blen` binds, to say what that spelling DISPATCHES as "
+            + "(#1383). It is null by construction on every declaration, because the thing it "
+            + "points at lives in BuiltinRegistry rather than in any .spy module. Nor can it reach "
+            + "an importer: an aliased builtin binding is file-local, measured — a second module "
+            + "spelling `from lib import blen` is refused with SPY0301 'Module lib has no exported "
+            + "symbol blen', so there is no imported view to mirror",
 
         // Later-phase products, not declaration facts. An extraction is produced in Pass 1.5 and
         // nothing runs these passes over it, by design.

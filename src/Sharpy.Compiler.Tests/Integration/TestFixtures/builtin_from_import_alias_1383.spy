@@ -1,0 +1,36 @@
+# `from builtins import len as blen` binds a second SPELLING of the builtin (#1383).
+#
+# The alias used to draw SPY0353: it bound a clone that looked like a user function shadowing the
+# builtin, so the call was ranked against the raw discovered overload set, where Len(ICollection),
+# Len(ISized) and Len(object) all match a list[int] equally well. The unaliased form already worked
+# (#1322), and SPY0484 on it advises "import under an alias to keep both" — so the diagnostic was
+# recommending the spelling that did not work.
+#
+# Every arm below is keyed by the callee's NAME somewhere in the pipeline, which is what the alias
+# is not: builtin return-type inference, the generic-builtin list (sorted/reversed), the str-len
+# special case, and the mangled Builtins.<Name> call.
+
+from builtins import len as blen
+from builtins import sorted as bsorted
+from builtins import reversed as brev
+from builtins import max as bmax
+
+
+def main() -> None:
+    xs: list[int] = [3, 1, 2]
+    s: str = "hello"
+
+    # Return-type inference must reach the alias, or the call falls through to overload ranking.
+    print(blen(xs))
+
+    # len(str) lowers to .Length rather than a Builtins call — a name-keyed arm of its own.
+    print(blen(s))
+
+    # Generic builtins need explicit type arguments, chosen by name.
+    print(bsorted(xs))
+    print(list(brev(xs)))
+    print(bmax(xs))
+
+    # The bare spelling still resolves to the same builtin: the alias adds a name, it does not
+    # move one.
+    print(len(xs))

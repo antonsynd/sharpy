@@ -844,6 +844,11 @@ internal class BuiltinRegistry
     /// </remarks>
     public bool IsBuiltinSymbol(Symbol symbol)
     {
+        // An aliased import binds under its own spelling but IS the registry's symbol; the lookups
+        // below are keyed by the builtin's name, so ask about what it dispatches as (#1383).
+        if (symbol.BuiltinAliasOf is { } aliased)
+            symbol = aliased;
+
         if (_types.TryGetValue(symbol.Name, out var type) && ReferenceEquals(type, symbol))
             return true;
 

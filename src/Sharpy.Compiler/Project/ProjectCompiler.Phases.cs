@@ -358,20 +358,31 @@ internal partial class ProjectCompiler
                                         // dispatch decision reads (#1322). Applied on this path as
                                         // well as in ImportResolver, for the reason the two notes
                                         // above give: this is the loop compilation actually runs.
-                                        // Unaliased only — an alias binds a different name, which no
-                                        // name-keyed builtin path answers to, so substituting the
-                                        // registry's own (differently named) symbol would leave the
-                                        // alias undefined.
-                                        var registryBinding = importAlias.AsName == null
-                                            ? BuiltinNameShadowing.RegistryBindingFor(
-                                                SymbolTable.BuiltinRegistry, moduleInfo, lookupName)
-                                            : null;
+                                        var registryBinding = BuiltinNameShadowing.RegistryBindingFor(
+                                            SymbolTable.BuiltinRegistry, moduleInfo, lookupName);
+
+                                        // Functions only under an alias — an aliased builtin TYPE
+                                        // would resolve and then emit as `Bint` (CS0246 behind
+                                        // SPY0908), losing today's SPY0202 steer. Same rule as
+                                        // ImportResolver; see #1489 (#1383).
+                                        if (importAlias.AsName != null
+                                            && registryBinding?.Symbol is not FunctionSymbol)
+                                            registryBinding = null;
+
                                         if (registryBinding != null)
                                             symbol = registryBinding.Value.Symbol;
 
                                         var symbolToRegister = importAlias.AsName == null
                                             ? ResolveImportSymbol(symbol, originalName, sourceModuleScope)
-                                            : symbol;
+                                            : registryBinding != null
+                                                // Bind the alias's SPELLING while staying the builtin
+                                                // for every identity-keyed dispatch decision (#1383).
+                                                ? symbol with
+                                                {
+                                                    Name = symbolName,
+                                                    BuiltinAliasOf = registryBinding.Value.Symbol
+                                                }
+                                                : symbol;
                                         if (!SymbolTable.TryDefine(symbolToRegister))
                                         {
                                             ReportDuplicateFromImport(symbolName, sourceModule, importedSymbolSources,

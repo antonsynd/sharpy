@@ -155,11 +155,17 @@ public class GenerateExpressionReentryTests
     /// <c>builtins_qualified_type</c>. They reference the <c>builtins</c> module, which this seam
     /// does not register, so they cannot compile here and have nothing to say about re-entry.
     ///
+    /// <para>Raised to <b>7</b> for <c>builtin_from_import_alias_1383</c>, which is the seventh of
+    /// exactly that shape: it spells <c>from builtins import len as blen</c>, the same import this
+    /// seam cannot resolve for <c>builtins_from_import_resolves</c> already in the list. Nothing
+    /// about re-entry changed — the sweep still reports 0 re-entries — and the fixture is swept by
+    /// the file-based harness, which does register the module.</para>
+    ///
     /// <para>Lower this whenever the real number drops; never raise it without saying why in the
     /// same commit. A rise means either a regression or a deliberate scope change, and both are
     /// things a reader must be told rather than left to infer from a silently larger skip list.</para>
     /// </summary>
-    private const int MaxUncompilableFixtures = 6;
+    private const int MaxUncompilableFixtures = 7;
 
     // ----------------------------------------------------------------------------------------- //
 

@@ -1,0 +1,25 @@
+# The aliased builtin import through the MULTI-FILE loop (#1383).
+#
+# Binding is a parallel-site class: the single-file path lives in ImportResolver and the multi-file
+# path in ProjectCompiler, and each has its own from-import loop. #1322's note on those loops says
+# it outright — covering one covers exactly the case that cannot arise on the other. The single-file
+# fixture next to this one would pass with the project loop still broken, so the alias is spelled
+# here in a project that actually compiles through it.
+
+from builtins import len as blen
+
+import lib
+
+
+def main() -> None:
+    # Every inner list is non-empty on purpose: an empty one makes the literal infer list[object]
+    # (an inference limitation unrelated to this fixture) and the file would fail for the wrong
+    # reason, testing nothing about aliases.
+    rows: list[list[int]] = [[1, 2, 3], [4], [5, 6]]
+
+    # Resolved by the project loop, not ImportResolver.
+    print(blen(rows))
+
+    # The bare spelling still reaches the builtin, in this file and in lib.
+    print(len(rows))
+    print(lib.sizes(rows))

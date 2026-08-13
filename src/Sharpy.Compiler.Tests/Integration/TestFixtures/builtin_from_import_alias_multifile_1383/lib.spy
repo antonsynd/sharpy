@@ -1,0 +1,5 @@
+def sizes(rows: list[list[int]]) -> list[int]:
+    out: list[int] = []
+    for row in rows:
+        out.append(len(row))
+    return out

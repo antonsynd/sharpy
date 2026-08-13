@@ -199,20 +199,34 @@ internal partial class ImportResolver
                                 // A name imported out of the builtins module binds the REGISTRY's own
                                 // symbol, not the CLR-discovered export that happens to implement it —
                                 // identity is what every builtin dispatch decision reads (#1322). See
-                                // BuiltinNameShadowing.RegistryBindingFor. Only for the unaliased
-                                // spelling: an alias binds a DIFFERENT name, which no name-keyed
-                                // builtin path can answer to anyway, so substituting the registry's
-                                // (differently named) symbol there would leave the alias undefined.
-                                var registryBinding = importAlias.AsName == null
-                                    ? BuiltinNameShadowing.RegistryBindingFor(
-                                        symbolTable.BuiltinRegistry, moduleInfo, lookupName)
-                                    : null;
+                                // BuiltinNameShadowing.RegistryBindingFor.
+                                var registryBinding = BuiltinNameShadowing.RegistryBindingFor(
+                                    symbolTable.BuiltinRegistry, moduleInfo, lookupName);
+
+                                // Functions only, under an alias. Rebinding a builtin TYPE to the
+                                // registry's TypeSymbol under a new spelling makes `x: bint` RESOLVE,
+                                // and the emitter then maps the type by name to `Bint` — CS0246
+                                // behind SPY0908, replacing today's clean SPY0202 "Type 'bint' not
+                                // found. Did you mean 'int'?" with an internal error. Measured, not
+                                // assumed. The type half needs the name-keyed type paths to follow
+                                // the alias too (#1489); until then the honest answer is the
+                                // diagnostic (#1383).
+                                if (importAlias.AsName != null
+                                    && registryBinding?.Symbol is not FunctionSymbol)
+                                    registryBinding = null;
+
                                 if (registryBinding != null)
                                     symbol = registryBinding.Value.Symbol;
 
                                 if (importAlias.AsName != null)
                                 {
+                                    // The alias binds a different SPELLING of the same builtin, so the
+                                    // clone records what it dispatches as — without that, the clone
+                                    // reads as a user function shadowing the builtin and the call is
+                                    // ranked against the raw overload set (SPY0353, #1383).
                                     symbol = CloneSymbolWithName(symbol, registerName);
+                                    if (registryBinding != null)
+                                        symbol = symbol with { BuiltinAliasOf = registryBinding.Value.Symbol };
                                 }
                                 var defined = TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
                                     importedSymbolSources, fromImport, importAlias);
