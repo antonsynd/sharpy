@@ -1,0 +1,35 @@
+# `builtins.isinstance` must behave exactly like bare `isinstance` in every position (#1322,
+# #1381): as a narrowing condition, and inside a @test body where assert-isinstance gets its
+# three special rewrites (RoslynEmitter.Statements.ControlFlow.cs). The semantic half landed in
+# 5c924ced2; the @test-body codegen half rode the #1413 commit; #1381's own comment records that
+# NO fixture spelled the qualified form anywhere — this is that fixture. Each shape is written
+# both ways beside its bare twin, so agreement is asserted, not assumed.
+import builtins
+
+
+@test
+def test_qualified_single():
+    x: object = 42
+    assert builtins.isinstance(x, int)
+
+
+@test
+def test_qualified_negated():
+    x: object = "hello"
+    assert not builtins.isinstance(x, int)
+
+
+@test
+def test_qualified_tuple():
+    x: object = 42
+    assert builtins.isinstance(x, (int, str))
+
+
+def main() -> None:
+    r: object = 7
+    # Narrowing: the qualified condition narrows the read exactly as the bare one does.
+    if builtins.isinstance(r, int):
+        print(r + 1)
+    if isinstance(r, int):
+        print(r + 2)
+    print(r)
