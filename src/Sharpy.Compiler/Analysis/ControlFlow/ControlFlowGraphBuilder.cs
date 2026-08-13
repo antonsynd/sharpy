@@ -818,10 +818,10 @@ internal class ControlFlowGraphBuilder
     }
 
     /// <summary>
-    /// Returns true if this <c>with</c> is the <c>assert_raises</c> form the emitter will rewrite
-    /// into <c>Xunit.Assert.Throws</c>. Asks the shared authority, and — unlike the copy this
-    /// replaces — honors the <c>@test</c> condition: outside a test function nothing is rewritten,
-    /// so modelling the catch-all edge would describe a lowering that never happens (#1283).
+    /// Returns true if this <c>with</c> is the <c>assert_raises</c> form the emitter rewrites into
+    /// the framework-neutral flag/try-catch lowering (#1413). Asks the shared authority; the form
+    /// is recognised by SPELLING in every context — the old <c>@test</c> gate is gone, so the CFG
+    /// models the catch-all edge everywhere the rewrite happens, which is now everywhere.
     /// </summary>
     private bool IsAssertRaisesWith(WithStatement stmt)
         => AssertRaisesForm.IsRewritten(stmt);

@@ -1,0 +1,17 @@
+# The negative cell of #1358's Some-classification guard, pinned: `case object():` over an
+# Optional scrutinee is NOT classified as the Some case — assignability is one-directional
+# (`object` is not assignable TO `str`), so the pattern tests the whole value and matches None
+# as well, exactly as CPython does (None IS an object; verified 2026-08-13, python3 prints
+# obj/obj for this program). Classifying it as Some would silently skip the None arm — the
+# swallow this guard exists to prevent.
+def show(x: str?) -> None:
+    match x:
+        case object():
+            print("obj")
+        case _:
+            print("wild")
+
+
+def main() -> None:
+    show("hi")
+    show(None)
