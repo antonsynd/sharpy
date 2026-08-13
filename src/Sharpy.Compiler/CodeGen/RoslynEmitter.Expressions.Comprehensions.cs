@@ -229,6 +229,10 @@ internal partial class RoslynEmitter
                         var tempLoopVar = GenerateTempVarName("loopVar");
 
                         _declaredVariables.Add(loopVar);
+                        // TODO(#1498): this claim is UNSCOPED — it writes the enclosing function's
+                        // slot table with no save/restore, unlike GenerateImperativeComprehension.
+                        // A loop target reusing an enclosing local's name is CS0136 behind SPY0908,
+                        // and the outer slot's version is reset with no restore.
                         RegisterLocalSlot(loopVar, id.Name);
 
                         var varInit = LocalDeclarationStatement(

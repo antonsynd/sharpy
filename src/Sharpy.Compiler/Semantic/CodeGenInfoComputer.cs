@@ -381,6 +381,10 @@ internal class CodeGenInfoComputer
     /// <summary>
     /// C# member names synthesized by the iterator protocol (__next__).
     /// User-defined members must not mangle to any of these names.
+    /// TODO(#1499): the indexer protocol needs the same reservation — an unattributed C# indexer
+    /// (what __getitem__/__setitem__ emit) occupies the implicit member name "Item", but this walk
+    /// sees those dunders as GetItem/SetItem, so a member spelled `item` slips past and lands as
+    /// CS0102 behind SPY0908.
     /// </summary>
     private static readonly HashSet<string> IteratorProtocolReservedNames = new()
     {
