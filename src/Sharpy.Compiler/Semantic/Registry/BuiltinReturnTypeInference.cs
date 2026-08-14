@@ -25,6 +25,8 @@ internal static class BuiltinReturnTypeInference
                 => typeInference.InferHashType(argTypes[0]) ?? SemanticType.Unknown,
             BuiltinNames.Reversed when argTypes.Count == 1
                 => InferReversed(argTypes, typeInference),
+            BuiltinNames.Iter when argTypes.Count == 1
+                => InferIter(argTypes),
             BuiltinNames.Sorted when argTypes.Count >= 1
                 => InferSorted(argTypes, typeInference),
             BuiltinNames.Min when argTypes.Count >= 1
@@ -51,6 +53,38 @@ internal static class BuiltinReturnTypeInference
                 TypeArguments = new List<SemanticType> { elementType }
             };
         return null;
+    }
+
+    /// <summary>
+    /// Types <c>iter(s)</c> on a string as <c>Iterator[str]</c>; answers nothing for every other
+    /// argument shape.
+    /// </summary>
+    /// <remarks>
+    /// The string form is the only one this arm claims, and it has to claim it: a CLR string is
+    /// <c>IEnumerable&lt;char&gt;</c>, not <c>IEnumerable&lt;string&gt;</c>, so unifying it against
+    /// <c>Builtins.Iter&lt;T&gt;(IEnumerable&lt;T&gt;)</c> either binds <c>T = char</c> (yielding
+    /// chars where Python yields one-character strings) or — as it did before #1468 — binds nothing
+    /// and reports SPY0237 telling the user to write <c>iter[T](...)</c>, a spelling that does not
+    /// help either. The emitter answers the same call with <c>StringHelpers.Iterate</c>, whose
+    /// return type is <c>Iterator&lt;string&gt;</c> so the two agree; the parallel
+    /// <c>reversed(s)</c> pair is documented at <c>StringHelpers.Reversed</c>, including what a
+    /// disagreement costs (CS0266 behind SPY0908).
+    /// <para>
+    /// Returning null for anything else is deliberate: every non-string argument falls through to
+    /// ordinary overload resolution against <c>Builtins.Iter&lt;T&gt;</c>, which already answers it
+    /// correctly.
+    /// </para>
+    /// </remarks>
+    private static SemanticType? InferIter(List<SemanticType> argTypes)
+    {
+        if (argTypes[0] != SemanticType.Str)
+            return null;
+
+        return new GenericType
+        {
+            Name = BuiltinNames.Iterator,
+            TypeArguments = new List<SemanticType> { SemanticType.Str }
+        };
     }
 
     private static SemanticType? InferSorted(List<SemanticType> argTypes, TypeInferenceService typeInference)

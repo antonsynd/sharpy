@@ -1,0 +1,29 @@
+# iter(s) over a str routes to StringHelpers.Iterate and yields one-character STRINGS (#1468).
+# Before this, `iter("abc")` was refused outright with SPY0237 ("no arguments provide type
+# information; use iter[T](...)") because a CLR string is IEnumerable<char>, not
+# IEnumerable<string> — the helper existed but was reachable only from the `for c in s:` lowering.
+# The Iterator[str] annotations are the type probe (printing would not be one): they bind only if
+# the checker types the call as Iterator[str], and they would be CS0266 behind SPY0908 if
+# StringHelpers.Iterate's return type disagreed with that.
+# The last two lines are the control that this invents no producer-specific repr: the str form and
+# the list form print the SAME address-free `<iterator object>` (docs/deviations.yaml,
+# iterator-repr-no-address). Expected output verified against python3 3.12.
+# Mutation test (performed 2026-08-14, reverted): re-point the emitter's iter-on-str arm at another
+# builtin name so the routing never fires — this fixture goes RED with SPY0908 over
+# `Iterator<string> it = Sharpy.Builtins.Iter("abc")` (CS0266: the C# call binds Iterator<char>).
+def main() -> None:
+    it: Iterator[str] = iter("abc")
+    print(next(it))
+    print(next(it))
+    for c in iter("xy"):
+        print(c)
+    print(list(iter("hey")))
+    print("".join(iter("joined")))
+
+    # Control: the non-string form is untouched and still resolves through Builtins.Iter<T>.
+    lst: Iterator[int] = iter([1, 2, 3])
+    print(next(lst))
+    print(next(lst))
+
+    print(iter("abc"))
+    print(iter([1, 2, 3]))

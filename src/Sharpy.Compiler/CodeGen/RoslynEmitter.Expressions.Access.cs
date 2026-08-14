@@ -206,6 +206,21 @@ internal partial class RoslynEmitter
                     return GenerateGenericBuiltinCall(funcName.Name, call, allArgs);
                 }
 
+                // iter(s) on strings → StringHelpers.Iterate(s), which yields one-character STRINGS.
+                // Sharpy.Builtins.Iter<T>(IEnumerable<T>) would bind T = char on a CLR string and
+                // hand back an Iterator<char>, disagreeing with the Iterator[str] the checker
+                // records for this call — the CS0266-behind-SPY0908 shape the StringHelpers.Reversed
+                // remarks describe. Mirrors the reversed(s) arm below (#1468).
+                if (funcName.Name == BuiltinNames.Iter && call.Arguments.Length == 1
+                    && GetExpressionSemanticType(call.Arguments[0]) == SemanticType.Str)
+                {
+                    return InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                            IdentifierName("Iterate")))
+                        .AddArgumentListArguments(Argument(allArgs[0].Expression));
+                }
+
                 // len(s) on strings → s.Length (string doesn't implement ISized)
                 if (funcName.Name == "len" && call.Arguments.Length == 1
                     && GetExpressionSemanticType(call.Arguments[0]) == SemanticType.Str)

@@ -64,14 +64,25 @@ namespace Sharpy
         /// <summary>
         /// Yields single-character strings for each char in the string.
         /// Python iterates strings yielding single-char strings, not chars.
-        /// Used for <c>for c in s:</c> codegen.
+        /// Used for <c>for c in s:</c> and <c>iter(s)</c> codegen.
         /// </summary>
         /// <remarks>
         /// Iterates by UTF-16 code unit, not Unicode code point. Surrogate pairs
         /// (e.g., emoji) yield two separate single-char strings. This follows
         /// Axiom 1 (.NET UTF-16 semantics take precedence over Python code-point iteration).
+        /// <para>
+        /// Returns <c>Iterator&lt;string&gt;</c> for the same reason <see cref="Reversed"/> does:
+        /// the compiler TYPES <c>iter(s)</c> as <c>Iterator[str]</c> while emitting a call to this
+        /// method, and a return type that disagreed would produce CS0266 behind SPY0908 for
+        /// ordinary source such as <c>it: Iterator[str] = iter("abc")</c> (#1468). <c>Iterator&lt;T&gt;</c>
+        /// is an <c>IEnumerable&lt;T&gt;</c>, so the <c>for c in s:</c> lowering — which calls this
+        /// method fresh on each execution of the loop — is unaffected.
+        /// </para>
         /// </remarks>
-        public static IEnumerable<string> Iterate(string s)
+        public static Iterator<string> Iterate(string s)
+            => new EnumeratorIterator<string>(IterateCore(s).GetEnumerator());
+
+        private static IEnumerable<string> IterateCore(string s)
         {
             for (int i = 0; i < s.Length; i++)
             {
