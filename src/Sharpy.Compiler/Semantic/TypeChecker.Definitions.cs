@@ -1899,6 +1899,28 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The type a property/event accessor parameter binds as, and whether that binding is error
+    /// recovery. A VARIADIC accessor parameter is refused at declaration (SPY0496, #1406) because a
+    /// C# accessor has no <c>params T[]</c> backing — the array-wrap #1292 applies to ordinary
+    /// parameters (<c>RegisterFunctionParameters</c>) cannot apply here. Rather than binding it as
+    /// its ELEMENT type — which made <c>*values: int</c> bind as <c>int</c> and drew a true-but-stale
+    /// SPY0320 cascade against the already-refused program (#1462) — or as a bare, illegible
+    /// <c>Unknown</c>, it binds through error recovery: <see cref="SemanticType.Unknown"/> with
+    /// <c>IsErrorRecovery</c> set on the symbol, so references read "refused at declaration, not
+    /// type-checked further" for a stated reason instead of being silently masked. (Owner ruling,
+    /// remediation round 2026-08-13: error-recovery binding; the #1292 wrap rejected because wrapping
+    /// would type-check and then emit a length call against a single value — an ICE replacing a clean
+    /// refusal; bare Unknown rejected as illegible masking.)
+    /// </summary>
+    private (SemanticType Type, bool IsErrorRecovery) ResolveAccessorParameterBinding(Parameter param)
+    {
+        if (param.IsVariadic)
+            return (SemanticType.Unknown, IsErrorRecovery: true);
+
+        return (_typeResolver.ResolveTypeAnnotation(param.Type), IsErrorRecovery: false);
+    }
+
+    /// <summary>
     /// Type-checks an event declaration.
     /// For auto-events, type resolution is handled by ResolveEventTypes().
     /// For function-style events, checks the accessor body.
@@ -1919,6 +1941,7 @@ internal partial class TypeChecker
         {
             var param = eventDef.Parameters[i];
             SemanticType paramType;
+            bool paramIsErrorRecovery = false;
 
             // Special handling for 'self' parameter
             if (i == 0 && param.Name == PythonNames.Self && _currentClass != null)
@@ -1927,7 +1950,7 @@ internal partial class TypeChecker
             }
             else
             {
-                paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+                (paramType, paramIsErrorRecovery) = ResolveAccessorParameterBinding(param);
             }
 
             var paramSymbol = new VariableSymbol
@@ -1936,6 +1959,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.Parameter,
                 Type = paramType,
                 IsParameter = true,
+                IsErrorRecovery = paramIsErrorRecovery,
                 IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,
@@ -2091,13 +2115,14 @@ internal partial class TypeChecker
         // module-level properties have no self)
         foreach (var param in propDef.Parameters)
         {
-            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+            var (paramType, paramIsErrorRecovery) = ResolveAccessorParameterBinding(param);
             var paramSymbol = new VariableSymbol
             {
                 Name = param.Name,
                 Kind = SymbolKind.Parameter,
                 Type = paramType,
                 IsParameter = true,
+                IsErrorRecovery = paramIsErrorRecovery,
                 IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,
@@ -2227,13 +2252,14 @@ internal partial class TypeChecker
         {
             var param = propDef.Parameters[i];
             SemanticType paramType;
+            bool paramIsErrorRecovery = false;
             if (i == 0 && param.Name == PythonNames.Self)
             {
                 paramType = new UserDefinedType { Name = _currentClass.Name, Symbol = _currentClass };
             }
             else
             {
-                paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+                (paramType, paramIsErrorRecovery) = ResolveAccessorParameterBinding(param);
             }
 
             var paramSymbol = new VariableSymbol
@@ -2242,6 +2268,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.Parameter,
                 Type = paramType,
                 IsParameter = true,
+                IsErrorRecovery = paramIsErrorRecovery,
                 IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,

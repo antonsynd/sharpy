@@ -473,15 +473,19 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // Check if this is an error recovery symbol (from a failed import).
-        // If so, suppress cascading errors - the import error was already reported.
+        // Check if this is an error recovery symbol — a name whose DECLARATION was already refused,
+        // so a reference to it must not cascade. Two shapes reach here: a failed import (SPY0300)
+        // and a refused variadic property/event accessor parameter (SPY0496, #1462), both of which
+        // bind the symbol as Unknown with IsErrorRecovery set. The diagnostic that refused it was
+        // already reported, so the reference is legibly error recovery rather than an unexplained
+        // Unknown.
         if (symbol.IsErrorRecovery)
         {
             _semanticInfo.SetIdentifierSymbol(id, symbol);
-            // Mark as error recovery — the import error was already reported upstream
             MarkExpressionAsErrorRecovery(id,
                 ErrorRecoveryReason.AlreadyReported(
-                    "the import that defines this symbol failed (SPY0300)"));
+                    "the symbol's declaration was already refused (a failed import, or a variadic "
+                    + "accessor parameter refused by SPY0496)"));
             return SemanticType.Unknown;
         }
 
