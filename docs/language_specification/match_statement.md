@@ -229,6 +229,61 @@ match value:
 
 *Implementation: ✅ Implemented — maps to C# declaration pattern (`case int n:`) with binding, or type pattern with discard designation when no binding is needed.*
 
+### Matching Optional (`T?`) and Result (`T !E`)
+
+`Optional` and `Result` are tagged unions, and a tagged union is matched through its **constructor
+cases** — the one spelling for both:
+
+```python
+def describe(x: str?) -> str:
+    match x:
+        case Some(v):
+            return "got " + v
+        case None():
+            return "empty"
+```
+
+```python
+def unwrap_or_zero(r: int !ValueError) -> int:
+    match r:
+        case Ok(v):
+            return v
+        case Err(e):
+            return 0
+```
+
+A bare **payload type pattern** over a union scrutinee — `case str():` over a `str?`, or
+`case int():` over an `int !E` — is **refused** with `SPY0498`, steering to the constructor cases
+for that family (`case Some(v):` / `case None():`, or `case Ok(v):` / `case Err(e):`). It is a
+second spelling of the same match, and the Optional form was previously unsound (it reached code
+generation as a C# `CS8121`):
+
+```python
+x: str? = get()
+match x:
+    case str():        # error[SPY0498] — use case Some(v): / case None():
+        print("str")
+    case None:
+        print("none")
+```
+
+If you have already **narrowed** the scrutinee to its payload with `if x is not None:`, then `x`'s
+type is the payload (`str`), not the union, and an ordinary type pattern applies there as usual:
+
+```python
+def narrowed(x: str?) -> str:
+    if x is not None:
+        match x:
+            case str() as s:
+                return "narrowed " + s
+            case _:
+                return "other"
+    return "empty"
+```
+
+*Implementation: ✅ Implemented — the refusal is `SPY0498`, emitted during semantic analysis. All
+examples above were executed against HEAD before being documented.*
+
 ### Bare Collection Patterns (`dict()`, `list()`, `set()`)
 
 When matching an `object` scrutinee against a bare collection type pattern (no type arguments), the compiler specializes the binding type to use `object` type arguments:
