@@ -1,0 +1,22 @@
+# A dataclass with an optional field did not compile AT ALL: `label: str? = None` emitted
+# `Optional<string> label = Optional<string>.None` as the constructor parameter's default, and a
+# C# parameter default must be a compile-time constant — CS1736 behind SPY0908. The property
+# initializer beside it may be non-constant, and both came from one generator.
+# `default` is the constant spelling of the same value.
+#
+# Found while writing #1505's absent-`T?` acceptance cell, which could not otherwise be written.
+@dataclass
+class Config:
+    name: str
+    max_connections: int
+    retry_count: int = 3
+    label: str? = None
+
+
+def main() -> None:
+    a: Config = Config("web", 10)
+    print(a.retry_count)
+    print(a.label)
+    b: Config = Config("db", 20, 7, "prod")
+    print(b.retry_count)
+    print(b.label)

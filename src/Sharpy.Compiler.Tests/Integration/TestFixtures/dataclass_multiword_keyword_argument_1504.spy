@@ -1,0 +1,20 @@
+# #1504: the generated dataclass constructor named its parameters with the RAW Sharpy field name
+# (`max_connections`) while the call site already emitted the camelCase spelling every other
+# emitted parameter uses (`maxConnections:`) — two naming channels for one fact. Multi-word
+# keyword construction was CS1739 behind SPY0908; single-word fields coincided and hid it.
+#
+# The same divergence is what crashed `json.loads[T]`: System.Text.Json binds constructor
+# parameters to properties case-insensitively but not underscore-insensitively, so
+# `max_connections` never matched `MaxConnections`. One authority fixes both consumers.
+@dataclass
+class TwoWord:
+    name: str
+    max_connections: int
+
+
+def main() -> None:
+    t: TwoWord = TwoWord(name="web", max_connections=10)
+    print(t.name)
+    print(t.max_connections)
+    u: TwoWord = TwoWord("db", 20)
+    print(u.max_connections)

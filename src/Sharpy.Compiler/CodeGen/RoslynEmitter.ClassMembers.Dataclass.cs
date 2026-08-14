@@ -120,6 +120,36 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// The C# name of a generated dataclass constructor parameter: the SAME authority every other
+    /// emitted parameter uses (<c>NameCasing.ResolveVariable</c>, i.e. camelCase, backtick-escaped
+    /// spellings kept verbatim).
+    /// </summary>
+    /// <remarks>
+    /// <para>This was the one parameter-emitting site in the emitter that did not use it: it wrote
+    /// the raw Sharpy field name (<c>max_connections</c>) while the property beside it is
+    /// PascalCase (<c>MaxConnections</c>) and the CALL SITE already emitted the camelCase spelling
+    /// through <c>GetCSharpParameterName</c>. Two naming channels for one fact, and both consumers
+    /// were broken by the one that deviated (#1504, #1499's meta-class):</para>
+    /// <list type="bullet">
+    ///   <item><description><c>TwoWord(max_connections=10)</c> from <c>.spy</c> emitted
+    ///     <c>new TwoWord(maxConnections: 10)</c> against a parameter named
+    ///     <c>max_connections</c> — CS1739 behind SPY0908, for every multi-word keyword
+    ///     construction of a dataclass.</description></item>
+    ///   <item><description><c>json.loads[T]</c> binds System.Text.Json constructor parameters to
+    ///     properties case-INsensitively but not underscore-insensitively, so
+    ///     <c>max_connections</c> ↔ <c>MaxConnections</c> never matched and STJ threw
+    ///     <c>InvalidOperationException</c> out of a function returning <c>Result</c>, killing the
+    ///     process for EVERY document. <c>maxConnections</c> ↔ <c>MaxConnections</c> matches.
+    ///     Single-word fields (<c>port</c> ↔ <c>Port</c>) matched all along, which is why the
+    ///     earlier control passed.</description></item>
+    /// </list>
+    /// <para>The fix is deleting the second channel, not bridging it — the call site's authority
+    /// was already the correct one.</para>
+    /// </remarks>
+    private static string DataclassConstructorParameterName(VariableSymbol field)
+        => NameCasing.ResolveVariable(field.Name, field.IsNameBacktickEscaped);
+
+    /// <summary>
     /// Generates a constructor for a @dataclass.
     /// Parameters match the field list (inherited + own), with default values where applicable.
     /// Calls base() for inherited fields, assigns own fields, then calls __post_init__ if present.
@@ -136,10 +166,10 @@ internal partial class RoslynEmitter
         var parameters = new List<ParameterSyntax>();
         foreach (var field in allFields)
         {
-            var paramName = field.Name;
+            var paramName = DataclassConstructorParameterName(field);
             var paramType = _typeMapper.MapSemanticType(GetVariableType(field));
 
-            var param = Parameter(Identifier(paramName))
+            var param = Parameter(EscapedIdentifier(paramName))
                 .WithType(paramType);
 
             // Add default value if present
@@ -151,6 +181,21 @@ internal partial class RoslynEmitter
                 if (fieldDecl?.InitialValue != null)
                 {
                     var defaultExpr = GenerateInitializerValue(fieldDecl.InitialValue, fieldDecl.Type);
+
+                    // A PARAMETER default must be a compile-time constant; a PROPERTY initializer
+                    // need not be, and the two share one generator. `label: str? = None` produced
+                    // `Optional<string> label = Optional<string>.None` — correct as the property's
+                    // initializer, CS1736 behind SPY0908 as the parameter's, so a dataclass with
+                    // any optional field did not compile at all. `default` is the constant spelling
+                    // of the same value: Optional<T>.None is `new Optional<T>(default!, false)` and
+                    // the struct's default is `_hasValue == false`, i.e. None. Found while writing
+                    // #1505's absent-`T?` acceptance cell, which could not otherwise be written.
+                    if (fieldDecl.InitialValue is NoneLiteral
+                        && GetVariableType(field) is Semantic.OptionalType)
+                    {
+                        defaultExpr = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+                    }
+
                     param = param.WithDefault(EqualsValueClause(defaultExpr));
                 }
             }
@@ -165,7 +210,7 @@ internal partial class RoslynEmitter
         {
             var propName = GetCodeGenInfo(field)?.CSharpName
                 ?? NameCasing.ResolveField(field.Name, field.IsNameBacktickEscaped);
-            var paramName = field.Name;
+            var paramName = DataclassConstructorParameterName(field);
 
             statements.Add(ExpressionStatement(
                 AssignmentExpression(
@@ -194,7 +239,7 @@ internal partial class RoslynEmitter
         if (inheritedFields.Count > 0)
         {
             var baseArgs = inheritedFields
-                .Select(f => Argument(IdentifierName(f.Name)))
+                .Select(f => Argument(EscapedIdentifierName(DataclassConstructorParameterName(f))))
                 .ToArray();
 
             constructor = constructor.WithInitializer(
