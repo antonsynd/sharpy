@@ -1,0 +1,3 @@
+builtin type 'int' cannot be imported under an alias: 'bint' would resolve as a type name and emit as 'bint' rather than as 'int'. Use the builtin's own spelling ('int'), or qualify it ('builtins.int'). @22:22
+Undefined identifier 'bint'. Did you mean 'int'? @25:9
+Type 'bint' not found. Did you mean 'int'? @26:8

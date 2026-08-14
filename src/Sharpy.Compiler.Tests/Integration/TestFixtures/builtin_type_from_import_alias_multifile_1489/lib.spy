@@ -1,0 +1,2 @@
+def twice(v: int) -> int:
+    return v * 2

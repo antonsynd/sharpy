@@ -361,10 +361,32 @@ internal partial class ProjectCompiler
                                         var registryBinding = BuiltinNameShadowing.RegistryBindingFor(
                                             SymbolTable.BuiltinRegistry, moduleInfo, lookupName);
 
-                                        // Functions only under an alias — an aliased builtin TYPE
-                                        // would resolve and then emit as `Bint` (CS0246 behind
-                                        // SPY0908), losing today's SPY0202 steer. Same rule as
-                                        // ImportResolver; see #1489 (#1383).
+                                        // An aliased builtin TYPE is REFUSED (SPY0312, #1489): the
+                                        // restriction below kept `x: bint` from becoming an ICE but
+                                        // left `bint("42")` emitting `Int(…)` — CS0103 behind
+                                        // SPY0908. Applied on this path as well as in ImportResolver
+                                        // for the reason the notes above give: this is the loop
+                                        // multi-file compilation actually runs, and an import
+                                        // refusal that covers only the single-file loop covers
+                                        // exactly the case that cannot arise (#1145).
+                                        if (importAlias.AsName != null
+                                            && BuiltinNameShadowing.AliasesBuiltinType(
+                                                SymbolTable.BuiltinRegistry, moduleInfo, lookupName))
+                                        {
+                                            _diagnostics.AddPhaseError(
+                                                BuiltinNameShadowing.TypeAliasRefusalMessage(
+                                                    lookupName, importAlias.AsName),
+                                                CompilerPhase.ImportResolution,
+                                                span: importAlias.Span,
+                                                line: importAlias.LineStart,
+                                                column: importAlias.ColumnStart,
+                                                filePath: unit.FilePath,
+                                                code: BuiltinNameShadowing.TypeAliasRefusalCode);
+                                            continue;
+                                        }
+
+                                        // Functions only under an alias, belt-and-braces behind the
+                                        // refusal above: same rule as ImportResolver (#1383).
                                         if (importAlias.AsName != null
                                             && registryBinding?.Symbol is not FunctionSymbol)
                                             registryBinding = null;

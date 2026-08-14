@@ -1,0 +1,23 @@
+# The aliased builtin TYPE import through the MULTI-FILE loop (#1489).
+#
+# Binding is a parallel-site class: the single-file path lives in ImportResolver and the multi-file
+# path in ProjectCompiler, and each has its own from-import loop — covering one covers exactly the
+# case that cannot arise on the other (#1145). The single-file fixture next to this one would pass
+# with the project loop still leaking, so the refusal is spelled here in a project that actually
+# compiles through it. The FUNCTION-alias twin (`builtin_from_import_alias_multifile_1383`) is the
+# control: that loop keeps working for the half that works.
+#
+# MUTATION TEST (performed 2026-08-14, reverted): disabling the ProjectCompiler arm — `if (false &&
+# …)` on its `AliasesBuiltinType` guard — turns BOTH #1489 fixtures red, this one and the
+# single-file one. Disabling the ImportResolver twin turns nothing red: that loop's only caller,
+# `FileCompilationPipeline.ResolveImports`, has no production caller left, so every front door
+# (single file included, via SyntheticProject) reaches ProjectCompiler. The twin is kept and marked
+# fixture-uncovered at the site rather than presented as guarded.
+from builtins import int as bint
+
+import lib
+
+
+def main() -> None:
+    v = bint("42")
+    print(lib.twice(v))

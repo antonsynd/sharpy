@@ -203,7 +203,7 @@ public static partial class DiagnosticExplanations
             "Replace 'functools.partial(f, fixed_args...)' with 'f(fixed_args..., _, ...)' using '_' for the " +
             "remaining (unfixed) arguments. The two forms are equivalent at runtime.");
 
-        // ── Import redirect diagnostics (SPY0310-SPY0311) ────────────────
+        // ── Import redirect and alias diagnostics (SPY0310-SPY0312) ──────
 
         Add(dict, DiagnosticCodes.Semantic.TypingModuleRedirect, "typing module not needed", "Semantic",
             "The Python 'typing' module is not needed in Sharpy. All common typing constructs have native syntax equivalents: " +
@@ -216,6 +216,16 @@ public static partial class DiagnosticExplanations
             "that requires no import.",
             "from dataclasses import dataclass\n\n@dataclass\nclass Point:\n    x: float\n    y: float",
             "Remove the import — '@dataclass' works directly:\n  @dataclass\n  class Point:\n      x: float\n      y: float");
+
+        Add(dict, DiagnosticCodes.Semantic.BuiltinTypeAliasUnsupported, "builtin type cannot be aliased on import", "Semantic",
+            "A builtin TYPE imported under an alias cannot be emitted: the paths that resolve a primitive annotation and " +
+            "map a type to C# are keyed by the type's NAME, not by its symbol, so the alias reaches code generation under " +
+            "its own spelling and produces an internal error. Aliasing a builtin FUNCTION on the same import is supported " +
+            "and unaffected — a function alias carries a back-pointer its dispatch sites read by identity. Nothing is lost: " +
+            "the builtin is reachable unaliased and through 'builtins.'.",
+            "from builtins import int as bint\n\ndef main() -> None:\n    v = bint(\"42\")",
+            "Use the builtin's own spelling, or qualify it:\n  def main() -> None:\n      v = int(\"42\")\n\n" +
+            "  # or\n  import builtins\n\n  def main() -> None:\n      v = builtins.int(\"42\")");
 
         return dict;
     }

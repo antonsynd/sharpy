@@ -344,7 +344,12 @@ public static class DiagnosticCodes
         // Import redirect diagnostics (SPY0310-SPY0319)
         public const string TypingModuleRedirect = "SPY0310";        // Active
         public const string DataclassesModuleRedirect = "SPY0311";   // Active
-        // SPY0312-SPY0319: Reserved for future import redirect diagnostics
+        // SPY0312 takes the next slot in this sub-band rather than a redirect-only one: the label
+        // "redirect" was aspirational, the BAND is imports, and an aliased-import refusal is an
+        // import diagnostic reported at the import statement. Renumbering the two redirects to
+        // carve a new sub-band would break shipped `.error` fixtures for no gain.
+        public const string BuiltinTypeAliasUnsupported = "SPY0312";  // Active (#1489)
+        // SPY0313-SPY0319: Reserved for future import diagnostics
 
         #endregion
 
