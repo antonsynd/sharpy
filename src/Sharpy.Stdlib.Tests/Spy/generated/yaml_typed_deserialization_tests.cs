@@ -79,10 +79,10 @@ namespace Sharpy.Stdlib.Tests.Spy
                 public int MaxConnections { get; set; }
                 public bool Enabled { get; set; }
 
-                public DataclassMultiField(string service_name, int max_connections, bool enabled)
+                public DataclassMultiField(string serviceName, int maxConnections, bool enabled)
                 {
-                    this.ServiceName = service_name;
-                    this.MaxConnections = max_connections;
+                    this.ServiceName = serviceName;
+                    this.MaxConnections = maxConnections;
                     this.Enabled = enabled;
                 }
 
