@@ -35,7 +35,7 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// nothing more. Reading it as purity evidence is exactly the false assurance #1475 was filed for
 /// (the 2026-08-13 verification round cited this suite's name twice and had to re-verify by hand
 /// both times). Rule 2 is enforced structurally by
-/// <c>EmitterCarrierOnlyConformanceTests</c>, which inverts the question: CodeGen may name
+/// <see cref="EmitterCarrierOnlyConformanceTests"/>, which inverts the question: CodeGen may name
 /// only the materialized-fact carriers, and every other <c>Semantic</c> type — enumerated by
 /// reflection, so the list cannot go stale — is denied. This scan is kept as a cheap backstop for
 /// the five spellings it does know, not as the guard the rule names.
@@ -254,7 +254,12 @@ public class EmitterBannedTokenScanTests
         return idx >= 0 ? line.Substring(0, idx) : line;
     }
 
-    private static string FindCodeGenSourceDirectory()
+    /// <summary>
+    /// The <c>src/Sharpy.Compiler/CodeGen/</c> directory. Shared with
+    /// <c>EmitterCarrierOnlyConformanceTests</c> so the two purity guards agree on which sources
+    /// they judge — one location, not two copies that can drift apart.
+    /// </summary>
+    internal static string FindCodeGenSourceDirectory()
     {
         var current = AppContext.BaseDirectory;
         while (current != null)
