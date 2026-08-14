@@ -766,6 +766,16 @@ public static class DiagnosticCodes
         // `List<IGroupable>`). A top-level `Self` return/parameter IS bridged (SPY0497, #1342 shape 2).
         public const string SelfInVariantInterfacePosition = "SPY0497"; // Active (#1342)
 
+        // A bare payload TYPE pattern over a tagged-union scrutinee (`case str():` over `str?`,
+        // `case int():` over `int !E`) is refused with a steer to the constructor-case spellings
+        // (#1510, #1476). Emitted at SEMANTIC time from TypeChecker's pattern arm — the code lives
+        // in this general validation-overflow band because the semantic range SPY0200-SPY0399 is
+        // fully allocated (its own SPY0349 note records that as the last free semantic slot), and a
+        // pattern-well-formedness refusal belongs to no family-specific semantic reserve. This is
+        // the SPY0522/SPY0523 precedent (a semantic-phase diagnostic taking a number from a later
+        // band); unlike those it stays in-scope [0001,0499] for the front-end parity sweep.
+        public const string PayloadTypePatternOverUnion = "SPY0498"; // Active (#1510, #1476)
+
         #endregion
     }
 

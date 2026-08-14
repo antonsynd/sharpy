@@ -887,5 +887,35 @@ public static partial class DiagnosticExplanations
             + "interface IBuilder:\n"
             + "    def with_item(self, item: int) -> Self:\n"
             + "        ...");
+
+        Add(dict, DiagnosticCodes.Validation.PayloadTypePatternOverUnion,
+            "Payload type pattern over a tagged union",
+            "Validation",
+            "Optional (T?) and Result (T !E) are tagged unions, and both match through their " +
+            "constructor cases: 'case Some(v):' / 'case None():' for an Optional, 'case Ok(v):' / " +
+            "'case Err(e):' for a Result. A bare payload TYPE pattern — 'case str():' over a 'str?', " +
+            "or 'case int():' over an 'int !E' — is a SECOND spelling of the same thing, and it is " +
+            "refused so there is one way to match a union. (It was also unsound: the Optional form " +
+            "reached code generation as a CS8121 error behind a compiler-bug report, because the " +
+            "scrutinee emits as Optional<T> and the pattern as T, a pairing C# rejects.) If you have " +
+            "already narrowed the scrutinee to its payload — 'if x is not None:' — then x's type is " +
+            "the payload, not the union, and an ordinary type pattern applies there as usual.",
+            "x: str? = get()\n"
+            + "match x:\n"
+            + "    case str():        # SPY0498 — payload type pattern over an Optional\n"
+            + "        print(\"str\")\n"
+            + "    case None:\n"
+            + "        print(\"none\")",
+            "Match through the constructor cases:\n"
+            + "match x:\n"
+            + "    case Some(v):\n"
+            + "        print(v)\n"
+            + "    case None():\n"
+            + "        print(\"none\")\n\n"
+            + "Or narrow first, then match the payload:\n"
+            + "if x is not None:\n"
+            + "    match x:\n"
+            + "        case str() as s:\n"
+            + "            print(s)");
     }
 }

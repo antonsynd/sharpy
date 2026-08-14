@@ -545,42 +545,48 @@ internal partial class TypeChecker
         }
         resolvedType = appliedPatternType;
 
-        // #1358: a payload TYPE pattern against an UN-NARROWED Optional scrutinee tests the Some
-        // case. `case str():` over `x: str?` is the bare spelling of `case Some(str())`, and a None
-        // value falls through to the next arm — which is what Python does for `str | None` and what
-        // `case None:` already reads as here.
+        // #1510 (reverts #1358) + #1476: a bare payload TYPE pattern over a tagged-union scrutinee is
+        // a SECOND spelling of a constructor case, and one that hid an ICE. Optional and Result both
+        // match through their constructor cases (`case Some(v):`/`case None():`,
+        // `case Ok(v):`/`case Err(e):`), which are the one spelling; the bare payload form
+        // (`case str():` over `str?`, `case int():` over `int !E`) is refused with a steer to them.
         //
-        // The subject is NOT unwrapped: a C# switch has one governing expression, and
-        // Optional<T>.Unwrap() throws on an empty Optional, so an unwrapped subject would throw
-        // before any arm ran. Instead this records the synthetic Some case through the SAME
-        // node-keyed channel `case None:` uses above, and the emitter turns it into the positional
-        // subpattern `(true, <payload>)` over the raw Optional<T> via Deconstruct. Because the
-        // channel already exists, no new SemanticInfo dictionary joins MergeFrom.
+        // #1358 had classified `case str():` over `str?` as the synthetic Some case — the owner ruling
+        // (2026-08-13) reverses that: `str` IS assignable to `str?`, so the classification path had
+        // reached code generation as a CS8121 ICE for the shapes it did not fully model, while the
+        // exactly-analogous Result spelling was refused (by accident, since `int` is NOT assignable to
+        // `int !E`). Refusing both, uniformly, removes the second spelling and the ICE at once.
         //
-        // Recording the case is also what closes exhaustiveness: ExhaustivenessHelper already
-        // reports {Some, None} as an Optional's case space, and its TypePattern arm reads this
-        // union case before falling back to the pattern's type NAME — so `case str():` covered
-        // "str" (matching neither case) and now covers "Some".
-        //
-        // Narrowing is deliberately not involved (the issue: "this is the un-narrowed shape"). Under
-        // an `is not None` guard the scrutinee's type is already the payload, so this branch does not
-        // fire and the #1299 unwrap lowering keeps owning that path.
-        //
-        // The sibling Result spelling (`case int():` over `int !E`) stays refused — see #1476, which
-        // records why the two diverge and asks for a ruling. The divergence is not deliberate design:
-        // `str` IS assignable to `str?` so Optional slipped past the compatibility check below and
-        // reached codegen as an ICE, while `int` is NOT assignable to `int !E` so Result trips it.
-        if (scrutineeType is OptionalType payloadOptional
-            && resolvedType is not UnknownType
+        // The NARROWED form never reaches here: under an `is not None` guard the scrutinee's type is
+        // already the payload (not the union), so `if x is not None: match x: case str() as s:` takes
+        // the ordinary type-pattern path and the #1299 unwrap lowering keeps owning it.
+        if (resolvedType is not UnknownType
+            && scrutineeType is OptionalType payloadOptional
             && IsAssignable(resolvedType, payloadOptional.UnderlyingType))
         {
-            var optionalUnion = GetSyntheticOptionalUnion();
-            var someCase = optionalUnion.UnionCases.First(c => c.Name == WellKnownCaseNames.Some);
-            _semanticInfo.SetPatternUnionCase(typePattern, someCase);
-            // The payload type the emitter tests inside the Some subpattern. Recorded rather than
-            // re-derived: the emitter reads this fact and maps it, making no type decision of its own.
-            _semanticInfo.SetPatternType(typePattern, resolvedType);
-            BindTypePatternCapture(typePattern, resolvedType);
+            AddError(
+                $"An Optional scrutinee cannot be matched with the payload type pattern " +
+                $"'{resolvedType.GetDisplayName()}'. Match through the constructor cases instead: " +
+                "'case Some(v):' for a present value and 'case None():' for absence " +
+                "(or narrow first with 'if x is not None:').",
+                typePattern.LineStart, typePattern.ColumnStart,
+                code: DiagnosticCodes.Validation.PayloadTypePatternOverUnion,
+                span: typePattern.Span);
+            return;
+        }
+
+        if (resolvedType is not UnknownType
+            && scrutineeType is ResultType payloadResult
+            && (IsAssignable(resolvedType, payloadResult.OkType)
+                || IsAssignable(resolvedType, payloadResult.ErrorType)))
+        {
+            AddError(
+                $"A Result scrutinee cannot be matched with the payload type pattern " +
+                $"'{resolvedType.GetDisplayName()}'. Match through the constructor cases instead: " +
+                "'case Ok(v):' for success and 'case Err(e):' for failure.",
+                typePattern.LineStart, typePattern.ColumnStart,
+                code: DiagnosticCodes.Validation.PayloadTypePatternOverUnion,
+                span: typePattern.Span);
             return;
         }
 
@@ -618,9 +624,7 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Defines the <c>as</c> capture of a type pattern (<c>case str() as s:</c>) at
-    /// <paramref name="capturedType"/>. Shared by the ordinary arm and by #1358's Optional-payload
-    /// arm, which binds at the PAYLOAD type rather than at the Optional: the emitted subpattern
-    /// destructures <c>Optional&lt;T&gt;</c>, so what the name is bound to is the unwrapped value.
+    /// <paramref name="capturedType"/>, the pattern's own resolved type.
     /// </summary>
     private void BindTypePatternCapture(TypePattern typePattern, SemanticType capturedType)
     {
