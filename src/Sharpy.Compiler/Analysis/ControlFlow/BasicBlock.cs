@@ -75,6 +75,16 @@ internal sealed class BasicBlock
     public Parser.Ast.Expression? MatchSubject { get; internal set; }
 
     /// <summary>
+    /// The subjects of match EXPRESSIONS evaluated within this block's statements (#1502). Unlike a
+    /// match STATEMENT — which ends its own block and wears the single <see cref="MatchSubject"/> —
+    /// a match expression sits inside a statement, and a block may hold several, so they are
+    /// collected here. The flow analysis freezes the block's out-set for each, exactly as it does
+    /// for <see cref="MatchSubject"/>, so <c>CheckMatchExpression</c> can read the narrowing at the
+    /// subject's evaluation point instead of clearing the facts it inherits.
+    /// </summary>
+    public System.Collections.Generic.List<Parser.Ast.Expression> MatchExpressionSubjects { get; } = new();
+
+    /// <summary>
     /// For async analysis: true if any statement in this block contains an await expression.
     /// Set during CFG construction by scanning for AwaitExpression nodes.
     /// </summary>

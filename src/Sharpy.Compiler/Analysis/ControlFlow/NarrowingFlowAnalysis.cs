@@ -426,6 +426,11 @@ internal static class NarrowingFlowAnalysis
             // on the block instead.
             if (block.MatchSubject is { } subject)
                 branchConditionFacts[subject] = Freeze(outSet);
+
+            // Match EXPRESSION subjects evaluated within the block get the same treatment, so
+            // CheckMatchExpression can read the narrowing at the subject's evaluation point (#1502).
+            foreach (var exprSubject in block.MatchExpressionSubjects)
+                branchConditionFacts[exprSubject] = Freeze(outSet);
         }
 
         return new NarrowingFlowResult(blockEntryFacts, statementFacts, branchConditionFacts);

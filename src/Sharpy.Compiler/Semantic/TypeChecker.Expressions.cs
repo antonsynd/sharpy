@@ -618,15 +618,15 @@ internal partial class TypeChecker
         // makes the emitted switch EXPRESSION statically total, and the trailing `case _` arm draws
         // CS8510 instead of CS0162 — same defect, different diagnostic.
         //
-        // Deliberately NOT mirrored from CheckMatch: the `_currentFacts = FactsBeforeBranch(...)`
-        // resolution. Only ControlFlowGraphBuilder.BuildMatch records a MatchSubject, so a match
-        // EXPRESSION's subject is not a key in the branch-condition fact map, and FactsBeforeBranch
-        // returns an EMPTY collection (not null) for an unknown key — the `?? _currentFacts` would
-        // not fire and the copy would CLEAR the facts this subject correctly inherits from its
-        // enclosing tracked statement. That inheritance is why the expression form already narrowed
-        // when the statement form did not (#1299). Add the resolution only together with a CFG
-        // entry — that work is #1502 (teach the builder to model match EXPRESSIONS), and this
-        // comment retires with it.
+        // Resolve the subject against the facts at its evaluation point, exactly as CheckMatch does
+        // for a statement's subject (#1299). The CFG now records match-EXPRESSION subjects too
+        // (#1502, ControlFlowGraphBuilder.CollectMatchExpressionSubjects), so FactsBeforeBranch
+        // returns the recorded out-set — the `??` fallback is safe rather than clearing the facts the
+        // subject inherits (the mutation-proven trap this comment used to forbid). The `??` remains
+        // load-bearing where there is no flow analysis (module body). CheckStatement's finally
+        // restores _currentFacts.
+        _currentFacts = _narrowingFlow?.FactsBeforeBranch(matchExpr.Scrutinee) ?? _currentFacts;
+
         SemanticType scrutineeType;
         using (ScopedValue.Push(ref _matchSubjectOperand, UnwrapParenthesized(matchExpr.Scrutinee)))
             scrutineeType = CheckExpression(matchExpr.Scrutinee);

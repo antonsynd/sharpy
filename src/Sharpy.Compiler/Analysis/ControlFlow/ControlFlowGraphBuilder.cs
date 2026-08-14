@@ -246,6 +246,30 @@ internal class ControlFlowGraphBuilder
         {
             _currentBlock.ContainsAwait = true;
         }
+
+        // A match EXPRESSION's subject is evaluated within this block's flow, in the same position an
+        // `if` condition or a match STATEMENT's subject occupies — so record it, letting the flow
+        // analysis freeze the block's out-set for it and narrowing reach the arms (#1502). This is
+        // the builder's only expression-walking, kept targeted to MatchExpression subjects.
+        CollectMatchExpressionSubjects(stmt, _currentBlock.MatchExpressionSubjects);
+    }
+
+    /// <summary>
+    /// Appends the subject of every match EXPRESSION reachable in <paramref name="node"/>'s tree to
+    /// <paramref name="into"/>, without descending into lambda or nested-function bodies (they form
+    /// their own graphs and never see this scope's facts, mirroring the builder's per-function
+    /// scoping). Targeted to <see cref="MatchExpression"/> nodes — not a general expression CFG (#1502).
+    /// </summary>
+    private static void CollectMatchExpressionSubjects(Node node, List<Expression> into)
+    {
+        if (node is MatchExpression matchExpr)
+            into.Add(matchExpr.Scrutinee);
+
+        if (node is LambdaExpression or FunctionDef)
+            return;
+
+        foreach (var child in node.GetChildNodes())
+            CollectMatchExpressionSubjects(child, into);
     }
 
     /// <summary>

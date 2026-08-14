@@ -1,0 +1,30 @@
+# #1502: narrowing reaches match-EXPRESSION arms, not just match-statement arms. `if x is not None:`
+# narrows x to str, so the match EXPRESSION's `case str() as s:` matches the str payload — instead of
+# drawing SPY0498 (a payload type pattern over an Optional scrutinee, #1510) it would draw if the
+# scrutinee stayed str?. The statement-form twin already narrowed; the CFG now models match
+# expressions (ControlFlowGraphBuilder.CollectMatchExpressionSubjects) so the expression form does
+# too, and CheckMatchExpression reads the recorded facts. Disabling the CFG subject-recording
+# red-shifts the expression cell to SPY0498 (the facts copy alone clears the inherited narrowing).
+def expr_form(x: str?) -> str:
+    if x is not None:
+        return match x:
+            case str() as s: "expr " + s
+            case _: "expr other"
+    return "expr none"
+
+
+def stmt_form(x: str?) -> str:
+    if x is not None:
+        match x:
+            case str() as s:
+                return "stmt " + s
+            case _:
+                return "stmt other"
+    return "stmt none"
+
+
+def main() -> None:
+    print(expr_form("hi"))
+    print(expr_form(None))
+    print(stmt_form("yo"))
+    print(stmt_form(None))
