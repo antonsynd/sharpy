@@ -553,7 +553,11 @@ internal class TypeInferenceService
                             && retGeneric.TypeArguments.Any(a => a is TypeParameterType))
                             return left;
                     }
-                    return bestOverload.ReturnType;
+                    // Close the selected overload's OPEN return type at the receiver's arguments, so a
+                    // CLR operator whose result is a DIFFERENT generic than the receiver
+                    // (`dict.keys() | keys()` -> `set[T0]`) is typed `set[str]`, not the open `set[T0]`
+                    // the resolver returns — matching what the CLR fallback produces (#1395).
+                    return CloseOverReceiver(bestOverload.ReturnType, left);
                 }
             }
 

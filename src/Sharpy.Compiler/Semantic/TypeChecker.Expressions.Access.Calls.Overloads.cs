@@ -56,8 +56,20 @@ internal partial class TypeChecker
     internal FunctionSymbol? ResolveDunderOverload(
         IReadOnlyList<FunctionSymbol> candidates, SemanticType argType, SemanticType? receiver = null)
     {
+        var substitution = BuildReceiverSubstitution(receiver);
+
+        // A CLR type reflects BOTH directions of a repetition operator — `List<T> * int` AND
+        // `int * List<T>` — and the resolver checks only the OPERAND (the trailing parameter), so
+        // without this it matched `list * list` against the reversed overload's `List<T>` operand and
+        // typed it list[int], where the fallback (which never applies the wrong-direction operator)
+        // refuses it. Keep only candidates whose leading (receiver) parameter admits the actual
+        // receiver, so the resolver agrees with the fallback (#1395).
+        var applicable = receiver is null
+            ? candidates.ToList()
+            : candidates.Where(c => ReceiverAdmitsCandidate(c, receiver, substitution)).ToList();
+
         var (match, _, _) = ResolveOverloadCore(new OverloadResolutionContext(
-            Candidates: candidates.ToList(),
+            Candidates: applicable,
             TotalArgCount: 1,
             ArgTypes: new List<SemanticType> { argType },
             SkipSelfParam: true,
@@ -71,8 +83,34 @@ internal partial class TypeChecker
             // via CloseOverReceiver; threading it here is what makes the two paths select the SAME
             // overload (#1395, agreement test). (The numpy ICE itself is prevented by the
             // constraint-aware ResolveClrParameterType, not by this.)
-            TypeSubstitution: BuildReceiverSubstitution(receiver)));
+            TypeSubstitution: substitution));
         return match;
+    }
+
+    /// <summary>
+    /// Whether an operator candidate's LEADING (receiver) parameter admits <paramref name="receiver"/>
+    /// — the actual left operand's type. A CLR type surfaces both directions of a repetition operator,
+    /// so the wrong-direction overload (leading parameter <c>int</c> for a <c>list</c> receiver) must
+    /// be dropped rather than matched on its operand (#1395). A Sharpy-shaped operator's receiver is
+    /// its bound <c>self</c>, and a single-operand dunder (an indexer's <c>this[int]</c>) has no
+    /// receiver parameter — both admit any receiver here.
+    /// </summary>
+    private bool ReceiverAdmitsCandidate(
+        FunctionSymbol candidate, SemanticType receiver, Func<SemanticType, SemanticType>? substitution)
+    {
+        if (candidate.Parameters.Count < 2 || candidate.Parameters[0].Name == PythonNames.Self)
+            return true;
+
+        var leading = candidate.Parameters[0].Type;
+        if (substitution != null)
+            leading = substitution(leading);
+
+        // An open leading parameter stands for whatever the receiver would bind it to (a wildcard);
+        // only a resolved, mismatched receiver position rules the candidate out.
+        if (leading is TypeParameterType or UnknownType or SelfType)
+            return true;
+
+        return IsAssignable(receiver, leading);
     }
 
     /// <summary>
