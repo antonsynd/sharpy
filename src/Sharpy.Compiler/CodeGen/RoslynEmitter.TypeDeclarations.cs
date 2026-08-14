@@ -1493,6 +1493,16 @@ internal partial class RoslynEmitter
     /// The decorators keep their SEMANTIC meaning either way; what is host-conditional is only the
     /// runner integration.</para>
     /// </summary>
+    /// <summary>
+    /// A bracket attribute whose name resolves to a <see cref="TypeSymbol"/> with the materialized
+    /// <see cref="TypeSymbol.IsSourceGenerator"/> flag set — a generator trigger, not a C# attribute
+    /// (#1431). Reads the flag NameResolver set at inheritance resolution; the emitter makes no
+    /// decision, it applies one (Critical Rule 2). Kept in lockstep with
+    /// <c>DecoratorValidator.IsSourceGeneratorBracketAttribute</c>, which does the same lookup.
+    /// </summary>
+    private bool IsSourceGeneratorTrigger(Decorator decorator)
+        => _context.SymbolTable.LookupType(decorator.Name) is { IsSourceGenerator: true };
+
     private SyntaxList<AttributeListSyntax> GenerateAttributeListsFromDecorators(IReadOnlyList<Decorator> decorators)
     {
         var attributeLists = new List<AttributeListSyntax>();
@@ -1508,6 +1518,15 @@ internal partial class RoslynEmitter
 
         foreach (var decorator in decorators)
         {
+            // A bracket attribute naming a source generator is a generator TRIGGER, consumed by the
+            // generator pipeline (Phase 5b), never a C# attribute — its members are folded into the
+            // target by the generator. Emitting it as a plain attribute produced CS0616 ("... is not
+            // an attribute class") behind SPY0908 (#1431). Mirrors
+            // DecoratorValidator.IsSourceGeneratorBracketAttribute, which exempts the same shape from
+            // the unknown-attribute refusal by the same materialized flag.
+            if (decorator.IsBracketAttribute && IsSourceGeneratorTrigger(decorator))
+                continue;
+
             if (!decorator.IsBracketAttribute)
             {
                 if (DecoratorNames.KnownModifierDecorators.Contains(decorator.Name))

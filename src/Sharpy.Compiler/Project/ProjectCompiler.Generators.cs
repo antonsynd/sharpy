@@ -38,18 +38,34 @@ internal partial class ProjectCompiler
             if (unit.Phase == CompilationPhase.Failed || unit.Ast == null)
                 continue;
 
-            foreach (var statement in unit.Ast.Body)
+            // A project's type declarations live in their file's MODULE SCOPE, not the global
+            // scope — a bare-name lookup at global scope returns null (#1431). Enter the module
+            // scope before resolving each ClassDef's symbol, exactly as code generation does
+            // (ProjectCompiler.CodeGen.cs). Without this the partition found nothing: every
+            // generator trigger fell through to the emitter as a plain bracket attribute and came
+            // back as CS0616 ("... is not an attribute class") behind SPY0908. IsSourceGenerator is
+            // already set on the symbol here (inheritance resolved in Phase 4b/4c) — the flag was
+            // never the miss; reaching the symbol was.
+            SymbolTable.EnterModuleScope(unit.ModulePath);
+            try
             {
-                if (statement is ClassDef classDef)
+                foreach (var statement in unit.Ast.Body)
                 {
-                    var symbol = SymbolTable.Lookup(classDef.Name) as TypeSymbol;
-                    if (symbol is { IsSourceGenerator: true })
+                    if (statement is ClassDef classDef)
                     {
-                        if (!generatorFiles.Contains(filePath))
-                            generatorFiles.Add(filePath);
-                        generatorTypes.Add(symbol);
+                        var symbol = SymbolTable.Lookup(classDef.Name) as TypeSymbol;
+                        if (symbol is { IsSourceGenerator: true })
+                        {
+                            if (!generatorFiles.Contains(filePath))
+                                generatorFiles.Add(filePath);
+                            generatorTypes.Add(symbol);
+                        }
                     }
                 }
+            }
+            finally
+            {
+                SymbolTable.ExitScope();
             }
         }
 
@@ -133,8 +149,25 @@ internal partial class ProjectCompiler
                 Features = ImportResolver.GetEffectiveFeatures(_features, filePath)
             };
 
-            var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);
-            var roslynUnit = emitter.GenerateCompilationUnit(unit.Ast!);
+            // Enter the file's module scope before emitting, exactly as the main code-generation
+            // path does (ProjectCompiler.CodeGen.cs) — name resolution during emission (base-type
+            // qualification, override detection, constructor binding) resolves from the correct
+            // scope. Without it the emitter fell back to bare names, producing a generator assembly
+            // that referenced an unqualified `SourceGenerator` / `GeneratorOutput` no reference
+            // could satisfy — CS0246 surfaced as SPY0550 the moment a generator was actually
+            // partitioned (#1431). The main compilation qualifies these correctly because it enters
+            // the scope; this path is its sibling and must do the same.
+            SymbolTable.EnterModuleScope(unit.ModulePath);
+            Microsoft.CodeAnalysis.CSharp.Syntax.CompilationUnitSyntax roslynUnit;
+            try
+            {
+                var emitter = _emitterFactory.Create(codeGenContext, cancellationToken);
+                roslynUnit = emitter.GenerateCompilationUnit(unit.Ast!);
+            }
+            finally
+            {
+                SymbolTable.ExitScope();
+            }
             var csharpCode = roslynUnit.ToFullString();
 
             if (codeGenContext.HasErrors)

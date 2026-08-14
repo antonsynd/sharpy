@@ -131,13 +131,23 @@ def main():
     }
 
     [Fact]
-    public void GeneratorTrigger_IsNotRefusedAsAnUnknownBracketAttribute()
+    public void GeneratorTrigger_IsConsumed_AndTheProjectCompiles()
     {
-        // #1427 positive control. Bracket attributes now have to name a type that is in scope,
-        // and a generator trigger names a user generator class rather than a CLR attribute —
-        // exactly the shape the new refusal must never touch. Asserted end to end (not just at
-        // the validator) because the exemption and the symbol-table lookup both live upstream of
-        // the compile, and a regression in either would surface here as SPY0495.
+        // #1431: a generator trigger @[MyGen] applied end to end now COMPILES. Three module-scope /
+        // emission bugs stacked behind the CS0616 the issue reported:
+        //   1. PartitionGenerators looked up the ClassDef symbol at global scope (null) instead of the
+        //      file's module scope, so it never found the generator (the log ran "Phase 4d" but never
+        //      "Found N source generator(s)").
+        //   2. CompileGeneratorAssembly emitted the generator file WITHOUT entering its module scope,
+        //      so the base type and constructor came out unqualified (bare `SourceGenerator` /
+        //      `GeneratorOutput`) — a generator assembly no reference could satisfy, SPY0550.
+        //   3. The emitter wrote the trigger out as an ordinary bracket attribute, and MyGen is not a
+        //      C# attribute class: CS0616 behind SPY0908. The trigger is a generator directive,
+        //      consumed by the pipeline — the emitter now skips it (mirrors the validator's own
+        //      IsSourceGeneratorBracketAttribute exemption).
+        // Asserted end to end (not just at the validator) because all three live upstream of the
+        // compile. This uses an EMPTY-output generator — the shape #1431 measured. A generator that
+        // emits a NEW top-level declaration is a deeper, separate defect (SPY0909, #1535).
         var helper = CreateHelper();
 
         helper.AddSourceFile("gen.spy", @"
@@ -163,14 +173,26 @@ def main():
             .WithRuntimeReferences().CreateProjectFile();
         var result = helper.Compile();
 
-        Assert.DoesNotContain(result.Diagnostics.GetErrors(),
-            e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnknownBracketAttribute);
+        Assert.True(result.Success,
+            "the generator trigger must compile end to end (#1431): "
+            + string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message)));
 
-        // The absence above would pass vacuously if the check simply never ran in this harness, so
-        // the same project with an unknown trigger name is compiled as the positive control.
-        // (The compile itself is not asserted to succeed: a generator trigger is still emitted as
-        // an ordinary C# attribute and comes back as CS0616 — #1431, a defect this check neither
-        // causes nor cures.)
+        // The generator ACTUALLY RAN: SPY0554 (empty output) is only emitted after the generator
+        // assembly compiled and executed. This makes the two module-scope fixes (partition +
+        // generator-assembly emission) load-bearing for this test — without them the generator is
+        // never found or never compiles, and this diagnostic never appears (the assertion below would
+        // also then pass vacuously on the trigger-skip alone).
+        Assert.Contains(result.Diagnostics.GetWarnings(),
+            d => d.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.GeneratorEmptyOutput);
+
+        // The trigger must NOT reach C# as an attribute — that is exactly the CS0616 this closes.
+        var mainCSharp = result.GeneratedCSharpFiles
+            .First(kvp => kvp.Key.Contains("main", StringComparison.Ordinal)).Value;
+        Assert.DoesNotContain("MyGen]", mainCSharp);
+
+        // A control with an UNKNOWN trigger name is still refused (SPY0495) — the consumption above is
+        // scoped to names that resolve to a source generator, and would pass vacuously if the check
+        // never ran in this harness.
         using var control = new ProjectCompilationHelper(_output);
         control.AddSourceFile("main.spy", @"
 @[no_such_generator]
