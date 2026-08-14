@@ -50,7 +50,7 @@ namespace Sharpy.Compiler.Tests.Parser;
 /// <para>
 /// Complements the behavioral <c>DecoratedImportConformanceTests</c> (which feeds a decorated import
 /// through the real consumers) with a mechanical source guard, and mirrors the source-scan style of
-/// <c>SemanticInfoMergeConformanceTests</c> / <c>EmitterPurityConformanceTests</c>.
+/// <c>SemanticInfoMergeConformanceTests</c> / <c>EmitterBannedTokenScanTests</c>.
 /// </para>
 /// </summary>
 public class WrapperNodeUnwrapConformanceTests

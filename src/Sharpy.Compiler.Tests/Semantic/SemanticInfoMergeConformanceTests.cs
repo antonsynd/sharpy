@@ -23,7 +23,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// per-file → project merge — the failure mode that hid <c>_generatorBindings</c> from the source
 /// generator pipeline (#1042). This test scans <c>SemanticInfo.cs</c> for every dictionary/set
 /// field and fails if one is not referenced inside <c>MergeFrom</c>, making that omission
-/// impossible to miss. Mirrors the source-scan style of <c>EmitterPurityConformanceTests</c>.
+/// impossible to miss. Mirrors the source-scan style of <c>EmitterBannedTokenScanTests</c>.
 /// </para>
 /// </summary>
 public class SemanticInfoMergeConformanceTests

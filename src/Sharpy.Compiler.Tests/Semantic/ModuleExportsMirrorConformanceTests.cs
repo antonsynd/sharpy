@@ -56,7 +56,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para>
 /// Both scans carry justification-only allowlists. Mirrors the source-scan style of
 /// <c>SemanticInfoMergeConformanceTests</c>, <c>WrapperNodeUnwrapConformanceTests</c> and
-/// <c>EmitterPurityConformanceTests</c>.
+/// <c>EmitterBannedTokenScanTests</c>.
 /// </para>
 /// </summary>
 public class ModuleExportsMirrorConformanceTests

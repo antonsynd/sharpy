@@ -159,7 +159,7 @@ public class GlobalQualifiedNameConformanceTests
     /// <summary>
     /// Removes a single-line <c>//</c> comment so a banned pattern named only in a doc-comment
     /// (historical context) is not treated as a code reference. Same naive rule as
-    /// <see cref="EmitterPurityConformanceTests"/>.
+    /// <see cref="EmitterBannedTokenScanTests"/>.
     /// </summary>
     private static string StripLineComment(string line)
     {

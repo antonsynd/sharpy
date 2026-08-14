@@ -7,48 +7,60 @@ using Xunit;
 namespace Sharpy.Compiler.Tests.CodeGen;
 
 /// <summary>
-/// Conformance test enforcing the "emitter is a pure translator" rule (#1039, #1041).
+/// A <b>five-substring scan</b> of every source file under <c>src/Sharpy.Compiler/CodeGen/</c>,
+/// plus one method-scoped token scan of the generic-reference dispatch (#1039, #1041, #1175).
 ///
 /// <para>
-/// Code generation must make no type or lowering decisions of its own: all such decisions are made
-/// during semantic analysis and materialized onto <c>SemanticInfo</c>/<c>CodeGenInfo</c>, which the
-/// emitter only reads. Two concrete bans enforce this by scanning every source file under
-/// <c>src/Sharpy.Compiler/CodeGen/</c>:
+/// <b>What this class checks — and, since #1475, what it says it checks.</b> It searches
+/// comment-stripped CodeGen source text for five literal substrings and fails if any occurs:
 /// </para>
 ///
 /// <list type="number">
 ///   <item><description>
-///     No reference to <c>TypeInferenceService</c> or <c>GenericTypeInferenceService</c> — type
-///     inference belongs to the semantic phase; the emitter reads materialized types.
+///     <c>TypeInferenceService</c> (also matching <c>GenericTypeInferenceService</c>) — the two
+///     inference engines, by name.
 ///   </description></item>
 ///   <item><description>
-///     No reflection (<c>System.Reflection</c> namespace, <c>BindingFlags</c>,
-///     <c>GetCustomAttribute</c>, <c>GetIndexParameters</c>) — CLR inspection belongs to
-///     <c>Discovery</c>/semantic (e.g. <c>Discovery.ClrTypeBridge</c>,
+///     <c>System.Reflection</c>, <c>BindingFlags</c>, <c>GetCustomAttribute</c>,
+///     <c>GetIndexParameters</c> — four spellings that appear in most reflection code. CLR
+///     inspection belongs to <c>Discovery</c>/semantic (<c>Discovery.ClrTypeBridge</c>,
 ///     <c>Discovery.ClrTypeHelper</c>), materialized for the emitter.
 ///   </description></item>
 /// </list>
 ///
 /// <para>
-/// The emitter's sanctioned API is Roslyn's <c>SyntaxFactory</c> (the
-/// <c>Microsoft.CodeAnalysis.CSharp</c> namespaces), which is explicitly permitted — none of the
-/// banned tokens occur in <c>SyntaxFactory</c>-based construction, so no per-token allowlist is
-/// needed. Comments are stripped before scanning so a doc-comment that merely mentions a banned
-/// type by name (as historical context) is not a violation; only real code references are flagged.
+/// <b>This is NOT Critical Rule 2 enforcement.</b> Rule 2 says the emitter makes no type or
+/// lowering decisions; the central violation it describes — a type decision taken emitter-side —
+/// carries none of these five substrings, so a green result here is evidence about five names and
+/// nothing more. Reading it as purity evidence is exactly the false assurance #1475 was filed for
+/// (the 2026-08-13 verification round cited this suite's name twice and had to re-verify by hand
+/// both times). Rule 2 is enforced structurally by
+/// <c>EmitterCarrierOnlyConformanceTests</c>, which inverts the question: CodeGen may name
+/// only the materialized-fact carriers, and every other <c>Semantic</c> type — enumerated by
+/// reflection, so the list cannot go stale — is denied. This scan is kept as a cheap backstop for
+/// the five spellings it does know, not as the guard the rule names.
 /// </para>
 ///
 /// <para>
-/// A third ban is <b>method-scoped</b> rather than file-wide (#1175): within the generic-reference
-/// dispatch — <c>GenerateGenericReferenceCall</c> and every method in its file it transitively calls —
-/// <c>LookupSymbol</c> and <c>GetCallTarget</c> are banned, because that lowering must read the
-/// materialized <c>GenericReference</c> fact and nothing else. Those two are legitimate in the
-/// ordinary call arms of the same file, so the flat whole-file scan above cannot express the rule;
-/// the scoped guard walks the call graph with Roslyn instead (the
+/// Comments are stripped before scanning so a doc-comment that merely mentions a banned type by
+/// name (as historical context) is not a violation; only real code references are flagged. The
+/// emitter's sanctioned API is Roslyn's <c>SyntaxFactory</c> (the
+/// <c>Microsoft.CodeAnalysis.CSharp</c> namespaces), none of whose construction spellings contain
+/// a banned token, so no per-token allowlist is needed.
+/// </para>
+///
+/// <para>
+/// The third scan is <b>method-scoped</b> rather than file-wide (#1175): within the
+/// generic-reference dispatch — <c>GenerateGenericReferenceCall</c> and every method in its file it
+/// transitively calls — <c>LookupSymbol</c> and <c>GetCallTarget</c> are banned, because that
+/// lowering must read the materialized <c>GenericReference</c> fact and nothing else. Those two are
+/// legitimate in the ordinary call arms of the same file, so the flat whole-file scan above cannot
+/// express the rule; the scoped guard walks the call graph with Roslyn instead (the
 /// <c>WrapperNodeUnwrapConformanceTests</c> idiom). See
 /// <see cref="GenericReferenceDispatch_LowersFromTheFact_WithoutCallTargetRederivation"/>.
 /// </para>
 /// </summary>
-public class EmitterPurityConformanceTests
+public class EmitterBannedTokenScanTests
 {
     /// <summary>Substrings banned from CodeGen source (matched against comment-stripped code).</summary>
     private static readonly string[] BannedTokens =
@@ -63,7 +75,7 @@ public class EmitterPurityConformanceTests
     };
 
     [Fact]
-    public void CodeGenSources_MakeNoInferenceOrReflectionReferences()
+    public void CodeGenSources_ContainNoBannedTokenSubstrings()
     {
         var codeGenDir = FindCodeGenSourceDirectory();
         Directory.Exists(codeGenDir).Should().BeTrue(
@@ -90,10 +102,14 @@ public class EmitterPurityConformanceTests
         }
 
         violations.Should().BeEmpty(
-            "The emitter is a pure translator: it must make no type/lowering decisions and perform no " +
-            "reflection. Move the decision into semantic analysis and materialize it onto SemanticInfo/" +
-            "CodeGenInfo (and, for a new SemanticInfo dictionary, add it to SemanticInfo.MergeFrom so it " +
-            "survives the per-file → project merge codegen reads from).\nViolations:\n" +
+            "CodeGen source may not contain these five substrings: the two inference engines by name, " +
+            "and four spellings that appear in most reflection code. Move the decision into semantic " +
+            "analysis and materialize it onto SemanticInfo/CodeGenInfo (and, for a new SemanticInfo " +
+            "dictionary, add it to SemanticInfo.MergeFrom so it survives the per-file → project merge " +
+            "codegen reads from); put CLR inspection in Discovery.\n" +
+            "NOTE: this scan checks five substrings, not Critical Rule 2 — an emitter-side type " +
+            "decision carries none of them. Rule 2 is enforced by EmitterCarrierOnlyConformanceTests " +
+            "(#1475).\nViolations:\n" +
             string.Join("\n", violations));
     }
 

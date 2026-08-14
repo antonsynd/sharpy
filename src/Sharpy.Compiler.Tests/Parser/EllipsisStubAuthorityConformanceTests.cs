@@ -50,7 +50,7 @@ namespace Sharpy.Compiler.Tests.Parser;
 /// <para>
 /// Complements the behavioral <c>(...)</c> fixtures (class body, interface/abstract method stub,
 /// property stub, imported module) with a mechanical source guard, and mirrors the source-scan
-/// style of <c>SemanticInfoMergeConformanceTests</c> / <c>EmitterPurityConformanceTests</c>.
+/// style of <c>SemanticInfoMergeConformanceTests</c> / <c>EmitterBannedTokenScanTests</c>.
 /// </para>
 /// </summary>
 public class EllipsisStubAuthorityConformanceTests
