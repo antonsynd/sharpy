@@ -31,6 +31,29 @@ internal interface IExpressionGenerationRecorder
     void OnGenerate(Expression expression);
 
     /// <summary>
+    /// Called when <c>HoistAugmentedTargetOperand</c> hands an already-generated operand back
+    /// UNHOISTED, so its single generation is spliced into two syntax positions — the read side of
+    /// the augmented value and the write side of the assignment. One call means two evaluations.
+    ///
+    /// <para>
+    /// <b>Why generation counting cannot see this (#1351).</b> The hoist helper takes syntax that
+    /// <c>GenerateExpression</c> already produced exactly once, so <see cref="OnGenerate"/> counts
+    /// one. The duplication happens at the splice, downstream of every counter at the generation
+    /// choke point — which is why reintroducing <c>abc5bf4b0</c> left the re-generation sweep
+    /// green. Both historical single-evaluation bugs were re-splicing, so this is the half of the
+    /// defect class that has actually produced bugs.
+    /// </para>
+    ///
+    /// <para>
+    /// Declining is correct when evaluating the operand twice is unobservable; the emitter's
+    /// <c>IsRepeatableTargetOperand</c> decides that, and this hook exists so a test can check the
+    /// decision instead of trusting it.
+    /// </para>
+    /// </summary>
+    /// <param name="handle">The operand's AST node — the identity spliced twice.</param>
+    void OnSplice(Expression handle);
+
+    /// <summary>
     /// Opens a statement scope. Disposing restores the enclosing one, so nested statements nest
     /// their scopes. A statement is the unit the property is stated over: generating the same node
     /// for two different statements is ordinary (a default-argument expression reused across

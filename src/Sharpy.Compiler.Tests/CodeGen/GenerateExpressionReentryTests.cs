@@ -34,19 +34,34 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// <c>.expected.cs</c> fixtures were the intended scope; the executing corpus is 1,720 and costs
 /// ~9s at DOP 8, so scoping down bought nothing and cost coverage.</para>
 ///
-/// <para><b>What the red-verification established — including a limit.</b> Reverting the
-/// <c>GenerateBinaryOp</c> pipe-forward fix this sweep motivated turns it red on
-/// <c>functions/pipe_basic</c> and <c>functions/pipe_with_partial</c>, naming the duplicated
-/// nodes: the tripwire is connected to real double generation.
+/// <para><b>Two tripwires, one defect class — the split closed by #1351.</b> Double evaluation
+/// arrives two ways, and until #1351 this sweep saw only one of them.</para>
 ///
-/// <para>But inverting <c>MemberReadIsPlainField</c> — reintroducing <c>abc5bf4b0</c>, the bug
-/// this guard was specified against — leaves it GREEN, and that is not a corpus gap:
-/// <c>HoistAugmentedTargetOperand</c> takes ALREADY-GENERATED syntax and the caller splices the
-/// same <c>ExpressionSyntax</c> into the read and the write. <c>GenerateExpression</c> runs once;
-/// the duplication is at the splice. A node-entry counter at the choke point cannot see that by
-/// construction. So: this guards <b>re-generation</b>, and <c>single_evaluation_*.spy</c> plus
-/// <c>AugmentedAssignmentSingleEvaluationTests</c> still guard <b>re-splicing</b> — two
-/// mechanisms, one defect class, and neither subsumes the other. Filed as #1351.</para>
+/// <para><i>Re-generation</i> — the emitter reaching the same node twice — is counted at
+/// <c>GenerateExpression</c>. Red-verified: reverting the <c>GenerateBinaryOp</c> pipe-forward fix
+/// this sweep motivated turns it red on <c>functions/pipe_basic</c> and
+/// <c>functions/pipe_with_partial</c>, naming the duplicated nodes.</para>
+///
+/// <para><i>Re-splicing</i> — ONE generation inserted into TWO syntax positions — was invisible
+/// here, and it is the half both known bugs came from. <c>HoistAugmentedTargetOperand</c> takes
+/// ALREADY-GENERATED syntax and the caller splices it into the read and the write;
+/// <c>GenerateExpression</c> ran once, so a node-entry counter at the choke point cannot see the
+/// duplication by construction. Measured: inverting <c>MemberReadIsPlainField</c> — reintroducing
+/// <c>abc5bf4b0</c>, the bug this guard was specified against — left the sweep GREEN.</para>
+///
+/// <para>#1351 closes that by counting splices too: <c>HoistAugmentedTargetOperand</c> reports
+/// every operand it declines to hoist (<c>IExpressionGenerationRecorder.OnSplice</c>, null in
+/// production), and an operand that is not repeatable by STRUCTURE alone fails. The exemption is
+/// deliberately not the emitter's own verdict — see <c>IsSpliceRepeatable</c> — so the guard
+/// cannot be silenced by the decision it exists to check.</para>
+///
+/// <para>The hand-written backstops stay: <c>single_evaluation_*.spy</c> (3 fixtures) and
+/// <c>AugmentedAssignmentSingleEvaluationTests</c> check observable effect COUNTS at runtime,
+/// which is a different question from whether a hoist was declined.</para>
+///
+/// <para><b>Not to be confused with <c>d2903ad9d</c></b>, which cites #1351 but fixed a different
+/// defect — the uncompilable-fixture skip-list ratchet below. That commit is not progress on the
+/// re-splicing gap; this is.</para>
 /// </summary>
 [Collection("HeavyCompilation")]
 public class GenerateExpressionReentryTests
@@ -79,6 +94,7 @@ public class GenerateExpressionReentryTests
 
         var stopwatch = Stopwatch.StartNew();
         var offenders = new ConcurrentBag<string>();
+        var splicers = new ConcurrentBag<string>();
         var uncompilable = new ConcurrentBag<string>();
 
         Parallel.ForEach(
@@ -119,18 +135,33 @@ public class GenerateExpressionReentryTests
 
                 foreach (var reentry in recorder.Reentries)
                     offenders.Add($"{fixture.TestName}: {reentry}");
+                foreach (var splice in recorder.Splices)
+                    splicers.Add($"{fixture.TestName}: {splice}");
             });
 
         stopwatch.Stop();
         _output.WriteLine(
             $"Swept {fixtures.Count} fixtures in {stopwatch.Elapsed.TotalSeconds:F1}s "
-            + $"({uncompilable.Count} did not compile through this seam, {offenders.Count} re-entries).");
+            + $"({uncompilable.Count} did not compile through this seam, {offenders.Count} "
+            + $"re-entries, {splicers.Count} re-splices).");
         foreach (var offender in offenders.OrderBy(o => o, StringComparer.Ordinal))
             _output.WriteLine($"  {offender}");
+        foreach (var splicer in splicers.OrderBy(s => s, StringComparer.Ordinal))
+            _output.WriteLine($"  {splicer}");
 
         offenders.Should().BeEmpty(
             "an expression generated more than once in a statement emits its side effects more "
             + "than once — correct value, wrong effect count (#1334)");
+
+        splicers.Should().BeEmpty(
+            "an operand spliced into both the read and the write of one augmented assignment "
+            + "without a hoist is EVALUATED twice — `xs[idx()] += 1` calling idx() twice where "
+            + "CPython calls it once (#1227). The emitter declined to hoist it, which is only "
+            + "correct when re-evaluating the operand is unobservable; a non-leaf operand reaching "
+            + "here means IsRepeatableTargetOperand said yes to something that runs code. This is "
+            + "the re-SPLICING half of the single-evaluation class (#1351) — the half both known "
+            + "bugs came from, and the half the re-generation counter above cannot see, because "
+            + "generation happened exactly once and the duplication is downstream of it.");
 
         // A fixture that does not compile through this seam is SKIPPED, and a skipped fixture
         // witnesses nothing. That was reported and never asserted, which is the same defect as
@@ -193,7 +224,17 @@ public class GenerateExpressionReentryTests
     {
         private readonly Stack<Dictionary<Expression, int>> _scopes = new();
 
+        /// <summary>
+        /// Splice counts, kept in a scope stack of their own rather than shared with the
+        /// generation counts above. Sharing one dictionary would cross-contaminate: an operand
+        /// generated once and then spliced would reach count 2 and be reported as a
+        /// re-GENERATION, which it is not.
+        /// </summary>
+        private readonly Stack<Dictionary<Expression, int>> _spliceScopes = new();
+
         public List<string> Reentries { get; } = new();
+
+        public List<string> Splices { get; } = new();
 
         public void OnGenerate(Expression expression)
         {
@@ -226,10 +267,57 @@ public class GenerateExpressionReentryTests
         /// parts still duplicates the operation, and a member read can run a getter — the exact
         /// shape <c>abc5bf4b0</c> got wrong. Verified against the live compiler:
         /// <c>1 &lt; bump() &lt; 10</c> calls <c>bump()</c> once, matching CPython.</para>
+        ///
+        /// <para><b>Tied to the emitter by construction (#1351).</b> This calls the emitter's own
+        /// <c>RoslynEmitter.IsRepeatableLeafOperand</c> rather than restating the list. The two
+        /// used to be hand-synced copies, which is the failure mode where a new leaf kind is added
+        /// on one side only: the tripwire then either reports the emitter's repeatability rule as
+        /// a defect, or goes blind to a shape it should judge. One definition, two consumers.</para>
         /// </summary>
         private static bool IsObservablyRepeatable(Expression expression)
-            => expression is AstIdentifier or SuperExpression or NoneLiteral
-                or BooleanLiteral or IntegerLiteral or FloatLiteral or StringLiteral;
+            => RoslynEmitter.IsRepeatableLeafOperand(expression);
+
+        /// <summary>
+        /// The re-SPLICE exemption: repeatable by STRUCTURE alone, judged by the emitter's own
+        /// recursion with its one type-dependent arm answering "no"
+        /// (<c>RoslynEmitter.IsRepeatableWithoutTypeInformation</c>). Leaves and pure compositions
+        /// of them qualify — <c>xs[-1] += 1</c>'s negated literal, <c>xs[i + 1] += 1</c>'s
+        /// arithmetic index — which is what the corpus measured at HEAD: 2 splices, both
+        /// <c>UnaryOp</c>, both in <c>arrays/array_negative_index_compound</c>, neither a defect.
+        ///
+        /// <para><b>Why not just call <c>IsRepeatableTargetOperand</c>.</b> That would ask the
+        /// emitter whether the emitter's own decision was correct, and every decline would be
+        /// exempt by definition — a guard that cannot fail for what it guards, which is the exact
+        /// defect #1351 is filed under. A member read is therefore never exempt here: whether
+        /// repeating it is safe depends on <c>MemberReadIsPlainField</c>, and that is precisely
+        /// the answer <c>abc5bf4b0</c> got wrong.</para>
+        /// </summary>
+        private static bool IsSpliceRepeatable(Expression handle)
+            => RoslynEmitter.IsRepeatableWithoutTypeInformation(handle);
+
+        /// <summary>
+        /// The re-SPLICE half (#1351). The hoist helper declined, so one generation is spliced
+        /// into the read and the write of one augmented assignment — two evaluations. Correct only
+        /// when the operand is observably repeatable; anything else is #1227's defect, and the
+        /// generation counter above cannot see it because generation happened exactly once.
+        /// </summary>
+        public void OnSplice(Expression handle)
+        {
+            if (_spliceScopes.Count == 0 || IsSpliceRepeatable(handle))
+                return;
+
+            var scope = _spliceScopes.Peek();
+            var count = scope.TryGetValue(handle, out var n) ? n + 1 : 1;
+            scope[handle] = count;
+
+            if (count == 1)
+            {
+                Splices.Add(
+                    $"{handle.GetType().Name} at {handle.LineStart}:{handle.ColumnStart} "
+                    + "spliced unhoisted into both the read and the write of one augmented "
+                    + "assignment");
+            }
+        }
 
         public IDisposable BeginStatementScope()
         {
@@ -237,15 +325,23 @@ public class GenerateExpressionReentryTests
             // identical sub-expressions (`f(x) + f(x)`) are equal by value and must count
             // separately. Only the SAME node reached twice is a re-entry.
             _scopes.Push(new Dictionary<Expression, int>(ReferenceEqualityComparer.Instance));
-            return new Scope(_scopes);
+            _spliceScopes.Push(new Dictionary<Expression, int>(ReferenceEqualityComparer.Instance));
+            return new Scope(_scopes, _spliceScopes);
         }
 
         private sealed class Scope : IDisposable
         {
             private readonly Stack<Dictionary<Expression, int>> _scopes;
+            private readonly Stack<Dictionary<Expression, int>> _spliceScopes;
             private bool _disposed;
 
-            public Scope(Stack<Dictionary<Expression, int>> scopes) => _scopes = scopes;
+            public Scope(
+                Stack<Dictionary<Expression, int>> scopes,
+                Stack<Dictionary<Expression, int>> spliceScopes)
+            {
+                _scopes = scopes;
+                _spliceScopes = spliceScopes;
+            }
 
             public void Dispose()
             {
@@ -253,6 +349,7 @@ public class GenerateExpressionReentryTests
                     return;
                 _disposed = true;
                 _scopes.Pop();
+                _spliceScopes.Pop();
             }
         }
 

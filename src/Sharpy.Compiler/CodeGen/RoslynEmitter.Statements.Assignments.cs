@@ -560,18 +560,61 @@ internal partial class RoslynEmitter
     /// snapshot fixtures pin.
     /// </para>
     /// </summary>
-    private bool IsRepeatableTargetOperand(Expression expr) => expr switch
+    private bool IsRepeatableTargetOperand(Expression expr)
+        => IsRepeatableOperand(expr, MemberReadIsPlainField);
+
+    /// <summary>
+    /// The shape of the repeatability rule, with its one falsifiable arm supplied by the caller.
+    /// Everything but <c>MemberAccess</c> is decided structurally — an identifier is a leaf
+    /// whatever its type, and a composition of repeatable parts is repeatable — so
+    /// <paramref name="memberReadIsRepeatable"/> is the ONLY place the answer depends on what the
+    /// type system says, and therefore the only place it can be wrong.
+    /// <para>
+    /// Parameterized rather than duplicated (#1351): the splice tripwire in
+    /// <c>GenerateExpressionReentryTests</c> needs this same recursion with the member arm
+    /// answering "no", so that a wrong <see cref="MemberReadIsPlainField"/> cannot silence the
+    /// guard that exists to catch it. Two hand-written copies of one recursion would drift; one
+    /// recursion with two judgments cannot.
+    /// </para>
+    /// </summary>
+    private static bool IsRepeatableOperand(
+        Expression expr, Func<MemberAccess, bool> memberReadIsRepeatable) => expr switch
     {
-        Parser.Ast.Identifier or SuperExpression or NoneLiteral or BooleanLiteral
-            or IntegerLiteral or FloatLiteral or StringLiteral => true,
-        Parenthesized paren => IsRepeatableTargetOperand(paren.Expression),
-        MemberAccess member => IsRepeatableTargetOperand(member.Object)
-                               && MemberReadIsPlainField(member),
-        UnaryOp unary => IsRepeatableTargetOperand(unary.Operand),
-        BinaryOp binary => IsRepeatableTargetOperand(binary.Left)
-                           && IsRepeatableTargetOperand(binary.Right),
+        _ when IsRepeatableLeafOperand(expr) => true,
+        Parenthesized paren => IsRepeatableOperand(paren.Expression, memberReadIsRepeatable),
+        MemberAccess member => IsRepeatableOperand(member.Object, memberReadIsRepeatable)
+                               && memberReadIsRepeatable(member),
+        UnaryOp unary => IsRepeatableOperand(unary.Operand, memberReadIsRepeatable),
+        BinaryOp binary => IsRepeatableOperand(binary.Left, memberReadIsRepeatable)
+                           && IsRepeatableOperand(binary.Right, memberReadIsRepeatable),
         _ => false
     };
+
+    /// <summary>
+    /// The LEAF arm: reads with nothing underneath them, so evaluating one twice is
+    /// indistinguishable from evaluating it once no matter what the surrounding types are. Shared
+    /// with the re-GENERATION tripwire, which exempts exactly these (a compound expression
+    /// re-generated still duplicates the operation, so only leaves are exempt there).
+    /// </summary>
+    internal static bool IsRepeatableLeafOperand(Expression expr) => expr
+        is Parser.Ast.Identifier or SuperExpression or NoneLiteral or BooleanLiteral
+            or IntegerLiteral or FloatLiteral or StringLiteral;
+
+    /// <summary>
+    /// Repeatability decided WITHOUT consulting the type system: leaves and pure structural
+    /// compositions of them (<c>xs[-1] += 1</c>, <c>xs[i + 1] += 1</c>, <c>(x) += 1</c>). A member
+    /// read is never repeatable here, because whether it is depends on
+    /// <see cref="MemberReadIsPlainField"/> — the answer <c>abc5bf4b0</c> got wrong.
+    /// <para>
+    /// This is the re-SPLICE tripwire's exemption (#1351). Exempting exactly the type-free cases
+    /// is what makes the guard non-circular: if it deferred to
+    /// <see cref="IsRepeatableTargetOperand"/> it would be asking the emitter whether the
+    /// emitter's own decision was right, and inverting <see cref="MemberReadIsPlainField"/> would
+    /// silence it instead of tripping it.
+    /// </para>
+    /// </summary>
+    internal static bool IsRepeatableWithoutTypeInformation(Expression expr)
+        => IsRepeatableOperand(expr, static _ => false);
 
     /// <summary>
     /// A member read is repeatable only when it is a plain FIELD on a known type: a property
@@ -654,11 +697,23 @@ internal partial class RoslynEmitter
     private ExpressionSyntax HoistAugmentedTargetOperand(
         Expression? ast, ExpressionSyntax generated, bool isWriteReceiver)
     {
+        // Declining hands ONE generation back to a caller that splices it into both the read and
+        // the write form — two evaluations of one operand. Reported to the recorder (null in
+        // production; no allocation, no emission change) so the re-entry suite can check the
+        // decision rather than trust it: generation counting cannot see a splice by construction,
+        // which is why reintroducing abc5bf4b0 left that sweep green (#1351).
         if (ast == null || IsRepeatableTargetOperand(ast))
+        {
+            if (ast != null)
+                _generationRecorder?.OnSplice(ast);
             return generated;
+        }
 
         if (isWriteReceiver && !CanRetargetAugmentedWrite(ast))
+        {
+            _generationRecorder?.OnSplice(ast);
             return generated;
+        }
 
         var tempName = $"__aug{_tempVarCounter++}";
         _hoistedStatements.Add(LocalDeclarationStatement(
