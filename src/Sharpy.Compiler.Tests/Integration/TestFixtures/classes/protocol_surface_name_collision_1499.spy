@@ -1,0 +1,35 @@
+# #1499: a protocol whose SYNTHESIZED C# member name is not the dunder's mangled name is invisible
+# to the collision walk, so a user member that mangles to it collides in the emitted C# — CS0102
+# behind SPY0908, an internal compiler error for a name clash the compiler already knows how to
+# report.
+#
+# Most synthesized members need no reservation, because the DUNDER ITSELF mangles to the emitted
+# name and so appears in the walk beside the user's member. That was verified by measurement rather
+# than assumed: __len__/Count, __str__/ToString, __hash__/GetHashCode and
+# __reversed__/GetReverseEnumerator all draw SPY0522 with no table entry, and their controls are the
+# `iterator_name_collision_*` fixtures next door.
+#
+# A row is needed exactly where the emitted name is NOT the dunder's mangled name. The audit found
+# THREE such protocols, not the one the issue named:
+#   - iterator (__next__)             -> Current/MoveNext/Reset/Dispose/GetEnumerator  [already had a row]
+#   - indexer  (__getitem__/__setitem__) -> Item   — the walk sees GetItem/SetItem     [#1499]
+#   - bool     (__bool__)             -> IsTrue    — the walk sees Bool                [found by the audit]
+#
+# The bool row had no issue of its own and produced the identical CS0102. It is fixed here rather
+# than filed, because a reservation table with a known hole is not a reservation table.
+class Boxed:
+    item: int = 0
+
+    def __getitem__(self, i: int) -> int:
+        return self.item
+
+
+class Truthy:
+    is_true: int = 0
+
+    def __bool__(self) -> bool:
+        return True
+
+
+def main() -> None:
+    print("unreachable")

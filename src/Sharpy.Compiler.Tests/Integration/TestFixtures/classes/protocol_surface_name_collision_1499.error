@@ -1,0 +1,2 @@
+Name collision: 'item' compiles to 'Item', which conflicts with a synthesized indexer protocol member. @21:5
+Name collision: 'is_true' compiles to 'IsTrue', which conflicts with a synthesized bool protocol member. @28:5

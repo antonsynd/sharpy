@@ -1,0 +1,1 @@
+Name collision: 'item' compiles to 'Item', which conflicts with a synthesized indexer protocol member. @9:5

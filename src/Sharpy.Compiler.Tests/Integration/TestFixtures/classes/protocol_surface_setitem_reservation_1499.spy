@@ -1,0 +1,16 @@
+# The __setitem__ half of #1499's indexer reservation. Either dunder turns the synthesis on, so a
+# class carrying ONLY the setter must reserve `Item` too — and a class carrying only the getter
+# (`protocol_surface_name_collision_1499.spy`) cannot show that.
+#
+# Split into its own file rather than added as a third row there: the two indexer rows report the
+# same sentence, and the fixture harness matches expected lines against actual errors by substring,
+# so two rows differing only in position cannot be told apart.
+class Written:
+    item: int = 0
+
+    def __setitem__(self, i: int, value: int) -> None:
+        self.item = value
+
+
+def main() -> None:
+    print("unreachable")

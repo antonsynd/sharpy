@@ -380,16 +380,47 @@ internal class CodeGenInfoComputer
     }
 
     /// <summary>
-    /// C# member names synthesized by the iterator protocol (__next__).
-    /// User-defined members must not mangle to any of these names.
-    /// TODO(#1499): the indexer protocol needs the same reservation — an unattributed C# indexer
-    /// (what __getitem__/__setitem__ emit) occupies the implicit member name "Item", but this walk
-    /// sees those dunders as GetItem/SetItem, so a member spelled `item` slips past and lands as
-    /// CS0102 behind SPY0908.
+    /// A protocol whose presence makes the emitter synthesize C# members the user did not write, and
+    /// whose names are therefore occupied.
     /// </summary>
-    private static readonly HashSet<string> IteratorProtocolReservedNames = new()
+    /// <param name="Triggers">The dunders whose presence turns the protocol on. Any one suffices.</param>
+    /// <param name="ReservedNames">The C# names the synthesis occupies.</param>
+    /// <param name="Description">Named in the diagnostic, as "a synthesized {Description} member".</param>
+    private readonly record struct SynthesizedProtocolSurface(
+        string[] Triggers, string[] ReservedNames, string Description);
+
+    /// <summary>
+    /// The C# member names the emitter synthesizes per protocol. A user member that mangles to one
+    /// of them collides in the emitted C#, and this walk is the only thing standing between that and
+    /// CS0102 behind SPY0908.
+    ///
+    /// <para><b>Why a protocol needs a row here at all.</b> Most synthesized members are already
+    /// covered by the ordinary collision walk, because the DUNDER ITSELF mangles to the emitted name
+    /// and so appears in <see cref="EnumerateMemberNames"/> alongside the user's member:
+    /// <c>__len__</c>→<c>Count</c>, <c>__str__</c>→<c>ToString</c>,
+    /// <c>__hash__</c>→<c>GetHashCode</c>, <c>__reversed__</c>→<c>GetReverseEnumerator</c> all
+    /// report SPY0522 with no help from this table (verified by measurement, not assumed). A row is
+    /// needed exactly when the emitted name is NOT the dunder's mangled name, so the walk is looking
+    /// at a different string than the emitter writes.</para>
+    ///
+    /// <para>Three such protocols exist and all three are listed. The iterator row shipped first.
+    /// The other two were found by auditing the surfaces against the emitter rather than against
+    /// the issue: an unattributed C# indexer takes the implicit metadata name <c>Item</c> while this
+    /// walk sees <c>GetItem</c>/<c>SetItem</c> (#1499), and <c>IBoolConvertible</c> synthesizes an
+    /// <c>IsTrue</c> property while the walk sees <c>Bool</c> — a member spelled <c>is_true</c>
+    /// produced the same CS0102, and had no issue of its own.</para>
+    /// </summary>
+    private static readonly SynthesizedProtocolSurface[] SynthesizedProtocolSurfaces =
     {
-        "Current", "MoveNext", "Reset", "Dispose", "GetEnumerator"
+        new(new[] { DunderNames.Next },
+            new[] { "Current", "MoveNext", "Reset", "Dispose", "GetEnumerator" },
+            "iterator protocol"),
+        new(new[] { DunderNames.GetItem, DunderNames.SetItem },
+            new[] { "Item" },
+            "indexer protocol"),
+        new(new[] { DunderNames.Bool },
+            new[] { "IsTrue" },
+            "bool protocol"),
     };
 
     /// <summary>
@@ -553,32 +584,30 @@ internal class CodeGenInfoComputer
             }
         }
 
-        // Check for collisions with synthesized iterator protocol members
-        var hasNext = false;
-        foreach (var method in typeSymbol.Methods)
-        {
-            if (method.Name == DunderNames.Next)
-            {
-                hasNext = true;
-                break;
-            }
-        }
+        // Check for collisions with members the emitter synthesizes per protocol.
+        var declaredDunders = new HashSet<string>(
+            typeSymbol.Methods.Select(m => m.Name), StringComparer.Ordinal);
 
-        if (hasNext)
+        foreach (var surface in SynthesizedProtocolSurfaces)
         {
+            if (!surface.Triggers.Any(declaredDunders.Contains))
+                continue;
+
             var reported = new HashSet<string>(StringComparer.Ordinal);
             foreach (var (originalName, csharpName) in EnumerateMemberNames(typeSymbol, body))
             {
-                // Skip __next__ and __iter__ — they are part of the iterator protocol, not collisions
-                if (originalName == DunderNames.Next || originalName == DunderNames.Iter)
+                // A dunder that PARTICIPATES in the protocol is not colliding with it — it is what
+                // turned the synthesis on. `__iter__` rides with `__next__` for the same reason.
+                if (surface.Triggers.Contains(originalName) || originalName == DunderNames.Iter)
                     continue;
 
-                if (IteratorProtocolReservedNames.Contains(csharpName) && reported.Add(originalName))
+                if (surface.ReservedNames.Contains(csharpName, StringComparer.Ordinal)
+                    && reported.Add(originalName))
                 {
                     var position = FindMemberPosition(body, originalName);
                     _diagnostics.AddError(
                         $"Name collision: '{originalName}' compiles to '{csharpName}', " +
-                        $"which conflicts with a synthesized iterator protocol member. " +
+                        $"which conflicts with a synthesized {surface.Description} member. " +
                         $"Rename the member to avoid the collision.",
                         line: position?.Line,
                         column: position?.Column,
