@@ -1848,11 +1848,24 @@ internal partial class TypeChecker
             SemanticBinding.SetVariableType(paramSymbol, paramType);
         }
 
+        // An add/remove accessor body returns nothing, exactly like a setter's. Stating that is not
+        // cosmetic: `_currentFunctionReturnType != null` is the gate CheckFunction uses to decide a
+        // FunctionDef is NESTED and must be registered in the enclosing scope (:140). Both property
+        // accessor paths set it before walking their bodies and this one did not, so a nested `def`
+        // inside an event accessor was never defined and calling it drew SPY0200 "Undefined
+        // identifier" — the check existing for the property shape and missing for its event
+        // sibling. Found by the rewrite × scope-shadowing sweep's eventAddAccessor::nestedDefParam
+        // cell (#1500's instrument), which could not otherwise reach the emitter it was measuring.
+        var previousFunctionReturnType = _currentFunctionReturnType;
+        _currentFunctionReturnType = SemanticType.Void;
+
         // Type-check the accessor body
         foreach (var stmt in eventDef.Body)
         {
             CheckStatement(stmt);
         }
+
+        _currentFunctionReturnType = previousFunctionReturnType;
 
         _symbolTable.ExitScope();
     }

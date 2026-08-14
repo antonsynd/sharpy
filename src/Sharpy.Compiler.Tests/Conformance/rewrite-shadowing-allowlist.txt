@@ -1,0 +1,33 @@
+# Emitter-rewrite × scope-shadowing conformance allowlist (ratchet ledger).
+#
+# One `mechanism::binder` cell key per line (see RewriteScopeShadowingConformanceTests). A cell
+# whose program prints the REWRITTEN value instead of the shadowing binder's own — or that fails to
+# compile — fails the ratchet UNLESS its key appears here. `#` starts a comment; blank lines are
+# ignored.
+#
+# The contract: AN EMITTER IDENTIFIER REWRITE DESCRIBES ONE BINDING AND MUST NOT CROSS A BINDER
+# THAT RE-BINDS THE NAME. Sharpy lets an accessor NAME its incoming value; C# does not, so the name
+# is a mapping onto `value` (or an observer's captured old-value local) rather than a declaration.
+# A lambda parameter, a nested `def` parameter or a comprehension target spelled the same way is a
+# DIFFERENT binding, and rewriting it computes a silently wrong value with no diagnostic — the
+# worst class in the issue tracker (#1146). That is exactly what #1500 was.
+#
+# DO NOT DELETE THIS FILE. Its presence is what arms the ratchet; the sweep throws if it is missing
+# rather than passing silently, so removing it cannot be mistaken for relaxing it.
+#
+# Rules for adding an entry:
+#   1. It MUST cite a filed GitHub issue explaining the leak the cell exposes.
+#   2. It MUST correspond to a cell a real run confirms broken — never allowlist speculatively.
+#   3. It is temporary. Delete the line in the same change that fixes the bug ("drain on fix"). The
+#      sweep FAILS on a stale entry — an allowlisted cell that has started printing the right
+#      answer — so draining is part of landing the fix rather than a follow-up nobody schedules.
+# Any growth is a regression in the contract, not a fact about the code that can be left standing.
+
+# ---------------------------------------------------------------------------------------------
+# Baseline: 0 leaking / 21 cells, on branch `dev` (2026-08-13), in the change that fixed #1500.
+# The sweep was mutation-tested against the unguarded emitter: with the scope guard reverted to a
+# no-op, ALL 21 cells leak. See .claude/tmp/rewrite-shadowing-conformance-report.json.
+#
+# The list is deliberately empty. It is not a formality: an entry here means a program compiles
+# and prints the wrong number, so the bar for adding one is a filed wrong-code issue.
+# ---------------------------------------------------------------------------------------------
