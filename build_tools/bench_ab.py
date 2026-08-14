@@ -23,6 +23,11 @@ Two remedies, both built in here:
    pools agree on its direction. When they disagree, the honest answer is
    "unmeasured: position-dominated", not a number with a confidence interval.
 
+   This depends on the cells being BALANCED — each arm measured the same number of times in
+   each position — so an unbalanced set is refused rather than pooled, and every verdict prints
+   its per-cell sample counts so the evidence base is always visible (#1509). ``--rounds`` must
+   therefore be even.
+
 3. **Discard the unsettled opening rounds** (``--discard-rounds``, #1418). The artifact
    turned out to have a session component as well as a positional one: on identical code
    the first ~8 invocations run measurably slower and far noisier than everything after
@@ -70,7 +75,11 @@ from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
 DEFAULT_FILTER = "*CompilerBenchmarks*"
-DEFAULT_ROUNDS = 3
+
+#: Must be EVEN. Round parity decides which arm runs first, so an odd count leaves every
+#: (arm, position) cell pair differing by one — and since ``evaluate`` now refuses unbalanced
+#: cells (#1509), an odd count guarantees a run that measures nothing. It was 3.
+DEFAULT_ROUNDS = 4
 
 #: Opening rounds discarded before pooling (#1418). The position artifact turned out to have a
 #: SESSION component: measured on identical code (HEAD vs HEAD), the parse mean decayed
@@ -176,9 +185,24 @@ class Verdict:
     reason: str
     samples: dict[str, int] = field(default_factory=dict)
 
+    def sample_summary(self) -> str:
+        """
+        Per-cell sample counts, rendered on EVERY verdict line (#1509).
+
+        The evidence base belongs next to the conclusion. A pooled delta looks identical whether
+        it rests on eight samples per cell or on one, and a reader with no way to tell cannot
+        judge the number they are being handed — which is how a degraded comparison came to
+        print a fully-credentialed verdict.
+        """
+        if not self.samples:
+            return ""
+        parts = " ".join(f"{name.replace('@position', '@')}:{count}"
+                         for name, count in sorted(self.samples.items()))
+        return f" [samples {parts}]"
+
     def describe(self, arm_a: str, arm_b: str) -> str:
         if not self.measured or self.pooled_delta_percent is None:
-            return f"  {self.benchmark}: UNMEASURED — {self.reason}"
+            return f"  {self.benchmark}: UNMEASURED — {self.reason}{self.sample_summary()}"
         assert self.delta_first_percent is not None
         assert self.delta_second_percent is not None
         direction = "slower" if self.pooled_delta_percent > 0 else "faster"
@@ -187,6 +211,7 @@ class Verdict:
             f"{direction} than {arm_a} "
             f"({arm_a} first: {self.delta_first_percent:+.1f}%, "
             f"{arm_b} first: {self.delta_second_percent:+.1f}%)"
+            f"{self.sample_summary()}"
         )
 
 
@@ -299,6 +324,15 @@ def evaluate(
             for position in (0, 1)
         }
 
+        # Built BEFORE the refusals, not after: the two arms that refuse are precisely the ones
+        # where "how many samples does each cell actually have?" is the whole question, and the
+        # missing-cell arm used to construct its Verdict without them (#1509).
+        samples = {
+            f"{arm}@position{position + 1}": counts.get((benchmark, arm, position), 0)
+            for arm in (arm_a, arm_b)
+            for position in (0, 1)
+        }
+
         missing = [
             f"{arm}@position{position + 1}"
             for (arm, position), value in cells.items()
@@ -309,6 +343,23 @@ def evaluate(
                 benchmark, None, None, None, False,
                 "not measured in every (arm, position) cell — interleaving incomplete: "
                 + ", ".join(missing),
+                samples,
+            ))
+            continue
+
+        # Present in every cell is not the same as comparable. An interrupted round (#1420) or
+        # an odd --rounds leaves the cells unequal, and the design rests on each arm being
+        # measured the SAME number of times in each position — that equality is what makes a
+        # position bias cancel instead of loading onto one arm. So an unbalanced set is refused
+        # for the same reason a dropped round's samples never reach the pool: half a round is
+        # not a comparison, and a median over unequal cells hides that it ever happened.
+        if len(set(samples.values())) != 1:
+            counted = " ".join(f"{name}:{count}" for name, count in sorted(samples.items()))
+            verdicts.append(Verdict(
+                benchmark, None, None, None, False,
+                "unbalanced (arm, position) cells — an interrupted or odd-count round left "
+                f"{counted}; refusing to pool",
+                samples,
             ))
             continue
 
@@ -331,11 +382,6 @@ def evaluate(
         # small nonzero "delta". The geometric mean of the ratios makes the null control exactly
         # zero, which is what a null control has to be.
         pooled_delta = _geometric_percent(b_second / a_first, b_first / a_second)
-        samples = {
-            f"{arm}@position{position + 1}": counts.get((benchmark, arm, position), 0)
-            for arm in (arm_a, arm_b)
-            for position in (0, 1)
-        }
 
         if (delta_first > 0) != (delta_second > 0):
             verdicts.append(Verdict(
@@ -706,8 +752,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("ref_a", help="baseline git ref (A)")
     parser.add_argument("ref_b", help="candidate git ref (B)")
     parser.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS,
-                        help=f"A/B round pairs to POOL (default {DEFAULT_ROUNDS}); "
-                             "an EVEN count balances the positions")
+                        help=f"A/B round pairs to POOL (default {DEFAULT_ROUNDS}); must be EVEN, "
+                             "because an odd count leaves the (arm, position) cells unbalanced "
+                             "and unbalanced cells are refused rather than pooled")
     parser.add_argument("--discard-rounds", type=int, default=DEFAULT_DISCARD_ROUNDS,
                         help=f"opening rounds run but not pooled (default "
                              f"{DEFAULT_DISCARD_ROUNDS}); the machine needs ~8 invocations to "
@@ -727,9 +774,13 @@ def main(argv: Optional[list[str]] = None) -> int:
               file=sys.stderr)
         return 2
     if args.rounds % 2 == 1:
-        print(f"[bench_ab] note: {args.rounds} rounds leaves the positions unbalanced; "
-              "an even count gives every (arm, position) cell the same sample count.",
-              file=sys.stderr)
+        # Was a note; now an error. With unbalanced cells refused (#1509) an odd count does not
+        # merely weaken the comparison, it guarantees every benchmark is refused — so the note
+        # was an invitation to spend multi-minute rounds reaching a foregone "unmeasured".
+        print(f"--rounds must be EVEN: {args.rounds} leaves every (arm, position) cell pair "
+              "unbalanced by one, and unbalanced cells are refused rather than pooled, so this "
+              f"run would measure nothing. Use {args.rounds + 1}.", file=sys.stderr)
+        return 2
     if args.discard_rounds < 0:
         print("--discard-rounds cannot be negative.", file=sys.stderr)
         return 2

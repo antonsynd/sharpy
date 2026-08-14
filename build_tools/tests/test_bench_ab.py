@@ -270,6 +270,131 @@ class TestInterruptionDetection:
         assert round_was_interrupted(before, after) is False
 
 
+class TestSampleBalance:
+    """
+    A degraded comparison must not print a fully-credentialed verdict (#1509).
+
+    ``evaluate`` refused only when a position cell was entirely MISSING. An interrupted round
+    that left one cell with 1 sample and its sibling with 2 flowed straight through
+    ``pool_by_position``'s median — and the median of an unbalanced pair is exactly where a
+    position artifact stops cancelling, because the whole design rests on each arm being
+    measured the same number of times in each position. ``Verdict.samples`` was populated
+    precisely to expose this and neither ``describe()`` nor ``report()`` printed it.
+    """
+
+    def test_unbalanced_cells_are_refused_with_their_counts(self):
+        one_short = measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0)
+        one_short.append(
+            Measurement(arm="a", position=0, benchmark="Bench", mean_ns=100.0))
+
+        verdicts = evaluate(one_short, "a", "b")
+
+        assert not verdicts[0].measured
+        assert "unbalanced" in verdicts[0].reason
+        assert "a@position1:2" in verdicts[0].reason
+        assert "b@position1:1" in verdicts[0].reason
+
+    def test_balanced_cells_are_unaffected(self):
+        """The refusal must cost nothing when the interleave completed."""
+        balanced = (measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0)
+                    + measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0))
+
+        verdicts = evaluate(balanced, "a", "b")
+
+        assert verdicts[0].measured
+        assert verdicts[0].pooled_delta_percent == pytest.approx(50.0)
+
+    def test_an_interrupted_round_is_refused_rather_than_pooled(self):
+        """
+        #1509's literal scenario. Four rounds run, ONE dropped as interrupted (#1420). Dropping
+        a whole round keeps nothing balanced by itself: rounds alternate which arm goes first,
+        so losing one leaves the two orderings represented 1 and 2 times. Every cell is present,
+        every cell has samples, and the counts differ — which is exactly the shape that used to
+        flow through ``pool_by_position``'s median and print a confident delta.
+
+        (An odd count is the other route to the same place, which is why --rounds is now
+        required to be even.)
+
+        Mutation-tested: deleting the balance arm from ``evaluate`` makes this cell RED — the
+        comparison is pooled and returns a measured verdict. Reverted.
+        """
+        rounds = (one_round(0, "a", 100.0, "b", 150.0)
+                  + one_round(1, "b", 150.0, "a", 100.0)
+                  + one_round(2, "a", 100.0, "b", 150.0)
+                  + one_round(3, "b", 150.0, "a", 100.0))
+        survived = [m for m in rounds if m.round_index != 2]
+        # Present in all four cells, but 1 vs 2 — not a missing-cell case.
+        assert len({(m.arm, m.position) for m in survived}) == 4
+
+        verdicts = evaluate(survived, "a", "b")
+
+        assert not verdicts[0].measured
+        assert "unbalanced" in verdicts[0].reason
+
+    def test_counts_are_printed_on_a_measured_verdict(self):
+        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=150.0, b_1=150.0), "a", "b")
+
+        line = verdicts[0].describe("a", "b")
+
+        assert verdicts[0].measured
+        assert "samples a@1:1 a@2:1 b@1:1 b@2:1" in line
+
+    def test_counts_are_printed_on_an_unmeasured_verdict(self):
+        """
+        Visibility AND refusal, not either/or: a reader must be able to see the evidence base
+        behind every line, including the ones that refused.
+        """
+        verdicts = evaluate(measurements(a_0=100.0, a_1=100.0, b_0=100.0, b_1=100.0), "a", "b")
+
+        line = verdicts[0].describe("a", "b")
+
+        assert not verdicts[0].measured
+        assert "samples a@1:1" in line
+
+    def test_a_missing_cell_verdict_also_carries_its_counts(self):
+        """
+        The missing-cell arm used to construct its Verdict without the samples argument, so it
+        carried an empty dict — the one verdict where "which cells do we actually have?" is the
+        whole question would have printed no counts at all.
+        """
+        verdicts = evaluate(measurements(a_0=100.0, b_1=150.0), "a", "b")
+
+        line = verdicts[0].describe("a", "b")
+
+        assert "interleaving incomplete" in verdicts[0].reason
+        assert verdicts[0].samples == {
+            "a@position1": 1, "a@position2": 0, "b@position1": 0, "b@position2": 1}
+        assert "samples a@1:1 a@2:0 b@1:0 b@2:1" in line
+
+
+class TestRoundsArgument:
+    """
+    With balance enforced, an odd --rounds GUARANTEES an unmeasured run: every (arm, position)
+    cell pair differs by one, so every benchmark is refused. Spending multi-minute rounds to
+    reach a guaranteed refusal is worth an error rather than the stderr note it used to be.
+    """
+
+    def test_odd_rounds_is_an_error(self, capsys):
+        assert bench_ab.main(["a", "b", "--rounds", "3"]) == 2
+
+        assert "unbalanced" in capsys.readouterr().err
+
+    def test_the_default_is_even(self):
+        assert bench_ab.DEFAULT_ROUNDS % 2 == 0
+
+    def test_even_rounds_is_accepted(self, monkeypatch):
+        monkeypatch.setattr(bench_ab, "orchestrate", lambda *a, **k: [])
+        monkeypatch.setattr(bench_ab, "cleanup_worktrees", lambda *a, **k: None)
+        monkeypatch.setattr(
+            bench_ab.subprocess, "run",
+            lambda *a, **k: type("R", (), {"stdout": "/repo", "returncode": 0})())
+
+        assert bench_ab.main(["a", "b", "--rounds", "4"]) == 0
+
+    def test_fewer_than_two_rounds_is_still_an_error(self):
+        assert bench_ab.main(["a", "b", "--rounds", "1"]) == 2
+
+
 class TestBenchmarkChildRecording:
     """
     A held lock must name the process that holds the MEMORY, not just bench_ab (#1508).

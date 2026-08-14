@@ -55,7 +55,7 @@ once, alternates A,B,A,B…, pools by position, and reports a delta **only when 
 positions agree in sign**:
 
 ```bash
-# Compare two refs (an EVEN --rounds balances the positions)
+# Compare two refs (--rounds must be EVEN, and defaults to 4)
 python3 -m build_tools.bench_ab HEAD~1 HEAD --rounds 4
 
 # One benchmark
@@ -69,6 +69,11 @@ Reading the output:
 
 - **UNMEASURED — position-dominated**: the two orderings disagree on the sign. There is no
   delta; do not report one.
+- **UNMEASURED — unbalanced (arm, position) cells**: a round was dropped as interrupted, or
+  the count was odd, so the arms were not measured the same number of times in each position.
+  That equality is what makes a position bias cancel, so the comparison is refused rather than
+  pooled (#1509). Re-run; every verdict line ends with `[samples a@1:N a@2:N …]` so the
+  evidence base behind any number is always visible.
 - **UNMEASURED — below the 15% floor**: inside the range the artifact alone produces. Not
   "no regression" — *unmeasured*.
 - A reported delta: both positions agreed and the magnitude cleared the floor.
