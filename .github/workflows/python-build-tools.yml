@@ -10,6 +10,10 @@ on:
       - 'build_tools/**'
       - '.github/workflows/python-build-tools.yml'
       - '!build_tools/**/*.md'
+      # build_tools/tests/test_dotnet_serialized_lock.py drives this bash script directly
+      # (#1508). Without it here a wrapper-only change rides to mainline with its own
+      # regression harness never run — which is how the same lock hazard shipped three times.
+      - '.claude/scripts/**'
       - 'src/Sharpy.Core/**'
       - 'src/Sharpy.Stdlib/**'
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
@@ -22,6 +26,8 @@ on:
       - 'build_tools/**'
       - '.github/workflows/python-build-tools.yml'
       - '!build_tools/**/*.md'
+      # See the push filter above (#1508).
+      - '.claude/scripts/**'
       - 'src/Sharpy.Core/**'
       - 'src/Sharpy.Stdlib/**'
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
