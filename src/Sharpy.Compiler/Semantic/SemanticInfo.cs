@@ -382,6 +382,9 @@ public class SemanticInfo : ISemanticQuery
         return _declarationSymbols.TryGetValue(declaration, out var symbol) ? symbol : null;
     }
 
+    // #1438: TypeChecker call-node resolution routes must record targets through
+    // TypeChecker.RecordResolvedCallTarget (which also runs the deprecation check), not by
+    // calling this directly — otherwise a new route silently skips @deprecated warnings.
     public void SetCallTarget(FunctionCall call, FunctionSymbol target)
     {
         _callTargets[call] = target;

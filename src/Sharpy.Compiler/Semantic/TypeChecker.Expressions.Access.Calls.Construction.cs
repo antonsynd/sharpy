@@ -17,6 +17,11 @@ internal partial class TypeChecker
         FunctionCall call, TypeSymbol typeSymbol, List<SemanticType> argTypes,
         Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
     {
+        // This checks the TYPE-symbol deprecation channel only. A @deprecated CONSTRUCTOR overload
+        // (function-symbol channel) is not checked here: constructor calls never flow through the
+        // RecordResolvedCallTarget seam that #1438 gave the function channel, so the resolved
+        // __init__ overload's DeprecationMessage is ignored.
+        // TODO(#1536): run CheckDeprecatedUsage on the resolved __init__ overload below.
         CheckDeprecatedUsage(typeSymbol, call);
 
         // Validate constructor arguments against __init__ parameters (skip 'self').

@@ -1024,8 +1024,8 @@ internal partial class TypeChecker
         // The calleeType will be GenericFunctionType from CheckIndexAccess
         if (calleeType is GenericFunctionType genericFuncType)
         {
-            // Record the resolved call target for codegen
-            _semanticInfo.SetCallTarget(call, genericFuncType.FunctionSymbol);
+            // Record the resolved call target for codegen (and check deprecation) — #1438
+            RecordResolvedCallTarget(call, genericFuncType.FunctionSymbol);
 
             // #1148: the explicit type arguments have already narrowed the overload set —
             // map[int, int, int] leaves only Map<T1, T2, TOut>, which takes a two-argument function
@@ -1774,8 +1774,8 @@ internal partial class TypeChecker
             // spelling has no identifier node; the call target below is what codegen reads)
             if (id != null)
                 _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
-            // Record the resolved call target for codegen
-            _semanticInfo.SetCallTarget(call, matchingOverload);
+            // Record the resolved call target for codegen (and check deprecation) — #1438
+            RecordResolvedCallTarget(call, matchingOverload);
             return matchingOverload.ReturnType;
         }
 
@@ -1899,8 +1899,8 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // Record the resolved call target for codegen
-        _semanticInfo.SetCallTarget(call, matchingOverload);
+        // Record the resolved call target for codegen (and check deprecation) — #1438
+        RecordResolvedCallTarget(call, matchingOverload);
 
         var returnType = matchingOverload.ReturnType;
 
@@ -2126,8 +2126,8 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // Record the resolved call target for codegen
-        _semanticInfo.SetCallTarget(call, matchingOverload);
+        // Record the resolved call target for codegen (and check deprecation) — #1438
+        RecordResolvedCallTarget(call, matchingOverload);
 
         var returnType = InferGenericReturnType(matchingOverload, argTypes, call);
 
@@ -2172,8 +2172,8 @@ internal partial class TypeChecker
 
         // Update the identifier symbol to point to the matching overload
         _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
-        // Record the resolved call target for codegen
-        _semanticInfo.SetCallTarget(call, matchingOverload);
+        // Record the resolved call target for codegen (and check deprecation) — #1438
+        RecordResolvedCallTarget(call, matchingOverload);
 
         return InferGenericReturnType(matchingOverload, argTypes, call);
     }
@@ -2218,8 +2218,8 @@ internal partial class TypeChecker
 
         // Update the identifier symbol to point to the matching overload
         _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
-        // Record the resolved call target for codegen
-        _semanticInfo.SetCallTarget(call, matchingOverload);
+        // Record the resolved call target for codegen (and check deprecation) — #1438
+        RecordResolvedCallTarget(call, matchingOverload);
 
         return InferGenericReturnType(matchingOverload, argTypes, call);
     }
@@ -2287,10 +2287,8 @@ internal partial class TypeChecker
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
         int totalArgCount, bool isNullConditionalCall, bool isOptionalNullConditional)
     {
-        // Record the resolved call target for codegen
-        _semanticInfo.SetCallTarget(call, funcSymbol);
-
-        CheckDeprecatedUsage(funcSymbol, call);
+        // Record the resolved call target for codegen (and check deprecation) — #1438
+        RecordResolvedCallTarget(call, funcSymbol);
 
         // Check for iterable spread into non-variadic function (SPY0357)
         // Must run before generic inference — generic functions without *args must also reject
@@ -3857,6 +3855,20 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Single seam for recording a resolved call-node target: records the target for codegen AND
+    /// runs the deprecation check. Every call-node resolution route (single-candidate, overload,
+    /// generic-function-type, pipe-forward) MUST go through this helper rather than calling
+    /// <see cref="SemanticInfo.SetCallTarget"/> directly, so a future route inherits the deprecation
+    /// check by construction (#1438). The construction route checks type-symbol deprecation
+    /// separately via <see cref="CheckDeprecatedUsage"/> (type-symbol channel).
+    /// </summary>
+    private void RecordResolvedCallTarget(FunctionCall call, FunctionSymbol symbol)
+    {
+        _semanticInfo.SetCallTarget(call, symbol);
+        CheckDeprecatedUsage(symbol, call);
     }
 
     private void CheckDeprecatedUsage(Symbol symbol, Expression callSite)

@@ -642,8 +642,8 @@ internal partial class TypeChecker
 
             if (symbol is FunctionSymbol funcSymbol)
             {
-                // Record the resolved call target for codegen
-                _semanticInfo.SetCallTarget(call, funcSymbol);
+                // Record the resolved call target for codegen (and check deprecation) — #1438
+                RecordResolvedCallTarget(call, funcSymbol);
 
                 // Validate argument count considering variadic and keyword-only params
                 var hasVariadicParam = funcSymbol.Parameters.Any(p => p.IsVariadic);
