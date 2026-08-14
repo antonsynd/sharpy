@@ -1,0 +1,17 @@
+# The MIXED-form control for #1456: the arm of SPY0407's backing-field collision check that already
+# worked. Same class, same declared field, same synthesized `_Count` — refused before the fix and
+# after it, with the mixed-form wording. Its twin
+# (`property_observers_backing_field_collision_1456.spy`) is the observer arm that was reaching
+# codegen as CS0102 behind SPY0908.
+class Widget:
+    _count: int = 3
+
+    property get count(self) -> int:
+        return self._count
+
+    property count: int = 1
+
+
+def main() -> None:
+    w = Widget()
+    print(w.count)

@@ -343,18 +343,36 @@ internal class PropertyValidator : SemanticValidatorBase
     }
 
     /// <summary>
-    /// Rule 3b: the auto + function-style form synthesizes a named backing field, and that name
-    /// must be free. The spec's own function-style-setter example declares <c>_celsius</c> beside a
+    /// Rule 3b: a property form that synthesizes a NAMED backing field needs that name to be free.
+    /// The spec's own function-style-setter example declares <c>_celsius</c> beside a
     /// <c>celsius</c> auto getter and hits CS0102/CS0229 on the duplicate <c>_Celsius</c> (#1307) —
-    /// the storage is what the mixed form supplies, so declaring it again is the error.
+    /// the storage is what the form supplies, so declaring it again is the error.
+    ///
+    /// <para>TWO forms synthesize that field, and this check used to know about one. Both spell it
+    /// <c>"_" + NameCasing.ResolveField(def.Name, def.IsNameBacktickEscaped)</c>: the mixed
+    /// auto/function-style form (<c>GenerateMixedAutoCustomProperty</c>) and the OBSERVER form
+    /// (<c>GenerateObserverProperty</c>, #416). An observer property is a pure auto-property — no
+    /// function-style def in its group — so the old guard returned before looking at the field list
+    /// while the emitter went on writing the field, and the collision came back as CS0102 behind
+    /// SPY0908 where its mixed-form twin drew this clean SPY0407 (#1456).</para>
+    ///
+    /// <para>The predicate is therefore "does this group synthesize a named backing field", asked of
+    /// the emitter's two forms, rather than the shape of one of them. A pure auto-property with no
+    /// observers still gets C#'s compiler-generated field and is still not this rule's business.</para>
+    ///
+    /// <para>Mutation-tested: reverting the guard to <c>!group.Any(p => p.IsFunctionStyle)</c> turns
+    /// <c>experimental/property_observers_backing_field_collision_1456</c> red.</para>
     /// </summary>
     private void ValidateBackingFieldCollision(string typeName, string propName,
         List<PropertyDef> group, List<VariableDeclaration> fieldDecls)
     {
-        // Only the mixed form emits a NAMED backing field; a pure auto-property gets C#'s
-        // compiler-generated one, and pure function-style properties get none at all.
         var autoDef = group.FirstOrDefault(p => !p.IsFunctionStyle);
-        if (autoDef == null || !group.Any(p => p.IsFunctionStyle))
+        if (autoDef == null)
+            return;
+
+        var isMixedForm = group.Any(p => p.IsFunctionStyle);
+        var isObserverForm = group.Any(p => !p.IsFunctionStyle && p.Observers.Length > 0);
+        if (!isMixedForm && !isObserverForm)
             return;
 
         var backingField = "_" + NameCasing.ResolveField(autoDef.Name, autoDef.IsNameBacktickEscaped);
@@ -363,12 +381,18 @@ internal class PropertyValidator : SemanticValidatorBase
         if (collision == null)
             return;
 
+        // The mixed form is named by what it mixes; the observer form is named by its observers.
+        // Both supply the storage, so the remedy is the same sentence.
+        var supplier = isMixedForm
+            ? "The mixed auto/function-style form supplies the storage"
+            : "An observed property supplies the storage";
+
         AddError(_context,
             $"Property '{propName}' in '{typeName}' synthesizes the backing field '{backingField}', "
-            + $"which the declared field '{collision.Name}' already occupies. The mixed "
-            + "auto/function-style form supplies the storage — drop the field declaration and move "
-            + $"its default onto the property ('property {propName}: ... = ...'); the accessors go "
-            + $"on writing 'self.{collision.Name}'",
+            + $"which the declared field '{collision.Name}' already occupies. {supplier} — drop the "
+            + "field declaration and move its default onto the property "
+            + $"('property {propName}: ... = ...'); the accessors go on writing "
+            + $"'self.{collision.Name}'",
             collision.LineStart, collision.ColumnStart,
             code: DiagnosticCodes.Validation.MixedAutoAndFunctionStyleProperty,
             span: collision.Span);

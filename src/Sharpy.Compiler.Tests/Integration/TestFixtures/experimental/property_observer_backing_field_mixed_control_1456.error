@@ -1,0 +1,1 @@
+Property 'count' in 'Widget' synthesizes the backing field '_Count', which the declared field '_count' already occupies. The mixed auto/function-style form supplies the storage @7:5

@@ -1,0 +1,25 @@
+# #1456: an OBSERVER property synthesizes the same named backing field the mixed
+# auto/function-style form does — `"_" + NameCasing.ResolveField(...)` — but SPY0407's collision
+# check only knew about the mixed form. An observer property is a pure auto-property, so the check's
+# guard returned before it ever looked at the field list, while the emitter went on writing the
+# field: CS0102 behind SPY0908, an internal compiler error for a program whose mixed-form twin draws
+# this clean refusal.
+#
+# The twin is in `property_observer_backing_field_mixed_control_1456.spy` next door — same class,
+# same field, same collision, refused by the arm that already worked. It is the control that proves
+# this fixture measures the OBSERVER arm and not the shared tail.
+#
+# MUTATION TEST (performed 2026-08-14, reverted): restoring the old guard
+# (`if (autoDef == null || !group.Any(p => p.IsFunctionStyle)) return;`) turns this fixture red — it
+# goes back to SPY0908/CS0102 — while the mixed control stays green.
+class Widget:
+    _count: int = 3
+
+    property count: int = 1
+        after_set(old_value):
+            print(old_value)
+
+
+def main() -> None:
+    w = Widget()
+    w.count = 5
