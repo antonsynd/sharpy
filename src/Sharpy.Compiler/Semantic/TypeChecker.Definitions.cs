@@ -677,11 +677,17 @@ internal partial class TypeChecker
             // Type check default value if present
             if (param.DefaultValue != null)
             {
-                // Set expected type for constructor inference (Some/None()/Ok/Err)
+                // Set expected type for constructor inference (Some/None()/Ok/Err). The default
+                // value IS the parameter's own value, so `_expectedType` genuinely holds this
+                // node's destination type here and is bound as such — which is what lets a bare
+                // `None` default materialize as `Optional<T>.None` (#1478, #1490).
                 var previousExpectedType = _expectedType;
+                var previousParameterTypedArgument = _parameterTypedArgument;
                 _expectedType = paramType is UnknownType ? null : paramType;
+                _parameterTypedArgument = ParameterTypedArgumentOf(paramType, param.DefaultValue);
                 var defaultType = CheckExpression(param.DefaultValue);
                 _expectedType = previousExpectedType;
+                _parameterTypedArgument = previousParameterTypedArgument;
                 if (!IsAssignable(defaultType, paramType)
                     && !IsImplicitConstantConversion(param.DefaultValue, defaultType, paramType))
                 {

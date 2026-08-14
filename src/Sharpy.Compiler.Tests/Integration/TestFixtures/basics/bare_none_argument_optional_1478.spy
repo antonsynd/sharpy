@@ -1,0 +1,51 @@
+# #1478: a bare `None` argument to a value-type `T?` parameter emitted a plain C# `null` into a
+# `Sharpy.Optional<int>` slot — CS1503 behind SPY0908, because that Optional is a STRUCT with no
+# conversion from null. The reference-type payload survived only by accident, since
+# `Optional<string>` accepts null.
+#
+# The assignment position already converted, so the machinery existed; the argument position was not
+# using it. The emitter answered the question from its own ambient target-type context, which it
+# could apply only at the DIRECT value sites — its own comment says reading that context in an
+# argument would fire wrongly, and it would: `x: int? = f(None)` leaves the DECLARATION's type
+# visible while the argument is checked.
+#
+# So the decision moved to where it belongs (Critical Rule 2): the checker records, on the `None`
+# node, which destination it landed in, and the emitter reads that and re-derives nothing. The read
+# is bound to the argument node rather than to `_expectedType` alone, for exactly the stale-context
+# reason above.
+#
+# Both payload kinds, both positions the issue names, and the working control:
+def takes_int(x: int?) -> str:
+    return "int-opt"
+
+
+def takes_str(x: str?) -> str:
+    return "str-opt"
+
+
+def takes_nullable(x: str | None) -> str:
+    return "nullable"
+
+
+def defaulted(x: int? = None) -> str:
+    return "defaulted"
+
+
+def main() -> None:
+    # Value-type payload, argument position — the ICE.
+    print(takes_int(None))
+
+    # Reference-type payload, argument position — worked by accident, must keep working.
+    print(takes_str(None))
+
+    # A NULLABLE destination still emits plain `null`. This is the control that fails if the
+    # materialization ever widens from optional to every None.
+    print(takes_nullable(None))
+
+    # Default-parameter-value position, omitted and passed explicitly.
+    print(defaulted())
+    print(defaulted(None))
+
+    # Assignment position, then passed on — the path that already worked.
+    nothing: int? = None
+    print(takes_int(nothing))

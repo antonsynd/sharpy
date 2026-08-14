@@ -162,7 +162,7 @@ internal partial class RoslynEmitter
             StringLiteral strLit => GenerateStringLiteral(strLit),
             BytesLiteralExpression bytesLit => GenerateBytesLiteral(bytesLit),
             BooleanLiteral boolLit => LiteralExpression(boolLit.Value ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
-            NoneLiteral => GenerateNoneLiteral(),
+            NoneLiteral noneLiteral => GenerateNoneLiteral(noneLiteral),
             EllipsisLiteral => GenerateEllipsisLiteral(),
 
             // Collections
@@ -261,8 +261,17 @@ internal partial class RoslynEmitter
     /// target-type context would incorrectly fire for <c>None</c> nested inside call
     /// arguments (e.g. <c>convert(None)</c> against a nullable parameter).
     /// </summary>
-    private static ExpressionSyntax GenerateNoneLiteral()
-        => LiteralExpression(SyntaxKind.NullLiteralExpression);
+    private ExpressionSyntax GenerateNoneLiteral(NoneLiteral noneLiteral)
+    {
+        // The materialized decision, not a re-derivation: the checker recorded which `None` lands in
+        // an OPTIONAL destination and which lands in a nullable one (#1478, Critical Rule 2). Absent
+        // for every `None` whose destination is nullable, which is the plain-null default this
+        // method has always emitted.
+        var optionalTarget = _context.SemanticInfo?.GetOptionalNoneMaterialization(noneLiteral);
+        return optionalTarget != null
+            ? GenerateOptionalNone(optionalTarget)
+            : LiteralExpression(SyntaxKind.NullLiteralExpression);
+    }
 
     /// <summary>
     /// When <paramref name="valueAst"/> is a bare <c>None</c> and <paramref name="targetType"/>

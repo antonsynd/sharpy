@@ -38,7 +38,7 @@ internal partial class TypeChecker
             StringLiteral => SemanticType.Str,
             BytesLiteralExpression bytesLit => CheckBytesLiteral(bytesLit),
             BooleanLiteral => SemanticType.Bool,
-            NoneLiteral => SemanticType.Void,
+            NoneLiteral noneLiteral => CheckNoneLiteral(noneLiteral),
             Identifier id => CheckIdentifier(id),
             BinaryOp binOp => CheckBinaryOp(binOp),
             UnaryOp unOp => CheckUnaryOp(unOp),
@@ -298,6 +298,38 @@ internal partial class TypeChecker
             awaitExpr.LineStart, awaitExpr.ColumnStart,
             code: DiagnosticCodes.Semantic.InvalidAwaitOperand, span: awaitExpr.Span);
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Types a bare <c>None</c> and, when its destination is an <see cref="OptionalType"/>, records
+    /// the materialization the emitter applies (#1478).
+    ///
+    /// <para>The literal's TYPE is unchanged — <see cref="VoidType"/>, the value that means "no
+    /// value" and is assignable to both nullable and optional destinations. What is recorded is a
+    /// LOWERING: the same <c>None</c> token emits C# <c>null</c> for a <c>T | None</c> destination
+    /// and <c>Optional&lt;T&gt;.None</c> for a <c>T?</c> one, and only the checker knows which
+    /// destination it landed in. The emitter used to answer this from its own ambient target-type
+    /// context, which it could apply only at the direct value sites; an argument got no conversion
+    /// and emitted a bare <c>null</c> into a <c>Sharpy.Optional&lt;int&gt;</c> slot — CS1503 behind
+    /// SPY0908, because that Optional is a struct. Per Critical Rule 2 the decision is semantic-side
+    /// and the emitter reads it.</para>
+    ///
+    /// <para>Gated on <c>_parameterTypedArgument</c>, not on <c>_expectedType</c> alone.
+    /// <c>_expectedType</c> is a general "what does this position want" channel and is NOT
+    /// necessarily this node's destination — in <c>x: int? = f(None)</c> the enclosing declaration's
+    /// type is still visible while the argument is checked, and reading it here would record
+    /// <c>Optional&lt;int&gt;.None</c> for an argument whose parameter is a nullable reference. The
+    /// binding is what makes the read sound; see the field's own comment.</para>
+    /// </summary>
+    private SemanticType CheckNoneLiteral(NoneLiteral noneLiteral)
+    {
+        if (_expectedType is OptionalType optionalTarget
+            && ReferenceEquals(_parameterTypedArgument, noneLiteral))
+        {
+            _semanticInfo.SetOptionalNoneMaterialization(noneLiteral, optionalTarget);
+        }
+
+        return SemanticType.Void;
     }
 
     private SemanticType CheckIdentifier(Identifier id)
