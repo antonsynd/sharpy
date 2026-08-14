@@ -7,8 +7,17 @@ namespace Sharpy
     /// View of dictionary values.
     /// This view reflects changes to the underlying dictionary.
     /// </summary>
+    /// <remarks>
+    /// Deliberately declares NO set-algebra operators, unlike <see cref="DictKeyView{K, V}"/> and
+    /// <see cref="DictItemsView{K, V}"/>. Values are not necessarily unique or hashable, so CPython's
+    /// <c>dict_values</c> is not set-like: <c>d.values() | e.values()</c> raises
+    /// <c>TypeError: unsupported operand type(s)</c> (measured, python3.12). Sharpy refuses the same
+    /// spellings at compile time (SPY0222) precisely because this type declares no operators — adding
+    /// any here would silently accept what Python rejects (#1496).
+    /// </remarks>
     public sealed class DictValuesView<K, V>
-        : IReadOnlyCollection<V>
+        : IReadOnlyCollection<V>,
+          ISized
         where K : notnull
     {
         private readonly Dictionary<K, V>.ValueCollection _values;

@@ -13,6 +13,7 @@ namespace Sharpy
     /// </summary>
     public sealed partial class DictKeyView<K, V>
         : IReadOnlyCollection<K>,
+          ISized,
           System.IEquatable<Set<K>>
         where K : notnull
     {
@@ -199,11 +200,122 @@ namespace Sharpy
             return result;
         }
 
-        /// <summary>Union operator is not supported for DictKeyView; use Union() to get a Set instead.</summary>
-        public static DictKeyView<K, V> operator |(DictKeyView<K, V> left, DictKeyView<K, V> right)
+        /// <summary>
+        /// Return union with another key view.
+        /// </summary>
+        public Set<K> Union(DictKeyView<K, V> other)
         {
-            throw new NotSupportedException("Cannot create a DictKeyView from union operation. Use Union() to get a Set instead.");
+            var result = new Set<K>();
+            foreach (var key in _keys)
+            {
+                result.Add(key);
+            }
+            foreach (var key in other)
+            {
+                result.Add(key);
+            }
+            return result;
         }
+
+        /// <summary>
+        /// Return intersection with another key view.
+        /// </summary>
+        public Set<K> Intersection(DictKeyView<K, V> other)
+        {
+            var result = new Set<K>();
+            foreach (var key in _keys)
+            {
+                if (other.Contains(key))
+                {
+                    result.Add(key);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Return difference (keys in this but not in the other view).
+        /// </summary>
+        public Set<K> Difference(DictKeyView<K, V> other)
+        {
+            var result = new Set<K>();
+            foreach (var key in _keys)
+            {
+                if (!other.Contains(key))
+                {
+                    result.Add(key);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Return symmetric difference with another key view.
+        /// </summary>
+        public Set<K> SymmetricDifference(DictKeyView<K, V> other)
+        {
+            var result = new Set<K>();
+            foreach (var key in _keys)
+            {
+                if (!other.Contains(key))
+                {
+                    result.Add(key);
+                }
+            }
+            foreach (var key in other)
+            {
+                if (!Contains(key))
+                {
+                    result.Add(key);
+                }
+            }
+            return result;
+        }
+
+        // ---- Python set algebra (PEP 3106) --------------------------------------------------
+        // CPython's dict_keys is set-like: `d.keys() | e.keys()`, `&`, `-`, `^` all return a plain
+        // `set`, never a view (measured, python3.12). The result type is therefore Set<K> — the
+        // view stays a live window onto its dictionary and is never synthesized from an operation.
+        // These delegate to the methods above so operator and method spellings cannot drift.
+
+        /// <summary>Union: keys in either view (CPython <c>d.keys() | e.keys()</c>).</summary>
+        public static Set<K> operator |(DictKeyView<K, V> left, DictKeyView<K, V> right) => left.Union(right);
+
+        /// <summary>Union with a set.</summary>
+        public static Set<K> operator |(DictKeyView<K, V> left, Set<K> right) => left.Union(right);
+
+        /// <summary>Union with a set on the left.</summary>
+        public static Set<K> operator |(Set<K> left, DictKeyView<K, V> right) => right.Union(left);
+
+        /// <summary>Intersection: keys in both (CPython <c>d.keys() &amp; e.keys()</c>).</summary>
+        public static Set<K> operator &(DictKeyView<K, V> left, DictKeyView<K, V> right) => left.Intersection(right);
+
+        /// <summary>Intersection with a set.</summary>
+        public static Set<K> operator &(DictKeyView<K, V> left, Set<K> right) => left.Intersection(right);
+
+        /// <summary>Intersection with a set on the left.</summary>
+        public static Set<K> operator &(Set<K> left, DictKeyView<K, V> right) => right.Intersection(left);
+
+        /// <summary>Difference: keys in the left operand only (CPython <c>d.keys() - e.keys()</c>).</summary>
+        public static Set<K> operator -(DictKeyView<K, V> left, DictKeyView<K, V> right) => left.Difference(right);
+
+        /// <summary>Difference with a set.</summary>
+        public static Set<K> operator -(DictKeyView<K, V> left, Set<K> right) => left.Difference(right);
+
+        /// <summary>
+        /// Difference with a set on the left: elements of <paramref name="left"/> that the view
+        /// does not contain. Not commutative, so this routes to <see cref="RightDifference"/>.
+        /// </summary>
+        public static Set<K> operator -(Set<K> left, DictKeyView<K, V> right) => right.RightDifference(left);
+
+        /// <summary>Symmetric difference (CPython <c>d.keys() ^ e.keys()</c>).</summary>
+        public static Set<K> operator ^(DictKeyView<K, V> left, DictKeyView<K, V> right) => left.SymmetricDifference(right);
+
+        /// <summary>Symmetric difference with a set.</summary>
+        public static Set<K> operator ^(DictKeyView<K, V> left, Set<K> right) => left.SymmetricDifference(right);
+
+        /// <summary>Symmetric difference with a set on the left.</summary>
+        public static Set<K> operator ^(Set<K> left, DictKeyView<K, V> right) => right.SymmetricDifference(left);
 
         /// <summary>
         /// Right-side difference (when dict view is on the right: other - this).
