@@ -412,6 +412,110 @@ class TestLockOnlyVerbs:
         assert not list(rig.logs.glob("dotnet-serialized-*.log"))
 
 
+class TestRecordChild:
+    """
+    ``--record-child HOLDER_PID CHILD_PID`` (#1508, fix half).
+
+    The lock-only verbs exist so bench_ab can hold the mutex across a round's two arms, but
+    ``--acquire-lock`` returns before the wrapper's own ``$LOCK_DIR/child`` write and bench_ab
+    then spawns the heavyweight benchmark dotnet itself — so the held lock named a pid whose
+    death said nothing about the 5-10 GB process actually running. SIGKILL bench_ab mid-arm and
+    the lock read stale with the benchmark still live: the exact steal 58c82ffa5 closed for the
+    wrapper's own path, reopened 11 minutes later through the lock-only door.
+
+    The verb keeps lock-dir layout knowledge in the one file that owns it; bench_ab passes pids
+    and never touches ``$LOCK_DIR`` itself.
+    """
+
+    def test_refuses_a_holder_that_does_not_own_the_lock(self, rig: Rig):
+        """Otherwise any process could redirect another holder's child pointer."""
+        assert rig.run("--acquire-lock", str(os.getpid())).returncode == 0
+        victim = subprocess.Popen(["/bin/sh", "-c", "sleep 60"])
+        try:
+            result = rig.run("--record-child", str(dead_pid()), str(victim.pid))
+
+            assert result.returncode == 2
+            assert "refusing" in result.stderr
+            assert not (rig.lock_dir / "child").exists()
+        finally:
+            victim.kill()
+            victim.wait()
+            rig.run("--release-lock", str(os.getpid()))
+
+    def test_refuses_a_dead_child(self, rig: Rig):
+        """
+        Recording a dead child is worse than recording nothing: ``is_lock_stale`` consults the
+        child FIRST, so a dead one is a pointer that can only ever read "stale".
+        """
+        assert rig.run("--acquire-lock", str(os.getpid())).returncode == 0
+        try:
+            result = rig.run("--record-child", str(os.getpid()), str(dead_pid()))
+
+            assert result.returncode == 2
+            assert "LIVE" in result.stderr
+            assert not (rig.lock_dir / "child").exists()
+        finally:
+            rig.run("--release-lock", str(os.getpid()))
+
+    def test_refuses_when_no_lock_is_held(self, rig: Rig):
+        victim = subprocess.Popen(["/bin/sh", "-c", "sleep 60"])
+        try:
+            result = rig.run("--record-child", str(os.getpid()), str(victim.pid))
+
+            assert result.returncode == 2
+        finally:
+            victim.kill()
+            victim.wait()
+
+    def test_a_recorded_child_survives_a_sigkilled_holder(self, rig: Rig):
+        """
+        #1508's literal scenario, red-first for this phase.
+
+        A stand-in for bench_ab: take the lock with ``--acquire-lock``, spawn a long-running
+        "benchmark dotnet", record it, then get SIGKILLed mid-arm. The orphan keeps its memory,
+        so a peer must QUEUE behind it rather than be admitted beside it.
+
+        Mutation-tested: dropping the ``echo "$child" > $LOCK_DIR/child`` line from the verb
+        while leaving its validation intact makes this RED at the recording assertion (no child
+        pointer is ever written). Reverted. The complementary mutation — writing the pointer but
+        having ``is_lock_stale`` ignore it — is the one recorded on
+        :meth:`TestOrphanedChild.test_an_orphaned_dotnet_child_keeps_the_lock`, and that one
+        reds at the steal itself; together they cover both halves of the mechanism.
+        """
+        started = rig.root / "bench_started"
+        bench = rig.root / "fake_bench_ab.sh"
+        bench.write_text(
+            f'#!/bin/sh\n'
+            f'"{WRAPPER}" --acquire-lock $$ || exit 1\n'
+            f'sleep 300 &\n'
+            f'CHILD=$!\n'
+            f'"{WRAPPER}" --record-child $$ $CHILD || exit 1\n'
+            f': > "{started}"\n'
+            f'wait $CHILD\n', encoding="utf-8")
+        bench.chmod(0o755)
+        rig.fake_dotnet('echo "Total: 1"')
+
+        holder = subprocess.Popen([str(bench)], env=rig.env(), cwd=str(rig.root))
+        try:
+            wait_for(started.exists, what="the fake bench_ab to record its benchmark child")
+            benchmark_pid = rig.child_pid()
+            assert benchmark_pid is not None and _alive(benchmark_pid)
+            assert rig.lock_pid() == holder.pid
+
+            holder.kill()
+            holder.wait(timeout=30)
+            assert _alive(benchmark_pid), "the benchmark should be orphaned, not reaped"
+
+            queued = rig.run("test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="4")
+            assert queued.returncode == 124, (
+                f"a peer was admitted beside an orphaned benchmark (exit {queued.returncode}); "
+                f"this is the #1508 steal")
+        finally:
+            pid = rig.child_pid()
+            if pid is not None and _alive(pid):
+                _kill_tree(pid)
+
+
 class TestZeroResultsGuard:
     def test_a_test_run_that_produced_no_results_is_not_a_pass(self, rig: Rig):
         """

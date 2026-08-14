@@ -111,6 +111,11 @@ acquire_lock() {
     # The pid recorded in the lock is the pid of whatever will HOLD it — this wrapper normally,
     # but bench_ab under --acquire-lock. Recording the short-lived wrapper's pid for a held lock
     # would leave one whose owner is already gone, which is the fail-open this file just fixed.
+    #
+    # That is only the OWNER pid. The dotnet child is recorded separately: by the `bash -c` line
+    # below for this wrapper's own runs, and by the --record-child verb above for a caller that
+    # holds the lock and invokes dotnet itself. is_lock_stale consults the child first, so a
+    # holder that records neither is protected only for as long as its own process lives.
     local owner_pid="${1:-$$}"
     local waited=0
     local nodir_failures=0
@@ -219,6 +224,34 @@ case "${1:-}" in
             exit 2
         fi
         cleanup
+        exit 0
+        ;;
+    --record-child)
+        # A holder that invokes dotnet ITSELF (bench_ab under --acquire-lock) still has to put
+        # its child where is_lock_stale looks, or the hold is only as good as the holder's own
+        # pid — and SIGKILL bench_ab mid-arm and the orphaned benchmark keeps its 5-10 GB while
+        # the lock reads stale and a peer is admitted beside it (#1508). This verb rather than
+        # letting callers write $LOCK_DIR/child themselves: the lock-dir layout stays knowledge
+        # of this one file, and the ownership check below cannot then be skipped by a caller.
+        holder="${2:-}"
+        child="${3:-}"
+        if [ -z "$holder" ] || [ -z "$child" ]; then
+            echo "ERROR: --record-child needs HOLDER_PID and CHILD_PID." >&2
+            exit 2
+        fi
+        current=$(cat "$LOCK_DIR/pid" 2>/dev/null)
+        if [ -z "$current" ] || [ "$current" != "$holder" ]; then
+            echo "ERROR: refusing to record a child against a lock owned by ${current:-nobody}" >&2
+            echo "(asked by $holder). Only the holder may point the lock at its own child." >&2
+            exit 2
+        fi
+        if ! kill -0 "$child" 2>/dev/null; then
+            echo "ERROR: --record-child needs a LIVE child pid; $child is not running." >&2
+            echo "Recording a dead child is worse than recording none: is_lock_stale consults" >&2
+            echo "the child FIRST, so a dead pointer can only ever read 'stale'." >&2
+            exit 2
+        fi
+        echo "$child" > "$LOCK_DIR/child"
         exit 0
         ;;
     --lock-generation)
