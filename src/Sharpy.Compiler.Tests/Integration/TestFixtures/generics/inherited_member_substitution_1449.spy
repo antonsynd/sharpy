@@ -1,0 +1,72 @@
+# #1449: members inherited from a source-declared generic base are typed under the composed
+# base-chain substitution — READ direction. Every destination is annotated to the PINNED concrete
+# type, so an unsubstituted open-`T`/`U` member draws SPY0220 and this fixture fails to COMPILE
+# (Design Decision 6: a type-parameter formal accepts anything, so a `T`-typed local or a bare
+# print() would not discriminate the fix from the bug). Field, property and method-return are
+# covered at 1-level (non-generic derived), 2-level, multi-param-pinned base, and generic-derived
+# over a pinned base; the direct `Root[int]` receiver is the #912 control.
+class Root[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+    def get(self) -> T:
+        return self.value
+
+    property get boxed(self) -> T:
+        return self.value
+
+
+class Direct(Root[int]):
+    pass
+
+
+class Middle[T](Root[T]):
+    pass
+
+
+class Leaf(Middle[int]):
+    pass
+
+
+class Pair[T, U]:
+    first: T
+    second: U
+
+    def __init__(self, first: T, second: U) -> None:
+        self.first = first
+        self.second = second
+
+
+class StrPaired[T](Pair[T, str]):
+    pass
+
+
+def main() -> None:
+    # 1-level: field / method-return / property, all annotated to int
+    d: Direct = Direct(7)
+    df: int = d.value
+    dg: int = d.get()
+    dp: int = d.boxed
+    print(df)
+    print(dg)
+    print(dp)
+
+    # 2-level: Leaf inherits Root[int] through Middle[int]; `get()` is int, not T
+    leaf: Leaf = Leaf(41)
+    lg: int = leaf.get()
+    print(lg + 1)
+
+    # multi-param base with a PINNED second argument: StrPaired[int] pins Pair's U to str while
+    # forwarding Pair's T to int. `second` is str; `first` is int.
+    sp: StrPaired[int] = StrPaired[int](5, "hi")
+    a: str = sp.second
+    b: int = sp.first
+    print(a)
+    print(b)
+
+    # direct GenericType receiver control (#912) — typed correctly before and after this fix
+    r: Root[int] = Root[int](99)
+    rc: int = r.get()
+    print(rc)

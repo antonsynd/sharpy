@@ -1,0 +1,43 @@
+# #1449, WRITE direction: an inherited generic-base member's type must be correct for BOTH
+# assignment-target typing and method-parameter checking, and the diagnostic must read in the
+# right direction. Before the fix the write path produced an INVERTED message (the base's open
+# `T` on one side), and a pinned method parameter typed at open `T` accepted any argument. Each
+# cell pins the substituted concrete type AND the direction.
+class Root[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+    def set(self, v: T) -> None:
+        self.value = v
+
+
+class Direct(Root[int]):
+    pass
+
+
+class Pair[T, U]:
+    first: T
+    second: U
+
+    def __init__(self, first: T, second: U) -> None:
+        self.first = first
+        self.second = second
+
+
+class StrPaired[T](Pair[T, str]):
+    pass
+
+
+def main() -> None:
+    d: Direct = Direct(7)
+    # inherited field `value` is int here — assigning a str reads "int" as the TARGET (not inverted)
+    d.value = "nope"
+
+    # inherited method parameter `v` is int here — a str argument is rejected (open `T` accepted it)
+    d.set("also nope")
+
+    sp: StrPaired[int] = StrPaired[int](5, "hi")
+    # pinned base field `second` is str — assigning an int reads "str" as the TARGET
+    sp.second = 9
