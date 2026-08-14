@@ -37,20 +37,12 @@ internal static class GenStatements
         });
     }
 
-    /// <summary>
-    /// Deterministically attaches BlankLines trivia to a statement based on
-    /// a hash of its position, giving roughly 20% coverage with counts 1-3.
-    /// Suitable for use inside Select transforms.
-    /// </summary>
-    internal static Statement AddOptionalBlankLineTrivia(Statement stmt)
-    {
-        // Use a hash of the statement's hashcode to pseudo-randomly decide
-        var hash = Math.Abs(stmt.GetHashCode());
-        if (hash % 5 != 0)
-            return stmt;
-        int count = (hash % 3) + 1;
-        return AddBlankLineTrivia(stmt, count);
-    }
+    // AddOptionalBlankLineTrivia was deleted with #1439. It claimed to attach trivia
+    // "deterministically … based on a hash of its position", but Statement is a record whose hash
+    // is derived from its string members, so .NET's per-process string-hash randomization made it
+    // non-deterministic across runs — the fourth site of the same defect. It had zero callers, so
+    // the fix is deletion rather than a seed nobody would pass. WithOptionalBlankLineTrivia above
+    // is the live path and has always drawn its randomness from CsCheck.
 
     public static Gen<Statement> Statement(GenContext ctx) =>
         ctx.HasFuel

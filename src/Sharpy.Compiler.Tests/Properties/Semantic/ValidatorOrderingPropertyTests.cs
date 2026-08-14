@@ -59,12 +59,16 @@ public class ValidatorOrderingPropertyTests
 
         // Generate well-typed programs that analyze cleanly (they include a main()), so every
         // sampled program actually exercises the validators.
-        var gen = SemanticFilter.WellTypedProgram(
-            Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-                GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true)));
+        var gen = Gen.Select(
+            SemanticFilter.WellTypedProgram(
+                Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
+                    GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true))),
+            Gen.Int,
+            (module, shuffleSeed) => (module, shuffleSeed));
 
-        gen.Sample(module =>
+        gen.Sample(sample =>
         {
+            var (module, shuffleSeed) = sample;
             Interlocked.Increment(ref total);
             var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
 
@@ -77,8 +81,12 @@ public class ValidatorOrderingPropertyTests
             if (reference is null)
                 return;
 
-            // Deterministic per-source RNG so a failing case reproduces.
-            var rng = new Random(unchecked(source.GetHashCode()));
+            // The shuffle RNG is seeded from CsCheck, so the seed CsCheck prints reproduces the
+            // exact registration orders this case tried. It used to be source.GetHashCode(),
+            // which .NET randomizes per process: the printed seed picked the same program and
+            // then a different shuffle, so a failure did not reproduce (#1439 — same defect as
+            // the whitespace helper, three sites away from the one the issue named).
+            var rng = new Random(shuffleSeed);
 
             for (int trial = 0; trial < 3; trial++)
             {
@@ -120,7 +128,8 @@ public class ValidatorOrderingPropertyTests
             }
 
             Interlocked.Increment(ref compared);
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 30);
+        }, print: s => $"shuffle seed {s.shuffleSeed}{Environment.NewLine}"
+                       + Sharpy.Compiler.Pretty.Unparser.Unparse(s.module), iter: 30);
 
         _output.WriteLine("Validator registration ordering: " + compared + "/" + total + " programs compared");
     }
