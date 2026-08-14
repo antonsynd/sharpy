@@ -175,6 +175,15 @@ internal partial class ImportResolver
     /// (<c>ProjectCompiler.ResolveOwnExportedSymbol</c>, #1366/#1407/#1491), and where that applies
     /// this clone is never reached.
     /// </para>
+    /// <para>
+    /// <b>Mutation test</b> (performed 2026-08-14): replacing this <c>with</c> by a hand-built
+    /// <c>new TypeSymbol { … }</c> restating eighteen fields reddens
+    /// <c>SymbolFactMirrorConformanceTests.FactMirror_AgreesForEveryCell</c> on exactly the
+    /// <c>::fromImport</c> cells of the facts the initializer forgot — <c>Documentation</c>,
+    /// <c>DeprecationMessage</c>, <c>IsMustUse</c>, <c>IsDataclass</c>, <c>Events</c>,
+    /// <c>Properties</c>, <c>IsStringEnum</c>. That is the guard measuring the property this
+    /// expression exists for: not "the facts are right today" but "forgetting one is caught".
+    /// </para>
     /// </remarks>
     private TypeSymbol CreateReExportedTypeSymbol(TypeSymbol originalType, FromImportStatement fromImport, string effectiveName)
     {
