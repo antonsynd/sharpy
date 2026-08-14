@@ -1,0 +1,14 @@
+# Negative control for #1497's recognition widening. len() recognition now reads the type's CLR
+# interface list rather than one hard-coded interface — this pins that it still says NO for a type
+# that is merely ENUMERABLE. A lazy iterator has no count (CPython: len(iter([1,2,3])) raises
+# TypeError: object of type 'list_iterator' has no len()), and neither does a user class with
+# __iter__ but no __len__. If either of these starts compiling, recognition widened past "carries
+# a count" into "is a sequence", which is the failure this control exists to catch.
+class Countless:
+    def __iter__(self) -> Iterator[int]:
+        return iter([1, 2, 3])
+
+
+def main() -> None:
+    c: Countless = Countless()
+    print(len(c))

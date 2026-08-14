@@ -85,9 +85,11 @@ internal sealed partial class LoweringPass
     /// C# collection that implements <c>Sharpy.ISized</c>, so its element count can be read cheaply
     /// (via an <c>ISized</c> cast) for capacity preallocation: the Sharpy collections
     /// (<c>list</c>/<c>set</c>/<c>dict</c>/<c>frozendict</c>) and <c>range(...)</c> (whose
-    /// <c>RangeIterator</c> is <c>ISized</c>). The dict views are deliberately excluded — they
-    /// implement <c>IReadOnlyCollection&lt;T&gt;</c> but not <c>ISized</c>, so an <c>ISized</c> cast
-    /// would not compile. Pure: reads only the type recorded during semantic analysis. Single source
+    /// <c>RangeIterator</c> is <c>ISized</c>). The dict views are excluded as an optimization not yet
+    /// taken, NOT because the cast would fail: they implement <c>ISized</c> as of #1497, so adding
+    /// them here is a behavior-preserving change whenever someone wants the preallocation (it is
+    /// deliberately not bundled into #1497, which is about <c>len()</c> recognition). Pure: reads
+    /// only the type recorded during semantic analysis. Single source
     /// of truth for both the lowering pass and the emitter's null-IR fallback.
     /// </summary>
     internal static bool IsSizedComprehensionSource(SemanticType? sourceType) => sourceType switch

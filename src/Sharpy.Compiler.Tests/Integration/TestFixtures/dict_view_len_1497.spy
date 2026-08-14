@@ -1,0 +1,17 @@
+# len() on a dict view: the view carries a count through Sharpy.ISized, so len() must be accepted
+# whether the value is spelled inline or bound through a type annotation. The annotation-typed
+# spelling used to draw SPY0320 ("does not support len()") — protocol recognition read one hard-coded
+# interface instead of the type's CLR interface list (#1497).
+def main() -> None:
+    d: dict[str, int] = {"a": 1, "b": 2, "c": 3}
+
+    print(len(d.keys()))
+    print(len(d.values()))
+    print(len(d.items()))
+
+    k: DictKeyView[str, int] = d.keys()
+    v: DictValuesView[str, int] = d.values()
+    i: DictItemsView[str, int] = d.items()
+    print(len(k))
+    print(len(v))
+    print(len(i))

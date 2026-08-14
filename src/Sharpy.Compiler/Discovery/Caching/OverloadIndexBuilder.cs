@@ -353,8 +353,19 @@ internal class OverloadIndexBuilder
     {
         var interfaces = type.GetInterfaces();
 
-        // ISized -> __len__
-        if (interfaces.Any(i => i.FullName == "Sharpy.ISized"))
+        // __len__ — recognized from the type's CLR interface list rather than from one interface,
+        // so any type that genuinely carries a count is sized (#1497). Two interfaces qualify, and
+        // the boundary is deliberate: each is one that `Sharpy.Builtins.Len` has an overload for, so
+        // recognizing it can never accept a call that then fails to bind in the generated C#.
+        //   - Sharpy.ISized                  -> Len(ISized)
+        //   - System.Collections.ICollection -> Len(ICollection)  (SCG.List<T>, arrays, ArrayList, …)
+        // IReadOnlyCollection<T>/ICollection<T> are deliberately NOT included: adding the matching
+        // Len<T>(IReadOnlyCollection<T>) overload makes `len(array)` and `len(SCG.List<T>)`
+        // ambiguous (CS0121 — measured, not assumed; the "non-generic beats generic" tie-break does
+        // not apply here). Types reachable only that way stay refused, which is consistent rather
+        // than a compile-then-fail. Sharpy's own dict views implement ISized for exactly this reason.
+        if (interfaces.Any(i => i.FullName == "Sharpy.ISized"
+                || i == typeof(System.Collections.ICollection)))
             AddProtocolStub(typeInfo, "__len__");
 
         // IBoolConvertible -> __bool__
