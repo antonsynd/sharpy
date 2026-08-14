@@ -1,0 +1,10 @@
+# #1438: the generic-function-type route (identity[int](42), the GenericFunctionType arm
+# in CheckFunctionCall) records its target via SetCallTarget and must ride the same seam.
+
+@deprecated("Use identity_new instead")
+def identity[T](x: T) -> T:
+    return x
+
+def main():
+    r: int = identity[int](42)
+    print(r)

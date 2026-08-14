@@ -1,0 +1,17 @@
+# #1438 library half: two overloaded functions, each with ONE decorated int overload.
+# `over` exercises the from-import overload route (ResolveImportedFunctionOverload);
+# `qover` exercises the module-qualified overload route (ResolveModuleFunctionOverload).
+
+@deprecated("Use over_new instead")
+def over(x: int) -> int:
+    return x
+
+def over(x: str) -> str:
+    return x
+
+@deprecated("Use qover_new instead")
+def qover(x: int) -> int:
+    return x
+
+def qover(x: str) -> str:
+    return x

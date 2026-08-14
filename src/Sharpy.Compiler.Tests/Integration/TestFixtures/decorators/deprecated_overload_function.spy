@@ -1,0 +1,26 @@
+# #1438: @deprecated must warn on EVERY call-node resolution route, not only the
+# single-candidate one. Before the fix, the six overload routes recorded the resolved
+# target via SetCallTarget but skipped CheckDeprecatedUsage — only the single-candidate
+# route (ValidateFunctionSymbolCall) ran the check. RecordResolvedCallTarget folds the
+# check into the recording seam so both routes warn.
+#
+# solo   -> single-candidate route (ValidateFunctionSymbolCall)
+# over(int) -> user-defined function overload route (ResolveUserDefinedFunctionOverload)
+# Only the int overload of `over` is decorated, so `over("a")` cannot warn — a distinct
+# per-message .warning line pins the fired shape without asserting counts.
+
+@deprecated("Use solo_new instead")
+def solo(x: int) -> int:
+    return x
+
+@deprecated("Use over_new instead")
+def over(x: int) -> int:
+    return x
+
+def over(x: str) -> str:
+    return x
+
+def main():
+    print(solo(3))
+    print(over(3))
+    print(over("a"))

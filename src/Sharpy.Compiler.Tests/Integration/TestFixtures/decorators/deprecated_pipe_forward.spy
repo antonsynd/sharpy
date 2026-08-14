@@ -1,0 +1,12 @@
+# #1438: the pipe-forward-with-call route (CheckPipeForwardWithFunctionCall in
+# TypeChecker.Expressions.Operators.cs) was the EIGHTH call-node SetCallTarget site the
+# verifier found beyond the seven in Calls.cs. x |> f(y) resolves f and records its
+# target — the deprecation check must ride that seam too.
+
+@deprecated("Use add_new instead")
+def add(a: int, b: int) -> int:
+    return a + b
+
+def main():
+    r: int = 3 |> add(4)
+    print(r)

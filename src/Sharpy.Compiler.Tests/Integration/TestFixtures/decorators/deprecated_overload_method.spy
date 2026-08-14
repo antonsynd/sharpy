@@ -1,0 +1,15 @@
+# #1438: the user-method overload route (ResolveUserMethodOverload) must warn too.
+# Only the int overload of `run` is decorated; `c.run("a")` cannot warn.
+
+class Calc:
+    @deprecated("Use compute instead")
+    def run(self, x: int) -> int:
+        return x
+
+    def run(self, x: str) -> str:
+        return x
+
+def main():
+    c = Calc()
+    print(c.run(3))
+    print(c.run("a"))

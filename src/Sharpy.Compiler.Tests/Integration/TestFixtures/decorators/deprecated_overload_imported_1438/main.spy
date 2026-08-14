@@ -1,0 +1,14 @@
+# #1438: an OVERLOADED imported function must warn on the decorated overload. The imported
+# overload set is registered by ImportResolver and answered by the two overload routes:
+#   over(3)      -> ResolveImportedFunctionOverload (:2222)   warns
+#   lib.qover(5) -> ResolveModuleFunctionOverload   (:2130)   warns
+# The str overloads are undecorated, so over("a")/lib.qover("b") cannot warn.
+
+import lib
+from lib import over
+
+def main():
+    print(over(3))
+    print(over("a"))
+    print(lib.qover(5))
+    print(lib.qover("b"))
