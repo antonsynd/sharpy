@@ -1,0 +1,5 @@
+from lib import make
+
+
+def main() -> None:
+    print(make())

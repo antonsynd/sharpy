@@ -55,17 +55,29 @@ internal class UnusedImportValidator : ValidatingAstWalker
         // Second pass: walk all non-import AST nodes to collect references
         base.Validate(module, context);
 
+        // A namespace import used ONLY by a bracket attribute (@[dll_import(...)]) has no identifier
+        // reference, but it is what brings the attribute's type into scope. DecoratorValidator
+        // (Order 60, runs before this Order 430) recorded, per bracket attribute, the imported .NET
+        // namespace it resolved through; an import whose C# namespace is one of those is used (#1429).
+        var bracketAttributeNamespaces = new HashSet<string>(
+            context.SemanticInfo.GetAllBracketAttributeResolvedNamespaces(), StringComparer.Ordinal);
+
         // Emit warnings for unused imports
         foreach (var (localName, info) in _importedNames)
         {
-            if (!_referencedNames.Contains(localName))
-            {
-                AddWarning(
-                    $"Imported name '{info.OriginalName}' is never used",
-                    info.Line, info.Column,
-                    code: DiagnosticCodes.Validation.UnusedImport,
-                    span: info.Span);
-            }
+            if (_referencedNames.Contains(localName))
+                continue;
+
+            if (bracketAttributeNamespaces.Count > 0
+                && bracketAttributeNamespaces.Contains(
+                    DecoratorValidator.ConvertModuleNameToNamespace(info.OriginalName)))
+                continue;
+
+            AddWarning(
+                $"Imported name '{info.OriginalName}' is never used",
+                info.Line, info.Column,
+                code: DiagnosticCodes.Validation.UnusedImport,
+                span: info.Span);
         }
     }
 

@@ -1,0 +1,2 @@
+# #1429 FIXED: assertion-empty — the bracket-attribute import (system.component_model) counts as
+# used, so NO SPY0452 fires. Do not delete this file; the empty assertion is the pin.

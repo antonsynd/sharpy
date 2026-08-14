@@ -1,0 +1,17 @@
+# #1429 control (a): the import-use fact must NOT blanket-suppress.
+# `system.runtime.compiler_services` is used by @[compiler_generated] and must not warn, but
+# `system.text` is genuinely unused and MUST still warn SPY0452 — the fact only marks the SPECIFIC
+# import that brings the resolving namespace into scope.
+
+import system.runtime.compiler_services
+import system.text
+
+
+@[compiler_generated]
+class Widget:
+    value: int = 0
+
+
+def main() -> None:
+    w = Widget()
+    print(w.value)

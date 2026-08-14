@@ -1,0 +1,17 @@
+# #1429 multi-file twin (the MergeFrom proof): the bracket-attribute import lives in a NON-ENTRY
+# file. The BracketAttributeResolvedNamespace fact is recorded per-file and must be added to
+# SemanticInfo.MergeFrom (Critical Rule 2 pattern (b)); a real 2-file project exercises the per-file
+# validation path and proves lib.spy's `system.runtime.compiler_services` import is not spuriously
+# reported unused (SPY0452) when it is used only by @[compiler_generated].
+
+import system.runtime.compiler_services
+
+
+@[compiler_generated]
+class LibWidget:
+    tag: int = 7
+
+
+def make() -> int:
+    w = LibWidget()
+    return w.tag

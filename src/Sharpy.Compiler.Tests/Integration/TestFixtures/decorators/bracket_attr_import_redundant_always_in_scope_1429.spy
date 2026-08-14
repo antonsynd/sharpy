@@ -1,0 +1,16 @@
+# #1429 control (b): a bracket attribute that resolves through an ALWAYS-IN-SCOPE namespace makes any
+# import of that namespace redundant — deletion is safe — so the import MUST still warn SPY0452.
+# @[obsolete(...)] resolves to System.ObsoleteAttribute, and System is always in scope, so `import
+# system` is redundant. RequiredImportNamespace returns null here (an import-free spelling resolves),
+# so no import-use fact is recorded and the import is correctly reported unused.
+
+import system
+
+
+@[obsolete("use NewWidget")]
+class Widget:
+    value: int = 0
+
+
+def main() -> None:
+    print("ok")

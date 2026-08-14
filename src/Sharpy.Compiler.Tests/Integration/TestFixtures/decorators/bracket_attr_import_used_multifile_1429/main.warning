@@ -1,0 +1,2 @@
+# #1429 assertion-empty: neither lib.spy (system.component_model, used by @[description]) nor
+# main.spy draws SPY0452. Proves the fix holds across a multi-file project. Do not delete.

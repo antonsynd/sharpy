@@ -326,6 +326,14 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Statement, string> _generatedStatements =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map a bracket attribute (@[...]) decorator to the imported .NET namespace (C# spelling) that
+    // brings its attribute type into scope, recorded by DecoratorValidator when the name resolves
+    // ONLY through an imported namespace (not the bare name or an always-in-scope namespace).
+    // UnusedImportValidator reads it so an import used solely by a bracket attribute counts as used
+    // (#1429, Critical Rule 2 pattern (b)).
+    private readonly ConcurrentDictionary<Decorator, string> _bracketAttributeResolvedNamespaces =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track all reference locations for each symbol (for find-references and rename).
     // Key is Symbol (reference-equality), value is a thread-safe bag of references.
     // The FilePath may be null for the main file in single-file compilation.
@@ -828,6 +836,32 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records that a bracket-attribute decorator's type resolves through the imported .NET
+    /// namespace <paramref name="clrNamespace"/> (its C# spelling), so the import that brings that
+    /// namespace into scope counts as used (#1429).
+    /// </summary>
+    public void SetBracketAttributeResolvedNamespace(Decorator decorator, string clrNamespace)
+    {
+        _bracketAttributeResolvedNamespaces[decorator] = clrNamespace;
+    }
+
+    /// <summary>
+    /// The imported .NET namespace (C# spelling) a bracket-attribute decorator resolves through, or
+    /// null when it resolves without an import (bare name / always-in-scope) or was not recorded.
+    /// </summary>
+    public string? GetBracketAttributeResolvedNamespace(Decorator decorator)
+    {
+        return _bracketAttributeResolvedNamespaces.TryGetValue(decorator, out var ns) ? ns : null;
+    }
+
+    /// <summary>
+    /// Every imported .NET namespace a bracket attribute in this file resolves through. Read by
+    /// UnusedImportValidator to count imports used solely by bracket attributes (#1429).
+    /// </summary>
+    public IEnumerable<string> GetAllBracketAttributeResolvedNamespaces()
+        => _bracketAttributeResolvedNamespaces.Values;
+
+    /// <summary>
     /// Returns true if any expression type in the semantic info is UnknownType.
     /// Used by tests to verify the invariant: if no semantic errors, no types should be unknown.
     /// </summary>
@@ -1168,6 +1202,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._generatedStatements)
             _generatedStatements.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._bracketAttributeResolvedNamespaces)
+            _bracketAttributeResolvedNamespaces.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._calleeRoutings)
             _calleeRoutings.TryAdd(kvp.Key, kvp.Value);

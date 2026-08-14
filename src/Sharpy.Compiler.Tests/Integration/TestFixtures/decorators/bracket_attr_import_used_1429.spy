@@ -1,0 +1,19 @@
+# #1429: an import used ONLY by a bracket attribute must count as used.
+# `system.runtime.compiler_services` brings System.Runtime.CompilerServices into scope, which is
+# what makes @[compiler_generated] resolve to CompilerGeneratedAttribute (that namespace is NOT
+# always-in-scope, so the import is required). Before the fix, following SPY0495's own advice
+# ("import the namespace that declares the attribute") produced SPY0452 telling the user to delete
+# the line that makes the program compile. The .warning is assertion-empty: NO warnings, in
+# particular no SPY0452 for the import.
+
+import system.runtime.compiler_services
+
+
+@[compiler_generated]
+class Widget:
+    value: int = 0
+
+
+def main() -> None:
+    w = Widget()
+    print(w.value)

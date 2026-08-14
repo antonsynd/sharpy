@@ -78,8 +78,10 @@ internal partial class DecoratorValidator
 
     /// <summary>
     /// Mirrors <c>RoslynEmitter.ConvertModuleNameToNamespace</c>: "system.io" -> "System.IO".
+    /// Shared with <c>UnusedImportValidator</c> (#1429) so both sides of the bracket-attribute
+    /// import-use match agree on the C# spelling of an import.
     /// </summary>
-    private static string ConvertModuleNameToNamespace(string moduleName)
+    internal static string ConvertModuleNameToNamespace(string moduleName)
     {
         var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
         return string.Join(".", parts.Select(NameMangler.ToNamespacePart));
@@ -124,7 +126,17 @@ internal partial class DecoratorValidator
             return;
 
         if (ClrAttributeResolver.ResolvesToClrType(mangled, _importedClrNamespaces))
+        {
+            // Resolves as a CLR attribute. If it resolves ONLY through one of the file's imported
+            // namespaces (no bare or always-in-scope spelling does), record that namespace so
+            // UnusedImportValidator counts the import that brings it into scope as used (#1429). A
+            // name reachable via an always-in-scope namespace records nothing, so a redundant import
+            // there is still (correctly) reported unused.
+            var requiredImport = ClrAttributeResolver.RequiredImportNamespace(mangled, _importedClrNamespaces);
+            if (requiredImport != null)
+                Context.SemanticInfo.SetBracketAttributeResolvedNamespace(decorator, requiredImport);
             return;
+        }
 
         var attempted = $"'{mangled}' or '{mangled}Attribute'";
         var message =

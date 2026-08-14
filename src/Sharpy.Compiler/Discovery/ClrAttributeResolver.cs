@@ -160,6 +160,73 @@ internal static class ClrAttributeResolver
         return false;
     }
 
+    /// <summary>
+    /// The imported namespace REQUIRED to resolve <paramref name="mangledName"/> — the first of
+    /// <paramref name="importedNamespaces"/> (C# spelling) whose <c>using</c> makes it resolve, and
+    /// only when NO import-free spelling does (neither the bare/already-qualified name nor any
+    /// always-in-scope namespace). Null when the name resolves without any import (so a redundant
+    /// import is NOT counted as used) or does not resolve at all (#1429).
+    ///
+    /// <para>Kept separate from <see cref="ResolvesToClrType"/>, which answers the different
+    /// question the SPY0495 refusal asks — "does it resolve anywhere". Both share the type cache and
+    /// the second-chance framework load, so calling both costs one resolution's worth of reflection.</para>
+    /// </summary>
+    internal static string? RequiredImportNamespace(
+        string mangledName, IEnumerable<string>? importedNamespaces)
+    {
+        var namespaces = importedNamespaces as IReadOnlyList<string> ?? importedNamespaces?.ToList();
+        if (namespaces == null || namespaces.Count == 0)
+            return null;
+
+        var found = FindRequiredImportNamespace(mangledName, namespaces);
+        if (found != null)
+            return found;
+
+        // Second chance: the required type may live in a shared-framework assembly nothing has
+        // loaded yet. Pull in the imports' assemblies and retry (mirrors ResolvesToClrType).
+        var loadedSomething = false;
+        foreach (var ns in namespaces)
+        {
+            if (!string.IsNullOrEmpty(ns))
+                loadedSomething |= EnsureFrameworkAssembliesLoaded(ns);
+        }
+
+        if (!loadedSomething)
+            return null;
+
+        _typeExistsCache.Clear();
+        return FindRequiredImportNamespace(mangledName, namespaces);
+    }
+
+    private static string? FindRequiredImportNamespace(
+        string mangledName, IReadOnlyList<string> importedNamespaces)
+    {
+        // Any import-free spelling resolving means no import is required — a redundant import that
+        // merely re-imports an always-in-scope namespace stays (correctly) unused.
+        if (NamespaceResolves("", mangledName))
+            return null;
+        foreach (var ns in AlwaysInScopeNamespaces)
+        {
+            if (NamespaceResolves(ns, mangledName))
+                return null;
+        }
+
+        // Only an import can make it resolve — return the first that does.
+        foreach (var ns in importedNamespaces)
+        {
+            if (!string.IsNullOrEmpty(ns) && NamespaceResolves(ns, mangledName))
+                return ns;
+        }
+
+        return null;
+    }
+
+    private static bool NamespaceResolves(string namespaceName, string mangledName)
+    {
+        var prefix = namespaceName.Length == 0 ? "" : namespaceName + ".";
+        return TypeExists(prefix + mangledName) || TypeExists(prefix + mangledName + "Attribute");
+    }
+
     private static bool TypeExists(string fullName)
         => _typeExistsCache.GetOrAdd(fullName, static name => FindType(name) != null);
 
