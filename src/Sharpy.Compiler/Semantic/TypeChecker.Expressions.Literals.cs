@@ -510,10 +510,44 @@ internal partial class TypeChecker
         {
             if (part.Expression != null)
             {
-                CheckExpression(part.Expression);
+                var partType = CheckExpression(part.Expression);
+                RecordInterpolationStrWrapping(part, partType);
             }
         }
         return SemanticType.Str;
+    }
+
+    /// <summary>
+    /// Marks an f-string interpolation operand whose default <c>$"{x}"</c> rendering would not be
+    /// what Python prints, so codegen wraps it in <c>Builtins.Str</c> instead (#1480).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Exception-typed operands are the recorded case. C# interpolation calls
+    /// <c>Exception.ToString()</c>, which renders the type name, the message AND a stack trace
+    /// carrying the ABSOLUTE build path of the source file — so <c>print(f"failed: {e}")</c> leaked
+    /// a machine path into stdout where CPython prints only the message. <c>str(e)</c>,
+    /// <c>{e!s}</c> and <c>{e!r}</c> were already correct (Core's Str has an exception arm, and the
+    /// conversion flags route through it), which is exactly what made the plain form's divergence
+    /// easy to miss.
+    /// </para>
+    /// <para>
+    /// An explicit conversion flag is left alone: <c>!s</c>/<c>!r</c>/<c>!a</c> already emit
+    /// <c>Builtins.Str</c>/<c>Repr</c>/<c>Ascii</c>, and <c>{e=}</c> (self-documenting) supplies
+    /// <c>!r</c> of its own. Recording here as well would double-wrap or, worse, override the repr
+    /// the user asked for.
+    /// </para>
+    /// </remarks>
+    private void RecordInterpolationStrWrapping(FStringPart part, SemanticType partType)
+    {
+        if (part.Expression == null || part.Conversion != null || part.IsSelfDocumenting)
+            return;
+
+        var exceptionSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType("Exception");
+        if (exceptionSymbol == null || !IsExceptionSubtype(partType, exceptionSymbol))
+            return;
+
+        _semanticInfo.SetInterpolationStrWrapping(part.Expression, InterpolationStrWrapping.Str);
     }
 
     private SemanticType CheckTStringLiteral(TStringLiteral tstr)

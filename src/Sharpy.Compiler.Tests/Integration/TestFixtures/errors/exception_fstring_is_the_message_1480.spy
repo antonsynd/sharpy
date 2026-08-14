@@ -1,0 +1,43 @@
+# #1480: f"{e}" renders the MESSAGE, like str(e) and like CPython — not .NET's
+# Exception.ToString().
+#
+# THIS FIXTURE COULD NOT BE WRITTEN BEFORE THE FIX. The plain interpolation lowered to a C#
+# interpolated string, which calls e.ToString(): the type name, the message, AND a stack trace
+# carrying the ABSOLUTE path of the build machine's source file. An .expected containing that is
+# machine-dependent, which is exactly why the sibling fixture exception_str_is_the_message carved
+# this half out in a comment instead of covering it. That carve-out is now retired.
+#
+# The last two lines are the load-bearing CONTROLS. The risk in this change is not exceptions —
+# it is everything else that flows through the same two plain-interpolation arms. A float must
+# still print 1.5 (not 1.5 via some other path) and a list must still print its Python repr, so
+# any over-broad wrapping shows up here rather than in a distant fixture. The user-defined
+# exception subclass is the third control: the fact is keyed on the Exception hierarchy, not on
+# the builtin names.
+#
+# Mutation tests (each performed 2026-08-14, red, reverted):
+#  * emitter stops applying the recorded fact -> this fixture red.
+#  * the InterpolationStrWrapping entry is deleted from SemanticInfo.MergeFrom -> this fixture red
+#    as well, not only the multi-file one: the per-file-to-project merge runs even for a one-file
+#    compilation.
+#
+# Every line measured against python3 3.12.
+class MyErr(Exception):
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+def main() -> None:
+    try:
+        raise ValueError('builtin msg')
+    except ValueError as e:
+        print(f"failed: {e}")
+        print(f"{e!s}")
+        print(f"{e!r}")
+
+    try:
+        raise MyErr('user msg')
+    except MyErr as e2:
+        print(f"user: {e2}")
+
+    x: float = 1.5
+    xs: list[int] = [1, 2]
+    print(f"float {x} list {xs}")

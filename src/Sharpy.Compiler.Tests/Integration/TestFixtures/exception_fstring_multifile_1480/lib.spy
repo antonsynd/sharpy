@@ -1,0 +1,16 @@
+# The f-string lives in an IMPORTED module on purpose: this fixture covers the CROSS-FILE case of
+# the SemanticInfo.MergeFrom gotcha — a node-keyed dictionary left out of MergeFrom is silently
+# dropped when per-file SemanticInfo is merged into the project-wide instance code generation
+# reads, and the fact recorded here would be gone by the time this file's f-string is emitted
+# (#1480).
+#
+# MEASURED CORRECTION, so the next reader does not repeat the assumption this file was written on:
+# a single-file fixture DOES catch a missing MergeFrom entry. Deleting the entry and re-running
+# turned BOTH this fixture and the single-file exception_fstring_is_the_message_1480 red — the
+# per-file-to-project merge runs even for a one-file compilation. This fixture therefore earns its
+# place by covering the imported-module path explicitly, not by being the only detector.
+def describe() -> str:
+    try:
+        raise ValueError('from lib')
+    except ValueError as e:
+        return f"lib says: {e}"

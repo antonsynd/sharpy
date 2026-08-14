@@ -1,0 +1,14 @@
+# The cross-file half of #1480. lib.describe() interpolates a caught exception; main does the same
+# thing locally. Both lines must read as the message alone — without the InterpolationStrWrapping
+# entry in SemanticInfo.MergeFrom the fact is dropped and the interpolation regresses to .NET's
+# Exception.ToString() (type name + message + an absolute build path). Mutation-tested: deleting
+# that entry turns this fixture red (see lib.spy for what else it turned red, and why that
+# corrected the assumption this fixture was written on). Measured against python3 3.12.
+import lib
+
+def main() -> None:
+    print(lib.describe())
+    try:
+        raise ValueError('from main')
+    except ValueError as e:
+        print(f"main says: {e}")

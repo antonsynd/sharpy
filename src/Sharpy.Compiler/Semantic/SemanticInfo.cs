@@ -135,6 +135,18 @@ public class SemanticInfo : ISemanticQuery
     // decided once here; codegen only wraps the marked argument in `() => new TValue()` (#1175).
     private readonly ConcurrentDictionary<Expression, byte> _typeFactoryArguments = new(ReferenceEqualityComparer.Instance);
 
+    // Map an f-string interpolation OPERAND to the runtime conversion codegen must wrap it in
+    // before interpolating. Present only when the default `$"{x}"` rendering — which is
+    // x.ToString() — is not what Python prints for that operand's type. Today the only recorded
+    // case is an exception-typed operand: .NET's Exception.ToString() prints the type name, the
+    // message AND a stack trace carrying an absolute build path, where CPython's f"{e}" is just
+    // str(e) (#1480). Deciding this is a semantic question (it needs the operand's resolved type
+    // and the Exception hierarchy), so it is decided once here and codegen applies it verbatim —
+    // Critical Rule 2 pattern (b). Named for the mechanism rather than for exceptions so the
+    // bare-CLR-sequence display case (#1453's f-string half) can join without a second dictionary.
+    private readonly ConcurrentDictionary<Expression, InterpolationStrWrapping> _interpolationStrWrappings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map patterns to their resolved union case type symbols
     // Used when a PositionalPattern or MemberAccessPattern matches a union case
     private readonly ConcurrentDictionary<Pattern, TypeSymbol> _patternUnionCases =
@@ -717,6 +729,20 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public bool IsTypeFactoryArgument(Expression expr) => _typeFactoryArguments.ContainsKey(expr);
 
+    /// <summary>
+    /// Records that an f-string interpolation operand must be wrapped in the given runtime
+    /// conversion before it is interpolated (#1480).
+    /// </summary>
+    public void SetInterpolationStrWrapping(Expression expr, InterpolationStrWrapping wrapping) =>
+        _interpolationStrWrappings[expr] = wrapping;
+
+    /// <summary>
+    /// The conversion an f-string interpolation operand must be wrapped in, or null when the
+    /// default <c>$"{x}"</c> rendering is already correct (the overwhelmingly common case).
+    /// </summary>
+    public InterpolationStrWrapping? GetInterpolationStrWrapping(Expression expr) =>
+        _interpolationStrWrappings.TryGetValue(expr, out var wrapping) ? wrapping : null;
+
     public void AddGeneratorBinding(Statement declaration, TypeSymbol generatorType, Decorator trigger)
     {
         var binding = new GeneratorBinding(generatorType, trigger);
@@ -1041,6 +1067,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._typeFactoryArguments)
             _typeFactoryArguments.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._interpolationStrWrappings)
+            _interpolationStrWrappings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._patternUnionCases)
             _patternUnionCases.TryAdd(kvp.Key, kvp.Value);
@@ -1602,4 +1631,20 @@ public enum CalleeRouting
     /// The call targets a USER symbol that shadows a builtin name (#1326).
     /// </summary>
     UserSymbol
+}
+
+/// <summary>
+/// The runtime conversion an f-string interpolation operand must be wrapped in before it is
+/// interpolated, when the default <c>$"{x}"</c> rendering (<c>x.ToString()</c>) is not what Python
+/// prints for that operand's type. Recorded by the TypeChecker, applied verbatim by the emitter
+/// (Critical Rule 2 pattern (b), #1480).
+/// </summary>
+public enum InterpolationStrWrapping
+{
+    /// <summary>
+    /// Route the operand through <c>Sharpy.Builtins.Str</c> — the same function <c>str(x)</c> and
+    /// the explicit <c>{x!s}</c> conversion already use, so the three spellings agree by
+    /// construction rather than by three parallel implementations.
+    /// </summary>
+    Str
 }

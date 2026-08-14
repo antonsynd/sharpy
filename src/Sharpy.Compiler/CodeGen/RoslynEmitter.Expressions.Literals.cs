@@ -564,7 +564,7 @@ internal partial class RoslynEmitter
                     else
                     {
                         // General case: simple format string with optional C# alignment
-                        var innerExpr = GenerateExpression(part.Expression);
+                        var innerExpr = GenerateInterpolationOperand(part.Expression);
                         var interpolation = Interpolation(ParenthesizedExpression(innerExpr));
 
                         if (result.Alignment.HasValue)
@@ -608,7 +608,7 @@ internal partial class RoslynEmitter
                 else
                 {
                     // No format spec — default formatting
-                    var innerExpr = GenerateExpression(part.Expression);
+                    var innerExpr = GenerateInterpolationOperand(part.Expression);
 
                     // For floating-point types without a format spec, wrap in FormatFloat()
                     // to ensure Python-compatible formatting (e.g., 5.0 instead of 5).
@@ -643,6 +643,32 @@ internal partial class RoslynEmitter
                 Argument(interpolatedString))));
 
         return invariantCall;
+    }
+
+    /// <summary>
+    /// Generates a PLAIN interpolation operand — one with no <c>!s</c>/<c>!r</c>/<c>!a</c>
+    /// conversion flag — applying the node-keyed <c>InterpolationStrWrapping</c> fact the
+    /// TypeChecker recorded for it, if any.
+    /// </summary>
+    /// <remarks>
+    /// The emitter decides nothing here: whether an operand needs wrapping is a question about its
+    /// resolved semantic type and the Exception hierarchy, answered once in
+    /// <c>TypeChecker.RecordInterpolationStrWrapping</c> and applied verbatim (Critical Rule 2
+    /// pattern (b), #1480). Operands carrying a conversion flag never reach this — they go through
+    /// <see cref="GenerateConvertedInterpolation"/>, which already emits Str/Repr/Ascii.
+    /// </remarks>
+    private ExpressionSyntax GenerateInterpolationOperand(Expression expression)
+    {
+        var inner = GenerateExpression(expression);
+
+        if (_context.SemanticInfo?.GetInterpolationStrWrapping(expression)
+            is not InterpolationStrWrapping.Str)
+        {
+            return inner;
+        }
+
+        return InvocationExpression(MakeGlobalQualifiedName("Sharpy", "Builtins", "Str"))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(inner))));
     }
 
     /// <summary>

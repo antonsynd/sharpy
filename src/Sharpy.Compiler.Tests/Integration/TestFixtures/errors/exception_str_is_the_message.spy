@@ -5,9 +5,10 @@
 #
 # Verified against python3 3.12: str(e) is the message alone, repr(e) is "ValueError('builtin msg')".
 #
-# NOT COVERED HERE, DELIBERATELY: f"{e}" still renders the .NET form, because an f-string lowers
-# to a C# interpolated string and calls e.ToString() directly rather than going through
-# Builtins.Str. #1415 stays open for that half; see the issue for the compiler-side fix.
+# The f-string half this fixture used to carve out is now fixed too (#1480): the TypeChecker marks
+# an exception-typed interpolation operand and the emitter routes it through Builtins.Str, so
+# f"{e}" agrees with str(e) here. Its cell lives in exception_fstring_is_the_message_1480, with the
+# float/list/user-class controls that pin what the change must NOT touch.
 def main() -> None:
     try:
         raise ValueError('builtin msg')
