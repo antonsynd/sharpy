@@ -146,6 +146,10 @@ class Box[T]:
 class AppError(Exception):
     def __init__(self, msg: str) -> None:
         super().__init__(msg)
+
+
+type Handle = int
+type Pair[T] = tuple[T, T]
 ";
 
     // --- Scenarios -----------------------------------------------------------------------------
@@ -292,6 +296,33 @@ def main() -> None:
     b: {s.Ref("Box")}[int] = {s.Ref("Box")}(7)
     print(unwrap(b))
 "), null),
+
+        // ---- type alias ----
+        //
+        // An alias is an export like any other since #1363, but the qualified path had no way to
+        // ANSWER with one — both final-segment arms of ResolveQualifiedType require a TypeSymbol —
+        // so `lib.Handle` was SPY0202 for a name `from lib import Handle` binds (#1436). Two shapes
+        // because the generic arm expands through a different helper (ExpandGenericTypeAlias).
+        new("typeAlias", "plain", s => Two($@"{s.Imports("Handle")}
+
+def probe(value: {s.Ref("Handle")}) -> int:
+    return value
+
+
+def main() -> None:
+    print(probe(7))
+"), scope => ParameterTypeOf(scope, "probe")),
+
+        new("typeAlias", "generic", s => Two($@"{s.Imports("Pair")}
+
+def probe(pair: {s.Ref("Pair")}[int]) -> int:
+    return pair[0]
+
+
+def main() -> None:
+    p: {s.Ref("Pair")}[int] = (3, 4)
+    print(probe(p))
+"), scope => ParameterTypeOf(scope, "probe")),
 
         // ---- pattern ----
         new("pattern", "plain", s => Two($@"{s.Imports("Shape", "Circle")}

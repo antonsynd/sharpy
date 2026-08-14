@@ -27,10 +27,19 @@
 # See .claude/tmp/qualified-bare-conformance-report.json.
 # ---------------------------------------------------------------------------------------------
 
-# #1445 — `case lib.Circle():` is a PARSE error (SPY0100/SPY0103/SPY0104). A dotted name is not
-# accepted as a class pattern at all, so the qualifier changes whether the program parses. Every
-# other type-reference position in the matrix accepts one.
-pattern::plain::inSourceSet
+# #1445 — PARTLY DRAINED. `case lib.Circle():` was a PARSE error (SPY0100/SPY0103/SPY0104): the
+# parser's dotted arm consumed the whole chain into a value pattern and never looked for the call
+# parens, so a qualifier changed whether the program parsed at all. It now parses as a class
+# pattern, and pattern::plain::inSourceSet agrees.
+#
+# The three cells below still diverge, and the measured reason is no longer #1445's: the pattern's
+# annotation resolves through the SAME non-generic arm of TypeResolver that #1446 is about, so
+# `case lib.Box():` produces `UserDefinedType { Name = "lib.Box" }` and the compatibility check
+# refuses it against the scrutinee — `Type pattern 'lib.Box' is incompatible with scrutinee type
+# 'Box[int]'` (SPY0361), plus SPY0220 outside the source set. Measured at the #1445 fix, 2026-08-14.
+# They are left under #1445 rather than re-attributed because #1446 is CLOSED with no fix in the
+# tree and its cells are under an owner ruling; re-pointing a line at a closed issue would be the
+# ratchet violation the rules above forbid. Re-attribute or reopen with that ruling.
 pattern::plain::outsideSourceSet
 pattern::generic::inSourceSet
 pattern::generic::outsideSourceSet
@@ -52,10 +61,11 @@ typeTestExcept::plain::outsideSourceSet
 constraint::plain::outsideSourceSet
 declSiteAnnotation::plain::inSourceSet
 
-# #1447 — `isinstance(box, lib.Box[int])` analyzes clean and then leaks CS0305 behind SPY0908: the
-# type arguments are dropped between the resolved annotation and emission, on the qualified
-# spelling only. The CLOSED sibling of #1411, which fixed the open form (`lib.Box`) only.
-typeTest::generic::inSourceSet
+# #1447 — DRAINED. `isinstance(box, lib.Box[int])` analyzed clean and then leaked CS0305 behind
+# SPY0908. The expression-as-type resolver recognised a type-argument list only when it was applied
+# to a bare IDENTIFIER, so the qualified spelling fell out of it as "not a type", no lowering was
+# recorded, and the emitter re-derived the name from the OPEN definition. The definition is now read
+# through one helper for both spellings. The CLOSED sibling of #1411, which fixed the open form.
 
 # #1448 — DRAINED. `ModuleLoader.ConvertTypeAnnotationToSemanticType` built the annotation's name
 # VERBATIM, so a module-qualified annotation written INSIDE an extracted module kept its qualifier:

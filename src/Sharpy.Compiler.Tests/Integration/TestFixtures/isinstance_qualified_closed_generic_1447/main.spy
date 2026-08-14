@@ -1,0 +1,21 @@
+# #1447 — the CLOSED sibling of #1411. `mod_a.Bag[int]` names its type arguments, so nothing has to
+# be filled and nothing has to be refused: the test should simply run. It did not. The
+# expression-as-type resolver only recognised a type-argument list applied to a bare IDENTIFIER, so
+# a list applied to a qualified name fell out of it as "not a type": no lowering was recorded, the
+# emitter re-derived the name from the open definition, and the program reached Roslyn as
+# `ModA.Bag<T>` — CS0305 reported as SPY0908, an internal error for a correct program.
+#
+# The bare-spelling twin of this cell has always worked; that is the asymmetry the qualified/bare
+# sweep exists to catch (typeTest::generic::inSourceSet).
+
+import mod_a
+
+
+def check(x: mod_a.Bag[int]) -> str:
+    if isinstance(x, mod_a.Bag[int]):
+        return "matched mod_a.Bag[int]"
+    return "no match"
+
+
+def main() -> None:
+    print(check(mod_a.Bag[int]()))

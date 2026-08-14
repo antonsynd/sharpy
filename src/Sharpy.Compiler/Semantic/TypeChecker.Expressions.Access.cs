@@ -2098,12 +2098,17 @@ internal partial class TypeChecker
             return _semanticInfo.GetExpressionType(memberAccess) as UserDefinedType;
         }
 
-        // Handle nested generic types (e.g., Box[int] in Container[Box[int]])
+        // Handle nested generic types (e.g., Box[int] in Container[Box[int]], lib.Box[int] at a
+        // type test). The definition is read through one helper so a QUALIFIED spelling reaches the
+        // same arm a bare one does: it did not, and the CLOSED qualified generic fell out of this
+        // method as "not a type" — no lowering was recorded, the emitter re-derived the name from
+        // the open definition, and `isinstance(box, lib.Box[int])` reached Roslyn as `Lib.Box<T>`,
+        // CS0305 behind SPY0908. #1411 fixed the OPEN qualified form; this is its closed sibling
+        // (#1447).
         if (expr is IndexAccess indexAccess &&
-            indexAccess.Object is Identifier nestedTypeId &&
-            _symbolTable.Lookup(nestedTypeId.Name) is TypeSymbol nestedGenericType &&
-            nestedGenericType.IsGeneric)
+            TryReadGenericDefinition(indexAccess.Object, shapes) is { IsGeneric: true } nestedGenericType)
         {
+            var nestedTypeId = indexAccess.Object as Identifier;
             var nestedTypeArgs = TryResolveTypeArguments(indexAccess.Index, shapes);
 
             // `tuple[...]` is a TupleType, never GenericType("tuple", …), wherever it is written.
@@ -2116,8 +2121,11 @@ internal partial class TypeChecker
             // (SPY0354) and the return check reported the two spellings as different types while
             // RENDERING THEM IDENTICALLY: "Cannot return type 'Iterator[tuple[int, int]]' from
             // function expecting 'Iterator[tuple[int, int]]'" (#1470, the nested sibling of #1200).
-            if (TryBuildTupleTypeReference(nestedTypeId, nestedTypeArgs) is { } nestedTuple)
+            if (nestedTypeId != null
+                && TryBuildTupleTypeReference(nestedTypeId, nestedTypeArgs) is { } nestedTuple)
+            {
                 return nestedTuple;
+            }
 
             if (nestedTypeArgs != null
                 && (!shapes.HasFlag(TypeOperandShapes.RequireMatchingArity)
@@ -2134,6 +2142,57 @@ internal partial class TypeChecker
 
         return null;
     }
+
+    /// <summary>
+    /// The declaration a type-argument list is being applied to: <c>Box</c> in <c>Box[int]</c>,
+    /// <c>lib.Box</c> in <c>lib.Box[int]</c>. One helper for both spellings, so a qualifier changes
+    /// which lookup answers and nothing else (#1447; the sweep's contract in miniature).
+    /// </summary>
+    /// <remarks>
+    /// The qualified arm reads the type the checker already recorded for the member access — the
+    /// same fact the <see cref="TypeOperandShapes.QualifiedName"/> arm above reads for a
+    /// non-generic qualified name — and is gated on that flag, so a construction-position caller
+    /// keeps its previous, identifier-only behaviour.
+    /// </remarks>
+    private TypeSymbol? TryReadGenericDefinition(Expression target, TypeOperandShapes shapes)
+    {
+        if (shapes.HasFlag(TypeOperandShapes.UnwrapGrouping))
+            target = UnwrapParenthesized(target);
+
+        if (target is Identifier bareName)
+            return _symbolTable.Lookup(bareName.Name) as TypeSymbol;
+
+        if (shapes.HasFlag(TypeOperandShapes.QualifiedName) && target is MemberAccess qualified)
+        {
+            // The recorded expression type first, then the resolver's own qualified lookup. The
+            // recorded fact is absent here in practice — a member access that is the OBJECT of a
+            // type-argument list is never checked as a value — so falling through to
+            // LookupModuleQualifiedType is what actually answers, and it is the same machinery the
+            // annotation position uses for the identical spelling (#1447, Design Decision 4).
+            return (_semanticInfo.GetExpressionType(qualified) as UserDefinedType)?.Symbol
+                ?? (TryFlattenDottedName(qualified) is { } dottedName
+                    ? _typeResolver.LookupModuleQualifiedType(dottedName)
+                    : null);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The dotted spelling of a member-access chain whose every segment is a plain name
+    /// (<c>lib.Box</c>, <c>pkg.mod.Box</c>), or null when any segment is something else — a call, an
+    /// index, a literal — because such a chain is not a type name and must not be handed to a
+    /// name-keyed lookup.
+    /// </summary>
+    private static string? TryFlattenDottedName(MemberAccess memberAccess)
+        => memberAccess.Object switch
+        {
+            Identifier root => $"{root.Name}.{memberAccess.Member}",
+            MemberAccess nested => TryFlattenDottedName(nested) is { } prefix
+                ? $"{prefix}.{memberAccess.Member}"
+                : null,
+            _ => null
+        };
 
     /// <summary>
     /// The one place that decides a written <c>tuple[...]</c> denotes a <see cref="TupleType"/>.
