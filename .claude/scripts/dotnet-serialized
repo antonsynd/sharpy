@@ -42,6 +42,26 @@ LOCK_DIR="${HOME}/.claude/locks/dotnet.lock"
 # and this protocol has now been fixed three times without one (#1508).
 TIMEOUT="${DOTNET_SERIALIZED_TIMEOUT:-2700}"  # 45 minutes
 
+# Stall watchdog (#1481). A holder whose child is ALIVE but has stopped producing output is
+# wedged, not working, and the lock's own correctness keeps it that way: is_lock_stale fails
+# closed on a live child, so nobody can reclaim. On 2026-08-12 one such holder held this lock
+# 2h26m and every queued agent died at the waiter timeout above.
+#
+# Progress is judged by the tee log's MTIME, not by wall clock: a wall-clock cap tight enough to
+# catch a hang would kill honest 17-minute runs, and the log is a progress signal the holder
+# already produces.
+#
+# 1728 = 3 x 576, floored at 600, where "max quiet gap 576s @ f20e180dc (measured)" comes from
+# sampling the log's mtime every 10s across a full Sharpy.Compiler.Tests run to completion
+# INCLUDING the teardown tail. The measurement is the load-bearing part, because a GREEN dotnet
+# test is very nearly silent: that run (13,722 passed, 14m40s) wrote 863 bytes total in FOUR
+# writes — the header, two SKIP notices at t+577s, and the summary at t+883s. Any threshold
+# under ~10 minutes kills healthy suites. Do NOT tighten this without re-measuring; the gap is a
+# property of how little dotnet says when nothing is wrong, not of how fast the machine is.
+STALL_SECONDS="${DOTNET_SERIALIZED_STALL_SECONDS:-1728}"
+WATCHDOG_POLL="${DOTNET_SERIALIZED_WATCHDOG_POLL:-30}"
+WATCHDOG_GRACE="${DOTNET_SERIALIZED_WATCHDOG_GRACE:-10}"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG_DIR="${DOTNET_SERIALIZED_LOG_DIR:-${SCRIPT_DIR}/tmp}"
 LOG_DEQUE_SIZE=3
@@ -169,6 +189,77 @@ acquire_lock() {
     fi
 }
 
+WATCHDOG_MARKER="$LOCK_DIR/watchdog-killed"
+
+# Signal a process AND everything descended from it, children first.
+#
+# Signalling the recorded child alone is not enough, and the failure is silent rather than
+# obvious: dotnet spawns testhost children that INHERIT the pipe to `tee`, so tee keeps waiting
+# for EOF that never comes and the wrapper hangs exactly as long as the grandchildren live —
+# the wedge the watchdog exists to end. (Measured with a stub whose `sleep` grandchild held the
+# pipe for the full 120s after its parent was killed.) They also keep their share of the 5-10 GB.
+kill_tree() {
+    local pid="$1" sig="$2" kid
+    case "$pid" in ''|*[!0-9]*) return 0 ;; esac
+    for kid in $(ps -A -o pid=,ppid= 2>/dev/null | awk -v p="$pid" '$2 == p { print $1 }'); do
+        kill_tree "$kid" "$sig"
+    done
+    kill "$sig" "$pid" 2>/dev/null
+}
+
+file_mtime() {
+    # There is no portable spelling: BSD/macOS wants -f %m, GNU/Linux wants -c %Y, and each
+    # rejects the other's flag. A single spelling does not fail loudly on the wrong platform —
+    # it prints nothing, which the caller below would read as "no progress" and act on.
+    stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null
+}
+
+# Holder-side monitor: only the holder knows both its own log file and its own child.
+#
+# It does NOT release the lock. Killing the child ends the tee pipeline, the main path resumes,
+# reads the marker, forces the exit code and releases through the existing cleanup — one release
+# site, no double-release race with a monitor that might also be mid-decision.
+#
+# It writes nothing to stdout/stderr (it is started with both redirected to /dev/null): a
+# backgrounded job inherits the caller's pipes, and its stray `sleep` would then hold the
+# wrapper's stdout open for up to one poll interval AFTER the wrapper exits, hanging any caller
+# that reads to EOF. The marker file carries everything the main path needs to report.
+watchdog() {
+    # A subshell must never fire the holder's cleanup trap.
+    trap - EXIT
+    local child_pid last now quiet
+    while :; do
+        sleep "$WATCHDOG_POLL"
+        child_pid=$(cat "$LOCK_DIR/child" 2>/dev/null)
+        case "$child_pid" in ''|*[!0-9]*) continue ;; esac
+        # Child finished on its own: nothing left to watch, and staying alive would only risk
+        # signalling a recycled pid.
+        kill -0 "$child_pid" 2>/dev/null || return 0
+        [ -f "$LOG_FILE" ] || continue
+        last=$(file_mtime "$LOG_FILE")
+        case "$last" in ''|*[!0-9]*) continue ;; esac
+        now=$(date +%s)
+        quiet=$((now - last))
+        if [ "$quiet" -gt "$STALL_SECONDS" ]; then
+            echo "$child_pid $quiet" > "$WATCHDOG_MARKER"
+            kill_tree "$child_pid" -TERM
+            sleep "$WATCHDOG_GRACE"
+            kill_tree "$child_pid" -KILL
+            return 0
+        fi
+    done
+}
+
+watchdog_report() {
+    echo ""
+    echo "ERROR: watchdog killed PID $1 after $2s of log silence (threshold ${STALL_SECONDS}s)."
+    echo "This run DID NOT complete and must not be treated as a pass."
+    echo "dotnet test HANDLES SIGTERM AND EXITS 0 — measured on the 2026-08-12 incident at 181"
+    echo "failures with EXIT=0 — so the killed process's own exit code is meaningless here."
+    echo "This wrapper reports 4 unconditionally instead."
+    echo "Partial output: $LOG_FILE"
+}
+
 next_log_slot() {
     mkdir -p "$LOG_DIR"
     local idx=0
@@ -274,8 +365,20 @@ ln -sf "dotnet-serialized-${SLOT}.log" "${LOG_DIR}/dotnet-serialized-latest.log"
 # starts a shell whose $$ is its own, and `exec` then replaces that shell with dotnet, keeping
 # the pid. Written by the child rather than the parent because /bin/bash here is 3.2, which has
 # no $BASHPID. ${PIPESTATUS[0]} is still dotnet's own exit code — the exec'd shell IS dotnet.
+watchdog >/dev/null 2>&1 &
+WATCHDOG_PID=$!
+
 bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_DIR/child" "$@" 2>&1 | tee "$LOG_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
+
+kill "$WATCHDOG_PID" 2>/dev/null
+wait "$WATCHDOG_PID" 2>/dev/null
+
+# Read the marker BEFORE cleanup, which rm -rf's the directory it lives in.
+WATCHDOG_KILL_INFO=""
+if [ -f "$WATCHDOG_MARKER" ]; then
+    WATCHDOG_KILL_INFO=$(cat "$WATCHDOG_MARKER" 2>/dev/null)
+fi
 
 # A `test` run that produced NO results but exited 0 is the worst false green available
 # here (#1273): `test --no-build` against absent or stale binaries finds no test assemblies,
@@ -295,6 +398,19 @@ if [ "$1" = "test" ] && [ "$LIST_ONLY" -eq 0 ] && [ "$EXIT_CODE" -eq 0 ] && ! gr
     echo "  * a --filter that matches nothing" >&2
     echo "Full output: $LOG_FILE" >&2
     EXIT_CODE=3
+fi
+
+# LAST, so it overrides every other verdict — deliberately including the zero-results guard
+# directly above. A watchdog-killed `test` run matches that guard's shape too (it exits 0 via
+# the SIGTERM handler and never printed a summary line), and reporting it as "zero tests ran"
+# would send the reader hunting a build problem that does not exist. The kill is the finding.
+if [ -n "$WATCHDOG_KILL_INFO" ]; then
+    killed_pid=${WATCHDOG_KILL_INFO%% *}
+    killed_quiet=${WATCHDOG_KILL_INFO##* }
+    watchdog_report "$killed_pid" "$killed_quiet" >&2
+    # tee has exited with the pipeline, so appending here cannot race its write offset.
+    watchdog_report "$killed_pid" "$killed_quiet" >> "$LOG_FILE"
+    EXIT_CODE=4
 fi
 
 cleanup

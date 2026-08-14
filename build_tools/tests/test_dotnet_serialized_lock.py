@@ -578,6 +578,140 @@ class TestLogging:
             "dotnet-serialized-0.log", "dotnet-serialized-1.log", "dotnet-serialized-2.log"]
 
 
+class TestStallWatchdog:
+    """
+    The hung-holder watchdog (#1481).
+
+    On 2026-08-12 a holder wedged the lock for **2h26m**: the driver process was still alive
+    after its run had printed a summary, so ``is_lock_stale`` correctly refused to reclaim
+    (a live child is exactly what the lock protects) and every queued agent died at the
+    45-minute waiter timeout. The wrapper judges progress by the tee log's mtime rather than by
+    wall clock, because a cap tight enough to catch the hang would kill honest 17-minute runs.
+
+    The load-bearing constraint, and the reason the threshold is measured rather than guessed:
+    a GREEN ``dotnet test`` is almost silent. Measured over a full Sharpy.Compiler.Tests run at
+    f20e180dc — 13,722 passed, 14m40s — the tee log received 863 bytes in FOUR writes, with a
+    maximum quiet gap of **576 s** between them. Anything under ~10 minutes would kill healthy
+    runs.
+    """
+
+    WATCHDOG_KNOBS = dict(
+        DOTNET_SERIALIZED_STALL_SECONDS="3",
+        DOTNET_SERIALIZED_WATCHDOG_POLL="1",
+        DOTNET_SERIALIZED_WATCHDOG_GRACE="1",
+    )
+
+    def test_a_stalled_child_is_killed_and_the_run_exits_4(self, rig: Rig):
+        """Cell (a): output stops, the child stays alive, nobody is left waiting on it."""
+        rig.fake_dotnet('echo "Total: 1"\nsleep 120\n')
+
+        result = rig.run("test", timeout=45, **self.WATCHDOG_KNOBS)
+
+        assert result.returncode == 4, f"stderr={result.stderr!r}"
+        assert "watchdog" in result.stderr.lower()
+        assert "must not be treated as a pass" in result.stderr
+        log = rig.latest_log()
+        assert log is not None and "watchdog" in log.read_text(encoding="utf-8").lower(), (
+            "the kill must be in the LOG too — the log is what an agent reads afterwards")
+
+    def test_a_child_that_swallows_sigterm_and_exits_0_still_reports_failure(self, rig: Rig):
+        """
+        Cell (b) — the incident replay, and the reason a naive watchdog is WORSE than the wedge.
+
+        ``dotnet test`` handles SIGTERM and exits 0: measured on the 2026-08-12 incident at 181
+        failures with EXIT=0. So a watchdog that kills the child and then trusts its exit code
+        converts a wedged FAILING run into a reported pass. The exit code is forced, not read.
+
+        Mutation test (repo rule: break the guarded thing and watch it fail): removing the
+        forced ``EXIT_CODE=4`` assignment — leaving the watchdog to kill and report but not to
+        override the verdict — turns all four kill cells RED, this one at exit 0, the exact
+        false green from the incident. Reverted.
+        """
+        rig.fake_dotnet(
+            'trap "exit 0" TERM\n'
+            'echo "Total: 1"\n'
+            'sleep 120 &\n'
+            'wait $!\n'
+            'exit 0\n'  # reports success however it was interrupted — that is the mask
+        )
+
+        result = rig.run("test", timeout=45, **self.WATCHDOG_KNOBS)
+
+        assert result.returncode == 4, (
+            f"a killed run reported success (exit {result.returncode}) — this is #1481's "
+            f"SIGTERM mask; stderr={result.stderr!r}")
+
+    def test_the_forced_exit_beats_the_zero_results_guard(self, rig: Rig):
+        """
+        A watchdog-killed ``test`` run usually ALSO has no "Total:" line, so the #1273
+        zero-results guard would label it exit 3 — "zero tests ran" — which misattributes a kill
+        to a build problem and sends the reader hunting the wrong cause. 4 must win.
+        """
+        rig.fake_dotnet('sleep 120\n')
+
+        result = rig.run("test", timeout=45, **self.WATCHDOG_KNOBS)
+
+        assert result.returncode == 4, f"got {result.returncode} (3 = zero-results guard won)"
+
+    def test_an_honest_slow_run_is_never_killed(self, rig: Rig):
+        """
+        Cell (c), the negative control. A run that keeps producing output must survive
+        indefinitely — a watchdog that cannot tell quiet-but-working from wedged is a
+        fleet-wide outage, not a fix.
+        """
+        rig.fake_dotnet(
+            'i=0\n'
+            'while [ $i -lt 8 ]; do echo "progress $i"; sleep 1; i=$((i + 1)); done\n'
+            'echo "Total: 1"\n'
+        )
+
+        result = rig.run("test", timeout=45, DOTNET_SERIALIZED_STALL_SECONDS="4",
+                         DOTNET_SERIALIZED_WATCHDOG_POLL="1",
+                         DOTNET_SERIALIZED_WATCHDOG_GRACE="1")
+
+        assert result.returncode == 0, f"an honest run was killed: stderr={result.stderr!r}"
+        assert "progress 7" in result.stdout
+
+    def test_a_fast_run_is_not_delayed_by_the_monitor(self, rig: Rig):
+        """The monitor must be torn down with the run, not waited out."""
+        rig.fake_dotnet('echo "Total: 1"')
+
+        started = time.time()
+        result = rig.run("test", timeout=45, DOTNET_SERIALIZED_STALL_SECONDS="600",
+                         DOTNET_SERIALIZED_WATCHDOG_POLL="20")
+        elapsed = time.time() - started
+
+        assert result.returncode == 0
+        assert elapsed < 15, f"the run waited on its own monitor ({elapsed:.1f}s)"
+
+    def test_the_lock_is_released_after_a_watchdog_kill(self, rig: Rig):
+        """
+        The watchdog does not release the lock itself — killing the child ends the pipeline and
+        the ordinary cleanup path runs, so there is exactly one release site and no
+        double-release race. What matters to the fleet is only that the lock DOES come free.
+        """
+        rig.fake_dotnet('echo "Total: 1"\nsleep 120\n')
+
+        assert rig.run("test", timeout=45, **self.WATCHDOG_KNOBS).returncode == 4
+
+        assert not rig.lock_dir.exists(), "a watchdog kill must not leak the lock it was fixing"
+
+    def test_the_stall_default_carries_its_measurement(self):
+        """
+        The threshold is a measured number and must stay attributable. 3 x 576 s = 1728 s, from
+        a full Sharpy.Compiler.Tests run at f20e180dc. A successor who wants to tighten it needs
+        to know it was measured on a nearly-silent green suite, not guessed — otherwise the
+        first "obviously too generous" edit reintroduces killing honest runs.
+        """
+        source = WRAPPER.read_text(encoding="utf-8")
+
+        assert "DOTNET_SERIALIZED_STALL_SECONDS:-1728" in source
+        assert "576" in source and "measured" in source
+        assert "stat -f %m" in source and "stat -c %Y" in source, (
+            "the watchdog's mtime read must keep the two-spelling stat fallback; a single "
+            "spelling prints nothing on the other platform, which reads as 'no progress'")
+
+
 def test_the_portable_stat_fallback_resolves_on_this_platform(tmp_path: Path):
     """
     There is no portable ``stat`` spelling: macOS/BSD wants ``stat -f %m``, GNU/Linux wants
