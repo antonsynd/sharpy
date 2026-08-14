@@ -90,7 +90,7 @@ class Widget:
 
     @deprecated(""use render2"")
     @must_use
-    def render(self, width: int, scale: str) -> str:
+    def render(self, `width`: int, scale: str) -> str:
         """"""Render docs.""""""
         return self.label
 
@@ -179,9 +179,9 @@ class Registry:
     @static
     total: int = 0
 
-    event changed: Notify
+    event `changed`: Notify
 
-    property get size(self) -> int:
+    property get `size`(self) -> int:
         return 0
 
     @static
@@ -381,9 +381,17 @@ def main() -> None:
             CacheStatus.RoundTrips, "CachedSymbol.Constructors"),
         F<TypeSymbol>("NestedTypes", t => Join(t.NestedTypes.Select(n => n.Name).OrderBy(n => n, StringComparer.Ordinal)),
             CacheStatus.RoundTrips, "CachedSymbol.NestedTypes"),
-        F<TypeSymbol>("Properties", t => Join(t.Properties.Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal)),
+        // #1455 — the projection includes each property's escape flag: PropertySymbol is a standalone
+        // record, so its IsNameBacktickEscaped must survive extraction (else a `Zed` property's
+        // spelling is lost on the import path). The `Registry` specimen carries an escaped property.
+        F<TypeSymbol>("Properties",
+            t => Join(t.Properties.Select(p => $"{p.Name}{(p.IsNameBacktickEscaped ? ":esc" : "")}").OrderBy(n => n, StringComparer.Ordinal)),
             CacheStatus.Dropped, "#1444 — no CachedSymbol field; a warm build restores a type with no properties"),
-        F<TypeSymbol>("Events", t => Join(t.Events.Select(e => e.Name).OrderBy(n => n, StringComparer.Ordinal)),
+        // #1455 — the projection includes each event's escape flag: EventSymbol is a standalone
+        // record, so its IsNameBacktickEscaped must survive extraction. `Registry` carries an escaped
+        // event.
+        F<TypeSymbol>("Events",
+            t => Join(t.Events.Select(e => $"{e.Name}{(e.IsNameBacktickEscaped ? ":esc" : "")}").OrderBy(n => n, StringComparer.Ordinal)),
             CacheStatus.Dropped, "#1444 — no CachedSymbol field"),
         F<TypeSymbol>("DeclaringType", t => t.DeclaringType?.Name, CacheStatus.RoundTrips,
             "re-linked from the NestedTypes nesting on restore"),
@@ -391,7 +399,13 @@ def main() -> None:
             "#1444 — no CachedSymbol field"),
 
         // ---- FunctionSymbol ----
-        F<FunctionSymbol>("Parameters", f => Join(f.Parameters.Select(p => $"{p.Name}:{Describe(p.Type)}")),
+        // #1455 — the projection includes each parameter's escape flag: ParameterSymbol is a
+        // standalone record, so its IsNameBacktickEscaped must survive extraction (else a `Zed`
+        // parameter's spelling is lost across forwarders on the import path) and the incremental
+        // cache (CachedParameter.IsNameBacktickEscaped). The `render` specimen carries an escaped
+        // parameter so this is exercised non-vacuously.
+        F<FunctionSymbol>("Parameters",
+            f => Join(f.Parameters.Select(p => $"{p.Name}:{Describe(p.Type)}{(p.IsNameBacktickEscaped ? ":esc" : "")}")),
             CacheStatus.RoundTrips, "CachedSymbol.Parameters"),
         F<FunctionSymbol>("ReturnType", f => Describe(f.ReturnType), CacheStatus.RoundTrips,
             "CachedSymbol.ReturnTypeId"),

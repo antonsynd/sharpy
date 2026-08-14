@@ -147,6 +147,7 @@ internal static class DataclassSynthesis
                 initParams.Add(new ParameterSymbol
                 {
                     Name = field.Name,
+                    IsNameBacktickEscaped = field.IsNameBacktickEscaped,
                     Type = typeOf(field),
                     HasDefault = field.HasDefaultValue,
                 });

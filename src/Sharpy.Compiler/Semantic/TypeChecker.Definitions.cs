@@ -145,6 +145,7 @@ internal partial class TypeChecker
                 var parameters = functionDef.Parameters.Select(p => new ParameterSymbol
                 {
                     Name = p.Name,
+                    IsNameBacktickEscaped = p.IsNameBacktickEscaped,
                     Type = SemanticType.Unknown,
                     HasDefault = p.DefaultValue != null,
                     DefaultValue = p.DefaultValue,
@@ -1525,6 +1526,7 @@ internal partial class TypeChecker
                         updatedParameters.Add(new ParameterSymbol
                         {
                             Name = param.Name,
+                            IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                             Type = paramType,
                             HasDefault = param.DefaultValue != null,
                             DefaultValue = param.DefaultValue,
@@ -1753,6 +1755,7 @@ internal partial class TypeChecker
                 updatedParameters.Add(new ParameterSymbol
                 {
                     Name = param.Name,
+                    IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                     Type = paramType,
                     HasDefault = param.DefaultValue != null,
                     DefaultValue = param.DefaultValue,

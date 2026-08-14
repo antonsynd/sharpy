@@ -249,6 +249,7 @@ internal class ModuleLoader
                 var parameters = functionDef.Parameters.Select(p => new ParameterSymbol
                 {
                     Name = p.Name,
+                    IsNameBacktickEscaped = p.IsNameBacktickEscaped,
                     Type = ConvertTypeAnnotationToSemanticType(p.Type, funcTypeParamNames),
                     HasDefault = p.DefaultValue != null,
                     DefaultValue = p.DefaultValue,
@@ -786,6 +787,7 @@ internal class ModuleLoader
         var parameters = method.Parameters.Select((p, index) => new ParameterSymbol
         {
             Name = p.Name,
+            IsNameBacktickEscaped = p.IsNameBacktickEscaped,
             // `self` denotes the declaring type, which the extractor knows because it is extracting
             // that type's body. Same rule and same shape as TypeChecker.Definitions' body check
             // (#1441); leaving it Unknown made every imported method's parameter vector differ from
@@ -1051,6 +1053,7 @@ internal class ModuleLoader
                 properties.Add(new PropertySymbol
                 {
                     Name = propDef.Name,
+                    IsNameBacktickEscaped = propDef.IsNameBacktickEscaped,
                     HasGetter = hasGetter,
                     HasSetter = hasSetter,
                     HasInit = hasInit,
@@ -1115,6 +1118,7 @@ internal class ModuleLoader
                 events.Add(new EventSymbol
                 {
                     Name = eventDef.Name,
+                    IsNameBacktickEscaped = eventDef.IsNameBacktickEscaped,
                     HasAdd = hasAdd,
                     HasRemove = hasRemove,
                     IsStatic = eventDef.Decorators.Any(d => d.Name == DecoratorNames.Static),

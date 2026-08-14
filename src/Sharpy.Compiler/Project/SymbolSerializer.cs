@@ -301,6 +301,7 @@ internal static class SymbolSerializer
         {
             Name = ps.Name,
             TypeId = SerializeType(ps.Type),
+            IsNameBacktickEscaped = ps.IsNameBacktickEscaped,
             HasDefault = ps.HasDefault,
             IsVariadic = ps.IsVariadic,
             IsPositionalOnly = ps.IsPositionalOnly,
@@ -689,6 +690,7 @@ internal static class SymbolSerializer
         {
             Name = cached.Name,
             Type = typeResolver(cached.TypeId),
+            IsNameBacktickEscaped = cached.IsNameBacktickEscaped,
             HasDefault = cached.HasDefault,
             IsVariadic = cached.IsVariadic,
             IsPositionalOnly = cached.IsPositionalOnly,

@@ -436,6 +436,13 @@ public record TypeSymbol : Symbol
 public record PropertySymbol
 {
     public string Name { get; init; } = string.Empty;
+    /// <summary>
+    /// True when the declared name was written backtick-escaped (<c>`Name`</c>), so the emitter must
+    /// preserve its verbatim spelling rather than PascalCase-mangling it (#1455). Standalone records
+    /// are the escape flag's blind spot (#1385) — carried here so every symbol-derived emission
+    /// honors it.
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
     public SemanticType Type { get; init; } = SemanticType.Unknown;
     /// <summary>
     /// Documentation for this property (from XML doc or source).
@@ -469,6 +476,13 @@ public record PropertySymbol
 public record EventSymbol
 {
     public string Name { get; init; } = string.Empty;
+    /// <summary>
+    /// True when the declared name was written backtick-escaped (<c>`Name`</c>), so the emitter must
+    /// preserve its verbatim spelling rather than PascalCase-mangling it (#1455). Standalone records
+    /// are the escape flag's blind spot (#1385) — carried here so every symbol-derived emission
+    /// honors it.
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
     public SemanticType Type { get; init; } = SemanticType.Unknown;
     /// <summary>
     /// Documentation for this event (from XML doc or source).
@@ -492,6 +506,12 @@ public record EventSymbol
 public record ParameterSymbol
 {
     public string Name { get; init; } = string.Empty;
+    /// <summary>
+    /// True when the declared name was written backtick-escaped (<c>`Name`</c>), so the emitter must
+    /// preserve its verbatim spelling rather than PascalCase-mangling it — including across
+    /// forwarders (#1455). Standalone records are the escape flag's blind spot (#1385).
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
     public SemanticType Type { get; init; } = SemanticType.Unknown;
     /// <summary>
     /// Documentation for this parameter (from XML doc &lt;param&gt; tags or source).

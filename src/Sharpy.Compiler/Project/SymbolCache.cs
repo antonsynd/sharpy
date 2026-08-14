@@ -307,6 +307,11 @@ internal record CachedParameter
     public required string TypeId { get; init; }
 
     /// <summary>
+    /// Whether the declared name was written backtick-escaped (#1455).
+    /// </summary>
+    public bool IsNameBacktickEscaped { get; init; }
+
+    /// <summary>
     /// Whether the parameter has a default value
     /// </summary>
     public bool HasDefault { get; init; }

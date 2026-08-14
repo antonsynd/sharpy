@@ -15,6 +15,7 @@ internal partial class NameResolver
         var parameters = functionDef.Parameters.Select(p => new ParameterSymbol
         {
             Name = p.Name,
+            IsNameBacktickEscaped = p.IsNameBacktickEscaped,
             Type = SemanticType.Unknown,  // Will be resolved during type checking
             HasDefault = p.DefaultValue != null,
             DefaultValue = p.DefaultValue,
@@ -122,6 +123,7 @@ internal partial class NameResolver
         var parameters = method.Parameters.Select(p => new ParameterSymbol
         {
             Name = p.Name,
+            IsNameBacktickEscaped = p.IsNameBacktickEscaped,
             Type = SemanticType.Unknown,  // Will be resolved during type checking
             HasDefault = p.DefaultValue != null,
             DefaultValue = p.DefaultValue,
@@ -375,6 +377,7 @@ internal partial class NameResolver
             var propSymbol = new PropertySymbol
             {
                 Name = propDef.Name,
+                IsNameBacktickEscaped = propDef.IsNameBacktickEscaped,
                 HasGetter = hasGetter,
                 HasSetter = hasSetter,
                 HasInit = hasInit,
@@ -445,6 +448,7 @@ internal partial class NameResolver
             var eventSymbol = new EventSymbol
             {
                 Name = eventDef.Name,
+                IsNameBacktickEscaped = eventDef.IsNameBacktickEscaped,
                 HasAdd = hasAdd,
                 HasRemove = hasRemove,
                 IsStatic = isStatic,

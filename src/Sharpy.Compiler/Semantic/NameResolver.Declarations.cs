@@ -419,6 +419,7 @@ internal partial class NameResolver
         var parameters = delegateDef.Parameters.Select(p => new ParameterSymbol
         {
             Name = p.Name,
+            IsNameBacktickEscaped = p.IsNameBacktickEscaped,
             Type = SemanticType.Unknown,  // Will be resolved during type checking
             HasDefault = p.DefaultValue != null,
             DefaultValue = p.DefaultValue,
