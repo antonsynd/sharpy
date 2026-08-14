@@ -1,0 +1,5 @@
+# SPY0497 refuses Self in a variant (nested generic) position of an interface member (#1342 shape 2).
+'Self' cannot appear in a variant position (return type) of an interface member @7:27
+# The refusal arrives at semantic time, BEFORE codegen — the CS0738 class marker never returns.
+# (Without the refusal, class Widget's list[Self] impl vs the interface's would leak SPY0908.)
+!SPY0908

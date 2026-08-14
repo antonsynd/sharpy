@@ -760,6 +760,12 @@ public static class DiagnosticCodes
         // and a getter's extra parameter are the two ways to leave it.
         public const string AccessorParameterNotExpressible = "SPY0496"; // Active (#1406, #1405)
 
+        // `Self` in a VARIANT position of an interface member — nested in a generic argument,
+        // tuple element, or wrapped optional/nullable (`list[Self]`, `Self?`) — has no sound
+        // explicit-interface bridge, because C# generics are invariant (`List<Box>` is not
+        // `List<IGroupable>`). A top-level `Self` return/parameter IS bridged (SPY0497, #1342 shape 2).
+        public const string SelfInVariantInterfacePosition = "SPY0497"; // Active (#1342)
+
         #endregion
     }
 

@@ -861,5 +861,31 @@ public static partial class DiagnosticExplanations
             + "    return factor\n\n"
             + "Variadics remain available everywhere an argument list genuinely exists: function and "
             + "method signatures, delegate declarations, and interface method declarations.");
+
+        Add(dict, DiagnosticCodes.Validation.SelfInVariantInterfacePosition,
+            "'Self' in a variant interface position",
+            "Validation",
+            "'Self' in an interface member means 'the implementing type'. A TOP-LEVEL 'Self' return " +
+            "or parameter is bridged: the compiler emits an explicit-interface implementation that " +
+            "forwards to the class's own member, resolving 'Self' to the interface on the contract " +
+            "side and to the class on the implementation side. There is no such bridge for a 'Self' " +
+            "NESTED inside a generic type argument (list[Self]), a tuple element, or an " +
+            "optional/nullable wrapper (Self?), because C# generics are invariant: List<Box> is not " +
+            "List<IGroupable>, so no forwarding cast can turn the class's list into the interface's " +
+            "list without copying every element. Rather than emit code that fails to compile " +
+            "(CS0535/CS0738 behind a compiler-bug report), the declaration is refused. This applies " +
+            "only to interface members — a class-local method may still return list[Self].",
+            "interface IGroupable:\n"
+            + "    def siblings(self) -> list[Self]:   # SPY0497 — Self nested in list[...]\n"
+            + "        ...",
+            "Name the interface as the element type — that is the type the contract can actually "
+            + "promise:\n"
+            + "interface IGroupable:\n"
+            + "    def siblings(self) -> list[IGroupable]:\n"
+            + "        ...\n\n"
+            + "A top-level 'Self' return or parameter stays fully supported:\n"
+            + "interface IBuilder:\n"
+            + "    def with_item(self, item: int) -> Self:\n"
+            + "        ...");
     }
 }

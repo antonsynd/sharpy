@@ -1,0 +1,18 @@
+# #1342 shape 2: `Self` NESTED inside a generic argument of an interface member has no sound bridge
+# — C# generics are invariant, so List<Widget> is not List<IGroupable>. Rather than leak CS0738
+# behind SPY0908 (which is exactly what an implementing class produces without the refusal), the
+# declaration is refused at semantic time (SPY0497), BEFORE codegen. A top-level Self return or
+# parameter stays supported; only the variant position is refused, and only on interface members.
+interface IGroupable:
+    def siblings(self) -> list[Self]:
+        ...
+
+
+class Widget(IGroupable):
+    def siblings(self) -> list[Self]:
+        return [Widget()]
+
+
+def main() -> None:
+    w: Widget = Widget()
+    print(len(w.siblings()))

@@ -89,7 +89,10 @@ internal class SignatureValidator : SemanticValidatorBase
     {
         foreach (var member in interfaceDef.Body)
         {
-            if (member is FunctionDef funcDef && DunderDetector.IsDunderMethod(funcDef.Name))
+            if (member is not FunctionDef funcDef)
+                continue;
+
+            if (DunderDetector.IsDunderMethod(funcDef.Name))
             {
                 AddError(_context,
                     $"Dunder method '{funcDef.Name}' cannot be declared in a user-defined interface. " +
@@ -98,7 +101,77 @@ internal class SignatureValidator : SemanticValidatorBase
                     code: DiagnosticCodes.Validation.DunderInUserInterface,
                     span: funcDef.Span);
             }
+
+            ValidateSelfPositions(funcDef);
         }
+    }
+
+    /// <summary>
+    /// Refuses <c>Self</c> in a VARIANT position of an interface member — nested inside a generic
+    /// type argument, a tuple element, or an optional/nullable wrapper (#1342 shape 2). A top-level
+    /// <c>Self</c> return or parameter is fine (it is bridged), but there is no sound bridge for
+    /// <c>list[Self]</c>: C# generics are invariant, so <c>List&lt;Box&gt;</c> is not
+    /// <c>List&lt;IGroupable&gt;</c>. Class-local <c>list[Self]</c> is untouched — only interface
+    /// members draw this, because only they need the bridge.
+    /// </summary>
+    private void ValidateSelfPositions(FunctionDef funcDef)
+    {
+        void Refuse(TypeAnnotation annotation, string what)
+        {
+            AddError(_context,
+                $"'Self' cannot appear in a variant position ({what}) of an interface member. " +
+                "C# generics are invariant, so no sound explicit-interface bridge exists " +
+                "(list[Self] would require List<IInterface> to be List<Impl>). " +
+                "Use a top-level 'Self' return or parameter, or name a concrete type.",
+                annotation.LineStart, annotation.ColumnStart,
+                code: DiagnosticCodes.Validation.SelfInVariantInterfacePosition,
+                span: annotation.Span);
+        }
+
+        if (HasVariantSelf(funcDef.ReturnType))
+            Refuse(funcDef.ReturnType!, "return type");
+
+        foreach (var param in funcDef.Parameters)
+        {
+            if (HasVariantSelf(param.Type))
+                Refuse(param.Type!, $"parameter '{param.Name}'");
+        }
+    }
+
+    /// <summary>
+    /// Whether <c>Self</c> appears in a variant position of <paramref name="annotation"/>: nested in
+    /// a generic argument or tuple element, or the whole annotation is a <c>Self</c> wrapped as
+    /// optional/nullable. A bare top-level <c>Self</c> is not variant.
+    /// </summary>
+    private static bool HasVariantSelf(TypeAnnotation? annotation)
+    {
+        if (annotation == null)
+            return false;
+
+        if (annotation.Name == "Self")
+            return annotation.IsOptional || annotation.IsCSharpNullable;
+
+        foreach (var arg in annotation.TypeArguments)
+        {
+            if (AnnotationMentionsSelf(arg))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>Whether a <c>Self</c> appears anywhere in <paramref name="annotation"/>.</summary>
+    private static bool AnnotationMentionsSelf(TypeAnnotation? annotation)
+    {
+        if (annotation == null)
+            return false;
+        if (annotation.Name == "Self")
+            return true;
+        foreach (var arg in annotation.TypeArguments)
+        {
+            if (AnnotationMentionsSelf(arg))
+                return true;
+        }
+        return false;
     }
 
     private void ValidateMethodSignature(FunctionDef funcDef, TypeSymbol owningType)

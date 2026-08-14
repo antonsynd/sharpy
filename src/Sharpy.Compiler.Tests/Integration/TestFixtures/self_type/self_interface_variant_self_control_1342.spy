@@ -1,0 +1,16 @@
+# The control for #1342 shape 2: `list[Self]` on a CLASS-LOCAL method is untouched by SPY0497 — only
+# interface members need the bridge, so only they draw the refusal. This compiles and runs.
+class Node:
+    v: int
+
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+    def siblings(self) -> list[Self]:
+        return [Node(self.v), Node(self.v + 1)]
+
+
+def main() -> None:
+    n: Node = Node(3)
+    xs: list[Node] = n.siblings()
+    print(len(xs))
