@@ -25,7 +25,12 @@ echo "Starting dotnet test..."
 cd "$REPO_ROOT"
 
 # Start dotnet test in background
-dotnet test --no-build --filter "Category!=Benchmark" 2>&1 > "$SCRIPT_DIR/../tmp/test-memory-profile.log" &
+# `> log 2>&1`, not `2>&1 > log`: redirections apply left to right, so the original order sent
+# stderr to the terminal (the CURRENT stdout) and only then moved stdout to the file — the log
+# lacked every error a reader would open it for. This script's exit-code handling is already
+# correct (it propagates TEST_EXIT below) and it kills nothing, so unlike its sibling harness it
+# carried no #1481 mask.
+dotnet test --no-build --filter "Category!=Benchmark" > "$SCRIPT_DIR/../tmp/test-memory-profile.log" 2>&1 &
 TEST_PID=$!
 
 # Track RSS samples
