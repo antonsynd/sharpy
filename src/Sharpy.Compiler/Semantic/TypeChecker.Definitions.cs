@@ -694,86 +694,35 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Update the function symbol's return type and sync with the owning TypeSymbol's
-    /// Methods/Constructors/MethodOverloads/OperatorMethods/ProtocolMethods lists.
+    /// Writes the checked return type onto the function symbol.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// In place, not through a <c>with</c> expression — the same rule
+    /// <see cref="ResolveFunctionSignatureInto"/> already states for the signature pre-pass: a clone
+    /// is a SECOND representation of one declaration, and every holder of the pre-update reference
+    /// keeps reading the old one. The holders are not hypothetical: an importing module's scope
+    /// binds this object in Phase 4, before this runs in Phase 5, so the clone left
+    /// <c>from lib import parse</c> naming a different object from <c>lib</c>'s own <c>parse</c>
+    /// while both were the compilation's own symbols (#1491). It also cost a six-way manual sync
+    /// back into <c>Methods</c>/<c>Constructors</c>/<c>MethodOverloads</c>/<c>OperatorMethods</c>/
+    /// <c>ProtocolMethods</c> and the module overload list, each of which is now identity by
+    /// construction. <see cref="FunctionSymbol.ReturnType"/> is <c>internal set</c> precisely so
+    /// this is expressible, and the generator/async/cache passes below already mutate the same
+    /// object the same way.
+    /// </para>
+    /// </remarks>
     private void UpdateFunctionSymbol(FunctionDef functionDef, FunctionSymbol? functionSymbol, SemanticType returnType)
     {
         if (functionSymbol == null)
             return;
 
-        // Create a new FunctionSymbol with updated return type
-        var updatedSymbol = functionSymbol with { ReturnType = returnType };
-        // Update the symbol in the symbol table. The pre-update instance is passed so the scope
-        // walk replaces THIS declaration and not a same-named one it reaches first: this runs with
-        // the function's own scope pushed and its parameters already registered, so for
-        // `def month(month: int)` the nearest `month` is the PARAMETER (#1393).
-        _symbolTable.UpdateSymbol(functionSymbol, updatedSymbol);
+        functionSymbol.ReturnType = returnType;
 
         // Key the definition node to the symbol so the declaration itself resolves — a nested def
         // nothing calls is in no reference collection and not in module scope, so the
-        // name-and-position scan cannot find it at all (#1232). Recorded here rather than at the
-        // lookup above because this replacement is what every later reference binds to, and Symbol
-        // compares by reference: the pre-update instance would carry an empty reference bag.
-        _semanticInfo.SetFunctionDeclarationSymbol(functionDef, updatedSymbol);
-
-        // Also update the reference in the owning TypeSymbol's lists or the
-        // module-level overload list.  Without this sync, downstream consumers
-        // (FindMethodInHierarchy, ResolveOverloadCore) read stale return types.
-        if (_currentClass == null)
-        {
-            var overloads = _symbolTable.LookupFunctionOverloads(functionDef.Name);
-            if (overloads != null)
-            {
-                var idx = overloads.IndexOf(functionSymbol);
-                if (idx >= 0)
-                    overloads[idx] = updatedSymbol;
-            }
-        }
-        else
-        {
-            if (functionDef.Name == DunderNames.Init)
-            {
-                var idx = _currentClass.Constructors.IndexOf(functionSymbol);
-                if (idx >= 0)
-                    _currentClass.Constructors[idx] = updatedSymbol;
-
-                // __init__ is stored in both Constructors and Methods (NameResolver adds to both).
-                // FindMethodInHierarchy searches Methods, so we must sync here too.
-                var methodIdx = _currentClass.Methods.IndexOf(functionSymbol);
-                if (methodIdx >= 0)
-                    _currentClass.Methods[methodIdx] = updatedSymbol;
-            }
-            else
-            {
-                var idx = _currentClass.Methods.IndexOf(functionSymbol);
-                if (idx >= 0)
-                    _currentClass.Methods[idx] = updatedSymbol;
-
-                // Also update MethodOverloads so ResolveUserMethodOverload
-                // reads resolved return types instead of stale Unknown.
-                if (_currentClass.MethodOverloads.TryGetValue(functionDef.Name, out var overloadList))
-                {
-                    var overloadIdx = overloadList.IndexOf(functionSymbol);
-                    if (overloadIdx >= 0)
-                        overloadList[overloadIdx] = updatedSymbol;
-                }
-
-                // Also update OperatorMethods/ProtocolMethods if the method appears there
-                foreach (var kvp in _currentClass.OperatorMethods)
-                {
-                    var opIdx = kvp.Value.IndexOf(functionSymbol);
-                    if (opIdx >= 0)
-                        kvp.Value[opIdx] = updatedSymbol;
-                }
-                foreach (var kvp in _currentClass.ProtocolMethods)
-                {
-                    var protoIdx = kvp.Value.IndexOf(functionSymbol);
-                    if (protoIdx >= 0)
-                        kvp.Value[protoIdx] = updatedSymbol;
-                }
-            }
-        }
+        // name-and-position scan cannot find it at all (#1232).
+        _semanticInfo.SetFunctionDeclarationSymbol(functionDef, functionSymbol);
     }
 
     /// <summary>

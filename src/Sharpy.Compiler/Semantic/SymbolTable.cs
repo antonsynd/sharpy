@@ -281,18 +281,6 @@ public class SymbolTable : IGlobalSymbolTable
     }
 
     /// <summary>
-    /// Replaces the binding <paramref name="previous"/> occupies in the scope chain with
-    /// <paramref name="updated"/>. Used to update function symbols with resolved return types
-    /// during type checking. <paramref name="previous"/> is required so the walk can tell the
-    /// binding being updated from a different declaration that merely shares its name — see
-    /// <see cref="Scope.Update"/> (#1393).
-    /// </summary>
-    public bool UpdateSymbol(Symbol previous, Symbol updated)
-    {
-        return CurrentScope.Update(previous, updated);
-    }
-
-    /// <summary>
     /// Defines function overloads for a given name in the current scope.
     /// Used when from-importing overloaded functions (e.g., from os.path import join).
     /// </summary>

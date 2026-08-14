@@ -195,7 +195,7 @@ internal partial class ProjectCompiler
                                     Kind = SymbolKind.Module,
                                     FilePath = moduleInfo.Path,
                                     Exports = ImportResolver.BuildExportsFor(moduleInfo),
-                                    FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
+                                    FunctionOverloads = ImportResolver.BuildFunctionOverloadsFor(moduleInfo),
                                     IsNetModule = moduleInfo.IsNetModule,
                                     CanonicalModuleName = moduleInfo.CanonicalModuleName,
                                     NetNamespaceName = moduleInfo.NetNamespaceName,
@@ -218,7 +218,7 @@ internal partial class ProjectCompiler
                                 Kind = SymbolKind.Module,
                                 FilePath = moduleInfo.Path,
                                 Exports = ImportResolver.BuildExportsFor(moduleInfo),
-                                FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
+                                FunctionOverloads = ImportResolver.BuildFunctionOverloadsFor(moduleInfo),
                                 IsNetModule = moduleInfo.IsNetModule,
                                 CanonicalModuleName = moduleInfo.CanonicalModuleName,
                                 NetNamespaceName = moduleInfo.NetNamespaceName,
@@ -309,7 +309,7 @@ internal partial class ProjectCompiler
                                         importedSymbolSources[name] = sourceModule;
 
                                         // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
-                                        if (moduleInfo.FunctionOverloads.TryGetValue(name, out var overloads) && overloads.Count > 1)
+                                        if (ImportResolver.OverloadsFor(moduleInfo, name) is { Count: > 1 } overloads)
                                         {
                                             SymbolTable.DefineFunctionOverloads(name, overloads);
                                         }
@@ -394,9 +394,7 @@ internal partial class ProjectCompiler
 
                                             // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
                                             var importedOverloads = registryBinding?.Overloads
-                                                ?? (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads)
-                                                    ? overloads
-                                                    : null);
+                                                ?? ImportResolver.OverloadsFor(moduleInfo, lookupName);
                                             if (importedOverloads is { Count: > 1 })
                                             {
                                                 SymbolTable.DefineFunctionOverloads(symbolName, importedOverloads);
@@ -621,6 +619,46 @@ internal partial class ProjectCompiler
         var moduleScope = SymbolTable.GetModuleScope(unit.ModulePath);
         var own = moduleScope?.Lookup(name, searchParent: false);
         return own != null && own.GetType() == extracted.GetType() ? own : null;
+    }
+
+    /// <summary>
+    /// The overload-channel twin of <see cref="ResolveOwnExportedSymbol"/>: the overload list THIS
+    /// compilation declares for <paramref name="name"/> in <paramref name="moduleInfo"/>, or null
+    /// when the module is not one of ours.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The scope's overload table holds a list only for a name with two or more declarations —
+    /// <c>NameResolver</c> registers one the moment a second <c>def</c> appears. A singly-declared
+    /// function is in the scope's symbols alone, so it is wrapped here into the one-element list the
+    /// extraction channel also produces; otherwise the qualified spelling's
+    /// <c>ModuleSymbol.FunctionOverloads</c> would keep an extraction entry for every
+    /// non-overloaded function and the ownership fix would cover only the overloaded ones (#1491).
+    /// </para>
+    /// <para>
+    /// Same ordering contract as <see cref="ResolveOwnExportedSymbol"/>: the list is handed out in
+    /// Phase 4 and the symbols in it are the objects Phase 5 writes checked return types onto, so
+    /// the substitution is only sound because the type checker mutates those symbols rather than
+    /// replacing them (<c>TypeChecker.Definitions.UpdateFunctionSymbol</c>).
+    /// </para>
+    /// </remarks>
+    private List<FunctionSymbol>? ResolveOwnExportedOverloads(ModuleInfo moduleInfo, string name)
+    {
+        if (moduleInfo.IsNetModule || string.IsNullOrEmpty(moduleInfo.Path))
+            return null;
+
+        var unit = _projectModel?.GetUnit(moduleInfo.Path);
+        if (unit == null)
+            return null;
+
+        var moduleScope = SymbolTable.GetModuleScope(unit.ModulePath);
+        if (moduleScope == null)
+            return null;
+
+        return moduleScope.LookupFunctionOverloads(name, searchParent: false)
+            ?? (moduleScope.Lookup(name, searchParent: false) is FunctionSymbol single
+                ? new List<FunctionSymbol> { single }
+                : null);
     }
 
     /// <summary>

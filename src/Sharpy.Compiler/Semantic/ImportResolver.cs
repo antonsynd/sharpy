@@ -135,6 +135,49 @@ internal partial class ImportResolver
             moduleInfo.ExportedSymbols, (name, extracted) => resolver(moduleInfo, name, extracted));
     }
 
+    /// <summary>
+    /// The overload twin of <see cref="OwnSymbolResolver"/>: returns the overload list an
+    /// in-source-set module DECLARES for a name, or null when the module is not one of ours.
+    /// Installed by <c>ProjectCompiler</c>; left null by the single-file front doors.
+    /// </summary>
+    /// <remarks>
+    /// A second channel needs a second seam because a <see cref="Scope"/> holds only the FIRST
+    /// overload under the name — the rest live in its overload table — so the single-symbol
+    /// resolver cannot answer for the set. Before this, <c>ResolveOwnExportedSymbol</c> re-pointed
+    /// the export and the overload list beside it stayed <see cref="ModuleLoader"/>'s extraction,
+    /// which is what every ranked call to an imported overloaded function then resolved against
+    /// (#1491, the function half of #1366/#1407).
+    /// </remarks>
+    internal Func<ModuleInfo, string, List<FunctionSymbol>?>? OwnOverloadResolver { get; set; }
+
+    /// <summary>
+    /// The overloads to register for <paramref name="name"/> when importing from
+    /// <paramref name="moduleInfo"/>: the compilation's own symbols for an in-source-set module,
+    /// the <see cref="ModuleLoader"/> extraction otherwise. Every
+    /// <c>DefineFunctionOverloads</c> call on an import path reads from here, so the ownership
+    /// decision is made in exactly one place (the <see cref="BuildExportsFor"/> rule, #1145 Class G).
+    /// </summary>
+    internal List<FunctionSymbol>? OverloadsFor(ModuleInfo moduleInfo, string name)
+        => OwnOverloadResolver?.Invoke(moduleInfo, name)
+            ?? (moduleInfo.FunctionOverloads.TryGetValue(name, out var extracted) ? extracted : null);
+
+    /// <summary>
+    /// The <c>FunctionOverloads</c> dictionary to hand a <see cref="ModuleSymbol"/> built for
+    /// <paramref name="moduleInfo"/> — what the QUALIFIED spelling's overload resolution reads
+    /// (<c>lib.parse(...)</c>). The <see cref="BuildExportsFor"/> twin: same ownership rule, applied
+    /// to the parallel dictionary rather than to <c>Exports</c>.
+    /// </summary>
+    internal Dictionary<string, List<FunctionSymbol>> BuildFunctionOverloadsFor(ModuleInfo moduleInfo)
+    {
+        if (OwnOverloadResolver == null)
+            return new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads);
+
+        var owned = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads.Count);
+        foreach (var (name, extracted) in moduleInfo.FunctionOverloads)
+            owned[name] = OverloadsFor(moduleInfo, name) ?? extracted;
+        return owned;
+    }
+
     private IDependencyRecorder? _dependencyRecorder;
     private SemanticBinding _semanticBinding = new();
 

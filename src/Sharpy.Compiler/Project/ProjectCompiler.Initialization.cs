@@ -32,6 +32,9 @@ internal partial class ProjectCompiler
         // An import of a file this compilation owns must export THIS compilation's symbols, not
         // ModuleLoader's re-extraction of them (#1366, #1407, #1410).
         _importResolverBacking.OwnSymbolResolver = ResolveOwnExportedSymbol;
+        // …and the overload list beside it, which is a second channel with its own dictionary and
+        // was left holding extractions when the single-symbol channel was re-pointed (#1491).
+        _importResolverBacking.OwnOverloadResolver = ResolveOwnExportedOverloads;
 
         // Register all parsed files in the dependency graph
         foreach (var sourceFile in _projectModel!.Units.Keys)

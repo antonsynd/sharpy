@@ -69,10 +69,18 @@ public class Scope
 
     /// <summary>
     /// Replaces the binding that <paramref name="previous"/> occupies, in this scope or a parent
-    /// scope, with <paramref name="updated"/>. Used to update function symbols with resolved
-    /// return types during type checking.
+    /// scope, with <paramref name="updated"/>.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// <b>No production caller since #1491.</b> The type checker used to replace a function's
+    /// binding here when it wrote the checked return type; it now mutates the symbol in place
+    /// (<c>TypeChecker.Definitions.UpdateFunctionSymbol</c>), because a replacement is a SECOND
+    /// representation of one declaration and every other scope holding the pre-update reference —
+    /// an importing module's, above all — went on reading the old one. The method and its guard
+    /// (<c>ScopeUpdateShadowingTests</c>) stay because the hazard below belongs to any future
+    /// attempt to reintroduce a replacement, and that is exactly when it would be rediscovered.
+    /// </para>
     /// <para>
     /// The walk stops at the first scope holding the name, so it used to overwrite whatever
     /// binding that was. Return types are resolved with the function's OWN scope pushed and its
@@ -90,9 +98,7 @@ public class Scope
     /// measurable: a method's symbol comes from <c>TypeSymbol.Methods</c> and is in no scope at all,
     /// so a kind match sends <c>class C: def month(...)</c> past its own parameter and into the
     /// module scope, where it replaces a module-level <c>def month</c> with the method — the same
-    /// overwrite, one scope further out. A caller whose symbol is in no scope (a method, or an
-    /// overload past the first, since the scope holds only the first) correctly updates nothing
-    /// here; those are synced through <c>TypeSymbol.Methods</c> and the overload list instead.
+    /// overwrite, one scope further out.
     /// </para>
     /// </remarks>
     public bool Update(Symbol previous, Symbol updated)

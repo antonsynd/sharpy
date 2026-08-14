@@ -67,7 +67,7 @@ internal partial class ImportResolver
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
                             Exports = BuildExportsFor(moduleInfo),
-                            FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
+                            FunctionOverloads = BuildFunctionOverloadsFor(moduleInfo),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
                             CanonicalModuleName = moduleInfo.CanonicalModuleName,
@@ -91,7 +91,7 @@ internal partial class ImportResolver
                             Kind = SymbolKind.Module,
                             FilePath = moduleInfo.Path,
                             Exports = BuildExportsFor(moduleInfo),
-                            FunctionOverloads = new Dictionary<string, List<FunctionSymbol>>(moduleInfo.FunctionOverloads),
+                            FunctionOverloads = BuildFunctionOverloadsFor(moduleInfo),
                             IsErrorRecovery = moduleInfo.IsErrorRecovery,
                             IsNetModule = moduleInfo.IsNetModule,
                             CanonicalModuleName = moduleInfo.CanonicalModuleName,
@@ -162,7 +162,7 @@ internal partial class ImportResolver
                                 _deferredCycleSymbols.Add(name);
 
                             // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
-                            if (defined && moduleInfo.FunctionOverloads.TryGetValue(name, out var wildOverloads) && wildOverloads.Count > 1)
+                            if (defined && OverloadsFor(moduleInfo, name) is { Count: > 1 } wildOverloads)
                             {
                                 symbolTable.DefineFunctionOverloads(name, wildOverloads);
                             }
@@ -236,9 +236,7 @@ internal partial class ImportResolver
 
                                 // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
                                 var importedOverloads = registryBinding?.Overloads
-                                    ?? (moduleInfo.FunctionOverloads.TryGetValue(lookupName, out var overloads)
-                                        ? overloads
-                                        : null);
+                                    ?? OverloadsFor(moduleInfo, lookupName);
                                 if (defined && importedOverloads is { Count: > 1 })
                                 {
                                     symbolTable.DefineFunctionOverloads(registerName, importedOverloads);
@@ -255,7 +253,7 @@ internal partial class ImportResolver
                                     _deferredCycleSymbols.Add(registerName);
 
                                 // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
-                                if (defined && moduleInfo.FunctionOverloads.TryGetValue(registerName, out var fallbackOverloads) && fallbackOverloads.Count > 1)
+                                if (defined && OverloadsFor(moduleInfo, registerName) is { Count: > 1 } fallbackOverloads)
                                 {
                                     symbolTable.DefineFunctionOverloads(registerName, fallbackOverloads);
                                 }
