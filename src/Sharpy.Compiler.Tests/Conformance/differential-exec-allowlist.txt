@@ -116,4 +116,17 @@ fixture::stdlib-tests/stdlib_from_math
 # deviations.yaml: iterator-repr-no-address. Permanent.
 fixture::builtins/builtin_iterator_reprs_1354
 
+# The #1453 display fixture is not a shared-subset program in TWO independent ways, so CPython
+# errors on it outright (SharpyOkPythonError) rather than merely disagreeing:
+#   1. `"abc".reverse()` — Sharpy gives `str` a reverse(); CPython's str has no such method
+#      (only list.reverse(), which is in-place and returns None, so this is not a rename).
+#   2. It prints Iterator[T] values as NEGATIVE CONTROLS, which is the same deliberate
+#      address-free repr as the entry directly above — required here, because the whole risk of
+#      #1453's change is that it might swallow those reprs into list output.
+# Both are properties of the fixture rather than of the runtime behavior it pins: the Sharpy-side
+# output IS the CPython-verified answer for the cell under test (`list(reversed('abc'))` ->
+# ['c', 'b', 'a'], measured), it just cannot be expressed as one program both languages run.
+# deviations.yaml: iterator-repr-no-address. Permanent.
+fixture::bare_clr_sequence_display_1453
+
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---

@@ -76,6 +76,14 @@ namespace Sharpy
                 return FormatValueTuple(x, type);
             }
 
+            // A plain CLR sequence renders as the list its semantic type says it is, rather than
+            // leaking the name of whatever LINQ node produced it (#1453). Last, so every arm above
+            // keeps precedence.
+            if (TryFormatPlainClrSequence(x, out var sequenceStr))
+            {
+                return sequenceStr;
+            }
+
             return x.ToString() ?? "";
         }
 

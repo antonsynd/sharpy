@@ -64,6 +64,14 @@ namespace Sharpy
                 return FormatValueTuple(obj, type);
             }
 
+            // Same arm as Str's, for the same reason the exception arm above is in both places: a
+            // container holding a plain CLR sequence must not render one way through print() and
+            // another through repr() (#1453).
+            if (TryFormatPlainClrSequence(obj, out var sequenceRepr))
+            {
+                return sequenceRepr;
+            }
+
             return obj.ToString() ?? "None";
         }
 

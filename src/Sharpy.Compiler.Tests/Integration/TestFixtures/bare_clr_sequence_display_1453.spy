@@ -1,0 +1,23 @@
+# A display position shows the value as the semantic type describes it. `"abc".reverse()` IS
+# list[str], and binding it to a list[str] annotation always printed correctly — but printing it
+# unbound leaked the name of whatever LINQ node built it:
+#   System.Linq.Enumerable+IteratorSelectIterator`2[System.Char,System.String]
+# (#1453). Display positions are read-only, so materializing to render mutates nothing.
+def main() -> None:
+    # The repro: same value, two spellings, one rendering.
+    print("abc".reverse())
+    bound: list[str] = "abc".reverse()
+    print(bound)
+
+    # NEGATIVE CONTROLS. Iterator[T] renders itself, deliberately, and must NOT become list output:
+    # these values are lazy, and printing one as a list would consume it. The arm keys on whether a
+    # value renders itself, which is exactly what protects these.
+    print(reversed("abc"))
+    print(iter([1, 2, 3]))
+
+    # Values that already have a Python rendering keep it.
+    print([1, 2, 3])
+    print({"a": 1})
+    print({1, 2})
+    print((1, "x"))
+    print("plain")
