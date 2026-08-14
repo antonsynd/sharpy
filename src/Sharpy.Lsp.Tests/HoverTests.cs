@@ -812,6 +812,36 @@ public class HoverTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task Hover_OverParameterShadowingItsOwnFunction_ShowsTheParameter_NotTheFunction()
+    {
+        // #1393: a parameter whose name equals its OWN enclosing function's name resolved to the
+        // FUNCTION, not the parameter — so hover over `month` inside `def month(month: int)` named
+        // the callable `(int) -> None` instead of the int parameter. The fix (1fbf87e21) binds the
+        // name to the parameter; this is plan-c8f708's missing hover pin (#1501), asserting hover
+        // reads the parameter's type.
+        var source = "def take_int(v: int) -> None:\n    print(v)\n\n\n"
+            + "def month(month: int) -> None:\n    take_int(month)";
+        _workspace.OpenDocument("file:///shadow_1393.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///shadow_1393.spy");
+        analysis.Should().NotBeNull();
+        analysis!.Ast.Should().NotBeNull();
+
+        // The `month` USAGE is the argument of take_int on line 6: "    take_int(month)".
+        var node = _api.FindNodeAtPosition(analysis.Ast!, 6, 14);
+        node.Should().BeOfType<Identifier>();
+
+        var symbol = analysis.SemanticQuery?.GetIdentifierSymbol((Identifier)node!);
+        symbol.Should().NotBeNull("the shadowing parameter must resolve to a symbol");
+
+        var formatted = SymbolFormatter.FormatSymbol(symbol!);
+        formatted.Should().Contain("int",
+            "hover reads the int parameter, not the (int) -> None function it shadows");
+        formatted.Should().NotContain("->",
+            "the function signature must not surface for a parameter reference (#1393)");
+    }
+
     public void Dispose()
     {
         _workspace.Dispose();

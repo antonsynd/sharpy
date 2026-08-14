@@ -4542,14 +4542,14 @@ internal partial class TypeChecker
             // parameter, a bare `None` whose target decides its meaning) is skipped rather than
             // guessed at.
             //
-            // So is a FUNCTION-typed argument. The original reason is GONE: #1393 (a parameter
-            // named like its own function mis-resolving to the function) landed in 1fbf87e21, so
-            // the mis-resolution this skip was shielding no longer reaches here.
-            // TODO(#1501): narrow to unresolved lambdas (`FunctionType ft && ft.HasUnresolvedTypes()`,
-            // the :1116 predicate) — until then a genuine FunctionType argument to a CLR call is
-            // never arity/argument-checked, the one shape of #1290's gap still open.
-            // `calendar_module.spy` stays the regression pin.
-            if (argTypes[i] is UnknownType or TypeParameterType or FunctionType
+            // A FUNCTION-typed argument is skipped ONLY while it is still being inferred — an
+            // UNRESOLVED lambda (`ft.HasUnresolvedTypes()`, the same predicate as :1116). The former
+            // blanket FunctionType skip shielded a #1393 mis-resolution (a parameter named like its
+            // own function resolving to the function); that landed in 1fbf87e21, so a genuine closed
+            // FunctionType argument is now checked like any other — the last shape of #1290's gap
+            // (#1501). `calendar_module.spy` stays the regression pin for the unresolved-lambda case.
+            if (argTypes[i] is UnknownType or TypeParameterType
+                || (argTypes[i] is FunctionType argFn && argFn.HasUnresolvedTypes())
                 || call.Arguments[i] is NoneLiteral)
             {
                 continue;

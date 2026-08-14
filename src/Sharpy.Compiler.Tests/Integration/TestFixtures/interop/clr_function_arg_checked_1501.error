@@ -1,0 +1,2 @@
+# A closed FunctionType argument to a CLR instance method is now checked (#1501 / #1290).
+Argument 1 of 'List.add' expects 'int' but got '(int) -> int' @16:12

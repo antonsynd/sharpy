@@ -1,0 +1,16 @@
+# #1501: #1290's CLR-argument check used to skip ANY FunctionType argument unconditionally — the
+# skip was shielding a #1393 mis-resolution that has since landed (1fbf87e21), so a genuine CLOSED
+# FunctionType argument to a CLR instance method was never arity/argument-checked (the last open
+# shape of #1290's gap). The skip now narrows to UNRESOLVED lambdas only (ft.HasUnresolvedTypes()),
+# so a resolved function reference passed where the CLR formal is not a function is refused. Here a
+# `(int) -> int` reference reaches `List.add`, whose formal is `int`.
+from system.collections.generic import List
+
+
+def some_fn(a: int) -> int:
+    return a
+
+
+def main() -> None:
+    xs = List[int]()
+    xs.add(some_fn)
