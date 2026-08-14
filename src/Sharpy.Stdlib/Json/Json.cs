@@ -338,14 +338,80 @@ namespace Sharpy
 
             try
             {
-                T? result = System.Text.Json.JsonSerializer.Deserialize<T>(
-                    QuoteBareNonFiniteTokens(s), _typedOptions);
+                string prepared = QuoteBareNonFiniteTokens(s);
+
+                // Absence is not a value: a required field the document omits must be an Err
+                // naming it, not a fabricated 0/null/false (#1505, owner ruling 2026-08-13 —
+                // decided for this door and yaml's together). The rule lives in
+                // TypedLoadContract so the two doors cannot drift; the agreement corpus proves it.
+                if (MissingRequiredField<T>(prepared) is { } missing)
+                {
+                    return Result<T, JSONDecodeError>.Err(new JSONDecodeError(
+                        TypedLoadContract.MissingFieldMessage(typeof(T), missing), s, 0));
+                }
+
+                T? result = System.Text.Json.JsonSerializer.Deserialize<T>(prepared, _typedOptions);
                 return Result<T, JSONDecodeError>.Ok(result!);
             }
             catch (JsonException ex)
             {
                 int pos = (int)(ex.BytePositionInLine ?? 0);
                 return Result<T, JSONDecodeError>.Err(new JSONDecodeError(ex.Message, s, pos));
+            }
+            catch (System.Exception ex)
+            {
+                // The door is crash-proof BY CONSTRUCTION, not per-exception-type. Catching only
+                // JsonException left every other System.Text.Json fault to escape a function whose
+                // signature promises a Result and kill the process: a multi-word snake_case
+                // dataclass field made STJ's constructor binding fail with InvalidOperationException
+                // for EVERY document, no diagnostic, no catch (#1504). Cataloguing which exceptions
+                // STJ can throw would be the same hand-enumerated totality that produced the hole.
+                //
+                // Reserving exceptions for bugs (the stdlib contract) does not apply here: from the
+                // caller's side a deserializer that cannot bind the target type is an expected
+                // failure of THIS call, and the whole point of `Result` at this boundary is that
+                // such a failure is a value. Position 0 — a binding fault has no offset in the text.
+                //
+                // The yaml twin (Yaml.cs SafeLoadTyped) has had this arm since #1424; json is the
+                // door that did not, and the agreement corpus now proves they match.
+                return Result<T, JSONDecodeError>.Err(new JSONDecodeError(ex.Message, s, 0));
+            }
+        }
+
+        /// <summary>
+        /// The first required field of <typeparamref name="T"/> that <paramref name="json"/>'s
+        /// top-level object omits, or <c>null</c> when none is missing.
+        /// </summary>
+        /// <remarks>
+        /// Reads the key set with a throwaway <see cref="JsonDocument"/> parse rather than
+        /// inspecting the deserialized value, because the value is exactly what cannot be trusted
+        /// here: the constructor has already substituted a placeholder for the absent field by the
+        /// time it exists. A malformed document parses no keys and falls through to the real
+        /// deserialization below, so the JsonException it raises stays the reported error rather
+        /// than being reported as a missing field.
+        /// </remarks>
+        private static string? MissingRequiredField<T>(string json)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(json, new JsonDocumentOptions
+                {
+                    MaxDepth = JsonParser.MaxDepth,
+                    AllowTrailingCommas = false,
+                });
+
+                if (document.RootElement.ValueKind != JsonValueKind.Object)
+                    return null;
+
+                var keys = new List<string>();
+                foreach (var property in document.RootElement.EnumerateObject())
+                    keys.Add(property.Name);
+
+                return TypedLoadContract.FirstMissingRequiredField<T>(keys);
+            }
+            catch (JsonException)
+            {
+                return null;
             }
         }
 

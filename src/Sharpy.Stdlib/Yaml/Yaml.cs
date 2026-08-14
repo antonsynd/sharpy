@@ -348,6 +348,18 @@ namespace Sharpy
 
             try
             {
+                // Absence is not a value. AllFieldsConstructorObjectFactory constructs with
+                // placeholders and lets the property pass populate, so an absent key used to leave
+                // the placeholder standing: `safe_load_typed[Config]("port: 8080")` returned Ok
+                // with max_connections == 0 for a field the user never made optional (#1505). The
+                // rule is TypedLoadContract's, shared with json.loads[T] so the two typed doors
+                // cannot drift; the agreement corpus runs the same document through both.
+                if (MissingRequiredField<T>(text) is { } missing)
+                {
+                    return Result<T, YAMLError>.Err(new YAMLError(
+                        TypedLoadContract.MissingFieldMessage(typeof(T), missing)));
+                }
+
                 // Mirror the json module's snake_case, lenient mapping for typed loads.
                 IDeserializer deserializer = new DeserializerBuilder()
                     .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.UnderscoredNamingConvention.Instance)
@@ -364,6 +376,32 @@ namespace Sharpy
             catch (System.Exception ex)
             {
                 return Result<T, YAMLError>.Err(new YAMLError(ex.Message, ex));
+            }
+        }
+
+        /// <summary>
+        /// The first required field of <typeparamref name="T"/> that <paramref name="text"/>'s
+        /// top-level mapping omits, or <c>null</c> when none is missing.
+        /// </summary>
+        /// <remarks>
+        /// Reads the key set from a throwaway UNTYPED deserialization rather than from the typed
+        /// value, because the typed value is exactly what cannot be trusted here: the object
+        /// factory has already substituted a placeholder for the absent field by the time it
+        /// exists. A malformed document yields no keys here and falls through to the real
+        /// deserialization below, so its YamlException stays the reported error rather than being
+        /// reported as a missing field.
+        /// </remarks>
+        private static string? MissingRequiredField<T>(string text)
+        {
+            try
+            {
+                object? untyped = CreateDeserializer().Deserialize<object>(text);
+                return TypedLoadContract.FirstMissingRequiredField<T>(
+                    TypedLoadContract.KeysOf(untyped));
+            }
+            catch (YamlException)
+            {
+                return null;
             }
         }
 

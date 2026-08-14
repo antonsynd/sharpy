@@ -12,4 +12,12 @@
     <Compile Include="../Json/**/*.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The typed-load contract is shared by the json and yaml packaging assemblies: the rule for
+         what counts as a REQUIRED field, and the message for a missing one, is one function so the
+         two typed doors cannot drift (#1505). In the combined Sharpy.Stdlib assembly it is simply
+         a sibling file; here each module assembly needs it compiled in. -->
+    <Compile Include="../TypedLoadContract.cs" />
+  </ItemGroup>
+
 </Project>
