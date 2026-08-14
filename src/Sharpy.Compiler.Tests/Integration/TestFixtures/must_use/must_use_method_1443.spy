@@ -1,0 +1,26 @@
+# #1443: @must_use on a METHOD must warn same-file. Before the fix, ResolveMethodDeclaration
+# built the method's FunctionSymbol without stamping IsMustUse (the function twin and
+# ModuleLoader's extraction both did), so a discarded @must_use method result drew no SPY0480 in
+# its own file — an INVERTED mirror cell (imported carried the fact, declared did not).
+#
+# The method is OVERLOADED on purpose: a single (non-overloaded) instance-method call records no
+# call target at all, so neither @must_use nor @deprecated can see it — a separate seam gap filed
+# as #1537. The overload set routes the call through ResolveUserMethodOverload, which records the
+# resolved target; this fixture therefore proves the IsMustUse STAMP is applied and read, which is
+# exactly #1443's fix. Only the int overload is @must_use.
+
+class Calc:
+    @must_use
+    def compute(self, x: int) -> int:
+        return x * 2
+
+    def compute(self, x: str) -> str:
+        return x
+
+def main():
+    c = Calc()
+    c.compute(3)             # @must_use int overload, discarded -> SPY0480
+    r: int = c.compute(4)    # control: assigned -> no warning
+    s: str = c.compute("a")  # control: str overload not @must_use, assigned -> no warning
+    print(r)
+    print(s)

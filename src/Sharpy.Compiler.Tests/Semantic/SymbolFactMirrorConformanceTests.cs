@@ -538,8 +538,8 @@ def main() -> None:
     /// <c>docs/design/gap-discovery-contracts.md</c>), so deleting the line is part of landing the
     /// fix rather than a follow-up nobody schedules.
     ///
-    /// <para>The mirror's first measured run recorded 145 cells across four defects. Three of them
-    /// are gone and their 143 cells drained with the fixes:</para>
+    /// <para>The mirror's first measured run recorded 145 cells across four defects. All four are
+    /// gone and their 145 cells drained with the fixes:</para>
     /// <list type="bullet">
     ///   <item><description><b>#1440</b> (23 cells, drained) — <c>CreateReExportedTypeSymbol</c> was a
     ///     hand-built <see cref="TypeSymbol"/> clone where the function arm beside it used a
@@ -554,19 +554,16 @@ def main() -> None:
     ///     <c>IsStringEnum</c> nor <c>IsDataclass</c>, so an imported string enum was checked as an
     ///     int enum and an imported <c>@dataclass</c> arrived without its synthesized members. Both
     ///     now come from the predicate/authority the declaring pass uses.</description></item>
-    ///   <item><description><b>#1443</b> (2 cells, standing) — inverted: <c>@must_use</c> on a METHOD
-    ///     is honoured by the extraction and ignored by <c>NameResolver</c>, so it never warns
-    ///     same-file. The defect is on the declaration side, which is why this batch did not
-    ///     drain it.</description></item>
+    ///   <item><description><b>#1443</b> (2 cells, drained) — inverted: <c>@must_use</c> on a METHOD
+    ///     was honoured by the extraction and ignored by <c>NameResolver</c>, so it never warned
+    ///     same-file. The defect was on the declaration side; <c>ResolveMethodDeclaration</c> now
+    ///     stamps <c>IsMustUse</c> like its function twin, so the two views agree.</description></item>
     /// </list>
     /// </summary>
     private static readonly Dictionary<string, string> KnownDivergences = new(StringComparer.Ordinal)
     {
-        // #1443 — INVERTED, and the only shape still standing: NameResolver does not set IsMustUse
-        // on a METHOD while the extraction does, so `@must_use` on a method warns through an import
-        // and never same-file. The fix belongs to the declaration side, not the import path (2 cells).
-        ["method::FunctionSymbol.IsMustUse::fromImport"] = "#1443",
-        ["method::FunctionSymbol.IsMustUse::qualifiedImport"] = "#1443",
+        // Empty: every recorded divergence has drained on its fix. A new entry here is a recorded
+        // defect awaiting a fix, citing its issue; it must be deleted in the change that fixes it.
     };
 
     // --- The mirror ----------------------------------------------------------------------------

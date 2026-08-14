@@ -153,7 +153,8 @@ internal partial class NameResolver
             NameDeclarationColumn = method.NameColumnStart,
             SignatureKey = GetMethodSignatureKey(method),
             Documentation = method.DocString,
-            DeprecationMessage = GetDeprecationMessage(method.Decorators)
+            DeprecationMessage = GetDeprecationMessage(method.Decorators),
+            IsMustUse = HasMustUse(method.Decorators)
         };
 
         owningType.Methods.Add(funcSymbol);
