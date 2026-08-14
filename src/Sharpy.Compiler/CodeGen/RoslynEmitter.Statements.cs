@@ -360,9 +360,15 @@ internal partial class RoslynEmitter
             _declaredVariables.Add(k);
         }
 
-        // Generate body (recursive — supports nested-nested functions)
-        var body = AttachLineDirectiveToBlock(
-            GenerateSuiteBlock(func.Body), func.LineStart);
+        // Generate body (recursive — supports nested-nested functions). A nested def's parameters
+        // re-bind their names, so an accessor-parameter rewrite in force outside must not reach
+        // inside (#1500 — the same hole as the shadowing lambda, on the sibling binder).
+        BlockSyntax body;
+        using (SuspendAccessorParamRewriteIfShadowed(func.Parameters.Select(p => p.Name)))
+        {
+            body = AttachLineDirectiveToBlock(
+                GenerateSuiteBlock(func.Body), func.LineStart);
+        }
 
         // EscapedIdentifier, not Identifier: a declaration position holding a possibly-@-escaped
         // name needs the Text/ValueText split Roslyn's parser produces (#1095), or the declaration

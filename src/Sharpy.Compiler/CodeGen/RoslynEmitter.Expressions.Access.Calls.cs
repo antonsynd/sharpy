@@ -51,7 +51,13 @@ internal partial class RoslynEmitter
             .Select(p => Parameter(EscapedIdentifier(NameMangler.ToCamelCase(p.Name))))
             .ToArray();
 
-        var body = GenerateExpression(lambda.Body);
+        // A lambda parameter re-binds its name: an accessor-parameter rewrite in force outside
+        // must not reach into the body (#1500).
+        ExpressionSyntax body;
+        using (SuspendAccessorParamRewriteIfShadowed(lambda.Parameters.Select(p => p.Name)))
+        {
+            body = GenerateExpression(lambda.Body);
+        }
 
         if (parameters.Length == 0)
         {
@@ -85,7 +91,12 @@ internal partial class RoslynEmitter
             parameters.Add(Parameter(EscapedIdentifier(paramName)).WithType(paramType));
         }
 
-        var body = GenerateExpression(lambda.Body);
+        // See GenerateLambdaExpression: the parameter list re-binds these names (#1500).
+        ExpressionSyntax body;
+        using (SuspendAccessorParamRewriteIfShadowed(lambda.Parameters.Select(p => p.Name)))
+        {
+            body = GenerateExpression(lambda.Body);
+        }
 
         if (parameters.Count == 0)
         {
@@ -164,8 +175,14 @@ internal partial class RoslynEmitter
             returnType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
-        // Generate body expression
-        var body = GenerateExpression(lambda.Body);
+        // Generate body expression. The parameter list re-binds these names, so an accessor
+        // rewrite in force outside stops at the boundary (#1500). Default-value expressions above
+        // are deliberately outside the scope: they are evaluated against the ENCLOSING binding.
+        ExpressionSyntax body;
+        using (SuspendAccessorParamRewriteIfShadowed(lambda.Parameters.Select(p => p.Name)))
+        {
+            body = GenerateExpression(lambda.Body);
+        }
 
         var localFunc = LocalFunctionStatement(returnType, Identifier(functionName))
             .WithParameterList(ParameterList(SeparatedList(parameters)))

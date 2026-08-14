@@ -265,6 +265,43 @@ internal partial class RoslynEmitter : ICodeEmitter
         return new AccessorParamRewriteScope(this, previous);
     }
 
+    /// <summary>
+    /// The C# slot carrying the accessor's incoming value when <paramref name="name"/> IS that
+    /// value's Sharpy spelling under an open rewrite, else null. Write positions consult this so a
+    /// rebinding assignment lands on the same slot the read side maps onto (#1500).
+    /// </summary>
+    private string? AccessorParamSlotName(Identifier name)
+        => _accessorParamRewrite is { } rewrite
+            && string.Equals(name.Name, rewrite.Source, StringComparison.Ordinal)
+            ? rewrite.Target
+            : null;
+
+    /// <summary>
+    /// Suspends an open accessor-parameter rewrite for the duration of a scope that RE-BINDS the
+    /// rewritten name, restoring it on dispose. A lambda parameter, a nested <c>def</c> parameter or
+    /// a comprehension target named like the accessor's value parameter declares its OWN slot; the
+    /// mapping onto C#'s <c>value</c> describes only the accessor's own binding, so it must not
+    /// reach inside (#1500 — measured before the guard: CPython 106, Sharpy 300, no diagnostic).
+    ///
+    /// <para>Keyed on the binder's bound names rather than on the resolved symbol deliberately.
+    /// Symbol identity is NOT usable for this decision: assigning to the accessor's value parameter
+    /// makes the checker define a fresh <c>VariableSymbol</c> for the name
+    /// (<c>TypeChecker.Statements.cs:178-195</c>), so reads after a reassignment resolve to a
+    /// symbol that is not the accessor's parameter yet must still be rewritten. Shadowing is a
+    /// property of the binder, and the binder is exactly what this scope wraps.</para>
+    /// </summary>
+    private IDisposable SuspendAccessorParamRewriteIfShadowed(IEnumerable<string>? boundNames)
+    {
+        var previous = _accessorParamRewrite;
+        if (previous is { } rewrite && boundNames != null
+            && boundNames.Any(n => string.Equals(n, rewrite.Source, StringComparison.Ordinal)))
+        {
+            _accessorParamRewrite = null;
+        }
+
+        return new AccessorParamRewriteScope(this, previous);
+    }
+
     private sealed class AccessorParamRewriteScope : IDisposable
     {
         private readonly RoslynEmitter _emitter;

@@ -302,10 +302,15 @@ internal partial class RoslynEmitter
         // `value` or the captured old-value local. Nothing declares the Sharpy spelling, so a
         // reference that reaches the slot lookup below emits an undeclared name (CS0103 behind
         // SPY0908 — #1405). One branch for all three shapes; see AccessorParamRewrite.
-        // TODO(#1500): this match is SPELLING-keyed and runs before symbol resolution, so it
-        // reaches inside a shadowing binder — a lambda parameter of the same name inside the
-        // accessor body is rewritten too, computing silently wrong values (measured: Python 106,
-        // Sharpy 300). Suspend the rewrite across re-binding scopes or key it on the symbol.
+        // The match is by spelling, and that is now sound because the rewrite is SCOPED: every
+        // binder that re-binds the name suspends it (SuspendAccessorParamRewriteIfShadowed), so a
+        // spelling that reaches here can only be the accessor's own value (#1500 — before that
+        // guard a shadowing lambda parameter was rewritten too: CPython 106, Sharpy 300, silent).
+        // Symbol identity cannot serve here: assigning to the accessor's value makes the checker
+        // define a FRESH VariableSymbol for the name (TypeChecker.Statements.cs:178-195), so reads
+        // after a rebinding assignment resolve to a symbol that is not the accessor's parameter and
+        // yet must still map onto the same slot. The binder, not the symbol, is what shadowing is a
+        // property of. Write positions consult AccessorParamSlotName for the same mapping.
         if (_accessorParamRewrite is { } rewrite
             && string.Equals(name.Name, rewrite.Source, StringComparison.Ordinal))
         {

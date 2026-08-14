@@ -62,6 +62,27 @@ internal partial class RoslynEmitter
         // Handle simple identifier assignment
         if (assign.Target is Identifier name)
         {
+            // Assigning to the accessor's named incoming value REBINDS that value the way a Python
+            // parameter rebinds — it does not declare a new local. The read side maps the name onto
+            // the C# slot that carries it (`value` for a setter/event accessor, the captured
+            // old-value local for an after_set observer), and every one of those is assignable, so
+            // the write must land on the same slot. Without this arm the emitter declared
+            // `var v = value + 1` while every later read still emitted `value`, silently dropping
+            // the write (#1500, measured: CPython 101, Sharpy 100; and with the assignment under an
+            // `if`, CPython 5, Sharpy 100). Not reached from a shadowing binder — the rewrite is
+            // suspended there (see SuspendAccessorParamRewriteIfShadowed).
+            // (Augmented assignment lands on the same slot through AccessorParamSlotName below,
+            // which keeps that path's operator lowering intact.)
+            if (assign.Operator == AssignmentOperator.Assign
+                && AccessorParamSlotName(name) is { } accessorSlot)
+            {
+                return ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(accessorSlot),
+                        value));
+            }
+
             // Check if this is a simple assignment or augmented assignment
             if (assign.Operator == AssignmentOperator.Assign)
             {
@@ -140,8 +161,10 @@ internal partial class RoslynEmitter
             else
             {
                 // Augmented assignment: x += value
-                // This references the current version and modifies it
-                var varName = GetMangledVariableName(name.Name, isNewDeclaration: false, name.IsNameBacktickEscaped);
+                // This references the current version and modifies it, except when the name IS the
+                // accessor's incoming value, which lives in the C# slot the rewrite names (#1500).
+                var varName = AccessorParamSlotName(name)
+                    ?? GetMangledVariableName(name.Name, isNewDeclaration: false, name.IsNameBacktickEscaped);
                 var target = EscapedIdentifierName(varName);
 
                 // For the read side of augmented assignment, apply the narrowed-read accessor the

@@ -1,0 +1,23 @@
+# #1500, the write side under control flow — the shape that makes "declare a fresh local" not just
+# lossy but unrepresentable: the declaration would be scoped to the `if` while the read follows it.
+# Rebinding the accessor's value slot has neither problem.
+# CPython control (python3.12): 5. Sharpy before the fix: 100, with no diagnostic.
+class Box:
+    total: int
+
+    def __init__(self) -> None:
+        self.total = 0
+
+    property set scaled(self, v: int):
+        if v > 50:
+            v = 5
+        self.total = v
+
+    property get scaled(self) -> int:
+        return self.total
+
+
+def main() -> None:
+    b: Box = Box()
+    b.scaled = 100
+    print(b.scaled)

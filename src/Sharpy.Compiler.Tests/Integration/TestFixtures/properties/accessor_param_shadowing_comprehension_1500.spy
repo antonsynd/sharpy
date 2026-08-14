@@ -1,0 +1,21 @@
+# #1500, sibling binder: a comprehension target shadowing the setter's value parameter.
+# CPython control (python3.12): 110. Sharpy before the fix: 1100 — the element expression's `v`
+# became `value` (100), so items[0] was 1000 rather than 10.
+class Box:
+    total: int
+
+    def __init__(self) -> None:
+        self.total = 0
+
+    property set scaled(self, v: int):
+        items: list[int] = [v * 10 for v in [1, 2, 3]]
+        self.total = items[0] + v
+
+    property get scaled(self) -> int:
+        return self.total
+
+
+def main() -> None:
+    b: Box = Box()
+    b.scaled = 100
+    print(b.scaled)

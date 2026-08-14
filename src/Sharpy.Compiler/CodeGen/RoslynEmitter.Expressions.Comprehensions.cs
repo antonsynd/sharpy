@@ -421,6 +421,14 @@ internal partial class RoslynEmitter
         // is bound to a fresh C# name (x_1) while the enclosing binding is left untouched.
         var scopeSnapshot = SaveScope();
 
+        // A comprehension target re-binds its name for the comprehension's extent, so an accessor
+        // value-parameter rewrite in force outside must not reach inside it (#1500 — measured
+        // before the guard: CPython 110, Sharpy 1100, no diagnostic). Opened exactly where the
+        // comprehension's own scope opens, so the presized sole source hoisted above — the
+        // outermost iterable, which Python evaluates in the ENCLOSING scope — keeps the rewrite.
+        using var targetShadowing =
+            SuspendAccessorParamRewriteIfShadowed(ComprehensionTargetNames(clauses));
+
         // Forward pass (outer→inner): register each for-clause's loop variable(s) and pre-generate
         // every clause's sub-expressions (iterator, filter condition). Registering the loop variables
         // BEFORE the element/key/value and the conditions are generated is what makes references
@@ -568,6 +576,43 @@ internal partial class RoslynEmitter
     /// <see cref="GetMangledVariableName"/>, so a name colliding with an enclosing local is versioned
     /// (<c>x_1</c>) rather than reassigning or shadowing it — comprehension variables do not leak.
     /// </summary>
+    /// <summary>
+    /// Every name a comprehension's for-clause targets bind, including tuple-destructuring elements.
+    /// Used to decide whether an enclosing accessor-parameter rewrite is shadowed (#1500); the shape
+    /// mirrors <see cref="BindComprehensionLoopTarget"/>, which is what actually declares them.
+    /// </summary>
+    private static IEnumerable<string> ComprehensionTargetNames(
+        ImmutableArray<ComprehensionClause> clauses)
+    {
+        foreach (var clause in clauses)
+        {
+            if (clause is not ForClause forClause)
+                continue;
+
+            foreach (var name in TargetBoundNames(forClause.Target))
+                yield return name;
+        }
+    }
+
+    private static IEnumerable<string> TargetBoundNames(Expression target)
+    {
+        switch (target)
+        {
+            case Identifier id:
+                yield return id.Name;
+                break;
+
+            case TupleLiteral tuple:
+                foreach (var element in tuple.Elements)
+                {
+                    foreach (var name in TargetBoundNames(element))
+                        yield return name;
+                }
+
+                break;
+        }
+    }
+
     private void BindComprehensionLoopTarget(Expression target, string sourceVar, List<StatementSyntax> statements)
     {
         switch (target)

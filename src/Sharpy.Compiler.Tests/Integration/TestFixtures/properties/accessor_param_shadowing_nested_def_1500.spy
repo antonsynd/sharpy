@@ -1,0 +1,23 @@
+# #1500, sibling binder: a nested `def` parameter shadowing the setter's value parameter. Unprobed
+# when the issue was filed; the same spelling-keyed rewrite reached inside it.
+# CPython control (python3.12): 106.
+class Box:
+    total: int
+
+    def __init__(self) -> None:
+        self.total = 0
+
+    property set scaled(self, v: int):
+        def double(v: int) -> int:
+            return v * 2
+
+        self.total = double(3) + v
+
+    property get scaled(self) -> int:
+        return self.total
+
+
+def main() -> None:
+    b: Box = Box()
+    b.scaled = 100
+    print(b.scaled)
