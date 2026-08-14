@@ -1,0 +1,30 @@
+# #1498: a dict-spread comprehension registered its loop targets against the ENCLOSING function's
+# slot table with no save/restore, unlike the imperative comprehension next door — whose own comment
+# is the spec for what this one was missing.
+#
+# TWO failures, and the second is the worse one:
+#   - A loop target reusing an enclosing local's name was CS0136 behind SPY0908.
+#   - The unscoped claim reset the OUTER slot's version with no restore, so subsequent reads of the
+#     outer local emitted the wrong C# name. Wrong code, not just a refused program. That is what the
+#     `print(d)` at the bottom pins: `d` must still be "outer" after the comprehension.
+#
+# A third defect fell out of fixing the first two. The spread expression READS the loop target
+# (`**d`), and it was generated BEFORE any target was bound — which worked only while nothing
+# collided, both being at version 0 so one emitted name meant both. With an enclosing `d: str` the
+# spread bound the STRING: CS1503. Targets are now bound in source order first, exactly as the
+# imperative comprehension binds them before generating its element.
+#
+# `LocalSlotRegistrationConformanceTests` structurally cannot see any of this — it checks WHO writes
+# the slot table, not WHETHER the write is scoped. Its doc now says so, and this fixture is the
+# guard.
+#
+# The non-colliding control is `spread_unpack_dict.spy` next door, whose C# snapshot is byte-identical
+# across this change — the scoping only takes effect where a name actually collides.
+def main():
+    d: str = "outer"
+    dicts: list[dict[str, int]] = [{"a": 1}, {"b": 2}]
+    result: dict[str, int] = {**d for d in dicts}
+    keys: list[str] = sorted(result.keys())
+    for k in keys:
+        print(k, result[k])
+    print(d)

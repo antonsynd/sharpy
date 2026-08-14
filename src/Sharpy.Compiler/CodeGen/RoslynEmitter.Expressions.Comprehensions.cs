@@ -160,6 +160,18 @@ internal partial class RoslynEmitter
         return iterExpr;
     }
 
+    /// <summary>
+    /// Emits a dict-spread comprehension (<c>{**d for d in dicts}</c>).
+    ///
+    /// <para>Its loop targets are SCOPED to the comprehension, exactly as
+    /// <see cref="GenerateImperativeComprehension"/>'s are and for the same Python-semantics reason:
+    /// they must neither collide with nor leak into the enclosing scope. This method used to
+    /// register them against the ENCLOSING function's slot table with no save/restore, and the site
+    /// said so in a `TODO(#1498)`. Two failures, not one: a loop target reusing an enclosing local's
+    /// name was CS0136 behind SPY0908, and — worse, because it is silent — the unscoped claim reset
+    /// the OUTER slot's version with no restore, so subsequent reads of the outer local emitted the
+    /// wrong C# name. Wrong code, not just a refused program.</para>
+    /// </summary>
     private ExpressionSyntax GenerateDictSpreadComprehension(DictSpreadComprehension dictSpreadComp)
     {
         var tempName = GenerateTempVarName("comp");
@@ -187,6 +199,35 @@ internal partial class RoslynEmitter
                         .WithInitializer(EqualsValueClause(
                             ObjectCreationExpression(dictType)
                                 .WithArgumentList(ArgumentList()))))));
+
+        // The comprehension's own scope opens here — after the temp declaration, which belongs to
+        // the enclosing scope, and before anything that reads or registers a loop target. Same
+        // placement as GenerateImperativeComprehension's (#1498).
+        var scopeSnapshot = SaveScope();
+
+        // Loop targets are bound BEFORE the spread expression is generated, in source order, because
+        // the spread READS them: `{**d for d in dicts}` emits `d`, and if the binding has not yet
+        // claimed its versioned slot that `d` resolves to whatever the ENCLOSING scope calls `d`.
+        // The old code registered targets during the reverse clause walk, after the spread was
+        // already built, and got away with it only while nothing collided — both the target and the
+        // outer local were then at version 0 and the same emitted name meant both. With an enclosing
+        // `d: str` in scope the spread bound the STRING (#1498).
+        //
+        // `BindComprehensionLoopTarget` is the sibling's own binder: it goes through
+        // `GetMangledVariableName(isNewDeclaration: true)`, which versions the name to `d_1`, and it
+        // handles the tuple and nested-tuple targets this method used to hand-roll or omit.
+        var forClauses = dictSpreadComp.Clauses.OfType<ForClause>().ToList();
+        var loopSourceVars = new Dictionary<ForClause, string>(ReferenceEqualityComparer.Instance);
+        var loopTargetStatements = new Dictionary<ForClause, List<StatementSyntax>>(
+            ReferenceEqualityComparer.Instance);
+        foreach (var forClause in forClauses)
+        {
+            var sourceVar = GenerateTempVarName("loopVar");
+            var targetStatements = new List<StatementSyntax>();
+            BindComprehensionLoopTarget(forClause.Target, sourceVar, targetStatements);
+            loopSourceVars[forClause] = sourceVar;
+            loopTargetStatements[forClause] = targetStatements;
+        }
 
         // Inner statement: __comp_N.Update(spread)
         // #1000: capture any hoisting from the spread expression (e.g. a nested async comprehension)
@@ -223,75 +264,26 @@ internal partial class RoslynEmitter
                     ExpressionSyntax iterExpr = null!;
                     var iterHoisted = CaptureHoisted(() => iterExpr = GenerateExpression(forClause.Iterator));
 
-                    if (forClause.Target is Identifier id)
-                    {
-                        var loopVar = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
-                        var tempLoopVar = GenerateTempVarName("loopVar");
+                    // Target already bound above, in source order — see the note at SaveScope.
+                    var tempLoopVar = loopSourceVars[forClause];
+                    var foreachBody = new List<StatementSyntax>(loopTargetStatements[forClause]);
+                    foreachBody.AddRange(currentBody);
 
-                        _declaredVariables.Add(loopVar);
-                        // TODO(#1498): this claim is UNSCOPED — it writes the enclosing function's
-                        // slot table with no save/restore, unlike GenerateImperativeComprehension.
-                        // A loop target reusing an enclosing local's name is CS0136 behind SPY0908,
-                        // and the outer slot's version is reset with no restore.
-                        RegisterLocalSlot(loopVar, id.Name);
-
-                        var varInit = LocalDeclarationStatement(
-                            VariableDeclaration(IdentifierName("var"))
-                                .WithVariables(SingletonSeparatedList(
-                                    VariableDeclarator(EscapedIdentifier(loopVar))
-                                        .WithInitializer(EqualsValueClause(IdentifierName(tempLoopVar))))));
-
-                        var foreachBody = new List<StatementSyntax> { varInit };
-                        foreachBody.AddRange(currentBody);
-
-                        var foreachStmt = ForEachStatement(
-                            IdentifierName("var"),
-                            Identifier(tempLoopVar),
-                            iterExpr,
-                            Block(foreachBody));
-                        if (forClause.IsAsync)
-                            foreachStmt = foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
-                        currentBody = new List<StatementSyntax>(iterHoisted) { foreachStmt };
-                    }
-                    else if (forClause.Target is TupleLiteral tuple && tuple.Elements.All(e => e is Identifier))
-                    {
-                        var tempLoopVar = GenerateTempVarName("loopVar");
-                        var tupleIds = tuple.Elements.Cast<Identifier>().ToList();
-                        var tupleVars = tupleIds.Select(e => LocalBaseName(e.Name, e.IsNameBacktickEscaped)).ToList();
-
-                        foreach (var tupleId in tupleIds)
-                        {
-                            var tv = LocalBaseName(tupleId.Name, tupleId.IsNameBacktickEscaped);
-                            _declaredVariables.Add(tv);
-                            RegisterLocalSlot(tv, tupleId.Name);
-                        }
-
-                        var designations = tupleVars
-                            .Select(name => (VariableDesignationSyntax)SingleVariableDesignation(EscapedIdentifier(name)))
-                            .ToList();
-                        var deconstructStmt = ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                DeclarationExpression(
-                                    IdentifierName("var"),
-                                    ParenthesizedVariableDesignation(SeparatedList(designations))),
-                                IdentifierName(tempLoopVar)));
-
-                        var foreachBody = new List<StatementSyntax> { deconstructStmt };
-                        foreachBody.AddRange(currentBody);
-
-                        var foreachStmt = ForEachStatement(
-                            IdentifierName("var"),
-                            Identifier(tempLoopVar),
-                            iterExpr,
-                            Block(foreachBody));
-                        if (forClause.IsAsync)
-                            foreachStmt = foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
-                        currentBody = new List<StatementSyntax>(iterHoisted) { foreachStmt };
-                    }
+                    var foreachStmt = ForEachStatement(
+                        IdentifierName("var"),
+                        Identifier(tempLoopVar),
+                        iterExpr,
+                        Block(foreachBody));
+                    if (forClause.IsAsync)
+                        foreachStmt = foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword));
+                    currentBody = new List<StatementSyntax>(iterHoisted) { foreachStmt };
                     break;
             }
         }
+
+        // Comprehension variables were scoped to the comprehension; drop them from the enclosing
+        // scope. Mirrors GenerateImperativeComprehension's own restore.
+        RestoreScope(scopeSnapshot);
 
         _hoistedStatements.Add(tempDecl);
         _hoistedStatements.AddRange(currentBody);

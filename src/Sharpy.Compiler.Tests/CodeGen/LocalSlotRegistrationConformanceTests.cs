@@ -35,6 +35,26 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// name overwrites the stale owner). The dangerous direction — a version with no owner — is only
 /// reachable through the mutations this scan bans.
 /// </para>
+///
+/// <para>
+/// <b>What this scan structurally CANNOT see: scoping.</b> It polices WHO writes the slot table, not
+/// WHETHER the write is scoped. A helper call that is perfectly legitimate in isolation — a
+/// <c>RegisterLocalSlot</c> for a comprehension's loop target — is a defect when it is made against
+/// the ENCLOSING function's table with no save/restore, and this scan passes it either way.
+/// <c>GenerateDictSpreadComprehension</c> did exactly that: the loop target collided with an
+/// enclosing local (CS0136 behind SPY0908) AND reset that local's slot version with no restore, so
+/// later reads of the outer local emitted the wrong name — wrong code, silently, with this
+/// conformance test green throughout (#1498).
+/// </para>
+///
+/// <para>
+/// The limit is recorded rather than papered over, because the guard for it is a different shape:
+/// scoping is a property of a PROGRAM, not of a call site, so it is pinned by executing fixtures —
+/// <c>comprehensions/spread_unpack_dict_enclosing_collision_1498</c> for the dict-spread form, whose
+/// non-colliding twin <c>spread_unpack_dict</c> keeps a byte-identical C# snapshot across the fix.
+/// A future scoping scan would have to compare each registration against a save/restore pair that
+/// dominates it, which is a dataflow question this regex-level scan does not attempt.
+/// </para>
 /// </summary>
 public class LocalSlotRegistrationConformanceTests
 {
