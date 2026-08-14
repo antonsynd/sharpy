@@ -38,6 +38,30 @@ internal class SemanticContext
     /// </summary>
     public ControlFlowGraphCache ControlFlowGraphs { get; set; } = new();
 
+    /// <summary>
+    /// Resolves a type DECLARATION node to its symbol through nesting (#1461). Built once per
+    /// module by <c>ValidationPipeline</c> and shared by every validator, because a global
+    /// <c>SymbolTable.LookupType(node.Name)</c> returns null for a nested type and silently kills
+    /// whatever check the caller was about to run. Use <see cref="LookupDeclaredType"/> rather than
+    /// this property.
+    /// </summary>
+    public NestedTypeIndex? DeclaredTypes { get; set; }
+
+    /// <summary>
+    /// The symbol for a type DECLARATION, resolved through nesting. Every validator that has the
+    /// declaration node in hand should call this instead of <c>SymbolTable.LookupType(node.Name)</c>
+    /// — that spelling cannot see a nested type and turns the caller's check into dead code for
+    /// nested declarations (#1461, the #1371 gap one consumer over).
+    ///
+    /// <para>Falls back to the global lookup when no index is present, so a context built outside
+    /// <c>ValidationPipeline</c> resolves exactly as it did before rather than regressing to null.
+    /// A lookup by NAME ALONE — a decorator's name, a type reference, an annotation — is a different
+    /// question and correctly keeps using <c>SymbolTable.LookupType</c>: there is no declaration
+    /// node to resolve through.</para>
+    /// </summary>
+    public TypeSymbol? LookupDeclaredType(Parser.Ast.Statement declaration, string name)
+        => DeclaredTypes?.SymbolFor(declaration, name, SymbolTable) ?? SymbolTable.LookupType(name);
+
     // Diagnostics collection
     public DiagnosticBag Diagnostics { get; }
 

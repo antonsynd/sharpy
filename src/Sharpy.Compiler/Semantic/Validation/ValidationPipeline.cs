@@ -89,6 +89,11 @@ internal class ValidationPipeline
         validatorTimes = new Dictionary<string, TimeSpan>();
         var stopwatch = new Stopwatch();
 
+        // Built once here rather than per validator: it is a pure function of this module and the
+        // symbol table, and every validator that resolves a type DECLARATION needs it to see nested
+        // types at all (#1461). See SemanticContext.LookupDeclaredType.
+        context.DeclaredTypes = NestedTypeIndex.Build(module, context.SymbolTable);
+
         _logger.LogInfo($"Starting validation pipeline with {_validators.Count} validators");
 
         foreach (var validator in _validators)

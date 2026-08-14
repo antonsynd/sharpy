@@ -26,7 +26,7 @@ internal class StructRulesValidator : ValidatingAstWalker
 
     public override void VisitStructDef(StructDef node)
     {
-        var structSymbol = Context.SymbolTable.LookupType(node.Name);
+        var structSymbol = Context.LookupDeclaredType(node, node.Name);
         if (structSymbol != null)
         {
             ValidateStructFieldOrdering(structSymbol, node);

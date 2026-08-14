@@ -29,7 +29,15 @@ internal class AbstractMemberValidator : SemanticValidatorBase
 
     private void ValidateClass(ClassDef classDef)
     {
-        var typeSymbol = _context.SymbolTable.LookupType(classDef.Name);
+        // Resolved through the enclosing type's NestedTypes, not by bare name (#1461). The bare
+        // `SymbolTable.LookupType(classDef.Name)` this replaces returned null for every NESTED
+        // class, so the `case ClassDef nested` recursion below reached the class and then took the
+        // early return — the refusal was dead for exactly the shape that needs it, and a nested
+        // @abstract member in a non-abstract class produced CS0513 behind SPY0908 where the
+        // top-level twin drew a clean SPY0493. The regression arrived with 8fac96434, which dropped
+        // the TypeChecker's duplicate SPY0247 arm (that arm saved and restored `_currentClass`, so
+        // it reached nested classes) and left this validator owning the rule.
+        var typeSymbol = _context.LookupDeclaredType(classDef, classDef.Name);
         if (typeSymbol == null || typeSymbol.IsAbstract)
             return;
 

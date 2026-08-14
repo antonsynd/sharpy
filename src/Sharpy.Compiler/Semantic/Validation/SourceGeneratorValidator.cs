@@ -57,22 +57,31 @@ internal sealed class SourceGeneratorValidator : SemanticValidatorBase
     }
 
     /// <summary>
-    /// Walks top-level class declarations and validates the shape of each
-    /// source generator class (signature + non-abstract).
+    /// Walks class declarations at any nesting depth and validates the shape of each source
+    /// generator class (signature + non-abstract).
+    ///
+    /// <para>Nested declarations joined the walk with #1461, together with the nested-aware symbol
+    /// resolution they need: a nested generator class resolved to null by bare name, so its shape
+    /// went unvalidated whether or not the walk reached it.</para>
     /// </summary>
     private void ValidateGeneratorClasses(Module module, SemanticContext context)
+        => ValidateGeneratorClasses(module.Body, context);
+
+    private void ValidateGeneratorClasses(IReadOnlyList<Statement> body, SemanticContext context)
     {
-        foreach (var stmt in module.Body)
+        foreach (var stmt in body)
         {
-            if (stmt is not ClassDef classDef)
+            if (stmt.UnwrapDecorated() is not ClassDef classDef)
                 continue;
 
-            var typeSymbol = context.SymbolTable.LookupType(classDef.Name);
-            if (typeSymbol is null || !typeSymbol.IsSourceGenerator)
-                continue;
+            var typeSymbol = context.LookupDeclaredType(classDef, classDef.Name);
+            if (typeSymbol is not null && typeSymbol.IsSourceGenerator)
+            {
+                ValidateGeneratorIsNotAbstract(classDef, typeSymbol, context);
+                ValidateGeneratorMethod(classDef, typeSymbol, context);
+            }
 
-            ValidateGeneratorIsNotAbstract(classDef, typeSymbol, context);
-            ValidateGeneratorMethod(classDef, typeSymbol, context);
+            ValidateGeneratorClasses(classDef.Body, context);
         }
     }
 
@@ -256,7 +265,7 @@ internal sealed class SourceGeneratorValidator : SemanticValidatorBase
         if (declaration is not ClassDef classDef)
             return;
 
-        var targetSymbol = context.SymbolTable.LookupType(classDef.Name);
+        var targetSymbol = context.LookupDeclaredType(classDef, classDef.Name);
         if (targetSymbol is null || !targetSymbol.IsSourceGenerator)
             return;
 

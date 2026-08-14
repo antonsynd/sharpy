@@ -27,7 +27,7 @@ internal class InterfaceImplementationValidator : ValidatingAstWalker
 
     public override void VisitClassDef(ClassDef node)
     {
-        var classSymbol = Context.SymbolTable.LookupType(node.Name);
+        var classSymbol = Context.LookupDeclaredType(node, node.Name);
         if (classSymbol != null && !classSymbol.IsAbstract)
         {
             ValidateInterfaceImplementations(classSymbol, node.LineStart, node.ColumnStart, node.Span);
@@ -37,7 +37,7 @@ internal class InterfaceImplementationValidator : ValidatingAstWalker
 
     public override void VisitStructDef(StructDef node)
     {
-        var structSymbol = Context.SymbolTable.LookupType(node.Name);
+        var structSymbol = Context.LookupDeclaredType(node, node.Name);
         if (structSymbol != null)
         {
             ValidateInterfaceImplementations(structSymbol, node.LineStart, node.ColumnStart, node.Span);

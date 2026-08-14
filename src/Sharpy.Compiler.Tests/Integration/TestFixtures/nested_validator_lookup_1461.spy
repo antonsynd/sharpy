@@ -1,0 +1,80 @@
+# #1461: validators resolve a type DECLARATION through the enclosing symbol's NestedTypes, not by
+# bare name. One nested cell per converted validator, in one file, because the defect is the LOOKUP
+# and not any one validator — the issue forbids patching a single caller.
+#
+# The mechanism: NameResolver defines a nested type's symbol inside the ENCLOSING class's scope, so
+# `SymbolTable.LookupType(classDef.Name)` — a global lookup by bare name — returns null for every
+# nested declaration. A validator that resolves that way and early-returns on null is DEAD for
+# nested types: its check silently does not run, and the program reaches Roslyn instead. Every row
+# below drew NOTHING before this fix while its top-level twin drew the diagnostic named beside it.
+#
+# The named regression is the first row. `@abstract` in a nested non-abstract class produced CS0513
+# behind SPY0908 — an ICE where a clean refusal belongs — from 8fac96434, which dropped the
+# TypeChecker's duplicate SPY0247 arm (that arm saved and restored `_currentClass`, so it reached
+# nested classes) and left AbstractMemberValidator, which could not, owning the rule.
+#
+# MUTATION TEST (performed 2026-08-14, reverted): re-pointing AbstractMemberValidator at the bare
+# `_context.SymbolTable.LookupType(classDef.Name)` turns the SPY0493 row below red while its
+# top-level twin in `abstract_member_*` stays green — the cell measures the nested lookup and
+# nothing else.
+#
+# TWO CONVERTED VALIDATORS HAVE NO ROW HERE, and the reason is not the lookup:
+# `InterfaceImplementationValidator` and `SourceGeneratorValidator` both key off INHERITANCE facts
+# (`Interfaces`, `IsSourceGenerator`), and `NameResolver.ResolveClassInheritance` carries the same
+# bare-name lookup one pass earlier, so a nested type's inheritance is never resolved at all
+# (#1528). Their lookups are converted and correct; their cells are unreportable until #1528, and
+# `class Bad(IShape): pass` nested draws nothing while the top-level twin draws SPY0325. Recorded
+# here rather than left as a silently missing row.
+interface IShape:
+    def area(self) -> int:
+        ...
+
+
+class Outer:
+    # AbstractMemberValidator — SPY0493. The regression.
+    class Abs:
+        @abstract
+        def m(self) -> int:
+            ...
+
+    # ConstructorOverloadValidator — SPY0204.
+    class DupCtor:
+        def __init__(self, a: int):
+            pass
+
+        def __init__(self, b: int):
+            pass
+
+    # PropertyValidator — SPY0405. Reaching this row also needed the walk itself: this validator
+    # stopped at module.Body, so nested types were unreachable AND unresolvable.
+    class PropField:
+        value: int = 0
+
+        property get value(self) -> int:
+            return 1
+
+    # StructRulesValidator — SPY0252.
+    struct Pt:
+        x: int
+        y: int
+
+        def __init__(self, x: int):
+            self.x = x
+
+    # FinalFieldValidator — SPY0440. Its recursion already reached nested types; only the lookup
+    # was blind, so the rules ran against an empty @final field set and passed vacuously.
+    class Fin:
+        @final
+        v: int = 0
+
+        def bump(self) -> None:
+            self.v = 1
+
+    # AccessValidator — SPY0283, reported at the USE below.
+    class Holder:
+        _secret: int = 0
+
+
+def main() -> None:
+    h = Outer.Holder()
+    print(h._secret)

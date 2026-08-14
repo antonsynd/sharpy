@@ -33,7 +33,7 @@ internal class EventValidator : SemanticValidatorBase
 
         foreach (var stmt in module.Body)
         {
-            ValidateTypeStatement(stmt, _context.SymbolTable.LookupType(TypeStatementName(stmt) ?? string.Empty));
+            ValidateTypeStatement(stmt);
         }
 
         // Rule 7 runs over every event regardless of what declares it — see the twin in
@@ -115,35 +115,42 @@ internal class EventValidator : SemanticValidatorBase
     /// (#1371); without this the owner would read as non-abstract and every implicit-stub verdict
     /// inside a nested type would be wrong.
     /// </param>
-    private void ValidateTypeStatement(Statement stmt, TypeSymbol? ownerSymbol)
+    /// <summary>
+    /// Validates one type declaration and every type nested inside it.
+    ///
+    /// <para>This validator used to thread the enclosing symbol down the recursion and walk
+    /// <c>NestedTypes</c> by hand — the right answer, arrived at independently, in one validator out
+    /// of thirteen. It now asks <see cref="SemanticContext.LookupDeclaredType"/>, which is that same
+    /// walk shared by all of them (#1461). The hand-rolled copy is deleted rather than left beside
+    /// the shared one: two spellings of the same resolution is how the answers drift apart.</para>
+    /// </summary>
+    private void ValidateTypeStatement(Statement stmt)
     {
         switch (stmt)
         {
             case ClassDef classDef:
-                ValidateTypeBody(classDef.Name, classDef.Body, ownerSymbol);
-                ValidateNestedTypes(classDef.Body, ownerSymbol);
+                ValidateTypeBody(classDef.Name, classDef.Body,
+                    _context.LookupDeclaredType(classDef, classDef.Name));
+                ValidateNestedTypes(classDef.Body);
                 break;
             case StructDef structDef:
-                ValidateTypeBody(structDef.Name, structDef.Body, ownerSymbol);
-                ValidateNestedTypes(structDef.Body, ownerSymbol);
+                ValidateTypeBody(structDef.Name, structDef.Body,
+                    _context.LookupDeclaredType(structDef, structDef.Name));
+                ValidateNestedTypes(structDef.Body);
                 break;
             case InterfaceDef interfaceDef:
                 ValidateInterfaceEvents(interfaceDef.Name, interfaceDef.Body);
-                ValidateNestedTypes(interfaceDef.Body, ownerSymbol);
+                ValidateNestedTypes(interfaceDef.Body);
                 break;
         }
     }
 
-    private void ValidateNestedTypes(IReadOnlyList<Statement> body, TypeSymbol? ownerSymbol)
+    private void ValidateNestedTypes(IReadOnlyList<Statement> body)
     {
         foreach (var member in body)
         {
-            var nestedName = TypeStatementName(member);
-            if (nestedName == null)
-                continue;
-
-            var nestedSymbol = ownerSymbol?.NestedTypes.FirstOrDefault(n => n.Name == nestedName);
-            ValidateTypeStatement(member, nestedSymbol);
+            if (TypeStatementName(member) != null)
+                ValidateTypeStatement(member);
         }
     }
 

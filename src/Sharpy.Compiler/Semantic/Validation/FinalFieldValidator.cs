@@ -41,10 +41,10 @@ internal class FinalFieldValidator : SemanticValidatorBase
         switch (stmt)
         {
             case ClassDef classDef:
-                ValidateTypeBody(classDef.Name, classDef.Body, isStruct: false, context);
+                ValidateTypeBody(classDef, classDef.Name, classDef.Body, isStruct: false, context);
                 break;
             case StructDef structDef:
-                ValidateTypeBody(structDef.Name, structDef.Body, isStruct: true, context);
+                ValidateTypeBody(structDef, structDef.Name, structDef.Body, isStruct: true, context);
                 break;
             case FunctionDef funcDef:
                 // Module-level function — scan body for @final on locals.
@@ -53,10 +53,21 @@ internal class FinalFieldValidator : SemanticValidatorBase
         }
     }
 
-    private void ValidateTypeBody(string typeName, IReadOnlyList<Statement> body, bool isStruct, SemanticContext context)
+    /// <summary>
+    /// Validates one type's @final field rules, and recurses into the types nested inside it.
+    ///
+    /// <para>The recursion was already here and already reached nested declarations — what it could
+    /// not do was RESOLVE one. The bare-name symbol lookup returned null for every nested type, and
+    /// a null symbol here means an empty @final field set, so the recursion ran the rules against
+    /// nothing (#1461). This is the failure shape the issue names: a walk that arrives and a lookup
+    /// that cannot answer look exactly like a passing check.</para>
+    /// </summary>
+    private void ValidateTypeBody(Statement declaration, string typeName, IReadOnlyList<Statement> body, bool isStruct, SemanticContext context)
     {
-        // Look up the declaring type symbol. It carries the field IsFinal flags set during name resolution.
-        var typeSymbol = context.SymbolTable.LookupType(typeName);
+        // Look up the declaring type symbol. It carries the field IsFinal flags set during name
+        // resolution. Through NestedTypes, not by bare name — the bare lookup cannot see a nested
+        // type, and a null symbol here means an empty field set, i.e. no rules (#1461).
+        var typeSymbol = context.LookupDeclaredType(declaration, typeName);
 
         // Collect @final field names declared *directly* on this type.
         var ownFinalFields = new HashSet<string>();
@@ -124,10 +135,10 @@ internal class FinalFieldValidator : SemanticValidatorBase
                         break;
                     }
                 case ClassDef nestedClass:
-                    ValidateTypeBody(nestedClass.Name, nestedClass.Body, isStruct: false, context);
+                    ValidateTypeBody(nestedClass, nestedClass.Name, nestedClass.Body, isStruct: false, context);
                     break;
                 case StructDef nestedStruct:
-                    ValidateTypeBody(nestedStruct.Name, nestedStruct.Body, isStruct: true, context);
+                    ValidateTypeBody(nestedStruct, nestedStruct.Name, nestedStruct.Body, isStruct: true, context);
                     break;
             }
         }

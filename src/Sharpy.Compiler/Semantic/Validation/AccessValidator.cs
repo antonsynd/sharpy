@@ -32,8 +32,12 @@ internal class AccessValidator : ValidatingAstWalker
 
     public override void VisitClassDef(ClassDef node)
     {
-        var classSymbol = Context.SymbolTable.LookupType(node.Name)
-            ?? Context.Traversal.CurrentClass?.NestedTypes.FirstOrDefault(n => n.Name == node.Name);
+        // One resolution, shared with every other validator (#1461). The hand-rolled
+        // `Traversal.CurrentClass?.NestedTypes` fallback that used to sit here is deleted rather
+        // than left beside it: this validator had independently arrived at the right answer for
+        // nested classes while eleven others had not, and two spellings of one resolution is how
+        // the answers drift apart.
+        var classSymbol = Context.LookupDeclaredType(node, node.Name);
         using (Context.Traversal.EnterClass(classSymbol))
         {
             base.VisitClassDef(node);
@@ -42,8 +46,7 @@ internal class AccessValidator : ValidatingAstWalker
 
     public override void VisitStructDef(StructDef node)
     {
-        var structSymbol = Context.SymbolTable.LookupType(node.Name)
-            ?? Context.Traversal.CurrentClass?.NestedTypes.FirstOrDefault(n => n.Name == node.Name);
+        var structSymbol = Context.LookupDeclaredType(node, node.Name);
         using (Context.Traversal.EnterClass(structSymbol))
         {
             base.VisitStructDef(node);

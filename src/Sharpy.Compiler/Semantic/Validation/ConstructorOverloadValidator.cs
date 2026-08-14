@@ -25,7 +25,7 @@ internal class ConstructorOverloadValidator : ValidatingAstWalker
 
     public override void VisitClassDef(ClassDef node)
     {
-        var classSymbol = Context.SymbolTable.LookupType(node.Name);
+        var classSymbol = Context.LookupDeclaredType(node, node.Name);
         if (classSymbol != null)
         {
             ValidateConstructorOverloads(classSymbol, node.Body);

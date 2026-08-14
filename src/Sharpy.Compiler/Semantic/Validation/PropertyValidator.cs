@@ -40,22 +40,7 @@ internal class PropertyValidator : SemanticValidatorBase
 
         foreach (var stmt in module.Body)
         {
-            switch (stmt)
-            {
-                case ClassDef classDef:
-                    ValidateTypeBody(classDef.Name, classDef.Body);
-                    break;
-                case StructDef structDef:
-                    ValidateTypeBody(structDef.Name, structDef.Body);
-                    break;
-                case InterfaceDef interfaceDef:
-                    // Interfaces have no concrete accessors, so any observer on an interface
-                    // property is invalid (#416). The rest of PropertyValidator's rules do not
-                    // apply to interface members.
-                    foreach (var propDef in interfaceDef.Body.OfType<PropertyDef>())
-                        ValidatePropertyObservers(interfaceDef.Name, propDef, isInterface: true);
-                    break;
-            }
+            ValidateTypeStatement(stmt);
         }
 
         // Rule 9 runs over EVERY property, in whatever declares it. The rules above are container-
@@ -67,6 +52,49 @@ internal class PropertyValidator : SemanticValidatorBase
         // (#1406).
         foreach (var propDef in EnumerateAllProperties(module.Body))
             ValidateAccessorParameterShape(propDef);
+    }
+
+    /// <summary>
+    /// Validates one type declaration's property rules, and recurses into the types nested inside
+    /// it.
+    ///
+    /// <para>The recursion is new with #1461 and is the other half of that fix. Resolving a nested
+    /// declaration through <c>NestedTypes</c> is worth nothing to a validator that never reaches a
+    /// nested declaration, and this walk stopped at <c>module.Body</c>: every container-shaped
+    /// property rule — mixed styles, backing-field collisions, override checks — was silently
+    /// unenforced inside a nested class. Rule 9 already walked to any depth (it needs no symbol), so
+    /// the two halves of this validator disagreed about how deep the module went.</para>
+    /// </summary>
+    private void ValidateTypeStatement(Statement stmt)
+    {
+        switch (stmt.UnwrapDecorated())
+        {
+            case ClassDef classDef:
+                ValidateTypeBody(classDef, classDef.Name, classDef.Body);
+                ValidateNestedTypes(classDef.Body);
+                break;
+            case StructDef structDef:
+                ValidateTypeBody(structDef, structDef.Name, structDef.Body);
+                ValidateNestedTypes(structDef.Body);
+                break;
+            case InterfaceDef interfaceDef:
+                // Interfaces have no concrete accessors, so any observer on an interface
+                // property is invalid (#416). The rest of PropertyValidator's rules do not
+                // apply to interface members.
+                foreach (var propDef in interfaceDef.Body.OfType<PropertyDef>())
+                    ValidatePropertyObservers(interfaceDef.Name, propDef, isInterface: true);
+                ValidateNestedTypes(interfaceDef.Body);
+                break;
+        }
+    }
+
+    private void ValidateNestedTypes(IReadOnlyList<Statement> body)
+    {
+        foreach (var member in body)
+        {
+            if (member.UnwrapDecorated() is ClassDef or StructDef or InterfaceDef)
+                ValidateTypeStatement(member);
+        }
     }
 
     /// <summary>
@@ -157,7 +185,7 @@ internal class PropertyValidator : SemanticValidatorBase
         // guessed at.
     }
 
-    private void ValidateTypeBody(string typeName, IReadOnlyList<Statement> body)
+    private void ValidateTypeBody(Statement declaration, string typeName, IReadOnlyList<Statement> body)
     {
         // Collect fields, methods, and properties from the body
         var fieldNames = new HashSet<string>();
@@ -194,8 +222,10 @@ internal class PropertyValidator : SemanticValidatorBase
             group.Add(propDef);
         }
 
-        // Resolve the type symbol for override validation
-        var typeSymbol = _context.SymbolTable.LookupType(typeName);
+        // Resolve the type symbol for override validation. Through NestedTypes, not by bare name:
+        // a nested class's symbol is defined inside its enclosing class's scope, so the bare
+        // lookup returned null and every symbol-dependent rule below silently did nothing (#1461).
+        var typeSymbol = _context.LookupDeclaredType(declaration, typeName);
 
         // Check each property definition
         foreach (var propDef in propertyDefs)
@@ -205,7 +235,7 @@ internal class PropertyValidator : SemanticValidatorBase
             ValidateInitOnlyFunctionStyle(typeName, propDef);
             ValidateAbstractPropertyBody(typeName, propDef);
             ValidateFinalNotWithAbstractOrVirtual(typeName, propDef);
-            ValidatePropertyOverride(typeName, propDef, typeSymbol);
+            ValidatePropertyOverride(declaration, typeName, propDef, typeSymbol);
             ValidatePropertyObservers(typeName, propDef, isInterface: false);
         }
 
@@ -417,7 +447,20 @@ internal class PropertyValidator : SemanticValidatorBase
     /// Rule 7: @override property must have a matching virtual/abstract property in the base class
     /// with a compatible (covariant) return type.
     /// </summary>
-    private void ValidatePropertyOverride(string typeName, PropertyDef propDef, TypeSymbol? typeSymbol)
+    /// <summary>
+    /// Whether a type DECLARATION names at least one base type in the source. The AST's answer,
+    /// used only to detect that the symbol's answer is missing rather than negative — see the guard
+    /// in <see cref="ValidatePropertyOverride"/> and #1528.
+    /// </summary>
+    private static bool DeclaresABaseType(Statement declaration) => declaration switch
+    {
+        ClassDef classDef => classDef.BaseClasses.Length > 0,
+        StructDef structDef => structDef.BaseClasses.Length > 0,
+        _ => false
+    };
+
+    private void ValidatePropertyOverride(
+        Statement declaration, string typeName, PropertyDef propDef, TypeSymbol? typeSymbol)
     {
         bool isOverride = propDef.Decorators.Any(d => d.Name == DecoratorNames.Override);
         if (!isOverride || typeSymbol == null)
@@ -426,6 +469,19 @@ internal class PropertyValidator : SemanticValidatorBase
         var baseType = typeSymbol.BaseType;
         if (baseType == null)
         {
+            // The symbol says there is no base type. Before reporting that, check whether the
+            // DECLARATION says otherwise: `NameResolver.ResolveClassInheritance` resolves the
+            // declaring class by bare name and so never sets `BaseType` for a NESTED type (#1528,
+            // the #1461 root cause one pass upstream). Reading an unset fact as "no base class"
+            // refuses a program that compiles and runs, which is strictly worse than the check
+            // being absent — so where the two disagree the rule stays silent and says why.
+            //
+            // DELETE THIS GUARD with #1528: once nested types carry their BaseType, the symbol is
+            // the whole answer again and this arm becomes unreachable.
+            if (DeclaresABaseType(declaration))
+                return;
+
+
             AddError(_context,
                 $"Property '{propDef.Name}' in '{typeName}' is marked @override but the class has no base class",
                 propDef.LineStart, propDef.ColumnStart,
