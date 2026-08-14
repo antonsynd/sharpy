@@ -67,7 +67,8 @@ internal static class ClrConstructorSurface
             parameters.Add(new ParameterSymbol
             {
                 Name = param.Name ?? $"arg{param.Position}",
-                Type = typeMapper.MapClrTypeToSemanticType(param.ParameterType),
+                // Parameter position keeps IEnumerable<T> wide (#1450) — see the mapper's own note.
+                Type = typeMapper.MapClrParameterTypeToSemanticType(param.ParameterType),
                 HasDefault = param.HasDefaultValue
             });
         }

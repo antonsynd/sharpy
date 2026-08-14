@@ -1,0 +1,41 @@
+# #1450: discovery mapped a CLR `IEnumerable<T>` PARAMETER onto Sharpy's `list[T]`, which narrowed
+# every re-expressed signature from "any IEnumerable<int>" to "a Sharpy list". The synthesized
+# forwarder emitted `IntList(Sharpy.List<int> collection)`, which compiles — `Sharpy.List<T>`
+# implements `IEnumerable<T>`, so the `base(...)` call binds — while a CLR `List<int>` argument
+# matched no overload, C# fell back to the `int` capacity constructor, and the result was CS1503
+# behind SPY0908.
+#
+# Position is what was missing, not the mapping. A RETURNED `IEnumerable<T>` becomes `list[T]` so the
+# value is an ordinary Sharpy collection with Sharpy methods (#1354's owner decision governs that
+# direction); a PARAMETER must stay as wide as .NET declared it, per Axiom 1. Sharpy callers lose
+# nothing, which is what the literal rows below pin.
+#
+# The issue predicted the same narrowing on ORDINARY CLR methods taking `IEnumerable<T>` — "not
+# forwarder-specific" — so `add_range` is exercised too rather than assumed.
+from system.collections.generic import List
+
+
+class IntList(List[int]):
+    pass
+
+
+def main() -> None:
+    seed: List[int] = List[int]()
+    seed.add(4)
+    seed.add(5)
+
+    # The issue's own repro: a CLR collection into a synthesized forwarder.
+    copied: IntList = IntList(seed)
+    print(copied.count)
+
+    # The control the issue names as working — a Sharpy list literal into the same forwarder.
+    literal: IntList = IntList([4, 5])
+    print(literal.count)
+
+    # The predicted sibling: an ordinary CLR method taking IEnumerable<T>, given both a CLR
+    # collection and a Sharpy list.
+    target: List[int] = List[int]()
+    target.add_range(seed)
+    print(target.count)
+    target.add_range([7, 8])
+    print(target.count)

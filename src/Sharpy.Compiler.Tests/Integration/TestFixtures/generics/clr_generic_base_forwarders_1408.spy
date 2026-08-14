@@ -8,9 +8,13 @@
 # CodeGenInfo.ForwardingConstructors; the emitter reads it and substitutes nothing itself.
 #
 # The parameterless overload was the other half of #1408 and landed separately in 9af4cf581 (#1367);
-# `IntList()` below is its standing cover. The copy forwarder is fed a Sharpy list literal rather than
-# a CLR `List[int]`, because discovery re-expresses the base's `IEnumerable[T]` parameter as `list[T]`
-# and a CLR collection argument therefore does not bind (#1450) — a different defect from this one.
+# `IntList()` below is its standing cover. The copy forwarder used to be fed a Sharpy list literal
+# rather than a CLR `List[int]`, because discovery re-expressed the base's `IEnumerable[T]` parameter
+# as `list[T]` and a CLR collection argument therefore did not bind. That was #1450, a different
+# defect from this one, and it is fixed: the forwarder's parameter is now
+# `System.Collections.Generic.IEnumerable<int>` (see this fixture's own snapshot) and the CLR
+# argument binds. The CLR-argument row lives in `interop/clr_enumerable_parameter_1450.spy`; this
+# fixture keeps the literal row, which is the one that must not regress.
 from system.collections.generic import List
 
 

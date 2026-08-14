@@ -19,7 +19,7 @@ public static partial class ClrGenericBaseForwardersGenericDerived1408
         {
         }
 
-        public MyList(Sharpy.List<int> collection) : base(collection)
+        public MyList(System.Collections.Generic.IEnumerable<int> collection) : base(collection)
         {
         }
     }

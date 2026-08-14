@@ -19,28 +19,28 @@ public static partial class ClrGenericBaseForwarders1408
         {
         }
 
-        public IntList(Sharpy.List<int> collection) : base(collection)
+        public IntList(System.Collections.Generic.IEnumerable<int> collection) : base(collection)
         {
         }
     }
 
     public static void Main()
     {
-#line (22, 5) - (22, 28) 8 "clr_generic_base_forwarders_1408.spy"
+#line (26, 5) - (26, 28) 8 "clr_generic_base_forwarders_1408.spy"
         IntList m = new IntList();
-#line (23, 5) - (23, 13) 8 "clr_generic_base_forwarders_1408.spy"
+#line (27, 5) - (27, 13) 8 "clr_generic_base_forwarders_1408.spy"
         m.Add(1);
-#line (24, 5) - (24, 23) 8 "clr_generic_base_forwarders_1408.spy"
-        System.Collections.Generic.List<int> ok = m;
-#line (25, 5) - (25, 20) 8 "clr_generic_base_forwarders_1408.spy"
-        global::Sharpy.Builtins.Print(ok.Count);
-#line (27, 5) - (27, 33) 8 "clr_generic_base_forwarders_1408.spy"
-        IntList sized = new IntList(8);
 #line (28, 5) - (28, 23) 8 "clr_generic_base_forwarders_1408.spy"
+        System.Collections.Generic.List<int> ok = m;
+#line (29, 5) - (29, 20) 8 "clr_generic_base_forwarders_1408.spy"
+        global::Sharpy.Builtins.Print(ok.Count);
+#line (31, 5) - (31, 33) 8 "clr_generic_base_forwarders_1408.spy"
+        IntList sized = new IntList(8);
+#line (32, 5) - (32, 23) 8 "clr_generic_base_forwarders_1408.spy"
         global::Sharpy.Builtins.Print(sized.Count);
-#line (30, 5) - (30, 39) 8 "clr_generic_base_forwarders_1408.spy"
+#line (34, 5) - (34, 39) 8 "clr_generic_base_forwarders_1408.spy"
         IntList copied = new IntList(new Sharpy.List<int>() { 4, 5 });
-#line (31, 5) - (31, 24) 8 "clr_generic_base_forwarders_1408.spy"
+#line (35, 5) - (35, 24) 8 "clr_generic_base_forwarders_1408.spy"
         global::Sharpy.Builtins.Print(copied.Count);
 #line hidden
     }

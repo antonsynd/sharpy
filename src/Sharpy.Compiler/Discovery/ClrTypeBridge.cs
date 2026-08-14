@@ -171,6 +171,47 @@ internal class ClrTypeBridge
         return _typeCache.GetOrAdd(clrType, MapTypeInternal);
     }
 
+    /// <summary>
+    /// Maps a reflected type appearing in PARAMETER position, where an <c>IEnumerable&lt;T&gt;</c>
+    /// keeps its own identity instead of collapsing onto <c>list[T]</c> (#1450).
+    /// </summary>
+    /// <remarks>
+    /// <para>Position matters because the two directions want opposite things. A RETURNED
+    /// <c>IEnumerable&lt;T&gt;</c> becomes <c>list[T]</c> so the value is an ordinary Sharpy
+    /// collection with Sharpy methods (#1354's owner decision governs that direction). A PARAMETER
+    /// must stay as WIDE as .NET declared it: collapsing it narrowed the accepted set from "any
+    /// <c>IEnumerable&lt;int&gt;</c>" to "a Sharpy list", so a synthesized forwarder emitted
+    /// <c>IntList(Sharpy.List&lt;int&gt;)</c>, a CLR <c>List&lt;int&gt;</c> argument matched no
+    /// overload, C# fell back to the <c>int</c> one, and the result was CS1503 behind SPY0908.
+    /// Axiom 1 decides: .NET says this position takes any sequence.</para>
+    ///
+    /// <para>Sharpy callers lose nothing — <c>Sharpy.List&lt;T&gt;</c> implements
+    /// <c>IEnumerable&lt;T&gt;</c>, so a list literal binds exactly as before. The identity is
+    /// carried the way <c>IOrderedEnumerable&lt;T&gt;</c> carries its own (a <see cref="GenericType"/>
+    /// with the CLR <c>GenericDefinition</c>), so <c>TryGetClrType</c> reconstructs the real
+    /// interface and the emitter writes the .NET type rather than a Sharpy wrapper.</para>
+    /// </remarks>
+    public SemanticType MapClrParameterTypeToSemanticType(Type clrType)
+    {
+        if (clrType.IsGenericType
+            && !clrType.IsGenericTypeDefinition
+            && IsGenericTypeDefinition(clrType.GetGenericTypeDefinition(), typeof(IEnumerable<>)))
+        {
+            var genericDef = clrType.GetGenericTypeDefinition();
+            return new GenericType
+            {
+                Name = ClrNameHelper.StripArity(genericDef.Name),
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(clrType.GetGenericArguments()[0])
+                },
+                GenericDefinition = GetOrCreateClrDefinitionSymbol(genericDef)
+            };
+        }
+
+        return MapClrTypeToSemanticType(clrType);
+    }
+
     private SemanticType MapTypeInternal(Type clrType)
     {
         // Handle generic type parameters (e.g., T in List<T>)

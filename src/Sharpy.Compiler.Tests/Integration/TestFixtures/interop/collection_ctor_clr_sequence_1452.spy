@@ -1,0 +1,41 @@
+# #1452's cell, pinned as a regression fixture. The issue reports `set(<CLR sequence>)` selecting
+# `Sharpy.Set<T>(int capacity)` and failing as CS1503 behind SPY0908, with `list()` as the working
+# twin.
+#
+# MEASURED 2026-08-14: the exact repro does NOT reproduce, at HEAD or at the issue's OWN cited sha
+# `1a27a4da2` (verified in a clean worktree built from that commit — it prints 3). So this fixture
+# is not a fix; it is the pin the cell never had, so the row cannot regress unnoticed. The
+# instrument was checked rather than the conclusion assumed.
+#
+# The plan's sibling audit is here too, and none of the siblings is broken either: `frozenset` and
+# `dict` take the same constructor-selection path, and a `list`/`set`/`frozenset`/`dict` row is
+# included for both a CLR sequence (`.take(n)`) and a plain Sharpy collection.
+def main() -> None:
+    s = "abcdef"
+
+    # The issue's own repro, verbatim.
+    xs: set[str] = set(s.take(3))
+    print(len(xs))
+
+    # The twin the issue names as working — the control that separates element re-representation
+    # (#1401's mechanism) from constructor selection (this issue's).
+    ys: list[str] = list(s.take(3))
+    print(len(ys))
+
+    # The siblings the plan required auditing rather than assuming.
+    zs: frozenset[str] = frozenset(s.take(3))
+    print(len(zs))
+
+    ns: list[int] = [1, 2, 3, 2]
+    a: set[int] = set(ns.take(3))
+    print(len(a))
+
+    b: frozenset[int] = frozenset(ns.take(3))
+    print(len(b))
+
+    ps: list[tuple[str, int]] = [("a", 1), ("b", 2)]
+    d: dict[str, int] = dict(ps.take(2))
+    print(len(d))
+
+    e: dict[str, int] = dict(ps)
+    print(len(e))
