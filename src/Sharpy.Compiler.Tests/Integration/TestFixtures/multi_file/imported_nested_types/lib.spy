@@ -1,0 +1,16 @@
+class Registry:
+    class Entry:
+        tag: int
+
+        def __init__(self, tag: int) -> None:
+            self.tag = tag
+
+    struct Slot:
+        index: int
+
+        def __init__(self, index: int) -> None:
+            self.index = index
+
+    enum Level:
+        LOW = 1
+        HIGH = 2

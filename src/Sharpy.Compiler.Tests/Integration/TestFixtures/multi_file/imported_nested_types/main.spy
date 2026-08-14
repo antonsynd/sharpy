@@ -1,0 +1,20 @@
+# An imported nested type emits its DECLARING CHAIN (#1435): `Lib.Registry.Entry`, not `Lib.Entry`.
+# Only the current-file branch of TypeSyntaxMapper ran the chain walk, so the same-file spelling was
+# correct while the imported one was CS0426 behind SPY0908. All three nested kinds are here because
+# the issue names all three and they take different emission paths.
+#
+# The three-segment spelling `lib.Registry.Entry` is NOT covered here: a module-qualified NESTED
+# type does not resolve at all (SPY0202), because the qualified walk requires every intermediate
+# segment to be a module. That is a resolution gap rather than an emission one — see TODO(#1523).
+from lib import Registry
+
+
+def main() -> None:
+    entry: Registry.Entry = Registry.Entry(7)
+    print(entry.tag)
+
+    slot: Registry.Slot = Registry.Slot(3)
+    print(slot.index)
+
+    level: Registry.Level = Registry.Level.HIGH
+    print(level == Registry.Level.HIGH)

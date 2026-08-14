@@ -683,25 +683,38 @@ internal class TypeSyntaxMapper
         {
             // Nested types in the current file need their declaring chain.
             if (typeSymbol.DeclaringType != null)
-            {
-                var parts = new List<string>();
-                var current = typeSymbol;
-                while (current != null)
-                {
-                    parts.Add(NameCasing.ResolveType(current.Name, current.IsNameBacktickEscaped));
-                    current = current.DeclaringType;
-                }
-                parts.Reverse();
-                return string.Join(".", parts);
-            }
+                return DeclaringChainName(typeSymbol, typeSymbol.Name);
 
             // Construction: type is in the current file. Reference: fallback that shouldn't happen.
             return NameCasing.ResolveType(sharpyTypeName, typeSymbol.IsNameBacktickEscaped);
         }
 
-        return BuildQualifiedTypeName(
-            moduleNamespace,
-            NameCasing.ResolveType(sharpyTypeName, typeSymbol.IsNameBacktickEscaped));
+        // The chain is needed on the qualified branches too. Only the current-file branch above ran
+        // it, so an IMPORTED nested type emitted as `Lib.Entry` where its C# name is
+        // `Lib.Registry.Entry` — CS0426 behind SPY0908, on the imported spelling alone while the
+        // same-file spelling was correct (#1435). One walk, every branch.
+        return BuildQualifiedTypeName(moduleNamespace, DeclaringChainName(typeSymbol, sharpyTypeName));
+    }
+
+    /// <summary>
+    /// The C# name of <paramref name="typeSymbol"/> INSIDE its enclosing type, if any:
+    /// <c>Registry.Entry</c> for a nested <c>Entry</c>, and just the resolved leaf name for a
+    /// top-level type. <paramref name="leafName"/> is the caller's chosen spelling of the type
+    /// itself — the written name at a reference position, the symbol's own name where the caller
+    /// re-derived it — so an aliased import still emits the original type's name.
+    /// </summary>
+    private static string DeclaringChainName(TypeSymbol typeSymbol, string leafName)
+    {
+        var leaf = NameCasing.ResolveType(leafName, typeSymbol.IsNameBacktickEscaped);
+        if (typeSymbol.DeclaringType == null)
+            return leaf;
+
+        var parts = new List<string> { leaf };
+        for (var current = typeSymbol.DeclaringType; current != null; current = current.DeclaringType)
+            parts.Add(NameCasing.ResolveType(current.Name, current.IsNameBacktickEscaped));
+
+        parts.Reverse();
+        return string.Join(".", parts);
     }
 
     /// <summary>
@@ -716,14 +729,21 @@ internal class TypeSyntaxMapper
             ? moduleNamespace.Split('.').Last()
             : moduleNamespace;
 
-        if (string.Equals(lastSegment, typeName, StringComparison.Ordinal))
+        // typeName may carry a nested type's declaring chain (`Registry.Entry`, #1435). The
+        // collision merge is decided by the OUTERMOST type — that is the one that can BE the module
+        // class — and the rest of the chain rides along behind whatever the merge produces.
+        var chainStart = typeName.IndexOf('.', StringComparison.Ordinal);
+        var outermost = chainStart < 0 ? typeName : typeName[..chainStart];
+        var nestedSuffix = chainStart < 0 ? string.Empty : typeName[chainStart..];
+
+        if (string.Equals(lastSegment, outermost, StringComparison.Ordinal))
         {
             // Type IS the module class — module path is the type path
             if (!string.IsNullOrEmpty(_context.ProjectNamespace))
             {
-                return $"{_context.ProjectNamespace}.{moduleNamespace}";
+                return $"{_context.ProjectNamespace}.{moduleNamespace}{nestedSuffix}";
             }
-            return moduleNamespace;
+            return moduleNamespace + nestedSuffix;
         }
 
         // Type is nested inside the module class
@@ -839,17 +859,7 @@ internal class TypeSyntaxMapper
 
         // Handle nested types — emit qualified name (e.g., Outer.Middle.Inner)
         if (udt.Symbol?.DeclaringType != null)
-        {
-            var parts = new List<string>();
-            var current = udt.Symbol;
-            while (current != null)
-            {
-                parts.Add(NameCasing.ResolveType(current.Name, current.IsNameBacktickEscaped));
-                current = current.DeclaringType;
-            }
-            parts.Reverse();
-            return string.Join(".", parts);
-        }
+            return DeclaringChainName(udt.Symbol, udt.Symbol.Name);
 
         // Fall back to name-based lookup. The escape flag still comes from the SYMBOL: a written
         // annotation carries no backtick flag of its own (TypeAnnotation has no such field), so
