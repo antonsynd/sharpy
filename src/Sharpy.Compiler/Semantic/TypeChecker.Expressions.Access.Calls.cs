@@ -4450,6 +4450,18 @@ internal partial class TypeChecker
         if (returnType is GenericType { Name: BuiltinNames.Array })
             return null;
 
+        // Bare `object` from the mapper is "I could not express this CLR type", not "the value is an
+        // object" — the disambiguation #1146's residue calls out as `UnmappedClr`. Binding it turns
+        // the seam's old silence into a FALSE REFUSAL, which was measured, not anticipated:
+        // `Environment.get_environment_variables()` (a non-generic `IDictionary`) and
+        // `TimeZoneInfo.get_system_time_zones()` both map to `object`, and typing them broke the
+        // spy stdlib's own `for entry in ...` loops with SPY0320 "type 'object' is not iterable".
+        // Those loops are correct; the mapping is what cannot describe them. Leaving such a call
+        // `Unknown` keeps it exactly as permissive as before, which is the whole rule this seam
+        // works under.
+        if (IsUnmappedClrObject(returnType))
+            return null;
+
         return ProjectClrChar(call, returnType);
     }
 
@@ -4457,6 +4469,16 @@ internal partial class TypeChecker
     // TYPE NAME rather than of a constructed receiver. Keyed on the CLR type and the resolved method
     // name, which together decide the candidate set.
     private readonly Dictionary<(Type, string), System.Reflection.MethodInfo[]> _clrStaticCallMemo = new();
+
+    /// <summary>
+    /// Whether a mapped type is the bare <c>object</c> the CLR bridge produces for a type it cannot
+    /// express. Deliberately NOT unwrapped through generics: <c>list[object]</c> is a real,
+    /// usable type, while a bare <c>object</c> at the top level carries no information the old
+    /// <c>Unknown</c> did not.
+    /// </summary>
+    private static bool IsUnmappedClrObject(SemanticType type)
+        => type is BuiltinType { Name: BuiltinNames.Object }
+            || type is UserDefinedType { Name: BuiltinNames.Object };
 
     /// <summary>The public static overloads of <paramref name="methodName"/>, memoized.</summary>
     private System.Reflection.MethodInfo[] ClrStaticCallSurfaceOf(Type clrType, string methodName)
