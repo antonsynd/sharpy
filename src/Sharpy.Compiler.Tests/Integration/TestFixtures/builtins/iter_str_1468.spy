@@ -5,9 +5,12 @@
 # The Iterator[str] annotations are the type probe (printing would not be one): they bind only if
 # the checker types the call as Iterator[str], and they would be CS0266 behind SPY0908 if
 # StringHelpers.Iterate's return type disagreed with that.
-# The last two lines are the control that this invents no producer-specific repr: the str form and
-# the list form print the SAME address-free `<iterator object>` (docs/deviations.yaml,
-# iterator-repr-no-address). Expected output verified against python3 3.12.
+# The control that this invents no producer-specific repr — the str form and the list form print
+# the SAME address-free `<iterator object>` — lives in builtin_iterator_reprs_1354, beside the other
+# iterator reprs, because CPython embeds object addresses there and a cell containing one can never
+# match byte-for-byte. Keeping it out of THIS fixture is what lets this one run as a clean
+# differential-oracle cell instead of needing an allowlist entry.
+# Expected output verified against python3 3.12.
 # Mutation test (performed 2026-08-14, reverted): re-point the emitter's iter-on-str arm at another
 # builtin name so the routing never fires — this fixture goes RED with SPY0908 over
 # `Iterator<string> it = Sharpy.Builtins.Iter("abc")` (CS0266: the C# call binds Iterator<char>).
@@ -24,6 +27,3 @@ def main() -> None:
     lst: Iterator[int] = iter([1, 2, 3])
     print(next(lst))
     print(next(lst))
-
-    print(iter("abc"))
-    print(iter([1, 2, 3]))

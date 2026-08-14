@@ -14,3 +14,11 @@ def main() -> None:
     print(zip([1, 2], ["a", "b"]))
     print(enumerate(["a", "b"]))
     print(range(3))
+
+    # #1468's control, kept here rather than in builtins/iter_str_1468 so that fixture stays a
+    # clean differential-oracle cell: iter(str) must NOT invent a producer-specific repr. CPython
+    # distinguishes str_ascii_iterator from list_iterator; Sharpy deliberately does not, because
+    # `iter` accepts any CLR IEnumerable and most of those have no CPython name to borrow — so
+    # both print the same address-free form. The two lines agreeing IS the assertion.
+    print(iter("abc"))
+    print(iter([1, 2, 3]))
