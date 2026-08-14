@@ -579,16 +579,16 @@ internal partial class RoslynEmitter
     /// </summary>
     private static bool IsRepeatableOperand(
         Expression expr, Func<MemberAccess, bool> memberReadIsRepeatable) => expr switch
-    {
-        _ when IsRepeatableLeafOperand(expr) => true,
-        Parenthesized paren => IsRepeatableOperand(paren.Expression, memberReadIsRepeatable),
-        MemberAccess member => IsRepeatableOperand(member.Object, memberReadIsRepeatable)
-                               && memberReadIsRepeatable(member),
-        UnaryOp unary => IsRepeatableOperand(unary.Operand, memberReadIsRepeatable),
-        BinaryOp binary => IsRepeatableOperand(binary.Left, memberReadIsRepeatable)
-                           && IsRepeatableOperand(binary.Right, memberReadIsRepeatable),
-        _ => false
-    };
+        {
+            _ when IsRepeatableLeafOperand(expr) => true,
+            Parenthesized paren => IsRepeatableOperand(paren.Expression, memberReadIsRepeatable),
+            MemberAccess member => IsRepeatableOperand(member.Object, memberReadIsRepeatable)
+                                   && memberReadIsRepeatable(member),
+            UnaryOp unary => IsRepeatableOperand(unary.Operand, memberReadIsRepeatable),
+            BinaryOp binary => IsRepeatableOperand(binary.Left, memberReadIsRepeatable)
+                               && IsRepeatableOperand(binary.Right, memberReadIsRepeatable),
+            _ => false
+        };
 
     /// <summary>
     /// The LEAF arm: reads with nothing underneath them, so evaluating one twice is
