@@ -57,9 +57,18 @@ internal partial class RoslynEmitter
         //
         // approx(...) comparisons generalize to a tolerance form here too (#1074), so
         // `assert x == approx(y)` works in plain functions and helpers, not only @test bodies.
+        //
+        // `isinstance(x, (A, B, ...))` is the ONE shape that does not lower as an ordinary
+        // expression (#1532): Builtins.Isinstance takes a single Type, so a tuple argument does
+        // not bind (CS1503). It gets an `x is A || x is B || ...` disjunction here — the same
+        // success shape the test-host tuple arm expresses through Assert.True. Every other assert
+        // shape (==, in, is, startswith, single-type isinstance, not, ...) lowers correctly through
+        // GenerateExpression, so the helper returns null for them.
         var successCondition = TryGetApproxParts(assert.Test) is { } parts
             ? BuildApproxSuccessCondition(parts)
-            : WrapTruthinessIfNeeded(GenerateExpression(assert.Test), assert.Test);
+            : TryBuildIsinstanceTupleCondition(assert.Test) is { } tupleCondition
+                ? tupleCondition
+                : WrapTruthinessIfNeeded(GenerateExpression(assert.Test), assert.Test);
 
         var ctorArgs = assert.Message != null
             ? ArgumentList(SingletonSeparatedList(Argument(GenerateExpression(assert.Message))))
@@ -76,6 +85,56 @@ internal partial class RoslynEmitter
         // narrows x for the rest of the scope) is materialized per-read-node by the TypeChecker
         // (#1081); the reads apply their own accessors, so no emitter-side flow update is needed.
         return guard;
+    }
+
+    /// <summary>
+    /// The framework-free success condition for <c>assert isinstance(x, (A, B, ...))</c> and its
+    /// negation — the ONE isinstance shape the ordinary-expression fallback cannot lower, because
+    /// <c>Builtins.Isinstance</c> takes a single <c>Type</c> and a tuple of types does not bind
+    /// (CS1503, #1532). Returns <c>x is A || x is B || ...</c> for the positive form and
+    /// <c>!(x is A || x is B || ...)</c> for <c>not isinstance(...)</c>; returns <c>null</c> for
+    /// every other shape (single-type isinstance and all non-isinstance asserts lower correctly
+    /// through <see cref="GenerateExpression"/>).
+    /// <para>
+    /// Each alternative is rendered through <see cref="MapTestAssertTypeOperand"/>, so it applies
+    /// the classification the TypeChecker recorded for that element (Critical Rule 2) — the same
+    /// rendering, and the same <c>is</c>-disjunction, the test-host tuple arm produces. The tuple's
+    /// SPY0344 exemption and per-element classification are keyed on the enclosing <c>@test</c>
+    /// function, not on the test host, so they hold under <c>sharpyc run</c> too.
+    /// </para>
+    /// </summary>
+    private ExpressionSyntax? TryBuildIsinstanceTupleCondition(Expression test)
+    {
+        var negated = test is UnaryOp { Operator: UnaryOperator.Not };
+        var inner = negated ? ((UnaryOp)test).Operand : test;
+
+        if (inner is not FunctionCall call
+            || call.Arguments.Length != 2
+            || call.Arguments[1] is not TupleLiteral typeTuple)
+        {
+            return null;
+        }
+
+        // Confirm the callee is isinstance — bare, or builtins-qualified reading the routing the
+        // TypeChecker recorded rather than re-deciding the receiver (Critical Rule 2, #1381).
+        var callee = Shared.AstHelper.UnwrapParenthesized(call.Function);
+        var isIsinstance = callee is Identifier { Name: "isinstance" }
+            || (callee is MemberAccess { IsMemberBacktickEscaped: false, Member: "isinstance" }
+                && _context.SemanticInfo?.GetCalleeRouting(call) == CalleeRouting.Builtin);
+        if (!isIsinstance)
+        {
+            return null;
+        }
+
+        var subject = GenerateExpression(call.Arguments[0]);
+        var disjunction = typeTuple.Elements
+            .Select(typeExpr => (ExpressionSyntax)BinaryExpression(
+                SyntaxKind.IsExpression, subject, MapTestAssertTypeOperand(typeExpr)))
+            .Aggregate((left, right) => BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
+
+        return negated
+            ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(disjunction))
+            : disjunction;
     }
 
     /// <summary>

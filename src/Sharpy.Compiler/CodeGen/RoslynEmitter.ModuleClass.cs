@@ -171,10 +171,17 @@ internal partial class RoslynEmitter
                 continue;
             }
 
-            // Module-level @test functions are collected for a separate sibling test class
-            // (so they don't end up as static methods on the module class — xUnit needs them
-            // as instance methods on a public class).
-            if (stmt is FunctionDef testFunc
+            // Module-level @test functions are collected for a separate sibling test class ONLY
+            // when compiling for a test host (#1495, #1532): xUnit discovers test methods as
+            // instance methods on a public class, so under a test host the class IS the point.
+            // Outside one there is no runner and no discovery, so a @test function has no reason
+            // not to be an ordinary module-level function — which is also what a Python reader
+            // expects of a test file. Diverting it into the sibling test class unconditionally
+            // left a module-level caller referencing a name that is not in scope (`passing_assert()`
+            // → CS0103 behind SPY0908), making a @test program uncompilable under `sharpyc run`.
+            // The test-host path is unchanged, so `unittest/*.expected.cs` stays byte-identical.
+            if (_context.TargetsTestHost
+                && stmt is FunctionDef testFunc
                 && testFunc.Decorators.Any(IsTestDecorator))
             {
                 _pendingTestFunctions.Add(testFunc);
