@@ -208,7 +208,15 @@ internal partial class RoslynEmitter
             ResetMethodScope();
             CollectSourceVariableNames(setItemFunc.Body);
 
-            // Track all non-self parameters as declared variables
+            // A C# indexer's set accessor takes its written value through the implicit `value`, so
+            // `__setitem__`'s LAST parameter is mapped onto that name and never declared — exactly
+            // as a property's custom setter does (#1405, `GenerateMixedAutoCustomProperty`). Without
+            // the mapping the body referenced the Sharpy spelling, which no C# declaration
+            // introduces: `def __setitem__(self, i: int, v: int)` emitted `v` and came back as
+            // CS0103 behind SPY0908, while the same method spelled `value` compiled by accident
+            // (#1529). The INDEX parameter is a real declared parameter and is registered normally.
+            var valueParamName = IndexerValueParamName(setItemFunc.Parameters);
+
             foreach (var param in setItemFunc.Parameters)
             {
                 if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) ||
@@ -220,6 +228,9 @@ internal partial class RoslynEmitter
                 RegisterLocalSlot(baseName, param.Name);
             }
 
+            _declaredVariables.Add("value");
+            RegisterLocalSlot("value", "value");
+
             if (isAbstract)
             {
                 accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
@@ -227,6 +238,7 @@ internal partial class RoslynEmitter
             }
             else
             {
+                using var valueRewrite = AccessorParamRewrite(valueParamName, "value");
                 var bodyStatements = GenerateSuite(setItemFunc.Body);
                 accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
                     .WithBody(Block(bodyStatements)));
@@ -900,6 +912,21 @@ internal partial class RoslynEmitter
     private static string? AccessorValueParamName(IEnumerable<Parameter> parameters)
         => parameters.FirstOrDefault(p =>
             !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))?.Name;
+
+    /// <summary>
+    /// An indexer set accessor's named incoming value: <c>__setitem__</c>'s LAST non-<c>self</c>
+    /// parameter, or null when it declares none.
+    ///
+    /// <para>Separate from <see cref="AccessorValueParamName"/>, which takes the FIRST — and that
+    /// difference is the whole point. A property setter's only non-<c>self</c> parameter IS the
+    /// value; <c>__setitem__(self, index, value)</c> declares the index first, so taking the first
+    /// would map the INDEX onto <c>value</c> and leave the value undeclared: the same CS0103 with
+    /// the operands swapped (#1529).</para>
+    /// </summary>
+    private static string? IndexerValueParamName(IReadOnlyList<Parameter> parameters)
+        => parameters.LastOrDefault(p =>
+            !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(p.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))?.Name;
 
     /// <summary>
     /// The C# type of a single-accessor function-style property, read from the annotation the user

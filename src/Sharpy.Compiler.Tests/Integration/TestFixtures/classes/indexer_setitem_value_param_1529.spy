@@ -1,0 +1,41 @@
+# #1529: a C# indexer's set accessor receives the written value through the implicit `value`, so
+# `__setitem__`'s LAST parameter has to be MAPPED onto that name rather than declared. The emitter
+# already had the mechanism (`AccessorParamRewrite`, #1405) and applied it to property setters,
+# single-accessor properties, property observers and event accessors — the indexer was the one
+# accessor emitter that did not use it. So the body emitted the Sharpy spelling into a scope where
+# only `value` exists: `def __setitem__(self, i: int, v: int)` came back as CS0103 behind SPY0908,
+# while the same method spelled `value` compiled by accident.
+#
+# One working spelling out of every possible spelling is the shape this fixture pins. `Slot` uses a
+# name that is NOT `value`; `Cell` uses `value` and is the control that compiled before the fix and
+# must keep compiling after it. The INDEX parameter stays a real declared C# parameter — taking the
+# FIRST non-self parameter (what a property setter does) would map the index onto `value` instead
+# and produce the same CS0103 with the operands swapped.
+class Slot:
+    stored: int = 0
+
+    def __getitem__(self, i: int) -> int:
+        return self.stored
+
+    def __setitem__(self, i: int, v: int) -> None:
+        self.stored = v + i
+
+
+class Cell:
+    stored: int = 0
+
+    def __getitem__(self, i: int) -> int:
+        return self.stored
+
+    def __setitem__(self, i: int, value: int) -> None:
+        self.stored = value + i
+
+
+def main() -> None:
+    s = Slot()
+    s[2] = 5
+    print(s[0])
+
+    c = Cell()
+    c[3] = 5
+    print(c[0])
