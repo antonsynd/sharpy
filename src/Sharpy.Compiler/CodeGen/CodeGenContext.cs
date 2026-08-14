@@ -34,6 +34,11 @@ internal class CodeGenContext
     /// <c>.spyproj</c> declaring <c>&lt;TestHost&gt;true&lt;/TestHost&gt;</c> (the spy-test corpora),
     /// and the integration-test harness, which supplies an Xunit reference of its own. Those paths
     /// keep the Xunit lowering byte-for-byte, which is the owner's condition on this change.</para>
+    ///
+    /// <para>TODO(#1532): two surfaces still ignore this flag and emit Xunit unconditionally — the
+    /// test-CLASS emission (so a module-level caller cannot reach a <c>@test</c> function under
+    /// <c>run</c>, CS0103) and the TUPLE form of <c>assert isinstance(x, (A, B))</c>, which has no
+    /// framework-free lowering (CS1503). #1495 closes when those follow.</para>
     /// </summary>
     public bool TargetsTestHost { get; set; }
 
