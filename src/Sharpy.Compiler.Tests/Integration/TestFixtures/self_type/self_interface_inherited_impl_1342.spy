@@ -1,0 +1,48 @@
+# #1342 shape 3: the implementing member is INHERITED from a base class, not declared on the class
+# that names the interface. classSymbol.Methods alone misses it; the bridge spec walks the class's
+# base chain. Both a Self PARAMETER (merge) and a Self RETURN (clone_ref) are exercised — the
+# Self-returning inherited method returns the ancestor's own C# type, so the bridge casts the
+# forwarded result to the interface (sound: the runtime object is the derived type).
+interface IMergeable:
+    def merge(self, other: Self) -> None:
+        ...
+
+    def clone_ref(self) -> Self:
+        ...
+
+
+class Base:
+    total: int
+
+    def __init__(self) -> None:
+        self.total = 0
+
+    def add(self, n: int) -> None:
+        self.total = self.total + n
+
+    def merge(self, other: Self) -> None:
+        self.total = self.total + other.total
+
+    def clone_ref(self) -> Self:
+        return self
+
+
+class Derived(Base, IMergeable):
+    pass
+
+
+def use(m: IMergeable, other: IMergeable) -> None:
+    m.merge(other)
+
+
+def main() -> None:
+    a: Derived = Derived()
+    a.add(10)
+    b: Derived = Derived()
+    b.add(5)
+    use(a, b)
+    print(a.total)
+
+    r: IMergeable = a
+    r2: IMergeable = r.clone_ref()
+    print("cloned")

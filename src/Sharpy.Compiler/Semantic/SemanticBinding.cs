@@ -64,6 +64,13 @@ public class SemanticBinding
     private readonly ConcurrentDictionary<Symbol, IReadOnlyList<FunctionSymbol>> _forwardingConstructors =
         new(ReferenceEqualityComparer.Instance);
 
+    // Self-interface bridge specs for a class, fully resolved through the walker's interface channel
+    // (#1342). Written by TypeChecker during type checking; bridged onto
+    // CodeGenInfo.SelfInterfaceBridges at MaterializeCodeGenInfo. Symbol-keyed (Rule 2a) with
+    // reference equality, mirroring _forwardingConstructors (#1408).
+    private readonly ConcurrentDictionary<Symbol, IReadOnlyList<SelfInterfaceBridgeSpec>> _selfInterfaceBridges =
+        new(ReferenceEqualityComparer.Instance);
+
     // Maps variable symbols to their resolved types
     private readonly ConcurrentDictionary<VariableSymbol, SemanticType> _variableTypes =
         new(ReferenceEqualityComparer.Instance);
@@ -227,6 +234,27 @@ public class SemanticBinding
     public IReadOnlyList<FunctionSymbol>? GetForwardingConstructors(Symbol symbol)
         => _forwardingConstructors.TryGetValue(symbol, out var ctors) ? ctors : null;
 
+    /// <summary>
+    /// Records the Self-interface bridge specs a class must emit, fully resolved through the walker's
+    /// interface channel (#1342). Bridged onto <see cref="CodeGenInfo.SelfInterfaceBridges"/> at
+    /// <see cref="MaterializeCodeGenInfo"/> so code generation emits them from a frozen fact and
+    /// re-derives no interface instantiation or implementing-member match of its own.
+    /// </summary>
+    public void SetSelfInterfaceBridges(Symbol symbol, IReadOnlyList<SelfInterfaceBridgeSpec> bridges)
+    {
+        if (_codeGenInfoFrozen)
+        {
+            AssertNotFrozen("CodeGenInfo", symbol.Name);
+        }
+        _selfInterfaceBridges[symbol] = bridges;
+    }
+
+    /// <summary>
+    /// The recorded Self-interface bridge specs for a class, or null if none were recorded.
+    /// </summary>
+    public IReadOnlyList<SelfInterfaceBridgeSpec>? GetSelfInterfaceBridges(Symbol symbol)
+        => _selfInterfaceBridges.TryGetValue(symbol, out var bridges) ? bridges : null;
+
     #endregion
 
     #region Variable Types
@@ -382,6 +410,12 @@ public class SemanticBinding
             "the fact would be silently dropped at materialization and the emitter would fall back " +
             "to the ancestor's OPEN signatures (#1408).");
 
+        System.Diagnostics.Debug.Assert(
+            System.Linq.Enumerable.All(_selfInterfaceBridges.Keys, s => _codeGenInfo.ContainsKey(s)),
+            "Self-interface bridge specs were recorded for a symbol with no CodeGenInfo entry; " +
+            "the fact would be silently dropped at materialization and the Self member would leak " +
+            "CS0535/CS0738 behind SPY0908 (#1342).");
+
         foreach (var (symbol, info) in _codeGenInfo)
         {
             var effective = info;
@@ -401,6 +435,12 @@ public class SemanticBinding
             if (effective.ForwardingConstructors is null
                 && _forwardingConstructors.TryGetValue(symbol, out var forwarders))
                 effective = effective with { ForwardingConstructors = forwarders };
+
+            // Bridge the Self-interface bridge specs (#1342) for the same reason: the composed
+            // interface instantiation and the resolved implementing member are semantic facts.
+            if (effective.SelfInterfaceBridges is null
+                && _selfInterfaceBridges.TryGetValue(symbol, out var bridges))
+                effective = effective with { SelfInterfaceBridges = bridges };
 
             symbol.CodeGenInfo = effective;
         }
@@ -428,6 +468,11 @@ public class SemanticBinding
         // MaterializeCodeGenInfo on the project-level binding, after this merge.
         foreach (var (symbol, forwarders) in other._forwardingConstructors)
             _forwardingConstructors.TryAdd(symbol, forwarders);
+
+        // Same consumption point, same obligation (#1342): the Self-interface bridge specs are
+        // bridged at MaterializeCodeGenInfo on the project-level binding, after this merge.
+        foreach (var (symbol, bridges) in other._selfInterfaceBridges)
+            _selfInterfaceBridges.TryAdd(symbol, bridges);
 
         foreach (var (symbol, type) in other._variableTypes)
             _variableTypes.TryAdd(symbol, type);

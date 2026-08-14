@@ -1104,6 +1104,7 @@ internal partial class TypeChecker
         _symbolTable.ExitScope();
 
         RecordForwardingConstructors(classSymbol);
+        RecordSelfInterfaceBridges(classSymbol);
     }
 
     /// <summary>
@@ -1145,6 +1146,145 @@ internal partial class TypeChecker
             return;
 
         SemanticBinding.SetForwardingConstructors(classSymbol, forwarded.Value.Constructors);
+    }
+
+    /// <summary>
+    /// Materializes the explicit-interface bridges a class must emit so its <c>Self</c>-annotated
+    /// interface members bind (#1342), fully resolved through the walker's interface channel:
+    /// each implemented interface at its composed base-clause arguments, each Self-mentioning member's
+    /// signature with top-level <c>Self</c> resolved to that interface instantiation and the
+    /// interface's own type parameters substituted, and the implementing member found by walking the
+    /// class's base chain (shape 3). A member with a NESTED <c>Self</c> (<c>list[Self]</c>) is left
+    /// unbridged — SPY0497 refuses it (shape 2). The emitter reads these verbatim (Rule 2 pattern a).
+    /// </summary>
+    private void RecordSelfInterfaceBridges(TypeSymbol classSymbol)
+    {
+        if (classSymbol.TypeKind != TypeKind.Class)
+            return;
+
+        var ownTypeArguments = classSymbol.TypeParameters
+            .Select(tp => (SemanticType)new TypeParameterType { Name = tp.Name })
+            .ToList();
+
+        var specs = new List<SelfInterfaceBridgeSpec>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var iface in GenericInstantiationWalker.EnumerateImplementedInterfaces(
+            classSymbol, ownTypeArguments, SemanticBinding, _typeResolver))
+        {
+            var interfaceDef = iface.Definition;
+            var interfaceType = InstantiatedInterfaceType(interfaceDef, iface.TypeArguments);
+
+            // interface type-parameter name -> the argument the base clause composed for it.
+            var typeParamMap = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+            for (int i = 0; i < interfaceDef.TypeParameters.Count && i < iface.TypeArguments.Count; i++)
+                typeParamMap[interfaceDef.TypeParameters[i].Name] = iface.TypeArguments[i];
+
+            SemanticType ResolveBridgeType(SemanticType t) =>
+                t is SelfType ? interfaceType : TypeSubstitution.Apply(t, typeParamMap);
+
+            foreach (var method in interfaceDef.Methods)
+            {
+                var ifaceParams = method.Parameters.Where(p => p.Name != PythonNames.Self).ToList();
+
+                var hasTopLevelSelf = method.ReturnType is SelfType
+                    || ifaceParams.Any(p => p.Type is SelfType);
+                var hasNestedSelf = SelfTypeAnalysis.ContainsNestedSelf(method.ReturnType)
+                    || ifaceParams.Any(p => SelfTypeAnalysis.ContainsNestedSelf(p.Type));
+
+                // No Self at all → C# binds the implementation directly, no bridge. Nested Self →
+                // SPY0497 refuses it (shape 2); bridging it would be unsound.
+                if (!hasTopLevelSelf || hasNestedSelf)
+                    continue;
+
+                var impl = FindImplementingMethod(classSymbol, method.Name, ifaceParams.Count);
+                if (impl == null)
+                    continue;
+
+                var key = $"{interfaceType.GetDisplayName()}|{method.Name}|{ifaceParams.Count}";
+                if (!seen.Add(key))
+                    continue;
+
+                var implParams = impl.Parameters.Where(p => p.Name != PythonNames.Self).ToList();
+
+                // A Self-returning implementation that is INHERITED returns the ancestor's own type
+                // in C#, which the interface is not assignable from — the forwarded result then needs
+                // an explicit cast to the interface (sound: the runtime object is the derived type).
+                var returnCast = method.ReturnType is SelfType
+                    && impl.ReturnType is { } implReturn
+                    && !IsAssignable(implReturn, interfaceType)
+                    ? interfaceType
+                    : null;
+
+                var bridgeParams = new List<ParameterSymbol>(ifaceParams.Count);
+                var casts = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+                for (int i = 0; i < ifaceParams.Count; i++)
+                {
+                    var ip = ifaceParams[i];
+                    bridgeParams.Add(ip with { Type = ResolveBridgeType(ip.Type) });
+
+                    // C# is invariant on parameters, so the only sound bridge-vs-implementation
+                    // difference is a `Self` parameter: the bridge takes the interface, the
+                    // implementation the class — downcast the forwarded argument.
+                    if (ip.Type is SelfType && i < implParams.Count)
+                        casts[ip.Name] = implParams[i].Type;
+                }
+
+                specs.Add(new SelfInterfaceBridgeSpec
+                {
+                    InterfaceType = interfaceType,
+                    MethodName = method.Name,
+                    ReturnType = method.ReturnType is null ? null : ResolveBridgeType(method.ReturnType),
+                    ReturnCast = returnCast,
+                    Parameters = bridgeParams,
+                    ParameterCasts = casts
+                });
+            }
+        }
+
+        if (specs.Count > 0)
+            SemanticBinding.SetSelfInterfaceBridges(classSymbol, specs);
+    }
+
+    /// <summary>The <see cref="SemanticType"/> form of an interface instantiation.</summary>
+    private static SemanticType InstantiatedInterfaceType(
+        TypeSymbol definition, IReadOnlyList<SemanticType> typeArguments)
+        => typeArguments.Count > 0
+            ? new GenericType
+            {
+                Name = definition.Name,
+                TypeArguments = typeArguments.ToList(),
+                GenericDefinition = definition
+            }
+            : new UserDefinedType { Name = definition.Name, Symbol = definition };
+
+    /// <summary>
+    /// The method implementing an interface member, found on the class itself or, when inherited,
+    /// down its base chain (#1342 shape 3). Matched by name and non-self parameter count.
+    /// </summary>
+    private FunctionSymbol? FindImplementingMethod(
+        TypeSymbol classSymbol, string methodName, int nonSelfParamCount)
+    {
+        FunctionSymbol? Match(TypeSymbol t) => t.Methods.FirstOrDefault(m =>
+            m.Name == methodName
+            && m.Parameters.Count(p => p.Name != PythonNames.Self) == nonSelfParamCount);
+
+        var own = Match(classSymbol);
+        if (own != null)
+            return own;
+
+        var ownTypeArguments = classSymbol.TypeParameters
+            .Select(tp => (SemanticType)new TypeParameterType { Name = tp.Name })
+            .ToList();
+        foreach (var ancestor in GenericInstantiationWalker.EnumerateBaseChain(
+            classSymbol, ownTypeArguments, SemanticBinding, _typeResolver))
+        {
+            var inherited = Match(ancestor.Definition);
+            if (inherited != null)
+                return inherited;
+        }
+
+        return null;
     }
 
     private void CheckStruct(StructDef structDef)

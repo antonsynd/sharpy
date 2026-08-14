@@ -95,6 +95,20 @@ public sealed record CodeGenInfo
     /// </remarks>
     public IReadOnlyList<FunctionSymbol>? ForwardingConstructors { get; init; }
 
+    /// <summary>
+    /// The explicit-interface bridges a class must emit so its <c>Self</c>-annotated interface
+    /// members bind (#1342) — one per (implemented interface × Self-mentioning member), with the
+    /// interface's composed base-clause arguments and the resolved implementing member already
+    /// baked in. Null when the class implements no interface with a bridged <c>Self</c> member.
+    /// </summary>
+    /// <remarks>
+    /// Symbol-keyed on the class (Rule 2a), like <see cref="ForwardingConstructors"/>: the composed
+    /// interface instantiation and the implementing member (which may be inherited from a base
+    /// class, shape 3) are semantic facts the emitter must not re-derive. Code generation reads
+    /// these verbatim in <c>GenerateSelfInterfaceBridges</c>.
+    /// </remarks>
+    public IReadOnlyList<SelfInterfaceBridgeSpec>? SelfInterfaceBridges { get; init; }
+
     // ============================================================
     // FUTURE EXTENSIBILITY (for v0.2.x+)
     // These fields are reserved for future features. They are

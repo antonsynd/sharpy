@@ -1,0 +1,28 @@
+# #1342 shape 1: a GENERIC declaring interface. The explicit-interface specifier must be written at
+# the base clause's arguments (IBuilder<int>), not the interface symbol's open parameter, and the
+# member's `Self` resolves to that instantiation. Before the fix the bridge bailed on any generic
+# interface and the member leaked CS0738 behind SPY0908. The bridge specs are computed from the
+# walker's interface channel and materialized on CodeGenInfo, so the emitter stays a pure reader.
+interface IBuilder[T]:
+    def with_item(self, item: T) -> Self:
+        ...
+
+
+class Box(IBuilder[int]):
+    _n: int
+
+    def __init__(self) -> None:
+        self._n = 0
+
+    def with_item(self, item: int) -> Self:
+        self._n = self._n + item
+        return self
+
+    def total(self) -> int:
+        return self._n
+
+
+def main() -> None:
+    b: Box = Box()
+    b2: Box = b.with_item(3).with_item(4)
+    print(b2.total())
