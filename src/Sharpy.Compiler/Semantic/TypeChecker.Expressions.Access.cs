@@ -2105,6 +2105,20 @@ internal partial class TypeChecker
             nestedGenericType.IsGeneric)
         {
             var nestedTypeArgs = TryResolveTypeArguments(indexAccess.Index, shapes);
+
+            // `tuple[...]` is a TupleType, never GenericType("tuple", …), wherever it is written.
+            // This is the #1200 rule, and it has to be applied HERE as well as at the top-level
+            // generic-reference classifier (GenericReferenceResolver.cs, the TupleTypeRef arm),
+            // because a tuple written as a TYPE ARGUMENT — `iter[tuple[int, int]](…)`,
+            // `f[tuple[int, int]](…)` — reaches this resolver instead of that one. Producing the
+            // GenericType shape here made the resolved argument unequal to the identical TupleType
+            // the annotation position produces, so the substituted parameter matched nothing
+            // (SPY0354) and the return check reported the two spellings as different types while
+            // RENDERING THEM IDENTICALLY: "Cannot return type 'Iterator[tuple[int, int]]' from
+            // function expecting 'Iterator[tuple[int, int]]'" (#1470, the nested sibling of #1200).
+            if (TryBuildTupleTypeReference(nestedTypeId, nestedTypeArgs) is { } nestedTuple)
+                return nestedTuple;
+
             if (nestedTypeArgs != null
                 && (!shapes.HasFlag(TypeOperandShapes.RequireMatchingArity)
                     || nestedTypeArgs.Count == nestedGenericType.TypeParameters.Count))
@@ -2120,6 +2134,27 @@ internal partial class TypeChecker
 
         return null;
     }
+
+    /// <summary>
+    /// The one place that decides a written <c>tuple[...]</c> denotes a <see cref="TupleType"/>.
+    ///
+    /// <para>A tuple's arity is part of its type, so the written vector is the ELEMENT LIST rather
+    /// than arguments to a fixed-arity declaration — which is why it cannot go through the ordinary
+    /// generic-reference construction, and why it must produce the same <see cref="TupleType"/> that
+    /// <c>TypeResolver</c> produces for the identical annotation. Two shapes for one spelling render
+    /// identically and compare unequal, which is the self-contradictory diagnostic of #1200 (the
+    /// top-level spelling) and #1470 (the same spelling as a type argument).</para>
+    ///
+    /// <para>Shared by both resolvers so the two entry points cannot drift again: fixing one and not
+    /// the other is exactly how #1470 outlived #1200.</para>
+    /// </summary>
+    private TupleType? TryBuildTupleTypeReference(Identifier typeId, List<SemanticType>? elementTypes)
+        => typeId.Name == BuiltinNames.Tuple
+            && !typeId.IsNameBacktickEscaped
+            && _symbolTable.Lookup(typeId.Name) is TypeSymbol
+            && elementTypes is { Count: > 0 }
+                ? new TupleType { ElementTypes = elementTypes }
+                : null;
 
     /// <summary>
     /// Tries to resolve one or more type arguments from an index expression.

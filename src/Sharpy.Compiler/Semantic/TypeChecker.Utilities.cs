@@ -1314,6 +1314,53 @@ internal partial class TypeChecker
                         return null;
                     }
                 }
+            case TupleType tt:
+                {
+                    // A tuple IS a System.ValueTuple<...> at runtime — that is what the emitter
+                    // writes and what ClrTypeBridge maps back. Without this arm every tuple answered
+                    // "no CLR type", and the callers split on how they treat that: the GenericType
+                    // arm below substitutes typeof(object) and keeps going, while
+                    // ClrTypeHelper.ClrOriginIsSatisfiedBy (correctly) refuses to guess and returns
+                    // false. So a CLR-provenanced formal like `iter`'s IEnumerable<T> rejected a
+                    // tuple argument it binds natively — `iter[tuple[int, int]](pairs)` was SPY0354
+                    // while `iter[int]`/`iter[list[int]]` resolved (#1470). The gap was invisible for
+                    // every other element type because only tuples reach the default arm.
+                    var elementClrTypes = new Type[tt.ElementTypes.Count];
+                    for (var i = 0; i < tt.ElementTypes.Count; i++)
+                    {
+                        var elementClr = TryGetClrType(tt.ElementTypes[i]);
+                        if (elementClr == null)
+                            return null;
+                        elementClrTypes[i] = elementClr;
+                    }
+
+                    // ValueTuple is declared for arities 1-7 plus an 8th TRest form. Arities beyond
+                    // 7 return null rather than building the nested TRest encoding: answering
+                    // "unknown" is what every caller already handles, and a wrong shape here would
+                    // be worse than no answer.
+                    Type? openTuple = elementClrTypes.Length switch
+                    {
+                        1 => typeof(ValueTuple<>),
+                        2 => typeof(ValueTuple<,>),
+                        3 => typeof(ValueTuple<,,>),
+                        4 => typeof(ValueTuple<,,,>),
+                        5 => typeof(ValueTuple<,,,,>),
+                        6 => typeof(ValueTuple<,,,,,>),
+                        7 => typeof(ValueTuple<,,,,,,>),
+                        _ => null,
+                    };
+                    if (openTuple == null)
+                        return null;
+
+                    try
+                    {
+                        return openTuple.MakeGenericType(elementClrTypes);
+                    }
+                    catch (ArgumentException)
+                    {
+                        return null;
+                    }
+                }
             case GenericType gt:
                 {
                     if (gt.Name == BuiltinNames.Array && gt.TypeArguments.Count == 1)

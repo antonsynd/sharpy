@@ -1417,6 +1417,12 @@ internal partial class TypeChecker
             }
 
             // Different outer generic name: reject (preserves list[int] ↛ array[T], #954).
+            //
+            // NOTE (#1470): this rejection is NOT what refuses `iter[T](generator)`. Relaxing it to
+            // ordinary assignability was tried and measured — it changes no verdict, because
+            // `IsAssignable(IEnumerable[X], list[X])` is false for the CLOSED spelling too. The
+            // closed call is accepted by the iterable-position projection instead, which is where
+            // the open case's gap actually lives. Left strict rather than loosened speculatively.
             if (arg is GenericType)
                 return false;
 
@@ -1453,7 +1459,15 @@ internal partial class TypeChecker
                 {
                     Name = g.Name,
                     GenericDefinition = g.GenericDefinition,
-                    TypeArguments = g.TypeArguments.Select(SubstituteTypeParametersWithObject).ToList()
+                    TypeArguments = g.TypeArguments.Select(SubstituteTypeParametersWithObject).ToList(),
+                    // Provenance survives the substitution, as it does in TypeSubstitution.Apply.
+                    // A formal the bridge mapped from CLR metadata MEANS the CLR type it came from,
+                    // and the assignability arm that knows this keys on ClrOriginTypeName (#1260);
+                    // rebuilding without it silently asked a different question. No verdict in the
+                    // current suite depends on this, so it is a correctness alignment between two
+                    // copies of one operation rather than a fix — but a reconstruction that drops
+                    // provenance is a trap for the next caller either way.
+                    ClrOriginTypeName = g.ClrOriginTypeName
                 };
             case NullableType n:
                 return new NullableType { UnderlyingType = SubstituteTypeParametersWithObject(n.UnderlyingType) };

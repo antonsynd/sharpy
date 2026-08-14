@@ -197,17 +197,20 @@ internal partial class TypeChecker
             // spelling (SPY0224), and typing it as GenericType("tuple", …) made it unequal to the
             // identical annotation, which is the self-contradictory SPY0220 of #1200. One TupleType
             // spelling everywhere, exactly as TypeResolver produces for the annotation.
-            if (typeId.Name == BuiltinNames.Tuple
-                && _symbolTable.Lookup(typeId.Name) is TypeSymbol tupleSymbol
-                && TryResolveTypeArguments(indexAccess.Index) is { Count: > 0 } tupleElementTypes)
+            // The decision itself lives in TryBuildTupleTypeReference (TypeChecker.Expressions.
+            // Access.cs), shared with the type-ARGUMENT resolver — this arm adds only the
+            // SemanticInfo recording a top-level reference needs. #1470 was this rule holding here
+            // and nowhere else.
+            if (_symbolTable.Lookup(typeId.Name) is TypeSymbol tupleSymbol
+                && TryBuildTupleTypeReference(typeId, TryResolveTypeArguments(indexAccess.Index))
+                    is { } tupleType)
             {
-                var tupleType = new TupleType { ElementTypes = tupleElementTypes };
                 _semanticInfo.SetExpressionType(indexAccess, tupleType);
                 _semanticInfo.SetGenericReference(indexAccess, new GenericReference
                 {
                     Kind = GenericReferenceKind.TupleTypeRef,
                     TargetSymbol = tupleSymbol,
-                    TypeArgs = tupleElementTypes,
+                    TypeArgs = tupleType.ElementTypes,
                 });
                 resultType = tupleType;
                 return true;
