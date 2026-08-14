@@ -54,6 +54,12 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// known namespace segment. Every way of naming a denied type as a type — declaration, cast,
 /// pattern, generic argument, static call — is covered.
 /// </para>
+///
+/// <para>
+/// <b>Mutation-tested.</b> See <see cref="SyntheticTypeSubstitutionCall_IsFlagged"/> and
+/// <see cref="CarrierOnlySource_IsNotFlagged"/> for the executable pair, and the procedure
+/// recorded on the former for the one-time real-file run.
+/// </para>
 /// </summary>
 public class EmitterCarrierOnlyConformanceTests
 {
@@ -253,6 +259,106 @@ public class EmitterCarrierOnlyConformanceTests
                 $"ratchet entry {file} — {type} ({issue}) allows {count} references but only "
                 + $"{actual} remain: lower the number, or delete the entry when it reaches zero, "
                 + "in the same commit that removed them (allowlists drain on fix)");
+        }
+    }
+
+    // ---- executable mutation cells (#1475, Task 3) --------------------------------------------
+
+    /// <summary>
+    /// Positive mutation cell: the owner's named violation — a <c>TypeSubstitution.Apply(...)</c>
+    /// call from CodeGen — must be flagged, in every spelling it can take.
+    ///
+    /// <para><b>Real-file mutation, run once at implementation time (2026-08-14, HEAD
+    /// <c>807166ac0</c>).</b> Procedure: insert into <c>GenerateExpression</c> in
+    /// <c>RoslynEmitter.Expressions.cs</c>, immediately after the recorder hook,
+    /// <code>
+    /// var mutationProbe = TypeSubstitution.Apply(
+    ///     _context.SemanticInfo?.GetExpressionType(expr) ?? new Semantic.UnknownType(),
+    ///     new Dictionary&lt;string, Semantic.SemanticType&gt;());
+    /// _ = mutationProbe;
+    /// </code>
+    /// (it must compile — this guard scans source, but the suite has to build to run), then
+    /// <c>.claude/scripts/dotnet-serialized test … --filter "FullyQualifiedName~EmitterCarrierOnly
+    /// ConformanceTests|FullyQualifiedName~EmitterBannedTokenScanTests"</c>.</para>
+    ///
+    /// <para><b>Observed:</b> <c>CodeGenSources_NameOnlyMaterializedFactCarriers</c> FAILED —
+    /// <c>RoslynEmitter.Expressions.cs:27 — TypeSubstitution — var mutationProbe =
+    /// TypeSubstitution.Apply(</c> — while <c>CodeGenSources_ContainNoBannedTokenSubstrings</c>,
+    /// the five-substring predecessor, passed GREEN on the same tree (7 passed / 1 failed of 8).
+    /// That single run is the whole of #1475: the guard Critical Rule 2 named could not fail for
+    /// the violation Rule 2 describes, and this one does. Mutation reverted; <c>git diff</c> on the
+    /// file is empty.</para>
+    /// </summary>
+    [Fact]
+    public void SyntheticTypeSubstitutionCall_IsFlagged()
+    {
+        var universe = SemanticUniverse();
+        var denied = DeniedNames(universe);
+        var segments = NamespaceSegments(universe);
+
+        var spellings = new (string Label, string Source)[]
+        {
+            ("unqualified static call",
+                "class C { void M(SemanticType t) { var r = TypeSubstitution.Apply(t, _map); } }"),
+            ("namespace-qualified static call",
+                "class C { void M(SemanticType t) { var r = Semantic.TypeSubstitution.Apply(t, _map); } }"),
+            ("declaration",
+                "class C { private GenericInstantiationWalker _walker; }"),
+            ("generic argument",
+                "class C { void M() { var xs = new List<TypeSubstitution>(); } }"),
+            ("cast",
+                "class C { void M(object o) { var t = (TypeChecker)o; } }"),
+        };
+
+        foreach (var (label, source) in spellings)
+        {
+            var violations = ScanSource("Mutation.cs", source, denied, segments);
+            violations.Should().NotBeEmpty(
+                $"a {label} naming a decision-maker is exactly what this guard exists to catch; "
+                + "finding nothing means the scan has stopped seeing that syntactic position");
+        }
+    }
+
+    /// <summary>
+    /// Negative control (verify-the-instrument): source that names only carriers must NOT be
+    /// flagged, and neither must a denied type mentioned only in a comment or a
+    /// <c>&lt;see cref&gt;</c>. A guard that flags everything is as useless as one that flags
+    /// nothing, and the comment case is the one the predecessor scan had to hand-strip.
+    /// </summary>
+    [Fact]
+    public void CarrierOnlySource_IsNotFlagged()
+    {
+        var universe = SemanticUniverse();
+        var denied = DeniedNames(universe);
+        var segments = NamespaceSegments(universe);
+
+        var clean = new (string Label, string Source)[]
+        {
+            ("carrier reads",
+                @"class C {
+                    ExpressionSyntax M(Expression e, SemanticInfo info, Symbol s) {
+                        SemanticType? t = info.GetExpressionType(e);
+                        CodeGenInfo? cg = s.CodeGenInfo;
+                        NarrowedReadLowering? n = info.GetNarrowedReadLowering(e);
+                        return Build(t, cg, n);
+                    }
+                }"),
+            ("line comment naming a decision-maker",
+                "class C { void M() { // TypeSubstitution.Apply used to be called here (#1475)\n } }"),
+            ("doc comment naming a decision-maker",
+                "/// <summary>Historically re-derived via <see cref=\"TypeSubstitution\"/>.</summary>\n"
+                + "class C { void M() { } }"),
+            ("instance member read that happens to share a denied type's name",
+                "class C { void M(object ctx) { var s = ctx.Scope; } }"),
+        };
+
+        foreach (var (label, source) in clean)
+        {
+            var violations = ScanSource("Control.cs", source, denied, segments);
+            violations.Should().BeEmpty(
+                $"{label} is not a Rule-2 violation; flagging it would make the guard "
+                + "unusable and push people to weaken it.\nFlagged:\n  "
+                + string.Join("\n  ", violations));
         }
     }
 
@@ -495,6 +601,14 @@ public class EmitterCarrierOnlyConformanceTests
     /// raw tokens (so a local called <c>scope</c> is not a reference) and comments are trivia (so a
     /// doc-comment <c>&lt;see cref&gt;</c> is not one either) — both fall out of the syntax model
     /// instead of needing the predecessor scan's hand-rolled comment stripping.
+    ///
+    /// <para><b>Mutation-tested (2026-08-14, HEAD <c>e351d2832</c>).</b> Forcing
+    /// <see cref="IsInstanceMemberRead"/> to <c>return false</c> — over-flagging every member read
+    /// — turns <see cref="CarrierOnlySource_IsNotFlagged"/> RED while the other five stay green,
+    /// so the negative control is a live wire and not a vacuous pass. Reverted. Note what else
+    /// that run established: the whole-corpus sweep stayed GREEN under the mutation, which
+    /// measures that no CodeGen source today reaches a denied type through a value-qualified
+    /// member read — the one shape this scan's documented residual cannot see.</para>
     /// </summary>
     internal static List<Violation> ScanSource(
         string fileName, string source, IReadOnlySet<string> denied, IReadOnlySet<string> namespaceSegments)
