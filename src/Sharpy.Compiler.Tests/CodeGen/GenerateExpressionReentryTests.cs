@@ -55,6 +55,15 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// deliberately not the emitter's own verdict — see <c>IsSpliceRepeatable</c> — so the guard
 /// cannot be silenced by the decision it exists to check.</para>
 ///
+/// <para><b>Mutation, run 2026-08-14 at HEAD <c>c09a8fd68</c>.</b> Procedure: replace the body of
+/// <c>MemberReadIsPlainField</c> (<c>RoslynEmitter.Statements.Assignments.cs</c>) after its
+/// null-receiver guard with <c>return true;</c> — the pre-<c>abc5bf4b0</c> behavior, where a
+/// property read counts as a plain field — then run this sweep. <b>Observed:</b> FAILED with
+/// <c>single_evaluation_property_target_1227: MemberAccess at 43:8</c> and <c>at 48:5</c>, on the
+/// counters <c>0 re-entries, 2 re-splices</c>. Both halves of that count matter: the re-generation
+/// counter was still blind (0), exactly as this doc recorded before #1351, and the new splice
+/// tripwire caught it. Reverted.</para>
+///
 /// <para>The hand-written backstops stay: <c>single_evaluation_*.spy</c> (3 fixtures) and
 /// <c>AugmentedAssignmentSingleEvaluationTests</c> check observable effect COUNTS at runtime,
 /// which is a different question from whether a hoist was declined.</para>
