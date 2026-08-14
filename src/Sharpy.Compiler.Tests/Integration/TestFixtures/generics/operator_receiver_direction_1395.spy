@@ -1,0 +1,11 @@
+# #1395 regression guard (localized): the operator-dunder resolver must AGREE with the CLR fallback.
+# `list * list` is unsupported — `list` reflects BOTH directions of repetition (List<T>*int AND
+# int*List<T>), and the resolver checks only the OPERAND, so it once matched the reversed overload's
+# List<T> operand and typed `list * list` as list[int] (a working-program mis-type). The
+# ReceiverAdmitsCandidate filter drops the wrong-direction overload, so this refuses like the
+# fallback (SPY0222) whether the operands are annotated locals or direct call results.
+def main() -> None:
+    a: list[int] = [1, 2, 3]
+    b: list[int] = [4, 5, 6]
+    bad1: int = a * b
+    bad2: int = a.copy() * b.copy()
