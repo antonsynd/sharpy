@@ -7,4 +7,4 @@ cannot infer a single callable signature for builtin type 'frozendict': 'frozend
 'DictKeyView' is obtained from the API that returns it, so its name is not a value @29:9
 'DictItemsView' is obtained from the API that returns it, so its name is not a value @32:10
 'DictValuesView' is obtained from the API that returns it, so its name is not a value @33:10
-cannot infer a callable signature for builtin type 'ValueError': it has no constructor reference form, so no position can supply one. @40:9
+cannot infer a callable signature for builtin type 'ValueError': it has no constructor reference form, so no position can supply one. @43:9

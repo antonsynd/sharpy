@@ -33,8 +33,11 @@ def main():
     jj = DictValuesView
 
     # An EXCEPTION type is a builtin with no family too, and refusing it as a value is the same
-    # improvement. Its call-argument position is deliberately NOT refused — `assertRaises(ValueError,
-    # ...)` is established working behavior, and re-typing it is the #1170 over-fire. The refusal is
-    # gated on value uses only for this family, unlike the non-constructible one next door, so
-    # `map(bytes, ns)` still leaks and stays under #1272's open half.
+    # improvement. Its CALL-ARGUMENT position is refused as well since #1490 — the gate here now
+    # matches the non-constructible one next door, so `takes(ValueError)` and `map(bytes, ns)` draw
+    # this same SPY0342 instead of leaking CS0119 behind SPY0908 (see
+    # `type_name_call_argument_1490.spy`). What kept the gate narrow was `with assert_raises(E):`,
+    # and that position is now protected by the parameter's own `System.Type` declaration rather
+    # than by this gate's narrowness (#1282's early return), so the #1170 over-fire cannot return
+    # through it.
     h = ValueError

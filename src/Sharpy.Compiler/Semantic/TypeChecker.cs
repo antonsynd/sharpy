@@ -132,6 +132,23 @@ internal partial class TypeChecker
     // argument path is covered and nested calls restore the enclosing set.
     private HashSet<Expression>? _currentCallArguments;
 
+    // The one call argument whose PARAMETER type `_expectedType` currently holds — null whenever
+    // `_expectedType` came from somewhere else.
+    //
+    // `_expectedType` is a general "what does this position want" channel, and the argument loop
+    // only OVERWRITES it when a parameter type is actually in hand; otherwise the enclosing
+    // context's expectation stays visible. So while `list` is checked in
+    // `d: defaultdict[str, list[int]] = defaultdict(list)`, `_expectedType` is the ASSIGNMENT's
+    // declared type, and while `str` is checked in `zs: list[str] = sorted(xs, key=str)` it is
+    // `list[str]` — neither is the parameter. A rule that reads `_expectedType` as "this argument's
+    // parameter type" without checking this field refuses working calls against a parameter they
+    // were never passed to; both of those are shipped fixtures that went red exactly that way
+    // (#1490).
+    //
+    // Compared by REFERENCE against the argument being checked, so a stale value can only cause a
+    // miss, never a false hit.
+    private Expression? _parameterTypedArgument;
+
     // The iterator expression of the for statement or comprehension for-clause currently being
     // checked (`for c in Color`, `[c.name for c in Color]`). An ENUM name is a legitimate iterable
     // there — it denotes the member set, and both sites rescue it into a UserDefinedType right after

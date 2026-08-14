@@ -479,6 +479,9 @@ internal partial class TypeChecker
             return argumentShape;
         }
 
+        if (RefuseConstructorReferenceInNonCallableArgument(reference, constructorReference) is { } notCallable)
+            return notCallable;
+
         if (!isValueUse)
             return RefuseUnpinnedCallArgument(reference, constructorReference, target: null);
 
@@ -495,6 +498,77 @@ internal partial class TypeChecker
             span: reference.Span);
         return SemanticType.Unknown;
     }
+
+    /// <summary>
+    /// Refuses a constructor reference in a direct call argument whose parameter type cannot hold a
+    /// callable AT ALL (#1490), or returns null to leave the position the typing it has today.
+    ///
+    /// <para>The sibling of <see cref="RefuseUnfamiliedBuiltinReference"/>'s widened gate, for the
+    /// family that HAS a signature. <c>takes(int)</c> for <c>def takes(t: object)</c> bound the
+    /// synthesized conversion overload set, passed the argument check (everything converts to
+    /// <c>object</c>) and reached codegen as a METHOD GROUP — CS1503 behind SPY0908. <c>list</c> in
+    /// the same slot reached codegen as an open generic type name — CS0305. Neither is refusable by
+    /// the unfamilied gate, because both families are exactly the ones whose fallback signature is
+    /// what makes <c>map(int, xs)</c> work.</para>
+    ///
+    /// <para><b>The rule is the PARAMETER, not the reference.</b> A constructor reference is a
+    /// callable value, so the only positions that can consume one are the positions that can hold a
+    /// callable: a function type (including a CLR <c>Func</c>/<c>Action</c>, which
+    /// <c>ClrTypeBridge</c> maps to <see cref="FunctionType"/>), a declared delegate, or a
+    /// <c>System.Type</c> parameter, which asks for the type token instead and is a special form's
+    /// marking (see <see cref="CheckConstructorReference"/>). Everything else is refused.</para>
+    ///
+    /// <para>Silence where the parameter is UNKNOWN is deliberate and is what keeps the #1170
+    /// positions working: a parameter this checker cannot see must keep the typing it has today
+    /// rather than acquire a refusal. A type parameter is the same case — <c>map(int, xs)</c>'s
+    /// parameter is <c>(T) -&gt; R</c>, a function type, and passes on its own merits.</para>
+    ///
+    /// <para><b><c>_expectedType</c> alone is not the parameter type</b>, and reading it as one is
+    /// how this rule first went wrong. The argument loop overwrites it only when a parameter type is
+    /// in hand, so in <c>d: defaultdict[str, list[int]] = defaultdict(list)</c> and
+    /// <c>zs: list[str] = sorted(xs, key=str)</c> it still holds the ASSIGNMENT's declared type
+    /// while the argument is checked — and both shipped fixtures went red, refused against a
+    /// parameter they were never passed to. <c>_parameterTypedArgument</c> is what makes the read
+    /// sound: it names the one argument the current <c>_expectedType</c> belongs to.</para>
+    /// </summary>
+    private SemanticType? RefuseConstructorReferenceInNonCallableArgument(
+        Expression reference, ConstructorReferenceType constructorReference)
+    {
+        if (!IsConstructorReferenceCallArgument(reference)
+            || !ReferenceEquals(_parameterTypedArgument, UnwrapParenthesized(reference))
+            || _expectedType is not { } parameterType
+            || CanHoldACallable(parameterType))
+        {
+            return null;
+        }
+
+        AddError(
+            $"{ConstructorReferenceSubject(constructorReference)} names a type, and this argument's "
+            + $"parameter type '{parameterType.GetDisplayName()}' is not a function type, so it "
+            + "cannot hold a constructor reference. Construct the value "
+            + $"('{constructorReference.Name}(...)'), or wrap the construction in a lambda "
+            + $"('lambda: {constructorReference.Name}()').",
+            reference.LineStart, reference.ColumnStart,
+            code: DiagnosticCodes.Semantic.UnpinnedConstructorReference,
+            span: reference.Span);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Whether a parameter type can hold a callable value — the predicate
+    /// <see cref="RefuseConstructorReferenceInNonCallableArgument"/> rests on. Conservative by
+    /// construction: anything this checker cannot positively classify answers TRUE, so an
+    /// unrecognised shape keeps the typing it has today instead of acquiring a false refusal at an
+    /// interop seam.
+    /// </summary>
+    private static bool CanHoldACallable(SemanticType parameterType) => parameterType switch
+    {
+        FunctionType or GenericFunctionType or TypeParameterType or UnknownType => true,
+        NullableType nullable => CanHoldACallable(nullable.UnderlyingType),
+        OptionalType optional => CanHoldACallable(optional.UnderlyingType),
+        UserDefinedType { Symbol.TypeKind: TypeKind.Delegate } => true,
+        _ => IsSystemTypeParameter(parameterType)
+    };
 
     /// <summary>
     /// Refuses a constructor reference in a direct call argument that could not be pinned (#1249),
@@ -836,21 +910,25 @@ internal partial class TypeChecker
     /// and quietly false of seven builtin types.</para>
     ///
     /// <para><b>The gate rule, for both refusals: refuse where the position leaks, preserve where it
-    /// works.</b> That is why this one is gated on value uses ONLY while
-    /// <see cref="RefuseNonConstructibleReference"/> also covers the direct call-argument position.
-    /// The two gates are the same test applied to different facts, not an inconsistency to
-    /// "fix": for a non-constructible USER kind the call-argument position has no working behavior
-    /// to protect — it leaks — while for these builtins it does.</para>
+    /// works.</b> This gate is now the SAME as <see cref="RefuseNonConstructibleReference"/>'s —
+    /// value uses plus the direct call-argument position — because the call-argument position was
+    /// measured to leak for this family too: <c>takes(ValueError)</c> for
+    /// <c>def takes(t: object)</c> produced CS0119 behind SPY0908, and so did <c>map(bytes, xs)</c>
+    /// (#1490, #1347). #1272 is CLOSED — do not read it here as an open work item.</para>
     ///
-    /// <para>What it protects there is narrower than it looks, and worth naming so the next reader
-    /// does not widen this gate on a wrong premise. An ordinary call argument naming one of these
-    /// types still leaks: <c>takes(ValueError)</c> for <c>def takes(t: object)</c> produces CS0119
-    /// behind SPY0908 today (#1490), and so does <c>map(bytes, xs)</c> (#1347). #1272 is CLOSED —
-    /// it recorded both as deferred with their blockers measured — so do not read "#1272" here as an
-    /// open work item.
-    /// The position that WORKS is <c>with assert_raises(ValueError):</c>, a special form whose
-    /// argument the emitter lowers to a TYPE ARGUMENT of <c>Xunit.Assert.Throws</c> rather than to a
-    /// value. Refusing here broke ten shipped unittest tests — the #1170 over-fire again.</para>
+    /// <para><b>Why widening is safe now, and what makes it stay safe.</b> The position that WORKS
+    /// is <c>with assert_raises(ValueError):</c>, a special form whose argument the emitter lowers
+    /// to a TYPE ARGUMENT of the framework-neutral catch rather than to a value. Widening this gate
+    /// broke ten shipped unittest tests once (the #1170 over-fire) — but that was BEFORE #1282 gave
+    /// <see cref="CheckConstructorReference"/> its <see cref="IsSystemTypeParameter"/> early return.
+    /// A special form declares its type-argument position in its own SIGNATURE
+    /// (<c>Unittest.AssertRaises(System.Type exceptionType, …)</c>), the checker marks that position
+    /// before either refusal runs, and the marking is what this gate rests on — not a name list. So
+    /// the rule that distinguishes an ordinary call argument from a special form's type argument is
+    /// "the parameter asks for a <c>System.Type</c>", and every future special form gets the same
+    /// protection for free by declaring the same parameter type. Mutation-tested: removing that
+    /// early return turns <c>unittest/assert_raises_*</c> red (see
+    /// <c>builtins/unfamilied_builtin_call_argument_1490</c>).</para>
     ///
     /// <para>The untouched positions were measured working: <c>x: object = 5</c>,
     /// <c>isinstance(x, object)</c>, <c>list[object]</c>, <c>dict[str, object]</c>, and annotated
@@ -858,14 +936,17 @@ internal partial class TypeChecker
     /// </summary>
     private SemanticType? RefuseUnfamiliedBuiltinReference(Expression reference, string name)
     {
-        if (IsCurrentIterationSource(reference) || !IsConstructorReferenceValueUse(reference))
+        if (IsCurrentIterationSource(reference))
+            return null;
+
+        if (!IsConstructorReferenceValueUse(reference) && !IsConstructorReferenceCallArgument(reference))
             return null;
 
         AddError(
             $"cannot infer a callable signature for builtin type '{name}': it has no constructor "
             + "reference form, so no position can supply one. Call it directly "
             + $"('{name}(...)'), or wrap the construction in a lambda "
-            + $"('f = lambda: {name}()').",
+            + $"('lambda: {name}()').",
             reference.LineStart, reference.ColumnStart,
             code: DiagnosticCodes.Semantic.UnpinnedConstructorReference,
             span: reference.Span);
@@ -995,6 +1076,7 @@ internal partial class TypeChecker
     /// <summary>Whether the reference is a direct argument of the call currently being checked.</summary>
     private bool IsDirectCallArgument(Expression reference)
         => _currentCallArguments?.Contains(UnwrapParenthesized(reference)) == true;
+
 
     /// <summary>
     /// Pins a constructor reference to <paramref name="target"/> when the builtin can construct that

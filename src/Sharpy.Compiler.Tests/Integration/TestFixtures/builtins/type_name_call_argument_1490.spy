@@ -1,0 +1,54 @@
+# #1490: a bare TYPE NAME in an ordinary call-argument position. Every row here reached codegen and
+# came back as SPY0908 — "this is a Sharpy compiler bug, please report it" — for a program the
+# checker had everything it needed to refuse. Four rows, two mechanisms:
+#
+#   - An UNFAMILIED builtin (`ValueError`, `bytes`) has no constructor-reference form at all, so
+#     nothing can be pinned in any position. Its refusal was gated to VALUE uses only; the gate now
+#     matches the non-constructible one next door and covers the direct call-argument position too.
+#     (`takes(ValueError)` -> CS0119, `map(bytes, xs)` -> CS0119 + an unresolved TOut.)
+#
+#   - A FAMILIED builtin (`int`, `list`) does have a signature — the synthesized one that makes
+#     `map(int, xs)` work — and the leak is at the other end: the PARAMETER cannot hold a callable.
+#     `takes(int)` passed the argument check (everything converts to `object`) and emitted a METHOD
+#     GROUP into an `object` slot (CS1503); `takes(list)` emitted an open generic type name
+#     (CS0305). The rule is the parameter, not the reference: only a function type, a declared
+#     delegate, or a `System.Type` parameter can consume a constructor reference.
+#
+# The positions that WORK are preserved by that same parameter rule and are pinned elsewhere, not
+# here: `map(int, xs)`, `sorted(xs, key=int)`, `int.parse(s)`, `isinstance(x, int)` and the enum
+# iterables live in `constructor_reference_tripwire.spy`; `defaultdict(list)` in
+# Sharpy.Stdlib.Tests; and `with assert_raises(ValueError):` in the unittest fixtures — the special
+# form whose argument is a TYPE ARGUMENT because `Unittest.AssertRaises` declares its parameter as
+# `System.Type`. That declaration is the marking the widened gate rests on, and widening this gate
+# without it is what broke ten shipped unittest tests before #1282 added the early return.
+#
+# MUTATION TEST (performed 2026-08-14, reverted): disabling that marking — `if (false && ...)` on
+# `CheckConstructorReference`'s `IsSystemTypeParameter` early return — turned EIGHT shipped
+# Sharpy.Stdlib.Tests fixtures red (`unittest/assert_raises_match`, `_match_capture`,
+# `_outside_test_1413`, `_parenthesized_callee_1338`, `_test`, `test_assert_raises_capture`,
+# `test_assert_raises_multi_constructor`, `test_assert_raises_no_capture`), each with this
+# fixture's own SPY0342 on `ValueError`. The marking is load-bearing, and those eight are what
+# hold the widened gate honest.
+#
+# A SECOND mutation was found by measurement rather than designed: reading `_expectedType` as "this
+# argument's parameter type" without `_parameterTypedArgument` refused
+# `d: defaultdict[str, list[int]] = defaultdict(list)` and `zs: list[str] = sorted(xs, key=str)`,
+# because the argument loop leaves the ASSIGNMENT's declared type visible when no parameter type is
+# in hand. Both are shipped fixtures and both went red. See `_parameterTypedArgument`.
+def takes(t: object) -> None:
+    print(t)
+
+
+def main():
+    xs: list[str] = ["1", "2"]
+
+    # Unfamilied builtin, ordinary parameter: the issue's own repro.
+    takes(ValueError)
+
+    # Unfamilied builtin, generic delegate parameter. The delegate target does not rescue it —
+    # `bytes` has no signature to pin against any target (#1347).
+    print(list(map(bytes, xs)))
+
+    # Familied builtin whose signature exists but whose parameter cannot hold one.
+    takes(int)
+    takes(list)

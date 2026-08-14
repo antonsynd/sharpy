@@ -3107,6 +3107,13 @@ internal partial class TypeChecker
             for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
             {
                 var previousExpectedType = _expectedType;
+                var previousParameterTypedArgument = _parameterTypedArgument;
+
+                // Cleared up front, so the arms below can only ever set it TOGETHER with the
+                // parameter type they push. The `else` of those arms leaves `_expectedType` holding
+                // the ENCLOSING context's expectation, which is not this argument's parameter type
+                // — see the field's own comment.
+                _parameterTypedArgument = null;
 
                 // Handle spread arguments: *expr
                 if (call.Arguments[argIdx] is SpreadElement spreadArg)
@@ -3128,6 +3135,7 @@ internal partial class TypeChecker
                             argTypes.Add(SemanticType.Unknown);
                     }
                     _expectedType = previousExpectedType;
+                    _parameterTypedArgument = previousParameterTypedArgument;
                     continue;
                 }
 
@@ -3135,14 +3143,17 @@ internal partial class TypeChecker
                 {
                     var paramType = earlyFuncSymbol.Parameters[argIdx + earlyParamOffset].Type;
                     _expectedType = paramType is UnknownType ? null : paramType;
+                    _parameterTypedArgument = ParameterTypedArgumentOf(paramType, call.Arguments[argIdx]);
                 }
                 else if (calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)
                 {
                     var paramType = calleeFunctionType.ParameterTypes[argIdx];
                     _expectedType = paramType is UnknownType ? null : paramType;
+                    _parameterTypedArgument = ParameterTypedArgumentOf(paramType, call.Arguments[argIdx]);
                 }
                 argTypes.Add(CheckExpression(call.Arguments[argIdx]));
                 _expectedType = previousExpectedType;
+                _parameterTypedArgument = previousParameterTypedArgument;
             }
         }
 
@@ -3151,16 +3162,20 @@ internal partial class TypeChecker
         foreach (var kwarg in call.KeywordArguments)
         {
             var previousExpectedType = _expectedType;
+            var previousParameterTypedArgument = _parameterTypedArgument;
+            _parameterTypedArgument = null;
             if (earlyFuncSymbol != null)
             {
                 var param = earlyFuncSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
                 if (param != null)
                 {
                     _expectedType = param.Type is UnknownType ? null : param.Type;
+                    _parameterTypedArgument = ParameterTypedArgumentOf(param.Type, kwarg.Value);
                 }
             }
             kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
             _expectedType = previousExpectedType;
+            _parameterTypedArgument = previousParameterTypedArgument;
         }
 
         return (argTypes, kwargTypes);
@@ -4082,6 +4097,15 @@ internal partial class TypeChecker
 
         return arguments;
     }
+
+    /// <summary>
+    /// The node to record in <c>_parameterTypedArgument</c> when <paramref name="parameterType"/> is
+    /// pushed as <c>_expectedType</c> for <paramref name="argument"/>: the unwrapped argument, or
+    /// null for an <see cref="UnknownType"/> parameter — that arm pushes a null
+    /// <c>_expectedType</c>, so there is no parameter type to bind to.
+    /// </summary>
+    private static Expression? ParameterTypedArgumentOf(SemanticType parameterType, Expression argument)
+        => parameterType is UnknownType ? null : UnwrapParenthesized(argument);
 
     private void MarkTypeReferenceArguments(FunctionCall call)
     {

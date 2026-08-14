@@ -1,0 +1,4 @@
+cannot infer a callable signature for builtin type 'ValueError': it has no constructor reference form, so no position can supply one. @46:11
+cannot infer a callable signature for builtin type 'bytes': it has no constructor reference form, so no position can supply one. @50:20
+builtin type 'int' names a type, and this argument's parameter type 'object' is not a function type, so it cannot hold a constructor reference. @53:11
+builtin type 'list' names a type, and this argument's parameter type 'object' is not a function type, so it cannot hold a constructor reference. @54:11

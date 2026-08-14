@@ -21,9 +21,12 @@
 # stdlib, which this harness does not load; it is pinned by
 # Sharpy.Stdlib.Tests/Integration/TestFixtures/stdlib_collections_defaultdict.spy. So does
 # `with assert_raises(ValueError):` — a special form whose argument the emitter lowers to a TYPE
-# ARGUMENT of Xunit.Assert.Throws, which is why an exception type name is legitimate there and not
-# in an ordinary call argument (`takes(ValueError)` still leaks, #1272). It is pinned by the
-# unittest fixtures under Sharpy.Stdlib.Tests, which is what caught the #1272 over-fire.
+# ARGUMENT of the framework-neutral catch, which is why an exception type name is legitimate there
+# and not in an ordinary call argument (`takes(ValueError)` is now refused, #1490 — see
+# `type_name_call_argument_1490.spy`). What makes the special form legitimate is its own parameter
+# declaration (`Unittest.AssertRaises(System.Type, …)`), not the narrowness of any gate. It is
+# pinned by the unittest fixtures under Sharpy.Stdlib.Tests, which is what caught the #1272
+# over-fire.
 #
 # Rows below the builtin/user-class pairs were added by MEASUREMENT, not by anticipation: each one
 # was discovered by a refusal breaking it. The two enum-iteration spellings cost five shipped
