@@ -479,9 +479,9 @@ internal partial class NameResolver
             NameDeclarationColumn = enumDef.NameColumnStart,
             Documentation = enumDef.DocString,
             IsMustUse = HasMustUse(enumDef.Decorators),
-            // Same rule CodeGenInfoComputer applies, recorded a phase earlier so the checker can
-            // read it (#1284).
-            IsStringEnum = enumDef.Members.Any(m => m.Value is StringLiteral)
+            // Same rule CodeGenInfoComputer and ModuleLoader apply, recorded a phase earlier so the
+            // checker can read it (#1284, shared as one predicate by #1442).
+            IsStringEnum = IsStringEnum(enumDef)
         };
 
         // Register enum members as static fields so pattern matching and

@@ -57,10 +57,9 @@ declSiteAnnotation::plain::inSourceSet
 # spelling only. The CLOSED sibling of #1411, which fixed the open form (`lib.Box`) only.
 typeTest::generic::inSourceSet
 
-# #1448 — `ModuleLoader.ConvertTypeAnnotationToSemanticType` (ModuleLoader.cs:723) builds
-# `new GenericType { Name = typeAnnotation.Name }` — the annotation's name VERBATIM — so a
-# module-qualified annotation written INSIDE an extracted module keeps its qualifier:
-# `inner.Box[int]` where TypeResolver produces `Box[int]`. The generic in-source-set twin AGREES,
-# which is what attributes these two cells to the extractor rather than to #1446.
-declSiteAnnotation::generic::outsideSourceSet
-declSiteAnnotation::plain::outsideSourceSet
+# #1448 — DRAINED. `ModuleLoader.ConvertTypeAnnotationToSemanticType` built the annotation's name
+# VERBATIM, so a module-qualified annotation written INSIDE an extracted module kept its qualifier:
+# `inner.Box[int]` where TypeResolver produces `Box[int]`. The extractor now strips a leading MODULE
+# qualifier by the same rule TypeResolver.ResolveGenericType applies (a name whose qualifier is one
+# of the module's own imports), so declSiteAnnotation::{generic,plain}::outsideSourceSet agree and
+# their lines are gone. A dotted name that is NOT a module qualifier — `Outer.Inner` — is untouched.

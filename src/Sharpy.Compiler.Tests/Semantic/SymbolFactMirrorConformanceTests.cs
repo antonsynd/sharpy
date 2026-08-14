@@ -38,12 +38,12 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// compilation's own symbols, so on that path a type import is identity and cannot drift. The
 /// extraction survives for the module that is <em>imported but not compiled</em> — the arrangement
 /// <see cref="ImportedStubClassificationReachabilityTests"/> documents — and that is what the fact
-/// cells measure. Two controls keep those verdicts from becoming trivial:
+/// cells measure. Three controls keep those verdicts from becoming trivial:
 /// <see cref="InSourceSetImport_IsTheDeclarationItself"/> asserts the in-source-set identity still
-/// holds, and <see cref="InSourceSetFromImportOfAFunction_StillBindsTheExtraction"/> pins the one
-/// shape where it does not — an imported FUNCTION, which comes from
-/// <c>moduleInfo.FunctionOverloads</c> and is therefore an extraction even on the ordinary
-/// path (#1365; extending the type-side identity fix to functions is #1491).</para>
+/// holds for types, and since #1491 it holds for functions too — both for the binding
+/// (<see cref="InSourceSetFromImportOfAFunction_BindsTheProjectsOwnSymbol"/>) and for the overload
+/// list beside it (<see cref="InSourceSetImportOfAnOverloadedFunction_BindsTheProjectsOwnOverloads"/>),
+/// which was the second dictionary #1365 measured the extraction through.</para>
 ///
 /// <para><b>Two guards, not one.</b> A fact table that nobody maintains rots into a subset of the
 /// real surface, and then the mirror is green because it stopped looking.
@@ -538,175 +538,33 @@ def main() -> None:
     /// <c>docs/design/gap-discovery-contracts.md</c>), so deleting the line is part of landing the
     /// fix rather than a follow-up nobody schedules.
     ///
-    /// <para>The list below is the mirror's FIRST measured run and is entirely findings — four
-    /// defects, every one of them a fact this batch either just threaded or thought it had:</para>
+    /// <para>The mirror's first measured run recorded 145 cells across four defects. Three of them
+    /// are gone and their 143 cells drained with the fixes:</para>
     /// <list type="bullet">
-    ///   <item><description><b>#1440</b> — <c>ImportResolver.CreateReExportedTypeSymbol</c> is a
-    ///     hand-built <see cref="TypeSymbol"/> clone where the function arm beside it uses a
-    ///     <c>with</c> expression, so every fact it does not restate is lost. It is why these cells
-    ///     fail for <c>fromImport</c> and pass for <c>qualifiedImport</c> — including
-    ///     <c>NestedTypes</c>, which silently un-does #1363 on the from-import spelling.</description></item>
-    ///   <item><description><b>#1441</b> — <c>ModuleLoader</c>'s extraction never stamps
-    ///     <c>DeclarationSpan</c> or the file paths on a member, drops a method's backtick escape and
-    ///     explicit access level, and types <c>self</c> as Unknown. Fails on BOTH spellings.</description></item>
-    ///   <item><description><b>#1442</b> — the extraction never computes <c>IsStringEnum</c> or
-    ///     <c>IsDataclass</c>, so an imported string enum is checked as an int enum.</description></item>
-    ///   <item><description><b>#1443</b> — inverted: <c>@must_use</c> on a METHOD is honoured by the
-    ///     extraction and ignored by <c>NameResolver</c>, so it never warns same-file.</description></item>
+    ///   <item><description><b>#1440</b> (23 cells, drained) — <c>CreateReExportedTypeSymbol</c> was a
+    ///     hand-built <see cref="TypeSymbol"/> clone where the function arm beside it used a
+    ///     <c>with</c> expression, so every fact it did not restate was lost — <c>NestedTypes</c>
+    ///     included, silently un-doing #1363 on the from-import spelling. Both arms are
+    ///     <c>with</c> expressions now, so the drop is unrepresentable rather than fixed.</description></item>
+    ///   <item><description><b>#1441</b> (114 cells, drained) — <c>ModuleLoader</c>'s extraction
+    ///     stamped no <c>DeclarationSpan</c> and no file path on a member, dropped a method's
+    ///     backtick escape and explicit access level, and typed <c>self</c> as Unknown. It now reads
+    ///     the declaring pass's own classification helpers.</description></item>
+    ///   <item><description><b>#1442</b> (6 cells, drained) — the extraction computed neither
+    ///     <c>IsStringEnum</c> nor <c>IsDataclass</c>, so an imported string enum was checked as an
+    ///     int enum and an imported <c>@dataclass</c> arrived without its synthesized members. Both
+    ///     now come from the predicate/authority the declaring pass uses.</description></item>
+    ///   <item><description><b>#1443</b> (2 cells, standing) — inverted: <c>@must_use</c> on a METHOD
+    ///     is honoured by the extraction and ignored by <c>NameResolver</c>, so it never warns
+    ///     same-file. The defect is on the declaration side, which is why this batch did not
+    ///     drain it.</description></item>
     /// </list>
     /// </summary>
     private static readonly Dictionary<string, string> KnownDivergences = new(StringComparer.Ordinal)
     {
-        // #1440 — the re-export clone drops it (23 cells)
-        ["abstractClass::Symbol.DeclarationSpan::fromImport"] = "#1440",
-        ["abstractClass::Symbol.Documentation::fromImport"] = "#1440",
-        ["class::Symbol.DeclarationSpan::fromImport"] = "#1440",
-        ["class::Symbol.DeprecationMessage::fromImport"] = "#1440",
-        ["class::Symbol.Documentation::fromImport"] = "#1440",
-        ["class::TypeSymbol.IsMustUse::fromImport"] = "#1440",
-        ["class::TypeSymbol.NestedTypes::fromImport"] = "#1440",
-        ["dataclass::Symbol.DeclarationSpan::fromImport"] = "#1440",
-        ["dataclass::Symbol.Documentation::fromImport"] = "#1440",
-        ["derivedClass::Symbol.DeclarationSpan::fromImport"] = "#1440",
-        ["derivedClass::Symbol.Documentation::fromImport"] = "#1440",
-        ["implementer::Symbol.DeclarationSpan::fromImport"] = "#1440",
-        ["implementer::Symbol.Documentation::fromImport"] = "#1440",
-        ["interface::Symbol.DeclarationSpan::fromImport"] = "#1440",
-        ["interface::Symbol.Documentation::fromImport"] = "#1440",
-        ["memberOwner::Symbol.DeclarationSpan::fromImport"] = "#1440",
-        ["memberOwner::Symbol.Documentation::fromImport"] = "#1440",
-        ["memberOwner::TypeSymbol.Events::fromImport"] = "#1440",
-        ["nestedClass::<present>::fromImport"] = "#1440",
-        ["stringEnum::Symbol.DeclarationSpan::fromImport"] = "#1440",
-        ["stringEnum::Symbol.Documentation::fromImport"] = "#1440",
-        ["subclass::Symbol.DeclarationSpan::fromImport"] = "#1440",
-        ["subclass::Symbol.Documentation::fromImport"] = "#1440",
-
-        // #1441 — the extraction never stamps it (114 cells)
-        ["abstractClass::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["abstractClass::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["abstractClass::TypeSymbol.DefiningFilePath::fromImport"] = "#1441",
-        ["abstractClass::TypeSymbol.DefiningFilePath::qualifiedImport"] = "#1441",
-        ["abstractMethod::FunctionSymbol.Parameters::fromImport"] = "#1441",
-        ["abstractMethod::FunctionSymbol.Parameters::qualifiedImport"] = "#1441",
-        ["abstractMethod::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["abstractMethod::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["abstractMethod::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["abstractMethod::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["class::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["class::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["class::TypeSymbol.DefiningFilePath::fromImport"] = "#1441",
-        ["class::TypeSymbol.DefiningFilePath::qualifiedImport"] = "#1441",
-        ["constructor::FunctionSymbol.Parameters::fromImport"] = "#1441",
-        ["constructor::FunctionSymbol.Parameters::qualifiedImport"] = "#1441",
-        ["constructor::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["constructor::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["constructor::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["constructor::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["dataclass::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["dataclass::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["dataclass::TypeSymbol.DefiningFilePath::fromImport"] = "#1441",
-        ["dataclass::TypeSymbol.DefiningFilePath::qualifiedImport"] = "#1441",
-        ["defaultedField::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["defaultedField::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["defaultedField::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["defaultedField::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["derivedClass::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["derivedClass::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["derivedClass::TypeSymbol.DefiningFilePath::fromImport"] = "#1441",
-        ["derivedClass::TypeSymbol.DefiningFilePath::qualifiedImport"] = "#1441",
-        ["escapedMethod::FunctionSymbol.Parameters::fromImport"] = "#1441",
-        ["escapedMethod::FunctionSymbol.Parameters::qualifiedImport"] = "#1441",
-        ["escapedMethod::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["escapedMethod::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["escapedMethod::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["escapedMethod::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["escapedMethod::Symbol.IsNameBacktickEscaped::fromImport"] = "#1441",
-        ["escapedMethod::Symbol.IsNameBacktickEscaped::qualifiedImport"] = "#1441",
-        ["finalField::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["finalField::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["finalField::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["finalField::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["function::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["function::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["function::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["function::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["genericFunction::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["genericFunction::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["genericFunction::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["genericFunction::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["implementer::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["implementer::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["implementer::TypeSymbol.DefiningFilePath::fromImport"] = "#1441",
-        ["implementer::TypeSymbol.DefiningFilePath::qualifiedImport"] = "#1441",
-        ["interface::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["interface::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["interface::TypeSymbol.DefiningFilePath::fromImport"] = "#1441",
-        ["interface::TypeSymbol.DefiningFilePath::qualifiedImport"] = "#1441",
-        ["interfaceMethod::FunctionSymbol.Parameters::fromImport"] = "#1441",
-        ["interfaceMethod::FunctionSymbol.Parameters::qualifiedImport"] = "#1441",
-        ["interfaceMethod::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["interfaceMethod::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["interfaceMethod::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["interfaceMethod::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["memberOwner::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["memberOwner::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["memberOwner::TypeSymbol.DefiningFilePath::fromImport"] = "#1441",
-        ["memberOwner::TypeSymbol.DefiningFilePath::qualifiedImport"] = "#1441",
-        ["method::FunctionSymbol.Parameters::fromImport"] = "#1441",
-        ["method::FunctionSymbol.Parameters::qualifiedImport"] = "#1441",
-        ["method::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["method::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["method::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["method::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["nestedClass::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["nestedClass::TypeSymbol.DefiningFilePath::qualifiedImport"] = "#1441",
-        ["overrideMethod::FunctionSymbol.Parameters::fromImport"] = "#1441",
-        ["overrideMethod::FunctionSymbol.Parameters::qualifiedImport"] = "#1441",
-        ["overrideMethod::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["overrideMethod::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["overrideMethod::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["overrideMethod::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["privateMethod::FunctionSymbol.Parameters::fromImport"] = "#1441",
-        ["privateMethod::FunctionSymbol.Parameters::qualifiedImport"] = "#1441",
-        ["privateMethod::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["privateMethod::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["privateMethod::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["privateMethod::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["privateMethod::Symbol.ExplicitAccessLevel::fromImport"] = "#1441",
-        ["privateMethod::Symbol.ExplicitAccessLevel::qualifiedImport"] = "#1441",
-        ["staticField::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["staticField::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["staticField::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["staticField::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["staticMethod::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["staticMethod::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["staticMethod::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["staticMethod::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["stringEnum::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["stringEnum::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["stringEnum::TypeSymbol.DefiningFilePath::fromImport"] = "#1441",
-        ["stringEnum::TypeSymbol.DefiningFilePath::qualifiedImport"] = "#1441",
-        ["subclass::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["subclass::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-        ["subclass::TypeSymbol.DefiningFilePath::fromImport"] = "#1441",
-        ["subclass::TypeSymbol.DefiningFilePath::qualifiedImport"] = "#1441",
-        ["virtualMethod::FunctionSymbol.Parameters::fromImport"] = "#1441",
-        ["virtualMethod::FunctionSymbol.Parameters::qualifiedImport"] = "#1441",
-        ["virtualMethod::Symbol.DeclarationSpan::fromImport"] = "#1441",
-        ["virtualMethod::Symbol.DeclarationSpan::qualifiedImport"] = "#1441",
-        ["virtualMethod::Symbol.DeclaringFilePath::fromImport"] = "#1441",
-        ["virtualMethod::Symbol.DeclaringFilePath::qualifiedImport"] = "#1441",
-
-        // #1442 — the extraction never computes it (6 cells)
-        ["dataclass::TypeSymbol.IsDataclass::fromImport"] = "#1442",
-        ["dataclass::TypeSymbol.IsDataclass::qualifiedImport"] = "#1442",
-        ["dataclass::TypeSymbol.Methods::fromImport"] = "#1442",
-        ["dataclass::TypeSymbol.Methods::qualifiedImport"] = "#1442",
-        ["stringEnum::TypeSymbol.IsStringEnum::fromImport"] = "#1442",
-        ["stringEnum::TypeSymbol.IsStringEnum::qualifiedImport"] = "#1442",
-
-        // #1443 — NameResolver does not set it on a METHOD; the extraction does (2 cells)
+        // #1443 — INVERTED, and the only shape still standing: NameResolver does not set IsMustUse
+        // on a METHOD while the extraction does, so `@must_use` on a method warns through an import
+        // and never same-file. The fix belongs to the declaration side, not the import path (2 cells).
         ["method::FunctionSymbol.IsMustUse::fromImport"] = "#1443",
         ["method::FunctionSymbol.IsMustUse::qualifiedImport"] = "#1443",
     };
@@ -737,15 +595,17 @@ def main() -> None:
                 var importedSymbol = imported[role];
 
                 // A specimen present on one side and absent on the other is the coarsest divergence
-                // there is: the import dropped a whole declaration.
+                // there is: the import dropped a whole declaration. Recorded on EVERY pass, not only
+                // when one side is missing — an entry the ratchet can never see agree is an entry the
+                // ratchet can never call stale, and `nestedClass::<present>::fromImport` sat in
+                // KnownDivergences un-drainable for exactly that reason once #1440 cured it.
+                cellCount++;
+                Record($"{role}::<present>::{via}",
+                    declaredSymbol != null ? "present" : "ABSENT",
+                    importedSymbol != null ? "present" : "ABSENT");
+
                 if (declaredSymbol == null || importedSymbol == null)
-                {
-                    cellCount++;
-                    Record($"{role}::<present>::{via}",
-                        declaredSymbol != null ? "present" : "ABSENT",
-                        importedSymbol != null ? "present" : "ABSENT");
                     continue;
-                }
 
                 foreach (var fact in Facts.Where(f => f.Owner.IsInstanceOfType(declaredSymbol)))
                 {
@@ -816,18 +676,23 @@ def main() -> None:
     }
 
     /// <summary>
-    /// The identity above covers TYPES. An imported FUNCTION does not get it, even from a module
-    /// that is a compilation unit: <c>ImportResolver</c> registers <c>moduleInfo.FunctionOverloads</c>
-    /// — extraction symbols — through <c>SymbolTable.DefineFunctionOverloads</c>, and that set is
-    /// what a from-import binds and what overload resolution answers from. That is the measurement
-    /// #1365 was landed on, and it is why the fact-by-fact mirror matters on the ordinary path and
-    /// not only in the outside-the-source-set corner.
+    /// Functions join types on the identity path (#1491). Two seams had to hold for this: the
+    /// binding must be the compilation's own symbol (<c>ResolveImportSymbol</c> already preferred
+    /// it) AND the type checker must write the checked return type ONTO that symbol rather than
+    /// into a <c>with</c>-clone — the clone replaced <c>lib</c>'s binding in Phase 5, after
+    /// <c>main</c>'s import had bound the original in Phase 4, so both sides held the compilation's
+    /// own symbol and they were still two objects.
     ///
-    /// <para>Pinned rather than asserted away: if functions ever join types on the identity path,
-    /// this reddens and the note comes out.</para>
+    /// <para>Mutation test for the second seam: restore the clone in
+    /// <c>TypeChecker.Definitions.UpdateFunctionSymbol</c> (<c>functionSymbol with { ReturnType }</c>
+    /// plus <c>SymbolTable.UpdateSymbol</c>) and this reddens.</para>
+    ///
+    /// <para>The overload channel is the other half and is not visible from here — a scope holds
+    /// only the first overload under the name — so it is pinned by
+    /// <see cref="InSourceSetImportOfAnOverloadedFunction_BindsTheProjectsOwnOverloads"/>.</para>
     /// </summary>
     [Fact]
-    public void InSourceSetFromImportOfAFunction_StillBindsTheExtraction()
+    public void InSourceSetFromImportOfAFunction_BindsTheProjectsOwnSymbol()
     {
         var result = Arrange.LibInSourceSet(_output, LibSource, MainSource);
         var declared = Arrange.ScopeOf(result, "lib.spy").Lookup("parse", searchParent: false);
@@ -835,12 +700,63 @@ def main() -> None:
 
         declared.Should().BeOfType<FunctionSymbol>("the arrangement must have declared 'parse'");
         bound.Should().BeOfType<FunctionSymbol>("`from lib import parse` must bind something");
-        bound.Should().NotBeSameAs(
+        bound.Should().BeSameAs(
             declared,
-            "a from-imported function comes from moduleInfo.FunctionOverloads, which holds "
-            + "ModuleLoader's extraction — so every fact the extraction drops is dropped on the "
-            + "ORDINARY import path too, not just outside the source set (#1365). When #1491 "
-            + "extends identity sharing to functions, flip this to BeSameAs and rename");
+            "a module that is a compilation unit exports THIS compilation's symbols, and a function "
+            + "is no exception: 'parse' names one object on both sides, so no fact about it can "
+            + "diverge across the import (#1491, the function half of #1366/#1407)");
+    }
+
+    /// <summary>
+    /// The overload channel's identity. <c>ModuleSymbol.FunctionOverloads</c> and the scope's
+    /// overload table are a SECOND dictionary carrying the same declarations, and re-pointing the
+    /// single-symbol channel left them holding <c>ModuleLoader</c>'s extraction — which is what
+    /// every ranked call to an imported overloaded function resolved against (#1491).
+    ///
+    /// <para>Mutation test: re-point either registration site back at
+    /// <c>moduleInfo.FunctionOverloads</c> and this reddens.</para>
+    /// </summary>
+    [Fact]
+    public void InSourceSetImportOfAnOverloadedFunction_BindsTheProjectsOwnOverloads()
+    {
+        const string overloadedLib = @"def widen(value: int) -> int:
+    return value
+
+
+def widen(value: str) -> str:
+    return value
+";
+        const string overloadedMain = @"import lib
+from lib import widen
+
+
+def main() -> None:
+    print(widen(1))
+";
+
+        var result = Arrange.LibInSourceSet(_output, overloadedLib, overloadedMain);
+        var declaredScope = Arrange.ScopeOf(result, "lib.spy");
+        var declared = declaredScope.LookupFunctionOverloads("widen", searchParent: false)
+            ?? throw new InvalidOperationException(
+                "arrangement failed: lib.spy declares two 'widen' overloads, so its module scope "
+                + "must hold an overload list — without one this test measures nothing");
+        declared.Should().HaveCount(2, "the arrangement declares two overloads");
+
+        var importedScope = Arrange.ScopeOf(result, "main.spy");
+        var fromImport = importedScope.LookupFunctionOverloads("widen", searchParent: false)
+            ?? throw new InvalidOperationException(
+                "arrangement failed: `from lib import widen` registered no overload list");
+        fromImport.Should().Equal(declared,
+            "the from-imported overload set IS the declaration's, element for element — Symbol "
+            + "compares by reference, so this is an identity assertion (#1491)");
+
+        var module = importedScope.Lookup("lib", searchParent: false) as ModuleSymbol
+            ?? throw new InvalidOperationException("arrangement failed: `import lib` bound no module");
+        module.FunctionOverloads.TryGetValue("widen", out var qualified).Should().BeTrue(
+            "the qualified spelling resolves `lib.widen(...)` through ModuleSymbol.FunctionOverloads");
+        qualified.Should().Equal(declared,
+            "the qualified spelling's overload dictionary is the same second channel and gets the "
+            + "same ownership rule (#1491)");
     }
 
     /// <summary>

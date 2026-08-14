@@ -46,6 +46,35 @@ internal static class MemberClassification
         return new Result(access, explicitAccess, isStatic, isAbstract, isVirtual, isOverride);
     }
 
+    /// <summary>A field's access, staticness and finality — the <see cref="Result"/> of a field.</summary>
+    public readonly record struct FieldResult(
+        AccessLevel Access,
+        AccessLevel? ExplicitAccess,
+        bool IsStatic,
+        bool IsFinal);
+
+    /// <summary>
+    /// Classifies a field declaration, for the same reason <see cref="Classify(FunctionDef, TypeKind, bool)"/>
+    /// exists for a method: <c>NameResolver.ResolveFieldDeclaration</c> and
+    /// <c>ModuleLoader.ExtractFields</c> both answer this question, and when they answered it
+    /// separately the extraction knew nothing of the <c>@private</c>/<c>@public</c> decorators — an
+    /// explicitly-private imported field read as convention-public, and the decorator that set the
+    /// level was not recorded at all (#1441).
+    /// </summary>
+    public static FieldResult ClassifyField(VariableDeclaration def)
+    {
+        var access = AccessLevelConventions.FromName(def.Name);
+        var explicitAccess = GetExplicitAccessLevel(def.Decorators);
+        if (explicitAccess != null)
+            access = explicitAccess.Value;
+
+        return new FieldResult(
+            access,
+            explicitAccess,
+            def.Decorators.Any(d => d.Name == DecoratorNames.Static),
+            def.Decorators.Any(d => d.Name == DecoratorNames.Final));
+    }
+
     /// <summary>
     /// Whether a member carries the Sharpy <c>@abstract</c> DECORATOR.
     /// </summary>

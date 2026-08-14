@@ -295,8 +295,9 @@ internal class CodeGenInfoComputer
         var typeSymbol = _symbolTable.Lookup(enumDef.Name) as TypeSymbol;
         if (typeSymbol != null)
         {
-            // Determine if this is a string enum (has at least one string literal value)
-            var isStringEnum = enumDef.Members.Any(m => m.Value is StringLiteral);
+            // Determine if this is a string enum (has at least one string literal value) — the
+            // shared predicate, so the emitted shape and the checker's rules cannot disagree (#1442).
+            var isStringEnum = NameResolver.IsStringEnum(enumDef);
 
             SetCodeGenInfo(typeSymbol, new CodeGenInfo
             {

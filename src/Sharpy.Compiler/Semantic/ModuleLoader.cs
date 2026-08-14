@@ -138,10 +138,22 @@ internal class ModuleLoader
                 CanonicalModuleName = canonicalModuleName
             };
 
-            // Extract exported symbols (all top-level declarations)
-            foreach (var statement in module.Body)
+            // Extract exported symbols (all top-level declarations). The module's own import
+            // qualifiers are in scope for the duration, so an annotation this module wrote as
+            // `inner.Box[int]` converts to the same type `Box[int]` does (#1448). Saved and restored
+            // because the import-resolution callback below re-enters LoadModule for other modules.
+            var previousQualifiers = _moduleImportQualifiers;
+            _moduleImportQualifiers = CollectImportQualifiers(module);
+            try
             {
-                ExtractExportedSymbol(statement, moduleInfo);
+                foreach (var statement in module.Body)
+                {
+                    ExtractExportedSymbol(statement, moduleInfo);
+                }
+            }
+            finally
+            {
+                _moduleImportQualifiers = previousQualifiers;
             }
 
             // Recursively resolve imports within this module to detect transitive cycles
@@ -250,6 +262,7 @@ internal class ModuleLoader
                 {
                     Name = functionDef.Name,
                     Kind = SymbolKind.Function,
+                    IsNameBacktickEscaped = functionDef.IsNameBacktickEscaped,
                     Parameters = parameters,
                     ReturnType = functionDef.ReturnType != null
                         ? ConvertTypeAnnotationToSemanticType(functionDef.ReturnType, funcTypeParamNames)
@@ -264,6 +277,8 @@ internal class ModuleLoader
                     // second, which is precisely what #1208 was.
                     TypeParameters = functionDef.TypeParameters.ToList(),
                     AccessLevel = accessLevel,
+                    DeclaringFilePath = CurrentModulePath,
+                    DeclarationSpan = functionDef.Span,
                     DeclarationLine = functionDef.LineStart,
                     DeclarationColumn = functionDef.ColumnStart,
                     NameDeclarationLine = functionDef.NameLineStart,
@@ -373,7 +388,8 @@ internal class ModuleLoader
             if (stmt is FunctionDef method)
             {
                 var methodSymbol = ExtractMethodSymbol(method, classDef.TypeParameters,
-                    ownerKind: TypeKind.Class, ownerIsAbstract: isAbstract);
+                    ownerKind: TypeKind.Class, ownerIsAbstract: isAbstract,
+                    ownerTypeName: classDef.Name);
 
                 methods.Add(methodSymbol);
                 if (method.Name == DunderNames.Init)
@@ -402,6 +418,11 @@ internal class ModuleLoader
             NameDeclarationLine = classDef.NameLineStart,
             NameDeclarationColumn = classDef.NameColumnStart,
             DeclarationSpan = classDef.Span,
+            // Which file declared this is what LSP go-to-definition, rename and document-highlight
+            // all resolve through, and no extracted symbol carried it — the extractor has the path
+            // its own diagnostics already use (#1441).
+            DeclaringFilePath = CurrentModulePath,
+            DefiningFilePath = CurrentModulePath,
             DefiningModule = definingModulePath,
             UnresolvedBaseName = unresolvedBase,
             UnresolvedBaseTypeArgs = unresolvedBaseTypeArgs,
@@ -420,6 +441,23 @@ internal class ModuleLoader
         };
 
         LinkNestedTypes(classSymbol, nestedTypes);
+
+        // An imported @dataclass is a dataclass (#1442). Without this it arrived as an ordinary
+        // class — IsDataclass false and none of __init__/__eq__/__hash__/__repr__ present — so two
+        // equal imported values compared unequal and printing one produced a type name. The
+        // decorator is in the AST this extractor already walks, exactly as @must_use and @deprecated
+        // are; the meaning comes from the authority the declaring pass uses, not from a second copy
+        // of it. A field contributes the type of the annotation just converted, which is what the
+        // extraction has in place of the checker's resolved binding.
+        if (DataclassSynthesis.ReadOptions(classDef) is { } dataclassOptions)
+        {
+            classSymbol.IsDataclass = true;
+            classSymbol.DataclassInfo = dataclassOptions;
+            var dataclassFields = DataclassSynthesis.CollectFields(classSymbol, classDef);
+            classSymbol.DataclassFields = dataclassFields;
+            DataclassSynthesis.SynthesizeMembers(
+                classSymbol, classDef, dataclassFields, dataclassOptions, field => field.Type);
+        }
 
         if (unresolvedBase != null)
         {
@@ -445,7 +483,8 @@ internal class ModuleLoader
             if (stmt is FunctionDef method)
             {
                 var methodSymbol = ExtractMethodSymbol(method, structDef.TypeParameters,
-                    ownerKind: TypeKind.Struct, ownerIsAbstract: false);
+                    ownerKind: TypeKind.Struct, ownerIsAbstract: false,
+                    ownerTypeName: structDef.Name);
                 methods.Add(methodSymbol);
                 if (method.Name == DunderNames.Init)
                     ctors.Add(methodSymbol);
@@ -469,6 +508,8 @@ internal class ModuleLoader
             NameDeclarationLine = structDef.NameLineStart,
             NameDeclarationColumn = structDef.NameColumnStart,
             DeclarationSpan = structDef.Span,
+            DeclaringFilePath = CurrentModulePath,
+            DefiningFilePath = CurrentModulePath,
             DefiningModule = definingModulePath,
             UnresolvedInterfaces = structDef.BaseClasses.ToList(),
             Fields = fields,
@@ -500,7 +541,8 @@ internal class ModuleLoader
             if (stmt is FunctionDef method)
             {
                 var methodSymbol = ExtractMethodSymbol(method, interfaceDef.TypeParameters,
-                    ownerKind: TypeKind.Interface, ownerIsAbstract: true);
+                    ownerKind: TypeKind.Interface, ownerIsAbstract: true,
+                    ownerTypeName: interfaceDef.Name);
                 methods.Add(methodSymbol);
             }
         }
@@ -522,6 +564,8 @@ internal class ModuleLoader
             NameDeclarationLine = interfaceDef.NameLineStart,
             NameDeclarationColumn = interfaceDef.NameColumnStart,
             DeclarationSpan = interfaceDef.Span,
+            DeclaringFilePath = CurrentModulePath,
+            DefiningFilePath = CurrentModulePath,
             DefiningModule = definingModulePath,
             UnresolvedInterfaces = interfaceDef.BaseInterfaces.ToList(),
             Methods = methods,
@@ -556,16 +600,26 @@ internal class ModuleLoader
             if (stmt is not VariableDeclaration varDecl)
                 continue;
 
+            // Classified by the declaring pass's own authority rather than by a restated formula
+            // (#1441): the local `Any(@static)`/`Any(@final)`/name-convention triple this replaces
+            // had no notion of @private, so an explicitly-private imported field read as public and
+            // the decorator that said so was not recorded at all.
+            var classification = Shared.MemberClassification.ClassifyField(varDecl);
+
             fields.Add(new VariableSymbol
             {
                 Name = varDecl.Name,
                 Kind = SymbolKind.Variable,
+                IsNameBacktickEscaped = varDecl.IsNameBacktickEscaped,
                 Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
                 IsConstant = varDecl.IsConst,
-                IsStatic = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Static),
-                IsFinal = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Final),
+                IsStatic = classification.IsStatic,
+                IsFinal = classification.IsFinal,
                 HasDefaultValue = varDecl.InitialValue != null,
-                AccessLevel = GetAccessLevel(varDecl.Name),
+                AccessLevel = classification.Access,
+                ExplicitAccessLevel = classification.ExplicitAccess,
+                DeclaringFilePath = CurrentModulePath,
+                DeclarationSpan = varDecl.Span,
                 DeclarationLine = varDecl.LineStart,
                 DeclarationColumn = varDecl.ColumnStart,
                 NameDeclarationLine = varDecl.NameLineStart,
@@ -639,7 +693,13 @@ internal class ModuleLoader
             NameDeclarationLine = enumDef.NameLineStart,
             NameDeclarationColumn = enumDef.NameColumnStart,
             DeclarationSpan = enumDef.Span,
+            DeclaringFilePath = CurrentModulePath,
+            DefiningFilePath = CurrentModulePath,
             DefiningModule = definingModulePath,
+            // The same predicate NameResolver applies at the declaration, shared rather than
+            // restated (#1442/#1284): without it an imported string enum is checked as an int enum,
+            // so `.value` types int, `str` assignment is refused and iteration answers wrong.
+            IsStringEnum = NameResolver.IsStringEnum(enumDef),
             Documentation = enumDef.DocString,
             DeprecationMessage = NameResolver.GetDeprecationMessage(enumDef.Decorators),
             IsMustUse = NameResolver.HasMustUse(enumDef.Decorators)
@@ -698,11 +758,19 @@ internal class ModuleLoader
     /// <summary>
     /// Extract method symbol with parameter and return type information.
     /// </summary>
+    /// <param name="ownerTypeName">
+    /// The declaring type's name, so <c>self</c> can be typed as the type it denotes. The declaring
+    /// pass types it <c>UserDefinedType { Name = _currentClass.Name }</c> when it checks the body
+    /// (<c>TypeChecker.Definitions</c>); the extraction left it <c>Unknown</c>, which is the whole
+    /// of the <c>FunctionSymbol.Parameters</c> divergence the mirror reported for every method role
+    /// (#1441). Null only where no owner exists.
+    /// </param>
     internal FunctionSymbol ExtractMethodSymbol(
         FunctionDef method,
         ImmutableArray<TypeParameterDef> enclosingTypeParameters = default,
         TypeKind ownerKind = TypeKind.Class,
-        bool ownerIsAbstract = false)
+        bool ownerIsAbstract = false,
+        string? ownerTypeName = null)
     {
         var classification = Shared.MemberClassification.Classify(method, ownerKind, ownerIsAbstract);
 
@@ -715,10 +783,16 @@ internal class ModuleLoader
         // threaded NEITHER set until now.
         var typeParamNames = CollectTypeParameterNames(enclosingTypeParameters, method.TypeParameters);
 
-        var parameters = method.Parameters.Select(p => new ParameterSymbol
+        var parameters = method.Parameters.Select((p, index) => new ParameterSymbol
         {
             Name = p.Name,
-            Type = ConvertTypeAnnotationToSemanticType(p.Type, typeParamNames),
+            // `self` denotes the declaring type, which the extractor knows because it is extracting
+            // that type's body. Same rule and same shape as TypeChecker.Definitions' body check
+            // (#1441); leaving it Unknown made every imported method's parameter vector differ from
+            // the declaration's in its first slot.
+            Type = index == 0 && p.Name == PythonNames.Self && ownerTypeName != null
+                ? new UserDefinedType { Name = ownerTypeName }
+                : ConvertTypeAnnotationToSemanticType(p.Type, typeParamNames),
             HasDefault = p.DefaultValue != null,
             DefaultValue = p.DefaultValue,
             IsVariadic = p.IsVariadic,
@@ -731,6 +805,9 @@ internal class ModuleLoader
         {
             Name = method.Name,
             Kind = SymbolKind.Function,
+            // The escape is part of what the name denotes (#1325/#1328): a `def `class`` method
+            // arriving unescaped emits the mangled spelling and the program is CS0103.
+            IsNameBacktickEscaped = method.IsNameBacktickEscaped,
             Parameters = parameters,
             ReturnType = method.ReturnType != null
                 ? ConvertTypeAnnotationToSemanticType(method.ReturnType, typeParamNames)
@@ -741,6 +818,11 @@ internal class ModuleLoader
             IsOverride = classification.IsOverride,
             TypeParameters = method.TypeParameters.ToList(),
             AccessLevel = classification.Access,
+            // Classify already computed it; only the copy onto the symbol was missing, which left a
+            // @private method indistinguishable from a convention-private one (#1441).
+            ExplicitAccessLevel = classification.ExplicitAccess,
+            DeclaringFilePath = CurrentModulePath,
+            DeclarationSpan = method.Span,
             DeclarationLine = method.LineStart,
             DeclarationColumn = method.ColumnStart,
             NameDeclarationLine = method.NameLineStart,
@@ -775,6 +857,13 @@ internal class ModuleLoader
         if (typeAnnotation == null)
             return SemanticType.Unknown;
 
+        // A module qualifier is a lookup instruction, not part of the type's name — the rule
+        // TypeResolver.ResolveGenericType states at TypeResolver.cs:716-721, applied here so the
+        // extraction reaches the same representation. Before it, an annotation written INSIDE an
+        // extracted module kept its qualifier (`inner.Box[int]` where the resolver produces
+        // `Box[int]`), and the two spellings of one program named two different types (#1448).
+        var annotationName = NormalizeQualifiedAnnotationName(typeAnnotation.Name);
+
         SemanticType? baseType = typeAnnotation.Name switch
         {
             BuiltinNames.Int => SemanticType.Int,
@@ -798,13 +887,13 @@ internal class ModuleLoader
             // the element conversions.
             if (typeParameterNames != null
                 && typeAnnotation.TypeArguments.Length == 0
-                && typeParameterNames.Contains(typeAnnotation.Name))
+                && typeParameterNames.Contains(annotationName))
             {
-                baseType = new TypeParameterType { Name = typeAnnotation.Name };
+                baseType = new TypeParameterType { Name = annotationName };
             }
             else
             {
-                baseType = new UserDefinedType { Name = typeAnnotation.Name };
+                baseType = new UserDefinedType { Name = annotationName };
             }
         }
 
@@ -835,7 +924,7 @@ internal class ModuleLoader
             }
             else
             {
-                baseType = new GenericType { Name = typeAnnotation.Name, TypeArguments = typeArgs };
+                baseType = new GenericType { Name = annotationName, TypeArguments = typeArgs };
             }
         }
 
@@ -859,6 +948,58 @@ internal class ModuleLoader
         }
 
         return baseType;
+    }
+
+    /// <summary>
+    /// The module qualifiers in scope while the module currently being extracted is walked — the
+    /// names its own <c>import</c> statements bind. Null outside an extraction.
+    /// </summary>
+    private ISet<string>? _moduleImportQualifiers;
+
+    /// <summary>
+    /// The names a module's <c>import</c> statements make usable as a qualifier: the alias for
+    /// <c>import a.b as c</c>, and for <c>import a.b</c> both the bound root <c>a</c> and the full
+    /// <c>a.b</c>, either of which can lead a written annotation.
+    /// </summary>
+    private static HashSet<string> CollectImportQualifiers(Module module)
+    {
+        var qualifiers = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var statement in module.Body)
+        {
+            if (statement.UnwrapDecorated() is not ImportStatement import)
+                continue;
+
+            foreach (var alias in import.Names)
+            {
+                if (alias.AsName != null)
+                {
+                    qualifiers.Add(alias.AsName);
+                    continue;
+                }
+
+                qualifiers.Add(alias.Name);
+                var firstDot = alias.Name.IndexOf('.', StringComparison.Ordinal);
+                if (firstDot > 0)
+                    qualifiers.Add(alias.Name[..firstDot]);
+            }
+        }
+
+        return qualifiers;
+    }
+
+    /// <summary>
+    /// Strips a leading MODULE qualifier from a written annotation name, leaving anything else
+    /// dotted alone. <c>inner.Box</c> is <c>Box</c> when this module imports <c>inner</c>;
+    /// <c>Outer.Inner</c> is not, because <c>Outer</c> is a type and the dotted name is the nested
+    /// type's own (#1448).
+    /// </summary>
+    private string NormalizeQualifiedAnnotationName(string name)
+    {
+        var lastDot = name.LastIndexOf('.');
+        if (lastDot <= 0 || _moduleImportQualifiers == null)
+            return name;
+
+        return _moduleImportQualifiers.Contains(name[..lastDot]) ? name[(lastDot + 1)..] : name;
     }
 
     /// <summary>

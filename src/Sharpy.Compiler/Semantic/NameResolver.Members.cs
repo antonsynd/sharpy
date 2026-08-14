@@ -278,13 +278,14 @@ internal partial class NameResolver
     {
         _logger.LogDebug($"Resolving field declaration: {owningType.Name}.{field.Name}");
 
-        var accessLevel = DetermineAccessLevel(field.Name);
-        var explicitAccess = GetExplicitAccessLevel(field.Decorators);
-        if (explicitAccess != null)
-            accessLevel = explicitAccess.Value;
-
-        bool isStatic = field.Decorators.Any(d => d.Name == DecoratorNames.Static);
-        bool isFinal = field.Decorators.Any(d => d.Name == DecoratorNames.Final);
+        // The same authority ModuleLoader.ExtractFields consumes, so a declared field and an
+        // imported one are classified by one formula rather than two (#1441, the #1267 rule
+        // extended from methods to fields).
+        var classification = Shared.MemberClassification.ClassifyField(field);
+        var accessLevel = classification.Access;
+        var explicitAccess = classification.ExplicitAccess;
+        bool isStatic = classification.IsStatic;
+        bool isFinal = classification.IsFinal;
 
         // A field colliding with an existing same-name member (method, nested type, const)
         // is a duplicate definition — Scope.Define treats the collision as a compiler-bug

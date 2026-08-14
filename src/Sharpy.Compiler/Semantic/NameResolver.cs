@@ -724,6 +724,21 @@ internal partial class NameResolver
     internal static bool HasMustUse(IEnumerable<Decorator> decorators)
         => decorators.Any(d => d.Name == DecoratorNames.MustUse);
 
+    /// <summary>
+    /// Whether an enum is string-backed: at least one member carries a string value (#1284). A
+    /// string enum is emitted as a sealed class of singleton instances with an implicit conversion
+    /// to <c>string</c>, not as a C# enum, so <c>.value</c> typing, <c>str</c> assignability and
+    /// iteration all branch on it.
+    /// </summary>
+    /// <remarks>
+    /// One predicate for three readers — this pass, <c>CodeGenInfoComputer.ProcessEnumDef</c>, and
+    /// <c>ModuleLoader.ExtractFullEnumSymbol</c>. The first two held byte-identical copies and the
+    /// third had none at all, so an imported string enum was checked as an int enum (#1442). A rule
+    /// that decides both the checker's answers and the emitted shape cannot be spelled three times.
+    /// </remarks>
+    internal static bool IsStringEnum(EnumDef enumDef)
+        => enumDef.Members.Any(m => m.Value is StringLiteral);
+
     private static bool IsSourceGeneratorType(TypeSymbol symbol)
     {
         if (symbol.ClrType != null)
