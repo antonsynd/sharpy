@@ -1,0 +1,5 @@
+# #1510 (reverts #1358): the Optional payload type pattern is refused with the constructor-case steer.
+An Optional scrutinee cannot be matched with the payload type pattern 'str' @11:14
+'case Some(v):' for a present value and 'case None():' for absence
+# The refusal is semantic-time; the CS8121 ICE #1358 fixed never returns.
+!SPY0908

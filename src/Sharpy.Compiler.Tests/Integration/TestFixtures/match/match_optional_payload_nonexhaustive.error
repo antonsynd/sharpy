@@ -1,0 +1,3 @@
+# The payload pattern over an Optional scrutinee is refused, not classified as Some (#1510).
+An Optional scrutinee cannot be matched with the payload type pattern 'str' @8:14
+!SPY0908

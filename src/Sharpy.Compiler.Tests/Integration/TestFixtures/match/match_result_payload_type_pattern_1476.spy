@@ -1,0 +1,19 @@
+# #1476 (closed as #1510's Result half): a bare payload TYPE pattern over a Result scrutinee is
+# refused with the Ok/Err constructor-case steer (SPY0498) — the same rule as Optional, uniformly.
+# Before the #1510 ruling the Optional sibling leaked a CS8121-class ICE; this Result cell proves the
+# refusal fires at SEMANTIC time (`!SPY0908`), so `run` never reaches codegen and never ICEs.
+def get() -> int !ValueError:
+    return Ok(5)
+
+
+def probe() -> None:
+    r = get()
+    match r:
+        case int():
+            print("int")
+        case _:
+            print("other")
+
+
+def main() -> None:
+    probe()

@@ -1,2 +1,0 @@
-# `None` and ONLY `None`. If the Some recording is lost this reads "Missing cases: Some, None".
-Match statement is not exhaustive. Missing cases: None

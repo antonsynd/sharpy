@@ -1,3 +1,0 @@
-# Every match here is exhaustive: `case str():` covers Some, and each is closed by `case None:` or a
-# wildcard. An empty sidecar asserts no SPY0463 — before #1358 the payload pattern covered the type
-# NAME ("str"), which matched neither Optional case, so these would have reported missing cases.

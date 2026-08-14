@@ -1,98 +1,43 @@
-# #1358: a payload TYPE pattern matches the Some case of an UN-NARROWED Optional scrutinee.
-#
-# `match x:` over `x: str?` with `case str():` used to reach codegen as CS8121 behind SPY0908 —
-# the subject emits as `Optional<string>` and the pattern as `string`, and C# refuses the pairing.
-# The un-narrowed shape was the whole defect: the NARROWED form already worked (#1299), because
-# there the subject read applies an `.Unwrap()` lowering.
-#
-# The subject is still NOT unwrapped here. `Optional<T>.Unwrap()` throws on an empty Optional, so
-# an unwrapped subject would throw before any arm ran — the opposite of "a None value falls to the
-# wildcard". Instead the checker classifies a payload-typed pattern as the synthetic `Some` case and
-# the emitter destructures: `case str():` becomes `(true, string _)` over the raw Optional<T>, the
-# same Deconstruct shape `case Some(v):` and `case None:` already use.
-#
-# Semantics verified against python3 3.12 for the `str | None` equivalent: `case str():` matches the
-# string and a None value falls through to `_`.
-
-class Animal:
-    def __init__(self) -> None:
-        pass
-
-
-class Dog(Animal):
-    def speak(self) -> str:
-        return "woof"
-
-
-def probe(x: str?) -> str:
+# #1510 (reverts #1358): a bare payload TYPE pattern over an Optional scrutinee is REFUSED with a
+# steer to the constructor cases (SPY0498). #1358 had classified `case str():` over `str?` as the
+# synthetic Some case; the owner ruling on #1510 (2026-08-13) reverses that — Optional and Result
+# both match through their constructor spellings, and the payload form hid a CS8121 ICE. This
+# fixture pins the refusal across the payload shapes #1358 covered: a reference payload, a payload
+# SUBTYPE, a value-type payload, and a match EXPRESSION. Each arm carries a wildcard so the ONLY
+# diagnostic is the refusal (no exhaustiveness/return cascade); `!SPY0908` pins that CS8121 never
+# returns (the refusal fires at semantic time, before codegen).
+def probe_str(x: str?) -> None:
     match x:
         case str():
-            return "str"
+            print("str")
         case _:
-            return "none"
+            print("other")
 
 
-def probe_capture(x: str?) -> str:
-    # The `as` capture binds at the PAYLOAD type, not at the Optional — `s` is a `str`, so it
-    # concatenates. Binding it at `str?` would fail to type-check here.
-    match x:
-        case str() as s:
-            return "got " + s
-        case _:
-            return "none"
-
-
-def probe_subtype(a: Animal?) -> str:
-    # A payload SUBTYPE pattern still discriminates, which is why the emitted subpattern keeps the
-    # type test (`(true, Dog d)`) rather than collapsing to `(true, _)`.
+def probe_subtype(a: object?) -> None:
     match a:
-        case Dog() as d:
-            return d.speak()
-        case _:
-            return "not-dog"
-
-
-def probe_exhaustive(x: str?) -> str:
-    # No wildcard: `case str():` covers Some and `case None:` covers None, so this is exhaustive and
-    # draws no SPY0463. The empty .warning sidecar is what pins that.
-    match x:
         case str():
-            return "some"
-        case None:
-            return "none"
+            print("str")
+        case _:
+            print("other")
 
 
-def probe_value_type(x: int?) -> str:
-    # A VALUE-type payload: Optional[int] is a struct, so the emitted `(true, int _)` subpattern
-    # destructures a struct rather than a reference. Callers pass locals rather than a bare `None`
-    # argument only because of the unrelated #1478 (a `None` literal in argument position against a
-    # value-type `T?` is an ICE); the match itself is what this cell pins.
+def probe_value_type(x: int?) -> None:
     match x:
         case int():
-            return "int"
-        case None:
-            return "none"
+            print("int")
+        case _:
+            print("other")
 
 
 def probe_expression(x: str?) -> str:
     return match x:
-        case str() as s: "expr " + s
-        case _: "expr none"
+        case str(): "s"
+        case _: "other"
 
 
 def main() -> None:
-    print(probe("hi"))
-    print(probe(None))
-    print(probe_capture("cap"))
-    print(probe_capture(None))
-    print(probe_subtype(Dog()))
-    print(probe_subtype(Animal()))
-    print(probe_subtype(None))
-    print(probe_exhaustive("v"))
-    print(probe_exhaustive(None))
-    some_int: int? = 7
-    no_int: int? = None
-    print(probe_value_type(some_int))
-    print(probe_value_type(no_int))
-    print(probe_expression("e"))
-    print(probe_expression(None))
+    probe_str("hi")
+    probe_subtype("hi")
+    probe_value_type(3)
+    print(probe_expression("hi"))

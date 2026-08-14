@@ -1,1 +1,3 @@
-Match expression is not exhaustive. Missing cases: None @7:12
+# The payload pattern over an Optional scrutinee is refused in a match expression (#1510).
+An Optional scrutinee cannot be matched with the payload type pattern 'str' @8:14
+!SPY0908

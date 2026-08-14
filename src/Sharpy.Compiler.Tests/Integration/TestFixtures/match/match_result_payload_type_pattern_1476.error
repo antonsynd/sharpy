@@ -1,0 +1,5 @@
+# The payload pattern over a Result scrutinee is refused with the Ok/Err steer (#1476, #1510).
+A Result scrutinee cannot be matched with the payload type pattern 'int' @12:14
+'case Ok(v):' for success and 'case Err(e):' for failure
+# Semantic-time refusal — the CS8121 class marker never returns (no SPY0908 under run).
+!SPY0908
