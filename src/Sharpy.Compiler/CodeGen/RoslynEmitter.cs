@@ -1005,15 +1005,13 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// module-class forwarders, delegate stubs.
     /// </summary>
     /// <remarks>
-    /// <see cref="ParameterSymbol"/> is a standalone record, not a <c>Symbol</c> subclass, so it
-    /// carries no <c>IsNameBacktickEscaped</c> and an escaped spelling cannot reach here
-    /// (TODO(#1455)). These sites stay camelCased, which is what they already emitted; each
-    /// forwarder declares AND passes the parameter through this same string, so it is internally
-    /// consistent. What it cannot do is carry a <c>`Zed`</c> parameter's spelling across a
-    /// forwarder.
+    /// <see cref="ParameterSymbol"/> now carries <see cref="ParameterSymbol.IsNameBacktickEscaped"/>
+    /// (#1455), so this resolves through the same escape-aware helper as the AST overload: a
+    /// <c>`Zed`</c> parameter keeps its verbatim spelling across a forwarder, which declares AND
+    /// passes the parameter through this one string, so both ends agree.
     /// </remarks>
     private static string ParameterCSharpName(ParameterSymbol param)
-        => NameCasing.ResolveVariable(param.Name, false);
+        => NameCasing.ResolveVariable(param.Name, param.IsNameBacktickEscaped);
 
     /// <summary>
     /// Pre-scans statements to collect all variable names that will be declared.

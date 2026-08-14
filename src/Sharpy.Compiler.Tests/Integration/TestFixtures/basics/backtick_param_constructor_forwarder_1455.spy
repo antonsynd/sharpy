@@ -1,0 +1,20 @@
+# #1455: a backtick-escaped parameter must keep its verbatim spelling across a constructor
+# forwarder. Base declares `Zed`; Derived inherits and the emitter synthesizes a forwarding
+# constructor from Base's __init__ ParameterSymbol (the symbol overload of ParameterCSharpName).
+# Before the fix the standalone ParameterSymbol carried no IsNameBacktickEscaped, so the forwarder
+# camelCased the name; now it declares AND forwards `Zed` verbatim. Runtime smoke; the emit-grep
+# (declares + forwards verbatim) is pinned by BacktickEscapedForwarderTests.
+class Base:
+    stored: int
+
+    def __init__(self, `Zed`: int):
+        self.stored = `Zed`
+
+
+class Derived(Base):
+    pass
+
+
+def main() -> None:
+    d = Derived(41)
+    print(d.stored)
