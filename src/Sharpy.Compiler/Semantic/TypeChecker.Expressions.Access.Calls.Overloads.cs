@@ -21,6 +21,10 @@ internal partial class TypeChecker
     /// <param name="SkipUnknownTypes">If true, skip type comparison when either side is UnknownType.</param>
     /// <param name="KeywordArgNames">Names of keyword arguments at the call site, used to filter out
     /// overloads that lack matching parameter names (e.g., a params overload with no 'reverse' param).</param>
+    /// <param name="ReceiverIsLeadingParameter">If true, a candidate whose leading parameter is not
+    /// named <c>self</c> may still carry the receiver there, and it is identified by SHAPE — the
+    /// arguments match the TRAILING parameters. Only the operator-dunder path sets this; see
+    /// <see cref="ResolveDunderOverload"/> for why the method-call paths must not.</param>
     internal record OverloadResolutionContext(
         List<FunctionSymbol> Candidates,
         int TotalArgCount,
@@ -29,7 +33,8 @@ internal partial class TypeChecker
         Func<SemanticType, SemanticType>? TypeSubstitution = null,
         bool SkipUnknownTypes = false,
         IReadOnlyCollection<string>? KeywordArgNames = null,
-        FunctionCall? Call = null);
+        FunctionCall? Call = null,
+        bool ReceiverIsLeadingParameter = false);
 
     /// <summary>
     /// Resolves a binary operator-dunder / <c>__getitem__</c> overload (self + a single argument)
@@ -42,14 +47,82 @@ internal partial class TypeChecker
     /// against the parameter after <c>self</c>. Returns <c>null</c> when nothing matches or the best
     /// is ambiguous (the caller then falls back or reports "unsupported operator").
     /// </summary>
-    private FunctionSymbol? ResolveDunderOverload(IReadOnlyList<FunctionSymbol> candidates, SemanticType argType)
+    /// <remarks>
+    /// <c>internal</c> rather than <c>private</c> for a test seam, warranted here in a way it usually
+    /// is not: which path answers an operator dunder — this resolver or the CLR fallback beneath it —
+    /// is invisible in emitted C# by construction, so no <c>.spy</c> fixture can observe it and this
+    /// return value is the only place the fact exists (#1395).
+    /// </remarks>
+    internal FunctionSymbol? ResolveDunderOverload(
+        IReadOnlyList<FunctionSymbol> candidates, SemanticType argType, SemanticType? receiver = null)
     {
         var (match, _, _) = ResolveOverloadCore(new OverloadResolutionContext(
             Candidates: candidates.ToList(),
             TotalArgCount: 1,
             ArgTypes: new List<SemanticType> { argType },
-            SkipSelfParam: true));
+            SkipSelfParam: true,
+            // A CLR-discovered operator reflects its receiver as `left`/`a`, never `self`, so the
+            // skip is by SHAPE here — see ReceiverOffsetOf. Without this the arity filter asked
+            // `1 >= 2` and dropped every CLR operator candidate before betterness (#1395).
+            ReceiverIsLeadingParameter: true,
+            // Close the candidates' open parameter types at the receiver's type arguments so a
+            // generic CLR operator (`Dict<K,V> operator|`, `NdArray<T> operator+`) is resolved at the
+            // receiver's instantiation, not at open `T`. The single-candidate path already does this
+            // via CloseOverReceiver; threading it here is what makes the two paths select the SAME
+            // overload (#1395, agreement test). (The numpy ICE itself is prevented by the
+            // constraint-aware ResolveClrParameterType, not by this.)
+            TypeSubstitution: BuildReceiverSubstitution(receiver)));
         return match;
+    }
+
+    /// <summary>
+    /// A substitution closing a candidate operator's open type parameters at
+    /// <paramref name="receiver"/>'s type arguments (<c>owner.TypeParameters → receiver.TypeArguments</c>),
+    /// or null when the receiver is not a closed generic instantiation. Mirrors
+    /// <c>TypeInferenceService.CloseOverReceiver</c>, the single-candidate path's substitution, so the
+    /// two paths agree (#1395).
+    /// </summary>
+    private static Func<SemanticType, SemanticType>? BuildReceiverSubstitution(SemanticType? receiver)
+    {
+        if (receiver is not GenericType { GenericDefinition: { } definition } instantiation)
+            return null;
+
+        var typeParameters = definition.TypeParameters;
+        if (typeParameters.Count == 0 || typeParameters.Count != instantiation.TypeArguments.Count)
+            return null;
+
+        var substitutions = new Dictionary<string, SemanticType>(typeParameters.Count, StringComparer.Ordinal);
+        for (int i = 0; i < typeParameters.Count; i++)
+            substitutions[typeParameters[i].Name] = instantiation.TypeArguments[i];
+
+        return t => TypeSubstitution.Apply(t, substitutions);
+    }
+
+    /// <summary>
+    /// How many leading parameters of <paramref name="o"/> the receiver occupies, for a call described
+    /// by <paramref name="context"/>. The single source of this rule: it was two divergent copies
+    /// (arity filtering and betterness comparison), and fixing one alone would leave the tiebreak
+    /// mis-offset (#1395).
+    /// </summary>
+    /// <remarks>
+    /// Name first, then shape. A leading parameter literally named <c>self</c> is the receiver. Failing
+    /// that, ONLY on the operator-dunder path (<see cref="OverloadResolutionContext.ReceiverIsLeadingParameter"/>),
+    /// a candidate carrying MORE parameters than the call's arguments has its receiver in the leading
+    /// position(s) — the arguments match the TRAILING parameters, which is exactly what the
+    /// single-candidate path's <c>AcceptsArgument</c> assumes (the operand is <c>Parameters[^1]</c>,
+    /// "by SHAPE, never by name"). The two method-call sites that also set <c>SkipSelfParam</c> must NOT
+    /// set the flag: a CLR instance method reflects WITHOUT a receiver parameter (<c>xs.append(x)</c> is
+    /// <c>(item)</c>), so a leading parameter not named <c>self</c> IS the first argument there.
+    /// </remarks>
+    private static int ReceiverOffsetOf(FunctionSymbol o, OverloadResolutionContext context)
+    {
+        if (!context.SkipSelfParam || o.Parameters.Count == 0)
+            return 0;
+        if (o.Parameters[0].Name == PythonNames.Self)
+            return 1;
+        if (context.ReceiverIsLeadingParameter && o.Parameters.Count > context.TotalArgCount)
+            return o.Parameters.Count - context.TotalArgCount;
+        return 0;
     }
 
     /// <summary>
@@ -60,8 +133,7 @@ internal partial class TypeChecker
     private (FunctionSymbol? Match, List<FunctionSymbol> ArityCandidates, bool IsAmbiguous) ResolveOverloadCore(
         OverloadResolutionContext context)
     {
-        int GetSelfOffset(FunctionSymbol o) =>
-            context.SkipSelfParam && o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+        int GetSelfOffset(FunctionSymbol o) => ReceiverOffsetOf(o, context);
 
         // First pass: filter by argument count
         var arityCandidates = context.Candidates.Where(o =>
@@ -249,8 +321,7 @@ internal partial class TypeChecker
     /// </summary>
     private bool IsMoreSpecificOverload(FunctionSymbol a, FunctionSymbol b, OverloadResolutionContext context)
     {
-        int SelfOffset(FunctionSymbol o) =>
-            context.SkipSelfParam && o.Parameters.Count > 0 && o.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+        int SelfOffset(FunctionSymbol o) => ReceiverOffsetOf(o, context);
 
         var selfOffsetA = SelfOffset(a);
         var selfOffsetB = SelfOffset(b);

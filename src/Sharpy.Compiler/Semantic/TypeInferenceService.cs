@@ -44,7 +44,7 @@ internal class TypeInferenceService
     /// instead of an ad-hoc first-match scan (#975). Null only for a standalone service with no host
     /// (unit tests that never reach the multi-overload path).
     /// </summary>
-    internal Func<IReadOnlyList<FunctionSymbol>, SemanticType, FunctionSymbol?>? DeterministicBinaryOverloadResolver { get; set; }
+    internal Func<IReadOnlyList<FunctionSymbol>, SemanticType, SemanticType?, FunctionSymbol?>? DeterministicBinaryOverloadResolver { get; set; }
 
     /// <summary>
     /// Argument-binding assignability (<c>TypeChecker.IsArgumentAssignable</c>), injected by the
@@ -620,7 +620,7 @@ internal class TypeInferenceService
             return AcceptsArgument(candidates[0], argumentType, receiver) ? candidates[0] : null;
 
         if (DeterministicBinaryOverloadResolver != null)
-            return DeterministicBinaryOverloadResolver(candidates, argumentType);
+            return DeterministicBinaryOverloadResolver(candidates, argumentType, receiver);
 
         // Standalone service with no TypeChecker host: deterministic exact-match fallback. In the
         // full pipeline the resolver is always injected; this path exists only so unit tests that

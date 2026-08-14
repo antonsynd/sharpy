@@ -1555,9 +1555,13 @@ internal partial class TypeChecker
                 }
                 if (clrType != null)
                 {
+                    // Close the definition CONSTRAINT-AWARE, matching the ClrMethod path above
+                    // (SubstituteGenericParameters): a blanket typeof(object) violates a value-type
+                    // constraint — `NdArray<T where T : unmanaged>` threw TypeLoadException building
+                    // `NdArray<object>` (#1395). SubstituteGenericParameters substitutes a
+                    // value-constrained parameter with int, object otherwise.
                     if (clrType.IsGenericTypeDefinition)
-                        return clrType.MakeGenericType(
-                            Enumerable.Repeat(typeof(object), clrType.GetGenericArguments().Length).ToArray());
+                        return SubstituteGenericParameters(clrType);
                     return clrType;
                 }
             }
