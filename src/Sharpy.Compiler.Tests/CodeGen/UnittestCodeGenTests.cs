@@ -35,9 +35,17 @@ public class UnittestCodeGenTests
 
     private string CompileToCSharp(string source, string fileName = "test.spy", bool requiresSharpyCore = false)
     {
-        var compiler = requiresSharpyCore
-            ? new Compiler(new CompilerOptions { References = new[] { SharpyCoreReference.Location, SharpyStdlibReference.Location } })
-            : new Compiler();
+        // These tests are about the TEST-HOST lowering: the `@test` decorators that become
+        // `Xunit.*` attributes and the assert rewrites that become `Xunit.Assert.*` calls. That
+        // lowering is host-conditional since #1495 — outside a test host a `@test` program lowers
+        // framework-free, so it can run under `sharpyc run` instead of failing with CS0246 behind
+        // SPY0908 — so the compilation under test has to declare that it targets one, exactly as
+        // the integration harness and the spy-test `.spyproj` corpora do.
+        var options = new CompilerOptions { TargetsTestHost = true };
+        if (requiresSharpyCore)
+            options.References = new[] { SharpyCoreReference.Location, SharpyStdlibReference.Location };
+
+        var compiler = new Compiler(options);
         var result = compiler.Compile(source, fileName);
         result.Success.Should().BeTrue(
             $"compilation should succeed, errors: {string.Join("; ", result.Diagnostics.GetErrors().Select(e => e.Message))}");

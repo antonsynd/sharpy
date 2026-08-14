@@ -138,6 +138,7 @@ public static class CompilerOptionsFactory
             References = references,
             ModulePaths = config.ModulePaths.ToArray(),
             WarningsAsErrors = warningsAsErrors || config.WarningsAsErrors,
+            TargetsTestHost = config.TestHost,
             SuppressedWarnings = suppressed,
             MaxErrors = maxErrors,
             Incremental = incremental,
@@ -193,6 +194,7 @@ public static class CompilerOptionsFactory
             References = Combine(project?.References, references),
             ModulePaths = Combine(project?.ModulePaths, modulePaths),
             WarningsAsErrors = warningsAsErrors || (project?.WarningsAsErrors ?? false),
+            TargetsTestHost = project?.TestHost ?? false,
             SuppressedWarnings = suppressed,
             MaxErrors = maxErrors,
             Features = effectiveFeatures,
@@ -229,6 +231,7 @@ public static class CompilerOptionsFactory
         ModulePaths = spec.ModulePaths,
         References = spec.References,
         WarningsAsErrors = spec.WarningsAsErrors,
+        TargetsTestHost = spec.TargetsTestHost,
         SuppressedWarnings = spec.SuppressedWarnings is null
             ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             : new HashSet<string>(spec.SuppressedWarnings, StringComparer.OrdinalIgnoreCase),
@@ -270,6 +273,13 @@ internal sealed class CompilerOptionsSpec
     public string[]? References { get; init; }
 
     public bool WarningsAsErrors { get; init; }
+
+    /// <summary>
+    /// Whether the emitted C# is compiled into a test host (#1495). Set only from a project's
+    /// <c>&lt;TestHost&gt;</c> property — a single-file CLI invocation has no project to declare it
+    /// and therefore never targets one.
+    /// </summary>
+    public bool TargetsTestHost { get; init; }
 
     public IEnumerable<string>? SuppressedWarnings { get; init; }
 

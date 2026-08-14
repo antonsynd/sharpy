@@ -246,6 +246,7 @@ public class ProjectConfig
             PackageReferences = PackageReferences,
             Configuration = Configuration,
             WarningsAsErrors = WarningsAsErrors,
+            TestHost = TestHost,
             SuppressedWarnings = SuppressedWarnings,
             Features = Features,
             OutputAssemblyPathOverride = OutputAssemblyPathOverride,

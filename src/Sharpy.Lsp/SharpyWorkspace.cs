@@ -570,6 +570,10 @@ internal sealed class SharpyWorkspace : IDisposable
     private static bool SameAnalysisInputs(CompilerOptions a, CompilerOptions b)
         => a.OutputType == b.OutputType
             && a.WarningsAsErrors == b.WarningsAsErrors
+            // A project that flips <TestHost> changes what a `@test` body LOWERS to (#1495), and a
+            // lowering change is an analysis change: the framework-free arm can report diagnostics
+            // the Xunit arm cannot, and the reverse.
+            && a.TargetsTestHost == b.TargetsTestHost
             && a.MaxErrors == b.MaxErrors
             && a.SuppressedWarnings.SetEquals(b.SuppressedWarnings)
             && a.Features.EnabledFeatures.SequenceEqual(b.Features.EnabledFeatures, StringComparer.Ordinal)
