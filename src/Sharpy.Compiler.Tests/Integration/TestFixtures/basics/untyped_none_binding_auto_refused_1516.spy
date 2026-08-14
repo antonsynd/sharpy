@@ -1,0 +1,6 @@
+# The `auto` spelling of #1516. The declaration path infers from the initializer exactly as the
+# assignment path does, so `x: auto = None` reached the emitter as `var x = null;` too. One rule
+# serves both; the declaration form is not a second answer.
+def main() -> None:
+    x: auto = None
+    print(x)

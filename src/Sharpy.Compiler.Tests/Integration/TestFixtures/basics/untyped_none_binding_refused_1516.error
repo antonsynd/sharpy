@@ -1,0 +1,2 @@
+cannot infer a type for 'bar': 'None' names no type on its own, so 'bar' has nothing to be. @26:5
+cannot infer a type for 'nothing': this expression produces no value, so there is nothing for 'nothing' to hold. @27:5

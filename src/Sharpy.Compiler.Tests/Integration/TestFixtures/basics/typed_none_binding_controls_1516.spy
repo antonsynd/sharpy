@@ -1,0 +1,26 @@
+# The controls for #1516: every spelling that DOES supply a type, so the refusal next door cannot
+# widen without going red here. Each was measured working before the refusal landed and after it.
+def takes(v: str | None) -> None:
+    print("arg-position None accepted")
+
+
+def main() -> None:
+    # The destination supplies the type — the two spellings the spec defines.
+    a: int? = None
+    b: str | None = None
+    print(a is None)
+    print(b is None)
+
+    # A rebinding KEEPS the existing type. Letting `None` retype the variable was a second defect in
+    # the same family, found while writing this control: after `a = None` the binding became a
+    # `None`, so the very next `a is None` was refused as "expression of type 'None' has no value".
+    # Silent, and wrong. `a` is still an `int?` below.
+    a = None
+    print(a is None)
+
+    c: int? = 7
+    c = None
+    print(c is None)
+
+    # The parameter supplies the type.
+    takes(None)

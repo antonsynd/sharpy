@@ -1,0 +1,27 @@
+# #1516: a binding whose value has NO type reached the emitter and became `var x = null;` or
+# `var x = f();` — CS0815 behind SPY0908 either way. The front end accepted a program Roslyn refuses,
+# which is the #1146 contract failing; it also flaked `ILCompilesPropertyTests` (CsCheck seed
+# 3BRo6RzEZuxw), so the drain's own gate was one of its victims.
+#
+# Refusal, not a lowering, and the spec is why. `docs/language_specification/none_literal.md` defines
+# `None` only against a DECLARED type — `value: str | None = None` emits C# `null`, `x: int? = None`
+# emits `default` — so bare `None` is a value whose meaning comes from its destination. A destination
+# that supplies none has no meaning to give it. Inventing `object?` would make the binding hold a
+# type the user never wrote and cannot use; CPython's `NoneType` is not available to a statically
+# typed target; Axiom 1 > Axiom 3 > Axiom 2 settles it.
+#
+# Two producers, one rule: a bare `None`, and a call to a `None`-returning function. The `auto`
+# spelling of the first is in `untyped_none_binding_auto_refused_1516.spy` — a separate file because
+# the harness matches expected lines by substring and the two would be indistinguishable.
+#
+# MUTATION TEST (performed 2026-08-14, reverted): short-circuiting the guard
+# (`if (true || valueType is not VoidType) return false;`) turns this fixture red AND turns
+# `ILCompilesPropertyTests` red under `CsCheck_Seed=3BRo6RzEZuxw`. The seed is a real instrument, not
+# an absence assertion passing vacuously.
+def produces_nothing() -> None:
+    print("called")
+
+
+def main() -> None:
+    bar = None
+    nothing = produces_nothing()
