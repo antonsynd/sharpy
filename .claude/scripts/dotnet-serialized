@@ -92,7 +92,14 @@ bump_generation() {
 # dotnet process records its own PID below, and a live child keeps the lock alive.
 #
 # KNOWN-UNFIXED: PID reuse — a recycled owner or child PID reads as live and wedges peers for
-# the full TIMEOUT. Bounded by that timeout rather than by correctness; probability unmeasured.
+# the full TIMEOUT. Bounded by that timeout rather than by correctness.
+#
+# The probability is UNMEASURED, and deliberately so: measuring it means forcing PID wraparound
+# on a shared development machine, which would disrupt every other agent's live run to quantify
+# a hazard whose mitigation (the TIMEOUT bound above) is already in place and does not depend on
+# the number. Declined by the 2026-08-13 INFRA batch (#1481) — recorded here rather than left as
+# an unattributed "unmeasured", so the next reader knows a person decided this and why, instead
+# of assuming nobody looked.
 is_lock_stale() {
     local child_file="$LOCK_DIR/child"
     if [ -f "$child_file" ]; then
