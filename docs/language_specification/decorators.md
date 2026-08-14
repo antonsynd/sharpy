@@ -279,9 +279,16 @@ def foo() -> None:
 class Data:
     pass
 
-# Multiple arguments with keyword
-@[dll_import("user32.dll", entry_point="MessageBox")]
-def message_box() -> None: ...
+# Multiple arguments with keyword.
+#
+# NOTE: `dll_import` is shown for its ARGUMENT SHAPE only — a positional plus a keyword. The
+# attribute itself is not reachable today: `DllImport` is not exported by any importable module,
+# so every `@[dll_import(...)]` spelling is refused with SPY0495 ("names no attribute type that is
+# in scope"), bodied or not. Sharpy has no `extern` form for a P/Invoke declaration to attach to
+# either, so a bodied function carrying it could not produce valid C# even if the name resolved
+# (#1430). Read the two arguments, not the attribute.
+@[obsolete("Superseded", DiagnosticId = "SPY1")]
+def legacy() -> None: ...
 
 # Combining Sharpy modifier with bracket attribute
 @virtual
