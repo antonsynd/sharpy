@@ -179,8 +179,14 @@ internal class TypeResolver
         {
             result = builtinType;
         }
-        // Check for type alias and expand it
-        else if (_symbolTable.LookupTypeAlias(annotation.Name) is TypeAliasSymbol aliasSymbol
+        // Check for type alias and expand it. A module-qualified spelling reaches the same arm
+        // through the alias-aware sibling of the qualified TYPE lookup: `type Handle = int`
+        // from-imports fine, and `lib.Handle` reported SPY0202 only because the qualified path had
+        // no way to answer with an alias (#1436). Gated on a bare spelling, like every other
+        // qualified lookup here — an escaped name denotes the user's own declaration (#1325).
+        else if ((_symbolTable.LookupTypeAlias(annotation.Name)
+                      ?? (escaped ? null : LookupModuleQualifiedAlias(annotation.Name)))
+                     is TypeAliasSymbol aliasSymbol
                  && (escaped || !aliasSymbol.IsNameBacktickEscaped))
         {
             if (aliasSymbol.TypeParameters.Count > 0)
@@ -434,6 +440,24 @@ internal class TypeResolver
             return null;
 
         return moduleSymbol.ResolveQualifiedType(parts, startIndex: 1);
+    }
+
+    /// <summary>
+    /// The type-ALIAS twin of <see cref="LookupModuleQualifiedType"/>: resolves <c>mod.Alias</c> to
+    /// its <see cref="TypeAliasSymbol"/>, or null when the leading segment is not an imported module
+    /// or the tail names no exported alias (#1436). Callers apply the same backtick-escape gate.
+    /// </summary>
+    internal TypeAliasSymbol? LookupModuleQualifiedAlias(string dottedName)
+    {
+        if (!dottedName.Contains('.', StringComparison.Ordinal))
+            return null;
+
+        var parts = dottedName.Split('.');
+
+        if (_symbolTable.Lookup(parts[0]) is not ModuleSymbol moduleSymbol)
+            return null;
+
+        return moduleSymbol.ResolveQualifiedAlias(parts, startIndex: 1);
     }
 
     private bool TryResolveBuiltinType(string name, out SemanticType type)

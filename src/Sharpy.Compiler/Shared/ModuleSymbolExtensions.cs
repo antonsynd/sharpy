@@ -68,19 +68,9 @@ internal static class ModuleSymbolExtensions
     /// <returns>The resolved <see cref="TypeSymbol"/>, or <c>null</c> if resolution fails at any step.</returns>
     public static TypeSymbol? ResolveQualifiedType(this ModuleSymbol rootModule, string[] parts, int startIndex)
     {
-        var moduleSymbol = rootModule;
-
-        // Walk intermediate parts through nested module exports (e.g., email.message.Message).
-        for (int i = startIndex; i < parts.Length - 1; i++)
-        {
-            if (!moduleSymbol.TryGetExport(parts[i], out var nestedSymbol)
-                || nestedSymbol is not ModuleSymbol nestedModule)
-            {
-                return null;
-            }
-
-            moduleSymbol = nestedModule;
-        }
+        var moduleSymbol = WalkToOwningModule(rootModule, parts, startIndex);
+        if (moduleSymbol == null)
+            return null;
 
         // The final part must resolve to an exported type. Consult the types-only lookup first
         // so a value-position export sharing the name (e.g. sqlite3.Row's row_factory field)
@@ -97,5 +87,53 @@ internal static class ModuleSymbolExtensions
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// The type-ALIAS sibling of <see cref="ResolveQualifiedType"/>: same walk, final segment
+    /// resolved as a <see cref="TypeAliasSymbol"/>.
+    /// </summary>
+    /// <remarks>
+    /// A sibling rather than a widened return, deliberately. <c>ResolveQualifiedType</c>'s
+    /// <c>TypeSymbol?</c> contract is what four callers depend on; widening it to <c>Symbol?</c>
+    /// would force every one of them to branch on a case they do not handle. The type-alias case is
+    /// additive: <c>type Handle = int</c> from-imports fine and <c>lib.Handle</c> reported SPY0202
+    /// only because both final-segment arms above require a <see cref="TypeSymbol"/> and an alias
+    /// is not one (#1436, #1363 having already made it an export).
+    /// </remarks>
+    public static TypeAliasSymbol? ResolveQualifiedAlias(this ModuleSymbol rootModule, string[] parts, int startIndex)
+    {
+        var moduleSymbol = WalkToOwningModule(rootModule, parts, startIndex);
+        if (moduleSymbol == null)
+            return null;
+
+        return moduleSymbol.TryGetExport(parts[^1], out var exportedSymbol)
+            && exportedSymbol is TypeAliasSymbol aliasSymbol
+                ? aliasSymbol
+                : null;
+    }
+
+    /// <summary>
+    /// Walks the intermediate segments of a dotted name through nested module exports
+    /// (<c>email.message.Message</c> → the <c>email.message</c> module), or null when a segment is
+    /// not a module. Shared so the type and alias resolvers cannot disagree about which module owns
+    /// a name.
+    /// </summary>
+    private static ModuleSymbol? WalkToOwningModule(ModuleSymbol rootModule, string[] parts, int startIndex)
+    {
+        var moduleSymbol = rootModule;
+
+        for (int i = startIndex; i < parts.Length - 1; i++)
+        {
+            if (!moduleSymbol.TryGetExport(parts[i], out var nestedSymbol)
+                || nestedSymbol is not ModuleSymbol nestedModule)
+            {
+                return null;
+            }
+
+            moduleSymbol = nestedModule;
+        }
+
+        return moduleSymbol;
     }
 }

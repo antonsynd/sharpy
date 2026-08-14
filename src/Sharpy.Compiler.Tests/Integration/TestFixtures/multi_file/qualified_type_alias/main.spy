@@ -1,0 +1,24 @@
+# A module-qualified type ALIAS resolves (#1436). `from lib import Handle` already worked; the
+# qualified spelling reported SPY0202 because the qualified lookup could only answer with a
+# TypeSymbol and an alias is not one. Both the plain and the generic alias are covered, because
+# the generic arm expands through a different helper.
+import lib
+from lib import Handle
+
+
+def describe(h: lib.Handle) -> int:
+    return h
+
+
+def describe_bare(h: Handle) -> int:
+    return h
+
+
+def first(p: lib.Pair[int]) -> int:
+    return p[0]
+
+
+def main() -> None:
+    print(describe(7))
+    print(describe_bare(7))
+    print(first((3, 4)))

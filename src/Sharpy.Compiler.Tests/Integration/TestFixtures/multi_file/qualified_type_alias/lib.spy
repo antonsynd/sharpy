@@ -1,0 +1,2 @@
+type Handle = int
+type Pair[T] = tuple[T, T]
