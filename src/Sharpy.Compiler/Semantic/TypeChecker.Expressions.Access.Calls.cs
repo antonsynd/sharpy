@@ -393,8 +393,8 @@ internal partial class TypeChecker
 
                 // The same silence on a STATIC CLR receiver, for the argument direction the char
                 // family had not covered: a `str` bound to a reflected `char` parameter (#1402).
-                if (ClrStaticCharCallType(call, memberAccessCall, argTypes) is { } staticCharCallType)
-                    return staticCharCallType;
+                if (ClrStaticCallType(call, memberAccessCall, argTypes) is { } staticCallType)
+                    return staticCallType;
 
             }
         }
@@ -4285,33 +4285,43 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Types a STATIC call on a CLR type name whose sole arity-matching overload takes a
-    /// <c>char</c>, and decides what each such argument converts to (#1402). Returns <c>null</c> —
-    /// leaving the call exactly as permissive as it is today — for every other shape.
+    /// Checks the ARITY and ARGUMENT TYPES of a STATIC call on a CLR type name, and types its
+    /// result — the static twin of <see cref="CheckClrInstanceMethodCall"/> (#1451). Returns
+    /// <c>null</c>, leaving the call exactly as permissive as it was, for every shape it cannot
+    /// decide.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The REVERSE direction of the #1291 char family. That issue records a conversion on the
-    /// expression that PRODUCES a char, which is what let one mechanism cover indexing, slicing,
-    /// iteration, arguments and returns at once. A <c>str</c> going the other way has no
-    /// char-producing expression to key on: the fact lives on the PARAMETER, so it is decided here,
-    /// at the call seam, and recorded on the argument node.
+    /// The instance seam deliberately skips a static call ("reaches a different resolver with a
+    /// different receiver"), and nothing checked that other resolver: three arguments to a
+    /// two-argument overload set was SILENT at semantic time and came back as CS1501 behind
+    /// SPY0908. Worse than the ICE, the call was typed <c>Unknown</c>, so its value was assignable
+    /// to anything and every downstream slot went unchecked too.
     /// </para>
     /// <para>
-    /// Only a ONE-character string literal converts. <c>Char.to_upper("abc")</c> has no correct char
-    /// to pass, and a conversion that silently took the first character would be Sharpy inventing a
-    /// truncation .NET never asked for — so a longer literal and a computed <c>str</c> are both
-    /// refused, by name, instead of reaching Roslyn as CS1503 behind SPY0908.
+    /// <b>The instance seam's shape, verbatim, including its conservatism.</b> #1243's rule decides:
+    /// exactly one candidate of the call's arity means the user's intent is not in doubt, and TWO
+    /// keep silence, because choosing between them is CLR overload resolution and this seam does not
+    /// own it. A member with no candidate at all is not this seam's question either — absence is
+    /// answered by #1141's proof at the member seam. The conservatism is the point: a false refusal
+    /// at an interop seam rejects a call .NET binds happily, which is strictly worse than the ICE it
+    /// replaces (#1260, #1243).
     /// </para>
     /// <para>
-    /// Deliberately scoped to candidates that take a <c>char</c>: this is the char row, not the
-    /// static twin of #1290's argument check, and typing every single-candidate static CLR call is a
-    /// far larger change than the row asks for. Every other step defaults to silence for #1290's
-    /// reason — a false refusal here rejects interop .NET binds happily, which is strictly worse than
-    /// the ICE it would replace.
+    /// <b>The char row (#1402) is now a special case of this arm rather than its whole scope.</b>
+    /// That row is the REVERSE direction of the #1291 char family: a <c>str</c> going into a CLR
+    /// <c>char</c> has no char-producing expression to key on, so the fact lives on the PARAMETER
+    /// and is decided here and recorded on the argument node. Only a ONE-character string literal
+    /// converts — <c>Char.to_upper("abc")</c> has no correct char to pass, and taking the first
+    /// character would be Sharpy inventing a truncation .NET never asked for. "Single character"
+    /// means a single UTF-16 code unit per Axiom 1's string model, so a non-BMP scalar
+    /// ("&#128512;", Length 2) is refused alongside longer strings: a surrogate pair cannot fit a
+    /// CLR <c>char</c> at all. Those arguments are handled here and EXCLUDED from the general
+    /// argument check, which would otherwise report the same <c>str</c>/<c>char</c> mismatch a
+    /// second time in its own words.
     /// </para>
     /// </remarks>
-    private SemanticType? ClrStaticCharCallType(
+    private SemanticType? ClrStaticCallType(
         FunctionCall call, MemberAccess memberAccess, List<SemanticType> argTypes)
     {
         // A keyword argument binds by CLR parameter name and a spread stands for however many
@@ -4334,35 +4344,49 @@ internal partial class TypeChecker
         if (methodName == null)
             return null;
 
-        // #1243's selection rule verbatim: exactly one candidate of the call's arity means the
-        // user's intent is not in doubt. Two of the same arity keep silence, because choosing between
-        // them is CLR overload resolution and this seam does not own it.
-        var candidates = clrType
-            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-            .Where(m => m.Name == methodName
-                && !m.IsGenericMethodDefinition
-                && m.GetParameters().Length == argTypes.Count)
-            .ToList();
+        var surface = ClrStaticCallSurfaceOf(clrType, methodName);
 
-        if (candidates.Count != 1)
-            return null;
-
-        var parameters = candidates[0].GetParameters();
-        if (!parameters.Any(p => p.ParameterType == typeof(char)))
+        // No candidate under this name at all: a property, a field, a member only codegen resolves,
+        // or one that is genuinely absent — and absence is the member seam's question, answered
+        // there (#1141). Not this seam's to refuse.
+        if (surface.Length == 0)
             return null;
 
         var memberDisplay = $"{Shared.ClrNameHelper.StripArity(clrType.Name)}.{memberAccess.Member}";
 
-        for (int i = 0; i < parameters.Length; i++)
+        var candidates = surface
+            .Where(m => ClrArityFits(m, argTypes.Count))
+            .ToList();
+
+        // The arity check the static receiver never had (#1451). `Char.is_digit("a", 0, 5)` against
+        // a one- and two-argument overload set reached Roslyn as CS1501 behind SPY0908.
+        if (candidates.Count == 0)
+        {
+            AddError(
+                $"'{memberDisplay}' expects {DescribeClrArities(surface)} but got {argTypes.Count}",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                span: call.Span);
+            return SemanticType.Unknown;
+        }
+
+        // #1243's selection rule verbatim: two overloads of this arity keep silence, because which
+        // one the call means is CLR overload resolution's answer and not this seam's.
+        if (candidates.Count != 1)
+            return null;
+
+        var parameters = candidates[0].GetParameters();
+
+        // The char row (#1402): a `str` argument bound to a reflected `char` parameter. Decided
+        // here, on the parameter, and recorded on the argument node.
+        var charArgumentIndices = new HashSet<int>();
+        for (int i = 0; i < parameters.Length && i < argTypes.Count; i++)
         {
             if (parameters[i].ParameterType != typeof(char))
                 continue;
 
+            charArgumentIndices.Add(i);
             var argument = ArgumentNodeAt(call, i);
-            // "Single character" is a single UTF-16 code unit (Value.Length == 1), per Axiom 1's
-            // string model. A non-BMP scalar ("😀", Length == 2) is refused below alongside longer
-            // strings — not as pedantry but because a surrogate pair cannot fit a CLR `char` at
-            // all, so there is no truncation-free conversion Sharpy could emit.
             if (argument is StringLiteral { Value.Length: 1 })
             {
                 _semanticInfo.SetCharMaterialization(argument, CharMaterializationKind.Literal);
@@ -4378,11 +4402,79 @@ internal partial class TypeChecker
                 span: call.Arguments[i].Span);
         }
 
-        // The call's own value: a char-returning static is the same one-character str every other
-        // seam in the family projects it to, and typing it is what keeps `x: str = Char.to_upper("a")`
-        // from handing Roslyn a `char` for a `string` slot.
+        // The argument check the instance seam already performs, now reaching the static receiver
+        // too. Char parameters are skipped because the row above already answered them, in the
+        // vocabulary that names the real constraint.
+        CheckClrCallArgumentTypes(call, candidates[0], argTypes, memberDisplay, charArgumentIndices);
+
+        // The call's own value. Typing it is half the fix: an untyped static call was `Unknown` and
+        // therefore assignable to anything, so every downstream slot went unchecked as well. A
+        // char-returning static is the same one-character str every other seam in the family
+        // projects it to, which is what keeps `x: str = Char.to_upper("a")` from handing Roslyn a
+        // `char` for a `string` slot.
         var returnType = _bclGenericMethodBridge.MapClrTypeToSemanticType(candidates[0].ReturnType);
-        return returnType is UnknownType ? null : ProjectClrChar(call, returnType);
+        return StaticCallResultTypeOrNull(call, returnType);
+    }
+
+    /// <summary>
+    /// The type to bind to a static CLR call's result, or null to leave it <c>Unknown</c> as before.
+    ///
+    /// <para>Two shapes are deliberately NOT typed, both found by measurement when #1451's return
+    /// typing first landed and each turning a shipped fixture red. Making a type VISIBLE without
+    /// making it USABLE converts a working interop seam into a refusal, which is the trade #1243's
+    /// conservatism exists to forbid — a false refusal at an interop seam is strictly worse than the
+    /// ICE it replaces.</para>
+    ///
+    /// <list type="number">
+    ///   <item><description><b>An unresolved type parameter.</b> <c>dict.fromkeys(...)</c> reflects a
+    ///     method returning an open <c>Dict&lt;K,V&gt;</c>, which maps to <c>dict[K, V]</c> with
+    ///     nothing substituted; binding that refused every concrete destination
+    ///     (<c>dict[str, int]</c> and friends). Substituting it means running inference this seam
+    ///     does not own — the same reason generic method definitions are excluded from the candidate
+    ///     set at all.</description></item>
+    ///   <item><description><b>A CLR array.</b> <c>Environment.get_command_line_args()</c> genuinely
+    ///     returns <c>array[str]</c>, and <c>array[T]</c> is not assignable to <c>list[T]</c> today —
+    ///     while <c>interop/clr_sequence_seam_matrix</c> asserts, as the seam's contract, that a CLR
+    ///     array reaching a <c>list[T]</c> parameter or slot WORKS. It worked because the call was
+    ///     untyped. The honest fix is to make the assignment legal rather than to keep the type
+    ///     hidden, so this exclusion is temporary and tracked by #1531; delete it with that
+    ///     issue.</description></item>
+    /// </list>
+    /// </summary>
+    private SemanticType? StaticCallResultTypeOrNull(FunctionCall call, SemanticType returnType)
+    {
+        if (returnType is UnknownType || ContainsTypeParameter(returnType))
+            return null;
+
+        // TODO(#1531): drop this arm once array[T] is assignable where list[T] is expected.
+        if (returnType is GenericType { Name: BuiltinNames.Array })
+            return null;
+
+        return ProjectClrChar(call, returnType);
+    }
+
+    // The static companion of `_clrInstanceCallMemo`: same memo pattern, same reflection, asked of a
+    // TYPE NAME rather than of a constructed receiver. Keyed on the CLR type and the resolved method
+    // name, which together decide the candidate set.
+    private readonly Dictionary<(Type, string), System.Reflection.MethodInfo[]> _clrStaticCallMemo = new();
+
+    /// <summary>The public static overloads of <paramref name="methodName"/>, memoized.</summary>
+    private System.Reflection.MethodInfo[] ClrStaticCallSurfaceOf(Type clrType, string methodName)
+    {
+        var key = (clrType, methodName);
+        if (_clrStaticCallMemo.TryGetValue(key, out var cached))
+            return cached;
+
+        // Generic method definitions are excluded for the reason the char row excluded them: their
+        // parameter types carry unsubstituted type parameters, so neither the arity rule nor the
+        // argument check can read them without doing inference this seam does not own.
+        var candidates = clrType
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Where(m => m.Name == methodName && !m.IsGenericMethodDefinition)
+            .ToArray();
+
+        _clrStaticCallMemo[key] = candidates;
+        return candidates;
     }
 
     /// <summary>
@@ -4394,14 +4486,22 @@ internal partial class TypeChecker
     /// <see cref="BuildBclGenericMethodSymbol"/> would build, whose <c>object</c> fallbacks accept
     /// everything.
     /// </summary>
+    /// <param name="skipArgumentIndices">Argument positions a caller has already decided on its own
+    /// terms — the static seam's CLR-<c>char</c> parameters (#1402), whose <c>str</c> argument is
+    /// governed by the single-character-literal rule and would otherwise be reported a second time
+    /// here as a plain <c>str</c>/<c>char</c> mismatch.</param>
     private void CheckClrCallArgumentTypes(
         FunctionCall call, System.Reflection.MethodInfo method,
-        List<SemanticType> argTypes, string memberDisplay)
+        List<SemanticType> argTypes, string memberDisplay,
+        HashSet<int>? skipArgumentIndices = null)
     {
         var parameters = method.GetParameters();
 
         for (int i = 0; i < argTypes.Count && i < parameters.Length; i++)
         {
+            if (skipArgumentIndices?.Contains(i) == true)
+                continue;
+
             var parameter = parameters[i];
 
             // A params array absorbs the whole tail, and C# lets the caller pass either the elements

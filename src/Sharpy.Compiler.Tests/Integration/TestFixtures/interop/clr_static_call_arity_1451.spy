@@ -1,0 +1,26 @@
+# #1451: the static twin of #1290. `CheckClrInstanceMethodCall` deliberately skips a static call
+# through a type name ("reaches a different resolver with a different receiver"), and nothing checked
+# that other resolver — so three arguments to a two-argument overload set were SILENT at semantic
+# time and came back as CS1501 behind SPY0908. The call was also typed `Unknown`, so its value was
+# assignable to anything and every downstream slot went unchecked as well.
+#
+# The instance seam's shape is applied verbatim, including its conservatism (#1243): exactly one
+# candidate of the call's arity decides, TWO keep silence. The conservatism is not caution for its
+# own sake — a false refusal at an interop seam rejects a call .NET binds happily, which is strictly
+# worse than the ICE it replaces. The silent-ambiguity control lives in
+# `clr_static_call_ambiguous_arity_1451.spy`.
+from system import Char
+from system import Math
+
+
+def main() -> None:
+    # Wrong arity against a 1-and-2 overload set — the issue's own repro.
+    print(Char.is_digit("a", 0, 5))
+
+    # Wrong arity against a SINGLE overload, so the message names one arity rather than a range.
+    print(Math.sqrt(4.0, 2.0))
+
+    # The return type now flows into the destination slot. Before, this was `Unknown` and the
+    # mismatch was invisible until Roslyn saw it.
+    b: bool = Math.sqrt(4.0)
+    print(b)

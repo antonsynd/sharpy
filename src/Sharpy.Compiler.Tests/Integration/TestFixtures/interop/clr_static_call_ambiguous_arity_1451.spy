@@ -1,0 +1,22 @@
+# The conservatism control for #1451. `Math.floor` has TWO overloads of arity 1 (double and
+# decimal), so #1243's rule keeps this seam silent: which one the call means is CLR overload
+# resolution's answer, and reporting against a guess would be worse than the silence. A false
+# refusal at an interop seam rejects a call .NET binds happily.
+#
+# The cost is honest and stated here rather than hidden: because the seam stays silent, the RESULT
+# of an ambiguous-arity static call is still untyped, so a mismatched destination is still an
+# SPY0908 rather than a clean SPY0220 (`b: bool = Math.floor(1.5)` -> CS0029). That residue is
+# tracked as #1530; closing it needs a rule for reading a multi-candidate arity group, not a
+# widening of this one.
+#
+# What this fixture pins is that the call itself COMPILES AND RUNS. If the seam ever stops being
+# conservative and starts refusing on a guess, this goes red.
+from system import Math
+
+
+def main() -> None:
+    v: float = Math.floor(1.5)
+    print(v)
+
+    w: float = Math.floor(-1.5)
+    print(w)
