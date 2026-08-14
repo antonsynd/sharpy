@@ -155,8 +155,19 @@ def stat(path: str) -> StatResult:
         return StatResult(0, dw.to_unix_time_seconds() + dw.Millisecond / 1000.0, dc.to_unix_time_seconds() + dc.Millisecond / 1000.0, da.to_unix_time_seconds() + da.Millisecond / 1000.0, Convert.to_int32(dinfo.Attributes))
     raise FileNotFoundError("No such file or directory: '" + path + "'")
 
-def walk(top: str) -> tuple[str, list[str], list[str]]:
-    """Directory tree generator yielding (dirpath, dirnames, filenames) for each directory in the tree rooted at top."""
+# The enumerator body for walk(), which returns Iterator[...] rather than being a generator
+# directly: binding a generator's IEnumerable<T> to a variable materializes it (#1354), so
+# `w = os.walk(root)` walked the whole tree before the next statement ran and never saw a directory
+# created between the call and the loop — CPython's os.walk is a generator and does see it. A C#
+# iterator method cannot itself return Iterator<T>, hence the split; Builtins.Iter adds no
+# eagerness. walk()'s type argument is fully CLOSED, which is what makes this one expressible today
+# (the generic itertools producers are blocked on #1518 — see itertools.spy's header).
+#
+# THIS DEFINITION MUST PRECEDE walk(). Measured 2026-08-14: with the wrapper written first, the
+# identical call is SPY0354 — a forward reference to a generator is typed from its DECLARED return
+# type rather than as the sequence the call actually produces, so `iter` finds no overload. Same
+# reason _count_core precedes count in itertools.spy.
+def _walk_core(top: str) -> tuple[str, list[str], list[str]]:
     if not Directory.exists(top):
         return
     pending: list[str] = [top]
@@ -173,4 +184,8 @@ def walk(top: str) -> tuple[str, list[str], list[str]]:
         while i >= 0:
             pending.append(IoPath.combine(current, dirnames[i]))
             i = i - 1
+
+def walk(top: str) -> Iterator[tuple[str, list[str], list[str]]]:
+    """Directory tree generator yielding (dirpath, dirnames, filenames) for each directory in the tree rooted at top."""
+    return iter[tuple[str, list[str], list[str]]](_walk_core(top))
 

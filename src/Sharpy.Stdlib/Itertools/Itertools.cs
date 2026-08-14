@@ -15,10 +15,7 @@ namespace Sharpy
     /// </summary>
     public static partial class Itertools
     {
-        /// <summary>
-        /// Make an iterator that returns evenly spaced values starting with number start.
-        /// </summary>
-        public static System.Collections.Generic.IEnumerable<int> Count(int start = 0, int step = 1)
+        internal static System.Collections.Generic.IEnumerable<int> _CountCore(int start, int step)
         {
             int n = start;
             while (true)
@@ -26,6 +23,14 @@ namespace Sharpy
                 yield return n;
                 n = n + step;
             }
+        }
+
+        /// <summary>
+        /// Make an iterator that returns evenly spaced values starting with number start.
+        /// </summary>
+        public static Iterator<int> Count(int start = 0, int step = 1)
+        {
+            return global::Sharpy.Builtins.Iter<int>(_CountCore(start, step));
         }
 
         /// <summary>
@@ -207,10 +212,7 @@ namespace Sharpy
             }
         }
 
-        /// <summary>
-        /// Make an iterator that returns accumulated sums.
-        /// </summary>
-        public static System.Collections.Generic.IEnumerable<int> Accumulate(Sharpy.List<int> iterable)
+        internal static System.Collections.Generic.IEnumerable<int> _AccumulateCore(Sharpy.List<int> iterable)
         {
             Sharpy.List<int> items = new global::Sharpy.List<int>(iterable);
             if (global::Sharpy.Builtins.Len(items) == 0)
@@ -227,6 +229,14 @@ namespace Sharpy
                 yield return total;
                 i = i + 1;
             }
+        }
+
+        /// <summary>
+        /// Make an iterator that returns accumulated sums.
+        /// </summary>
+        public static Iterator<int> Accumulate(Sharpy.List<int> iterable)
+        {
+            return global::Sharpy.Builtins.Iter<int>(_AccumulateCore(iterable));
         }
 
         /// <summary>

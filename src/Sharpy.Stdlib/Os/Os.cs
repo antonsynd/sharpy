@@ -295,10 +295,7 @@ namespace Sharpy
             throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
         }
 
-        /// <summary>
-        /// Directory tree generator yielding (dirpath, dirnames, filenames) for each directory in the tree rooted at top.
-        /// </summary>
-        public static System.Collections.Generic.IEnumerable<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>> Walk(string top)
+        internal static System.Collections.Generic.IEnumerable<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>> _WalkCore(string top)
         {
             if (!global::System.IO.Directory.Exists(top))
             {
@@ -338,6 +335,14 @@ namespace Sharpy
                     i = i - 1;
                 }
             }
+        }
+
+        /// <summary>
+        /// Directory tree generator yielding (dirpath, dirnames, filenames) for each directory in the tree rooted at top.
+        /// </summary>
+        public static Iterator<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>> Walk(string top)
+        {
+            return global::Sharpy.Builtins.Iter<System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>>(_WalkCore(top));
         }
     }
 }

@@ -1,0 +1,41 @@
+# The itertools producers that are lazy AS OF #1354's flip: binding one to a variable must not run
+# it. `c = itertools.count(0)` used to emit `new Sharpy.List<int>(Itertools.Count(0))` and exhaust
+# an INFINITE generator at the binding site — Out of memory where CPython prints 3.
+#
+# Direct iteration (`for n in itertools.count():`) binds no variable and so never materialized,
+# which is why the whole pre-existing itertools suite stayed green through the defect. Every cell
+# below therefore BINDS FIRST and consumes second, deliberately — that is the shape under test.
+#
+# Scope: only `count` and the non-generic `accumulate` overload are flipped. The other ~22
+# producers are generic and need `iter[T](...)`, refused while the type argument is open — #1518.
+# They are deliberately absent here rather than covered in a form that would pass either way; a
+# `cycle` or `repeat` cell would still materialize, and a bound `cycle` would still OOM.
+#
+# Every call is spelled identically in CPython and Sharpy, so this fixture also runs as a
+# differential-oracle cell against python3. Output measured against python3 3.12.
+import itertools
+
+def main() -> None:
+    c = itertools.count(0)
+    n: int = 0
+    for v in c:
+        n = n + 1
+        if n >= 3:
+            break
+    print(n)
+
+    ac = itertools.accumulate([1, 2, 3, 4])
+    print(list(ac))
+
+    c2 = itertools.count(10, -2)
+    print(next(c2))
+    print(next(c2))
+
+    ac2 = itertools.accumulate([5])
+    print(list(ac2))
+
+    # Annotated rather than a bare `[]`: an empty list literal carries no element type, so
+    # `accumulate([])` is SPY0354 on its own — a pre-existing inference limit, unrelated to #1354.
+    empty: list[int] = []
+    ac3 = itertools.accumulate(empty)
+    print(list(ac3))

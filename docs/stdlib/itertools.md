@@ -8,7 +8,7 @@ import itertools
 
 ## Functions
 
-### `itertools.count(start: int = 0, step: int = 1) -> Iterable[int]`
+### `itertools.count(start: int = 0, step: int = 1) -> Iterator[int]`
 
 Make an iterator that returns evenly spaced values starting with number start.
 
@@ -44,7 +44,7 @@ Make an iterator that returns selected elements from the iterable.
 
 Make an iterator that returns selected elements from the iterable with start, stop, and step.
 
-### `itertools.accumulate(iterable: list[int]) -> Iterable[int]`
+### `itertools.accumulate(iterable: list[int]) -> Iterator[int]`
 
 Make an iterator that returns accumulated sums.
 
