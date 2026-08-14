@@ -149,8 +149,12 @@ internal static class CompileCommand
 
         if (selfContained)
         {
-            var entryTypeName = Path.GetFileNameWithoutExtension(inputFile.Name);
-            var publishedExe = SelfContainedPublisher.Publish(outputPath, entryTypeName, outputDir, compileResult.UsedAssemblyPaths);
+            var assemblyName = Path.GetFileNameWithoutExtension(inputFile.Name);
+            // Mangle the entry-type identifier the same way the emitter did (ScProbe for
+            // sc_probe.spy, Program for main.spy); the raw stem emitted sc_probe.Main() against class
+            // ScProbe — CS0103, every publish failed (#1483). assemblyName stays raw (file names).
+            var entryTypeName = NameMangler.ComputeModuleClassName(inputFile.FullName) ?? assemblyName;
+            var publishedExe = SelfContainedPublisher.Publish(outputPath, assemblyName, entryTypeName, outputDir, compileResult.UsedAssemblyPaths);
             if (publishedExe == null)
             {
                 return 1;

@@ -2,6 +2,7 @@ using System.CommandLine;
 using Sharpy.Cli.Services;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Cli.Commands;
 
@@ -265,12 +266,18 @@ internal static class RunCommand
         string[] args,
         IReadOnlySet<string> usedAssemblyPaths)
     {
-        var entryTypeName = Path.GetFileNameWithoutExtension(inputFile.Name);
+        var assemblyName = Path.GetFileNameWithoutExtension(inputFile.Name);
+        // The Main() call must name the class the emitter actually generated, not the raw stem: a
+        // self-contained publish is always an entry-point file, so ComputeModuleClassName (the same
+        // helper CodeGenInfoComputer uses) gives ScProbe for sc_probe.spy and Program for main.spy —
+        // never the sc_probe/main the raw stem would emit, which failed EVERY publish with CS0103
+        // (#1483).
+        var entryTypeName = NameMangler.ComputeModuleClassName(inputFile.FullName) ?? assemblyName;
         var publishDir = Path.Combine(Path.GetTempPath(), $"sharpy_publish_{Guid.NewGuid():N}");
 
         // No cleanup of the compiled executable here: the caller staged it in a directory of its own
         // and removes that directory in a finally, whichever way this returns (#1419).
-        var publishedExe = SelfContainedPublisher.Publish(compiledExePath, entryTypeName, publishDir, usedAssemblyPaths);
+        var publishedExe = SelfContainedPublisher.Publish(compiledExePath, assemblyName, entryTypeName, publishDir, usedAssemblyPaths);
         if (publishedExe == null)
         {
             return 1;
