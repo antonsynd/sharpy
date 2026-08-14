@@ -1583,6 +1583,18 @@ public partial class Parser
                 Advance();
             }
 
+            // A dotted name followed by call parens is a CLASS pattern, not a value pattern:
+            // `case lib.Circle():` names a type exactly as `case Circle():` does, and the module
+            // qualifier is a lookup instruction rather than a change to what parses (#1445). The
+            // discriminator is the same one the bare-identifier arm above uses, so
+            // `case lib.Color.RED:` — no parens — keeps producing the MemberAccessPattern below.
+            // A following `[` inherits the bare arm's GenericTypeInPattern diagnostic.
+            if (Current.Type == TokenType.LeftParen || Current.Type == TokenType.LeftBracket)
+            {
+                return ParseTypePatternOrStructural(
+                    token, string.Join(".", parts), endToken);
+            }
+
             return new MemberAccessPattern
             {
                 Parts = parts.ToImmutableArray(),
@@ -1615,17 +1627,25 @@ public partial class Parser
     }
 
 
-    private Pattern ParseTypePatternOrStructural(Token typeToken)
+    /// <param name="qualifiedName">
+    /// The dotted spelling when the pattern names its type through a module (<c>lib.Circle()</c>),
+    /// so the <see cref="Ast.TypeAnnotation"/> carries the same name an annotation in that position
+    /// would (#1445). Null for the ordinary bare-identifier arm.
+    /// </param>
+    /// <param name="nameEndToken">The last token of the name, for the annotation's span/escape flag.</param>
+    private Pattern ParseTypePatternOrStructural(
+        Token typeToken, string? qualifiedName = null, Token? nameEndToken = null)
     {
+        var typeNameEnd = nameEndToken ?? typeToken;
         var typeAnnotation = new Ast.TypeAnnotation
         {
-            Name = typeToken.Value,
-            IsNameBacktickEscaped = typeToken.IsBacktickEscaped,
+            Name = qualifiedName ?? typeToken.Value,
+            IsNameBacktickEscaped = typeNameEnd.IsBacktickEscaped,
             LineStart = typeToken.Line,
             ColumnStart = typeToken.Column,
-            LineEnd = typeToken.Line,
-            ColumnEnd = typeToken.Column + typeToken.Length,
-            Span = GetSpanFromToken(typeToken)
+            LineEnd = typeNameEnd.Line,
+            ColumnEnd = typeNameEnd.Column + typeNameEnd.Length,
+            Span = GetSpanFromTokens(typeToken, typeNameEnd)
         };
 
         // Check for generic type arguments in patterns (e.g., Box[int]() in a case)
