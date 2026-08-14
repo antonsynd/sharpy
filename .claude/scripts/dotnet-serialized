@@ -34,10 +34,16 @@ LOCK_DIR="${HOME}/.claude/locks/dotnet.lock"
 # The full suite takes ~18 minutes, so a 15-minute lock timeout made any queued run
 # behind one complete suite a GUARANTEED exit 124 — a structural failure, not a hung
 # peer (#1273). 45 minutes accommodates queueing behind two full suites.
-TIMEOUT=2700  # 45 minutes
+#
+# The knobs below are env-overridable with their production values as defaults, purely so the
+# regression harness (build_tools/tests/test_dotnet_serialized_lock.py) can exercise the lock
+# protocol in seconds instead of 45 minutes. Nothing in normal use sets them, so default
+# behavior is unchanged; a test that had to wait out the real timeouts would never be written,
+# and this protocol has now been fixed three times without one (#1508).
+TIMEOUT="${DOTNET_SERIALIZED_TIMEOUT:-2700}"  # 45 minutes
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-LOG_DIR="${SCRIPT_DIR}/tmp"
+LOG_DIR="${DOTNET_SERIALIZED_LOG_DIR:-${SCRIPT_DIR}/tmp}"
 LOG_DEQUE_SIZE=3
 LOG_INDEX_FILE="${LOG_DIR}/dotnet-serialized-index"
 
