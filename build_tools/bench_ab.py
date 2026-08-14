@@ -418,10 +418,9 @@ def acquire_round_lock(repo_root: str) -> bool:
     orchestration would starve every peer for an hour, which is the same failure from the other
     side.
 
-    KNOWN-UNFIXED (#1508): this hold records only bench_ab's own pid, never the benchmark
-    dotnet child's — ``--acquire-lock`` exits before the wrapper's ``$LOCK_DIR/child`` write.
-    SIGKILL bench_ab mid-arm and the orphaned benchmark keeps its 5-10 GB while the lock reads
-    stale and gets reclaimed — the exact steal 58c82ffa5 closed for the wrapper's own path.
+    This records only bench_ab's own pid, because ``--acquire-lock`` returns before any child
+    exists. Pinning the benchmark dotnet into the same lock is :func:`_run`'s job, via the
+    wrapper's ``--record-child`` verb; see the residual window documented there.
     """
     wrapper = _wrapper_path(repo_root)
     if wrapper is None:
@@ -469,10 +468,58 @@ def lock_generation(repo_root: str) -> Optional[int]:
         return None
 
 
-def _run(command: list[str], cwd: Optional[str] = None) -> None:
-    result = subprocess.run(command, cwd=cwd)
+def _record_child(repo_root: str, child_pid: int) -> None:
+    """Point the held lock at *child_pid* via the wrapper's ``--record-child`` verb (#1508)."""
+    wrapper = _wrapper_path(repo_root)
+    if wrapper is None:
+        raise RuntimeError("no dotnet-serialized wrapper to record the benchmark child with")
+    result = subprocess.run(
+        [wrapper, "--record-child", str(os.getpid()), str(child_pid)],
+        capture_output=True, text=True)
     if result.returncode != 0:
-        raise RuntimeError(f"command failed ({result.returncode}): {' '.join(command)}")
+        raise RuntimeError(
+            f"could not record the benchmark child {child_pid} in the dotnet lock "
+            f"(exit {result.returncode}): {result.stderr.strip()}")
+
+
+def _run(command: list[str], cwd: Optional[str] = None,
+         record_child_in: Optional[str] = None) -> None:
+    """
+    Run *command*, raising on a nonzero exit.
+
+    When *record_child_in* names a repo root, the child is spawned with ``Popen`` and pinned
+    into the lock this process is already holding BEFORE it is waited on (#1508). Without that,
+    a held lock names only bench_ab's pid, and a SIGKILLed bench_ab leaves a 5-10 GB benchmark
+    orphaned behind a lock that reads stale — so a peer is admitted beside it and the machine
+    OOMs. The pin is what makes ``is_lock_stale`` fail closed on the process that actually
+    holds the memory.
+
+    RESIDUAL (accepted, replacing the KNOWN-UNFIXED that used to sit on ``acquire_round_lock``):
+    the window between ``Popen`` returning and ``--record-child`` completing is unprotected. It
+    is milliseconds wide and bounded by two subprocess spawns, against the minutes-to-hours-wide
+    window it replaces — a whole benchmark arm. Closing it entirely needs the child to record
+    itself, which means routing the benchmark back through the wrapper, which is exactly the
+    deadlock-against-our-own-lock this path exists to avoid.
+    """
+    if record_child_in is None:
+        returncode = subprocess.run(command, cwd=cwd).returncode
+    else:
+        proc = subprocess.Popen(command, cwd=cwd)
+        try:
+            _record_child(record_child_in, proc.pid)
+        except RuntimeError:
+            if proc.poll() is None:
+                # Still running and NOT protected by the lock. Refusing to proceed is the
+                # point: an unrecorded benchmark is the precise hazard #1508 names.
+                proc.kill()
+                proc.wait()
+                raise
+            # It had already exited — a child that died before we could pin it is a normal
+            # command failure, and its own exit code below says so far more usefully than
+            # "could not record a dead pid" would.
+        returncode = proc.wait()
+    if returncode != 0:
+        raise RuntimeError(f"command failed ({returncode}): {' '.join(command)}")
 
 
 def prepare_worktree(repo_root: str, ref: str, destination: str) -> str:
@@ -511,6 +558,8 @@ def run_arm(
 
     When *lock_held* is true the caller already owns the mutex for this whole round, so dotnet is
     invoked RAW — going through the wrapper here would deadlock against the lock we are holding.
+    Raw, but not unrecorded: the child is pinned into the held lock via ``--record-child`` so a
+    SIGKILLed bench_ab cannot leave an orphaned benchmark behind a stale-reading lock (#1508).
     """
     args = [
         "run", "--project", os.path.join("src", "Sharpy.Compiler.Benchmarks"),
@@ -524,7 +573,7 @@ def run_arm(
     # cancel it better than longer individual runs do.
     if job:
         command += ["--job", job]
-    _run(command, cwd=worktree)
+    _run(command, cwd=worktree, record_child_in=repo_root if lock_held else None)
     return parse_bdn_means(artifacts)
 
 

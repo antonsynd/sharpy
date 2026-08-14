@@ -13,16 +13,20 @@ naive comparison gives a confident wrong answer:
 """
 
 import json
+import os
 
 import pytest
 
+from build_tools import bench_ab
 from build_tools.bench_ab import (
     Measurement,
+    _run,
     evaluate,
     parse_bdn_means,
     pool_by_position,
     report,
     round_was_interrupted,
+    run_arm,
     split_discarded,
     warmup_split_lines,
 )
@@ -264,6 +268,114 @@ class TestInterruptionDetection:
         never conclude a fact from an instrument that cannot observe it.
         """
         assert round_was_interrupted(before, after) is False
+
+
+class TestBenchmarkChildRecording:
+    """
+    A held lock must name the process that holds the MEMORY, not just bench_ab (#1508).
+
+    Under ``--acquire-lock`` the benchmark dotnet is spawned by bench_ab, not by the wrapper, so
+    the wrapper's own ``$LOCK_DIR/child`` write never happens. SIGKILL bench_ab mid-arm and the
+    orphaned benchmark keeps its 5-10 GB while the lock reads stale and a peer is admitted
+    beside it. The end-to-end proof that the lock then holds is
+    ``test_dotnet_serialized_lock.TestRecordChild.test_a_recorded_child_survives_a_sigkilled_holder``;
+    these cells pin bench_ab's half of the protocol.
+    """
+
+    def _stub_repo(self, tmp_path, log) -> str:
+        """A repo root whose only content is a wrapper stub that logs how it was called."""
+        scripts = tmp_path / ".claude" / "scripts"
+        scripts.mkdir(parents=True)
+        wrapper = scripts / "dotnet-serialized"
+        # Records whether the child was still ALIVE when the verb ran — which is what proves
+        # the call happens before wait() rather than after it.
+        wrapper.write_text(
+            '#!/bin/sh\n'
+            'if kill -0 "$3" 2>/dev/null; then state=LIVE; else state=DEAD; fi\n'
+            f'echo "$1 $2 $3 $state" >> "{log}"\n'
+            'exit 0\n', encoding="utf-8")
+        wrapper.chmod(0o755)
+        return str(tmp_path)
+
+    def test_the_child_is_pinned_into_the_lock_while_it_is_still_running(self, tmp_path):
+        """
+        The ordering is the whole point: recording after ``wait()`` would pin a dead pid, and
+        ``is_lock_stale`` consults the child FIRST, so a dead pointer reads as stale — the very
+        steal this is meant to prevent, with extra steps.
+        """
+        log = tmp_path / "calls.txt"
+        repo = self._stub_repo(tmp_path, log)
+
+        _run(["/bin/sh", "-c", "sleep 0.4"], record_child_in=repo)
+
+        verb, holder, child, state = log.read_text(encoding="utf-8").split()
+        assert verb == "--record-child"
+        assert int(holder) == os.getpid()
+        assert int(child) > 0
+        assert state == "LIVE", "recorded after the child exited — the pointer would read stale"
+
+    def test_the_unheld_path_records_nothing_because_the_wrapper_does_it(self, tmp_path):
+        """
+        With no lock held, dotnet goes through the wrapper, whose own
+        ``bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"'`` line (dotnet-serialized, just
+        above ``EXIT_CODE=${PIPESTATUS[0]}``) records the child from inside. A second
+        ``--record-child`` here would be redundant, and would refuse anyway: this process is
+        not the lock's holder.
+        """
+        log = tmp_path / "calls.txt"
+        self._stub_repo(tmp_path, log)
+
+        _run(["/bin/sh", "-c", "true"])
+
+        assert not log.exists()
+
+    def test_run_arm_records_only_when_it_owns_the_lock(self, tmp_path, monkeypatch):
+        """`run_arm` is where the two paths diverge, so the wiring is pinned, not just `_run`."""
+        seen = {}
+
+        def fake_run(command, cwd=None, record_child_in=None):
+            seen[len(seen)] = record_child_in
+
+        monkeypatch.setattr(bench_ab, "_run", fake_run)
+        monkeypatch.setattr(bench_ab, "parse_bdn_means", lambda _artifacts: {"Bench": 1.0})
+
+        run_arm("/repo", "/wt", "/artifacts", "*Bench*", lock_held=True)
+        run_arm("/repo", "/wt", "/artifacts", "*Bench*", lock_held=False)
+
+        assert seen[0] == "/repo"
+        assert seen[1] is None
+
+    def test_a_child_that_cannot_be_pinned_is_killed_rather_than_left_unprotected(
+            self, tmp_path):
+        """
+        A refused ``--record-child`` means the benchmark is running OUTSIDE the lock's
+        protection. Proceeding would spend minutes in exactly the unprotected state #1508
+        describes, so the run fails loudly instead.
+        """
+        scripts = tmp_path / ".claude" / "scripts"
+        scripts.mkdir(parents=True)
+        wrapper = scripts / "dotnet-serialized"
+        wrapper.write_text('#!/bin/sh\necho "refusing" >&2\nexit 2\n', encoding="utf-8")
+        wrapper.chmod(0o755)
+
+        with pytest.raises(RuntimeError, match="could not record the benchmark child"):
+            _run(["/bin/sh", "-c", "sleep 30"], record_child_in=str(tmp_path))
+
+    def test_a_child_that_died_before_it_could_be_pinned_reports_its_own_failure(
+            self, tmp_path):
+        """
+        A dotnet that fails instantly cannot be pinned, and "could not record a dead pid" would
+        bury the actual cause. The command's own exit code is the honest error.
+        """
+        scripts = tmp_path / ".claude" / "scripts"
+        scripts.mkdir(parents=True)
+        wrapper = scripts / "dotnet-serialized"
+        # Sleep so the child is reliably gone by the time the verb is evaluated, then refuse.
+        wrapper.write_text('#!/bin/sh\nsleep 0.5\nexit 2\n', encoding="utf-8")
+        wrapper.chmod(0o755)
+
+        with pytest.raises(RuntimeError, match=r"command failed \(7\)"):
+            _run(["/bin/sh", "-c", "exit 7"], record_child_in=str(tmp_path))
 
 
 class TestReport:
