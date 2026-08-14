@@ -91,6 +91,7 @@ internal static class SyntheticProject
             ModulePaths = (options.ModulePaths ?? Array.Empty<string>()).ToList(),
             Configuration = options.Configuration,
             WarningsAsErrors = options.WarningsAsErrors,
+            TestHost = options.TargetsTestHost,
             SuppressedWarnings = new HashSet<string>(options.SuppressedWarnings, StringComparer.OrdinalIgnoreCase),
             OutputAssemblyPathOverride = options.OutputAssemblyPath,
             PreserveTrivia = preserveTrivia,

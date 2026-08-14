@@ -477,6 +477,18 @@ public class CompilerOptions
     public bool WarningsAsErrors { get; set; }
 
     /// <summary>
+    /// Whether the emitted C# will be compiled into a TEST HOST — an xUnit project that supplies the
+    /// framework reference and runs the result through a test runner (#1495).
+    ///
+    /// <para>False for every ordinary compilation, which is what makes a <c>@test</c> program
+    /// runnable under <c>sharpyc run</c>: its asserts lower framework-free instead of emitting
+    /// <c>Xunit.Assert.*</c> against a reference that is not there (CS0246 behind SPY0908). Set by
+    /// the <c>.spyproj</c> property <c>&lt;TestHost&gt;true&lt;/TestHost&gt;</c> and by the
+    /// integration-test harness, which supplies an Xunit reference of its own.</para>
+    /// </summary>
+    public bool TargetsTestHost { get; set; }
+
+    /// <summary>
     /// Warning codes to suppress (e.g., "SPY0451", "SPY0452").
     /// Suppressed warnings are silently discarded and do not appear in diagnostics.
     /// </summary>

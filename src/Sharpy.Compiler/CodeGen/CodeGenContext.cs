@@ -18,6 +18,26 @@ internal class CodeGenContext
     public string? SourceFilePath { get; set; }
 
     /// <summary>
+    /// Whether the emitted C# will be compiled into a TEST HOST — an xUnit project that supplies the
+    /// framework reference and runs the result through a test runner (#1495).
+    ///
+    /// <para>Default FALSE, which is the answer for every ordinary compilation: <c>sharpyc run</c>,
+    /// <c>compile</c>, <c>emit csharp</c>, the REPL and LSP. A <c>@test</c> function's asserts lower
+    /// framework-free there — an ordinary runtime check raising <c>Sharpy.AssertionError</c>, the
+    /// same lowering an assert outside <c>@test</c> has always had, and the direction #1413 started
+    /// with <c>assert_raises</c>. Before this the rewrites emitted <c>Xunit.Assert.*</c>
+    /// unconditionally, so any program containing a <c>@test</c> function was uncompilable under
+    /// <c>run</c>: CS0246 behind SPY0908, an internal-compiler-error report for an ordinary program.
+    /// </para>
+    ///
+    /// <para>TRUE only where the framework is actually there and buys runner integration: a
+    /// <c>.spyproj</c> declaring <c>&lt;TestHost&gt;true&lt;/TestHost&gt;</c> (the spy-test corpora),
+    /// and the integration-test harness, which supplies an Xunit reference of its own. Those paths
+    /// keep the Xunit lowering byte-for-byte, which is the owner's condition on this change.</para>
+    /// </summary>
+    public bool TargetsTestHost { get; set; }
+
+    /// <summary>
     /// When true, emits #line directives in generated C# for source mapping.
     /// This enables .spy file names and line numbers in runtime stack traces.
     /// Defaults to true. Set to false when inspecting raw generated C#.

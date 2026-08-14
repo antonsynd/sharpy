@@ -34,6 +34,19 @@ internal static class DecoratorNames
     public const string TestMark = "test.mark";
     public const string TestCollection = "test.collection";
 
+    /// <summary>
+    /// Whether a decorator name maps to an <c>Xunit.*</c> attribute in the emitted C#, and therefore
+    /// only means anything where the framework is present (#1495).
+    ///
+    /// <para>Kept as one list rather than a set of scattered checks, so a NEW test decorator is
+    /// host-conditional by joining it — the failure this guards is a framework attribute reaching a
+    /// compilation that has no framework, which surfaces as CS0246 behind SPY0908 rather than as a
+    /// diagnostic.</para>
+    /// </summary>
+    public static bool IsTestFrameworkDecorator(string name)
+        => name is Test or TestParametrize or TestSkip or TestSkipIf or TestFixture
+            or TestMark or TestCollection;
+
     // Access modifiers
     public const string Public = "public";
     public const string Protected = "protected";

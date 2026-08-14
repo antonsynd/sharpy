@@ -34,7 +34,16 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateAssert(AssertStatement assert)
     {
-        if (_isInTestFunction)
+        // The Xunit rewrites are the TEST-HOST lowering, not the `@test` lowering (#1495). Outside a
+        // test host there is no Xunit reference, so emitting them made any program containing a
+        // `@test` function uncompilable under `sharpyc run` — CS0246 behind SPY0908. A `@test`
+        // program is an ordinary runnable program, and its asserts fall through to the
+        // framework-free arm below: the same runtime check every other assert gets, raising
+        // `Sharpy.AssertionError`. That arm already handles the shapes the rewrites special-case —
+        // `approx` through `TryGetApproxParts`, and everything else (isinstance, ==, in, is,
+        // startswith, endswith, not) through ordinary truthiness on the expression the user wrote —
+        // so nothing is lost but xUnit's failure formatting.
+        if (_isInTestFunction && _context.TargetsTestHost)
         {
             return GenerateTestAssert(assert);
         }

@@ -3,6 +3,9 @@
   <PropertyGroup>
     <RootNamespace>Sharpy.Stdlib.Tests.Spy</RootNamespace>
     <OutputType>library</OutputType>
+    <!-- Emitted C# is compiled into an xUnit project, so `@test` asserts keep the
+         framework-coupled lowering (#1495). -->
+    <TestHost>true</TestHost>
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>Sharpy.Stdlib.Tests.Spy</AssemblyName>
     <NoWarn>SPY0451,SPY0452,SPY0453</NoWarn>

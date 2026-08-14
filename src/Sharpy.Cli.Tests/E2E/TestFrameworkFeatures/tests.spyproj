@@ -2,6 +2,9 @@
   <PropertyGroup>
     <RootNamespace>FeatureTests</RootNamespace>
     <OutputType>Library</OutputType>
+    <!-- Emitted C# is compiled into an xUnit project, so `@test` asserts keep the
+         framework-coupled lowering (#1495). -->
+    <TestHost>true</TestHost>
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>FeatureTests</AssemblyName>
   </PropertyGroup>

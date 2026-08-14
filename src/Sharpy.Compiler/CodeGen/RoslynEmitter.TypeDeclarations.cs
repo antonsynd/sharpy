@@ -1484,14 +1484,23 @@ internal partial class RoslynEmitter
     /// Generates C# attribute lists from decorators.
     /// Bracket attributes (@[...]) are emitted verbatim without name mangling.
     /// @deprecated is mapped to [Obsolete]. All other known decorators are handled elsewhere.
+    ///
+    /// <para>The test decorators (<c>@test</c> and its family) map to <c>Xunit.*</c> attributes,
+    /// which only exist where the framework does. Outside a test host they are DROPPED and a
+    /// <c>@test</c> function emits as an ordinary method (#1495) — emitting them unconditionally is
+    /// what made any program containing a <c>@test</c> function uncompilable under
+    /// <c>sharpyc run</c>: CS0246 behind SPY0908, an internal-error report for an ordinary program.
+    /// The decorators keep their SEMANTIC meaning either way; what is host-conditional is only the
+    /// runner integration.</para>
     /// </summary>
     private SyntaxList<AttributeListSyntax> GenerateAttributeListsFromDecorators(IReadOnlyList<Decorator> decorators)
     {
         var attributeLists = new List<AttributeListSyntax>();
 
         // Pre-extract @test.skip / @test.skip_if so they can be merged into [Fact(Skip=...)]
-        // or [Theory(Skip=...)] rather than emitted as standalone attributes.
-        string? skipReason = ResolveSkipReason(decorators);
+        // or [Theory(Skip=...)] rather than emitted as standalone attributes. Only a test host has
+        // a runner to skip anything, so outside one there is nothing to merge.
+        string? skipReason = _context.TargetsTestHost ? ResolveSkipReason(decorators) : null;
 
         // Track whether the loop emitted a [Fact] or [Theory] attribute; if not but a skip
         // applies, we still need to mark the function as a test method.
@@ -1502,6 +1511,12 @@ internal partial class RoslynEmitter
             if (!decorator.IsBracketAttribute)
             {
                 if (DecoratorNames.KnownModifierDecorators.Contains(decorator.Name))
+                    continue;
+
+                // Every Xunit-producing decorator is dropped outside a test host (#1495). Bracket
+                // attributes are unaffected: they name types the user chose, not a framework this
+                // compiler assumed.
+                if (!_context.TargetsTestHost && DecoratorNames.IsTestFrameworkDecorator(decorator.Name))
                     continue;
 
                 if (decorator.Name == DecoratorNames.Dataclass)

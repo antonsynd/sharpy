@@ -302,8 +302,11 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Add `using Xunit;` for files containing any @test-decorated functions or methods.
-        if (HasTestDecoratedMembers(module))
+        // Add `using Xunit;` for files containing any @test-decorated functions or methods — only
+        // where a test host supplies the framework (#1495). Outside one the decorators emit no Xunit
+        // attributes, so the directive would name a namespace that does not exist: CS0246 behind
+        // SPY0908, which is what made a `@test` program uncompilable under `sharpyc run`.
+        if (_context.TargetsTestHost && HasTestDecoratedMembers(module))
         {
             usings.Add(UsingDirective(ParseQualifiedName("Xunit")));
         }

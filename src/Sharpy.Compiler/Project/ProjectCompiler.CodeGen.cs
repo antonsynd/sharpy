@@ -85,6 +85,7 @@ internal partial class ProjectCompiler
                 var codeGenContext = new CodeGenContext(SymbolTable, builtinRegistry)
                 {
                     SourceFilePath = sourceFile,
+                    TargetsTestHost = config.TestHost,
                     ProjectNamespace = config.RootNamespace,
                     ProjectRootPath = ComputeSourceRootPath(config),
                     IsEntryPoint = isEntryPoint,

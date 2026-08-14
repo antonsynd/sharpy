@@ -146,6 +146,18 @@ public class ProjectConfig
     public bool WarningsAsErrors { get; init; }
 
     /// <summary>
+    /// Whether this project's emitted C# is compiled into a TEST HOST — an xUnit project that
+    /// supplies the framework reference and runs the result through a test runner (#1495).
+    ///
+    /// <para>Spelled <c>&lt;TestHost&gt;true&lt;/TestHost&gt;</c>. It is opt-in and false everywhere
+    /// else, because the framework-coupled `@test` assert lowering is only correct where the
+    /// framework is present: emitting <c>Xunit.Assert.*</c> without it made any program containing a
+    /// <c>@test</c> function uncompilable under <c>sharpyc run</c> (CS0246 behind SPY0908). The spy
+    /// test corpora set it so their generated C# keeps the runner integration byte-for-byte.</para>
+    /// </summary>
+    public bool TestHost { get; init; }
+
+    /// <summary>
     /// Warning codes to suppress (e.g., "SPY0451", "SPY0452").
     /// Set via &lt;NoWarn&gt;SPY0451,SPY0452&lt;/NoWarn&gt; in .spyproj.
     /// </summary>
@@ -285,6 +297,7 @@ public static class ProjectFileParser
         var assemblyName = propertyGroup.Element("AssemblyName")?.Value;
         var entryPoint = propertyGroup.Element("EntryPoint")?.Value;
         var warningsAsErrors = bool.TryParse(propertyGroup.Element("WarningsAsErrors")?.Value, out var wae) && wae;
+        var testHost = bool.TryParse(propertyGroup.Element("TestHost")?.Value, out var th) && th;
         var noWarnValue = propertyGroup.Element("NoWarn")?.Value;
         var suppressedWarnings = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(noWarnValue))
@@ -413,6 +426,7 @@ public static class ProjectFileParser
             PackageReferences = packageReferences,
             Configuration = configuration ?? "Debug",
             WarningsAsErrors = warningsAsErrors,
+            TestHost = testHost,
             SuppressedWarnings = suppressedWarnings,
             Features = features
         };

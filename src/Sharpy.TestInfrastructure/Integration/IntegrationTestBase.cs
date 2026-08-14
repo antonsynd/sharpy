@@ -229,6 +229,11 @@ public abstract class IntegrationTestBase
                     // Integration tests are executable programs, so the synthetic project's
                     // single source file is its entry point.
                     OutputType = "exe",
+                    // This harness references Xunit (see the metadata references above), so it IS a
+                    // test host: a `@test` function's asserts keep the Xunit lowering here, which is
+                    // what holds the `unittest/*.expected.cs` snapshots byte-identical while the
+                    // same source compiles framework-free under `sharpyc run` (#1495).
+                    TargetsTestHost = true,
                     Features = features
                 };
 
@@ -691,6 +696,8 @@ public abstract class IntegrationTestBase
             var options = new CompilerOptions
             {
                 OutputType = "exe",
+                // See the note on the single-file path above (#1495).
+                TargetsTestHost = true,
                 Features = features
             };
 
