@@ -163,6 +163,93 @@ internal static class GenericInstantiationWalker
     }
 
     /// <summary>
+    /// Enumerates every interface IMPLEMENTED by <paramref name="symbol"/> instantiated at
+    /// <paramref name="typeArguments"/>, in BFS order (most direct first), composing each level's
+    /// written interface arguments through the substitution — the interface-channel counterpart to
+    /// <see cref="EnumerateBaseChain"/> for a <see cref="TypeSymbol"/> receiver (#1342).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="EnumerateSupertypes"/> answers the same "what do my supertypes look like at my
+    /// arguments" question, but it requires a <see cref="GenericType"/> receiver and additionally
+    /// yields base classes; the Self-in-interface bridge asks it of a possibly NON-generic class
+    /// (<c>class Box(IBuilder[int])</c> has no type parameters of its own) and wants only the
+    /// interfaces. Interfaces reached THROUGH the base chain are included — an interface a base
+    /// class implements is implemented by the derived class too — composed via
+    /// <see cref="InstantiateBaseType"/>, so <c>class Leaf(Mid[int])</c> over
+    /// <c>class Mid[T](IBuilder[T])</c> reaches <c>IBuilder[int]</c>. The base class itself is
+    /// walked but not yielded: this channel answers "which interfaces", not "which ancestors".
+    /// </para>
+    /// <para>
+    /// Shares <see cref="GetInterfaceReferences"/>/<see cref="ResolveReferenceArguments"/> with
+    /// <see cref="EnumerateSupertypes"/>, so the compiler still reads an
+    /// <see cref="InterfaceReference"/>'s arguments in exactly one place, mirroring the "exactly
+    /// one reader of BaseTypeReference" contract on <see cref="EnumerateBaseChain"/>.
+    /// </para>
+    /// </remarks>
+    /// <param name="symbol">The implementing type whose interfaces are wanted.</param>
+    /// <param name="typeArguments">
+    /// The implementing type's own type arguments. Empty for a non-generic type; an arity mismatch
+    /// against <paramref name="symbol"/>'s type parameters yields nothing rather than a wrong answer.
+    /// </param>
+    /// <param name="binding">Optional binding for in-progress (pre-materialization) inheritance data.</param>
+    /// <param name="typeResolver">Optional resolver for source-declared interface type arguments.</param>
+    internal static IEnumerable<InstantiatedSupertype> EnumerateImplementedInterfaces(
+        TypeSymbol symbol,
+        IReadOnlyList<SemanticType> typeArguments,
+        SemanticBinding? binding = null,
+        TypeResolver? typeResolver = null)
+    {
+        var initialSubstitution = BuildSubstitution(symbol.TypeParameters, typeArguments);
+        if (initialSubstitution == null)
+            yield break;
+
+        var queue = new Queue<(TypeSymbol Symbol, Dictionary<string, SemanticType> Substitution)>();
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        queue.Enqueue((symbol, initialSubstitution));
+        visited.Add(MakeKey(symbol, typeArguments));
+
+        while (queue.Count > 0)
+        {
+            var (current, substitution) = queue.Dequeue();
+
+            foreach (var interfaceRef in GetInterfaceReferences(current, binding))
+            {
+                var rawArguments = ResolveReferenceArguments(interfaceRef, current, typeResolver);
+                if (rawArguments == null)
+                    continue;
+
+                var concreteArguments = rawArguments
+                    .Select(arg => TypeSubstitution.Apply(arg, substitution))
+                    .ToList();
+
+                if (!visited.Add(MakeKey(interfaceRef.Definition, concreteArguments)))
+                    continue;
+
+                yield return new InstantiatedSupertype(interfaceRef.Definition, concreteArguments);
+
+                var nextSubstitution = BuildSubstitution(interfaceRef.Definition.TypeParameters, concreteArguments);
+                if (nextSubstitution != null)
+                    queue.Enqueue((interfaceRef.Definition, nextSubstitution));
+            }
+
+            // Follow the base chain to reach interfaces implemented by ancestors, but do NOT yield
+            // the base class itself — this channel produces interfaces only.
+            var baseSupertype = InstantiateBaseType(current, substitution, binding, typeResolver);
+            if (baseSupertype == null)
+                continue;
+
+            if (!visited.Add(MakeKey(baseSupertype.Definition, baseSupertype.TypeArguments)))
+                continue;
+
+            var baseSubstitution = BuildSubstitution(
+                baseSupertype.Definition.TypeParameters, baseSupertype.TypeArguments);
+            if (baseSubstitution != null)
+                queue.Enqueue((baseSupertype.Definition, baseSubstitution));
+        }
+    }
+
+    /// <summary>
     /// The nearest ancestor of <paramref name="symbol"/> that is backed by a CLR type, instantiated
     /// at the arguments written down the base chain (#1409). Returns null when no ancestor is
     /// CLR-backed, or when the chain's arguments cannot be read.
