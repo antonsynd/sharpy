@@ -121,23 +121,19 @@ internal partial class ImportResolver
                 OriginalModule = fromImport.Module
             },
             TypeSymbol type => CreateReExportedTypeSymbol(type, fromImport, effectiveName),
-            VariableSymbol var => new VariableSymbol
+            // Carry unless listed — the same shape as the function arm above (#1440). The hand-built
+            // initializer this replaces restated fourteen of the twenty-one VariableSymbol facts, and
+            // the seven it forgot (IsFinal, IsStatic, HasDefaultValue, Documentation,
+            // DeprecationMessage, DeclarationSpan, DeclaringFilePath) were each a user-visible defect
+            // on the from-import spelling alone: an imported @final field freely assignable, hover
+            // with no docs, go-to-definition with nowhere to go.
+            VariableSymbol var => var with
             {
                 Name = effectiveName,
-                IsNameBacktickEscaped = var.IsNameBacktickEscaped,
-                Kind = var.Kind,
-                Type = var.Type,
-                IsConstant = var.IsConstant,
-                AccessLevel = var.AccessLevel,
                 DeclarationLine = fromImport.LineStart,
                 DeclarationColumn = fromImport.ColumnStart,
-                NameDeclarationLine = var.NameDeclarationLine,
-                NameDeclarationColumn = var.NameDeclarationColumn,
                 IsReExport = true,
-                OriginalModule = fromImport.Module,
-                IsModuleProperty = var.IsModuleProperty,
-                HasPropertyGetter = var.HasPropertyGetter,
-                HasPropertySetter = var.HasPropertySetter
+                OriginalModule = fromImport.Module
             },
             _ => originalSymbol
         };
@@ -148,6 +144,38 @@ internal partial class ImportResolver
     /// <summary>
     /// Create a re-exported type symbol, properly tracking the DefiningModule through the re-export chain.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A <c>with</c> expression restating ONLY what a re-export genuinely changes — its name, the
+    /// position of the import statement that binds it, and the provenance fields. Everything else
+    /// carries because a re-export IS the declaration, seen from another module.
+    /// </para>
+    /// <para>
+    /// This inverts the default deliberately (#1440). The hand-built initializer it replaces named
+    /// twenty-odd facts and dropped sixteen — <c>NestedTypes</c> (which silently un-did #1363 on this
+    /// spelling), <c>Documentation</c>, <c>DeprecationMessage</c> (SPY0466 never fired),
+    /// <c>IsMustUse</c> (SPY0480 never fired), <c>DeclarationSpan</c> (go-to-definition landed
+    /// nowhere), <c>Events</c>, <c>IsStringEnum</c>, <c>IsDataclass</c>, the file paths and the rest.
+    /// Each drop was invisible: nothing fails when a fact is simply not restated, and the same is
+    /// true of every fact ADDED to <see cref="TypeSymbol"/> later. "Carry unless listed" is what
+    /// makes that class of bug unrepresentable rather than merely fixed.
+    /// </para>
+    /// <para>
+    /// Reference-typed members are ALIASED by <c>with</c>, not copied — <c>Interfaces</c> above all,
+    /// and equally <c>Fields</c>/<c>Methods</c>/<c>Constructors</c>/<c>Properties</c>/
+    /// <c>UnresolvedInterfaces</c> (#1403). That is the required behaviour, not a hazard: inheritance
+    /// is materialized ONCE, onto whichever object <c>InheritanceResolver</c> reaches, so a defensive
+    /// copy here would freeze the list at re-export time and leave the alias permanently
+    /// interface-less when materialization runs afterwards. The lists are append-only during
+    /// resolution and never mutated per alias, so sharing is the correctness condition.
+    /// </para>
+    /// <para>
+    /// The result is still a NEW object, which is correct: a re-export is a distinct binding with its
+    /// own name and position. Identity with the declaration is the in-source-set path's job
+    /// (<c>ProjectCompiler.ResolveOwnExportedSymbol</c>, #1366/#1407/#1491), and where that applies
+    /// this clone is never reached.
+    /// </para>
+    /// </remarks>
     private TypeSymbol CreateReExportedTypeSymbol(TypeSymbol originalType, FromImportStatement fromImport, string effectiveName)
     {
         var definingModule = originalType.DefiningModule ?? GetResolvedModulePath(fromImport) ?? fromImport.Module;
@@ -158,43 +186,11 @@ internal partial class ImportResolver
         _logger.LogDebug($"[ImportResolver]   New DefiningModule: {definingModule}");
         _logger.LogDebug($"[ImportResolver]   FromImport.Module: {fromImport.Module}");
 
-        var reExported = new TypeSymbol
+        var reExported = originalType with
         {
             Name = effectiveName,
-            // The escape is part of what the name DENOTES, so a hand-built copy that drops it
-            // silently changes the symbol's identity across the import (#1328): the emitted
-            // reference reverted to the mangled spelling and the program was CS0103.
-            IsNameBacktickEscaped = originalType.IsNameBacktickEscaped,
-            Kind = originalType.Kind,
-            TypeKind = originalType.TypeKind,
-            AccessLevel = originalType.AccessLevel,
-            IsAbstract = originalType.IsAbstract,
-            TypeParameters = originalType.TypeParameters,
-            Fields = originalType.Fields,
-            Methods = originalType.Methods,
-            MethodOverloads = originalType.MethodOverloads,
-            Properties = originalType.Properties,
-            OperatorMethods = originalType.OperatorMethods,
-            ProtocolMethods = originalType.ProtocolMethods,
-            Constructors = originalType.Constructors,
-            BaseType = originalType.BaseType,
-            BaseTypeRef = originalType.BaseTypeRef,
-            // Deliberately ALIASED, not copied — as are Fields/Methods/Constructors/Properties
-            // above and UnresolvedInterfaces below (#1403). A re-export is the same declaration
-            // seen under another name, and inheritance is materialized ONCE, onto whichever object
-            // InheritanceResolver reaches; a defensive copy here would freeze this list at
-            // re-export time and leave the alias permanently interface-less when materialization
-            // runs afterwards. The lists are append-only during resolution and never mutated per
-            // alias, so sharing is the correctness condition rather than a hazard.
-            Interfaces = originalType.Interfaces,
-            ClrType = originalType.ClrType,
-            UnresolvedBaseName = originalType.UnresolvedBaseName,
-            UnresolvedBaseTypeArgs = originalType.UnresolvedBaseTypeArgs,
-            UnresolvedInterfaces = originalType.UnresolvedInterfaces,
             DeclarationLine = fromImport.LineStart,
             DeclarationColumn = fromImport.ColumnStart,
-            NameDeclarationLine = originalType.NameDeclarationLine,
-            NameDeclarationColumn = originalType.NameDeclarationColumn,
             IsReExport = true,
             OriginalModule = fromImport.Module,
             DefiningModule = definingModule
