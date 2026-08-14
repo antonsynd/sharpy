@@ -1,0 +1,24 @@
+# #1459 control: the module-property guard must be NARROW. `level = 6` resolves to the
+# module-level property `level` and is a setter store (no SPY0451), but `spare = 99` is a genuine
+# unused local (resolves to no module property) and MUST still warn SPY0451. This proves the guard
+# keys on RESOLUTION (VariableSymbol.IsModuleProperty), not on name-matching.
+#
+# Note: in Sharpy a bare `name = value` where `name` resolves to a module property is ALWAYS the
+# setter store — the setter runs (this fixture prints 7), so there is no way to declare a local
+# that shadows a module-property name via bare assignment. The "genuine local shadow" the guard
+# must not swallow is therefore a DIFFERENT name (`spare`), which the guard correctly still warns.
+_backing: int = 0
+
+
+property set level(v: int):
+    _backing = v + 1
+
+
+def read_level() -> int:
+    return _backing
+
+
+def main() -> None:
+    level = 6
+    spare = 99
+    print(read_level())

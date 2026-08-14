@@ -111,6 +111,14 @@ internal class UnusedVariableValidator : ValidatingAstWalker
         }
     }
 
+    /// <summary>
+    /// True when <paramref name="name"/> resolves to a module-level property
+    /// (<c>VariableSymbol { IsModuleProperty = true }</c>). A bare <c>name = value</c> onto such a
+    /// name is a store through the property setter, not a local declaration (#1459).
+    /// </summary>
+    private bool IsModulePropertyStore(string name)
+        => Context.SymbolTable.LookupVariable(name) is { IsModuleProperty: true };
+
     private void CollectFromStatement(Statement stmt, Dictionary<string, VariableInfo> defined,
         HashSet<string> read, HashSet<string> parameters, ReadCollector readCollector)
     {
@@ -134,8 +142,14 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                 {
                     if (assign.Operator == AssignmentOperator.Assign)
                     {
-                        // Simple assignment defines a variable
-                        if (!parameters.Contains(targetId.Name))
+                        // Simple assignment defines a variable — UNLESS the bare name resolves to a
+                        // module-level property, in which case it is a store through the property
+                        // setter, not a local declaration. The setter runs (the program observes its
+                        // effect), so the assignment is not "unused" (#1459). Key on RESOLUTION, not a
+                        // name match, so a genuine local in a scope with no such property is still
+                        // analyzed. A class-level property store is `self.x = ...` (a member access,
+                        // not a bare name) and never reaches this path.
+                        if (!parameters.Contains(targetId.Name) && !IsModulePropertyStore(targetId.Name))
                         {
                             defined[targetId.Name] = new VariableInfo(
                                 assign.LineStart, assign.ColumnStart, assign.Span, false);
