@@ -337,7 +337,11 @@ internal partial class TypeChecker
             {
                 // Access level validation is handled by AccessValidator in the validation pipeline
 
-                var fieldType = GetVariableType(field);
+                // A field inherited from a source-declared generic base is typed at the base's OPEN
+                // parameter unless substituted at the arguments the derived class's base clause pinned
+                // (#1449). `class Direct(Root[int])` reads `Direct().value` as `int`, not `T`.
+                var fieldType = SubstituteMemberForReceiver(
+                    udt.Symbol, Array.Empty<SemanticType>(), fieldOwner, GetVariableType(field));
 
                 // Warn and record resolution when accessing a static field via instance.
                 // C# disallows instance access to static members (CS0176), so codegen
@@ -370,12 +374,16 @@ internal partial class TypeChecker
             var (prop, propOwner) = FindPropertyInHierarchy(udt.Symbol, effectiveMember);
             if (prop != null && propOwner != null)
             {
-                var propType = prop.Type;
-                if (propType is UnknownType && prop.HasGetter)
+                if (prop.Type is UnknownType && prop.HasGetter)
                 {
                     // Property type not yet resolved; fallback to unknown
-                    return propType;
+                    return prop.Type;
                 }
+
+                // Substitute the base clause's pinned arguments for a property inherited from a
+                // source-declared generic base (#1449).
+                var propType = SubstituteMemberForReceiver(
+                    udt.Symbol, Array.Empty<SemanticType>(), propOwner, prop.Type);
 
                 // Wrap result in optional/nullable for null conditional access
                 if (memberAccess.IsNullConditional && propType is not NullableType and not OptionalType)
@@ -388,11 +396,14 @@ internal partial class TypeChecker
             }
 
             // Look for event (including inherited events)
-            var eventSymbol = FindEventInHierarchy(udt.Symbol, effectiveMember);
-            if (eventSymbol != null)
+            var (eventSymbol, eventOwner) = FindEventInHierarchyWithOwner(udt.Symbol, effectiveMember);
+            if (eventSymbol != null && eventOwner != null)
             {
                 _semanticInfo.MarkAsEventAccess(memberAccess);
-                var eventType = eventSymbol.Type;
+                // Substitute the base clause's pinned arguments for an event inherited from a
+                // source-declared generic base (#1449).
+                var eventType = SubstituteMemberForReceiver(
+                    udt.Symbol, Array.Empty<SemanticType>(), eventOwner, eventSymbol.Type);
 
                 // Events are nullable (may have no subscribers)
                 if (eventType is not UnknownType and not NullableType)
@@ -449,9 +460,16 @@ internal partial class TypeChecker
                 var methodFunctionType = FunctionType.FromParameters(
                     method.Parameters, method.ReturnType, skipLeading: selfOffset);
 
+                // A method inherited from a source-declared generic base is typed at the base's OPEN
+                // parameters unless substituted at the arguments the derived class's base clause
+                // pinned (#1449): `class Direct(Root[int])` reads `Direct().get` as `() -> int`.
+                // Substituting the built FunctionType re-types both parameters and the return.
+                var substitutedMethodType = SubstituteMemberForReceiver(
+                    udt.Symbol, Array.Empty<SemanticType>(), methodOwner, methodFunctionType);
+
                 // For null conditional method access, we don't wrap the FunctionType itself,
                 // but the eventual call result should be nullable (handled in CheckFunctionCall)
-                return methodFunctionType;
+                return substitutedMethodType;
             }
 
             // A receiver whose OWN symbol is not CLR-backed can still inherit a CLR member through its
@@ -754,6 +772,62 @@ internal partial class TypeChecker
             ErrorRecoveryReason.DeliberatelyPermissive(
                 "codegen resolves an inherited CLR member through discovery on the base type"));
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Re-types a member found on <paramref name="owner"/> under the composed substitution the
+    /// receiver pins for that owner (#1449). A member is declared in its OWNER's type-parameter
+    /// namespace, so the only correct substitution is <c>owner.TypeParameters →</c> the owner's
+    /// concrete arguments in THIS receiver's instantiation:
+    /// <list type="bullet">
+    /// <item>owner IS the receiver's own definition — the receiver's own arguments (#912);</item>
+    /// <item>owner is a source-declared generic ANCESTOR — the arguments the base clause pinned,
+    /// which <see cref="GenericInstantiationWalker.EnumerateBaseChain"/> has already composed down
+    /// the chain (e.g. <c>class Direct(Root[int])</c> pins <c>Root[T].get</c> at <c>int</c>, and
+    /// <c>class Middle[T](Pair[T, str])</c> pins <c>Pair</c>'s <c>U</c> at <c>str</c>).</item>
+    /// </list>
+    /// Returns <paramref name="memberType"/> unchanged for a non-generic owner or an owner not
+    /// reached through the base chain (an interface owner, whose generic members this arm does not
+    /// substitute — status quo). No new reader of <see cref="BaseTypeReference"/>: the walker is the
+    /// one substitution authority (#1287/#1408/#1409 doc contract).
+    /// </summary>
+    private SemanticType SubstituteMemberForReceiver(
+        TypeSymbol receiverDefinition,
+        IReadOnlyList<SemanticType> receiverTypeArguments,
+        TypeSymbol owner,
+        SemanticType memberType)
+    {
+        if (owner.TypeParameters.Count == 0)
+            return memberType;
+
+        // Member declared on the receiver's own definition → substitute the receiver's own arguments.
+        if (ReferenceEquals(owner, receiverDefinition))
+        {
+            return owner.TypeParameters.Count == receiverTypeArguments.Count
+                ? SubstituteTypeParameters(
+                    memberType, owner.TypeParameters, receiverTypeArguments.ToList(),
+                    substituteNamedUserTypes: true)
+                : memberType;
+        }
+
+        // Member inherited from a generic ancestor → substitute the ancestor's arguments, which
+        // EnumerateBaseChain has already composed the receiver's own arguments into.
+        foreach (var ancestor in GenericInstantiationWalker.EnumerateBaseChain(
+            receiverDefinition, receiverTypeArguments, SemanticBinding, _typeResolver))
+        {
+            if (!ReferenceEquals(ancestor.Definition, owner))
+                continue;
+
+            // Arity mismatch: leave the member open rather than answer at wrong arguments.
+            if (ancestor.TypeArguments.Count != owner.TypeParameters.Count)
+                return memberType;
+
+            return SubstituteTypeParameters(
+                memberType, owner.TypeParameters, ancestor.TypeArguments.ToList(),
+                substituteNamedUserTypes: true);
+        }
+
+        return memberType;
     }
 
     /// <summary>
@@ -1163,15 +1237,15 @@ internal partial class TypeChecker
     private SemanticType? ResolveUserDefinedGenericMember(
         MemberAccess memberAccess, TypeSymbol genDef, List<SemanticType> typeArgs)
     {
-        // substituteNamedUserTypes: imported generic definitions may materialize a type-parameter
-        // reference in a member signature (e.g. the return type T of an imported Box[T].get()) as a
-        // bare UserDefinedType named after the parameter rather than a TypeParameterType. Within the
-        // owning generic that name denotes the type parameter, so substitute it too (#912).
-        SemanticType Substitute(SemanticType t) =>
-            genDef.TypeParameters.Count > 0 && genDef.TypeParameters.Count == typeArgs.Count
-                ? SubstituteTypeParameters(t, genDef.TypeParameters, typeArgs, substituteNamedUserTypes: true)
-                : t;
-
+        // SubstituteMemberForReceiver keys the substitution on the OWNER of the found member:
+        //   - member on genDef itself → the receiver's own arguments (#912). substituteNamedUserTypes
+        //     handles imported definitions that materialize a type-parameter reference (e.g. the
+        //     return type T of an imported Box[T].get()) as a bare UserDefinedType named after the
+        //     parameter rather than a TypeParameterType — within the owning generic that name denotes
+        //     the parameter, so it is substituted too.
+        //   - member pinned by a generic BASE (e.g. `class Middle[T](Pair[T, str])` inherits Pair's
+        //     `second: U`) → the base-chain arguments the walker composed, so U resolves to str
+        //     rather than staying open (#1449).
         var member = memberAccess.Member;
 
         var (field, fieldOwner) = FindFieldInHierarchy(genDef, member);
@@ -1179,12 +1253,12 @@ internal partial class TypeChecker
         {
             if (field.IsStatic)
                 _semanticInfo.SetMemberAccessResolution(memberAccess, fieldOwner, field);
-            return Substitute(GetVariableType(field));
+            return SubstituteMemberForReceiver(genDef, typeArgs, fieldOwner, GetVariableType(field));
         }
 
         var (prop, propOwner) = FindPropertyInHierarchy(genDef, member);
         if (prop != null && propOwner != null)
-            return Substitute(prop.Type);
+            return SubstituteMemberForReceiver(genDef, typeArgs, propOwner, prop.Type);
 
         var (method, methodOwner) = FindMethodInHierarchy(genDef, member);
         if (method != null && methodOwner != null)
@@ -1192,11 +1266,9 @@ internal partial class TypeChecker
             var selfOffset = method.Parameters.Count > 0
                 && method.Parameters[0].Name == PythonNames.Self
                 ? 1 : 0;
-            var substitutedParams = method.Parameters
-                .Select(p => p with { Type = Substitute(p.Type) })
-                .ToList();
-            return FunctionType.FromParameters(
-                substitutedParams, Substitute(method.ReturnType), skipLeading: selfOffset);
+            var methodFunctionType = FunctionType.FromParameters(
+                method.Parameters, method.ReturnType, skipLeading: selfOffset);
+            return SubstituteMemberForReceiver(genDef, typeArgs, methodOwner, methodFunctionType);
         }
 
         return null;

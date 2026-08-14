@@ -2127,13 +2127,22 @@ internal partial class TypeChecker
     /// Walks the type hierarchy to find an event with the given name.
     /// </summary>
     private static EventSymbol? FindEventInHierarchy(TypeSymbol type, string eventName)
+        => FindEventInHierarchyWithOwner(type, eventName).Event;
+
+    /// <summary>
+    /// Like <see cref="FindEventInHierarchy"/>, but also returns the ANCESTOR that declares the
+    /// event (its owner), needed to substitute the base clause's pinned arguments for an event
+    /// inherited from a source-declared generic base (#1449).
+    /// </summary>
+    private static (EventSymbol? Event, TypeSymbol? Owner) FindEventInHierarchyWithOwner(
+        TypeSymbol type, string eventName)
     {
         var current = type;
         while (current != null)
         {
             var evt = current.Events.FirstOrDefault(e => e.Name == eventName);
             if (evt != null)
-                return evt;
+                return (evt, current);
             current = current.BaseType;
         }
 
@@ -2143,10 +2152,10 @@ internal partial class TypeChecker
             var iface = ifaceRef.Definition;
             var evt = iface.Events.FirstOrDefault(e => e.Name == eventName);
             if (evt != null)
-                return evt;
+                return (evt, iface);
         }
 
-        return null;
+        return (null, null);
     }
 
     /// <summary>
