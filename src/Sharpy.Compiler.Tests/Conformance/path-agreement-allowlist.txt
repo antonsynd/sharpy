@@ -1,0 +1,44 @@
+# Annotation-path vs expression-path agreement allowlist (ratchet ledger).
+#
+# One `producer::operation` cell key per line (see AnnotationExpressionPathAgreementTests).
+# A cell whose two spellings reach different verdicts fails the ratchet UNLESS its key appears here.
+# `#` starts a comment; blank lines are ignored.
+#
+# The contract: ONE RUNTIME TYPE HAS ONE SURFACE, HOWEVER THE TYPE SYSTEM ARRIVED AT IT. A value
+# named by a type annotation and the same value produced by an expression are the same value; the
+# annotation is a naming convenience, not a different type. Where the two disagree, at least one is
+# wrong — and #1496 is the proof that they can be wrong in OPPOSITE directions at the same time
+# (annotation accepted `x | y` and threw at runtime; the inline spelling refused it outright), so
+# "the other spelling works" never establishes that a cell is fine.
+#
+# DO NOT DELETE THIS FILE. Its presence is what arms the ratchet; the sweep throws if it is missing
+# rather than passing silently, so removing it cannot be mistaken for relaxing it.
+#
+# Rules for adding an entry:
+#   1. It MUST cite a filed GitHub issue explaining the divergence the cell exposes.
+#   2. It MUST correspond to a cell a real run confirms divergent — never allowlist speculatively.
+#   3. It is temporary. Delete the line in the same change that fixes the bug ("drain on fix"). The
+#      sweep FAILS on a stale entry — an allowlisted cell that has started agreeing — so draining is
+#      part of landing the fix rather than a follow-up nobody schedules.
+# Any growth is a regression in the contract, not a fact about the code that can be left standing.
+
+# ---------------------------------------------------------------------------------------------
+# Baseline: 5 divergent / 72 cells (9 producers), on branch `dev` (2026-08-14), the run that landed
+# #1496/#1497. The two defects the sweep was BUILT for are fixed in that same change and so are
+# absent here; every line below is something it found on its first run that nobody had reported.
+# See .claude/tmp/path-agreement-conformance-report.json.
+# ---------------------------------------------------------------------------------------------
+
+# #1517 — the #1496 class on two more types. `set.to_hash_set()` and `dict.to_dictionary()` return
+# RAW CLR collections (HashSet<T>, Dictionary<K,V>) that the type system spells `set[int]` /
+# `dict[str, int]`. An annotation of exactly that type accepts the value, and then the operators
+# those types support are refused on the expression form — with a message that names `set[int]` on
+# both sides and says `set[int]` does not support `|`. Confirmed PRE-EXISTING at f6f9bfbdb in a
+# clean worktree, so these are finds, not fallout from the #1496 fix landing beside them.
+# The fix is most likely at the source (return the Sharpy wrappers, per CLAUDE.md's rule against
+# raw .NET collections in public API surfaces), not in operator resolution.
+set.to_hash_set()::op::|
+set.to_hash_set()::op::&
+set.to_hash_set()::op::-
+set.to_hash_set()::op::^
+dict.to_dictionary()::op::|
