@@ -1,0 +1,8 @@
+# CPython's dict_values is NOT set-like: `d.values() | e.values()` raises
+# TypeError: unsupported operand type(s) for |: 'dict_values' and 'dict_values'  (python3.12).
+# Sharpy refuses it at compile time instead, on the EXPRESSION path (#1496).
+def main() -> None:
+    d1: dict[str, int] = {"a": 1}
+    d2: dict[str, int] = {"b": 2}
+    z = d1.values() | d2.values()
+    print(z)

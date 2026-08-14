@@ -317,9 +317,23 @@ internal static class ClrTypeHelper
         return result;
     }
 
+    // Caches an open generic definition's assembly-qualified-ish FullName -> the resolved CLR
+    // definition, so the ClrOriginTypeName fallback below scans loaded assemblies at most once
+    // per name. Null is cached too: an unresolvable name stays unresolvable.
+    private static readonly ConcurrentDictionary<string, Type?> _originNameDefinitionCache = new();
+
     internal static Type? TryConstructClosedGeneric(GenericType generic, Func<SemanticType, Type?> resolveClrType)
     {
-        var openDef = generic.GenericDefinition?.ClrType;
+        // Provenance has two channels and a GenericType may carry either one. TypeResolver's
+        // ANNOTATION path sets GenericDefinition from the resolved symbol; the discovery path that
+        // types an EXPRESSION (a discovered method's return type, e.g. `d.keys()`) sets
+        // ClrOriginTypeName instead, because Sharpy.Core's own types are not in the module-symbol
+        // table it looks GenericDefinition up in. Reading only the first channel meant the same
+        // runtime type resolved to a CLR type when it was spelled in an annotation and to nothing
+        // when it came from an expression — so CLR operator resolution accepted `x | y` and refused
+        // `d.keys() | e.keys()` (#1496). Both channels answer the same question, so both are read
+        // here, at the single funnel every CLR operator/member resolution already goes through.
+        var openDef = generic.GenericDefinition?.ClrType ?? ResolveOriginDefinition(generic);
         if (openDef == null || !openDef.IsGenericTypeDefinition)
             return openDef;
 
@@ -340,6 +354,40 @@ internal static class ClrTypeHelper
         {
             return openDef;
         }
+    }
+
+    /// <summary>
+    /// The open generic definition a <see cref="GenericType"/> records in
+    /// <see cref="GenericType.ClrOriginTypeName"/>, or null when it records none or the name no
+    /// longer resolves. Arity is checked here so a name that resolves to a differently-shaped
+    /// definition is rejected rather than blowing up inside <c>MakeGenericType</c>.
+    /// </summary>
+    private static Type? ResolveOriginDefinition(GenericType generic)
+    {
+        if (generic.ClrOriginTypeName is not { Length: > 0 } originName)
+            return null;
+
+        var resolved = _originNameDefinitionCache.GetOrAdd(originName, static name =>
+        {
+            var direct = Type.GetType(name);
+            if (direct != null)
+                return direct;
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var found = assembly.GetType(name);
+                if (found != null)
+                    return found;
+            }
+            return null;
+        });
+
+        if (resolved is not { IsGenericTypeDefinition: true })
+            return null;
+
+        return resolved.GetGenericArguments().Length == generic.TypeArguments.Count
+            ? resolved
+            : null;
     }
 
     /// <summary>

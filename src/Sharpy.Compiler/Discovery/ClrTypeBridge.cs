@@ -453,7 +453,7 @@ internal class ClrTypeBridge
                 {
                     MapClrTypeToSemanticType(typeArgs[0])
                 },
-                GenericDefinition = GetOrCreateInterfaceSymbol(genericDef)
+                GenericDefinition = GetOrCreateClrDefinitionSymbol(genericDef)
             };
         }
 
@@ -500,45 +500,36 @@ internal class ClrTypeBridge
             };
         }
 
-        // Sharpy.DictItemsView<K, V>
-        if (genericDef.FullName == SpecialCases.DictItemsViewFullName)
+        // The dict views (Sharpy.DictKeyView / DictItemsView / DictValuesView).
+        //
+        // GenericDefinition is what makes the EXPRESSION path (`d.keys()`, mapped here) agree with
+        // the ANNOTATION path (`x: DictKeyView[str, int]`, built by TypeResolver, which sets it from
+        // the resolved symbol). Everything downstream that reconstructs the closed CLR type —
+        // GetClrType -> ClrTypeHelper.TryConstructClosedGeneric, and so operator resolution — reads
+        // GenericDefinition and nothing else. Omitting it here is why `d.keys() | e.keys()` was
+        // refused (SPY0222) while the annotation-typed spelling of the same value was accepted:
+        // one type value carried the CLR identity and the other didn't (#1496).
+        //
+        // Same shape as the NdArray and Sharpy-interface arms; the standing agreement sweep
+        // (AnnotationExpressionPathAgreementConformanceTests) is what keeps the two paths honest.
+        var viewName = genericDef.FullName switch
+        {
+            SpecialCases.DictItemsViewFullName => BuiltinNames.DictItemsView,
+            SpecialCases.DictKeyViewFullName => BuiltinNames.DictKeyView,
+            SpecialCases.DictValuesViewFullName => BuiltinNames.DictValuesView,
+            _ => null
+        };
+        if (viewName != null)
         {
             return new GenericType
             {
-                Name = BuiltinNames.DictItemsView,
+                Name = viewName,
                 TypeArguments = new List<SemanticType>
                 {
                     MapClrTypeToSemanticType(typeArgs[0]),
                     MapClrTypeToSemanticType(typeArgs[1])
-                }
-            };
-        }
-
-        // Sharpy.DictKeyView<K, V>
-        if (genericDef.FullName == SpecialCases.DictKeyViewFullName)
-        {
-            return new GenericType
-            {
-                Name = BuiltinNames.DictKeyView,
-                TypeArguments = new List<SemanticType>
-                {
-                    MapClrTypeToSemanticType(typeArgs[0]),
-                    MapClrTypeToSemanticType(typeArgs[1])
-                }
-            };
-        }
-
-        // Sharpy.DictValuesView<K, V>
-        if (genericDef.FullName == SpecialCases.DictValuesViewFullName)
-        {
-            return new GenericType
-            {
-                Name = BuiltinNames.DictValuesView,
-                TypeArguments = new List<SemanticType>
-                {
-                    MapClrTypeToSemanticType(typeArgs[0]),
-                    MapClrTypeToSemanticType(typeArgs[1])
-                }
+                },
+                GenericDefinition = GetOrCreateClrDefinitionSymbol(genericDef)
             };
         }
 
@@ -660,7 +651,7 @@ internal class ClrTypeBridge
             {
                 Name = ClrNameHelper.StripArity(genericDef.Name),
                 TypeArguments = typeArgs.Select(MapClrTypeToSemanticType).ToList(),
-                GenericDefinition = GetOrCreateInterfaceSymbol(genericDef)
+                GenericDefinition = GetOrCreateClrDefinitionSymbol(genericDef)
             };
         }
 
@@ -725,7 +716,7 @@ internal class ClrTypeBridge
 
                     result.Add(new InterfaceReference
                     {
-                        Definition = GetOrCreateInterfaceSymbol(iface)
+                        Definition = GetOrCreateClrDefinitionSymbol(iface)
                     });
                     continue;
                 }
@@ -736,7 +727,7 @@ internal class ClrTypeBridge
 
                 result.Add(new InterfaceReference
                 {
-                    Definition = GetOrCreateInterfaceSymbol(iface.GetGenericTypeDefinition()),
+                    Definition = GetOrCreateClrDefinitionSymbol(iface.GetGenericTypeDefinition()),
                     ResolvedTypeArguments = resolvedArgs
                 });
             }
@@ -764,13 +755,15 @@ internal class ClrTypeBridge
     }
 
     /// <summary>
-    /// Finds or creates the TypeSymbol for an interface definition, cached per CLR
-    /// definition so all implementers share one symbol. Type parameters follow the
-    /// discovery naming convention (T0, T1, ...) with CLR variance preserved.
+    /// Finds or creates the TypeSymbol for a CLR type definition, cached per CLR definition so all
+    /// users share one symbol. Type parameters follow the discovery naming convention (T0, T1, ...)
+    /// with CLR variance preserved; <see cref="TypeSymbol.TypeKind"/> is read off the CLR type
+    /// rather than assumed, so the same helper serves interfaces and the concrete definitions
+    /// (the dict views) whose arms also need to carry a <c>GenericDefinition</c>.
     /// </summary>
-    private TypeSymbol GetOrCreateInterfaceSymbol(Type interfaceDef)
+    private TypeSymbol GetOrCreateClrDefinitionSymbol(Type clrDef)
     {
-        return _interfaceSymbolCache.GetOrAdd(interfaceDef, static def =>
+        return _interfaceSymbolCache.GetOrAdd(clrDef, static def =>
         {
             var clrArgs = def.IsGenericTypeDefinition
                 ? def.GetGenericArguments()
@@ -783,7 +776,10 @@ internal class ClrTypeBridge
             {
                 Name = ClrNameHelper.StripArity(def.Name),
                 Kind = SymbolKind.Type,
-                TypeKind = TypeKind.Interface,
+                TypeKind = def.IsInterface ? TypeKind.Interface
+                    : def.IsEnum ? TypeKind.Enum
+                    : def.IsValueType ? TypeKind.Struct
+                    : TypeKind.Class,
                 ClrType = def,
                 TypeParameters = typeParams,
                 AccessLevel = AccessLevel.Public

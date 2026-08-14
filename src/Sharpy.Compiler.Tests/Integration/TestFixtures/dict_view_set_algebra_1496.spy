@@ -1,0 +1,47 @@
+# Dict key/items views implement Python's set algebra (PEP 3106): `| & - ^` return a plain set.
+# Every operation is spelled TWICE — once through an annotation-typed binding and once inline on
+# the expression — because those two spellings reach the type system by different producers and
+# used to disagree: the annotation path compiled and threw NotSupportedException at runtime while
+# the inline path was refused outright (#1496).
+def main() -> None:
+    d1: dict[str, int] = {"a": 1, "b": 2}
+    d2: dict[str, int] = {"b": 2, "c": 3}
+
+    # --- keys, expression path ---
+    print(sorted(d1.keys() | d2.keys()))
+    print(sorted(d1.keys() & d2.keys()))
+    print(sorted(d1.keys() - d2.keys()))
+    print(sorted(d1.keys() ^ d2.keys()))
+
+    # --- keys, annotation path (same values, must agree cell for cell) ---
+    ka: DictKeyView[str, int] = d1.keys()
+    kb: DictKeyView[str, int] = d2.keys()
+    print(sorted(ka | kb))
+    print(sorted(ka & kb))
+    print(sorted(ka - kb))
+    print(sorted(ka ^ kb))
+
+    # --- items, expression path ---
+    print(sorted(d1.items() | d2.items()))
+    print(sorted(d1.items() & d2.items()))
+    print(sorted(d1.items() - d2.items()))
+    print(sorted(d1.items() ^ d2.items()))
+
+    # --- items, annotation path ---
+    ia: DictItemsView[str, int] = d1.items()
+    ib: DictItemsView[str, int] = d2.items()
+    print(sorted(ia | ib))
+    print(sorted(ia & ib))
+    print(sorted(ia - ib))
+    print(sorted(ia ^ ib))
+
+    # --- mixed view/set, both orders (difference is not commutative) ---
+    s: set[str] = {"a", "z"}
+    print(sorted(d1.keys() | s))
+    print(sorted(s | d1.keys()))
+    print(sorted(d1.keys() & s))
+    print(sorted(s & d1.keys()))
+    print(sorted(d1.keys() - s))
+    print(sorted(s - d1.keys()))
+    print(sorted(d1.keys() ^ s))
+    print(sorted(s ^ d1.keys()))

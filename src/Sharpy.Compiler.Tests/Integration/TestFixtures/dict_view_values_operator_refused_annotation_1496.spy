@@ -1,0 +1,10 @@
+# The ANNOTATION-path twin of dict_view_values_operator_refused_1496: the same refusal must hold
+# when the values view is bound through a type annotation, since that spelling reaches the type
+# system by a different producer. Agreement between the two paths is the point (#1496).
+def main() -> None:
+    d1: dict[str, int] = {"a": 1}
+    d2: dict[str, int] = {"b": 2}
+    va: DictValuesView[str, int] = d1.values()
+    vb: DictValuesView[str, int] = d2.values()
+    z = va | vb
+    print(z)
