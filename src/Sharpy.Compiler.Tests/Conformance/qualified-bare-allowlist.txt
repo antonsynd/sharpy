@@ -37,29 +37,34 @@
 # `case lib.Box():` produces `UserDefinedType { Name = "lib.Box" }` and the compatibility check
 # refuses it against the scrutinee — `Type pattern 'lib.Box' is incompatible with scrutinee type
 # 'Box[int]'` (SPY0361), plus SPY0220 outside the source set. Measured at the #1445 fix, 2026-08-14.
-# They are left under #1445 rather than re-attributed because #1446 is CLOSED with no fix in the
-# tree and its cells are under an owner ruling; re-pointing a line at a closed issue would be the
-# ratchet violation the rules above forbid. Re-attribute or reopen with that ruling.
+# They are left under #1445: the #1446 annotation-arm fix (2026-08-15) did NOT drain them — even
+# `pattern::generic::inSourceSet` still refuses with SPY0361 in-source-set — so their producer is
+# the pattern's own type resolution, not the non-generic annotation arm #1446 named. #1446 is now
+# reopened (its annotation arm fixed, cross-module half remaining); re-attribute these to it or to a
+# pattern-specific issue once that producer is pinned.
 pattern::plain::outsideSourceSet
 pattern::generic::inSourceSet
 pattern::generic::outsideSourceSet
 
-# #1446 — a module-qualified NON-generic annotation keeps its dotted name. `TypeResolver.cs:721`
-# normalizes `lib.Box[int]` to the bare `Box` (#1134/#1244) and the non-generic arm at `:272` does
-# not, so `lib.Shape` resolves to `UserDefinedType { Name = "lib.Shape" }`. Cosmetic in-source-set,
-# where the two symbols are one object since #1366; outside the source set the name is what remains
-# to compare and the qualified spelling refuses every relation asked of it — assignment (SPY0220),
-# isinstance (SPY0220), constraint (SPY0237), `as?` (SPY0220+SPY0228 InvalidCast) and `except`
-# (SPY0399 TryExceptionTypeNotException, i.e. the walk to Exception came back empty). Those are the
-# #1366/#1407 symptoms on the path that fix did not cover. Note the two annotation-shaped cells
-# AGREE in-source-set, so #1411's fix holds and only the extraction path is affected.
-annotation::plain::inSourceSet
+# #1446 — PARTLY DRAINED (the in-source-set half, 2026-08-15). The non-generic arm of TypeResolver
+# at `:272` kept the dotted `annotation.Name` where the generic arm normalizes `lib.Box[int]` to the
+# bare `Box` (#1134/#1244). It now tracks module-qualification the same way and normalizes
+# `lib.Shape` to the bare `Shape`, so the two IN-SOURCE-SET annotation cells
+# (`annotation::plain::inSourceSet`, `declSiteAnnotation::plain::inSourceSet`) agree and their lines
+# are gone.
+#
+# The five cells below still diverge, and the measured reason is NOT the TypeResolver arm #1446
+# named: OUTSIDE the source set the qualified reference resolves through the cross-module path
+# (`ModuleLoader.ConvertTypeAnnotationToSemanticType`, the #1448 neighbourhood) and the expression
+# positions (construction `lib.Circle()`, `isinstance(x, lib.Circle)`) still carry the dotted name,
+# so the qualified spelling refuses the relation asked of it — assignment (SPY0220), `as?` (SPY0228
+# InvalidCast), `except` (SPY0242/SPY0399) and constraint (SPY0237). #1446 stays OPEN for this
+# cross-module half; the TypeResolver-arm half it was filed for is fixed.
 annotation::plain::outsideSourceSet
 typeTest::plain::outsideSourceSet
 typeTestCast::plain::outsideSourceSet
 typeTestExcept::plain::outsideSourceSet
 constraint::plain::outsideSourceSet
-declSiteAnnotation::plain::inSourceSet
 
 # #1447 — DRAINED. `isinstance(box, lib.Box[int])` analyzed clean and then leaked CS0305 behind
 # SPY0908. The expression-as-type resolver recognised a type-argument list only when it was applied
