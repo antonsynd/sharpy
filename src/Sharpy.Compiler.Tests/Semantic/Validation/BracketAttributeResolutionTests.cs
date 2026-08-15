@@ -290,8 +290,11 @@ def message_box() -> int:
     [Fact]
     public void ResolvesToClrType_IsFalseForANameNothingDeclares()
     {
-        Assert.False(ClrAttributeResolver.ResolvesToClrType("NoSuchAttrXyz"));
-        Assert.True(ClrAttributeResolver.ResolvesToClrType("Obsolete"));
+        // Instance-scoped since #1493: absence verdicts must not outlive the compilation that
+        // reached them. One resolver here IS one compilation.
+        var resolver = new ClrAttributeResolver();
+        Assert.False(resolver.ResolvesToClrType("NoSuchAttrXyz"));
+        Assert.True(resolver.ResolvesToClrType("Obsolete"));
     }
 
     #endregion

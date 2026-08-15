@@ -29,7 +29,7 @@ namespace Sharpy.Compiler.Discovery;
 /// resolves to a type which is not an <see cref="Attribute"/> subclass is left to Roslyn, because
 /// the failure mode that matters here is refusing a bracket attribute that works today.
 /// </remarks>
-internal static class ClrAttributeResolver
+internal sealed class ClrAttributeResolver
 {
     /// <summary>
     /// Namespaces every generated file brings into scope unconditionally, mirroring
@@ -48,15 +48,30 @@ internal static class ClrAttributeResolver
     };
 
     /// <summary>
-    /// Cache of full type name -> "some loaded assembly declares it". Content-addressed: the
-    /// answer is a function of the key and the loaded assembly set, and the one event that can
-    /// change the latter (<see cref="EnsureFrameworkAssembliesLoaded"/>) clears the cache.
-    /// TODO(#1493): that premise fails for OTHER load events — ModuleRegistry.LoadReference (or
-    /// any later assembly load) never clears this, so a long-lived process (the LSP) can serve a
-    /// stale "absent" verdict forever. Scope per compilation like TypeChecker._bclMemberAbsenceMemo,
-    /// or invalidate on the AppDomain's loaded-assembly count.
+    /// PRESENCE verdicts: full type name -> a loaded assembly declares it. Process-wide, and safe
+    /// to keep that way — assemblies do not unload, so a type that exists cannot stop existing.
+    /// Membership is the verdict; there is no false entry here.
     /// </summary>
-    private static readonly ConcurrentDictionary<string, bool> _typeExistsCache = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, byte> s_typePresentCache = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// ABSENCE verdicts, scoped to ONE resolver instance — that is, to one compilation.
+    ///
+    /// <para>#1493: this was process-lifetime alongside the presence half, on the premise that the
+    /// answer is a function of the key and the loaded assembly set, and that the one event changing
+    /// the latter (<see cref="EnsureFrameworkAssembliesLoaded"/>) cleared it. The premise held only
+    /// for loads this class performs itself. <c>ModuleRegistry.LoadReference</c> — or any other
+    /// assembly load — never cleared it, so in a long-lived process (the LSP) a name probed before
+    /// its assembly was loaded stayed "absent" until restart: an SPY0495 that is order-dependent,
+    /// silent, and unfixable by editing the file.</para>
+    ///
+    /// <para>The two polarities are split rather than the whole cache being scoped, because only
+    /// one of them can go stale. That keeps the hot path (a name that resolves) process-wide while
+    /// the verdicts a refusal is built on live exactly as long as the facts they summarize —
+    /// the instance-scoped shape of <c>TypeChecker._bclMemberAbsenceMemo</c> (#1344), the sibling
+    /// pattern from the same batch.</para>
+    /// </summary>
+    private readonly HashSet<string> _typeAbsentThisCompilation = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Namespaces whose shared-framework assemblies have already been pulled in. Monotonic and
@@ -112,7 +127,7 @@ internal static class ClrAttributeResolver
     /// PackageReferences (those are consumed first in Phase 7, AssemblyCompiler). An attribute
     /// type living only in a project-referenced assembly is falsely refused with SPY0495.
     /// </summary>
-    internal static bool ResolvesToClrType(string mangledName, IEnumerable<string>? importedNamespaces = null)
+    internal bool ResolvesToClrType(string mangledName, IEnumerable<string>? importedNamespaces = null)
     {
         // Materialized because the namespaces are walked twice (candidate construction, then the
         // second-chance load) and the caller may hand over a lazy sequence.
@@ -149,7 +164,7 @@ internal static class ClrAttributeResolver
             return false;
 
         // New assemblies invalidate every cached "not found".
-        _typeExistsCache.Clear();
+        InvalidateAbsenceVerdicts();
 
         foreach (var candidate in candidates)
         {
@@ -171,7 +186,7 @@ internal static class ClrAttributeResolver
     /// question the SPY0495 refusal asks — "does it resolve anywhere". Both share the type cache and
     /// the second-chance framework load, so calling both costs one resolution's worth of reflection.</para>
     /// </summary>
-    internal static string? RequiredImportNamespace(
+    internal string? RequiredImportNamespace(
         string mangledName, IEnumerable<string>? importedNamespaces)
     {
         var namespaces = importedNamespaces as IReadOnlyList<string> ?? importedNamespaces?.ToList();
@@ -194,11 +209,11 @@ internal static class ClrAttributeResolver
         if (!loadedSomething)
             return null;
 
-        _typeExistsCache.Clear();
+        InvalidateAbsenceVerdicts();
         return FindRequiredImportNamespace(mangledName, namespaces);
     }
 
-    private static string? FindRequiredImportNamespace(
+    private string? FindRequiredImportNamespace(
         string mangledName, IReadOnlyList<string> importedNamespaces)
     {
         // Any import-free spelling resolving means no import is required — a redundant import that
@@ -221,14 +236,35 @@ internal static class ClrAttributeResolver
         return null;
     }
 
-    private static bool NamespaceResolves(string namespaceName, string mangledName)
+    private bool NamespaceResolves(string namespaceName, string mangledName)
     {
         var prefix = namespaceName.Length == 0 ? "" : namespaceName + ".";
         return TypeExists(prefix + mangledName) || TypeExists(prefix + mangledName + "Attribute");
     }
 
-    private static bool TypeExists(string fullName)
-        => _typeExistsCache.GetOrAdd(fullName, static name => FindType(name) != null);
+    private bool TypeExists(string fullName)
+    {
+        if (s_typePresentCache.ContainsKey(fullName))
+            return true;
+        if (_typeAbsentThisCompilation.Contains(fullName))
+            return false;
+
+        if (FindType(fullName) != null)
+        {
+            s_typePresentCache.TryAdd(fullName, 0);
+            return true;
+        }
+
+        _typeAbsentThisCompilation.Add(fullName);
+        return false;
+    }
+
+    /// <summary>
+    /// Forgets this compilation's absence verdicts. Called when a load has just widened the set of
+    /// types that could exist, so the retry is a real second look rather than a replay of the
+    /// answers that motivated it.
+    /// </summary>
+    private void InvalidateAbsenceVerdicts() => _typeAbsentThisCompilation.Clear();
 
     private static Type? FindType(string fullName)
     {

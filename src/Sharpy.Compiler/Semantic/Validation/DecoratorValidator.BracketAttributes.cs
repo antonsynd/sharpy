@@ -17,6 +17,14 @@ internal partial class DecoratorValidator
     private IReadOnlyList<string> _importedClrNamespaces = Array.Empty<string>();
 
     /// <summary>
+    /// The attribute resolver, held per VALIDATOR rather than reached statically, so its absence
+    /// verdicts die with this compilation instead of outliving the facts they summarize (#1493).
+    /// ValidationPipelineFactory.CreateDefault builds a fresh DecoratorValidator per compilation,
+    /// which is what makes instance lifetime the right scope.
+    /// </summary>
+    private readonly ClrAttributeResolver _attributeResolver = new();
+
+    /// <summary>
     /// Module-name prefixes the emitter treats as .NET framework namespaces — the only imports
     /// that produce a plain <c>using Namespace;</c> rather than a using-alias, and therefore the
     /// only ones that can make an unqualified attribute name resolve. Mirrors
@@ -125,14 +133,14 @@ internal partial class DecoratorValidator
         if (ResolvesToDeclaredType(decorator, mangled))
             return;
 
-        if (ClrAttributeResolver.ResolvesToClrType(mangled, _importedClrNamespaces))
+        if (_attributeResolver.ResolvesToClrType(mangled, _importedClrNamespaces))
         {
             // Resolves as a CLR attribute. If it resolves ONLY through one of the file's imported
             // namespaces (no bare or always-in-scope spelling does), record that namespace so
             // UnusedImportValidator counts the import that brings it into scope as used (#1429). A
             // name reachable via an always-in-scope namespace records nothing, so a redundant import
             // there is still (correctly) reported unused.
-            var requiredImport = ClrAttributeResolver.RequiredImportNamespace(mangled, _importedClrNamespaces);
+            var requiredImport = _attributeResolver.RequiredImportNamespace(mangled, _importedClrNamespaces);
             if (requiredImport != null)
                 Context.SemanticInfo.SetBracketAttributeResolvedNamespace(decorator, requiredImport);
             return;
