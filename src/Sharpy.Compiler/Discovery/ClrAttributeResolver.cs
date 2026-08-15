@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Sharpy.Compiler.Discovery;
 
@@ -72,6 +74,90 @@ internal sealed class ClrAttributeResolver
     /// pattern from the same batch.</para>
     /// </summary>
     private readonly HashSet<string> _typeAbsentThisCompilation = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The project's reference closure, threaded in from the compilation that owns this resolver.
+    /// <see cref="ReferenceClosure.Empty"/> for single-file and REPL shapes, where the proof
+    /// behaves exactly as it did before #1492.
+    /// </summary>
+    private ReferenceClosure _references = ReferenceClosure.Empty;
+
+    /// <summary>
+    /// A metadata-only view of <see cref="_references"/>, built at most once per resolver and only
+    /// when a name has already missed everywhere cheaper.
+    /// </summary>
+    private CSharpCompilation? _referenceProbe;
+    private bool _referenceProbeBuilt;
+
+    /// <summary>
+    /// Points the absence proof at the project's references. Call before validation; changing the
+    /// closure discards any probe built from the previous one.
+    /// </summary>
+    internal void SetReferenceClosure(ReferenceClosure references)
+    {
+        if (ReferenceEquals(_references, references))
+            return;
+
+        _references = references;
+        _referenceProbe = null;
+        _referenceProbeBuilt = false;
+        // Verdicts reached without these references were reached against a smaller world.
+        InvalidateAbsenceVerdicts();
+    }
+
+    /// <summary>
+    /// True when this project carries references that could not be reduced to a probe-able path
+    /// before validation runs. Callers must not refuse an absence they cannot prove (#1492).
+    /// </summary>
+    internal bool HasUnprobedReferences => _references.HasUnprobedReferences;
+
+    /// <summary>
+    /// Whether any REFERENCED assembly declares <paramref name="fullName"/>.
+    ///
+    /// <para>Read as metadata, never loaded into the execution context: probing must not have the
+    /// side effect of loading a user assembly into the compiler's own process.</para>
+    ///
+    /// <para>DEVIATION from the plan's letter, same intent: the plan named
+    /// <c>MetadataLoadContext</c>. Roslyn is used instead because it is already a dependency, it is
+    /// how Phase 7 reads these exact assemblies (so the two phases agree by construction), and it
+    /// needs no <c>PathAssemblyResolver</c> / core-assembly plumbing. Both are reflection-only;
+    /// this one adds no NuGet dependency.</para>
+    /// </summary>
+    private bool ReferencedAssembliesDeclare(string fullName)
+    {
+        if (_references.AssemblyPaths.Count == 0)
+            return false;
+
+        if (!_referenceProbeBuilt)
+        {
+            _referenceProbeBuilt = true;
+            _referenceProbe = BuildReferenceProbe(_references.AssemblyPaths);
+        }
+
+        return _referenceProbe?.GetTypeByMetadataName(fullName) != null;
+    }
+
+    private static CSharpCompilation? BuildReferenceProbe(IReadOnlyList<string> paths)
+    {
+        var references = new List<MetadataReference>();
+        foreach (var path in paths)
+        {
+            try
+            {
+                references.Add(MetadataReference.CreateFromFile(path));
+            }
+            catch (Exception ex) when (ex is IOException or BadImageFormatException or UnauthorizedAccessException)
+            {
+                // An assembly that cannot be read contributes no types. It also cannot prove an
+                // absence — but the caller already treats a path that does not resolve as unprobed,
+                // so nothing is refused on the strength of this miss.
+            }
+        }
+
+        return references.Count == 0
+            ? null
+            : CSharpCompilation.Create("sharpy.reference.probe", references: references);
+    }
 
     /// <summary>
     /// Namespaces whose shared-framework assemblies have already been pulled in. Monotonic and
@@ -254,6 +340,13 @@ internal sealed class ClrAttributeResolver
             s_typePresentCache.TryAdd(fullName, 0);
             return true;
         }
+
+        // Last, because it is the most expensive and the least often needed: the project's own
+        // references. Not added to the process-wide presence cache — that verdict is a function of
+        // THIS project's references, and a different project in the same process has different
+        // ones (#1492).
+        if (ReferencedAssembliesDeclare(fullName))
+            return true;
 
         _typeAbsentThisCompilation.Add(fullName);
         return false;

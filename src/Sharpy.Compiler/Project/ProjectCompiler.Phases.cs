@@ -763,6 +763,33 @@ internal partial class ProjectCompiler
     /// <summary>
     /// Phase 5: Perform semantic analysis (type checking) on all modules
     /// </summary>
+    /// <summary>
+    /// The project's references as the absence proof can see them at Phase 5 (#1492).
+    ///
+    /// <para>A <c>&lt;Reference&gt;</c> that resolves to an existing file is PROBE-ABLE, and
+    /// <c>AssemblyCompiler</c> applies the same File.Exists test in Phase 7 — so the two phases
+    /// agree about which references are real. Everything else is UNPROBED: a PackageReference has
+    /// no path until NuGet resolution, and a Reference whose file is missing has none either.
+    /// A project carrying anything unprobed must not have an absence refused on its behalf.</para>
+    /// </summary>
+    private static Discovery.ReferenceClosure BuildReferenceClosure(ProjectConfig config)
+    {
+        var probeable = new List<string>();
+        var unprobed = config.PackageReferences.Count > 0;
+
+        foreach (var reference in config.References)
+        {
+            if (File.Exists(reference))
+                probeable.Add(reference);
+            else
+                unprobed = true;
+        }
+
+        return probeable.Count == 0 && !unprobed
+            ? Discovery.ReferenceClosure.Empty
+            : new Discovery.ReferenceClosure(probeable, unprobed);
+    }
+
     private bool PerformSemanticAnalysis(FileCompilationPipeline compilationPipeline, ProjectConfig config, CancellationToken cancellationToken = default)
     {
         _logger.LogInfo("Phase 5: Semantic Analysis");
@@ -881,7 +908,8 @@ internal partial class ProjectCompiler
                     deferredCycleSymbols: deferredSymbols,
                     deferredCycleFiles: deferredFiles,
                     moduleRegistry: _moduleRegistry,
-                    features: fileFeatures);
+                    features: fileFeatures,
+                    referenceClosure: BuildReferenceClosure(config));
                 var typeChecker = typeCheckResult.TypeChecker;
 
                 if (typeCheckResult.Aborted)

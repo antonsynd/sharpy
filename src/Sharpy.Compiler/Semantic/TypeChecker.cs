@@ -254,6 +254,12 @@ internal partial class TypeChecker
     /// </summary>
     public Shared.FeatureFlags Features { get; set; } = Shared.FeatureFlags.None;
 
+    /// <summary>
+    /// The project's assembly references, forwarded to validators. Empty unless a project
+    /// compilation supplies one (#1492).
+    /// </summary>
+    internal Discovery.ReferenceClosure ReferenceClosure { get; set; } = Discovery.ReferenceClosure.Empty;
+
     // Whether the current module is an entry point file
     private bool _isEntryPoint = false;
 
@@ -365,6 +371,8 @@ internal partial class TypeChecker
         // the `to` operator, #1127); retained deliberately for future feature-conditional
         // diagnostics — see SemanticContext.Features.
         context.Features = Features;
+        // Thread the project's references so the SPY0495 absence proof can consult them (#1492).
+        context.ReferenceClosure = ReferenceClosure;
         return context;
     }
 

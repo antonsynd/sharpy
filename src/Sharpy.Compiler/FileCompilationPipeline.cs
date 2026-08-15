@@ -107,7 +107,8 @@ internal class FileCompilationPipeline
         IReadOnlySet<string>? deferredCycleSymbols = null,
         IReadOnlySet<string>? deferredCycleFiles = null,
         ModuleRegistry? moduleRegistry = null,
-        Shared.FeatureFlags? features = null)
+        Shared.FeatureFlags? features = null,
+        Discovery.ReferenceClosure? referenceClosure = null)
     {
         var effectiveSemanticInfo = fileSemanticInfo ?? _semanticInfo;
         var effectiveBinding = fileSemanticBinding ?? _semanticBinding;
@@ -122,7 +123,9 @@ internal class FileCompilationPipeline
             DeferredCycleSymbols = deferredCycleSymbols,
             DeferredCycleFiles = deferredCycleFiles,
             ModuleRegistry = moduleRegistry,
-            Features = features ?? Shared.FeatureFlags.None
+            Features = features ?? Shared.FeatureFlags.None,
+            // #1492 — the SPY0495 absence proof consults these.
+            ReferenceClosure = referenceClosure ?? Discovery.ReferenceClosure.Empty
         };
 
         // Import root causes so TypeChecker can suppress cascading errors

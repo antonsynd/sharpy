@@ -38,8 +38,12 @@ public class BracketAttributeResolutionTests
     }
 
     private static SemanticContext Validate(string code)
+        => Validate(code, ReferenceClosure.Empty);
+
+    private static SemanticContext Validate(string code, ReferenceClosure references)
     {
         var (module, context) = Parse(code);
+        context.ReferenceClosure = references;
         new DecoratorValidator().Validate(module, context);
         return context;
     }
@@ -295,6 +299,158 @@ def message_box() -> int:
         var resolver = new ClrAttributeResolver();
         Assert.False(resolver.ResolvesToClrType("NoSuchAttrXyz"));
         Assert.True(resolver.ResolvesToClrType("Obsolete"));
+    }
+
+    #endregion
+
+    #region Reference closure (#1492)
+
+    // The absence proof used to consult loaded assemblies and the shared framework only. A
+    // project's references are consumed in Phase 7, long after Phase 5 has refused — so an
+    // attribute living ONLY in a .spyproj <Reference> was declared absent by a proof that had
+    // never looked where it lives.
+    //
+    // These two cells are a PAIR and must be read together. The first is worthless without the
+    // second: any blanket "this project has references, so stop refusing" satisfies it while
+    // reopening the #1146 leak (CS0246 behind SPY0908) for every project with any reference.
+
+    /// <summary>
+    /// Builds a real assembly declaring one attribute, and returns its path — the shape of a
+    /// <c>.spyproj</c> &lt;Reference&gt; pointing at something the compiler has not loaded.
+    /// </summary>
+    private static string EmitReferenceAssembly(string namespaceName, string attributeName, string dir)
+    {
+        var source = $@"
+namespace {namespaceName}
+{{
+    public sealed class {attributeName} : System.Attribute {{ }}
+}}";
+        // File.Exists, not just a non-empty Location: this suite runs alongside tests that build
+        // and delete assemblies in temp directories, and a stale Location makes CreateFromFile
+        // throw FileNotFound. Measured — it flaked exactly that way.
+        var references = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && File.Exists(a.Location))
+            .Select(a => Microsoft.CodeAnalysis.MetadataReference.CreateFromFile(a.Location))
+            .ToList<Microsoft.CodeAnalysis.MetadataReference>();
+
+        var assemblyName = $"SharpyRef{Guid.NewGuid():N}";
+        var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create(
+            assemblyName,
+            new[] { Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source) },
+            references,
+            new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(
+                Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary));
+
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, assemblyName + ".dll");
+        using var stream = File.Create(path);
+        var result = compilation.Emit(stream);
+        Assert.True(result.Success,
+            "the reference assembly must build, or the positive cell measures nothing: "
+            + string.Join("; ", result.Diagnostics.Where(
+                d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)));
+        return path;
+    }
+
+    /// <summary>
+    /// (a) THE POSITIVE. An attribute whose type lives ONLY in a referenced assembly resolves.
+    /// The assembly is emitted to disk and never loaded into this process, so the pre-#1492 proof
+    /// could not have seen it — which is what makes the cell non-vacuous.
+    /// </summary>
+    [Fact]
+    public void AnAttributeLivingOnlyInAProjectReference_IsNotRefused()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"sharpy_ref_{Guid.NewGuid():N}");
+        try
+        {
+            var ns = "Sharpy.RefProbe";
+            var path = EmitReferenceAssembly(ns, "WidgetAttribute", dir);
+
+            // Control: nothing has loaded it, so without the closure it IS refused. This is the
+            // measurement that proves the cell below is about the reference probe and not about
+            // the attribute having been resident all along.
+            var withoutReferences = Validate($@"
+@[{ns}.Widget]
+class Thing:
+    pass
+");
+            Assert.Single(withoutReferences.Diagnostics.GetErrors(),
+                e => e.Code == DiagnosticCodes.Validation.UnknownBracketAttribute);
+
+            var withReferences = Validate($@"
+@[{ns}.Widget]
+class Thing:
+    pass
+", new ReferenceClosure(new[] { path }, HasUnprobedReferences: false));
+
+            AssertNoUnknownBracketAttribute(withReferences);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    /// <summary>
+    /// (b) THE DISCRIMINATING NEGATIVE. A genuinely absent name, in a project that HAS a
+    /// reference — and a probed one, so the absence really was proved. Still refused.
+    ///
+    /// <para>This is the cell a blanket pass-through fails. Without it, "the project has
+    /// references" would be enough to stop refusing anything, and #1427's whole point — a typo
+    /// gets a clean diagnostic instead of CS0246 behind SPY0908 — would be undone for every
+    /// project that references anything.</para>
+    /// </summary>
+    [Fact]
+    public void AGenuinelyAbsentName_InAProjectWithProbedReferences_IsStillRefused()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"sharpy_ref_{Guid.NewGuid():N}");
+        try
+        {
+            var path = EmitReferenceAssembly("Sharpy.RefProbe", "WidgetAttribute", dir);
+
+            var context = Validate(@"
+@[definitely_no_such_attr_xyz]
+class Thing:
+    pass
+", new ReferenceClosure(new[] { path }, HasUnprobedReferences: false));
+
+            var error = SingleUnknownBracketAttribute(context);
+            Assert.Contains("names no attribute type that is in scope", error.Message);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    /// <summary>
+    /// The scoped fallback, and its boundary. A project carrying an UNPROBED reference (an
+    /// unresolved PackageReference) cannot prove absence, so it does not refuse — while the
+    /// negative cell above shows a project whose references were all probed still does.
+    /// </summary>
+    [Fact]
+    public void AnUnprobedReference_SuspendsTheRefusal_ForThatProjectOnly()
+    {
+        var unprobed = Validate(@"
+@[definitely_no_such_attr_xyz]
+class Thing:
+    pass
+", new ReferenceClosure(Array.Empty<string>(), HasUnprobedReferences: true));
+
+        AssertNoUnknownBracketAttribute(unprobed);
+
+        // Same source, nothing unprobed: refused. The downgrade is a property of the PROJECT's
+        // reference shape, not a general softening of the check.
+        var proved = Validate(@"
+@[definitely_no_such_attr_xyz]
+class Thing:
+    pass
+");
+        SingleUnknownBracketAttribute(proved);
     }
 
     #endregion

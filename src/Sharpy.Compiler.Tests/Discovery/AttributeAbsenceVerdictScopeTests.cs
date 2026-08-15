@@ -41,8 +41,11 @@ namespace {namespaceName}
     public sealed class {attributeName} : System.Attribute {{ }}
 }}";
 
+        // File.Exists, not just a non-empty Location: this suite runs alongside tests that build
+        // and delete assemblies in temp directories, and a stale Location makes CreateFromFile
+        // throw FileNotFound. Measured — it flaked exactly that way.
         var references = AppDomain.CurrentDomain.GetAssemblies()
-            .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
+            .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && File.Exists(a.Location))
             .Select(a => MetadataReference.CreateFromFile(a.Location))
             .ToList<MetadataReference>();
 

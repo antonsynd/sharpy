@@ -83,6 +83,13 @@ internal class SemanticContext
     /// </summary>
     public Shared.FeatureFlags Features { get; set; } = Shared.FeatureFlags.None;
 
+    /// <summary>
+    /// The project's assembly references, as seen at validation time. Threaded so an absence proof
+    /// can consult the assemblies the program will actually be compiled against, rather than
+    /// refusing a name it never looked for (#1492). Empty for single-file and REPL shapes.
+    /// </summary>
+    internal Discovery.ReferenceClosure ReferenceClosure { get; set; } = Discovery.ReferenceClosure.Empty;
+
     // Configuration
     public bool ContinueAfterErrors { get; set; } = true;
     public int MaxErrors { get; set; } = 100;

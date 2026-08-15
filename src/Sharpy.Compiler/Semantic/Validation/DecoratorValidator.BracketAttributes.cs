@@ -133,6 +133,11 @@ internal partial class DecoratorValidator
         if (ResolvesToDeclaredType(decorator, mangled))
             return;
 
+        // The proof now includes the project's own references (#1492), so a type living only in a
+        // .spyproj <Reference> resolves here instead of being refused by a proof that never looked
+        // where it lives.
+        _attributeResolver.SetReferenceClosure(Context.ReferenceClosure);
+
         if (_attributeResolver.ResolvesToClrType(mangled, _importedClrNamespaces))
         {
             // Resolves as a CLR attribute. If it resolves ONLY through one of the file's imported
@@ -145,6 +150,20 @@ internal partial class DecoratorValidator
                 Context.SemanticInfo.SetBracketAttributeResolvedNamespace(decorator, requiredImport);
             return;
         }
+
+        // Nothing this compilation can see declares it. Refusing is only sound when the absence
+        // was actually PROVED — and it is not when the project carries a reference that could not
+        // be reduced to a probe-able path before Phase 5 (an unresolved PackageReference, a
+        // Reference whose file is not there yet). Those assemblies may well declare the attribute,
+        // and Phase 7 will consume them.
+        //
+        // Scoped deliberately, NOT blanket: a project whose every reference was probed still gets
+        // the full refusal below. A blanket "has references, so stop refusing" would reopen the
+        // #1146 leak — CS0246 behind SPY0908 instead of a clean diagnostic — for every project
+        // with any reference at all. The negative cell in BracketAttributeResolutionTests pins
+        // this distinction (#1492).
+        if (_attributeResolver.HasUnprobedReferences)
+            return;
 
         var attempted = $"'{mangled}' or '{mangled}Attribute'";
         var message =
