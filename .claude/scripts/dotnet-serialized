@@ -215,10 +215,13 @@ kill_tree() {
 }
 
 file_mtime() {
-    # There is no portable spelling: BSD/macOS wants -f %m, GNU/Linux wants -c %Y, and each
-    # rejects the other's flag. A single spelling does not fail loudly on the wrong platform —
-    # it prints nothing, which the caller below would read as "no progress" and act on.
-    stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null
+    # There is no portable spelling: GNU/Linux wants -c %Y, BSD/macOS wants -f %m — and the GNU
+    # spelling MUST come first. BSD stat rejects -c (illegal option, non-zero) and falls through,
+    # but GNU stat does NOT reject -f: it reads -f as "filesystem status" and prints a multi-line
+    # block with exit 0, so a -f-first order never falls through on Linux, and the caller's
+    # [!0-9] guard then reads that block as "no progress" every poll — the watchdog never fires
+    # on Linux (measured red on CI 2026-08-15: the four kill cells timed out because of this).
+    stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null
 }
 
 # Holder-side monitor: only the holder knows both its own log file and its own child.

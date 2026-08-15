@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import itertools
 import os
+import re
 import signal
 import subprocess
 import time
@@ -714,18 +715,23 @@ class TestStallWatchdog:
 
 def test_the_portable_stat_fallback_resolves_on_this_platform(tmp_path: Path):
     """
-    There is no portable ``stat`` spelling: macOS/BSD wants ``stat -f %m``, GNU/Linux wants
-    ``stat -c %Y``, and each rejects the other's flag. This suite runs on BOTH (developer macOS,
-    ubuntu CI), so the two-spelling fallback any shell-side mtime read must use is executed here
-    rather than assumed. A single spelling does not error loudly on the wrong platform — it
-    prints nothing, which downstream reads as a legitimate value.
+    There is no portable ``stat`` spelling: GNU/Linux wants ``stat -c %Y``, BSD/macOS wants
+    ``stat -f %m``, and the GNU spelling MUST come first — BSD rejects ``-c`` and falls through,
+    but GNU does NOT reject ``-f`` (it prints filesystem status with exit 0), so a BSD-first order
+    silently returns non-mtime output on Linux. This suite runs on BOTH (developer macOS, ubuntu
+    CI), so we execute the WRAPPER's ACTUAL ``file_mtime`` command — extracted from the script,
+    never a hand-copied duplicate that could drift from it and pass while the real one is broken.
     """
     probe = tmp_path / "probe.txt"
     probe.write_text("x", encoding="utf-8")
 
-    result = subprocess.run(
-        ["/bin/sh", "-c", f'stat -f %m "{probe}" 2>/dev/null || stat -c %Y "{probe}" 2>/dev/null'],
-        capture_output=True, text=True)
+    source = WRAPPER.read_text(encoding="utf-8")
+    match = re.search(r"stat -[cf] %[mY][^\n]*", source)
+    assert match, "could not find the file_mtime stat fallback in the wrapper"
+    command = match.group(0).replace('"$1"', f'"{probe}"')
+
+    result = subprocess.run(["/bin/sh", "-c", command], capture_output=True, text=True)
 
     assert result.stdout.strip().isdigit(), (
-        f"neither stat spelling produced an mtime here: {result!r}")
+        f"the wrapper's stat fallback did not produce an mtime on this platform: "
+        f"command={command!r} {result!r}")
