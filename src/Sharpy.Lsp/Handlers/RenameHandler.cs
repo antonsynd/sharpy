@@ -153,8 +153,8 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         // binds the declaration, so a function-local nothing references still renames — the
         // name-and-position scan below cannot see one (#1232, the #1222 template).
         if (node is VariableDeclaration varDecl
-            && IsOnName(line, col, varDecl.NameLineStart, varDecl.NameColumnStart, varDecl.Name.Length,
-                varDecl.IsNameBacktickEscaped))
+            && IsOnNameExtent(line, col, varDecl.NameLineStart, varDecl.NameColumnStart,
+                varDecl.NameColumnEnd))
         {
             var bound = query.GetDeclarationSymbol(varDecl);
             if (bound != null)
@@ -175,8 +175,8 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         // and not in module scope, so only the node-keyed map can answer for it (#1232).
         if (node is FunctionDef funcDef)
         {
-            if (IsOnName(line, col, funcDef.NameLineStart, funcDef.NameColumnStart, funcDef.Name.Length,
-                    funcDef.IsNameBacktickEscaped))
+            if (IsOnNameExtent(line, col, funcDef.NameLineStart, funcDef.NameColumnStart,
+                    funcDef.NameColumnEnd))
             {
                 var bound = query.GetFunctionDeclarationSymbol(funcDef);
                 if (bound != null)
@@ -221,17 +221,13 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         // Handle declaration nodes where the name is a string property, not an Identifier child
         (string name, int nameLine, int nameCol)? decl = node switch
         {
-            ClassDef c when IsOnName(line, col, c.NameLineStart, c.NameColumnStart, c.Name.Length,
-                c.IsNameBacktickEscaped)
+            ClassDef c when IsOnNameExtent(line, col, c.NameLineStart, c.NameColumnStart, c.NameColumnEnd)
                 => (c.Name, c.LineStart, c.ColumnStart),
-            StructDef s when IsOnName(line, col, s.NameLineStart, s.NameColumnStart, s.Name.Length,
-                s.IsNameBacktickEscaped)
+            StructDef s when IsOnNameExtent(line, col, s.NameLineStart, s.NameColumnStart, s.NameColumnEnd)
                 => (s.Name, s.LineStart, s.ColumnStart),
-            InterfaceDef i when IsOnName(line, col, i.NameLineStart, i.NameColumnStart, i.Name.Length,
-                i.IsNameBacktickEscaped)
+            InterfaceDef i when IsOnNameExtent(line, col, i.NameLineStart, i.NameColumnStart, i.NameColumnEnd)
                 => (i.Name, i.LineStart, i.ColumnStart),
-            EnumDef e when IsOnName(line, col, e.NameLineStart, e.NameColumnStart, e.Name.Length,
-                e.IsNameBacktickEscaped)
+            EnumDef e when IsOnNameExtent(line, col, e.NameLineStart, e.NameColumnStart, e.NameColumnEnd)
                 => (e.Name, e.LineStart, e.ColumnStart),
             _ => null
         };
@@ -285,8 +281,8 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         foreach (var handler in t.Handlers)
         {
             if (handler.Name == null
-                || !IsOnName(line, col, handler.NameLineStart, handler.NameColumnStart, handler.Name.Length,
-                    handler.IsNameBacktickEscaped))
+                || !IsOnNameExtent(line, col, handler.NameLineStart, handler.NameColumnStart,
+                    handler.NameColumnEnd))
             {
                 continue;
             }
@@ -311,8 +307,8 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         foreach (var item in w.Items)
         {
             if (item.Name == null
-                || !IsOnName(line, col, item.NameLineStart, item.NameColumnStart, item.Name.Length,
-                    item.IsNameBacktickEscaped))
+                || !IsOnNameExtent(line, col, item.NameLineStart, item.NameColumnStart,
+                    item.NameColumnEnd))
             {
                 continue;
             }
@@ -333,19 +329,6 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
     }
 
     /// <summary>
-    /// Whether the cursor sits on a declaration's name. <paramref name="escaped"/> names occupy
-    /// two more columns than their text — the name starts at the opening backtick — so the last
-    /// characters of <c>`event`</c> are on the name too (#1281).
-    /// </summary>
-    private static bool IsOnName(
-        int cursorLine, int cursorCol, int nameLineStart, int nameColStart, int nameLength, bool escaped)
-    {
-        return cursorLine == nameLineStart
-            && cursorCol >= nameColStart
-            && cursorCol < nameColStart + nameLength + (escaped ? BacktickPairLength : 0);
-    }
-
-    /// <summary>
     /// Whether the cursor sits inside a RECORDED name extent — <paramref name="nameColEnd"/> is the
     /// parser's exclusive end, taken from the name token, so escaped spellings are already covered
     /// and no backtick compensation applies here (#1454). A node with no recorded extent reports
@@ -359,16 +342,31 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
             && cursorCol < nameColEnd;
     }
 
-    /// <summary>The two backticks an escaped spelling adds to the name's source extent.</summary>
+    /// <summary>
+    /// The two backticks an escaped spelling adds to the name's source extent.
+    /// </summary>
+    /// <remarks>
+    /// This constant no longer CONSTRUCTS any extent — since #1454 every extent this handler uses is
+    /// one the parser recorded from the name token. Its single remaining use is
+    /// <see cref="ReferenceExtentLength"/>, which RECOGNIZES an already-recorded span as the escaped
+    /// spelling (plan-80eee2 Design Decision 7). Recognition and reconstruction are different jobs:
+    /// the first asks what a measured number means, the second invents one.
+    /// </remarks>
     private const int BacktickPairLength = 2;
 
     /// <summary>
-    /// How many characters this symbol's name occupies at its declaration. An escaped declaration
-    /// spans its backticks too, and an edit sized to <c>Name.Length</c> replaces all but the last
-    /// two characters — leaving backtick debris behind in the renamed source (#1281).
+    /// How many characters this symbol's name occupies at its declaration, from the extent the
+    /// parser recorded (#1454). Symbols with no parsed node — CLR imports — answer through
+    /// <see cref="Symbol.EffectiveNameColumnEnd"/>'s fallback, which is where the old
+    /// <c>Name.Length</c> + backtick-pair derivation now lives, once, on the symbol itself.
     /// </summary>
+    /// <remarks>
+    /// An edit sized to <c>Name.Length</c> against an escaped declaration replaces all but the last
+    /// two characters and leaves backtick debris in the renamed source (#1281) — that is the defect
+    /// the recorded extent removes the possibility of, rather than compensating for.
+    /// </remarks>
     private static int NameExtentLength(Symbol symbol) =>
-        symbol.Name.Length + (symbol.IsNameBacktickEscaped ? BacktickPairLength : 0);
+        (symbol.EffectiveNameColumnEnd - symbol.EffectiveNameColumn) ?? symbol.Name.Length;
 
     /// <summary>
     /// How many characters one reference occupies. The recorded span is the identifier token's,

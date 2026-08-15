@@ -781,6 +781,58 @@ public class RenameHandlerTests : IDisposable
     }
 
     /// <summary>
+    /// #1380/#1454: the cursor on the CLOSING backtick of an escaped occurrence is on the name.
+    ///
+    /// <para>Both halves are covered because they answer through different machinery. The
+    /// declaration cursor hit-tests the extent the PARSER recorded on the node
+    /// (<c>NameColumnStart</c>..<c>NameColumnEnd</c>), while the reference cursor is resolved by
+    /// <c>FindNodeAtPosition</c> against the identifier token's recorded span (#1281). Before #1454
+    /// the declaration half was a handler-side reconstruction — start plus <c>Name.Length</c> plus a
+    /// backtick constant — that happened to agree; the point of the recording is that agreement is
+    /// no longer a coincidence to be maintained. That is what the mutation check on
+    /// <c>NameExtentLength</c> measures.</para>
+    /// </summary>
+    [Theory]
+    // Line 1: "    `event`: int = 1"  — declaration extent [4, 11), closing backtick at 10
+    [InlineData(1, 10, "the declaration's closing backtick")]
+    // Line 2: "    print(`event`)"    — reference extent [10, 17), closing backtick at 16
+    [InlineData(2, 16, "the reference's closing backtick")]
+    public async Task Rename_CursorOnClosingBacktick_RenamesTheWholeName(
+        int cursorLine, int cursorChar, string because)
+    {
+        var source = "def main() -> None:\n    `event`: int = 1\n    print(`event`)\n";
+
+        var result = await RenameAsync(source, cursorLine, cursorChar, "handler");
+
+        result.Should().NotBeNull($"a cursor on {because} is a cursor on the name");
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+
+        edits.Should().HaveCount(2, "the declaration and its one reference, wherever the cursor sat");
+        edits.Should().Contain(e =>
+            e.Range.Start.Line == 1 && e.Range.Start.Character == 4 && e.Range.End.Character == 11);
+        edits.Should().Contain(e =>
+            e.Range.Start.Line == 2 && e.Range.Start.Character == 10 && e.Range.End.Character == 17);
+        edits.Should().OnlyContain(e => e.NewText == "handler");
+    }
+
+    /// <summary>
+    /// The negative control for the cell above: one column past the closing backtick is NOT on the
+    /// name. Without this, an extent that over-reached by any amount would still pass.
+    /// </summary>
+    [Fact]
+    public async Task Rename_CursorPastTheClosingBacktick_IsNotOnTheName()
+    {
+        // Line 1: "    `event`: int = 1" — column 11 is the ':' following the extent [4, 11).
+        var source = "def main() -> None:\n    `event`: int = 1\n    print(`event`)\n";
+
+        var result = await RenameAsync(source, 1, 11, "handler");
+
+        result.Should().BeNull(
+            "column 11 is the ':' after the name — an extent that answered here would be reaching "
+            + "past what the parser measured");
+    }
+
+    /// <summary>
     /// #1281: the same rename onto a name that cannot be written bare keeps the escape.
     /// </summary>
     [Fact]
