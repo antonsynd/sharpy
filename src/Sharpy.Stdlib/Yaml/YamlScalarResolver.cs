@@ -30,9 +30,41 @@ namespace Sharpy
         /// <see cref="long"/>, <see cref="double"/>, or the original <see cref="string"/>.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Only for scalars written PLAIN. A quoted scalar is a string by YAML's own rules, and
         /// resolving one would make <c>yaml.safe_load("\"0.1\"")</c> a number — callers must check
         /// the scalar's style before asking.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>Two YAML 1.1 families are deliberately NOT resolved here.</b> Recorded as decisions
+        /// rather than left as gaps, because an unlabelled omission in a resolver is
+        /// indistinguishable from a bug nobody has noticed, and the next reader would either
+        /// "fix" it or leave it alone for the wrong reason. Both are pinned by
+        /// <c>YamlScalarResolverFamilyTests.SexagesimalAndTimestamp_AreDeliberatelyNotResolved</c>.
+        /// </para>
+        ///
+        /// <list type="bullet">
+        /// <item><description>
+        /// <b>Sexagesimal — DECLINED</b> (owner ruling 2026-08-13, #1465). PyYAML reads
+        /// <c>12:30</c> as 750 and <c>1:2:3</c> as 3723, following YAML 1.1's base-60 integer and
+        /// float arms. YAML 1.2 dropped the type outright, and it is the family most likely to
+        /// surprise: a time-of-day, a port range, or a git ref written plain silently becomes an
+        /// integer. Sharpy keeps them strings. This is a permanent stated position, so it lives
+        /// in a test that asserts it and NOT in the differential-execution allowlist — an
+        /// allowlist entry means "ought to agree, does not yet, will drain", which is the
+        /// opposite claim.
+        /// </description></item>
+        /// <item><description>
+        /// <b>Timestamp — DEFERRED</b> (#1465). PyYAML reads <c>2024-01-01</c> as a
+        /// <c>datetime.date</c>. The blocker is not the regex but the target type: this method
+        /// returns <c>null</c>/<c>bool</c>/<c>int</c>/<c>long</c>/<c>double</c>/<c>string</c>, and
+        /// what a date should become in that position is undecided — Sharpy's <c>datetime</c>
+        /// module has no settled analogue for an untyped-load slot, and picking one here would
+        /// decide it by accident for every caller. Deferred until that type decision is made,
+        /// not dropped.
+        /// </description></item>
+        /// </list>
         /// </remarks>
         internal static object? Resolve(string value)
         {
