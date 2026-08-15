@@ -9,8 +9,11 @@ namespace Sharpy.Compiler.Tests.Properties.Metamorphic.Transforms;
 /// line is the variable's sole binding. A second <c>x = …</c> in the same scope is a reassignment,
 /// and annotating it declares a NEW variable — so the transform requires exactly one unannotated
 /// binding of the name and no other binding form (loop target, <c>as</c> alias, parameter, keyword
-/// argument, attribute). Literals too large for <c>int</c> are skipped because inference gives them
-/// <c>long</c>, and only function bodies qualify (the same line in a class body declares a field).</para>
+/// argument, attribute, or a module-level property of the same name — a bare <c>name = v</c> there
+/// runs the setter (#1459) rather than declaring a local, so annotating it would redeclare it as a
+/// shadowing local and change the program's diagnostics). Literals too large for <c>int</c> are
+/// skipped because inference gives them <c>long</c>, and only function bodies qualify (the same line
+/// in a class body declares a field).</para>
 /// </summary>
 internal sealed partial class AddRedundantTypeAnnotationTransform : IAstTransform
 {
@@ -73,6 +76,11 @@ internal sealed partial class AddRedundantTypeAnnotationTransform : IAstTransfor
             $@"\bdef\b[^\n]*\b{escaped}\b",   // function name or parameter
             $@"\.\s*{escaped}\b",             // attribute of the same name
             $@"\b(global|nonlocal)\b[^\n]*\b{escaped}\b",
+            // module-level property of this name: a bare `name = v` runs the setter (#1459), so
+            // annotating it would redeclare it as a shadowing local (a different program). Anchored
+            // to column 0 — a class-level property is indented and stored via `self.name`, never a
+            // bare name, so it cannot reach this transform's target line.
+            $@"(?m)^property\b[ \t]+(?:(?:get|set|init)[ \t]+)?{escaped}\b",
         })
         {
             if (new Regex(pattern).IsMatch(masked.Masked))

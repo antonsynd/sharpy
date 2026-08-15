@@ -419,6 +419,29 @@ public class MetamorphicHarnessTests
         Assert.Equal(source, new AddRedundantTypeAnnotationTransform().Apply(source));
     }
 
+    /// <summary>
+    /// A bare <c>level = 6</c> whose name is a module-level property is a store through the setter
+    /// (#1459), not a local declaration — the setter demonstrably runs. Annotating it as
+    /// <c>level: int = 6</c> redeclares a shadowing local that is then genuinely unused, raising
+    /// SPY0451; the annotation is therefore NOT redundant on this shape and the transform must
+    /// decline. This is the exact <c>accessor_param_module_level</c> corpus shape whose
+    /// <c>AddRedundantTypeAnnotation</c> cell went red once #1459 made the base store warning-free.
+    /// </summary>
+    [Fact]
+    public void AddRedundantTypeAnnotation_DeclinesAStoreThroughAModuleLevelProperty()
+    {
+        const string source =
+            "_backing: int = 0\n" +
+            "\n" +
+            "property set level(v: int):\n" +
+            "    _backing = v + 1\n" +
+            "\n" +
+            "def main() -> None:\n" +
+            "    level = 6\n" +
+            "    print(_backing)\n";
+        Assert.Equal(source, new AddRedundantTypeAnnotationTransform().Apply(source));
+    }
+
     // ---- masking ----
 
     [Fact]
