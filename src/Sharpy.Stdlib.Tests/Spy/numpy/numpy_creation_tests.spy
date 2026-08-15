@@ -119,6 +119,37 @@ def test_eye_negative_throws():
 # -- arange --
 
 @test
+def test_arange_single_argument_reads_it_as_stop():
+    # numpy reads ONE argument as `stop`, not `start` — which is why this could not be a default
+    # on the two-argument form and needed its own overload (#1469). Cells verified against
+    # numpy 2.5.1: arange(6.0) -> [0. 1. 2. 3. 4. 5.].
+    arr: np.ndarray[float] = np.arange(6.0)
+    assert arr.shape[0] == 6
+    assert np.allclose(arr, np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0]))
+
+@test
+def test_arange_single_argument_truncates_a_fractional_stop():
+    # numpy 2.5.1: arange(2.5) -> [0. 1. 2.] — the interval is half-open, so 2.5 is excluded and
+    # the count is ceil(2.5).
+    arr: np.ndarray[float] = np.arange(2.5)
+    assert arr.shape[0] == 3
+    assert np.allclose(arr, np.array([0.0, 1.0, 2.0]))
+
+@test
+def test_arange_single_argument_with_non_positive_stop_is_empty():
+    # numpy 2.5.1: arange(0) and arange(-3.0) are both empty rather than errors.
+    zero: np.ndarray[float] = np.arange(0.0)
+    assert zero.size == 0
+
+    negative: np.ndarray[float] = np.arange(-3.0)
+    assert negative.size == 0
+
+@test
+def test_arange_single_argument_agrees_with_the_explicit_two_argument_form():
+    # The overload delegates rather than reimplementing, and this is what says so.
+    assert np.allclose(np.arange(6.0), np.arange(0.0, 6.0))
+
+@test
 def test_arange_default_step_generates():
     arr = np.arange(0.0, 5.0)
     assert arr.shape[0] == 5

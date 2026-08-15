@@ -178,6 +178,24 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return evenly spaced values within the half-open interval <c>[0, stop)</c> — numpy's
+        /// single-argument <c>arange</c> (#1469).
+        /// </summary>
+        /// <param name="stop">Exclusive end of the interval.</param>
+        /// <remarks>
+        /// A separate overload rather than a default on <see cref="Arange(double, double, double)"/>,
+        /// because a default cannot express this: numpy reads ONE argument as <c>stop</c>, not as
+        /// <c>start</c>, so the arity-1 form fills the FIRST parameter's role with the SECOND
+        /// parameter's meaning. `np.arange(6.0)` was an SPY0224 arity error until this existed.
+        ///
+        /// <para>Verified against numpy 2.5.1: <c>arange(6.0)</c> → <c>[0. 1. 2. 3. 4. 5.]</c>,
+        /// <c>arange(2.5)</c> → <c>[0. 1. 2.]</c>, and a non-positive stop is empty rather than an
+        /// error — <c>arange(0)</c> and <c>arange(-3.0)</c> both give an empty array, which the
+        /// three-argument implementation already produces for <c>stop &lt;= start</c>.</para>
+        /// </remarks>
+        public static NdArray<double> Arange(double stop) => Arange(0.0, stop, 1.0);
+
+        /// <summary>
         /// Return evenly spaced values within a half-open interval <c>[start, stop)</c>.
         /// </summary>
         /// <param name="start">Inclusive start of the interval.</param>
