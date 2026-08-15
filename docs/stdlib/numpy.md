@@ -296,9 +296,7 @@ print(len(parts))          # 3
 
 !!! note
     `numpy.array_split`, NumPy's lenient variant that tolerates uneven division, is not
-    implemented. `numpy.arange` also has no single-argument form yet — write
-    `np.arange(0.0, 6.0)` rather than `np.arange(6.0)`
-    ([#1469](https://github.com/antonsynd/sharpy/issues/1469)).
+    implemented.
 
 ### `numpy.where(condition: NdArray[bool], x: NdArray[float], y: NdArray[float]) -> NdArray[float]`
 
@@ -584,6 +582,24 @@ Return an *n*×*n* identity matrix.
 **Parameters:**
 
 - `n` (int) -- Square matrix dimension.
+
+### `numpy.arange(stop: float) -> NdArray[float]`
+
+Return evenly spaced values within the half-open interval `[0, stop)`.
+
+**Parameters:**
+
+- `stop` (float) -- Exclusive end of the interval.
+
+```python
+a = np.arange(6.0)     # [0. 1. 2. 3. 4. 5.]
+b = np.arange(2.5)     # [0. 1. 2.] -- half-open, so 2.5 is excluded
+c = np.arange(-3.0)    # empty, not an error
+```
+
+A separate overload rather than a default on the form below, because a single
+argument means *stop*, not *start* — so it fills the first parameter's position
+with the second parameter's meaning, which no default value can express.
 
 ### `numpy.arange(start: float, stop: float, step: float = 1.0) -> NdArray[float]`
 
