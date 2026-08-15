@@ -39,7 +39,7 @@ namespace Sharpy
         {
             try
             {
-                string randomPart = global::System.IO.Path.GetRandomFileName().Replace(".", "");
+                string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
                 string dirName = prefix + randomPart;
                 string fullPath = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), dirName);
                 global::System.IO.Directory.CreateDirectory(fullPath);
@@ -58,7 +58,7 @@ namespace Sharpy
         {
             try
             {
-                string randomPart = global::System.IO.Path.GetRandomFileName().Replace(".", "");
+                string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
                 string fileName = prefix + randomPart + suffix;
                 string fullPath = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), fileName);
                 global::System.IO.File.WriteAllText(fullPath, "");
@@ -131,7 +131,7 @@ namespace Sharpy
             /// </summary>
             public NamedTemporaryFile(string mode = "w+b", string suffix = "", string prefix = "tmp", bool delete = true)
             {
-                string randomPart = global::System.IO.Path.GetRandomFileName().Replace(".", "");
+                string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
                 this.Name = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), prefix + randomPart + suffix);
                 global::System.IO.File.WriteAllText(this.Name, "");
                 this.Mode = mode;
@@ -172,7 +172,7 @@ namespace Sharpy
             /// </summary>
             public TemporaryDirectory(string suffix = "", string prefix = "tmp")
             {
-                string randomPart = global::System.IO.Path.GetRandomFileName().Replace(".", "");
+                string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
                 this.Name = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), prefix + randomPart + suffix);
                 global::System.IO.Directory.CreateDirectory(this.Name);
             }
@@ -199,7 +199,7 @@ namespace Sharpy
                     return;
                 }
 
-                string randomPart = global::System.IO.Path.GetRandomFileName().Replace(".", "");
+                string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
                 string path = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), "tmp" + randomPart);
                 global::System.IO.File.WriteAllText(path, this._Buffer);
                 this.Name = path;
