@@ -65,14 +65,30 @@ public class YamlScalarResolverFloatRuleTests
     }
 
     /// <summary>
-    /// The families this rule deliberately does not reach, tracked as #1465. Pinned as STRINGS so
-    /// the deferral is visible: when #1465 lands these flip, and a test that had said nothing
-    /// would have let the change pass unnoticed.
+    /// The underscore digit separator, FLIPPED: pinned as strings while #1465 was open, now
+    /// carrying PyYAML's values. The pin did its job — it is what made the float half of #1465
+    /// impossible to land silently while only the int half was being thought about.
     /// </summary>
     [Theory]
-    [InlineData("1_0.5")]   // PyYAML: 10.5 — underscore digit separators
-    [InlineData("1.0_5")]   // PyYAML: 1.05
-    public void PlainScalar_UnderscoreSeparatedFloat_IsStillAStringPending1465(string text)
+    [InlineData("1_0.5", 10.5)]
+    [InlineData("1.0_5", 1.05)]
+    [InlineData(".5_5", 0.55)]
+    [InlineData("1_.5", 1.5)]
+    public void PlainScalar_UnderscoreSeparatedFloat_ResolvesToTheMeasuredValue(string text, double expected)
+    {
+        Assert.Equal(expected, YamlScalarResolver.Resolve(text));
+    }
+
+    /// <summary>
+    /// The separator does not loosen the arms it runs through: the leading-dot arm still needs a
+    /// DIGIT first, and a separator cannot stand in for the mandatory dot or the mandatory
+    /// exponent sign.
+    /// </summary>
+    [Theory]
+    [InlineData("._5")]
+    [InlineData("1_e-7")]
+    [InlineData("1.0e_7")]
+    public void PlainScalar_UnderscoreDoesNotWidenTheFloatArms(string text)
     {
         Assert.Equal(text, YamlScalarResolver.Resolve(text));
     }

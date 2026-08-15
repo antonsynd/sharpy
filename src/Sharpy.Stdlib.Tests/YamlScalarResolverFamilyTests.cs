@@ -88,30 +88,67 @@ public class YamlScalarResolverFamilyTests
     }
 
     /// <summary>
-    /// PENDING #1465 — the half of the octal family that is a VALUE change rather than an addition,
-    /// and the reason this family cannot be implemented as "add an arm and leave the rest alone".
+    /// #1465 — the half of the octal family that was a VALUE change rather than an addition, and
+    /// the reason this family could not be implemented as "add an arm and leave the rest alone".
     ///
     /// <para>
-    /// The existing decimal arm is <c>long.TryParse(value, NumberStyles.AllowLeadingSign)</c>,
+    /// The decimal arm used to be <c>long.TryParse(value, NumberStyles.AllowLeadingSign)</c>,
     /// which is happy to read a leading zero and happy to read <c>8</c> and <c>9</c> under one.
-    /// So Sharpy today answers <c>010</c> with <b>10</b> where PyYAML answers <b>8</b>, and
-    /// <c>08</c> with <b>8</b> where PyYAML answers the <b>string</b>. Both are silent
-    /// wrong-value divergences rather than missing-feature ones — worse than the gap #1465
-    /// describes, and invisible to any test that only asks "did it come back a number".
+    /// So Sharpy answered <c>010</c> with <b>10</b> where PyYAML answers <b>8</b>, and <c>08</c>
+    /// with <b>8</b> where PyYAML answers the <b>string</b>. Both were silent wrong-value
+    /// divergences rather than missing-feature ones — worse than the gap #1465 describes, and
+    /// invisible to any test that only asks "did it come back a number".
     /// </para>
     ///
     /// <para>
     /// PyYAML's decimal arm is <c>[-+]?(?:0|[1-9][0-9_]*)</c>: a leading zero puts the scalar in
-    /// the OCTAL arm or nowhere. When the family lands, these three cells become 8, -8 and the
-    /// string <c>"08"</c>.
+    /// the OCTAL arm or nowhere. FLIPPED to that answer.
     /// </para>
     /// </summary>
     [Fact]
-    public void LeadingZeroOctal_IsReadAsDecimalToday_Pending1465()
+    public void LeadingZeroOctal_ReadsAsOctal()
     {
-        Assert.Equal(10, Yaml.SafeLoad("010"));
-        Assert.Equal(-10, Yaml.SafeLoad("-010"));
-        Assert.Equal(8, Yaml.SafeLoad("08"));
+        Assert.Equal(8, Yaml.SafeLoad("010"));
+        Assert.Equal(-8, Yaml.SafeLoad("-010"));
+        Assert.Equal(10, Yaml.SafeLoad("0012"));
+
+        // Not an octal at all, so not a number: `8` is not an octal digit.
+        Assert.Equal("08", Yaml.SafeLoad("08"));
+        Assert.Equal("0_8", Yaml.SafeLoad("0_8"));
+    }
+
+    /// <summary>
+    /// #1465 — the two cases where a scalar the regex admits still cannot be a Sharpy integer, and
+    /// so falls through to the string. Both are stated positions, not accidents.
+    ///
+    /// <para>
+    /// <b>Overflow.</b> Python's ints are arbitrary precision; PyYAML answers
+    /// <c>0xFFFFFFFFFFFFFFFF</c> with 18446744073709551615. Falling through to the string is the
+    /// rule the decimal path already followed — a 20-digit decimal has always come back a string
+    /// here — so the behaviour stays uniform across the families instead of gaining a per-radix
+    /// exception. <c>long.MinValue</c> is the boundary that proves the accumulator is unsigned:
+    /// its magnitude is one past <c>long.MaxValue</c>.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Nothing left after the separators.</b> <c>0x_</c> matches PyYAML's own regex and then
+    /// crashes its constructor — measured, <c>ValueError: invalid literal for int() with base 16:
+    /// ''</c>. Sharpy reads the string instead of propagating another library's internal
+    /// inconsistency as an exception out of <c>safe_load</c>.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void IntFamilies_UnrepresentableScalars_FallThroughToTheString()
+    {
+        Assert.Equal("0xFFFFFFFFFFFFFFFF", Yaml.SafeLoad("0xFFFFFFFFFFFFFFFF"));
+        Assert.Equal("99999999999999999999", Yaml.SafeLoad("99999999999999999999"));
+        Assert.Equal("0x_", Yaml.SafeLoad("0x_"));
+        Assert.Equal("0b_", Yaml.SafeLoad("0b_"));
+
+        // The boundary the unsigned accumulator exists for, and the one either side of it.
+        Assert.Equal(long.MinValue, Yaml.SafeLoad("-9223372036854775808"));
+        Assert.Equal(long.MaxValue, Yaml.SafeLoad("9223372036854775807"));
+        Assert.Equal("9223372036854775808", Yaml.SafeLoad("9223372036854775808"));
     }
 
     /// <summary>
@@ -161,40 +198,76 @@ public class YamlScalarResolverFamilyTests
     }
 
     /// <summary>
-    /// PENDING #1465 — pins the CURRENT divergence for the int families (hex, binary, underscore
-    /// separators, and the underscored octal). PyYAML reads every cell here as an int; Sharpy's
-    /// <c>long.TryParse</c> arm rejects each one, so each comes back the original string. These
-    /// flip to the measured integers when the families land. The leading-zero octal cells that
-    /// today resolve as DECIMAL are pinned separately — see
-    /// <see cref="LeadingZeroOctal_IsReadAsDecimalToday_Pending1465"/>.
+    /// #1465 — the int families FLIPPED to PyYAML's answers: hex, binary, the underscored octal,
+    /// and the underscore separator on plain decimals. Values, not just types: a test that only
+    /// asked "is it an int" would pass on <c>0x1A</c> → 1 as readily as on 26.
     /// </summary>
     [Fact]
-    public void IntFamilies_HexOctalBinaryUnderscore_StillResolveAsStrings_Pending1465()
+    public void IntFamilies_HexBinaryUnderscore_ResolveToTheMeasuredIntegers()
     {
-        foreach (string cell in new[]
-                 {
-                     "0x1A", "-0x1a", "+0x1A", "0x_1A", "0x1_A",
-                     "0_10",
-                     "0b101", "-0b101", "0b1_01",
-                     "1_000", "1_000_000", "+1_000", "-1_0",
-                 })
-        {
-            Assert.Equal(cell, Yaml.SafeLoad(cell));
-        }
+        Assert.Equal(26, Yaml.SafeLoad("0x1A"));
+        Assert.Equal(-26, Yaml.SafeLoad("-0x1a"));
+        Assert.Equal(26, Yaml.SafeLoad("+0x1A"));
+        Assert.Equal(26, Yaml.SafeLoad("0x_1A"));
+        Assert.Equal(26, Yaml.SafeLoad("0x1_A"));
+
+        Assert.Equal(8, Yaml.SafeLoad("0_10"));
+
+        Assert.Equal(5, Yaml.SafeLoad("0b101"));
+        Assert.Equal(-5, Yaml.SafeLoad("-0b101"));
+        Assert.Equal(5, Yaml.SafeLoad("0b1_01"));
+
+        Assert.Equal(1000, Yaml.SafeLoad("1_000"));
+        Assert.Equal(1000000, Yaml.SafeLoad("1_000_000"));
+        Assert.Equal(1000, Yaml.SafeLoad("+1_000"));
+        Assert.Equal(-10, Yaml.SafeLoad("-1_0"));
+
+        // PyYAML strips separators wholesale rather than validating placement, so these are
+        // permissive in exactly the same way it is (measured).
+        Assert.Equal(1, Yaml.SafeLoad("1_"));
+        Assert.Equal(10, Yaml.SafeLoad("1__0"));
+        Assert.Equal(0, Yaml.SafeLoad("0_"));
     }
 
     /// <summary>
-    /// PENDING #1465 — the underscore separator reaches the FLOAT mantissa too, which the issue
-    /// text does not mention and the probe found: PyYAML reads <c>1_0.5</c> as 10.5. Sharpy's
-    /// float regex documents the omission as deferred to this issue
-    /// (<c>YamlScalarResolver.Yaml11Float</c>), so it flips with the int family rather than being
-    /// a separate decision.
+    /// #1465 — the dump side of the int families, which no line in the dump path was changed to
+    /// produce. Same integration proof as the bool family: quoting keys on the resolver (#1417),
+    /// so a string that would read back as a number is now quoted, and a quoted scalar drops the
+    /// <c>...</c> marker under #1348. Cells match PyYAML 6.0.3.
     /// </summary>
     [Fact]
-    public void FloatMantissa_UnderscoreSeparators_StillResolveAsStrings_Pending1465()
+    public void IntFamilies_DumpQuotesTheStringsAndDropsTheMarker()
     {
-        Assert.Equal("1_0.5", Yaml.SafeLoad("1_0.5"));
-        Assert.Equal("1_0.5_5", Yaml.SafeLoad("1_0.5_5"));
+        Assert.Equal("'0x1A'\n", Yaml.SafeDump("0x1A"));
+        Assert.Equal("'1_000'\n", Yaml.SafeDump("1_000"));
+        Assert.Equal("'010'\n", Yaml.SafeDump("010"));
+
+        // Control: a near-miss the resolver does NOT claim stays plain and keeps its marker.
+        Assert.Equal("0X1a\n...\n", Yaml.SafeDump("0X1a"));
+        Assert.Equal("08\n...\n", Yaml.SafeDump("08"));
+
+        Assert.Equal("0x1A", Yaml.SafeLoad(Yaml.SafeDump("0x1A")));
+        Assert.Equal("010", Yaml.SafeLoad(Yaml.SafeDump("010")));
+    }
+
+    /// <summary>
+    /// #1465 — the underscore separator reaches the FLOAT mantissa too, which the issue text does
+    /// not mention and the probe found. <c>YamlScalarResolver.Yaml11Float</c> already recorded the
+    /// omission as deferred to this issue, so it lands with the int families rather than as a
+    /// separate decision. FLIPPED.
+    /// </summary>
+    [Fact]
+    public void FloatMantissa_UnderscoreSeparators_ResolveToFloats()
+    {
+        Assert.Equal(10.5, Yaml.SafeLoad("1_0.5"));
+        Assert.Equal(10.55, Yaml.SafeLoad("1_0.5_5"));
+        Assert.Equal(0.55, Yaml.SafeLoad(".5_5"));
+        Assert.Equal(1.5, Yaml.SafeLoad("1_.5"));
+        Assert.Equal(1000.5, Yaml.SafeLoad("1_000.5"));
+        Assert.Equal(0.01, Yaml.SafeLoad(".0_1"));
+
+        // The leading-dot arm still requires a DIGIT first, separator or not.
+        Assert.Equal("._5", Yaml.SafeLoad("._5"));
     }
 
     /// <summary>
