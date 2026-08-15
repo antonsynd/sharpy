@@ -992,6 +992,162 @@ public class RenameHandlerTests : IDisposable
         result.Should().BeNull($"'{newName}' is not a name Sharpy can spell");
     }
 
+    // ── parameter rename (#1359) ─────────────────────────────────────────────
+    // Before this, `RenameHandler` contained zero occurrences of "Parameter" and the checker built
+    // parameter symbols with all four position fields explicitly null — so rename returned no edits
+    // from EITHER cursor, bailing at the no-source-location guard before any resolution arm ran.
+
+    /// <summary>The issue's repro: renaming a parameter from its DECLARATION.</summary>
+    [Fact]
+    public async Task Rename_Parameter_FromDeclaration_RenamesBothOccurrences()
+    {
+        // Line 0: "def f(target: int) -> int:"   'target' at cols 6-11
+        // Line 1: "    return target * 2"        'target' at cols 11-16
+        var source = "def f(target: int) -> int:\n    return target * 2\n";
+
+        var result = await RenameAsync(source, 0, 6, "scale");
+
+        result.Should().NotBeNull("a parameter is a renameable binding like any other (#1359)");
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+
+        edits.Should().HaveCount(2, "the declaration and its one reference");
+        edits.Should().OnlyContain(e => e.NewText == "scale");
+
+        var declEdit = edits.Single(e => e.Range.Start.Line == 0);
+        declEdit.Range.Start.Character.Should().Be(6);
+        declEdit.Range.End.Character.Should().Be(12);
+
+        var refEdit = edits.Single(e => e.Range.Start.Line == 1);
+        refEdit.Range.Start.Character.Should().Be(11);
+        refEdit.Range.End.Character.Should().Be(17);
+    }
+
+    /// <summary>The same rename driven from a REFERENCE cursor.</summary>
+    [Fact]
+    public async Task Rename_Parameter_FromReference_RenamesBothOccurrences()
+    {
+        var source = "def f(target: int) -> int:\n    return target * 2\n";
+
+        var result = await RenameAsync(source, 1, 11, "scale");
+
+        result.Should().NotBeNull(
+            "resolution succeeds from a reference; it was the missing declaration position that "
+            + "made the handler bail before emitting anything");
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+
+        edits.Should().HaveCount(2);
+        edits.Select(e => e.Range.Start.Line).Should().BeEquivalentTo(new[] { 0, 1 });
+    }
+
+    /// <summary>
+    /// A parameter nothing references still renames. This is what the node-keyed map buys: there is
+    /// no reference collection to find it in and no module-scope entry either, so the
+    /// name-and-position declaration scan cannot answer for it.
+    /// </summary>
+    [Fact]
+    public async Task Rename_UnreferencedParameter_StillRenamesItsDeclaration()
+    {
+        var source = "def f(unused: int) -> int:\n    return 1\n";
+
+        var result = await RenameAsync(source, 0, 6, "ignored");
+
+        result.Should().NotBeNull("the node-keyed map is the only route to this symbol");
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+
+        edits.Should().ContainSingle();
+        edits[0].Range.Start.Line.Should().Be(0);
+        edits[0].Range.Start.Character.Should().Be(6);
+        edits[0].Range.End.Character.Should().Be(12);
+        edits[0].NewText.Should().Be("ignored");
+    }
+
+    /// <summary>Renaming <c>*args</c> rewrites the name and leaves the star alone.</summary>
+    [Fact]
+    public async Task Rename_VariadicParameter_DoesNotEatTheStar()
+    {
+        // Line 0: "def f(*args: int) -> int:"  '*' at col 6, 'args' at cols 7-10
+        var source = "def f(*args: int) -> int:\n    return len(args)\n";
+
+        var result = await RenameAsync(source, 0, 7, "values");
+
+        result.Should().NotBeNull();
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+
+        var declEdit = edits.Single(e => e.Range.Start.Line == 0);
+        declEdit.Range.Start.Character.Should().Be(7,
+            "the edit starts at 'args', not at the '*' the statement start points to");
+        declEdit.Range.End.Character.Should().Be(11);
+    }
+
+    /// <summary>An escaped parameter renames across its whole backticked extent.</summary>
+    [Fact]
+    public async Task Rename_EscapedParameter_ReplacesWholeBacktickedExtent()
+    {
+        // Line 0: "def f(`event`: int) -> int:"  '`' at col 6, extent [6, 13)
+        var source = "def f(`event`: int) -> int:\n    return `event`\n";
+
+        var result = await RenameAsync(source, 0, 7, "handler");
+
+        result.Should().NotBeNull();
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+
+        var declEdit = edits.Single(e => e.Range.Start.Line == 0);
+        declEdit.Range.Start.Character.Should().Be(6, "the name starts at its opening backtick");
+        declEdit.Range.End.Character.Should().Be(13,
+            "the extent covers both backticks — ending at 11 would leave a stray '`' behind");
+        declEdit.NewText.Should().Be("handler");
+    }
+
+    /// <summary>
+    /// A cursor on the closing backtick of an escaped parameter is still on the name. This is the
+    /// recorded extent doing the work — nothing here re-derives it from <c>Name.Length</c>.
+    /// </summary>
+    [Fact]
+    public async Task Rename_EscapedParameter_FromClosingBacktick_Resolves()
+    {
+        var source = "def f(`event`: int) -> int:\n    return `event`\n";
+
+        var result = await RenameAsync(source, 0, 12, "handler");
+
+        result.Should().NotBeNull("column 12 is the closing backtick, which is part of the name");
+        result!.Changes![DocumentUri.From("file:///test.spy")].Should().NotBeEmpty();
+    }
+
+    /// <summary>A method parameter reaches the same arm through the ordinary walk.</summary>
+    [Fact]
+    public async Task Rename_MethodParameter_RenamesBothOccurrences()
+    {
+        var source = "class Box:\n    def scale(self, factor: int) -> int:\n        return factor * 2\n";
+
+        var result = await RenameAsync(source, 1, 20, "ratio");
+
+        result.Should().NotBeNull();
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+
+        edits.Should().HaveCount(2);
+        edits.Should().OnlyContain(e => e.NewText == "ratio");
+    }
+
+    /// <summary>
+    /// Negative control: a cursor in the gap between the parameter list and the body is on no name,
+    /// so the arm must decline rather than claim the nearest parameter.
+    /// </summary>
+    [Fact]
+    public async Task Rename_CursorOnParameterTypeAnnotation_IsNotTheParameter()
+    {
+        // Line 0: "def f(target: int) -> int:"  'int' annotation at cols 14-16
+        var source = "def f(target: int) -> int:\n    return target * 2\n";
+
+        var result = await RenameAsync(source, 0, 14, "scale");
+
+        if (result?.Changes != null && result.Changes.TryGetValue(
+                DocumentUri.From("file:///test.spy"), out var edits))
+        {
+            edits.Should().NotContain(e => e.Range.Start.Line == 0 && e.Range.Start.Character == 6,
+                "the cursor is on the type annotation, not on the parameter's name");
+        }
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();

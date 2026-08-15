@@ -161,20 +161,39 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
 
         // A function definition, likewise: a nested def nothing calls is in no reference collection
         // and not in module scope, so only the node-keyed map can answer for it (#1232).
-        if (node is FunctionDef funcDef
-            && IsOnName(line, col, funcDef.NameLineStart, funcDef.NameColumnStart, funcDef.Name.Length,
-                funcDef.IsNameBacktickEscaped))
+        if (node is FunctionDef funcDef)
         {
-            var bound = query.GetFunctionDeclarationSymbol(funcDef);
-            if (bound != null)
-                return bound;
+            if (IsOnName(line, col, funcDef.NameLineStart, funcDef.NameColumnStart, funcDef.Name.Length,
+                    funcDef.IsNameBacktickEscaped))
+            {
+                var bound = query.GetFunctionDeclarationSymbol(funcDef);
+                if (bound != null)
+                    return bound;
 
-            _logger.LogDebug(
-                "Rename: no node-keyed symbol for function definition '{Name}' at {Line}:{Column}; "
-                + "falling back to the declaration scan.",
-                funcDef.Name, funcDef.NameLineStart, funcDef.NameColumnStart);
+                _logger.LogDebug(
+                    "Rename: no node-keyed symbol for function definition '{Name}' at {Line}:{Column}; "
+                    + "falling back to the declaration scan.",
+                    funcDef.Name, funcDef.NameLineStart, funcDef.NameColumnStart);
 
-            return query.FindSymbolByDeclaration(funcDef.Name, funcDef.LineStart, funcDef.ColumnStart);
+                return query.FindSymbolByDeclaration(funcDef.Name, funcDef.LineStart, funcDef.ColumnStart);
+            }
+
+            // A cursor on a PARAMETER name lands here, not on the parameter: `Parameter` is a
+            // standalone record rather than a Node, so FindNodeAtPosition can only ever return the
+            // enclosing definition (#1359). The extent is the one the parser recorded, so `*args`
+            // hit-tests on `args` and an escaped name includes its backticks.
+            var parameterSymbol = ResolveParameterSymbol(funcDef.Parameters, query, line, col);
+            if (parameterSymbol != null)
+                return parameterSymbol;
+        }
+
+        // Lambda parameters bind through the same node-keyed map, and a cursor on one resolves to
+        // the lambda for the same reason.
+        if (node is LambdaExpression lambda)
+        {
+            var lambdaParameterSymbol = ResolveParameterSymbol(lambda.Parameters, query, line, col);
+            if (lambdaParameterSymbol != null)
+                return lambdaParameterSymbol;
         }
 
         // The 'as' names of try/except and with: both bind in one place in the checker, and both
@@ -207,6 +226,44 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
 
         if (decl is var (name, nameLine, nameCol))
             return query.FindSymbolByDeclaration(name, nameLine, nameCol);
+
+        return null;
+    }
+
+    /// <summary>
+    /// The symbol for whichever parameter's name extent the cursor sits in, or null when it sits on
+    /// none of them. There is no declaration-scan fallback here: a parameter has no module-scope
+    /// entry and an unreferenced one is in no reference collection either, so the node-keyed map is
+    /// the only answer that exists (#1359).
+    /// </summary>
+    /// <remarks>
+    /// Rename is the only handler with declaration-cursor arms at all. <c>ReferencesHandler</c> and
+    /// <c>DocumentHighlightHandler</c> resolve <c>Identifier</c>/<c>FunctionCall</c> and nothing
+    /// else, so a cursor on ANY declaration — parameter, def, class, <c>as</c> name — answers
+    /// nothing there. That gap is general rather than parameter-specific and is tracked separately
+    /// (#1539), including whether this resolution belongs in one shared place.
+    /// </remarks>
+    private Symbol? ResolveParameterSymbol(
+        System.Collections.Immutable.ImmutableArray<Parameter> parameters,
+        ISemanticQuery query,
+        int line,
+        int col)
+    {
+        foreach (var param in parameters)
+        {
+            if (!IsOnNameExtent(line, col, param.NameLineStart, param.NameColumnStart, param.NameColumnEnd))
+                continue;
+
+            var bound = query.GetParameterSymbol(param);
+            if (bound != null)
+                return bound;
+
+            _logger.LogDebug(
+                "Rename: no node-keyed symbol for parameter '{Name}' at {Line}:{Column}.",
+                param.Name, param.NameLineStart, param.NameColumnStart);
+
+            return null;
+        }
 
         return null;
     }
@@ -274,6 +331,20 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         return cursorLine == nameLineStart
             && cursorCol >= nameColStart
             && cursorCol < nameColStart + nameLength + (escaped ? BacktickPairLength : 0);
+    }
+
+    /// <summary>
+    /// Whether the cursor sits inside a RECORDED name extent — <paramref name="nameColEnd"/> is the
+    /// parser's exclusive end, taken from the name token, so escaped spellings are already covered
+    /// and no backtick compensation applies here (#1454). A node with no recorded extent reports
+    /// 0/0, which no 1-based cursor can be inside.
+    /// </summary>
+    private static bool IsOnNameExtent(
+        int cursorLine, int cursorCol, int nameLineStart, int nameColStart, int nameColEnd)
+    {
+        return cursorLine == nameLineStart
+            && cursorCol >= nameColStart
+            && cursorCol < nameColEnd;
     }
 
     /// <summary>The two backticks an escaped spelling adds to the name's source extent.</summary>
