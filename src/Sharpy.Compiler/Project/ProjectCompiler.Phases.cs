@@ -907,6 +907,10 @@ internal partial class ProjectCompiler
                 // so a crash in the first file's type check would otherwise be mis-attributed
                 // (#1083).
                 using var typeCheckPhaseScope = _diagnostics.BeginPhaseScope(CompilerPhase.TypeChecking);
+                // Two axes, deliberately separate (#1433). typeCheckFilePath is symbol identity —
+                // nulled for the analyze entry file so its symbols read as "the current document"
+                // (#1087). unit.FilePath, passed below as moduleIdentityFilePath, is what the file
+                // is CALLED; module-class derivation (SPY0523) needs it and it stamps nothing.
                 var typeCheckFilePath = IsNullPathEntryFile(config, unit) ? null : unit.FilePath;
                 var typeCheckResult = compilationPipeline.TypeCheck(
                     unit.Ast, typeCheckFilePath, isEntryPoint, _maxErrors, _diagnostics,
@@ -918,7 +922,8 @@ internal partial class ProjectCompiler
                     deferredCycleFiles: deferredFiles,
                     moduleRegistry: _moduleRegistry,
                     features: fileFeatures,
-                    referenceClosure: BuildReferenceClosure(config));
+                    referenceClosure: BuildReferenceClosure(config),
+                    moduleIdentityFilePath: unit.FilePath);
                 var typeChecker = typeCheckResult.TypeChecker;
 
                 if (typeCheckResult.Aborted)

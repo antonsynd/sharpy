@@ -16,6 +16,16 @@ namespace Sharpy.Lsp;
 internal sealed class DocumentState : IDisposable
 {
     public string Uri { get; }
+
+    /// <summary>
+    /// The document's on-disk path when <see cref="Uri"/> names a file, else null (an untitled
+    /// buffer genuinely has no name). This is the file's NAME for analysis — what
+    /// <see cref="CompilerApi.AnalyzeDocument"/> needs to produce the file-identity diagnostics
+    /// SPY0523 and SPY0302 at all (#1433). It is NOT symbol identity: the entry file's symbols
+    /// still come back with a null path so handlers fall back to the request URI (#1087).
+    /// </summary>
+    public string? LocalPath { get; }
+
     public SourceText SourceText { get; private set; }
     public string Text => SourceText.ToString();
     public int Version { get; private set; }
@@ -59,9 +69,23 @@ internal sealed class DocumentState : IDisposable
     public DocumentState(string uri, string text, int version, int optionsGeneration)
     {
         Uri = uri;
+        LocalPath = UriToLocalPath(uri);
         SourceText = new SourceText(text, uri);
         Version = version;
         _optionsGeneration = optionsGeneration;
+    }
+
+    /// <summary>
+    /// The file-system path behind a document URI, or null when the URI names no file (an
+    /// <c>untitled:</c> buffer). Mirrors <c>LanguageService.UriToFilePath</c>.
+    /// </summary>
+    private static string? UriToLocalPath(string uri)
+    {
+        if (System.Uri.TryCreate(uri, UriKind.Absolute, out var parsed) && parsed.IsFile)
+            return parsed.LocalPath;
+
+        // Already a file path (some clients send one).
+        return Path.IsPathRooted(uri) ? uri : null;
     }
 
     public void Update(string text, int version)
@@ -317,8 +341,14 @@ internal sealed class DocumentState : IDisposable
                 }
             }
 
+            // The document analyzes under its OWN name (#1433) — file-identity diagnostics
+            // (SPY0523 module/class collision, SPY0302 self-import) are unproducible without it,
+            // so the editor showed no squiggle for code the build then refused. Symbol identity is
+            // unaffected: AnalyzeDocument still nullifies the entry file's symbol paths, which is
+            // the #1087 contract every handler's URI fallback rests on. An untitled buffer has a
+            // null LocalPath and falls back to the path-less contract.
             var result = await Task.Run(
-                () => api.Analyze(text, options, stageMetrics, scope.Token),
+                () => api.AnalyzeDocument(text, LocalPath, options, stageMetrics, scope.Token),
                 scope.Token
             ).ConfigureAwait(false);
 

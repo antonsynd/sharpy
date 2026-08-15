@@ -223,11 +223,20 @@ public class FrontEndParityTests
         var source = File.ReadAllText(fixture.SpyFilePath);
         var features = FeatureFlags.None.Enable(fixture.Features);
 
-        // Baseline: CompilerApi.Analyze (library mode), features threaded so gated fixtures match.
+        // Baseline: analysis of the fixture AS THE FILE IT IS (library mode), features threaded so
+        // gated fixtures match. The baseline names the file for the same reason every real front
+        // door does — a .spy file on disk has a name, and two diagnostic classes are derived from
+        // it (SPY0523 module-class collision, SPY0302 self-import). A nameless baseline could not
+        // produce either, so it disagreed with `run`, `project`, `emit diagnostics`, the LSP, and
+        // the fixtures' own .error sidecars, and the disagreement had to be carried on the
+        // allowlist as the baseline's own limitation (#1433). AnalyzeDocument is the shape that
+        // names the file while keeping the #1087 symbol-nullification the LSP arm relies on, so
+        // the baseline and the editor describe the same program.
         SemanticResult baseline;
         try
         {
-            baseline = api.Analyze(source, new CompilerOptions { OutputType = "library", Features = features }, ct);
+            baseline = api.AnalyzeDocument(source, fixture.SpyFilePath,
+                new CompilerOptions { OutputType = "library", Features = features }, null, ct);
         }
         catch (Exception ex)
         {
@@ -239,7 +248,10 @@ public class FrontEndParityTests
         // --- compile (N2: library mode to match the baseline OutputType) ---
         try
         {
-            var compile = api.Compile(source, new CompilerOptions { OutputType = "library", Features = features }, null, ct);
+            // Named by path, as CompileCommand names its input file. A null path here made this
+            // arm model a door that does not exist (#1433).
+            var compile = api.Compile(source, new CompilerOptions { OutputType = "library", Features = features },
+                fixture.SpyFilePath, ct);
             comparisons.Add(Compare(EntryCompile, fixture.TestName, baselineSig, Signature(compile.Diagnostics)));
         }
         catch (Exception ex)
@@ -272,7 +284,11 @@ public class FrontEndParityTests
             // `sharpy.features` workspace configuration, which the workspace resolves into its
             // analysis options through the same CompilerOptionsFactory seam.
             workspace.SetConfiguredFeatures(fixture.Features);
-            var uri = "file:///parity/" + Uri.EscapeDataString(fixture.TestName) + ".spy";
+            // The document is opened at its REAL path, which is what an editor does. The former
+            // synthetic "file:///parity/<escaped-test-name>.spy" only accidentally round-tripped to
+            // the right basename (the escaped separator un-escapes in LocalPath) and rooted the
+            // import closure at a directory that does not exist (#1433).
+            var uri = new Uri(fixture.SpyFilePath).ToString();
             workspace.OpenDocument(uri, source, 1);
             var lsp = await workspace.GetAnalysisAsync(uri, ct).ConfigureAwait(false);
             if (lsp != null)

@@ -312,17 +312,65 @@ public sealed class CompilerApi
     {
         // Single-file analyze is a synthetic project-of-one-file driven through the same
         // ProjectCompiler that compile uses (#1087) — no parallel phase sequencer. The entry
-        // source is fed in-memory under a virtual path (LSP buffers have no on-disk file);
+        // source is fed in-memory under a virtual path (a caller with no file at all);
         // preserveTrivia surfaces per-unit CommentSpans for hover, and nullifyEntryFilePath
         // records the entry file's symbols/references with a null path (so LSP handlers treat
         // them as the current document, the historical single-file contract). OutputType flows
         // from the caller's options (the no-options overload keeps its "library" default so LSP
         // analysis gains no entry-point/missing-main diagnostics).
         //
-        // These two values are the LSP's contract and must stay exactly here: a caller that has a
-        // real on-disk entry file wants the OTHER overload below, not a mutation of this one.
+        // An editor buffer that DOES have a path wants AnalyzeDocument below: it keeps the
+        // symbol-nullification half of this contract while naming the file (#1433).
         const string entryPath = "<source>";
         return AnalyzeCore(source, entryPath, nullifyEntryFilePath: true, options, stageMetrics,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Analyzes an editor buffer that has a path: the document names its own file while its
+    /// symbols keep the null-path identity LSP handlers depend on (#1433, #1087).
+    /// </summary>
+    /// <remarks>
+    /// The two things a path controls are independent, and pinning the entry to
+    /// <c>"&lt;source&gt;"</c> conflated them:
+    /// <list type="bullet">
+    ///   <item><b>What is this file called?</b> Feeds the module-class name derivation, the import
+    ///   closure's root directory, and every diagnostic whose very existence depends on the file's
+    ///   identity — SPY0523 (a module-level <c>def foo</c> in <c>foo.spy</c> colliding with the
+    ///   generated module class) and SPY0302 (a module importing itself). With no name, neither
+    ///   diagnostic is producible at all, so the editor showed no squiggle for code that the build
+    ///   then refused (#1433).</item>
+    ///   <item><b>Whose symbols are these?</b> The entry file's symbols and per-node reference
+    ///   locations are recorded with a null path so handlers (rename, highlight, type hierarchy)
+    ///   fall back to the request document URI — the historical single-file contract (#1087).</item>
+    /// </list>
+    /// Before this overload the two axes were coupled to overload choice: every path-less shape
+    /// nullified, the one path-carrying shape did not. An editor needs the first axis without the
+    /// second, which is what this provides. <c>Analyze(source, entryFilePath, ...)</c> remains the
+    /// shape for a genuine on-disk entry outside an editor, where nullifying would be meaningless.
+    /// </remarks>
+    /// <param name="source">
+    /// The buffer's text, fed in-memory under <paramref name="documentFilePath"/> so an unsaved
+    /// edit analyzes as typed while its siblings are read from disk.
+    /// </param>
+    /// <param name="documentFilePath">
+    /// The document's local path. Null or empty (an untitled buffer, which genuinely has no name)
+    /// falls back to the path-less contract above.
+    /// </param>
+    /// <param name="options">Compiler options for this analysis.</param>
+    /// <param name="stageMetrics">Collects a phase per pipeline stage, or null to run uninstrumented.</param>
+    /// <param name="cancellationToken">Cancellation token for cooperative cancellation.</param>
+    /// <returns>A <see cref="SemanticResult"/> with the analysis outcome.</returns>
+    public SemanticResult AnalyzeDocument(string source, string? documentFilePath,
+        CompilerOptions options, CompilationMetrics? stageMetrics, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(documentFilePath))
+            return Analyze(source, options, stageMetrics, cancellationToken);
+
+        // Same resolution the compile path applies: a real file is canonicalized so the closure
+        // walk and the project model agree on identity; anything else is used verbatim.
+        var resolved = File.Exists(documentFilePath) ? Path.GetFullPath(documentFilePath) : documentFilePath;
+        return AnalyzeCore(source, resolved, nullifyEntryFilePath: true, options, stageMetrics,
             cancellationToken);
     }
 
@@ -338,11 +386,11 @@ public sealed class CompilerApi
     /// downstream diagnostics the unresolved names produced — which is the #1144 front-end-parity
     /// class. Supplying the real path is the whole fix; the closure walk it feeds already existed.
     /// <para>
-    /// Unlike the LSP overload this does NOT nullify the entry file's path identity: an on-disk
-    /// entry has a genuine path, and stripping it would attribute its symbols and diagnostics to
-    /// "the current document" — meaningless outside an editor buffer. The <c>"&lt;source&gt;"</c> +
-    /// <c>nullifyEntryFilePath: true</c> contract the LSP depends on is untouched and still applies
-    /// to every path-less caller.
+    /// Unlike <see cref="AnalyzeDocument"/> this does NOT nullify the entry file's path identity:
+    /// an on-disk entry outside an editor has a genuine path, and stripping it would attribute its
+    /// symbols to "the current document" — meaningless when there is no document. An editor buffer
+    /// that has a path wants <see cref="AnalyzeDocument"/>, which names the file without giving up
+    /// the #1087 symbol contract.
     /// </para>
     /// </remarks>
     /// <param name="source">

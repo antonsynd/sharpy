@@ -94,6 +94,15 @@ internal class FileCompilationPipeline
     /// The <see cref="TypeChecker"/> instance with populated diagnostics and validator times.
     /// The caller is responsible for merging diagnostics and recording metrics.
     /// </returns>
+    /// <param name="filePath">
+    /// The symbol-identity path: stamped as <c>DeclaringFilePath</c> on symbols this pass creates.
+    /// Null for the single-file analyze entry file, whose symbols read as "the current document"
+    /// (#1087).
+    /// </param>
+    /// <param name="moduleIdentityFilePath">
+    /// The file's NAME, for module-class derivation (SPY0523). Defaults to <paramref name="filePath"/>;
+    /// pass the real path explicitly when <paramref name="filePath"/> is nulled for #1087 (#1433).
+    /// </param>
     public TypeCheckResult TypeCheck(
         Module module,
         string? filePath,
@@ -108,7 +117,8 @@ internal class FileCompilationPipeline
         IReadOnlySet<string>? deferredCycleFiles = null,
         ModuleRegistry? moduleRegistry = null,
         Shared.FeatureFlags? features = null,
-        Discovery.ReferenceClosure? referenceClosure = null)
+        Discovery.ReferenceClosure? referenceClosure = null,
+        string? moduleIdentityFilePath = null)
     {
         var effectiveSemanticInfo = fileSemanticInfo ?? _semanticInfo;
         var effectiveBinding = fileSemanticBinding ?? _semanticBinding;
@@ -118,6 +128,9 @@ internal class FileCompilationPipeline
         var typeChecker = new TypeChecker(_symbolTable, effectiveSemanticInfo, typeResolver, _logger, pipeline)
         {
             CurrentFilePath = filePath,
+            // What the file is CALLED, as distinct from whose symbols these are (#1433). Callers
+            // that null `filePath` for the #1087 symbol contract still pass the real name here.
+            ModuleIdentityFilePath = moduleIdentityFilePath ?? filePath,
             SemanticBinding = effectiveBinding,
             MaxErrors = semanticMaxErrors,
             DeferredCycleSymbols = deferredCycleSymbols,

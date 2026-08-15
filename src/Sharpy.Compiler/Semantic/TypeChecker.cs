@@ -422,11 +422,32 @@ internal partial class TypeChecker
     /// <summary>
     /// Current file path for diagnostic location. Set by the compiler before calling CheckModule.
     /// </summary>
+    /// <remarks>
+    /// This is the SYMBOL-IDENTITY axis: it stamps <c>DeclaringFilePath</c> on the symbols this
+    /// pass creates, and the single-file analyze path deliberately nulls it so the entry file's
+    /// symbols read as "the current document" (#1087). For what the file is CALLED — which is a
+    /// different question, and one an editor buffer can always answer — see
+    /// <see cref="ModuleIdentityFilePath"/>.
+    /// </remarks>
     public string? CurrentFilePath
     {
         get => _currentFilePath;
         set => _currentFilePath = value;
     }
+
+    /// <summary>
+    /// The file's NAME, used to derive the module class name (and thus to detect the SPY0523
+    /// function/module-class collision). Falls back to <see cref="CurrentFilePath"/> when unset.
+    /// </summary>
+    /// <remarks>
+    /// Split out from <see cref="CurrentFilePath"/> for #1433. The two axes were one field, so
+    /// nulling the entry file's SYMBOL paths (the #1087 contract, which an editor genuinely needs)
+    /// also erased the file's NAME — and SPY0523 is derived entirely from the name. The result was
+    /// that a module-level <c>def foo</c> in <c>foo.spy</c> produced no squiggle in the editor and
+    /// then failed the build. Naming the file costs nothing to symbol identity: only
+    /// <see cref="NameMangler.ComputeModuleClassName"/> reads this.
+    /// </remarks>
+    public string? ModuleIdentityFilePath { get; set; }
 
     /// <summary>
     /// Optional module registry for inline CLR namespace resolution (e.g., `System`.Console).
@@ -539,7 +560,9 @@ internal partial class TypeChecker
         if (computeCodeGenInfo)
         {
             var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable, SemanticBinding, _diagnostics);
-            codeGenInfoComputer.ComputeForModule(module, _currentFilePath);
+            // The file's NAME, not its symbol identity (#1433): module-class derivation must keep
+            // working for an entry file whose symbol paths are nulled for the #1087 contract.
+            codeGenInfoComputer.ComputeForModule(module, ModuleIdentityFilePath ?? _currentFilePath);
         }
 
         _logger.LogInfo($"Completed type checking ({module.Body.Length} statements, {_diagnostics.ErrorCount} errors)");
