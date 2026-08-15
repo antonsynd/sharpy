@@ -1756,7 +1756,13 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     "hello",
                     "world",
-                    "abc"
+                    "abc",
+                    "true",
+                    "a: b",
+                    "yes",
+                    "0x1A",
+                    "#hash",
+                    ""
                 }
 
                 )

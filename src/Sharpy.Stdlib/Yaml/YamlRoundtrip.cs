@@ -511,8 +511,66 @@ namespace Sharpy
         private static Scalar PlainScalar(string value) =>
             new Scalar(AnchorName.Empty, TagName.Empty, value, ScalarStyle.Plain, true, false);
 
+        /// <summary>
+        /// Renders a scalar <see cref="NeedsQuoting"/> has claimed, in the weakest quoting that
+        /// does the job (#1472).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This used to hardcode <see cref="ScalarStyle.DoubleQuoted"/>, which made the two dump
+        /// surfaces emit different documents for the same value: <c>roundtrip_dump("true")</c>
+        /// gave <c>"true"</c> where <c>safe_dump</c> and both Python oracles give <c>'true'</c>.
+        /// The two already agreed on WHICH strings need quoting — both ask
+        /// <see cref="YamlScalarResolver"/> — so only the rendering diverged, which is the
+        /// subtler half of the same one-authority failure: a shared predicate with unshared
+        /// rendering still produces two answers.
+        /// </para>
+        /// <para>
+        /// Single quoting is preferred because it suppresses resolution without introducing
+        /// escape processing — the same reason <c>YamlAmbiguousStringTypeConverter</c> gives for
+        /// choosing it. Double quoting is reached for only when single quoting CANNOT carry the
+        /// text, and PyYAML 6.0.3's boundary for that was measured rather than guessed: a newline
+        /// is fine single-quoted (<c>'line1\n\n  line2'</c>), and so are leading and trailing
+        /// spaces and every indicator character. What forces double quotes is a character with no
+        /// single-quoted representation — a C0 control other than newline, or DEL.
+        /// </para>
+        /// </remarks>
         private static Scalar QuotedScalar(string value) =>
-            new Scalar(AnchorName.Empty, TagName.Empty, value, ScalarStyle.DoubleQuoted, false, true);
+            new Scalar(
+                AnchorName.Empty,
+                TagName.Empty,
+                value,
+                RequiresEscaping(value) ? ScalarStyle.DoubleQuoted : ScalarStyle.SingleQuoted,
+                false,
+                true);
+
+        /// <summary>
+        /// Whether <paramref name="value"/> contains a character a single-quoted YAML scalar
+        /// cannot carry, so that only escape processing can represent it.
+        /// </summary>
+        /// <remarks>
+        /// Newline is excluded deliberately: YAML folds it inside single quotes, and PyYAML
+        /// single-quotes multi-line strings. Writing this as "anything non-printable" would have
+        /// moved every multi-line string to double quotes and diverged from the oracle in the act
+        /// of matching it.
+        /// </remarks>
+        private static bool RequiresEscaping(string value)
+        {
+            foreach (char c in value)
+            {
+                if (c == '\n')
+                {
+                    continue;
+                }
+
+                if (c < ' ' || c == '\u007F')
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// Random-access cursor over a buffered list of parsing events, providing the

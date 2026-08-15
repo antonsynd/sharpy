@@ -809,13 +809,13 @@ def test_safe_dump_collection_has_no_document_marker():
 def test_roundtrip_dump_marks_the_same_documents_as_safe_dump():
     # One authority for the rule, so the two dump surfaces cannot drift apart on it.
     #
-    # Plain scalars only, and that is a finding rather than a convenience: written over the
-    # ambiguous corpus this failed on `'true'` vs `"true"`. The two surfaces agree on WHICH
-    # strings need quoting — both ask YamlScalarResolver — and disagree on HOW, because
-    # YamlRoundtrip.QuotedScalar hardcodes DoubleQuoted where safe_dump and PyYAML emit single
-    # quotes. Pre-existing, unrelated to the marker, measured on a clean tree with #1348 absent,
-    # and filed as #1472. Widening this loop back to ["true", "a: b"] is #1472's acceptance.
-    for value in ["hello", "world", "abc"]:
+    # RE-WIDENED (#1472). This loop was cut down to plain scalars because the ambiguous corpus
+    # failed on `'true'` vs `"true"`: the two surfaces agreed on WHICH strings need quoting —
+    # both ask YamlScalarResolver — and disagreed on HOW, because YamlRoundtrip.QuotedScalar
+    # hardcoded DoubleQuoted where safe_dump and both Python oracles emit single quotes. A shared
+    # predicate with unshared rendering still produces two documents for one value, which is the
+    # subtler half of the same defect class. The quoted cells are back.
+    for value in ["hello", "world", "abc", "true", "a: b", "yes", "0x1A", "#hash", ""]:
         assert yaml.roundtrip_dump(value) == yaml.safe_dump(value)
 
 
