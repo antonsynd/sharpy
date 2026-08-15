@@ -238,22 +238,8 @@ internal class TypeResolver
         else
         {
             var typeSymbol = _symbolTable.LookupType(annotation.Name)
-                ?? LookupNestedType(annotation.Name);
-
-            // #1446: a module-qualified NON-generic annotation (`lib.Shape`) resolves through the
-            // module lookup here just as the generic arm resolves `lib.Box[int]`, but historically
-            // kept its dotted `annotation.Name` on the UserDefinedType while the generic arm
-            // normalized to the bare `typeSymbol.Name`. The dotted name then failed to match
-            // downstream and leaked SPY0361 — #1134/#1244 fixed only the generic half. Track the
-            // module-qualified resolution so the name normalizes the same way. An escaped reference
-            // is quoting (#713) and keeps its written spelling, matching the generic arm's
-            // `!escaped` guard.
-            var isModuleQualified = false;
-            if (typeSymbol == null)
-            {
-                typeSymbol = LookupModuleQualifiedType(annotation.Name);
-                isModuleQualified = typeSymbol != null && !escaped;
-            }
+                ?? LookupNestedType(annotation.Name)
+                ?? LookupModuleQualifiedType(annotation.Name);
 
             // Identity, not flag equality: an escaped reference never binds the registry's own
             // symbol (that is the namespace the escape exists to escape), a bare reference never
@@ -292,7 +278,7 @@ internal class TypeResolver
                 {
                     result = new UserDefinedType
                     {
-                        Name = isModuleQualified ? typeSymbol.Name : annotation.Name,
+                        Name = annotation.Name,
                         Symbol = typeSymbol
                     };
                 }
