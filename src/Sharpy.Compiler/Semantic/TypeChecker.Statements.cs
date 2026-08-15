@@ -216,6 +216,19 @@ internal partial class TypeChecker
                 DeclaringFilePath = _currentFilePath
             };
             _symbolTable.Define(newSymbol);
+
+            // Link the rebinding to the binding it just replaced. This is the same variable — the
+            // emitter assigns to the same C# local, versioning only on redeclaration — so anything
+            // that edits occurrences (rename) must treat the chain as one unit or it silently edits
+            // a fragment (#1359). Recorded here because this is the one place both symbols are in
+            // hand with the scope alive; deriving it later would mean re-deriving compiler scope
+            // information outside the compiler.
+            if (existingSymbol is VariableSymbol replacedBinding
+                && !ReferenceEquals(replacedBinding, newSymbol))
+            {
+                _semanticInfo.SetRebindingPredecessor(newSymbol, replacedBinding);
+            }
+
             SemanticBinding.SetVariableType(newSymbol, inferredType);
             _semanticInfo.SetIdentifierSymbol(targetId, newSymbol);
 

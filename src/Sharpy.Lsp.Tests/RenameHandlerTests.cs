@@ -1148,6 +1148,90 @@ public class RenameHandlerTests : IDisposable
         }
     }
 
+    // ── spelling-complete rename over a binding chain (#1359 defect 2) ───────
+    // A plain `x = ...` defines a FRESH symbol replacing the previous one, so each binding's
+    // reference collection stops at the next rebinding. Measured before the fix, the issue's repro
+    // did not merely "leave an occurrence behind" — it SPLIT into two disjoint halves (decl+RHS
+    // read, then rebind-target+later use), and each half's edit produced source that still compiled
+    // while meaning something else.
+
+    /// <summary>Every cursor in a rebound spelling renames the whole chain, identically.</summary>
+    [Theory]
+    [InlineData(1, 4)]   // the declaration
+    [InlineData(2, 4)]   // the rebinding's target
+    [InlineData(2, 12)]  // the read on the rebinding's right-hand side
+    [InlineData(3, 10)]  // a use after the rebinding
+    public async Task Rename_ReboundLocal_RenamesEveryOccurrence_FromAnyCursor(int line, int col)
+    {
+        // L1: "    count: int = 0"      'count' at 4-8
+        // L2: "    count = count + 1"   'count' at 4-8 and 12-16
+        // L3: "    print(count)"        'count' at 10-14
+        var source = "def main() -> None:\n    count: int = 0\n    count = count + 1\n    print(count)\n";
+
+        var result = await RenameAsync(source, line, col, "total");
+
+        result.Should().NotBeNull();
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+
+        edits.Select(e => (e.Range.Start.Line, e.Range.Start.Character))
+            .Should().BeEquivalentTo(new[] { (1, 4), (2, 4), (2, 12), (3, 10) },
+                "all four occurrences are the same variable — the emitter assigns to one C# local "
+                + "and versions only on redeclaration, so renaming a fragment is silently wrong");
+        edits.Should().OnlyContain(e => e.NewText == "total");
+    }
+
+    /// <summary>
+    /// Negative control: the same spelling bound in a DIFFERENT function is a different variable and
+    /// must not be dragged along.
+    /// </summary>
+    [Fact]
+    public async Task Rename_ReboundLocal_LeavesTheSameSpellingInAnotherFunctionAlone()
+    {
+        var source =
+            "def first() -> None:\n"
+            + "    count: int = 0\n"
+            + "    count = count + 1\n"
+            + "\n"
+            + "\n"
+            + "def second() -> None:\n"
+            + "    count: int = 9\n"
+            + "    print(count)\n";
+
+        var result = await RenameAsync(source, 1, 4, "total");
+
+        result.Should().NotBeNull();
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+
+        edits.Select(e => e.Range.Start.Line).Should().OnlyContain(l => l == 1 || l == 2,
+            "second()'s 'count' is a different variable that happens to share a spelling");
+    }
+
+    /// <summary>
+    /// A REDECLARATION is a different variable and must not chain: the emitter versions those
+    /// (<c>x</c>, <c>x_1</c>) rather than assigning to one local, so renaming one must not touch
+    /// the other. This is the boundary that keeps the chain honest.
+    /// </summary>
+    [Fact]
+    public async Task Rename_Redeclaration_DoesNotChainToTheOtherBinding()
+    {
+        // Two DECLARATIONS of `value`, not a reassignment: separate variables to the emitter.
+        var source =
+            "def main() -> None:\n"
+            + "    value: int = 1\n"
+            + "    print(value)\n"
+            + "    value: str = \"a\"\n"
+            + "    print(value)\n";
+
+        var result = await RenameAsync(source, 1, 4, "first_value");
+
+        result.Should().NotBeNull();
+        var edits = result!.Changes![DocumentUri.From("file:///test.spy")].ToList();
+
+        edits.Select(e => e.Range.Start.Line).Should().NotContain(3,
+            "the second declaration binds a different variable — chaining it would rename across "
+            + "two distinct C# locals");
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();

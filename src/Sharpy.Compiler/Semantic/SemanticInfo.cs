@@ -217,6 +217,20 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Parameter, VariableSymbol> _parameterSymbols =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map each rebinding to the binding it REPLACED in the same scope. A plain `x = ...` defines a
+    // FRESH VariableSymbol (TypeChecker.CheckAssignment's simple-identifier branch) which
+    // Scope.Define swaps in for the previous one, so each binding's reference collection holds only
+    // the occurrences between it and the next rebinding — and a rename driven from any one of them
+    // covers only that fragment (#1359).
+    //
+    // Only PLAIN REASSIGNMENT belongs here, because only plain reassignment is the same variable:
+    // the emitter assigns to the same C# local and versions (x, x_1) solely on REDECLARATION
+    // (`x: T = ...` twice), which is a genuinely different variable that must NOT rename along.
+    // Loop targets never chain — both binding sites reuse an existing same-scope symbol instead of
+    // defining a fresh one.
+    private readonly ConcurrentDictionary<VariableSymbol, VariableSymbol> _rebindingPredecessors =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map function definitions to the symbol they declare, recorded where the checker resolves it.
     // Module-level functions are findable by other means; a *nested* def that nothing calls is not —
     // it is in no reference collection and not in module scope (#1232). Keyed per node so an
@@ -974,6 +988,50 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records that <paramref name="rebinding"/> replaced <paramref name="predecessor"/> — the same
+    /// variable, rebound. Called from the checker where both are in hand and the scope is alive.
+    /// </summary>
+    public void SetRebindingPredecessor(VariableSymbol rebinding, VariableSymbol predecessor)
+    {
+        _rebindingPredecessors[rebinding] = predecessor;
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<VariableSymbol> GetBindingChain(Symbol symbol)
+    {
+        if (symbol is not VariableSymbol variable)
+            return System.Array.Empty<VariableSymbol>();
+
+        if (_rebindingPredecessors.IsEmpty)
+            return new[] { variable };
+
+        // Back to the root binding. The guard is against a cycle the checker should never record;
+        // a malformed chain must not hang the language server.
+        var root = variable;
+        var guard = _rebindingPredecessors.Count + 1;
+        while (_rebindingPredecessors.TryGetValue(root, out var previous) && guard-- > 0)
+            root = previous;
+
+        // Forward from the root. Successors are found by scanning, which is cheap: the map holds
+        // one entry per rebinding in the compilation and chains are a handful of links.
+        var chain = new List<VariableSymbol> { root };
+        var current = root;
+        while (guard-- > 0)
+        {
+            var next = _rebindingPredecessors
+                .FirstOrDefault(kvp => ReferenceEquals(kvp.Value, current)).Key;
+
+            if (next == null)
+                break;
+
+            chain.Add(next);
+            current = next;
+        }
+
+        return chain;
+    }
+
+    /// <summary>
     /// Records the symbol a function definition declares. Called where the checker resolves it, so
     /// a nested definition nothing calls is still reachable from its declaration node.
     /// </summary>
@@ -1192,6 +1250,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._parameterSymbols)
             _parameterSymbols.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._rebindingPredecessors)
+            _rebindingPredecessors.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._functionDeclarationSymbols)
             _functionDeclarationSymbols.TryAdd(kvp.Key, kvp.Value);

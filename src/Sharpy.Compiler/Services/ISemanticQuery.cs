@@ -135,6 +135,26 @@ public interface ISemanticQuery
     VariableSymbol? GetParameterSymbol(Parser.Ast.Parameter parameter);
 
     /// <summary>
+    /// Every binding of one variable, in source order, for a spelling that is plainly reassigned.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A plain <c>x = ...</c> defines a FRESH symbol that replaces the previous one in the scope, so
+    /// each binding's reference collection holds only the occurrences between it and the next
+    /// rebinding. A caller that edits one binding's occurrences therefore covers a FRAGMENT of the
+    /// variable — which is how rename split a rebound spelling into two disjoint halves, each of
+    /// which still compiled while meaning something different (#1359).
+    /// </para>
+    /// <para>
+    /// Chained bindings are the SAME variable: the emitter assigns to the same C# local and versions
+    /// (<c>x</c>, <c>x_1</c>) only on REDECLARATION, which is a different variable and is
+    /// deliberately not chained. Returns the symbol alone when it has no chain, and an empty list
+    /// for anything that is not a <see cref="VariableSymbol"/>.
+    /// </para>
+    /// </remarks>
+    IReadOnlyList<VariableSymbol> GetBindingChain(Symbol symbol);
+
+    /// <summary>
     /// Returns true if the given statement was produced by a source generator
     /// (i.e., it was emitted via <c>SemanticInfo.MarkAsGenerated</c>).
     /// Used by LSP for hover attribution and semantic token modifiers.

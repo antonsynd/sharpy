@@ -71,19 +71,31 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         // is emitted twice — two overlapping edits an editor may apply twice (#1263).
         var seen = new RangeDedupe();
 
-        // Edit declaration — use the name token position, not the statement start
-        if (symbol.DeclaringFilePath != null || symbol.DeclarationSpan != null)
+        // A plainly-reassigned spelling is bound more than once, and each binding's references stop
+        // at the next rebinding. Renaming one binding's occurrences would edit a FRAGMENT of the
+        // variable and leave source that still compiles while meaning something else (#1359), so
+        // every binding in the chain is edited as one unit. A spelling bound once is a chain of one.
+        var chain = analysis.SemanticQuery.GetBindingChain(symbol);
+        var bindings = chain.Count > 0
+            ? chain.Cast<Symbol>().ToList()
+            : new System.Collections.Generic.List<Symbol> { symbol };
+
+        foreach (var binding in bindings)
         {
-            var declLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
-            var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
+            // Edit declaration — use the name token position, not the statement start
+            if (binding.DeclaringFilePath != null || binding.DeclarationSpan != null)
+            {
+                var declLine = System.Math.Max(0, (binding.EffectiveNameLine ?? 1) - 1);
+                var declCol = System.Math.Max(0, (binding.EffectiveNameColumn ?? 1) - 1);
 
-            AddEdit(edits, seen, ToDocumentUri(symbol.DeclaringFilePath, uri),
-                declLine, declCol, NameExtentLength(symbol), newText);
+                AddEdit(edits, seen, ToDocumentUri(binding.DeclaringFilePath, uri),
+                    declLine, declCol, NameExtentLength(binding), newText);
+            }
+
+            // Edit all references in current file
+            AddReferenceEdits(
+                edits, seen, analysis.SemanticQuery.GetReferences(binding), binding.Name, uri, newText);
         }
-
-        // Edit all references in current file
-        var references = analysis.SemanticQuery.GetReferences(symbol);
-        AddReferenceEdits(edits, seen, references, symbol.Name, uri, newText);
 
         // Edit references in other workspace files
         var allUris = _workspace.GetAllDocumentUris();
