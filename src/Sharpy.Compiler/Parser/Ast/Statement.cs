@@ -920,6 +920,29 @@ public record Parameter
     public int ColumnEnd { get; init; }
 
     /// <summary>
+    /// Line of the parameter's NAME token. Differs from <see cref="LineStart"/> only in
+    /// principle (a parameter cannot span lines before its name), but recorded for symmetry
+    /// with the other name-bearing records.
+    /// </summary>
+    public int NameLineStart { get; init; }
+
+    /// <summary>
+    /// Column of the parameter's NAME token. For a variadic parameter this is the column of
+    /// <c>args</c>, while <see cref="ColumnStart"/> stays on the <c>*</c> (#1359).
+    /// </summary>
+    public int NameColumnStart { get; init; }
+
+    /// <summary>
+    /// Exclusive end column of the parameter's NAME token, recorded as
+    /// <c>nameToken.Column + nameToken.Length</c>. Escape-aware by construction (#1281:
+    /// <c>Token.Length</c> is the SOURCE length, so a backticked name's extent already spans
+    /// its backticks) — consumers must never re-derive it from <c>Name.Length</c> (#1454).
+    /// There is no <c>NameLineEnd</c>: identifiers cannot span lines in this lexer, backticked
+    /// names included.
+    /// </summary>
+    public int NameColumnEnd { get; init; }
+
+    /// <summary>
     /// Character offset-based span. May be null if not tracked.
     /// </summary>
     public Text.TextSpan? Span { get; init; }

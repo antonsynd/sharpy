@@ -1304,4 +1304,102 @@ def bar():
     }
 
     #endregion
+
+    #region Parameter name extents (#1359, #1454)
+
+    private static Parameter DefParam(string source) =>
+        Parse(source).Body[0].Should().BeOfType<FunctionDef>().Subject.Parameters[0];
+
+    private static Parameter LambdaParam(string source) =>
+        Parse(source).Body[0].Should().BeOfType<Assignment>().Subject
+            .Value.Should().BeOfType<LambdaExpression>().Subject.Parameters[0];
+
+    [Fact]
+    public void Position_DefParameter_RecordsItsNameTokenExtent()
+    {
+        //                     1234567
+        var param = DefParam("def f(target: int) -> int:\n    return target\n");
+
+        param.NameLineStart.Should().Be(1);
+        param.NameColumnStart.Should().Be(7);
+        param.NameColumnEnd.Should().Be(7 + "target".Length);
+    }
+
+    [Fact]
+    public void Position_VariadicParameter_NameStartsAfterTheStar()
+    {
+        // The whole point of a separate name position: ColumnStart is captured BEFORE the `*` is
+        // consumed (Parser.Statements.cs :1150-1152 vs :1156-1164), so it points at the `*`.
+        // Renaming `args` must not eat the star (#1359).
+        var param = DefParam("def f(*args):\n    pass\n");
+
+        param.IsVariadic.Should().BeTrue();
+        param.ColumnStart.Should().Be(7);
+        param.NameColumnStart.Should().Be(8);
+        param.NameColumnEnd.Should().Be(8 + "args".Length);
+    }
+
+    [Fact]
+    public void Position_EscapedDefParameter_NameExtentSpansClosingBacktick()
+    {
+        var param = DefParam("def f(`event`: int):\n    pass\n");
+
+        param.IsNameBacktickEscaped.Should().BeTrue();
+        param.NameColumnStart.Should().Be(7);
+        param.NameColumnEnd.Should().Be(7 + "`event`".Length);
+    }
+
+    [Fact]
+    public void Position_EscapedLambdaParameter_NameExtentSpansClosingBacktick()
+    {
+        var param = LambdaParam("f = lambda `class`: 1");
+
+        param.IsNameBacktickEscaped.Should().BeTrue();
+        param.NameColumnStart.Should().Be(12);
+        param.NameColumnEnd.Should().Be(12 + "`class`".Length);
+    }
+
+    [Fact]
+    public void Position_EscapedArrowLambdaParameter_NameExtentSpansClosingBacktick()
+    {
+        var param = LambdaParam("f = (`class`: int) -> 1");
+
+        param.IsNameBacktickEscaped.Should().BeTrue();
+        param.NameColumnStart.Should().Be(6);
+        param.NameColumnEnd.Should().Be(6 + "`class`".Length);
+    }
+
+    // Verify the instrument: the same three parameter shapes with BARE names. If these moved, the
+    // name-extent recording changed something other than escape handling.
+    [Fact]
+    public void Position_BareParameters_NameExtentsMatchTheBareSpelling()
+    {
+        var defParam = DefParam("def f(p):\n    pass\n");
+        defParam.NameColumnStart.Should().Be(7);
+        defParam.NameColumnEnd.Should().Be(8);
+
+        var lambdaParam = LambdaParam("f = lambda p: 1");
+        lambdaParam.NameColumnStart.Should().Be(12);
+        lambdaParam.NameColumnEnd.Should().Be(13);
+
+        var arrowParam = LambdaParam("f = (p: int) -> 1");
+        arrowParam.NameColumnStart.Should().Be(6);
+        arrowParam.NameColumnEnd.Should().Be(7);
+    }
+
+    [Fact]
+    public void Position_SyntheticPlaceholderParameter_HasNoRecordedNameExtent()
+    {
+        // `__placeholder_N` appears nowhere in source, so it has no name token. Columns are
+        // 1-based, so 0 reads as "unrecorded" — and a rename cursor can never hit column 0.
+        var module = Parse("g = f(_)");
+        var lambda = module.Body[0].Should().BeOfType<Assignment>().Subject
+            .Value.Should().BeOfType<LambdaExpression>().Subject;
+
+        lambda.Parameters[0].Name.Should().StartWith("__placeholder_");
+        lambda.Parameters[0].NameColumnStart.Should().Be(0);
+        lambda.Parameters[0].NameColumnEnd.Should().Be(0);
+    }
+
+    #endregion
 }

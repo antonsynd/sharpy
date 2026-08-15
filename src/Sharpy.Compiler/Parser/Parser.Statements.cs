@@ -1234,6 +1234,12 @@ public partial class Parser
                 ColumnStart = startColumn,
                 LineEnd = endLine,
                 ColumnEnd = endColumn,
+                // The name token, not `startToken`: for `*args` the start is the `*`, captured
+                // at :1150-1152 BEFORE the star is consumed, so only the name token knows where
+                // `args` actually begins and ends (#1359, #1454).
+                NameLineStart = nameToken.Line,
+                NameColumnStart = nameToken.Column,
+                NameColumnEnd = nameToken.Column + nameToken.Length,
                 Span = GetSpanFromTokens(startToken, endToken)
             });
 

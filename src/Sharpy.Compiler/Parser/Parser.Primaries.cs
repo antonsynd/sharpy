@@ -868,6 +868,9 @@ public partial class Parser
                     ColumnStart = paramToken.Column,
                     LineEnd = paramEndLine,
                     ColumnEnd = paramEndColumn,
+                    NameLineStart = paramToken.Line,
+                    NameColumnStart = paramToken.Column,
+                    NameColumnEnd = paramToken.Column + paramToken.Length,
                     Span = defaultValue != null || paramType != null ? GetSpanFromTokens(paramToken, paramEndToken) : GetSpanFromToken(paramToken)
                 });
 
@@ -1094,6 +1097,9 @@ public partial class Parser
                     Type = null,
                     DefaultValue = null,
                     Kind = ParameterKind.Normal,
+                    // Name*: deliberately left at 0. Operator-section placeholders are
+                    // SYNTHESIZED parameters — `__placeholder_N` has no name token in source,
+                    // so there is no name extent to record. Columns are 1-based (#1454).
                     LineStart = placeholder.LineStart,
                     ColumnStart = placeholder.ColumnStart,
                     LineEnd = placeholder.LineEnd,
@@ -1174,6 +1180,9 @@ public partial class Parser
                 ColumnStart = paramToken.Column,
                 LineEnd = paramEndToken.Line,
                 ColumnEnd = paramEndToken.Column + paramEndToken.Length,
+                NameLineStart = paramToken.Line,
+                NameColumnStart = paramToken.Column,
+                NameColumnEnd = paramToken.Column + paramToken.Length,
                 Span = GetSpanFromTokens(paramToken, paramEndToken)
             });
 

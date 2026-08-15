@@ -1435,6 +1435,9 @@ public partial class Parser
                     Type = null,
                     DefaultValue = null,
                     Kind = ParameterKind.Normal,
+                    // Name*: deliberately left at 0. This parameter is SYNTHESIZED — its name
+                    // (`__placeholder_N`) appears nowhere in source, so it has no name token and
+                    // no name extent. Columns are 1-based, so 0 reads as "unrecorded" (#1454).
                     LineStart = placeholder.LineStart,
                     ColumnStart = placeholder.ColumnStart,
                     LineEnd = placeholder.LineEnd,
@@ -1471,6 +1474,9 @@ public partial class Parser
                     Type = null,
                     DefaultValue = null,
                     Kind = ParameterKind.Normal,
+                    // Name*: deliberately left at 0 — see the positional-placeholder arm above.
+                    // The parameter borrows the KEYWORD's spelling but the positions here are the
+                    // `_` value's; there is no name token for `paramName` to point at (#1454).
                     LineStart = kwPlaceholder.LineStart,
                     ColumnStart = kwPlaceholder.ColumnStart,
                     LineEnd = kwPlaceholder.LineEnd,
