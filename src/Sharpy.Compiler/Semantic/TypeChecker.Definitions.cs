@@ -655,10 +655,19 @@ internal partial class TypeChecker
                 // body to the parameter and the call ran it — silently, since both spellings mangle
                 // to the same C# name (#1326).
                 IsNameBacktickEscaped = param.IsNameBacktickEscaped,
-                DeclarationLine = null,
-                DeclarationColumn = null,
-                NameDeclarationLine = null,
-                NameDeclarationColumn = null
+                // These four were explicitly null — the one construction site in this file that
+                // threw its node's positions away. A parameter symbol with no position is a symbol
+                // rename cannot reach: RenameHandler bails on `DeclaringFilePath == null &&
+                // DeclarationSpan == null` before any resolution arm runs, so renaming a parameter
+                // produced zero edits even from a reference cursor (#1359).
+                // Declaration = statement start (the `*` of `*args`); NameDeclaration = the name
+                // token, so an edit lands on `args` and leaves the star alone.
+                DeclarationLine = param.LineStart,
+                DeclarationColumn = param.ColumnStart,
+                NameDeclarationLine = param.NameLineStart,
+                NameDeclarationColumn = param.NameColumnStart,
+                DeclarationSpan = param.Span,
+                DeclaringFilePath = _currentFilePath
             };
             _symbolTable.Define(paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, effectiveType);
@@ -1963,8 +1972,8 @@ internal partial class TypeChecker
                 IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,
-                NameDeclarationLine = param.LineStart,
-                NameDeclarationColumn = param.ColumnStart
+                NameDeclarationLine = param.NameLineStart,
+                NameDeclarationColumn = param.NameColumnStart
             };
             _symbolTable.Define(paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, paramType);
@@ -2126,8 +2135,8 @@ internal partial class TypeChecker
                 IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,
-                NameDeclarationLine = param.LineStart,
-                NameDeclarationColumn = param.ColumnStart
+                NameDeclarationLine = param.NameLineStart,
+                NameDeclarationColumn = param.NameColumnStart
             };
             _symbolTable.Define(paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, paramType);
@@ -2272,8 +2281,8 @@ internal partial class TypeChecker
                 IsNameBacktickEscaped = param.IsNameBacktickEscaped,
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,
-                NameDeclarationLine = param.LineStart,
-                NameDeclarationColumn = param.ColumnStart
+                NameDeclarationLine = param.NameLineStart,
+                NameDeclarationColumn = param.NameColumnStart
             };
             _symbolTable.Define(paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, paramType);

@@ -68,12 +68,23 @@ internal partial class TypeChecker
 
         for (int i = 0; i < lambda.Parameters.Length; i++)
         {
+            var lambdaParam = lambda.Parameters[i];
             var paramSymbol = new VariableSymbol
             {
-                Name = lambda.Parameters[i].Name,
+                Name = lambdaParam.Name,
                 Kind = SymbolKind.Parameter,
                 Type = paramTypes[i],
-                IsParameter = true
+                IsParameter = true,
+                IsNameBacktickEscaped = lambdaParam.IsNameBacktickEscaped,
+                // Same contract as a def parameter (#1359). Placeholder-lowered parameters record
+                // no name extent (their name is synthesized), so these stay 0 there — which is not
+                // a position any 1-based cursor can reach.
+                DeclarationLine = lambdaParam.LineStart,
+                DeclarationColumn = lambdaParam.ColumnStart,
+                NameDeclarationLine = lambdaParam.NameLineStart,
+                NameDeclarationColumn = lambdaParam.NameColumnStart,
+                DeclarationSpan = lambdaParam.Span,
+                DeclaringFilePath = _currentFilePath
             };
             _symbolTable.Define(paramSymbol);
         }
