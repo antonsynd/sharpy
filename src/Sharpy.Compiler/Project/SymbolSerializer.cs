@@ -1467,13 +1467,20 @@ internal static class SymbolSerializer
         /// behind the singleton set — which is also what lets it survive #1356's collapse without
         /// an edit here.
         /// </summary>
-        private static readonly Dictionary<string, BuiltinType> s_builtinSingletonsByName =
+        /// <remarks>
+        /// IMMUTABLE, not merely readonly: built once from readonly static fields and never
+        /// written again, so it is a constant rather than shared mutable state.
+        /// <c>StaticStateConformanceTests</c> flags a static <c>Dictionary</c> as a determinism
+        /// hazard and exempts immutable collections — correctly, and this is genuinely the
+        /// immutable case.
+        /// </remarks>
+        private static readonly ImmutableDictionary<string, BuiltinType> s_builtinSingletonsByName =
             typeof(SemanticType)
                 .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
                 .Select(f => f.GetValue(null) as BuiltinType)
                 .Where(bt => bt is not null)
                 .GroupBy(bt => bt!.Name, StringComparer.Ordinal)
-                .ToDictionary(g => g.Key, g => g.First()!, StringComparer.Ordinal);
+                .ToImmutableDictionary(g => g.Key, g => g.First()!, StringComparer.Ordinal);
 
         /// <summary>
         /// Decodes the builtin channel. The encoder writes <c>bt.Name</c>; this reads it back as a

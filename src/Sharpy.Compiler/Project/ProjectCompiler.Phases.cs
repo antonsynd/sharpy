@@ -768,22 +768,31 @@ internal partial class ProjectCompiler
     ///
     /// <para>A <c>&lt;Reference&gt;</c> that resolves to an existing file is PROBE-ABLE, and
     /// <c>AssemblyCompiler</c> applies the same File.Exists test in Phase 7 — so the two phases
-    /// agree about which references are real. Everything else is UNPROBED: a PackageReference has
-    /// no path until NuGet resolution, and a Reference whose file is missing has none either.
-    /// A project carrying anything unprobed must not have an absence refused on its behalf.</para>
+    /// agree about which references are real.</para>
+    ///
+    /// <para>ONLY an unresolved <c>PackageReference</c> counts as unprobed. A
+    /// <c>&lt;Reference&gt;</c> whose file is missing does NOT: Phase 7 applies the same test,
+    /// logs "Reference not found" and skips it (<c>AssemblyCompiler.cs:341</c>), so it contributes
+    /// no types there either and cannot justify suspending an absence proof here.</para>
+    ///
+    /// <para>Counting missing references as unprobed is what the first version of this did, and
+    /// the full gate caught it: every project built by the test scaffold carries
+    /// <c>&lt;Reference&gt;</c> entries that do not resolve to a path at this point, so the bit was
+    /// set for essentially every project and SPY0495 stopped being reported at all —
+    /// <c>SourceGeneratorTests.GeneratorTrigger_IsConsumed_AndTheProjectCompiles</c>'s own control
+    /// went red with CS0246 behind SPY0908, which is the #1146 leak this fix must not reopen.
+    /// The narrow rule is the correct one, not merely the one that passes.</para>
     /// </summary>
     private static Discovery.ReferenceClosure BuildReferenceClosure(ProjectConfig config)
     {
         var probeable = new List<string>();
-        var unprobed = config.PackageReferences.Count > 0;
-
         foreach (var reference in config.References)
         {
             if (File.Exists(reference))
                 probeable.Add(reference);
-            else
-                unprobed = true;
         }
+
+        var unprobed = config.PackageReferences.Count > 0;
 
         return probeable.Count == 0 && !unprobed
             ? Discovery.ReferenceClosure.Empty
