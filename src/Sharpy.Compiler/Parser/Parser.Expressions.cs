@@ -1007,6 +1007,12 @@ public partial class Parser
                         Member = member,
                         IsNullConditional = isNullConditional,
                         IsMemberBacktickEscaped = memberToken.IsBacktickEscaped,
+                        // The member name's own position, so nothing downstream has to infer it
+                        // from the dot's adjacency to the receiver — whitespace is legal on both
+                        // sides of the dot and a chain may cross lines (#1503).
+                        MemberNameLineStart = memberToken.Line,
+                        MemberNameColumnStart = memberToken.Column,
+                        MemberNameColumnEnd = memberToken.Column + memberToken.Length,
                         LineStart = expr.LineStart,
                         ColumnStart = expr.ColumnStart,
                         LineEnd = Previous.Line,

@@ -1480,4 +1480,132 @@ def bar():
     }
 
     #endregion
+
+    #region Member-name extents (#1503, #1454)
+
+    private static MemberAccess Member(string source) =>
+        Parse(source).Body[0].Should().BeOfType<ExpressionStatement>().Subject
+            .Expression.Should().BeOfType<MemberAccess>().Subject;
+
+    [Theory]
+    // The padded forms are the point of #1503: `Object.ColumnEnd + 1` names the gap, not the
+    // member, the moment anything sits between the receiver and the dot — or the dot and the name.
+    [InlineData("obj.field", 5, 10, "contiguous")]
+    [InlineData("obj . field", 7, 12, "padded on both sides of the dot")]
+    [InlineData("obj .field", 6, 11, "padded before the dot")]
+    [InlineData("obj. field", 6, 11, "padded after the dot")]
+    [InlineData("obj?.field", 6, 11, "null-conditional, contiguous")]
+    public void Position_MemberAccess_RecordsTheMemberTokenExtent(
+        string source, int expectedStart, int expectedEnd, string shape)
+    {
+        var member = Member(source);
+
+        member.MemberNameLineStart.Should().Be(1, shape);
+        member.MemberNameColumnStart.Should().Be(expectedStart, shape);
+        member.MemberNameColumnEnd.Should().Be(expectedEnd, shape);
+        (member.MemberNameColumnEnd - member.MemberNameColumnStart).Should().Be("field".Length);
+    }
+
+    [Fact]
+    public void Position_MemberExtent_IsIndependentOfTheReceiversEnd()
+    {
+        // Stated as the invariant rather than as numbers: whatever the padding, the member extent
+        // is the token's — so the two differ by exactly the whitespace, and a consumer deriving the
+        // member position from the receiver's end is wrong by that amount.
+        var contiguous = Member("obj.field");
+        var padded = Member("obj . field");
+
+        contiguous.Object.ColumnEnd.Should().Be(padded.Object.ColumnEnd,
+            "the receiver is `obj` in both");
+        (padded.MemberNameColumnStart - contiguous.MemberNameColumnStart).Should().Be(2,
+            "the two spaces are the whole difference");
+    }
+
+    [Fact]
+    public void Position_PaddedNullConditional_RecordsTheMemberTokenExtent()
+    {
+        //                    123456789012
+        var member = Member("obj ?. field");
+
+        member.IsNullConditional.Should().BeTrue();
+        member.MemberNameColumnStart.Should().Be(8);
+        member.MemberNameColumnEnd.Should().Be(13);
+    }
+
+    [Fact]
+    public void Position_MultiLineMemberChain_RecordsTheMembersOwnLine()
+    {
+        // The member is not on the receiver's line at all, so any arithmetic anchored to the
+        // receiver's end is not merely off by the padding — it is on the wrong line (#1503).
+        // Parenthesized so the chain may cross lines; the parens are the continuation, not the
+        // subject.
+        var member = Parse("(obj\n    .field)").Body[0].Should().BeOfType<ExpressionStatement>().Subject
+            .Expression.Should().BeOfType<Parenthesized>().Subject
+            .Expression.Should().BeOfType<MemberAccess>().Subject;
+
+        member.Object.LineEnd.Should().Be(1);
+        member.MemberNameLineStart.Should().Be(2);
+        member.MemberNameColumnStart.Should().Be(6);
+        member.MemberNameColumnEnd.Should().Be(11);
+    }
+
+    [Fact]
+    public void Position_EscapedMember_ExtentSpansClosingBacktick()
+    {
+        var member = Member("obj.`class`");
+
+        member.IsMemberBacktickEscaped.Should().BeTrue();
+        member.MemberNameColumnStart.Should().Be(5);
+        member.MemberNameColumnEnd.Should().Be(5 + "`class`".Length);
+    }
+
+    [Fact]
+    public void Position_PaddedEscapedMember_ExtentSpansClosingBacktick()
+    {
+        //                    123456789
+        var member = Member("obj . `class`");
+
+        member.IsMemberBacktickEscaped.Should().BeTrue();
+        member.MemberNameColumnStart.Should().Be(7);
+        member.MemberNameColumnEnd.Should().Be(7 + "`class`".Length);
+    }
+
+    [Fact]
+    public void Position_ChainedMembers_EachRecordsItsOwnMemberExtent()
+    {
+        //                    1234567890123456789
+        var outer = Member("a . b . c");
+
+        outer.Member.Should().Be("c");
+        outer.MemberNameColumnStart.Should().Be(9);
+        outer.MemberNameColumnEnd.Should().Be(10);
+
+        var inner = outer.Object.Should().BeOfType<MemberAccess>().Subject;
+        inner.Member.Should().Be("b");
+        inner.MemberNameColumnStart.Should().Be(5);
+        inner.MemberNameColumnEnd.Should().Be(6);
+    }
+
+    [Fact]
+    public void Position_DottedEscapeSegments_EachRecordsItsExtentWithinTheOneToken()
+    {
+        // The #713 shape: ONE backticked token split into segments. There is no per-segment token,
+        // so the offsets come from the token's own text — opening backtick, then each preceding
+        // segment and its dot. Whitespace cannot pad them, because inside a backticked identifier
+        // it would be part of the name.
+        //                  1234567890123456
+        //                  `System.IO.Path`
+        var path = Member("`System.IO.Path`");
+
+        path.Member.Should().Be("Path");
+        path.MemberNameColumnStart.Should().Be(12);
+        path.MemberNameColumnEnd.Should().Be(16);
+
+        var io = path.Object.Should().BeOfType<MemberAccess>().Subject;
+        io.Member.Should().Be("IO");
+        io.MemberNameColumnStart.Should().Be(9);
+        io.MemberNameColumnEnd.Should().Be(11);
+    }
+
+    #endregion
 }

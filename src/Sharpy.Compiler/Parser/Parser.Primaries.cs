@@ -232,13 +232,26 @@ public partial class Parser
                             Span = GetSpanFromToken(identToken)
                         };
 
+                        // Each segment's own extent within the single token (#1503). There is no
+                        // per-member token here to read a position off, but there is no need for
+                        // one either: the offsets are fixed by the token's own text — the opening
+                        // backtick, then each preceding segment plus its dot — and nothing can pad
+                        // them, because whitespace inside a backticked identifier is part of the
+                        // name rather than a separator. So this is still a measurement of source,
+                        // not the dot-adjacency inference #1503 exists to retire.
+                        var segmentColumn = startColumn + 1;  // past the opening backtick
                         for (var i = 1; i < segments.Length; i++)
                         {
+                            segmentColumn += segments[i - 1].Length + 1;  // previous segment + '.'
+
                             expr = new MemberAccess
                             {
                                 Object = expr,
                                 Member = segments[i],
                                 IsMemberBacktickEscaped = true,
+                                MemberNameLineStart = identToken.Line,
+                                MemberNameColumnStart = segmentColumn,
+                                MemberNameColumnEnd = segmentColumn + segments[i].Length,
                                 LineStart = startLine,
                                 ColumnStart = startColumn,
                                 LineEnd = Previous.Line,

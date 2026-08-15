@@ -420,6 +420,27 @@ public record MemberAccess : Expression
     public bool IsNullConditional { get; init; }  // obj?.member
     public bool IsMemberBacktickEscaped { get; init; }
 
+    /// <summary>
+    /// Position and exclusive end column of the MEMBER name, recorded from the member token
+    /// (#1503). Independent of <see cref="Node.ColumnEnd"/> and of the receiver's end: whitespace is
+    /// legal on either side of the dot, so <c>Object.ColumnEnd + 1</c> is not where the member
+    /// starts in <c>obj . field</c>, and a chain may cross lines. Consumers read these rather than
+    /// deriving a member position from dot adjacency (#1454's rule applied to member names).
+    /// Escape-aware by construction (#1281: <c>Token.Length</c> is the SOURCE length, so a
+    /// backticked member's extent already spans its backticks). No <c>MemberNameLineEnd</c>:
+    /// identifiers cannot span lines in this lexer.
+    /// </summary>
+    /// <remarks>
+    /// The #713 dotted escape — a single backticked token such as <c>`System.IO.Path`</c> split
+    /// into segments — has no per-member token to read, so its segment extents are computed from
+    /// the one token's position at the construction site in <c>Parser.Primaries.cs</c>. That is
+    /// still a measurement rather than a re-derivation: the offsets inside a single token are fixed
+    /// by the token's own text, which no whitespace can pad.
+    /// </remarks>
+    public int MemberNameLineStart { get; init; }
+    public int MemberNameColumnStart { get; init; }
+    public int MemberNameColumnEnd { get; init; }
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {

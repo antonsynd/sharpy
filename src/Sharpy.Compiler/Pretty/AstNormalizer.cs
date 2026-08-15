@@ -103,8 +103,17 @@ public sealed class AstNormalizer : AstVisitor<Node>
 
     public override Node VisitIdentifier(Identifier node) => Zero(node);
 
+    // The member-name position is source geometry like any other (#1503), so it is zeroed too:
+    // `obj.field` and `obj . field` must normalize to the same node, or equivalence comparisons
+    // would report a difference that is only whitespace.
     public override Node VisitMemberAccess(MemberAccess node) =>
-        Zero(node) with { Object = (Expression)Visit(node.Object) };
+        Zero(node) with
+        {
+            Object = (Expression)Visit(node.Object),
+            MemberNameLineStart = 0,
+            MemberNameColumnStart = 0,
+            MemberNameColumnEnd = 0
+        };
 
     public override Node VisitIndexAccess(IndexAccess node) =>
         Zero(node) with { Object = (Expression)Visit(node.Object), Index = (Expression)Visit(node.Index) };
