@@ -356,10 +356,11 @@ def main() -> None:
         // document-highlight all resolve through, so a null here is a feature that does not work.
         F<Symbol>("DeclaringFilePath", s => FileNameOf(s.DeclaringFilePath), CacheStatus.RoundTrips,
             "CachedSymbol.FilePath"),
-        F<Symbol>("DeprecationMessage", s => s.DeprecationMessage, CacheStatus.Dropped,
-            "#1444 — no CachedSymbol field; a warm build silences SPY0466"),
-        F<Symbol>("ExplicitAccessLevel", s => s.ExplicitAccessLevel?.ToString(), CacheStatus.Dropped,
-            "#1444 — only the effective AccessLevel is cached, not the decorator that set it"),
+        F<Symbol>("DeprecationMessage", s => s.DeprecationMessage, CacheStatus.RoundTrips,
+            "CachedSymbol.DeprecationMessage — carried on every symbol kind (#1444)"),
+        F<Symbol>("ExplicitAccessLevel", s => s.ExplicitAccessLevel?.ToString(), CacheStatus.RoundTrips,
+            "CachedSymbol.ExplicitAccessLevel — null when the declaration stated none, which is a "
+            + "different fact from any particular level (#1444)"),
 
         // ---- TypeSymbol ----
         F<TypeSymbol>("TypeKind", t => t.TypeKind.ToString(), CacheStatus.RoundTrips,
@@ -369,8 +370,8 @@ def main() -> None:
             "CachedSymbol.IsStringEnum"),
         F<TypeSymbol>("DefiningFilePath", t => FileNameOf(t.DefiningFilePath), CacheStatus.RoundTrips,
             "CachedSymbol.FilePath"),
-        F<TypeSymbol>("IsMustUse", t => t.IsMustUse, CacheStatus.Dropped,
-            "#1444 — no CachedSymbol field; a warm build silences SPY0480 for a @must_use type"),
+        F<TypeSymbol>("IsMustUse", t => t.IsMustUse, CacheStatus.RoundTrips,
+            "CachedSymbol.IsMustUse (#1444)"),
         F<TypeSymbol>("TypeParameters", t => Join(t.TypeParameters.Select(p => p.Name)),
             CacheStatus.RoundTrips, "CachedSymbol.TypeParameters"),
         F<TypeSymbol>("Fields", t => Join(t.Fields.Select(f => f.Name).OrderBy(n => n, StringComparer.Ordinal)),
@@ -386,17 +387,18 @@ def main() -> None:
         // spelling is lost on the import path). The `Registry` specimen carries an escaped property.
         F<TypeSymbol>("Properties",
             t => Join(t.Properties.Select(p => $"{p.Name}{(p.IsNameBacktickEscaped ? ":esc" : "")}").OrderBy(n => n, StringComparer.Ordinal)),
-            CacheStatus.Dropped, "#1444 — no CachedSymbol field; a warm build restores a type with no properties"),
+            CacheStatus.RoundTrips, "CachedSymbol.TypeProperties — the escape flag travels with each "
+            + "entry, so #1455's spelling survives the cache as well as the import path (#1444)"),
         // #1455 — the projection includes each event's escape flag: EventSymbol is a standalone
         // record, so its IsNameBacktickEscaped must survive extraction. `Registry` carries an escaped
         // event.
         F<TypeSymbol>("Events",
             t => Join(t.Events.Select(e => $"{e.Name}{(e.IsNameBacktickEscaped ? ":esc" : "")}").OrderBy(n => n, StringComparer.Ordinal)),
-            CacheStatus.Dropped, "#1444 — no CachedSymbol field"),
+            CacheStatus.RoundTrips, "CachedSymbol.Events — escape flag included, as for properties (#1444)"),
         F<TypeSymbol>("DeclaringType", t => t.DeclaringType?.Name, CacheStatus.RoundTrips,
             "re-linked from the NestedTypes nesting on restore"),
-        F<TypeSymbol>("IsDataclass", t => t.IsDataclass, CacheStatus.Dropped,
-            "#1444 — no CachedSymbol field"),
+        F<TypeSymbol>("IsDataclass", t => t.IsDataclass, CacheStatus.RoundTrips,
+            "CachedSymbol.IsDataclass (#1444)"),
 
         // ---- FunctionSymbol ----
         // #1455 — the projection includes each parameter's escape flag: ParameterSymbol is a
@@ -415,11 +417,11 @@ def main() -> None:
         F<FunctionSymbol>("IsOverride", f => f.IsOverride, CacheStatus.RoundTrips, "CachedSymbol.IsOverride"),
         F<FunctionSymbol>("TypeParameters", f => Join(f.TypeParameters.Select(p => p.Name)),
             CacheStatus.RoundTrips, "CachedSymbol.TypeParameters"),
-        F<FunctionSymbol>("SignatureKey", f => f.SignatureKey, CacheStatus.Dropped,
-            "#1444 — no CachedSymbol field; a warm build restores a null key and overload dedup "
-            + "compares two keys computed two ways"),
-        F<FunctionSymbol>("IsMustUse", f => f.IsMustUse, CacheStatus.Dropped,
-            "#1444 — no CachedSymbol field; a warm build silences SPY0480"),
+        F<FunctionSymbol>("SignatureKey", f => f.SignatureKey, CacheStatus.RoundTrips,
+            "CachedSymbol.SignatureKey — restored rather than recomputed, so overload dedup compares "
+            + "two keys made the same way (#1444)"),
+        F<FunctionSymbol>("IsMustUse", f => f.IsMustUse, CacheStatus.RoundTrips,
+            "CachedSymbol.IsMustUse (#1444)"),
 
         // ---- VariableSymbol ----
         F<VariableSymbol>("Type", v => Describe(v.Type), CacheStatus.RoundTrips, "CachedSymbol.TypeId"),
@@ -427,11 +429,10 @@ def main() -> None:
             "CachedSymbol.Properties[IsConstant]"),
         F<VariableSymbol>("HasDefaultValue", v => v.HasDefaultValue, CacheStatus.RoundTrips,
             "CachedSymbol.Properties[HasDefaultValue]"),
-        F<VariableSymbol>("IsStatic", v => v.IsStatic, CacheStatus.Dropped,
-            "#1444 — VariableSymbol.Properties carries six flags and IsStatic is not one"),
-        F<VariableSymbol>("IsFinal", v => v.IsFinal, CacheStatus.Dropped,
-            "#1444 — VariableSymbol.Properties carries six flags and IsFinal is not one; a warm "
-            + "build lets a @final field be assigned outside a constructor"),
+        F<VariableSymbol>("IsStatic", v => v.IsStatic, CacheStatus.RoundTrips,
+            "CachedSymbol.Properties[IsStatic] — the bag carries eight field flags now (#1444)"),
+        F<VariableSymbol>("IsFinal", v => v.IsFinal, CacheStatus.RoundTrips,
+            "CachedSymbol.Properties[IsFinal] (#1444)"),
 
         // ---- TypeAliasSymbol ----
         F<TypeAliasSymbol>("TypeAnnotation", a => a.TypeAnnotation?.Name, CacheStatus.Dropped,

@@ -239,9 +239,100 @@ internal record CachedSymbol
     public string? Documentation { get; init; }
 
     /// <summary>
+    /// Deprecation message from <c>@deprecated("...")</c>. Without it a warm build silences SPY0466
+    /// for every use of a deprecated symbol (#1444).
+    /// </summary>
+    public string? DeprecationMessage { get; init; }
+
+    /// <summary>
+    /// The access level the DECORATOR set, as distinct from the effective
+    /// <see cref="AccessLevel"/> — null when the declaration did not state one. The two are
+    /// different facts: validators that ask "did the author write this?" read the explicit one, and
+    /// a warm build that restored only the effective level answered no for everything (#1444).
+    /// </summary>
+    public string? ExplicitAccessLevel { get; init; }
+
+    /// <summary>
+    /// For FunctionSymbol and TypeSymbol: carries <c>@must_use</c>. A warm build that drops it
+    /// silences SPY0480 on the second build only — the #1309 cold-vs-warm disagreement (#1444).
+    /// </summary>
+    public bool IsMustUse { get; init; }
+
+    /// <summary>
+    /// For TypeSymbol: <c>@dataclass</c> (#1444).
+    /// </summary>
+    public bool IsDataclass { get; init; }
+
+    /// <summary>
+    /// For FunctionSymbol: the precomputed overload-identity key. A warm build that restored null
+    /// left overload dedup comparing a cached key against a freshly computed one — two keys
+    /// computed two ways (#1444).
+    /// </summary>
+    public string? SignatureKey { get; init; }
+
+    /// <summary>
+    /// For TypeSymbol: properties. Named <c>TypeProperties</c> because <see cref="Properties"/> is
+    /// already taken by the extensibility bag below (#1444).
+    /// </summary>
+    public List<CachedProperty>? TypeProperties { get; init; }
+
+    /// <summary>
+    /// For TypeSymbol: events (#1444).
+    /// </summary>
+    public List<CachedEvent>? Events { get; init; }
+
+    /// <summary>
     /// Additional properties for extensibility
     /// </summary>
     public Dictionary<string, object>? Properties { get; init; }
+}
+
+/// <summary>
+/// Serializable representation of a <see cref="Semantic.PropertySymbol"/> (#1444).
+/// </summary>
+/// <remarks>
+/// <c>Observers</c> is deliberately absent: the observer clauses are AST-backed and gated behind the
+/// experimental <c>property_observers</c> feature, so like the alias targets they are reconstructed
+/// from source on reparse rather than cached.
+/// </remarks>
+internal record CachedProperty
+{
+    public required string Name { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
+    public required string TypeId { get; init; }
+    public string? Documentation { get; init; }
+    public bool HasGetter { get; init; }
+    public bool HasSetter { get; init; }
+    public bool HasInit { get; init; }
+    public bool IsStatic { get; init; }
+    public bool IsVirtual { get; init; }
+    public bool IsAbstract { get; init; }
+    public bool IsOverride { get; init; }
+    public bool IsFinal { get; init; }
+    public string GetterAccess { get; init; } = "Public";
+    public string SetterAccess { get; init; } = "Public";
+    public string? ExplicitInterface { get; init; }
+}
+
+/// <summary>
+/// Serializable representation of an <see cref="Semantic.EventSymbol"/> (#1444).
+/// </summary>
+internal record CachedEvent
+{
+    public required string Name { get; init; }
+    public bool IsNameBacktickEscaped { get; init; }
+    public required string TypeId { get; init; }
+    public string? Documentation { get; init; }
+    public bool HasAdd { get; init; }
+    public bool HasRemove { get; init; }
+    public bool IsStatic { get; init; }
+    public bool IsVirtual { get; init; }
+    public bool IsAbstract { get; init; }
+    public bool IsOverride { get; init; }
+    public bool IsFinal { get; init; }
+    public string AccessLevel { get; init; } = "Public";
+    public string AddAccessLevel { get; init; } = "Public";
+    public string RemoveAccessLevel { get; init; } = "Public";
 }
 
 /// <summary>

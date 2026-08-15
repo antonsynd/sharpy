@@ -148,7 +148,59 @@ internal static class SymbolSerializer
             OriginalModule = ts.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(ts.CodeGenInfo),
             Documentation = ts.Documentation,
-            TypeParameters = SerializeTypeParameters(ts.TypeParameters)
+            TypeParameters = SerializeTypeParameters(ts.TypeParameters),
+            // #1444
+            DeprecationMessage = ts.DeprecationMessage,
+            ExplicitAccessLevel = ts.ExplicitAccessLevel?.ToString(),
+            IsMustUse = ts.IsMustUse,
+            IsDataclass = ts.IsDataclass,
+            TypeProperties = ts.Properties.Count > 0
+                ? ts.Properties.Select(SerializeProperty).ToList() : null,
+            Events = ts.Events.Count > 0
+                ? ts.Events.Select(SerializeEvent).ToList() : null
+        };
+    }
+
+    private static CachedProperty SerializeProperty(PropertySymbol ps)
+    {
+        return new CachedProperty
+        {
+            Name = ps.Name,
+            IsNameBacktickEscaped = ps.IsNameBacktickEscaped,
+            TypeId = SerializeType(ps.Type),
+            Documentation = ps.Documentation,
+            HasGetter = ps.HasGetter,
+            HasSetter = ps.HasSetter,
+            HasInit = ps.HasInit,
+            IsStatic = ps.IsStatic,
+            IsVirtual = ps.IsVirtual,
+            IsAbstract = ps.IsAbstract,
+            IsOverride = ps.IsOverride,
+            IsFinal = ps.IsFinal,
+            GetterAccess = ps.GetterAccess.ToString(),
+            SetterAccess = ps.SetterAccess.ToString(),
+            ExplicitInterface = ps.ExplicitInterface
+        };
+    }
+
+    private static CachedEvent SerializeEvent(EventSymbol es)
+    {
+        return new CachedEvent
+        {
+            Name = es.Name,
+            IsNameBacktickEscaped = es.IsNameBacktickEscaped,
+            TypeId = SerializeType(es.Type),
+            Documentation = es.Documentation,
+            HasAdd = es.HasAdd,
+            HasRemove = es.HasRemove,
+            IsStatic = es.IsStatic,
+            IsVirtual = es.IsVirtual,
+            IsAbstract = es.IsAbstract,
+            IsOverride = es.IsOverride,
+            IsFinal = es.IsFinal,
+            AccessLevel = es.AccessLevel.ToString(),
+            AddAccessLevel = es.AddAccessLevel.ToString(),
+            RemoveAccessLevel = es.RemoveAccessLevel.ToString()
         };
     }
 
@@ -179,7 +231,12 @@ internal static class SymbolSerializer
             OriginalModule = fs.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(fs.CodeGenInfo),
             Documentation = fs.Documentation,
-            TypeParameters = SerializeTypeParameters(fs.TypeParameters)
+            TypeParameters = SerializeTypeParameters(fs.TypeParameters),
+            // #1444
+            DeprecationMessage = fs.DeprecationMessage,
+            ExplicitAccessLevel = fs.ExplicitAccessLevel?.ToString(),
+            IsMustUse = fs.IsMustUse,
+            SignatureKey = fs.SignatureKey
         };
     }
 
@@ -204,6 +261,9 @@ internal static class SymbolSerializer
             OriginalModule = vs.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(vs.CodeGenInfo),
             Documentation = vs.Documentation,
+            // #1444
+            DeprecationMessage = vs.DeprecationMessage,
+            ExplicitAccessLevel = vs.ExplicitAccessLevel?.ToString(),
             Properties = new Dictionary<string, object>
             {
                 ["IsParameter"] = vs.IsParameter,
@@ -211,7 +271,11 @@ internal static class SymbolSerializer
                 ["HasDefaultValue"] = vs.HasDefaultValue,
                 ["IsModuleProperty"] = vs.IsModuleProperty,
                 ["HasPropertyGetter"] = vs.HasPropertyGetter,
-                ["HasPropertySetter"] = vs.HasPropertySetter
+                ["HasPropertySetter"] = vs.HasPropertySetter,
+                // #1444 — the bag already carries six field flags; these two were simply missing,
+                // and a warm build let a @final field be assigned outside a constructor.
+                ["IsStatic"] = vs.IsStatic,
+                ["IsFinal"] = vs.IsFinal
             }
         };
     }
@@ -244,7 +308,10 @@ internal static class SymbolSerializer
             IsReExport = ms.IsReExport,
             OriginalModule = ms.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(ms.CodeGenInfo),
-            Documentation = ms.Documentation
+            Documentation = ms.Documentation,
+            // #1444 — Symbol-level facts, carried on every kind
+            DeprecationMessage = ms.DeprecationMessage,
+            ExplicitAccessLevel = ms.ExplicitAccessLevel?.ToString()
         };
     }
 
@@ -268,7 +335,10 @@ internal static class SymbolSerializer
             IsReExport = tas.IsReExport,
             OriginalModule = tas.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(tas.CodeGenInfo),
-            Documentation = tas.Documentation
+            Documentation = tas.Documentation,
+            // #1444 — Symbol-level facts, carried on every kind
+            DeprecationMessage = tas.DeprecationMessage,
+            ExplicitAccessLevel = tas.ExplicitAccessLevel?.ToString()
         };
     }
 
@@ -292,7 +362,10 @@ internal static class SymbolSerializer
             IsReExport = tps.IsReExport,
             OriginalModule = tps.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(tps.CodeGenInfo),
-            Documentation = tps.Documentation
+            Documentation = tps.Documentation,
+            // #1444 — Symbol-level facts, carried on every kind
+            DeprecationMessage = tps.DeprecationMessage,
+            ExplicitAccessLevel = tps.ExplicitAccessLevel?.ToString()
         };
     }
 
@@ -485,7 +558,16 @@ internal static class SymbolSerializer
             UnresolvedBaseName = cached.UnresolvedBaseName,
             UnresolvedBaseTypeArgs = cached.BaseTypeArgs != null && cached.BaseTypeArgs.Count > 0
                 ? cached.BaseTypeArgs.Select(DeserializeTypeAnnotation).ToImmutableArray()
-                : ImmutableArray<TypeAnnotation>.Empty
+                : ImmutableArray<TypeAnnotation>.Empty,
+            // #1444
+            DeprecationMessage = cached.DeprecationMessage,
+            ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel),
+            IsMustUse = cached.IsMustUse,
+            IsDataclass = cached.IsDataclass,
+            Properties = cached.TypeProperties?.Select(p => DeserializeProperty(p, typeResolver)).ToList()
+                ?? new List<PropertySymbol>(),
+            Events = cached.Events?.Select(e => DeserializeEvent(e, typeResolver)).ToList()
+                ?? new List<EventSymbol>()
         };
 
         // Restore unresolved interface references so Phase 4b/4c resolves them (#1309). Round-trips
@@ -541,7 +623,12 @@ internal static class SymbolSerializer
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
             CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
-            TypeParameters = DeserializeTypeParameters(cached.TypeParameters)
+            TypeParameters = DeserializeTypeParameters(cached.TypeParameters),
+            // #1444
+            DeprecationMessage = cached.DeprecationMessage,
+            ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel),
+            IsMustUse = cached.IsMustUse,
+            SignatureKey = cached.SignatureKey
         };
         symbol.Documentation = cached.Documentation;
         return symbol;
@@ -575,10 +662,67 @@ internal static class SymbolSerializer
             HasPropertySetter = GetBoolProperty(props, "HasPropertySetter"),
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
+            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
+            // #1444
+            DeprecationMessage = cached.DeprecationMessage,
+            ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel),
+            IsStatic = GetBoolProperty(props, "IsStatic"),
+            IsFinal = GetBoolProperty(props, "IsFinal")
         };
         symbol.Documentation = cached.Documentation;
         return symbol;
+    }
+
+    /// <summary>
+    /// Parses the serialized explicit access level. Null means the declaration did not state one —
+    /// a fact distinct from any particular level (#1444).
+    /// </summary>
+    private static AccessLevel? ParseAccessLevel(string? value)
+        => string.IsNullOrEmpty(value) ? null : Enum.Parse<AccessLevel>(value);
+
+    private static PropertySymbol DeserializeProperty(
+        CachedProperty cached, Func<string, SemanticType> typeResolver)
+    {
+        return new PropertySymbol
+        {
+            Name = cached.Name,
+            IsNameBacktickEscaped = cached.IsNameBacktickEscaped,
+            Type = typeResolver(cached.TypeId),
+            Documentation = cached.Documentation,
+            HasGetter = cached.HasGetter,
+            HasSetter = cached.HasSetter,
+            HasInit = cached.HasInit,
+            IsStatic = cached.IsStatic,
+            IsVirtual = cached.IsVirtual,
+            IsAbstract = cached.IsAbstract,
+            IsOverride = cached.IsOverride,
+            IsFinal = cached.IsFinal,
+            GetterAccess = Enum.Parse<AccessLevel>(cached.GetterAccess),
+            SetterAccess = Enum.Parse<AccessLevel>(cached.SetterAccess),
+            ExplicitInterface = cached.ExplicitInterface
+        };
+    }
+
+    private static EventSymbol DeserializeEvent(
+        CachedEvent cached, Func<string, SemanticType> typeResolver)
+    {
+        return new EventSymbol
+        {
+            Name = cached.Name,
+            IsNameBacktickEscaped = cached.IsNameBacktickEscaped,
+            Type = typeResolver(cached.TypeId),
+            Documentation = cached.Documentation,
+            HasAdd = cached.HasAdd,
+            HasRemove = cached.HasRemove,
+            IsStatic = cached.IsStatic,
+            IsVirtual = cached.IsVirtual,
+            IsAbstract = cached.IsAbstract,
+            IsOverride = cached.IsOverride,
+            IsFinal = cached.IsFinal,
+            AccessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel),
+            AddAccessLevel = Enum.Parse<AccessLevel>(cached.AddAccessLevel),
+            RemoveAccessLevel = Enum.Parse<AccessLevel>(cached.RemoveAccessLevel)
+        };
     }
 
     /// <summary>
@@ -624,7 +768,10 @@ internal static class SymbolSerializer
             NetNamespaceName = cached.NetNamespaceName,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
+            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
+            // #1444 — Symbol-level facts, carried on every kind
+            DeprecationMessage = cached.DeprecationMessage,
+            ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel)
         };
         // ExportedTypes (like Exports) is resolved in the ResolveReferences second pass
         symbol.Documentation = cached.Documentation;
@@ -649,7 +796,10 @@ internal static class SymbolSerializer
             DeclaringFilePath = cached.FilePath,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
+            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
+            // #1444 — Symbol-level facts, carried on every kind
+            DeprecationMessage = cached.DeprecationMessage,
+            ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel)
         };
         symbol.Documentation = cached.Documentation;
         return symbol;
@@ -677,7 +827,10 @@ internal static class SymbolSerializer
             Variance = variance,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo)
+            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
+            // #1444 — Symbol-level facts, carried on every kind
+            DeprecationMessage = cached.DeprecationMessage,
+            ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel)
         };
         symbol.Documentation = cached.Documentation;
         return symbol;
