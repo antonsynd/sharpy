@@ -105,6 +105,15 @@ public record UnionDef : Statement
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
 
+    /// <summary>
+    /// Exclusive end column of the name token, recorded as <c>nameToken.Column + nameToken.Length</c>.
+    /// Escape-aware by construction (#1281: <c>Token.Length</c> is the SOURCE length, so a backticked
+    /// name's extent already spans its backticks) — consumers must never rebuild it from
+    /// <c>Name.Length</c> plus a backtick constant (#1454). There is no <c>NameLineEnd</c>:
+    /// identifiers cannot span lines in this lexer, backticked names included.
+    /// </summary>
+    public int NameColumnEnd { get; init; }
+
     public bool IsNameBacktickEscaped { get; init; }
 
     /// <summary>
@@ -170,6 +179,15 @@ public record UnionCaseDef
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
 
+    /// <summary>
+    /// Exclusive end column of the name token, recorded as <c>nameToken.Column + nameToken.Length</c>.
+    /// Escape-aware by construction (#1281: <c>Token.Length</c> is the SOURCE length, so a backticked
+    /// name's extent already spans its backticks) — consumers must never rebuild it from
+    /// <c>Name.Length</c> plus a backtick constant (#1454). There is no <c>NameLineEnd</c>:
+    /// identifiers cannot span lines in this lexer, backticked names included.
+    /// </summary>
+    public int NameColumnEnd { get; init; }
+
 
     /// <summary>
     /// Fields for this case. Empty for singleton cases (e.g., None).
@@ -226,6 +244,15 @@ public record DelegateDef : Statement
     public string Name { get; init; } = "";
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
+
+    /// <summary>
+    /// Exclusive end column of the name token, recorded as <c>nameToken.Column + nameToken.Length</c>.
+    /// Escape-aware by construction (#1281: <c>Token.Length</c> is the SOURCE length, so a backticked
+    /// name's extent already spans its backticks) — consumers must never rebuild it from
+    /// <c>Name.Length</c> plus a backtick constant (#1454). There is no <c>NameLineEnd</c>:
+    /// identifiers cannot span lines in this lexer, backticked names included.
+    /// </summary>
+    public int NameColumnEnd { get; init; }
 
     public bool IsNameBacktickEscaped { get; init; }
 
@@ -301,6 +328,15 @@ public record EventDef : Statement
     public string Name { get; init; } = "";
     public int NameLineStart { get; init; }
     public int NameColumnStart { get; init; }
+
+    /// <summary>
+    /// Exclusive end column of the name token, recorded as <c>nameToken.Column + nameToken.Length</c>.
+    /// Escape-aware by construction (#1281: <c>Token.Length</c> is the SOURCE length, so a backticked
+    /// name's extent already spans its backticks) — consumers must never rebuild it from
+    /// <c>Name.Length</c> plus a backtick constant (#1454). There is no <c>NameLineEnd</c>:
+    /// identifiers cannot span lines in this lexer, backticked names included.
+    /// </summary>
+    public int NameColumnEnd { get; init; }
 
     public bool IsNameBacktickEscaped { get; init; }
 

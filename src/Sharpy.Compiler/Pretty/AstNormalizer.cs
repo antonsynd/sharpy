@@ -219,7 +219,8 @@ public sealed class AstNormalizer : AstVisitor<Node>
             InitialValue = node.InitialValue != null ? (Expression)Visit(node.InitialValue) : null,
             Decorators = NormalizeDecorators(node.Decorators),
             NameLineStart = 0,
-            NameColumnStart = 0
+            NameColumnStart = 0,
+            NameColumnEnd = 0
         };
 
     public override Node VisitAssertStatement(AssertStatement node) =>
@@ -311,6 +312,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         {
             NameLineStart = 0,
             NameColumnStart = 0,
+            NameColumnEnd = 0,
             TypeParameters = NormalizeTypeParameters(node.TypeParameters),
             Parameters = NormalizeParameters(node.Parameters),
             ReturnType = NormalizeType(node.ReturnType),
@@ -323,6 +325,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         {
             NameLineStart = 0,
             NameColumnStart = 0,
+            NameColumnEnd = 0,
             TypeParameters = NormalizeTypeParameters(node.TypeParameters),
             BaseClasses = NormalizeTypes(node.BaseClasses),
             Body = VisitStatements(node.Body),
@@ -334,6 +337,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         {
             NameLineStart = 0,
             NameColumnStart = 0,
+            NameColumnEnd = 0,
             TypeParameters = NormalizeTypeParameters(node.TypeParameters),
             BaseClasses = NormalizeTypes(node.BaseClasses),
             Body = VisitStatements(node.Body),
@@ -345,6 +349,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         {
             NameLineStart = 0,
             NameColumnStart = 0,
+            NameColumnEnd = 0,
             TypeParameters = NormalizeTypeParameters(node.TypeParameters),
             BaseInterfaces = NormalizeTypes(node.BaseInterfaces),
             Body = VisitStatements(node.Body),
@@ -356,6 +361,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         {
             NameLineStart = 0,
             NameColumnStart = 0,
+            NameColumnEnd = 0,
             Decorators = NormalizeDecorators(node.Decorators),
             Members = node.Members.Select(m => new EnumMember
             {
@@ -369,6 +375,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         {
             NameLineStart = 0,
             NameColumnStart = 0,
+            NameColumnEnd = 0,
             TypeParameters = NormalizeTypeParameters(node.TypeParameters),
             Type = NormalizeType(node.Type),
             FunctionType = node.FunctionType != null ? NormalizeFuncType(node.FunctionType) : null
@@ -379,6 +386,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         {
             NameLineStart = 0,
             NameColumnStart = 0,
+            NameColumnEnd = 0,
             Type = NormalizeType(node.Type),
             ReturnType = NormalizeType(node.ReturnType),
             DefaultValue = node.DefaultValue != null ? (Expression)Visit(node.DefaultValue) : null,
@@ -442,6 +450,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         {
             NameLineStart = 0,
             NameColumnStart = 0,
+            NameColumnEnd = 0,
             TypeParameters = NormalizeTypeParameters(node.TypeParameters),
             Decorators = NormalizeDecorators(node.Decorators),
             Cases = node.Cases.Select(c => new UnionCaseDef
@@ -460,6 +469,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         {
             NameLineStart = 0,
             NameColumnStart = 0,
+            NameColumnEnd = 0,
             TypeParameters = NormalizeTypeParameters(node.TypeParameters),
             Parameters = NormalizeParameters(node.Parameters),
             ReturnType = NormalizeType(node.ReturnType)
@@ -470,6 +480,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         {
             NameLineStart = 0,
             NameColumnStart = 0,
+            NameColumnEnd = 0,
             Type = NormalizeType(node.Type),
             Parameters = NormalizeParameters(node.Parameters),
             Body = VisitStatements(node.Body),

@@ -1387,6 +1387,84 @@ def bar():
         arrowParam.NameColumnEnd.Should().Be(7);
     }
 
+    /// <summary>
+    /// The completeness guard for the #1454 sweep: a record that records where a name STARTS must
+    /// record where it ENDS. Enumerated by reflection, so a record added later joins automatically
+    /// rather than being silently missed — the parallel-site failure mode this batch exists to kill.
+    /// </summary>
+    [Fact]
+    public void EveryRecordWithANameStart_AlsoRecordsItsNameEnd()
+    {
+        var missing = typeof(Module).Assembly.GetTypes()
+            .Where(t => t.Namespace == "Sharpy.Compiler.Parser.Ast")
+            .Where(t => t.GetProperty("NameColumnStart") != null)
+            .Where(t => t.GetProperty("NameColumnEnd") == null)
+            .Select(t => t.Name)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+
+        missing.Should().BeEmpty(
+            "every name-bearing AST record must record its name extent's end, so no consumer has to "
+            + "rebuild it from Name.Length plus a backtick constant (#1454)");
+
+        // Positive control: the guard is looking at a non-empty population. If the namespace filter
+        // ever stops matching, the assertion above would pass vacuously.
+        typeof(Module).Assembly.GetTypes()
+            .Count(t => t.Namespace == "Sharpy.Compiler.Parser.Ast"
+                        && t.GetProperty("NameColumnEnd") != null)
+            .Should().BeGreaterThanOrEqualTo(15, "the sweep covered 15 records");
+    }
+
+    [Theory]
+    // Escaped declarations: the extent must span the CLOSING backtick, which is exactly what an
+    // extent rebuilt from Name.Length gets wrong.
+    [InlineData("`class`: int = 1\n", "VariableDeclaration", 1, 8)]
+    [InlineData("def `class`():\n    pass\n", "FunctionDef", 5, 12)]
+    [InlineData("class `class`:\n    pass\n", "ClassDef", 7, 14)]
+    [InlineData("struct `class`:\n    pass\n", "StructDef", 8, 15)]
+    [InlineData("interface `class`:\n    pass\n", "InterfaceDef", 11, 18)]
+    [InlineData("enum `class`:\n    A\n", "EnumDef", 6, 13)]
+    public void Position_EscapedDeclarationName_ExtentSpansClosingBacktick(
+        string source, string kind, int expectedStart, int expectedEnd)
+    {
+        var node = Parse(source).Body[0];
+        node.GetType().Name.Should().Be(kind);
+
+        var start = (int)node.GetType().GetProperty("NameColumnStart")!.GetValue(node)!;
+        var end = (int)node.GetType().GetProperty("NameColumnEnd")!.GetValue(node)!;
+
+        start.Should().Be(expectedStart);
+        end.Should().Be(expectedEnd, "the extent covers both backticks");
+        (end - start).Should().Be("`class`".Length);
+    }
+
+    [Theory]
+    // Verify the instrument: the same shapes BARE. An extent that is right for escaped names but
+    // wrong for bare ones would be a different bug wearing this fix's clothes.
+    [InlineData("value: int = 1\n", 1, 6)]
+    [InlineData("def value():\n    pass\n", 5, 10)]
+    [InlineData("class Value:\n    pass\n", 7, 12)]
+    public void Position_BareDeclarationName_ExtentIsTheBareSpelling(
+        string source, int expectedStart, int expectedEnd)
+    {
+        var node = Parse(source).Body[0];
+
+        ((int)node.GetType().GetProperty("NameColumnStart")!.GetValue(node)!).Should().Be(expectedStart);
+        ((int)node.GetType().GetProperty("NameColumnEnd")!.GetValue(node)!).Should().Be(expectedEnd);
+    }
+
+    [Fact]
+    public void Position_EscapedWithAndExceptAsNames_ExtentsSpanTheirBackticks()
+    {
+        var withItem = Parse("with open(\"f\") as `class`:\n    pass\n")
+            .Body[0].Should().BeOfType<WithStatement>().Subject.Items[0];
+        (withItem.NameColumnEnd - withItem.NameColumnStart).Should().Be("`class`".Length);
+
+        var handler = Parse("try:\n    pass\nexcept Exception as `class`:\n    pass\n")
+            .Body[0].Should().BeOfType<TryStatement>().Subject.Handlers[0];
+        (handler.NameColumnEnd - handler.NameColumnStart).Should().Be("`class`".Length);
+    }
+
     [Fact]
     public void Position_SyntheticPlaceholderParameter_HasNoRecordedNameExtent()
     {

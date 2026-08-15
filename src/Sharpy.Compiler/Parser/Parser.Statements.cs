@@ -353,7 +353,7 @@ public partial class Parser
             var contextExpr = ParseExpression();
 
             string? name = null;
-            int nameLineStart = 0, nameColumnStart = 0;
+            int nameLineStart = 0, nameColumnStart = 0, nameColumnEnd = 0;
             bool nameEscaped = false;
             if (Current.Type == TokenType.As)
             {
@@ -361,6 +361,7 @@ public partial class Parser
                 var nameToken = Current;
                 nameLineStart = nameToken.Line;
                 nameColumnStart = nameToken.Column;
+                nameColumnEnd = nameToken.Column + nameToken.Length;
                 nameEscaped = nameToken.IsBacktickEscaped;
                 name = ExpectIdentifier();
             }
@@ -375,6 +376,7 @@ public partial class Parser
                 IsNameBacktickEscaped = nameEscaped,
                 NameLineStart = nameLineStart,
                 NameColumnStart = nameColumnStart,
+                NameColumnEnd = nameColumnEnd,
                 LineStart = itemStartLine,
                 ColumnStart = itemStartColumn,
                 LineEnd = itemEndLine,
@@ -489,6 +491,7 @@ public partial class Parser
             bool nameEscaped = false;
             int nameLineStart = 0;
             int nameColumnStart = 0;
+            int nameColumnEnd = 0;
 
             // except* requires a type — bare `except*:` is invalid
             if (isExceptStar && Current.Type == TokenType.Colon)
@@ -555,6 +558,7 @@ public partial class Parser
                     nameEscaped = exceptNameToken.IsBacktickEscaped;
                     nameLineStart = exceptNameToken.Line;
                     nameColumnStart = exceptNameToken.Column;
+                    nameColumnEnd = exceptNameToken.Column + exceptNameToken.Length;
                 }
             }
 
@@ -591,6 +595,7 @@ public partial class Parser
                 IsNameBacktickEscaped = nameEscaped,
                 NameLineStart = nameLineStart,
                 NameColumnStart = nameColumnStart,
+                NameColumnEnd = nameColumnEnd,
                 IsExceptStar = isExceptStar,
                 Filter = filter,
                 Body = handlerBody.ToImmutableArray(),
