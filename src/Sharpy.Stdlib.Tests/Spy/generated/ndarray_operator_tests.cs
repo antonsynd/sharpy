@@ -37,7 +37,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (25, 5) - (25, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
                 var r = a + b;
 #line (26, 5) - (26, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (27, 5) - (27, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
                 Xunit.Assert.True(np.Allclose(r, np.Array(new Sharpy.List<double>() { 5.0d, 7.0d, 9.0d })));
 #line hidden
@@ -53,9 +53,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (33, 5) - (33, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
                 var r = a - b;
 #line (34, 5) - (34, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[0]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (35, 5) - (35, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
-                Xunit.Assert.Equal(2, r.Shape[1]);
+                Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 1));
 #line (36, 5) - (36, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
                 Xunit.Assert.True(np.Allclose(r.Flatten(), np.Array(new Sharpy.List<double>() { 9.0d, 18.0d, 27.0d, 36.0d })));
 #line hidden
@@ -185,9 +185,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (105, 5) - (105, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
                 var r = a + b;
 #line (106, 5) - (106, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
-                Xunit.Assert.Equal(3, r.Shape[0]);
+                Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 0));
 #line (107, 5) - (107, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
-                Xunit.Assert.Equal(5, r.Shape[1]);
+                Xunit.Assert.Equal(5, global::Sharpy.ArrayHelpers.GetItem(r.Shape, 1));
 #line (108, 5) - (108, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
                 var row0 = r.GetRow(0);
 #line (109, 5) - (109, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
