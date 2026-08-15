@@ -70,7 +70,22 @@ internal class IncrementalCompilationCache
     //      a warm build. A v23 entry stores names only; restoring it would produce an argument-less
     //      InterfaceReference and diverge from the cold build, the same failure #1287 fixed for the
     //      base class (#1403)
-    internal const int CurrentSchemaVersion = 24;
+    // v25: One bump for two fixes to the same fidelity gap — what a v24 cache holds is both
+    //      MIS-DECODED and INCOMPLETE, so v24 entries have to be discarded rather than read.
+    //      (a) #1474: the builtin channel's decoder was a hand-written switch spelled in a
+    //          different naming channel than the encoder, so nine encoded names had no arm at all
+    //          and decoded to UnknownType, while two more decoded to a DIFFERENTLY-NAMED singleton.
+    //          A v24 entry can therefore hold `builtin:long` written by a build whose reader
+    //          answered `int64`; the decode is now catalog-resolved and idempotent.
+    //      (b) #1444: ten facts a cold build computes were never written — SignatureKey, IsMustUse
+    //          (function and type), DeprecationMessage, ExplicitAccessLevel, IsFinal, IsStatic,
+    //          TypeSymbol.Properties, TypeSymbol.Events, IsDataclass. A v24 entry is missing them
+    //          outright, so a warm build silenced SPY0466/SPY0480 and let a @final field be
+    //          assigned outside a constructor.
+    //      The bump is necessary but NOT sufficient for (a): a discarded cache is rewritten by the
+    //      same encoder, and it is the DECODER that had to change for the next build to read it
+    //      back — which is why both fixes land before this bump rather than behind it.
+    internal const int CurrentSchemaVersion = 25;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
