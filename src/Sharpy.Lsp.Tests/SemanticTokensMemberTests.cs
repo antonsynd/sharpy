@@ -135,6 +135,98 @@ public class SemanticTokensMemberTests
             .Which.Length.Should().Be(7, "backtick + event + backtick");
     }
 
+    // === Whitespace around the separator (#1503) ===
+    //
+    // The lexer skips whitespace unconditionally, so `obj . field` is exactly as legal as
+    // `obj.field`. The arm used to compute the member's start from the receiver's end plus a
+    // separator width, which lands the token on the GAP the moment anything sits around the dot.
+    // These cells were written red against the pre-fix handler and are the first EXECUTION of the
+    // defect — the issue derived it statically.
+
+    /// <summary>The specimen, with <paramref name="expression"/> as the argument on 0-based line 5.</summary>
+    private static string PaddedSource(string expression) =>
+        "class Counter:\n"
+        + "    total: int = 0\n"
+        + "\n"
+        + "def main() -> None:\n"
+        + "    c: Counter = Counter()\n"
+        + $"    print({expression})\n";
+
+    [Theory]
+    // `    print(` is 10 characters, so the receiver `c` sits at 0-based character 10.
+    [InlineData("c.total", 12, "contiguous — the control")]
+    [InlineData("c . total", 14, "padded on both sides of the dot")]
+    [InlineData("c .total", 13, "padded before the dot")]
+    [InlineData("c. total", 13, "padded after the dot")]
+    public void PaddedMemberAccess_TokenLandsOnTheMemberNotTheGap(
+        string expression, int expectedCol, string shape)
+    {
+        var tokens = CollectAnalyzed(PaddedSource(expression));
+
+        tokens.Should().ContainSingle(t => t.Line == 5 && t.Length == 5)
+            .Which.Col.Should().Be(expectedCol,
+                $"{shape}: the token belongs on `total`, wherever the whitespace put it");
+    }
+
+    [Fact]
+    public void PaddedNullConditionalAccess_TokenLandsOnTheMember()
+    {
+        // Both variables at once: the separator is two characters AND padded on both sides.
+        var source =
+            "class Box:\n"
+            + "    value: int = 1\n"
+            + "\n"
+            + "def main() -> None:\n"
+            + "    b: Box? = Box()\n"
+            + "    print(b ?. value)\n";
+
+        var tokens = CollectAnalyzed(source);
+
+        // `    print(b ?. value)`: `b` at 10, `?.` at 12-13, `value` at 15.
+        tokens.Should().ContainSingle(t => t.Line == 5 && t.Length == 5)
+            .Which.Col.Should().Be(15);
+    }
+
+    [Fact]
+    public void PaddedEscapedMemberName_SpansItsBackticksAtTheRightColumn()
+    {
+        var source =
+            "class Widget:\n"
+            + "    `event`: int = 1\n"
+            + "\n"
+            + "def main() -> None:\n"
+            + "    w: Widget = Widget()\n"
+            + "    print(w . `event`)\n";
+
+        var tokens = CollectAnalyzed(source);
+
+        // `    print(w . \`event\`)`: `w` at 10, `.` at 12, the opening backtick at 14.
+        tokens.Should().ContainSingle(t => t.Line == 5 && t.Length == 7)
+            .Which.Col.Should().Be(14, "backtick + event + backtick, starting where the token does");
+    }
+
+    [Fact]
+    public void MultiLineMemberChain_TokenLandsOnTheMembersOwnLine()
+    {
+        // The handler used to bail here, because there was no honest way to place the token: the
+        // arithmetic was anchored to the receiver, which is on another line entirely. With the
+        // member's own position recorded there is nothing left to guess (#1503).
+        var source =
+            "class Counter:\n"
+            + "    total: int = 0\n"
+            + "\n"
+            + "def main() -> None:\n"
+            + "    c: Counter = Counter()\n"
+            + "    print((c\n"
+            + "        .total))\n";
+
+        var tokens = CollectAnalyzed(source);
+
+        // `        .total))` is 0-based line 6; `total` starts at character 9.
+        tokens.Should().ContainSingle(t => t.Line == 6 && t.Length == 5)
+            .Which.Col.Should().Be(9, "the member is on its own line, not the receiver's");
+    }
+
     [Fact]
     public void WithoutASemanticQuery_NoMemberTokenIsEmitted()
     {

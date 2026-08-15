@@ -910,13 +910,15 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     /// chained and escaped members uniformly, which the resolution map does not.
     /// </para>
     /// <para>
-    /// <see cref="MemberAccess"/> has no child node for the member name, so the extent is computed:
-    /// the object's <c>ColumnEnd</c> is the separator's column, and the node's own <c>ColumnEnd</c>
-    /// is one past the member's last character. Null-conditional access spends an extra character
-    /// (<c>?.</c>), which is why the offset is not simply +1 — measured on <c>c?.value</c>, where
-    /// the member begins two columns after the object ends. A backticked member is covered by the
-    /// same arithmetic: the extent includes both backticks, matching the recorded token span
-    /// (cb429fdc1).
+    /// <see cref="MemberAccess"/> has no child node for the member name, but since #1503 it records
+    /// the member token's own position and extent, which is what this reads. The extent it replaced
+    /// was computed from the receiver — <c>Object.ColumnEnd</c> plus a separator width — and that
+    /// arithmetic was wrong for every shape where source is not exactly <c>obj.field</c>:
+    /// <c>obj . field</c> put the token on the gap, and a chain spanning lines had to be skipped
+    /// outright because the receiver's column meant nothing on the member's line. Both now place
+    /// correctly, so neither the arithmetic nor the multi-line bail it forced survives. Escaped
+    /// members need no special case either: <c>Token.Length</c> is the SOURCE length, so a recorded
+    /// extent already spans both backticks (#1281).
     /// </para>
     /// <para>
     /// No token is emitted without a semantic query. <c>Tokenize</c> falls back to a parse-only
@@ -932,22 +934,15 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         if (semanticQuery == null)
             return;
 
-        // Multi-line member chains would make column arithmetic on the object meaningless.
-        if (member.Object.LineEnd != member.LineEnd)
-            return;
-
-        // TODO(#1503): this arithmetic also assumes NO whitespace around the separator —
-        // `obj . field` is legal (the lexer skips whitespace unconditionally) and would land the
-        // span on the gap. Detect the gap and bail like the multi-line case above, or take the
-        // #1454 name-extent fields when they exist.
-        var separatorWidth = member.IsNullConditional ? 2 : 1;
-        var startColumn = member.Object.ColumnEnd + separatorWidth;
-        var length = member.ColumnEnd - startColumn;
+        // The extent the parser recorded from the member token (#1503). Columns are 1-based, so a
+        // node that recorded nothing reports 0/0 and is skipped by the length check below rather
+        // than emitting a token at an invented position.
+        var length = member.MemberNameColumnEnd - member.MemberNameColumnStart;
         if (length <= 0)
             return;
 
         var tokenType = semanticQuery.GetEffectiveType(member) is Sharpy.Compiler.Semantic.FunctionType ? TMethod : TProperty;
-        PushNameToken(tokens, member.LineEnd, startColumn, length, tokenType, modifiers: 0);
+        PushNameToken(tokens, member.MemberNameLineStart, member.MemberNameColumnStart, length, tokenType, modifiers: 0);
     }
 
     private static void PushNameToken(
