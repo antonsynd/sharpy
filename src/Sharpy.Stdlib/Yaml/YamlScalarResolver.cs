@@ -42,11 +42,19 @@ namespace Sharpy
                 return null;
             }
 
-            if (value == "true" || value == "True" || value == "TRUE")
+            // The bool family, spelled out one casing at a time rather than compared
+            // case-insensitively. PyYAML accepts exactly three casings per word — all-lower,
+            // Title, all-UPPER — so `yEs` and `tRue` are STRINGS, which a case-insensitive
+            // compare would wrongly claim (#1465, cells measured against PyYAML 6.0.3).
+            if (value == "true" || value == "True" || value == "TRUE" ||
+                value == "yes" || value == "Yes" || value == "YES" ||
+                value == "on" || value == "On" || value == "ON")
             {
                 return true;
             }
-            if (value == "false" || value == "False" || value == "FALSE")
+            if (value == "false" || value == "False" || value == "FALSE" ||
+                value == "no" || value == "No" || value == "NO" ||
+                value == "off" || value == "Off" || value == "OFF")
             {
                 return false;
             }

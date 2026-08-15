@@ -202,96 +202,126 @@ def test_safe_load_tilde_returns_null():
         case _:
             assert False
 
-# --- SafeLoad - Norway problem (YAML 1.2 core schema) ---
-# Only true/false (case-insensitive) are booleans; no/yes/on/off/Y/N stay strings.
+# --- SafeLoad - the YAML 1.1 bool family, a.k.a. the Norway problem (#1465) ---
+#
+# These cells USED to assert that no/yes/on/off stay strings, under a header claiming the YAML
+# 1.2 core schema. That claim had already stopped being true of this resolver: #1339 and #1423
+# rebuilt it against PyYAML as the oracle and documented it as "a strict subset of YAML 1.1"
+# (Yaml.cs) with "YAML 1.1's float production" (YamlScalarResolver.cs). The visible proof is
+# `1e-7`, which stdlib_yaml_exponent_scalar_1423 pins as a STRING — that is a YAML 1.1 answer;
+# the 1.2 core schema calls it a float. So the schema position was 1.1 everywhere except this
+# header, and #1465 closes the gap rather than changing direction.
+#
+# The trade is real and worth naming: `NO` is Norway's country code, and under YAML 1.1 an
+# unquoted one loads as False. Sharpy's answer is not to leave the resolver half-1.2 but to make
+# DUMP round-trip it — safe_dump("NO") emits 'NO' quoted, because the same resolver decides
+# quoting (#1417). A string that would read back as a bool is never written bare.
+#
+# Cells measured against PyYAML 6.0.3 / python 3.12.13. Casing is all-or-nothing: only the
+# all-lower, Title and all-UPPER spellings resolve, so `yEs` and `oN` stay strings, and the
+# single letters `y`/`Y`/`n`/`N` are NOT bools in PyYAML at all (they are in the 1.1 spec, but
+# not in the implementation that is this module's oracle).
 
 @test
-def test_safe_load_norway_no_caps_stays_string():
+def test_safe_load_norway_no_caps_is_false():
     result: object = yaml.safe_load("key: NO")
     match result:
         case dict() as d:
-            assert isinstance(d["key"], str)
-            assert operator.eq(d["key"], "NO")
+            assert isinstance(d["key"], bool)
+            assert operator.eq(d["key"], False)
         case _:
             assert False
 
 @test
-def test_safe_load_norway_no_lower_stays_string():
+def test_safe_load_norway_no_lower_is_false():
     result: object = yaml.safe_load("key: no")
     match result:
         case dict() as d:
-            assert isinstance(d["key"], str)
-            assert operator.eq(d["key"], "no")
+            assert isinstance(d["key"], bool)
+            assert operator.eq(d["key"], False)
         case _:
             assert False
 
 @test
-def test_safe_load_norway_no_title_stays_string():
+def test_safe_load_norway_no_title_is_false():
     result: object = yaml.safe_load("key: No")
     match result:
         case dict() as d:
-            assert isinstance(d["key"], str)
-            assert operator.eq(d["key"], "No")
+            assert isinstance(d["key"], bool)
+            assert operator.eq(d["key"], False)
         case _:
             assert False
 
 @test
-def test_safe_load_norway_yes_title_stays_string():
+def test_safe_load_norway_yes_title_is_true():
     result: object = yaml.safe_load("key: Yes")
     match result:
         case dict() as d:
-            assert isinstance(d["key"], str)
-            assert operator.eq(d["key"], "Yes")
+            assert isinstance(d["key"], bool)
+            assert operator.eq(d["key"], True)
         case _:
             assert False
 
 @test
-def test_safe_load_norway_yes_lower_stays_string():
+def test_safe_load_norway_yes_lower_is_true():
     result: object = yaml.safe_load("key: yes")
     match result:
         case dict() as d:
-            assert isinstance(d["key"], str)
-            assert operator.eq(d["key"], "yes")
+            assert isinstance(d["key"], bool)
+            assert operator.eq(d["key"], True)
         case _:
             assert False
 
 @test
-def test_safe_load_norway_on_lower_stays_string():
+def test_safe_load_norway_on_lower_is_true():
     result: object = yaml.safe_load("key: on")
     match result:
         case dict() as d:
-            assert isinstance(d["key"], str)
-            assert operator.eq(d["key"], "on")
+            assert isinstance(d["key"], bool)
+            assert operator.eq(d["key"], True)
         case _:
             assert False
 
 @test
-def test_safe_load_norway_on_title_stays_string():
+def test_safe_load_norway_on_title_is_true():
     result: object = yaml.safe_load("key: On")
     match result:
         case dict() as d:
-            assert isinstance(d["key"], str)
-            assert operator.eq(d["key"], "On")
+            assert isinstance(d["key"], bool)
+            assert operator.eq(d["key"], True)
         case _:
             assert False
 
 @test
-def test_safe_load_norway_off_lower_stays_string():
+def test_safe_load_norway_off_lower_is_false():
     result: object = yaml.safe_load("key: off")
     match result:
         case dict() as d:
-            assert isinstance(d["key"], str)
-            assert operator.eq(d["key"], "off")
+            assert isinstance(d["key"], bool)
+            assert operator.eq(d["key"], False)
         case _:
             assert False
 
 @test
-def test_safe_load_norway_off_caps_stays_string():
+def test_safe_load_norway_off_caps_is_false():
     result: object = yaml.safe_load("key: OFF")
     match result:
         case dict() as d:
+            assert isinstance(d["key"], bool)
+            assert operator.eq(d["key"], False)
+        case _:
+            assert False
+
+# The bound on the family, and the reason it is not spelled as a case-insensitive compare:
+# PyYAML resolves exactly three casings per word and nothing else.
+
+@test
+def test_safe_load_norway_mixed_casing_stays_string():
+    result: object = yaml.safe_load("key: yEs")
+    match result:
+        case dict() as d:
             assert isinstance(d["key"], str)
-            assert operator.eq(d["key"], "OFF")
+            assert operator.eq(d["key"], "yEs")
         case _:
             assert False
 
@@ -314,6 +344,14 @@ def test_safe_load_norway_n_stays_string():
             assert operator.eq(d["key"], "N")
         case _:
             assert False
+
+# The round trip the quoting exists to protect: a country code survives dump/load as itself.
+
+@test
+def test_safe_dump_quotes_the_bool_family_so_it_round_trips():
+    assert operator.eq(yaml.safe_dump("NO"), "'NO'\n")
+    assert operator.eq(yaml.safe_load(yaml.safe_dump("NO")), "NO")
+    assert operator.eq(yaml.safe_load(yaml.safe_dump("yes")), "yes")
 
 # --- SafeLoad - Nested structures ---
 

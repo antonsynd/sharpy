@@ -115,21 +115,49 @@ public class YamlScalarResolverFamilyTests
     }
 
     /// <summary>
-    /// PENDING #1465 — pins the CURRENT divergence for the bool family. PyYAML reads every cell
-    /// here as a bool; Sharpy reads a string. These assertions FLIP to <c>true</c>/<c>false</c>
-    /// when the family lands — that flip is the deliverable, not a regression.
+    /// #1465 — the bool family, FLIPPED from the pinned divergence to PyYAML's answer. Every cell
+    /// is one of the twelve spellings measured off PyYAML's own resolver regex.
     /// </summary>
     [Fact]
-    public void BoolFamily_YesNoOnOff_StillResolveAsStrings_Pending1465()
+    public void BoolFamily_YesNoOnOff_ResolveAsBools()
     {
         foreach (string cell in new[] { "yes", "Yes", "YES", "on", "On", "ON" })
         {
-            Assert.Equal(cell, Yaml.SafeLoad(cell));
+            Assert.Equal(true, Yaml.SafeLoad(cell));
         }
         foreach (string cell in new[] { "no", "No", "NO", "off", "Off", "OFF" })
         {
-            Assert.Equal(cell, Yaml.SafeLoad(cell));
+            Assert.Equal(false, Yaml.SafeLoad(cell));
         }
+    }
+
+    /// <summary>
+    /// The integration proof that the resolver is the SINGLE authority (#1339/#1417 design): the
+    /// bool family was added to <c>YamlScalarResolver.Resolve</c> and NOWHERE else, yet dump-side
+    /// quoting and the document-end marker both follow. <c>safe_dump("yes")</c> must now quote —
+    /// otherwise it would emit a document that reads back as a bool — and a quoted scalar takes no
+    /// <c>...</c> marker under #1348's rule, so the marker disappears in the same step.
+    ///
+    /// <para>
+    /// Asserted here even though nothing in the dump path changed, because "it follows for free"
+    /// is a claim about a design and claims about designs are what regress silently. Cells match
+    /// PyYAML 6.0.3: <c>safe_dump('yes')</c> → <c>'yes'\n</c>.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void BoolFamily_DumpQuotesTheStringsAndDropsTheMarker()
+    {
+        Assert.Equal("'yes'\n", Yaml.SafeDump("yes"));
+        Assert.Equal("'no'\n", Yaml.SafeDump("no"));
+        Assert.Equal("'on'\n", Yaml.SafeDump("on"));
+        Assert.Equal("'OFF'\n", Yaml.SafeDump("OFF"));
+
+        // The control that gives those their meaning: a casing PyYAML does NOT resolve stays
+        // plain and keeps its marker, so the quoting tracks the resolver rather than the word.
+        Assert.Equal("yEs\n...\n", Yaml.SafeDump("yEs"));
+
+        // And the round trip the quoting exists to protect.
+        Assert.Equal("yes", Yaml.SafeLoad(Yaml.SafeDump("yes")));
     }
 
     /// <summary>

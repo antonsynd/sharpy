@@ -526,10 +526,13 @@ namespace Sharpy
     /// </para>
     /// <para>
     /// Scope, stated because it is narrower than it looks: this makes dump agree with Sharpy's
-    /// LOAD, not with PyYAML's. Sharpy's resolver implements a strict subset of YAML 1.1 — it
-    /// types <c>yes</c>, <c>0x1A</c>, <c>1_000</c>, <c>12:30</c> and <c>2024-01-01</c> as strings
-    /// where PyYAML types them bool/int/int/int/date and therefore quotes them. Those stay bare
-    /// here, tracked as #1465. Everything the resolver DOES claim is quoted.
+    /// LOAD, not with PyYAML's. Sharpy's resolver implements a subset of YAML 1.1, and #1465
+    /// closed most of the gap — <c>yes</c>, <c>0x1A</c> and <c>1_000</c> are now typed, so they
+    /// are now quoted here too, without a line changing in this class. That is the one-authority
+    /// design paying out: the families were added to <c>YamlScalarResolver</c> and the dump side
+    /// followed. What remains bare is what the resolver deliberately does not claim —
+    /// <c>12:30</c> (sexagesimal, declined) and <c>2024-01-01</c> (timestamp, deferred), both
+    /// recorded as decisions on <c>YamlScalarResolver.Resolve</c>.
     /// </para>
     /// <para>
     /// A type converter rather than a <c>ChainedEventEmitter</c>, for the reason recorded on
