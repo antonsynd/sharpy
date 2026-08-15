@@ -4,7 +4,8 @@ namespace Sharpy.Stdlib.Tests;
 
 /// <summary>
 /// The measured PyYAML cell table for the YAML 1.1 scalar families <see cref="Yaml.SafeLoad"/>
-/// does not yet type (#1465), and the negative controls that bound each family.
+/// types (#1465), and the negative controls that bound each family. Written while they were still
+/// unimplemented, so the pending cells here were flipped to these answers as each family landed.
 ///
 /// <para>
 /// Every cell below was MEASURED, not recalled — <c>python3 -c "import yaml; ..."</c> against
@@ -73,9 +74,9 @@ public class YamlScalarResolverFamilyTests
     /// too wide.
     ///
     /// <para>
-    /// <c>08</c> belongs to this list by PyYAML's rule and is NOT in it, because Sharpy reads it as
-    /// the integer 8 today — see
-    /// <see cref="LeadingZeroOctal_IsReadAsDecimalToday_Pending1465"/>.
+    /// <c>08</c> belongs to this list by PyYAML's rule and is asserted alongside the octal family
+    /// instead, because it used to come back as the integer 8 — see
+    /// <see cref="LeadingZeroOctal_ReadsAsOctal"/>.
     /// </para>
     /// </summary>
     [Fact]

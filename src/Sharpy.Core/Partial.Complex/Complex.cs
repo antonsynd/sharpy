@@ -174,7 +174,7 @@ namespace Sharpy
 
         /// <inheritdoc/>
         /// <remarks>
-        /// KNOWN DIVERGENCE, recorded rather than silently left (#1507). #1507 widened <c>==</c>
+        /// KNOWN DIVERGENCE (#1543), recorded rather than silently left. #1507 widened <c>==</c>
         /// so that <c>complex(3,0) == 3</c> is <c>true</c>, matching CPython. CPython ALSO keeps
         /// its hash consistent with that equality — <c>hash(complex(3,0)) == hash(3) == 3</c>
         /// (measured, python3 3.12) — because Python's numeric tower guarantees equal numbers hash
@@ -187,8 +187,11 @@ namespace Sharpy
         /// another <c>Complex</c>. The gap is cross-TYPE — a real-valued Complex and the equal
         /// <c>int</c> hash differently — which matters only for a heterogeneous hash container
         /// keyed on <c>object</c>. Closing it means deciding the whole tower's hash contract
-        /// (int/long/double/decimal/complex together), not patching this one method, so it is
-        /// noted on #1507 instead of being half-fixed here.
+        /// (int/long/double/decimal/complex together), not patching this one method: a per-type
+        /// patch would leave SOME cross-type pairs consistent and others not, which is harder to
+        /// reason about than the current uniform divergence. Tracked as #1543, which carries the
+        /// measured cells and the Axiom 1/2 tension; #1507 delivered the arithmetic and equality
+        /// half and closes without it.
         /// </para>
         /// </remarks>
         public override int GetHashCode() => _inner.GetHashCode();
