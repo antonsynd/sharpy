@@ -57,6 +57,114 @@ namespace Sharpy
         /// <summary>Determine whether two complex numbers differ.</summary>
         public static bool operator !=(Complex a, Complex b) => a._inner != b._inner;
 
+        // ---------------------------------------------------------------------
+        // The numeric tower: complex mixed with int/long/float (#1507)
+        // ---------------------------------------------------------------------
+        //
+        // CPython promotes the real operand to complex and returns complex, so `complex(1,2) + 1`
+        // is `(2+2j)`. Sharpy declared only Complex(+)Complex, so the same expression drew
+        // SPY0222. Values below were measured against python3 3.12 before implementing.
+        //
+        // THE int OVERLOADS ARE REQUIRED, NOT CONVENIENCE. With (Complex, long) and
+        // (Complex, double) both present and no (Complex, int), a C# `int` argument is ambiguous —
+        // int->long and int->double are both implicit conversions and neither is better — so the
+        // call fails with CS0121 rather than silently picking one. Every operand pair is therefore
+        // spelled out: six per operator.
+        //
+        // `bool` is EXCLUDED by ruling (2026-08-13), and it is a real exclusion rather than an
+        // oversight: CPython does promote it, because bool subclasses int there, so `complex(1,2) +
+        // True` is `(2+2j)` (measured). Sharpy scopes the tower to {int, long, float}, so a bool
+        // operand keeps drawing SPY0222.
+        //
+        // Each overload widens its scalar to a real-valued Complex and defers to the
+        // Complex(+)Complex operator above rather than reaching into System.Numerics directly, so
+        // there is exactly one place where each operation's arithmetic lives.
+
+        /// <summary>A real number as a complex one, for the mixed-operand overloads below.</summary>
+        private static Complex FromReal(double value) => new Complex(value, 0.0);
+
+        /// <summary>Add a complex number and an <see cref="int"/>.</summary>
+        public static Complex operator +(Complex a, int b) => a + FromReal(b);
+        /// <summary>Add an <see cref="int"/> and a complex number.</summary>
+        public static Complex operator +(int a, Complex b) => FromReal(a) + b;
+        /// <summary>Add a complex number and a <see cref="long"/>.</summary>
+        public static Complex operator +(Complex a, long b) => a + FromReal(b);
+        /// <summary>Add a <see cref="long"/> and a complex number.</summary>
+        public static Complex operator +(long a, Complex b) => FromReal(a) + b;
+        /// <summary>Add a complex number and a <see cref="double"/>.</summary>
+        public static Complex operator +(Complex a, double b) => a + FromReal(b);
+        /// <summary>Add a <see cref="double"/> and a complex number.</summary>
+        public static Complex operator +(double a, Complex b) => FromReal(a) + b;
+
+        /// <summary>Subtract an <see cref="int"/> from a complex number.</summary>
+        public static Complex operator -(Complex a, int b) => a - FromReal(b);
+        /// <summary>Subtract a complex number from an <see cref="int"/>.</summary>
+        public static Complex operator -(int a, Complex b) => FromReal(a) - b;
+        /// <summary>Subtract a <see cref="long"/> from a complex number.</summary>
+        public static Complex operator -(Complex a, long b) => a - FromReal(b);
+        /// <summary>Subtract a complex number from a <see cref="long"/>.</summary>
+        public static Complex operator -(long a, Complex b) => FromReal(a) - b;
+        /// <summary>Subtract a <see cref="double"/> from a complex number.</summary>
+        public static Complex operator -(Complex a, double b) => a - FromReal(b);
+        /// <summary>Subtract a complex number from a <see cref="double"/>.</summary>
+        public static Complex operator -(double a, Complex b) => FromReal(a) - b;
+
+        /// <summary>Multiply a complex number by an <see cref="int"/>.</summary>
+        public static Complex operator *(Complex a, int b) => a * FromReal(b);
+        /// <summary>Multiply an <see cref="int"/> by a complex number.</summary>
+        public static Complex operator *(int a, Complex b) => FromReal(a) * b;
+        /// <summary>Multiply a complex number by a <see cref="long"/>.</summary>
+        public static Complex operator *(Complex a, long b) => a * FromReal(b);
+        /// <summary>Multiply a <see cref="long"/> by a complex number.</summary>
+        public static Complex operator *(long a, Complex b) => FromReal(a) * b;
+        /// <summary>Multiply a complex number by a <see cref="double"/>.</summary>
+        public static Complex operator *(Complex a, double b) => a * FromReal(b);
+        /// <summary>Multiply a <see cref="double"/> by a complex number.</summary>
+        public static Complex operator *(double a, Complex b) => FromReal(a) * b;
+
+        /// <summary>Divide a complex number by an <see cref="int"/>.</summary>
+        public static Complex operator /(Complex a, int b) => a / FromReal(b);
+        /// <summary>Divide an <see cref="int"/> by a complex number.</summary>
+        public static Complex operator /(int a, Complex b) => FromReal(a) / b;
+        /// <summary>Divide a complex number by a <see cref="long"/>.</summary>
+        public static Complex operator /(Complex a, long b) => a / FromReal(b);
+        /// <summary>Divide a <see cref="long"/> by a complex number.</summary>
+        public static Complex operator /(long a, Complex b) => FromReal(a) / b;
+        /// <summary>Divide a complex number by a <see cref="double"/>.</summary>
+        public static Complex operator /(Complex a, double b) => a / FromReal(b);
+        /// <summary>Divide a <see cref="double"/> by a complex number.</summary>
+        public static Complex operator /(double a, Complex b) => FromReal(a) / b;
+
+        // Comparison against a real. CPython: complex(3,0) == 3 is True and complex(1,2) == 1 is
+        // False — a complex equals a real exactly when its imaginary part is zero and the reals
+        // match, which is what widening to Complex(b, 0.0) already says.
+
+        /// <summary>Whether a complex number equals an <see cref="int"/>.</summary>
+        public static bool operator ==(Complex a, int b) => a == FromReal(b);
+        /// <summary>Whether an <see cref="int"/> equals a complex number.</summary>
+        public static bool operator ==(int a, Complex b) => FromReal(a) == b;
+        /// <summary>Whether a complex number equals a <see cref="long"/>.</summary>
+        public static bool operator ==(Complex a, long b) => a == FromReal(b);
+        /// <summary>Whether a <see cref="long"/> equals a complex number.</summary>
+        public static bool operator ==(long a, Complex b) => FromReal(a) == b;
+        /// <summary>Whether a complex number equals a <see cref="double"/>.</summary>
+        public static bool operator ==(Complex a, double b) => a == FromReal(b);
+        /// <summary>Whether a <see cref="double"/> equals a complex number.</summary>
+        public static bool operator ==(double a, Complex b) => FromReal(a) == b;
+
+        /// <summary>Whether a complex number differs from an <see cref="int"/>.</summary>
+        public static bool operator !=(Complex a, int b) => !(a == b);
+        /// <summary>Whether an <see cref="int"/> differs from a complex number.</summary>
+        public static bool operator !=(int a, Complex b) => !(a == b);
+        /// <summary>Whether a complex number differs from a <see cref="long"/>.</summary>
+        public static bool operator !=(Complex a, long b) => !(a == b);
+        /// <summary>Whether a <see cref="long"/> differs from a complex number.</summary>
+        public static bool operator !=(long a, Complex b) => !(a == b);
+        /// <summary>Whether a complex number differs from a <see cref="double"/>.</summary>
+        public static bool operator !=(Complex a, double b) => !(a == b);
+        /// <summary>Whether a <see cref="double"/> differs from a complex number.</summary>
+        public static bool operator !=(double a, Complex b) => !(a == b);
+
         // == and != on a type that does not also override Equals(object)/GetHashCode() raise
         // CS0660/CS0661, which are ERRORS here rather than warnings because TreatWarningsAsErrors is
         // on solution-wide. All four ship together or none of them build.
@@ -65,6 +173,24 @@ namespace Sharpy
         public override bool Equals(object? obj) => obj is Complex other && _inner == other._inner;
 
         /// <inheritdoc/>
+        /// <remarks>
+        /// KNOWN DIVERGENCE, recorded rather than silently left (#1507). #1507 widened <c>==</c>
+        /// so that <c>complex(3,0) == 3</c> is <c>true</c>, matching CPython. CPython ALSO keeps
+        /// its hash consistent with that equality — <c>hash(complex(3,0)) == hash(3) == 3</c>
+        /// (measured, python3 3.12) — because Python's numeric tower guarantees equal numbers hash
+        /// equally across types. This delegates to <c>System.Numerics.Complex.GetHashCode()</c>,
+        /// which combines both components and so does NOT agree with <c>3.GetHashCode()</c>.
+        ///
+        /// <para>
+        /// The .NET contract this breaks is narrower than it looks: <c>Equals(object)</c> is still
+        /// consistent with <c>GetHashCode</c>, because it only ever returns <c>true</c> for
+        /// another <c>Complex</c>. The gap is cross-TYPE — a real-valued Complex and the equal
+        /// <c>int</c> hash differently — which matters only for a heterogeneous hash container
+        /// keyed on <c>object</c>. Closing it means deciding the whole tower's hash contract
+        /// (int/long/double/decimal/complex together), not patching this one method, so it is
+        /// noted on #1507 instead of being half-fixed here.
+        /// </para>
+        /// </remarks>
         public override int GetHashCode() => _inner.GetHashCode();
 
         /// <summary>

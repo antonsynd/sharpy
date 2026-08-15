@@ -1,0 +1,8 @@
+# `.error` matches the rendered MESSAGE, not the diagnostic code.
+Type 'complex' does not support operator '+' with operand of type 'str' @20:11
+Type 'complex' does not support operator '+' with operand of type 'bool' @21:11
+# The #1395 agreement row: refused from the str receiver's side too, not matched via the
+# reversed overloads' Complex operand.
+Type 'str' does not support operator '+' with operand of type 'complex' @22:11
+# And refused rather than MIS-TYPED, which was #1395's actual symptom.
+!SPY0220

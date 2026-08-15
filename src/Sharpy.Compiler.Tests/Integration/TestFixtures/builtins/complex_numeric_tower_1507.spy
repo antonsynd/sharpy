@@ -1,0 +1,52 @@
+# #1507: complex mixes with int/long/float across + - * / and ==.
+#
+# Before this, every line below drew `SPY0222: Type 'Complex' does not support operator '+'`,
+# because Sharpy.Complex declared only Complex-with-Complex operators. CPython promotes the real
+# operand and returns complex.
+#
+# Every value verified against python3 3.12 before implementing:
+#   c+1 -> (2+2j)   1+c -> (2+2j)   c*2.5 -> (2.5+5j)   c-2 -> (-1+2j)   2-c -> (1-2j)
+#   c/2 -> (0.5+1j) 2/c -> (0.4-0.8j)
+#   c==1 -> False   complex(3,0)==3 -> True   complex(3,0)==3.0 -> True   c!=1 -> True
+#
+# Sharpy has no imaginary literal (`2j` does not parse), so explicit complex(...) mixed with
+# int/float operands is the whole reachable surface — see #1507 for the literal, kept separate.
+def main() -> None:
+    c: complex = complex(1.0, 2.0)
+
+    # int on either side.
+    right_add: complex = c + 1
+    left_add: complex = 1 + c
+    print(right_add)
+    print(left_add)
+
+    # float, and the multiplication that shows the imaginary part scales too.
+    scaled: complex = c * 2.5
+    print(scaled)
+
+    # Subtraction is not commutative, so both directions are separate cells.
+    right_sub: complex = c - 2
+    left_sub: complex = 2 - c
+    print(right_sub)
+    print(left_sub)
+
+    # Nor is division. `2 / c` is the one that would silently pass if the reversed overload
+    # multiplied instead of dividing, so it earns its place.
+    right_div: complex = c / 2
+    left_div: complex = 2 / c
+    print(right_div)
+    print(left_div)
+
+    # A complex equals a real exactly when its imaginary part is zero and the reals match.
+    unequal: bool = c == 1
+    equal_int: bool = complex(3.0, 0.0) == 3
+    equal_float: bool = complex(3.0, 0.0) == 3.0
+    differs: bool = c != 1
+    print(unequal)
+    print(equal_int)
+    print(equal_float)
+    print(differs)
+
+    # long, which needs its own overloads for the same reason int does.
+    big: complex = c + 3000000000
+    print(big)

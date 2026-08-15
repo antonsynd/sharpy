@@ -1,0 +1,22 @@
+# The negative control for #1507, and the reason the tower is a widening rather than a hole:
+# complex mixes with int/long/float and with NOTHING ELSE.
+#
+# `bool` is the interesting exclusion. CPython DOES promote it — bool subclasses int there, so
+# complex(1,2) + True is (2+2j) (measured, python3 3.12) — and Sharpy declines anyway, scoping the
+# tower to {int, long, float} by the 2026-08-13 owner ruling. That cell pins a deliberate
+# divergence from CPython, not a gap.
+#
+# The `str + complex` cell is the #1395 AGREEMENT ROW, and it is this fixture's real work. #1507
+# made every operator dunder on Complex multi-candidate (six operand pairs each), which is exactly
+# the shape that broke `list * list`: the reversed overloads — operator+(int, Complex),
+# operator+(double, Complex) — carry Complex as their OPERAND, so a resolver checking only the
+# operand would match one of them here and accept `str + complex`. ReceiverAdmitsCandidate must
+# drop them because `str` cannot fill the receiver slot, making the dunder resolver agree with the
+# CLR fallback. Measured: it refuses, so #1395's fix holds under the wider candidate set.
+def main() -> None:
+    c: complex = complex(1.0, 2.0)
+    b: bool = True
+    s: str = "x"
+    print(c + "s")
+    print(c + b)
+    print(s + c)
