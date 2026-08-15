@@ -459,7 +459,12 @@ internal static class CliHelpers
         }
     }
 
-    internal static void RenderDiagnosticsFromFiles(IEnumerable<CompilerDiagnostic> diagnostics, TextWriter writer)
+    /// <param name="fallbackFilePath">
+    /// The entry/compiling file, used ONLY to name a diagnostic that carries no file of its own
+    /// (#1494). Never used to resolve a position — see <see cref="RenderDiagnosticFromFile"/>.
+    /// </param>
+    internal static void RenderDiagnosticsFromFiles(IEnumerable<CompilerDiagnostic> diagnostics, TextWriter writer,
+        string? fallbackFilePath = null)
     {
         var sourceCache = new Dictionary<string, SourceText?>();
         var diagList = diagnostics.ToList();
@@ -474,7 +479,7 @@ internal static class CliHelpers
                 writer.WriteLine($"{PhaseLabel(phase, isWarnings)}:");
                 foreach (var diagnostic in diagList.Where(d => d.Phase == phase))
                 {
-                    RenderDiagnosticFromFile(diagnostic, sourceCache, writer);
+                    RenderDiagnosticFromFile(diagnostic, sourceCache, writer, fallbackFilePath);
                 }
             }
         }
@@ -482,16 +487,30 @@ internal static class CliHelpers
         {
             foreach (var diagnostic in diagList)
             {
-                RenderDiagnosticFromFile(diagnostic, sourceCache, writer);
+                RenderDiagnosticFromFile(diagnostic, sourceCache, writer, fallbackFilePath);
             }
         }
     }
 
-    // TODO(#1494): a position-less diagnostic (FilePath null — e.g. an unmappable SPY0908 after
-    // 90c6b7c35) renders with no file name at all: sourceText stays null below, so the renderer's
-    // own sourceText?.FilePath fallback can never fire. Thread the entry file as a last-resort
-    // context so the user at least learns which program produced it.
-    internal static void RenderDiagnosticFromFile(CompilerDiagnostic diagnostic, Dictionary<string, SourceText?> sourceCache, TextWriter writer)
+    /// <summary>
+    /// Renders one diagnostic against its OWN file, loading and caching that file's text so the
+    /// location and snippet come from the file the diagnostic names.
+    /// </summary>
+    /// <param name="fallbackFilePath">
+    /// The entry/compiling file, used ONLY when the diagnostic names no file of its own (#1494).
+    /// </param>
+    /// <remarks>
+    /// A position-less, path-less diagnostic — an unmappable SPY0908 is the shape that motivated
+    /// this — used to render with no file name at all: <c>sourceText</c> stayed null, so the
+    /// renderer's own <c>sourceText?.FilePath</c> fallback could never fire and the user was told
+    /// something had gone wrong without being told in which program. The fallback names the entry
+    /// file and stops there: it deliberately does NOT construct a <see cref="SourceText"/> from it,
+    /// because a buffer would let the renderer derive a line/column and draw a snippet from a file
+    /// the diagnostic was never about. That is the #1437 mistake in miniature. Losing context is
+    /// acceptable; asserting a position that does not exist is not.
+    /// </remarks>
+    internal static void RenderDiagnosticFromFile(CompilerDiagnostic diagnostic,
+        Dictionary<string, SourceText?> sourceCache, TextWriter writer, string? fallbackFilePath = null)
     {
         SourceText? sourceText = null;
 
@@ -512,6 +531,20 @@ internal static class CliHelpers
                 }
                 sourceCache[diagnostic.FilePath] = sourceText;
             }
+        }
+        else if (!string.IsNullOrEmpty(fallbackFilePath) && !diagnostic.Line.HasValue)
+        {
+            // Name the program, never invent a position. The diagnostic is given the entry file's
+            // path and no buffer, so the renderer takes its path-only arm: `--> <entry.spy>` with
+            // no line, no column, no snippet.
+            //
+            // Gated on having no position of its own. A diagnostic that knows a line but not a file
+            // is a DIFFERENT defect: its line belongs to some file we cannot name, and pinning it to
+            // the entry file would assert a location that may not hold there — the #1437 mistake in
+            // miniature. That shape keeps rendering as `<source>:line:col`, which is at least honest
+            // about not knowing. Span is dropped with the rest so no downstream re-derivation can
+            // resurrect a position from it.
+            diagnostic = diagnostic with { FilePath = fallbackFilePath, Column = null, Span = null };
         }
 
         RenderDiagnostic(diagnostic, sourceText, writer);

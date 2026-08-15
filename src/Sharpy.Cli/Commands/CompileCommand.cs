@@ -233,7 +233,7 @@ internal static class CompileCommand
             var projectWarnings = result.Diagnostics.GetWarnings();
             if (projectWarnings.Count > 0)
             {
-                CliHelpers.RenderDiagnosticsFromFiles(projectWarnings, Console.Out);
+                CliHelpers.RenderDiagnosticsFromFiles(projectWarnings, Console.Out, projectConfig.EntryPoint);
             }
 
             if (!result.Success)
@@ -241,7 +241,7 @@ internal static class CompileCommand
                 Console.Error.WriteLine("Compilation FAILED.");
                 Console.Error.WriteLine();
                 var errors = result.Diagnostics.GetErrors();
-                CliHelpers.RenderDiagnosticsFromFiles(errors, Console.Error);
+                CliHelpers.RenderDiagnosticsFromFiles(errors, Console.Error, projectConfig.EntryPoint);
                 return CliHelpers.MapFailureExitCode(errors);
             }
 

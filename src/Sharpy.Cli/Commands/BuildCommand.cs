@@ -172,7 +172,7 @@ internal static class BuildCommand
                 // `compile` already do. A single-file `build`/`run` still pulls in siblings through
                 // import resolution, so handing the entry buffer to every diagnostic made a sibling
                 // file's parse error underline an innocent line of the entry file (#1437).
-                CliHelpers.RenderDiagnosticsFromFiles(result.Diagnostics.Where(d => d.IsError), Console.Error);
+                CliHelpers.RenderDiagnosticsFromFiles(result.Diagnostics.Where(d => d.IsError), Console.Error, inputFile.FullName);
                 CliHelpers.LastFailureExitCode = CliHelpers.MapFailureExitCode(result.Diagnostics);
                 return null;
             }
@@ -180,7 +180,7 @@ internal static class BuildCommand
             var compilationWarnings = result.Diagnostics.Where(d => d.IsWarning).ToList();
             if (compilationWarnings.Count > 0)
             {
-                CliHelpers.RenderDiagnosticsFromFiles(compilationWarnings, Console.Out);
+                CliHelpers.RenderDiagnosticsFromFiles(compilationWarnings, Console.Out, inputFile.FullName);
             }
 
             Console.WriteLine($"Successfully compiled to: {result.OutputAssemblyPath ?? finalOutputPath}");

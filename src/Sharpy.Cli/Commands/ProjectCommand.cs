@@ -135,7 +135,7 @@ internal static class ProjectCommand
             var projectWarnings = result.Diagnostics.GetWarnings();
             if (projectWarnings.Count > 0)
             {
-                CliHelpers.RenderDiagnosticsFromFiles(projectWarnings, Console.Out);
+                CliHelpers.RenderDiagnosticsFromFiles(projectWarnings, Console.Out, projectConfig.EntryPoint);
             }
 
             if (!result.Success)
@@ -143,7 +143,7 @@ internal static class ProjectCommand
                 Console.Error.WriteLine("Build FAILED.");
                 Console.Error.WriteLine();
                 var errors = result.Diagnostics.GetErrors();
-                CliHelpers.RenderDiagnosticsFromFiles(errors, Console.Error);
+                CliHelpers.RenderDiagnosticsFromFiles(errors, Console.Error, projectConfig.EntryPoint);
                 return CliHelpers.MapFailureExitCode(errors);
             }
 
@@ -228,7 +228,7 @@ internal static class ProjectCommand
             var projectWarnings = result.Diagnostics.GetWarnings();
             if (projectWarnings.Count > 0)
             {
-                CliHelpers.RenderDiagnosticsFromFiles(projectWarnings, Console.Out);
+                CliHelpers.RenderDiagnosticsFromFiles(projectWarnings, Console.Out, projectConfig.EntryPoint);
             }
 
             if (!result.Success)
@@ -236,7 +236,7 @@ internal static class ProjectCommand
                 Console.Error.WriteLine("Build FAILED.");
                 Console.Error.WriteLine();
                 var errors = result.Diagnostics.GetErrors();
-                CliHelpers.RenderDiagnosticsFromFiles(errors, Console.Error);
+                CliHelpers.RenderDiagnosticsFromFiles(errors, Console.Error, projectConfig.EntryPoint);
                 return CliHelpers.MapFailureExitCode(errors);
             }
 
