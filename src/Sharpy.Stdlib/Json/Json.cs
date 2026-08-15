@@ -195,7 +195,18 @@ namespace Sharpy
             IncludeFields = true,
             // Sharpy 'T?' fields lower to Optional<T>; without a converter STJ never
             // populates a present value (struct default is None) (#843 dogfooding).
-            Converters = { new OptionalJsonConverterFactory() },
+            // Reads the sentinel object the bare-token pre-edit writes, at any float target
+            // (#1488). Registered here rather than beside the pre-edit because the two halves are
+            // one mechanism: the pre-edit encodes "this token was BARE" in a shape only a numeric
+            // target accepts, and this decodes it. Reached for Optional<float> too, since
+            // OptionalJsonConverter delegates to JsonSerializer.Deserialize<T>(ref reader, options)
+            // rather than reading the number itself.
+            Converters =
+            {
+                new OptionalJsonConverterFactory(),
+                new BareNonFiniteJsonConverter<double>(),
+                new BareNonFiniteJsonConverter<float>(),
+            },
             // `dumps` emits Infinity/-Infinity/NaN by CPython's default (#1296), and the typed
             // reader has to be able to read back what the writer produces. Without this the two
             // halves of the module disagreed: the untyped `loads` (a hand-written parser) accepted
@@ -216,8 +227,8 @@ namespace Sharpy
 
         /// <summary>
         /// Rewrites CPython's BARE non-finite tokens — <c>Infinity</c>, <c>-Infinity</c>,
-        /// <c>NaN</c> — into the quoted spelling System.Text.Json accepts, leaving everything
-        /// else byte-identical (#1353).
+        /// <c>NaN</c> — into a sentinel object only the numeric door accepts, leaving everything
+        /// else byte-identical (#1353, #1488).
         /// </summary>
         /// <remarks>
         /// <para>
@@ -226,8 +237,19 @@ namespace Sharpy
         /// writes them bare, which is not valid JSON at all, so <c>Utf8JsonReader</c> fails while
         /// tokenizing — before any converter or option can intervene. Measured: with the option on,
         /// <c>["Infinity"]</c> reads as <c>inf</c> while <c>[Infinity]</c> still returns
-        /// <c>'I' is an invalid start of a value</c>. A custom <c>JsonConverter&lt;double&gt;</c>
-        /// cannot help for the same reason — it is never reached.
+        /// <c>'I' is an invalid start of a value</c>. A converter cannot be reached by a bare
+        /// token, which is why a pre-edit exists at all.
+        /// </para>
+        /// <para>
+        /// It used to rewrite to the QUOTED spelling, and that erased the very thing the pre-edit
+        /// knows: that the token was bare. A rewritten <c>NaN</c> and an author's <c>"NaN"</c>
+        /// became the same bytes, so <c>loads[str]("NaN")</c> answered <c>Ok("NaN")</c> where
+        /// CPython reads a float and owes a decode error (#1488). Rewriting to a sentinel OBJECT
+        /// keeps the distinction: <see cref="BareNonFiniteJsonConverter{T}"/> reads it back as the
+        /// non-finite value at any numeric target, and any other target fails deserialization
+        /// naturally — a JSON object is not a string — which the door already turns into
+        /// <c>Err(JSONDecodeError)</c>. A genuinely quoted <c>"NaN"</c> is untouched throughout
+        /// and keeps reading as the string.
         /// </para>
         /// <para>
         /// The scan is string-aware: an <c>Infinity</c> inside a JSON string is DATA and is left
@@ -236,7 +258,7 @@ namespace Sharpy
         /// <c>NaNo</c> are untouched. Payloads without the substrings skip the walk entirely.
         /// </para>
         /// </remarks>
-        internal static string QuoteBareNonFiniteTokens(string s)
+        internal static string RewriteBareNonFiniteTokens(string s)
         {
             if (s.IndexOf("Infinity", StringComparison.Ordinal) < 0
                 && s.IndexOf("NaN", StringComparison.Ordinal) < 0)
@@ -274,7 +296,7 @@ namespace Sharpy
                 string? token = MatchBareNonFiniteToken(s, i);
                 if (token != null)
                 {
-                    sb.Append('"').Append(token).Append('"');
+                    sb.Append(BareNonFiniteSentinel(token));
                     i += token.Length - 1;
                     continue;
                 }
@@ -318,9 +340,37 @@ namespace Sharpy
 
         /// <summary>
         /// Longest first, so <c>-Infinity</c> is matched as one token rather than a minus followed
-        /// by <c>Infinity</c> — quoting only the tail would produce the invalid <c>-"Infinity"</c>.
+        /// by <c>Infinity</c> — rewriting only the tail would leave a stray minus in front of the sentinel.
         /// </summary>
         private static readonly string[] BareNonFiniteTokens = { "-Infinity", "Infinity", "NaN" };
+
+        /// <summary>
+        /// The property name marking a rewritten BARE non-finite token (#1488). Deliberately
+        /// unspellable by accident: a <c>$</c> sigil and a dotted namespace, which no JSON schema
+        /// in the wild uses as a data key.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// COLLISION CAVEAT. This is a sentinel, not a proof. A document that genuinely contains
+        /// <c>{"$sharpy.bare-nonfinite":"NaN"}</c> at a numeric target will be read as the
+        /// non-finite value rather than refused. The alternative — a rewrite that carries no
+        /// marker — is what #1488 was: it cannot be collided with because it cannot be
+        /// distinguished at all, which is strictly worse. The collision requires an author to
+        /// write this exact key, at a float-typed position, with one of exactly three values.
+        /// </para>
+        /// <para>
+        /// SURFACE CAVEAT. <c>JsonElement</c> cannot represent NaN as a number — JSON has no such
+        /// literal — so a <c>JsonConverter&lt;double&gt;</c> is never consulted for it and a
+        /// caller doing <c>loads[JsonElement]</c> on a document with a bare token sees this object
+        /// verbatim. That surface was already divergent from CPython (it previously saw the string
+        /// <c>"NaN"</c>); the sentinel changes the shape of the divergence to one that is at least
+        /// distinguishable from quoted data. Measured and recorded on #1488.
+        /// </para>
+        /// </remarks>
+        internal const string BareNonFiniteSentinelKey = "$sharpy.bare-nonfinite";
+
+        private static string BareNonFiniteSentinel(string token) =>
+            "{\"" + BareNonFiniteSentinelKey + "\":\"" + token + "\"}";
 
         /// <summary>
         /// Deserialize a JSON string to a strongly-typed object using <c>System.Text.Json</c>.
@@ -338,7 +388,7 @@ namespace Sharpy
 
             try
             {
-                string prepared = QuoteBareNonFiniteTokens(s);
+                string prepared = RewriteBareNonFiniteTokens(s);
 
                 // Absence is not a value: a required field the document omits must be an Err
                 // naming it, not a fabricated 0/null/false (#1505, owner ruling 2026-08-13 —

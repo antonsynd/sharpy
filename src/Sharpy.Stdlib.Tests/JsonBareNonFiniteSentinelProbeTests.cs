@@ -8,7 +8,7 @@ namespace Sharpy.Stdlib.Tests;
 /// Feasibility probe for #1488's sentinel-object design, run BEFORE committing to it.
 ///
 /// <para>
-/// The defect: <c>Json.QuoteBareNonFiniteTokens</c> rewrites CPython's bare <c>NaN</c> /
+/// The defect: <c>Json.RewriteBareNonFiniteTokens</c> (then named <c>QuoteBareNonFiniteTokens</c>) rewrites CPython's bare <c>NaN</c> /
 /// <c>Infinity</c> / <c>-Infinity</c> into the quoted spellings <c>System.Text.Json</c> accepts,
 /// because a bare token fails <c>Utf8JsonReader</c> tokenization before any converter can run
 /// (measured, and recorded in <c>Json.cs</c>). After the rewrite a bare token and a legitimately
@@ -169,16 +169,18 @@ public class JsonBareNonFiniteSentinelProbeTests
     }
 
     /// <summary>
-    /// The defect itself, pinned: a bare token read into a STRING target comes back Ok because
-    /// the rewrite erased the distinction. CPython raises. This is what #1488 must flip.
+    /// The defect this probe was written to size, FLIPPED: a bare token read into a STRING target
+    /// used to come back <c>Ok("NaN")</c> because the rewrite erased the distinction. It is now a
+    /// decode error, as CPython says. The full flip is asserted in
+    /// <c>JsonBareNonFiniteTypedDoorTests</c>; kept here so the probe records both the before and
+    /// the after rather than reading as if the design were never in doubt.
     /// </summary>
     [Fact]
-    public void Probe_TheDefect_BareTokenAtAStringTargetIsAcceptedToday()
+    public void Probe_TheDefect_BareTokenAtAStringTargetIsNowRefused()
     {
         Result<string, JSONDecodeError> typed = Json.Loads<string>("NaN");
 
-        Assert.True(typed.IsOk);
-        Assert.Equal("NaN", typed.Unwrap());
+        Assert.True(typed.IsErr);
     }
 
     /// <summary>
