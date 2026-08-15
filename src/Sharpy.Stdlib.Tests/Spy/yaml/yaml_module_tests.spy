@@ -511,7 +511,13 @@ def test_safe_dump_width_affects_line_wrapping():
 
 @test
 def test_safe_dump_null_emits_null_token():
+    # This test asserted only the round trip while claiming, in its name, to check the token.
+    # That is exactly the blind spot #1467 lived in: Sharpy emitted `--- ` — a document with no
+    # value at all, which a conforming parser reads as EMPTY — and read it back as None quite
+    # happily, so the round trip held while neither half agreed with PyYAML. A property both
+    # halves of one implementation satisfy is not evidence about the oracle.
     text: str = yaml.safe_dump(None)
+    assert operator.eq(text, "null\n...\n")
     assert yaml.safe_load(text) is None
 
 # --- SafeLoadAll / SafeDumpAll - Multi-document ---

@@ -256,14 +256,34 @@ namespace Sharpy
                 converted = SortKeys(converted);
             }
 
-            // Serializer.Serialize(IEmitter, graph) emits a complete stream
-            // (StreamStart..StreamEnd), so it owns the emitter for one document.
-            using var writer = new StringWriter(CultureInfo.InvariantCulture);
-            var emitter = new Emitter(writer, settings);
-            serializer.Serialize(emitter, converted);
+            string emitted;
+            if (converted is null)
+            {
+                // YamlDotNet writes a null document as an EMPTY scalar, and that is not "null
+                // spelled differently" — it is no value at all. `--- \n` is read by a conforming
+                // parser as an EMPTY DOCUMENT, so the value was being lost rather than formatted
+                // oddly (#1467). PyYAML writes the plain scalar `null`.
+                //
+                // Emitted directly instead of taught to the serializer because a null root has no
+                // indent, width or flow-style question for the serializer to answer — and going
+                // through it is what produced the empty scalar in the first place. The `...` is
+                // NOT appended here: spelling the value plainly is enough for #1348's existing
+                // rule below to supply it, which is the composition this fix is supposed to have.
+                emitted = "null\n";
+            }
+            else
+            {
+                // Serializer.Serialize(IEmitter, graph) emits a complete stream
+                // (StreamStart..StreamEnd), so it owns the emitter for one document.
+                using var writer = new StringWriter(CultureInfo.InvariantCulture);
+                var emitter = new Emitter(writer, settings);
+                serializer.Serialize(emitter, converted);
+                emitted = YamlDocumentStart.Suppress(writer.ToString(), converted);
+            }
+
             return emitDocumentEndMarker
-                ? YamlDocumentEnd.Append(writer.ToString(), converted)
-                : writer.ToString();
+                ? YamlDocumentEnd.Append(emitted, converted)
+                : emitted;
         }
 
         private static object? SortKeys(object? value)

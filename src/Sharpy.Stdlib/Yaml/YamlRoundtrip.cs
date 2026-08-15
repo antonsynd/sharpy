@@ -281,7 +281,11 @@ namespace Sharpy
             // is what roundtrip_dump models, emits `hello\n...\n` and `1.0\n...\n` exactly where
             // PyYAML does, and gives `'true'`, mappings and sequences no marker exactly where
             // PyYAML doesn't. One authority, so they cannot drift apart.
-            return YamlDocumentEnd.Append(writer.ToString(), data);
+            // ...and the same document-START rule (#1467). This surface drives the Emitter
+            // directly, so it meets YamlDotNet's CheckEmptyDocument on its own account and was
+            // emitting `--- ""` for the empty string exactly as safe_dump emitted `--- ''`.
+            return YamlDocumentEnd.Append(
+                YamlDocumentStart.Suppress(writer.ToString(), data), data);
         }
 
         private static void EmitNode(IEmitter emitter, object? value)

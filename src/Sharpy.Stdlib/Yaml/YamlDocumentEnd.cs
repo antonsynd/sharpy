@@ -66,9 +66,13 @@ namespace Sharpy
 
             string body = emitted.TrimEnd('\n');
 
-            // An explicit document start means the emitter could not begin the stream plainly — the
-            // empty-scalar and null cases (#1467). PyYAML writes neither the `---` nor, for the
-            // empty string, a marker; leaving those alone keeps this rule to one axis.
+            // An explicit document start used to mean the emitter could not begin the stream
+            // plainly — the empty-scalar and null cases. #1467 removed both upstream of here:
+            // null is now spelled as the plain scalar `null` at emission, and YamlDocumentStart
+            // suppresses the marker YamlDotNet forces around an empty root scalar. So this arm no
+            // longer fires for either, and is kept as a guard rather than deleted: a document
+            // reaching here with an explicit start is one this rule has never reasoned about, and
+            // appending an end marker to it would be a guess.
             if (body.Length == 0 || body.StartsWith("---", StringComparison.Ordinal))
             {
                 return emitted;
