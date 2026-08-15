@@ -64,12 +64,17 @@ internal partial class ProjectCompiler
     /// still-<see cref="CompilerPhase.Unknown"/> diagnostic with <paramref name="phase"/> while
     /// preserving explicit phases and validator producers already stamped at the source.
     /// </summary>
-    private static void MergeWithPhase(DiagnosticBag target, DiagnosticBag source, CompilerPhase phase)
+    /// <param name="filePath">
+    /// When non-empty, the compilation unit these diagnostics came from. Path-less diagnostics are
+    /// back-filled with it so every diagnostic leaves the parse seam knowing its own file (#1437);
+    /// diagnostics that already carry a path keep it.
+    /// </param>
+    private static void MergeWithPhase(DiagnosticBag target, DiagnosticBag source, CompilerPhase phase,
+        string? filePath = null)
     {
-        using (target.BeginPhaseScope(phase))
-        {
-            target.Merge(source);
-        }
+        using var phaseScope = target.BeginPhaseScope(phase);
+        using var fileScope = string.IsNullOrEmpty(filePath) ? null : target.BeginFileScope(filePath!);
+        target.Merge(source);
     }
 
     /// <summary>

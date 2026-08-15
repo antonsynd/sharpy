@@ -122,7 +122,6 @@ internal static class BuildCommand
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
-            var sourceText = new SourceText(source, inputFile.FullName);
 
             var inputFileName = Path.GetFileNameWithoutExtension(inputFile.Name);
             var outputDir = output != null
@@ -169,7 +168,11 @@ internal static class BuildCommand
             {
                 Console.Error.WriteLine("Compilation failed:");
                 Console.Error.WriteLine();
-                CliHelpers.RenderDiagnostics(result.Diagnostics.Where(d => d.IsError), sourceText, Console.Error);
+                // Each diagnostic is rendered against its OWN file, exactly as `project` and
+                // `compile` already do. A single-file `build`/`run` still pulls in siblings through
+                // import resolution, so handing the entry buffer to every diagnostic made a sibling
+                // file's parse error underline an innocent line of the entry file (#1437).
+                CliHelpers.RenderDiagnosticsFromFiles(result.Diagnostics.Where(d => d.IsError), Console.Error);
                 CliHelpers.LastFailureExitCode = CliHelpers.MapFailureExitCode(result.Diagnostics);
                 return null;
             }
@@ -177,7 +180,7 @@ internal static class BuildCommand
             var compilationWarnings = result.Diagnostics.Where(d => d.IsWarning).ToList();
             if (compilationWarnings.Count > 0)
             {
-                CliHelpers.RenderDiagnostics(compilationWarnings, sourceText, Console.Out);
+                CliHelpers.RenderDiagnosticsFromFiles(compilationWarnings, Console.Out);
             }
 
             Console.WriteLine($"Successfully compiled to: {result.OutputAssemblyPath ?? finalOutputPath}");

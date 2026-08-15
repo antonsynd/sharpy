@@ -91,6 +91,16 @@ internal class DiagnosticRenderer
         // Whether the buffer we were handed is the file this diagnostic names. In multi-file
         // compilation the caller may pass the entry file's buffer for every diagnostic, and reading
         // ANYTHING positional out of a mismatched buffer is wrong (#1323).
+        //
+        // The empty-`diagnostic.FilePath` arm below ("no path" counts as a match) is only sound
+        // because no caller hands us a mismatched buffer any more: multi-file front doors all route
+        // through CliHelpers.RenderDiagnosticsFromFiles, which resolves each diagnostic's own file,
+        // and every on-disk compilation unit now stamps its parse-phase diagnostics with its real
+        // path at the merge seam (DiagnosticBag.BeginFileScope, #1437). What reaches this arm is the
+        // genuinely single-buffer caller — `emit` on a string, the REPL — where the buffer IS the
+        // only file there is. If a future caller reintroduces "entry buffer for every diagnostic",
+        // this arm silently resumes reporting sibling errors at entry-file positions; the padding
+        // control in SiblingDiagnosticIdentityTests (#1437) is what pins that from coming back.
         var sourceIsDiagnosticFile = sourceText != null
             && (string.IsNullOrEmpty(diagnostic.FilePath)
                 || string.IsNullOrEmpty(sourceText.FilePath)

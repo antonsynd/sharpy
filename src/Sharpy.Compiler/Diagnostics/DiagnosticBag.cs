@@ -147,6 +147,13 @@ public class DiagnosticBag
     private CompilerPhase? _activePhase;
     private string? _activeProducer;
 
+    // Ambient file identity stamped onto every path-less diagnostic added while a file scope is
+    // active (see BeginFileScope). Phase-local bags (the lexer's and parser's own bags) know
+    // positions but not which file they came from; the driver that owns the compilation unit does.
+    // Stamping at the merge seam is what lets a renderer resolve each diagnostic's OWN file
+    // instead of guessing that the buffer it was handed is the right one (#1437).
+    private string? _activeFilePath;
+
     // Crash-context snapshot: the most recently *entered* phase/producer scope, retained
     // across scope disposal (unlike _activePhase/_activeProducer, which are restored on
     // Dispose as the stack unwinds). A last-chance ICE handler runs *outside* the phase
@@ -218,6 +225,28 @@ public class DiagnosticBag
     }
 
     /// <summary>
+    /// Opens a file-identity scope. Every diagnostic added while the returned scope is alive whose
+    /// <see cref="CompilerDiagnostic.FilePath"/> is null or empty is back-filled with
+    /// <paramref name="filePath"/>. An existing non-empty path is never overwritten — a diagnostic
+    /// that already knows which file it belongs to outranks the ambient guess.
+    /// </summary>
+    /// <remarks>
+    /// The lexer and parser build their own bags from a token stream and therefore carry positions
+    /// but no file identity. The driver that owns the compilation unit knows the path, so it opens
+    /// this scope around the merge. Without it a path-less diagnostic reaches the renderer, which
+    /// then either prints the <c>&lt;source&gt;</c> placeholder or — worse — re-derives line/column
+    /// from the span against whatever buffer it was handed, reporting a sibling file's parse error
+    /// at a plausible-but-wrong location in the entry file (#1437, the empty-name sibling of #1323).
+    /// </remarks>
+    public IDisposable BeginFileScope(string filePath)
+    {
+        var previous = _activeFilePath;
+        _activeFilePath = filePath;
+        return new ScopeRestorer(this, restorePhase: false, null, restoreProducer: false, null,
+            restoreFilePath: true, previous);
+    }
+
+    /// <summary>
     /// Applies the ambient phase/producer provenance to a diagnostic, without clobbering any
     /// value the diagnostic already carries. Called at the single Add funnel so every code path
     /// (direct Add*, AddRange, Merge) is stamped uniformly with zero per-call-site edits.
@@ -226,10 +255,16 @@ public class DiagnosticBag
     {
         var phase = _activePhase;
         var producer = _activeProducer;
+        var filePath = _activeFilePath;
 
         if (phase is CompilerPhase activePhase && diagnostic.Phase == CompilerPhase.Unknown)
         {
             diagnostic = diagnostic with { Phase = activePhase };
+        }
+
+        if (!string.IsNullOrEmpty(filePath) && string.IsNullOrEmpty(diagnostic.FilePath))
+        {
+            diagnostic = diagnostic with { FilePath = filePath };
         }
 
         if (producer != null
@@ -267,16 +302,21 @@ public class DiagnosticBag
         private readonly CompilerPhase? _previousPhase;
         private readonly bool _restoreProducer;
         private readonly string? _previousProducer;
+        private readonly bool _restoreFilePath;
+        private readonly string? _previousFilePath;
         private bool _disposed;
 
         public ScopeRestorer(DiagnosticBag bag, bool restorePhase, CompilerPhase? previousPhase,
-            bool restoreProducer, string? previousProducer)
+            bool restoreProducer, string? previousProducer,
+            bool restoreFilePath = false, string? previousFilePath = null)
         {
             _bag = bag;
             _restorePhase = restorePhase;
             _previousPhase = previousPhase;
             _restoreProducer = restoreProducer;
             _previousProducer = previousProducer;
+            _restoreFilePath = restoreFilePath;
+            _previousFilePath = previousFilePath;
         }
 
         public void Dispose()
@@ -288,6 +328,8 @@ public class DiagnosticBag
                 _bag._activePhase = _previousPhase;
             if (_restoreProducer)
                 _bag._activeProducer = _previousProducer;
+            if (_restoreFilePath)
+                _bag._activeFilePath = _previousFilePath;
         }
     }
 
