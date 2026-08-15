@@ -97,8 +97,24 @@ internal class AssemblyCompiler
 
             // Gather metadata references
             metrics.StartPhase(CompilerPhaseNames.ReferenceResolution);
-            var references = GetMetadataReferences(projectConfig);
+            var references = GetMetadataReferences(projectConfig, out var tpaCensus);
             metrics.EndPhase();
+
+            // Post-condition: a reference set with no corlib cannot compile anything, and letting
+            // it through produces a wall of CS0518 that the SPY0908 net misattributes to a compiler
+            // bug. Stop here and say what actually went wrong (#1482).
+            if (ValidateReferenceSet(references, tpaCensus) is { } referenceFailure)
+            {
+                var referenceDiagnostics = new DiagnosticBag();
+                referenceDiagnostics.Add(referenceFailure);
+                _logger.LogError(referenceFailure.Message, 0, 0);
+                return new AssemblyCompilationResult
+                {
+                    Success = false,
+                    Diagnostics = referenceDiagnostics,
+                    Metrics = metrics
+                };
+            }
 
             // Determine output kind
             var outputKind = projectConfig.OutputType.ToLowerInvariant() == "exe"
@@ -256,28 +272,60 @@ internal class AssemblyCompiler
     }
 
     private List<MetadataReference> GetMetadataReferences(ProjectConfig projectConfig)
+        => GetMetadataReferences(projectConfig, out _);
+
+    /// <param name="tpaCensus">
+    /// What the trusted-platform-assembly walk saw: entry count, skip count, and the first few skip
+    /// reasons. Carried out so <see cref="ValidateReferenceSet"/> can report it if the resulting set
+    /// turns out to be unusable (#1482).
+    /// </param>
+    private List<MetadataReference> GetMetadataReferences(ProjectConfig projectConfig, out TpaCensus tpaCensus)
     {
         var references = new List<MetadataReference>();
         var addedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var tpaSeen = 0;
+        var tpaSkipped = 0;
+        var skipReasons = new List<string>();
 
         // Reference all trusted platform assemblies (full .NET shared framework).
         // This ensures compiled assemblies can use any BCL type (Regex, HttpClient, etc.)
         // without requiring explicit assembly references in the .spyproj.
         var trustedPlatformAssemblies = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
-        if (!string.IsNullOrEmpty(trustedPlatformAssemblies))
+        var tpaWasPresent = !string.IsNullOrEmpty(trustedPlatformAssemblies);
+        if (tpaWasPresent)
         {
-            foreach (var assemblyPath in trustedPlatformAssemblies.Split(Path.PathSeparator))
+            foreach (var assemblyPath in trustedPlatformAssemblies!.Split(Path.PathSeparator))
             {
-                if (File.Exists(assemblyPath) && addedPaths.Add(assemblyPath))
+                if (string.IsNullOrEmpty(assemblyPath))
+                    continue;
+                tpaSeen++;
+
+                // File.Exists is false for an unreadable-but-present file as readily as for an
+                // absent one — it cannot distinguish "gone" from "unobservable" — so count the
+                // skip rather than letting it pass silently (#1482).
+                if (!File.Exists(assemblyPath))
                 {
-                    try
-                    {
-                        references.Add(GetOrCreateReference(assemblyPath));
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogDebug($"Skipping TPA assembly {assemblyPath}: {ex.Message}");
-                    }
+                    tpaSkipped++;
+                    RecordSkip(skipReasons, assemblyPath, "not found or not readable");
+                    continue;
+                }
+
+                if (!addedPaths.Add(assemblyPath))
+                    continue;
+
+                try
+                {
+                    references.Add(GetOrCreateReference(assemblyPath));
+                }
+                catch (Exception ex)
+                {
+                    // A skipped framework reference is never routine: it silently removes types
+                    // the generated C# is entitled to use, and the resulting CSxxxx errors point
+                    // at code generation instead of at this (#1482).
+                    tpaSkipped++;
+                    RecordSkip(skipReasons, assemblyPath, $"{ex.GetType().Name}: {ex.Message}");
+                    _logger.LogWarning(
+                        $"Skipping framework reference '{assemblyPath}': {ex.GetType().Name}: {ex.Message}", 0, 0);
                 }
             }
         }
@@ -356,7 +404,91 @@ internal class AssemblyCompiler
             }
         }
 
+        tpaCensus = new TpaCensus(tpaWasPresent, tpaSeen, tpaSkipped, skipReasons);
         return references;
+    }
+
+    /// <summary>How many TPA entries the reference walk saw and how many it could not use.</summary>
+    /// <param name="ListWasPresent">
+    /// False when <c>TRUSTED_PLATFORM_ASSEMBLIES</c> was null/empty and the manual fallback ran —
+    /// a materially different failure from "the list was there and nothing in it survived", which
+    /// never reaches the fallback at all.
+    /// </param>
+    internal readonly record struct TpaCensus(
+        bool ListWasPresent, int Seen, int Skipped, IReadOnlyList<string> SkipReasons)
+    {
+        internal static TpaCensus None => new(false, 0, 0, Array.Empty<string>());
+    }
+
+    /// <summary>Records at most a handful of skip reasons — enough to diagnose, not a log dump.</summary>
+    private static void RecordSkip(List<string> skipReasons, string assemblyPath, string reason)
+    {
+        const int maxRecorded = 3;
+        if (skipReasons.Count < maxRecorded)
+            skipReasons.Add($"{Path.GetFileName(assemblyPath)}: {reason}");
+    }
+
+    /// <summary>
+    /// Post-condition on the assembled reference set: it must contain an assembly defining
+    /// <c>System.Object</c>. Returns null when the set is usable, else the diagnostic to report.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Without this the compiler proceeded into a doomed compilation and the user got a wall of
+    /// <c>CS0518: Predefined type 'System.String' is not defined or imported</c> — which the SPY0908
+    /// net dutifully relabelled "This is a Sharpy compiler bug — please report it". Measured cost of
+    /// one occurrence: 181 test failures and roughly two hours establishing that the compiler was
+    /// fine. The trigger was transient and never reproduced; the MISREPORTING is the defect, and it
+    /// is what this fixes (#1482).
+    /// </para>
+    /// <para>
+    /// The message deliberately does NOT carry the report-it line. This is an environment fault —
+    /// a partially extracted or permission-restricted runtime directory — and telling the user to
+    /// file a compiler bug is precisely the misdirection being removed.
+    /// </para>
+    /// </remarks>
+    internal static CompilerDiagnostic? ValidateReferenceSet(
+        IReadOnlyList<MetadataReference> references, TpaCensus tpaCensus)
+    {
+        if (DefinesSystemObject(references))
+            return null;
+
+        // "The list was empty" and "the list was full and nothing survived" are different faults
+        // with different fixes, and only the first ever reached the manual fallback. Say which.
+        var cause = !tpaCensus.ListWasPresent
+            ? "the host runtime reported no trusted platform assemblies (TRUSTED_PLATFORM_ASSEMBLIES was empty), "
+              + "and the manual fallback did not yield one either"
+            : $"the host runtime listed {tpaCensus.Seen} trusted platform assembl{(tpaCensus.Seen == 1 ? "y" : "ies")} "
+              + $"but {tpaCensus.Skipped} could not be used and none of the rest defines System.Object";
+
+        var reasons = tpaCensus.SkipReasons.Count > 0
+            ? $" First skips: {string.Join("; ", tpaCensus.SkipReasons)}."
+            : string.Empty;
+
+        return new CompilerDiagnostic(
+            $"Reference acquisition failed: {cause}. Compilation cannot proceed — every predefined type "
+            + $"would be undefined. References acquired: {references.Count}.{reasons} "
+            + "This is a fault in the .NET runtime installation the compiler is running on, not in your program "
+            + "or in the generated code; a partially extracted or permission-restricted shared-framework "
+            + "directory is the usual cause.",
+            CompilerDiagnosticSeverity.Error,
+            Code: DiagnosticCodes.Infrastructure.ReferenceAcquisitionFailed,
+            Phase: CompilerPhase.Assembly);
+    }
+
+    /// <summary>
+    /// True when some reference in the set defines <c>System.Object</c>. Reads the assembly's own
+    /// metadata rather than trusting a file name, so a renamed or stub corlib cannot pass.
+    /// </summary>
+    private static bool DefinesSystemObject(IReadOnlyList<MetadataReference> references)
+    {
+        if (references.Count == 0)
+            return false;
+
+        // Asking Roslyn is both the cheapest and the most faithful test available: this is the very
+        // question CS0518 answers negatively, posed before the wall of errors instead of after it.
+        var probe = CSharpCompilation.Create("__reference_probe__", Array.Empty<SyntaxTree>(), references);
+        return probe.GetSpecialType(SpecialType.System_Object).TypeKind != TypeKind.Error;
     }
 
     // NuGet resolution moved to Project.NuGetResolver (shared with CompilerApi)

@@ -79,5 +79,18 @@ public static partial class DiagnosticExplanations
             "message points at that bundle.",
             null,
             "Report this at https://github.com/antonsynd/sharpy/issues and attach the crash bundle named in the diagnostic message.");
+
+        Add(dict, DiagnosticCodes.Infrastructure.ReferenceAcquisitionFailed, "Reference acquisition failed", "Infrastructure",
+            "The metadata reference set assembled for the generated C# contains no assembly defining System.Object, " +
+            "so no program could compile against it. References come from the host runtime's TRUSTED_PLATFORM_ASSEMBLIES " +
+            "list; the diagnostic reports how many entries were seen, how many were skipped, and the first few reasons, " +
+            "and distinguishes an empty list from one whose entries all failed. This is an environment fault, not a " +
+            "code-generation fault: without this check the compilation proceeded into a wall of CS0518 'predefined type " +
+            "is not defined' errors, which the SPY0908 net then attributed to a Sharpy compiler bug and asked the user " +
+            "to report (#1482).",
+            null,
+            "Check that the .NET shared framework the compiler is running on is intact and readable — a partially " +
+            "extracted or permission-restricted runtime directory is the usual cause. Re-running after the transient " +
+            "condition clears is expected to succeed.");
     }
 }

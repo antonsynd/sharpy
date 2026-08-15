@@ -850,8 +850,8 @@ public static class DiagnosticCodes
     /// <summary>
     /// Infrastructure diagnostic codes (SPY0900-SPY0999).
     /// These cover compiler-level errors not tied to a specific language phase.
-    /// Active: SPY0900-SPY0909 (10 codes)
-    /// Reserved: SPY0910-SPY0999 (90 codes)
+    /// Active: SPY0900-SPY0910 (11 codes)
+    /// Reserved: SPY0911-SPY0999 (89 codes)
     /// </summary>
     public static class Infrastructure
     {
@@ -865,6 +865,14 @@ public static class DiagnosticCodes
         public const string UnexpectedUnknownType = "SPY0907";      // Active
         public const string GeneratedCodeCompilationError = "SPY0908"; // Active
         public const string InternalCompilerError = "SPY0909";      // Active
-        // SPY0910-SPY0999: Reserved for future infrastructure diagnostics
+
+        /// <summary>
+        /// The metadata reference set assembled for the generated C# does not contain an assembly
+        /// defining <c>System.Object</c>, so the compilation cannot succeed. Reported instead of
+        /// letting Roslyn produce a wall of CS0518 that the SPY0908 net would then attribute to a
+        /// Sharpy compiler bug (#1482).
+        /// </summary>
+        public const string ReferenceAcquisitionFailed = "SPY0910"; // Active
+        // SPY0911-SPY0999: Reserved for future infrastructure diagnostics
     }
 }
