@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Globalization;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Utilities;
 using TypeAnnotation = Sharpy.Compiler.Parser.Ast.TypeAnnotation;
 using TypeParameterVariance = Sharpy.Compiler.Parser.Ast.TypeParameterVariance;
@@ -1307,19 +1308,63 @@ internal static class SymbolSerializer
             return SemanticType.Unknown;
         }
 
+        /// <summary>
+        /// Every <see cref="BuiltinType"/> singleton on <see cref="SemanticType"/>, keyed by the
+        /// name the encoder writes. Discovered by reflection rather than listed, so it cannot fall
+        /// behind the singleton set — which is also what lets it survive #1356's collapse without
+        /// an edit here.
+        /// </summary>
+        private static readonly Dictionary<string, BuiltinType> s_builtinSingletonsByName =
+            typeof(SemanticType)
+                .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                .Select(f => f.GetValue(null) as BuiltinType)
+                .Where(bt => bt is not null)
+                .GroupBy(bt => bt!.Name, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First()!, StringComparer.Ordinal);
+
+        /// <summary>
+        /// Decodes the builtin channel. The encoder writes <c>bt.Name</c>; this reads it back as a
+        /// value RECORD-EQUAL to what was encoded.
+        /// </summary>
+        /// <remarks>
+        /// <para>#1474: this used to be a hand-written switch of seven arms, spelled in a different
+        /// naming channel than the encoder and case-folding its input, with
+        /// <c>_ =&gt; SemanticType.Unknown</c> underneath. Fourteen singletons and the catalog's
+        /// alias spellings went in; ten spellings came back out, two of them under a different
+        /// name. `x: long` in a cached file came back <c>Unknown</c> on the next incremental build,
+        /// silently — the second spelling channel was free to drift because nothing held the two
+        /// against each other.</para>
+        ///
+        /// <para>The fix deletes that channel rather than widening it: names resolve through the
+        /// singleton census and <see cref="PrimitiveCatalog"/>, the one place that owns alias
+        /// spellings. No case-folding — the encoder writes canonical-case names, and folding was
+        /// part of what let the two sides disagree.</para>
+        ///
+        /// <para>Idempotence is the contract, not mere decodability: record equality on
+        /// <see cref="BuiltinType"/> includes <c>Name</c>, so an alias spelling reconstructs
+        /// UNDER ITS OWN NAME (<c>"long"</c> must not come back as the <c>"int64"</c>-named
+        /// singleton). <c>BuiltinTypeSerializerTotalityTests</c> asserts this over the whole
+        /// reflection-enumerated census.</para>
+        /// </remarks>
         private static SemanticType ResolveBuiltinType(string name)
         {
-            return name.ToLowerInvariant() switch
-            {
-                "int" => BuiltinType.Int,
-                "long" => BuiltinType.Long,
-                "float" => BuiltinType.Float,
-                "double" => BuiltinType.Double,
-                "float32" => BuiltinType.Float32,
-                "bool" => BuiltinType.Bool,
-                "str" => BuiltinType.Str,
-                _ => SemanticType.Unknown
-            };
+            // A singleton's own name resolves to the singleton, preserving reference identity for
+            // the types most of the compiler compares.
+            if (s_builtinSingletonsByName.TryGetValue(name, out var singleton))
+                return singleton;
+
+            // An alias spelling (`long`, `byte`, `double`, ...) is reconstructed under the name the
+            // encoder wrote, with the CLR type the catalog says it denotes.
+            if (PrimitiveCatalog.GetByName(name) is { } info)
+                return new BuiltinType { Name = name, ClrType = info.ClrType };
+
+            // A name that is neither is a CLR-backed builtin (ClrTypeBridge / CachedModuleDiscovery
+            // name these after the CLR type). The encoder never wrote their ClrType, so it cannot be
+            // recovered here — but the NAME is recoverable, and returning it is strictly better than
+            // the silent UnknownType this decoder used to produce, which is #1474's whole mechanism.
+            // TODO(#1538): carry the CLR origin through the channel so this class round-trips
+            // record-equal too, as the GenericType arm already does via `name@ClrOriginTypeName`.
+            return new BuiltinType { Name = name };
         }
     }
 }
