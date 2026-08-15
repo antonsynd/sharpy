@@ -166,32 +166,45 @@ namespace Sharpy
                 throw new TypeError("expected list, got NoneType");
             }
 
-            // Excluded from the per-document end-marker rule (#1348), and the exclusion is the
-            // conservative choice rather than the cheap one. PyYAML writes `1.0` / `--- hello` /
-            // `...` — ONE marker, at stream end, with the separator folded inline. Letting each
-            // document append its own would give `1.0\n...\n---\nhello\n...\n`: markers BETWEEN
-            // documents, which is neither today's output nor PyYAML's, and which a conforming
-            // parser reads differently again. That is a divergence #1348 would have MANUFACTURED
-            // rather than closed, and getting it right is not a marker append at all — it is a
-            // change to how this method concatenates.
+            // The stream shape, matched to PyYAML 6.0.3 cell for cell (#1471 — 19 shapes measured
+            // and recorded on the issue). #1348 had excluded this path from the end-marker rule
+            // entirely, because letting each document append its own marker would have given
+            // `1.0\n...\n---\nhello\n...\n` — markers BETWEEN documents, which is neither PyYAML's
+            // shape nor the old one. That exclusion was right about the danger and wrong about the
+            // remedy, and the finding that resolves it is that there is NO second marker rule:
             //
-            // Suppressing it leaves multi-document output byte-identical to its pre-#1348 form.
-            // The two residues — no stream-end marker, and `---\nhello` where PyYAML writes
-            // `--- hello` — are both pre-existing, both about the STREAM rather than the document,
-            // and both filed as #1471. `YamlDumpAllStreamShapeTests` pins this output, so the
-            // exclusion flips loudly when #1471 lands instead of becoming folklore.
+            //   PyYAML's "one marker at stream end" is #1348's existing per-document rule applied
+            //   to the LAST document instead of to every document.
+            //
+            // So the marker question is still asked in exactly one place. This method only decides
+            // (a) which document gets asked, and (b) how the separator folds — both genuinely
+            // stream-level concerns.
+            //
+            // Separator folding: `---` precedes documents 2..n, and the root node follows INLINE
+            // unless it is a BLOCK collection, which starts on the next line. The tempting rule
+            // "inline when the document is one line" is wrong — `[{'a':1},{'b':2}]` gives
+            // `a: 1\n---\nb: 2\n`, where `b: 2` is one line and still gets its own. The axis is
+            // block-vs-flow: flow collections (`[]`, `{}`, and anything under defaultFlowStyle)
+            // fold inline, block ones do not. Read off the emitted text's first character, since
+            // an emitted flow collection always opens with `[` or `{` and a block one never does.
             var builder = new StringBuilder();
-            bool first = true;
-            foreach (object? document in documents)
+            for (int i = 0; i < documents.Length; i++)
             {
-                if (!first)
+                object? document = documents[i];
+                bool isLast = i == documents.Length - 1;
+
+                string body = DumpSingle(
+                    document, defaultFlowStyle, indent, sortKeys, allowUnicode, width,
+                    emitDocumentEndMarker: isLast);
+
+                if (i > 0)
                 {
-                    builder.Append("---\n");
+                    bool startsOwnLine = YamlDocumentEnd.IsCollection(document)
+                        && !(body.Length > 0 && (body[0] == '[' || body[0] == '{'));
+                    builder.Append(startsOwnLine ? "---\n" : "--- ");
                 }
 
-                builder.Append(DumpSingle(document, defaultFlowStyle, indent, sortKeys, allowUnicode, width,
-                    emitDocumentEndMarker: false));
-                first = false;
+                builder.Append(body);
             }
 
             return builder.ToString();

@@ -52,9 +52,12 @@ namespace Sharpy
         /// which of them fired.
         /// </para>
         /// <para>
-        /// This is a per-DOCUMENT rule. The stream-level shape of a multi-document dump — where
-        /// PyYAML puts one marker at stream end and folds <c>---</c> inline — is deliberately not
-        /// decided here; see <c>Yaml.SafeDumpAll</c> and #1471.
+        /// This is a per-DOCUMENT rule, and #1471 established that it is the ONLY marker rule:
+        /// PyYAML's one-marker-at-stream-end shape turns out to be exactly this rule applied to
+        /// the LAST document rather than to every document. <c>Yaml.SafeDumpAll</c> therefore
+        /// suppresses the marker on every document but the last and asks this method the ordinary
+        /// question about that one — no second spelling of "when does a marker appear" exists.
+        /// The separator folding is a stream concern and does live there.
         /// </para>
         /// </remarks>
         internal static string Append(string emitted, object? document)
@@ -103,7 +106,12 @@ namespace Sharpy
         /// to YamlDotNet's shapes, while <c>roundtrip_dump</c> passes the caller's value, which may
         /// still be a Sharpy container or a comment-carrying node.
         /// </summary>
-        private static bool IsCollection(object? document)
+        /// <remarks>
+        /// Internal rather than private because <c>Yaml.SafeDumpAll</c> needs the same
+        /// scalar-vs-collection question to decide separator folding (#1471), and a second copy of
+        /// it would be a rule spelled twice — the thing this file exists to avoid.
+        /// </remarks>
+        internal static bool IsCollection(object? document)
         {
             if (document is CommentedMap || document is CommentedSeq)
             {
