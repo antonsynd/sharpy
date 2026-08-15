@@ -163,6 +163,23 @@ internal class BuiltinRegistry
             if (_types.ContainsKey(typeSymbol.Name))
                 continue;
 
+            // Collect the constructor surface, as RegisterType and ModuleRegistry both already do.
+            //
+            // Without this, `Constructors.Count == 0` meant two different things depending on which
+            // path built the symbol: "no public instance constructor" for a registered type, and
+            // "never populated" for a discovered one — indistinguishable at every read site. Every
+            // Sharpy.Core exception sits on this path, so `ValueError` reported an empty surface
+            // while declaring two public constructors, and #1346 was the bill for it: that arm now
+            // asks the CLR type by reflection precisely because this list could not be trusted.
+            // The reflection stays (it is authoritative, and it is what handles the value-type edge
+            // where an implicit parameterless constructor is not enumerated) — it now AGREES with
+            // the field instead of contradicting it (#1473).
+            //
+            // Guarded on emptiness because discovery hands back cached TypeSymbol instances for
+            // reference identity, so this can see the same symbol twice.
+            if (typeSymbol.ClrType is { } clrType && typeSymbol.Constructors.Count == 0)
+                typeSymbol.Constructors.AddRange(Discovery.ClrConstructorSurface.Build(clrType));
+
             _types[typeSymbol.Name] = typeSymbol;
         }
     }
