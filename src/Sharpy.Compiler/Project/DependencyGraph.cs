@@ -223,8 +223,15 @@ internal class DependencyGraph : IDependencyQuery
     /// representing the import chain. Returns an empty list if no cycles exist.
     /// </returns>
     /// <remarks>
+    /// <para>
     /// This method uses depth-first search with path tracking to find cycles.
     /// Each returned cycle shows the path of imports that forms a circular dependency.
+    /// </para>
+    /// <para>
+    /// Every returned cycle is rotated to a canonical start (see <see cref="Canonicalize"/>), so
+    /// the same graph yields the same cycle text on every run regardless of which node the
+    /// hash-ordered traversal happened to enter from.
+    /// </para>
     /// </remarks>
     public IReadOnlyList<ImmutableArray<string>> DetectCycles()
     {
@@ -242,6 +249,57 @@ internal class DependencyGraph : IDependencyQuery
         }
 
         return cycles;
+    }
+
+    /// <summary>
+    /// Rotates a detected cycle so it begins at its ordinally smallest path.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="AllFiles"/> is a hash-ordered set, so the DFS enters a strongly connected
+    /// component from whichever node it reaches first — an ordering that is stable within a
+    /// process but not across runs. The same binary therefore described one cycle as
+    /// <c>a → b → a</c> or <c>b → a → b</c> depending on nothing the user can see or control,
+    /// and a byte-identity corpus diff flagged two fixtures as changed when they were coin flips
+    /// (#1434).
+    /// </para>
+    /// <para>
+    /// This is a ROTATION, not a sort: the cycle's edge order is the import chain and reordering
+    /// it would describe imports that do not exist. A cycle is represented as a closed walk whose
+    /// first node repeats at the end (<c>[a, b, a]</c>); the repeated tail is dropped, the ring is
+    /// rotated so the smallest element leads, and the new leader is re-appended. Ordinal
+    /// comparison is deliberate — paths are already normalized, and a culture-sensitive ordering
+    /// would reintroduce environment dependence in the name of removing it.
+    /// </para>
+    /// </remarks>
+    private static ImmutableArray<string> Canonicalize(ImmutableArray<string> cycle)
+    {
+        // A closed walk needs at least two entries (one node plus its repetition) to rotate.
+        if (cycle.Length < 2)
+            return cycle;
+
+        var closesOnItself = string.Equals(cycle[0], cycle[^1], StringComparison.Ordinal);
+        var ringLength = closesOnItself ? cycle.Length - 1 : cycle.Length;
+        if (ringLength < 2)
+            return cycle;
+
+        var startIndex = 0;
+        for (var i = 1; i < ringLength; i++)
+        {
+            if (string.CompareOrdinal(cycle[i], cycle[startIndex]) < 0)
+                startIndex = i;
+        }
+
+        if (startIndex == 0)
+            return cycle;
+
+        var builder = ImmutableArray.CreateBuilder<string>(cycle.Length);
+        for (var i = 0; i < ringLength; i++)
+            builder.Add(cycle[(startIndex + i) % ringLength]);
+        if (closesOnItself)
+            builder.Add(cycle[startIndex]);
+
+        return builder.MoveToImmutable();
     }
 
     private void DetectCyclesDfs(
@@ -263,10 +321,11 @@ internal class DependencyGraph : IDependencyQuery
             }
             else if (recursionStack.Contains(dep))
             {
-                // Found a cycle - extract it from the path
+                // Found a cycle - extract it from the path, then rotate it to a canonical start so
+                // every consumer sees one cycle rather than one of its rotations (#1434).
                 var cycleStart = path.IndexOf(dep);
                 var cycle = path.Skip(cycleStart).Append(dep).ToImmutableArray();
-                cycles.Add(cycle);
+                cycles.Add(Canonicalize(cycle));
             }
         }
 

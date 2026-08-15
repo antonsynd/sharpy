@@ -1,1 +1,3 @@
-Circular dependency detected: import_self.spy
+# A self-cycle is a one-node ring, so canonicalization leaves it alone — pinned in full anyway so
+# the closed-walk representation (the start node repeated at the end) cannot silently change (#1434).
+Circular dependency detected: import_self.spy → import_self.spy

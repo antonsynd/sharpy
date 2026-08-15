@@ -1,1 +1,4 @@
-Circular dependency detected
+# Full cycle pinned (#1434). The cycle starts at a.spy, not at the entry file: the canonical start
+# is the ordinally smallest path in the ring, which is what makes it reproducible. Pre-rotation this
+# flipped 6/2 across 8 processes against "main.spy → a.spy → main.spy".
+Circular dependency detected: a.spy → main.spy → a.spy

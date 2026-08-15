@@ -277,6 +277,64 @@ public class DependencyGraphTests
     }
 
     [Fact]
+    public void DetectCycles_TwoNodeCycle_IsIdenticalUnderBothInsertionOrders()
+    {
+        // #1434: the DFS enters a strongly connected component from whichever node the
+        // hash-ordered AllFiles iteration reaches first, so the SAME cycle was described as
+        // "a → b → a" on one run and "b → a → b" on the next. Building the identical graph with
+        // the edges inserted in each order is the reproducible stand-in for that coin flip.
+        var forward = BuildGraph(("a.spy", "b.spy"), ("b.spy", "a.spy"));
+        var reverse = BuildGraph(("b.spy", "a.spy"), ("a.spy", "b.spy"));
+
+        var forwardCycle = Assert.Single(forward.DetectCycles());
+        var reverseCycle = Assert.Single(reverse.DetectCycles());
+
+        Assert.Equal(Render(forwardCycle), Render(reverseCycle));
+        // Rendered, not merely equal: the rendered string is what the user reads and what the
+        // fixtures pin, so this pins the canonical start rather than any old agreement.
+        Assert.Equal($"{N("a.spy")} → {N("b.spy")} → {N("a.spy")}", Render(forwardCycle));
+    }
+
+    [Fact]
+    public void DetectCycles_ThreeNodeCycle_RotatesToTheSmallestStart_PreservingEdgeOrder()
+    {
+        // Every rotation of b → c → a → b describes the same import chain. All three must
+        // canonicalize to the one that starts at "a", and — critically — the ORDER of the
+        // remaining hops must be preserved: a → b → c is the real chain, a → c → b is not.
+        var rotations = new[]
+        {
+            BuildGraph(("a.spy", "b.spy"), ("b.spy", "c.spy"), ("c.spy", "a.spy")),
+            BuildGraph(("b.spy", "c.spy"), ("c.spy", "a.spy"), ("a.spy", "b.spy")),
+            BuildGraph(("c.spy", "a.spy"), ("a.spy", "b.spy"), ("b.spy", "c.spy")),
+        };
+
+        var expected = $"{N("a.spy")} → {N("b.spy")} → {N("c.spy")} → {N("a.spy")}";
+        foreach (var graph in rotations)
+        {
+            var cycle = Assert.Single(graph.DetectCycles());
+            Assert.Equal(expected, Render(cycle));
+        }
+    }
+
+    [Fact]
+    public void DetectCycles_SelfCycle_IsUnchangedByCanonicalization()
+    {
+        // A one-node ring has exactly one rotation; the canonicalizer must leave it alone rather
+        // than mangle the closed-walk representation.
+        var deps = new Dictionary<string, ImmutableHashSet<string>>
+        {
+            ["a.spy"] = ImmutableHashSet.Create("a.spy")
+        };
+
+        var cycle = Assert.Single(new DependencyGraph(deps).DetectCycles());
+
+        Assert.Equal($"{N("a.spy")} → {N("a.spy")}", Render(cycle));
+    }
+
+    /// <summary>Renders a cycle exactly as <c>ProjectCompiler</c> renders it into SPY0302.</summary>
+    private static string Render(ImmutableArray<string> cycle) => string.Join(" → ", cycle);
+
+    [Fact]
     public void DetectCycles_TwoSeparateCycles_ReturnsBoth()
     {
         // Cycle 1: a → b → a

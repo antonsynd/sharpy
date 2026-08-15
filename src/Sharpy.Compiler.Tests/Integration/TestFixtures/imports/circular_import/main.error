@@ -1,1 +1,3 @@
-Circular dependency detected
+# Full cycle pinned (#1434) — the pre-rotation coin flip measured 3/5 across 8 processes between
+# "a.spy → b.spy → a.spy" and "b.spy → a.spy → b.spy".
+Circular dependency detected: a.spy → b.spy → a.spy

@@ -1,1 +1,5 @@
-Circular dependency detected
+# Pins the FULL cycle, not just the prefix (#1434). Before the canonical rotation the DFS entered
+# the component from a hash-ordered node, so this same fixture rendered "module_a.spy →
+# module_b.spy → module_a.spy" on some runs and "module_b.spy → module_a.spy → module_b.spy" on
+# others (measured: 5/3 across 8 processes). The prefix-only sidecar was green under either.
+Circular dependency detected: module_a.spy → module_b.spy → module_a.spy
