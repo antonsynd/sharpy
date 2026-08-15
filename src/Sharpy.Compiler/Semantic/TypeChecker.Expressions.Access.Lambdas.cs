@@ -87,6 +87,7 @@ internal partial class TypeChecker
                 DeclaringFilePath = _currentFilePath
             };
             _symbolTable.Define(paramSymbol);
+            _semanticInfo.SetParameterSymbol(lambdaParam, paramSymbol);
         }
 
         // Type-check default value expressions and validate compatibility

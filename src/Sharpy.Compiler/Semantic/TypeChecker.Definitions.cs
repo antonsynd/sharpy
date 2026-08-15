@@ -670,6 +670,7 @@ internal partial class TypeChecker
                 DeclaringFilePath = _currentFilePath
             };
             _symbolTable.Define(paramSymbol);
+            _semanticInfo.SetParameterSymbol(param, paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, effectiveType);
 
             // The CLR array backing applies to the outer sequence (#1292), not the element.

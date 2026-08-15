@@ -208,6 +208,15 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<ExceptHandler, VariableSymbol> _exceptHandlerSymbols =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map parameter nodes to the variable symbol the checker binds for them. The function scope is
+    // exited after type checking, and `Parameter` is a standalone record rather than a Node — so
+    // FindNodeAtPosition can never return one and a declaration cursor lands on the enclosing
+    // FunctionDef instead. A parameter nothing references is in no reference collection either,
+    // which leaves this as the only route from the declaration back to the symbol (#1359). Mirrors
+    // _withItemSymbols/_exceptHandlerSymbols, which have the same shape and the same problem.
+    private readonly ConcurrentDictionary<Parameter, VariableSymbol> _parameterSymbols =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map function definitions to the symbol they declare, recorded where the checker resolves it.
     // Module-level functions are findable by other means; a *nested* def that nothing calls is not —
     // it is in no reference collection and not in module scope (#1232). Keyed per node so an
@@ -950,6 +959,21 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records the variable symbol a parameter binds. Called where the checker defines it, so the
+    /// binding is reachable from the declaration node whether or not the body reads the parameter.
+    /// </summary>
+    public void SetParameterSymbol(Parameter parameter, VariableSymbol symbol)
+    {
+        _parameterSymbols[parameter] = symbol;
+    }
+
+    /// <inheritdoc/>
+    public VariableSymbol? GetParameterSymbol(Parameter parameter)
+    {
+        return _parameterSymbols.TryGetValue(parameter, out var symbol) ? symbol : null;
+    }
+
+    /// <summary>
     /// Records the symbol a function definition declares. Called where the checker resolves it, so
     /// a nested definition nothing calls is still reachable from its declaration node.
     /// </summary>
@@ -1165,6 +1189,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._exceptHandlerSymbols)
             _exceptHandlerSymbols.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._parameterSymbols)
+            _parameterSymbols.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._functionDeclarationSymbols)
             _functionDeclarationSymbols.TryAdd(kvp.Key, kvp.Value);

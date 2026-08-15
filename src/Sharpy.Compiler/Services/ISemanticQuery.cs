@@ -126,6 +126,15 @@ public interface ISemanticQuery
     VariableSymbol? GetExceptHandlerSymbol(Parser.Ast.ExceptHandler handler);
 
     /// <summary>
+    /// Gets the variable symbol a parameter binds, keyed on the parameter node. Recorded where the
+    /// checker defines it, so a parameter the body never reads is still reachable from its
+    /// declaration. <c>Parameter</c> is not a <c>Node</c>, so a cursor on one resolves to the
+    /// enclosing <c>FunctionDef</c> — the caller scans that definition's parameters for a
+    /// name-extent hit and asks here (#1359).
+    /// </summary>
+    VariableSymbol? GetParameterSymbol(Parser.Ast.Parameter parameter);
+
+    /// <summary>
     /// Returns true if the given statement was produced by a source generator
     /// (i.e., it was emitted via <c>SemanticInfo.MarkAsGenerated</c>).
     /// Used by LSP for hover attribution and semantic token modifiers.
