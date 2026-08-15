@@ -85,7 +85,14 @@ internal class IncrementalCompilationCache
     //      The bump is necessary but NOT sufficient for (a): a discarded cache is rewritten by the
     //      same encoder, and it is the DECODER that had to change for the next build to read it
     //      back — which is why both fixes land before this bump rather than behind it.
-    internal const int CurrentSchemaVersion = 25;
+    // v26: CachedSymbol.NameDeclarationColumnEnd round-trips the recorded name extent (#1454).
+    //      A v25 entry has no end column, so a restored symbol falls back to the
+    //      Name.Length + backtick-pair derivation Symbol.EffectiveNameColumnEnd keeps for node-less
+    //      symbols — which is exactly the derivation the recorded extent exists to retire. A warm
+    //      build would therefore hand the rename handler a differently-sized extent than a cold one
+    //      for any name whose token length differs from its spelling, the same cold/warm divergence
+    //      class as v23's IsNameBacktickEscaped.
+    internal const int CurrentSchemaVersion = 26;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

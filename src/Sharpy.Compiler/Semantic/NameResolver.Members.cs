@@ -40,6 +40,7 @@ internal partial class NameResolver
             DeclarationColumn = functionDef.ColumnStart,
             NameDeclarationLine = functionDef.NameLineStart,
             NameDeclarationColumn = functionDef.NameColumnStart,
+            NameDeclarationColumnEnd = functionDef.NameColumnEnd,
             SignatureKey = GetMethodSignatureKey(functionDef),
             Documentation = functionDef.DocString,
             DeprecationMessage = GetDeprecationMessage(functionDef.Decorators),
@@ -153,6 +154,7 @@ internal partial class NameResolver
             DeclarationColumn = method.ColumnStart,
             NameDeclarationLine = method.NameLineStart,
             NameDeclarationColumn = method.NameColumnStart,
+            NameDeclarationColumnEnd = method.NameColumnEnd,
             SignatureKey = GetMethodSignatureKey(method),
             Documentation = method.DocString,
             DeprecationMessage = GetDeprecationMessage(method.Decorators),
@@ -323,7 +325,8 @@ internal partial class NameResolver
             DeclarationLine = field.LineStart,
             DeclarationColumn = field.ColumnStart,
             NameDeclarationLine = field.NameLineStart,
-            NameDeclarationColumn = field.NameColumnStart
+            NameDeclarationColumn = field.NameColumnStart,
+            NameDeclarationColumnEnd = field.NameColumnEnd
         };
 
         owningType.Fields.Add(varSymbol);
@@ -488,7 +491,8 @@ internal partial class NameResolver
             DeclarationLine = constDecl.LineStart,
             DeclarationColumn = constDecl.ColumnStart,
             NameDeclarationLine = constDecl.NameLineStart,
-            NameDeclarationColumn = constDecl.NameColumnStart
+            NameDeclarationColumn = constDecl.NameColumnStart,
+            NameDeclarationColumnEnd = constDecl.NameColumnEnd
         };
 
         _symbolTable.Define(varSymbol);
@@ -562,7 +566,8 @@ internal partial class NameResolver
             DeclarationLine = propDef.LineStart,
             DeclarationColumn = propDef.ColumnStart,
             NameDeclarationLine = propDef.NameLineStart,
-            NameDeclarationColumn = propDef.NameColumnStart
+            NameDeclarationColumn = propDef.NameColumnStart,
+            NameDeclarationColumnEnd = propDef.NameColumnEnd
         };
 
         _symbolTable.Define(propSymbol);

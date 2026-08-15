@@ -168,6 +168,7 @@ internal partial class TypeChecker
                     DeclarationColumn = functionDef.ColumnStart,
                     NameDeclarationLine = functionDef.NameLineStart,
                     NameDeclarationColumn = functionDef.NameColumnStart,
+                    NameDeclarationColumnEnd = functionDef.NameColumnEnd,
                     Documentation = functionDef.DocString
                 };
 
@@ -666,6 +667,7 @@ internal partial class TypeChecker
                 DeclarationColumn = param.ColumnStart,
                 NameDeclarationLine = param.NameLineStart,
                 NameDeclarationColumn = param.NameColumnStart,
+                NameDeclarationColumnEnd = param.NameColumnEnd,
                 DeclarationSpan = param.Span,
                 DeclaringFilePath = _currentFilePath
             };
@@ -1974,7 +1976,8 @@ internal partial class TypeChecker
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,
                 NameDeclarationLine = param.NameLineStart,
-                NameDeclarationColumn = param.NameColumnStart
+                NameDeclarationColumn = param.NameColumnStart,
+                NameDeclarationColumnEnd = param.NameColumnEnd
             };
             _symbolTable.Define(paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, paramType);
@@ -2137,7 +2140,8 @@ internal partial class TypeChecker
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,
                 NameDeclarationLine = param.NameLineStart,
-                NameDeclarationColumn = param.NameColumnStart
+                NameDeclarationColumn = param.NameColumnStart,
+                NameDeclarationColumnEnd = param.NameColumnEnd
             };
             _symbolTable.Define(paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, paramType);
@@ -2283,7 +2287,8 @@ internal partial class TypeChecker
                 DeclarationLine = param.LineStart,
                 DeclarationColumn = param.ColumnStart,
                 NameDeclarationLine = param.NameLineStart,
-                NameDeclarationColumn = param.NameColumnStart
+                NameDeclarationColumn = param.NameColumnStart,
+                NameDeclarationColumnEnd = param.NameColumnEnd
             };
             _symbolTable.Define(paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, paramType);
@@ -2503,6 +2508,7 @@ internal partial class TypeChecker
                         DeclaringFilePath = _currentFilePath,
                         NameDeclarationLine = autoProp.NameLineStart,
                         NameDeclarationColumn = autoProp.NameColumnStart,
+                        NameDeclarationColumnEnd = autoProp.NameColumnEnd,
                     };
                     SemanticBinding.SetVariableType(backingField, propType);
                     typeSymbol.Fields.Add(backingField);

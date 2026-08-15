@@ -284,6 +284,7 @@ internal class ModuleLoader
                     DeclarationColumn = functionDef.ColumnStart,
                     NameDeclarationLine = functionDef.NameLineStart,
                     NameDeclarationColumn = functionDef.NameColumnStart,
+                    NameDeclarationColumnEnd = functionDef.NameColumnEnd,
                     // #1365 — the facts NameResolver stamps on the same declaration. An imported
                     // symbol that lacks them is not the same symbol: overload dedup compares
                     // SignatureKey, hover reads Documentation, SPY0466 reads DeprecationMessage and
@@ -338,7 +339,8 @@ internal class ModuleLoader
                     DeclarationLine = varDecl.LineStart,
                     DeclarationColumn = varDecl.ColumnStart,
                     NameDeclarationLine = varDecl.NameLineStart,
-                    NameDeclarationColumn = varDecl.NameColumnStart
+                    NameDeclarationColumn = varDecl.NameColumnStart,
+                    NameDeclarationColumnEnd = varDecl.NameColumnEnd
                 };
                 moduleInfo.ExportedSymbols.Add(varDecl.Name, varSymbol);
                 break;
@@ -418,6 +420,7 @@ internal class ModuleLoader
             DeclarationColumn = classDef.ColumnStart,
             NameDeclarationLine = classDef.NameLineStart,
             NameDeclarationColumn = classDef.NameColumnStart,
+            NameDeclarationColumnEnd = classDef.NameColumnEnd,
             DeclarationSpan = classDef.Span,
             // Which file declared this is what LSP go-to-definition, rename and document-highlight
             // all resolve through, and no extracted symbol carried it — the extractor has the path
@@ -508,6 +511,7 @@ internal class ModuleLoader
             DeclarationColumn = structDef.ColumnStart,
             NameDeclarationLine = structDef.NameLineStart,
             NameDeclarationColumn = structDef.NameColumnStart,
+            NameDeclarationColumnEnd = structDef.NameColumnEnd,
             DeclarationSpan = structDef.Span,
             DeclaringFilePath = CurrentModulePath,
             DefiningFilePath = CurrentModulePath,
@@ -564,6 +568,7 @@ internal class ModuleLoader
             DeclarationColumn = interfaceDef.ColumnStart,
             NameDeclarationLine = interfaceDef.NameLineStart,
             NameDeclarationColumn = interfaceDef.NameColumnStart,
+            NameDeclarationColumnEnd = interfaceDef.NameColumnEnd,
             DeclarationSpan = interfaceDef.Span,
             DeclaringFilePath = CurrentModulePath,
             DefiningFilePath = CurrentModulePath,
@@ -624,7 +629,8 @@ internal class ModuleLoader
                 DeclarationLine = varDecl.LineStart,
                 DeclarationColumn = varDecl.ColumnStart,
                 NameDeclarationLine = varDecl.NameLineStart,
-                NameDeclarationColumn = varDecl.NameColumnStart
+                NameDeclarationColumn = varDecl.NameColumnStart,
+                NameDeclarationColumnEnd = varDecl.NameColumnEnd
             });
         }
         return fields;
@@ -693,6 +699,7 @@ internal class ModuleLoader
             DeclarationColumn = enumDef.ColumnStart,
             NameDeclarationLine = enumDef.NameLineStart,
             NameDeclarationColumn = enumDef.NameColumnStart,
+            NameDeclarationColumnEnd = enumDef.NameColumnEnd,
             DeclarationSpan = enumDef.Span,
             DeclaringFilePath = CurrentModulePath,
             DefiningFilePath = CurrentModulePath,
@@ -829,6 +836,7 @@ internal class ModuleLoader
             DeclarationColumn = method.ColumnStart,
             NameDeclarationLine = method.NameLineStart,
             NameDeclarationColumn = method.NameColumnStart,
+            NameDeclarationColumnEnd = method.NameColumnEnd,
             // #1365 — see the module-level function arm; SignatureKey is what overload dedup
             // compares, so an imported overload set without it cannot tell two signatures apart.
             SignatureKey = NameResolver.GetMethodSignatureKey(method),

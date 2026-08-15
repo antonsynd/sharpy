@@ -83,6 +83,7 @@ internal partial class TypeChecker
                 DeclarationColumn = lambdaParam.ColumnStart,
                 NameDeclarationLine = lambdaParam.NameLineStart,
                 NameDeclarationColumn = lambdaParam.NameColumnStart,
+                NameDeclarationColumnEnd = lambdaParam.NameColumnEnd,
                 DeclarationSpan = lambdaParam.Span,
                 DeclaringFilePath = _currentFilePath
             };

@@ -346,6 +346,11 @@ def main() -> None:
             "CachedSymbol.NameDeclarationLine"),
         F<Symbol>("NameDeclarationColumn", s => s.NameDeclarationColumn, CacheStatus.RoundTrips,
             "CachedSymbol.NameDeclarationColumn"),
+        // #1454 — the recorded name EXTENT, not just its start. An import that drops it restores a
+        // symbol whose extent silently falls back to the Name.Length derivation the recording
+        // exists to retire, so an escaped name would size differently on the import path.
+        F<Symbol>("NameDeclarationColumnEnd", s => s.NameDeclarationColumnEnd, CacheStatus.RoundTrips,
+            "CachedSymbol.NameDeclarationColumnEnd (#1454)"),
         F<Symbol>("DeclarationSpan", s => s.DeclarationSpan is { } span
                 ? $"{span.Start}+{span.Length}" : null, CacheStatus.RoundTrips,
             "CachedSymbol.DeclarationSpanStart/Length"),
@@ -515,6 +520,9 @@ def main() -> None:
         // Derived — no independent value to drop.
         ["Symbol.EffectiveNameLine"] = "derived from NameDeclarationLine ?? DeclarationLine, both mirrored",
         ["Symbol.EffectiveNameColumn"] = "derived from NameDeclarationColumn ?? DeclarationColumn, both mirrored",
+        ["Symbol.EffectiveNameColumnEnd"] = "derived from NameDeclarationColumnEnd, which is mirrored, "
+            + "falling back to EffectiveNameColumn + Name.Length + the backtick pair for symbols with "
+            + "no parsed node — every input to that fallback is itself mirrored (#1454)",
         ["TypeSymbol.IsGeneric"] = "derived from TypeParameters.Count, which is mirrored",
         ["FunctionSymbol.IsGeneric"] = "derived from TypeParameters.Count, which is mirrored",
 

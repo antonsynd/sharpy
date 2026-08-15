@@ -135,6 +135,7 @@ internal partial class NameResolver
             DeclarationColumn = classDef.ColumnStart,
             NameDeclarationLine = classDef.NameLineStart,
             NameDeclarationColumn = classDef.NameColumnStart,
+            NameDeclarationColumnEnd = classDef.NameColumnEnd,
             Documentation = classDef.DocString,
             DeprecationMessage = GetDeprecationMessage(classDef.Decorators),
             IsMustUse = HasMustUse(classDef.Decorators)
@@ -226,6 +227,7 @@ internal partial class NameResolver
             DeclarationColumn = structDef.ColumnStart,
             NameDeclarationLine = structDef.NameLineStart,
             NameDeclarationColumn = structDef.NameColumnStart,
+            NameDeclarationColumnEnd = structDef.NameColumnEnd,
             Documentation = structDef.DocString,
             IsMustUse = HasMustUse(structDef.Decorators)
         };
@@ -312,6 +314,7 @@ internal partial class NameResolver
             DeclarationColumn = interfaceDef.ColumnStart,
             NameDeclarationLine = interfaceDef.NameLineStart,
             NameDeclarationColumn = interfaceDef.NameColumnStart,
+            NameDeclarationColumnEnd = interfaceDef.NameColumnEnd,
             Documentation = interfaceDef.DocString,
             IsMustUse = HasMustUse(interfaceDef.Decorators)
         };
@@ -392,6 +395,7 @@ internal partial class NameResolver
             DeclarationColumn = delegateDef.ColumnStart,
             NameDeclarationLine = delegateDef.NameLineStart,
             NameDeclarationColumn = delegateDef.NameColumnStart,
+            NameDeclarationColumnEnd = delegateDef.NameColumnEnd,
             Documentation = delegateDef.DocString
         };
 
@@ -443,7 +447,8 @@ internal partial class NameResolver
             DeclarationLine = delegateDef.LineStart,
             DeclarationColumn = delegateDef.ColumnStart,
             NameDeclarationLine = delegateDef.NameLineStart,
-            NameDeclarationColumn = delegateDef.NameColumnStart
+            NameDeclarationColumn = delegateDef.NameColumnStart,
+            NameDeclarationColumnEnd = delegateDef.NameColumnEnd
         };
 
         typeSymbol.Methods.Add(invokeSymbol);
@@ -478,6 +483,7 @@ internal partial class NameResolver
             DeclarationColumn = enumDef.ColumnStart,
             NameDeclarationLine = enumDef.NameLineStart,
             NameDeclarationColumn = enumDef.NameColumnStart,
+            NameDeclarationColumnEnd = enumDef.NameColumnEnd,
             Documentation = enumDef.DocString,
             IsMustUse = HasMustUse(enumDef.Decorators),
             // Same rule CodeGenInfoComputer and ModuleLoader apply, recorded a phase earlier so the
@@ -535,6 +541,7 @@ internal partial class NameResolver
             DeclarationColumn = unionDef.ColumnStart,
             NameDeclarationLine = unionDef.NameLineStart,
             NameDeclarationColumn = unionDef.NameColumnStart,
+            NameDeclarationColumnEnd = unionDef.NameColumnEnd,
             Documentation = unionDef.DocString,
             IsMustUse = HasMustUse(unionDef.Decorators)
         };
@@ -556,7 +563,8 @@ internal partial class NameResolver
                 DeclarationLine = caseDef.LineStart,
                 DeclarationColumn = caseDef.ColumnStart,
                 NameDeclarationLine = caseDef.NameLineStart,
-                NameDeclarationColumn = caseDef.NameColumnStart
+                NameDeclarationColumn = caseDef.NameColumnStart,
+                NameDeclarationColumnEnd = caseDef.NameColumnEnd
             };
 
             // Fields resolved during type checking phase

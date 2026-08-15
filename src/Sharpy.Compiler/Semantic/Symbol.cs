@@ -33,8 +33,39 @@ public abstract record Symbol
     public int? NameDeclarationLine { get; init; }
     public int? NameDeclarationColumn { get; init; }
 
+    /// <summary>
+    /// Exclusive end column of the symbol's name token, copied from the AST node's
+    /// <c>NameColumnEnd</c> (which the parser records as <c>nameToken.Column + nameToken.Length</c>,
+    /// escape-aware by construction per #1281). Null for symbols with no parsed node — CLR imports,
+    /// synthesized members — which fall back to the derivation in
+    /// <see cref="EffectiveNameColumnEnd"/>.
+    ///
+    /// <para>
+    /// There is deliberately no <c>NameDeclarationLineEnd</c>: an identifier cannot span lines in
+    /// this lexer (a backticked name is a single-line token), so the name's end line is always
+    /// <see cref="EffectiveNameLine"/>.
+    /// </para>
+    /// </summary>
+    public int? NameDeclarationColumnEnd { get; init; }
+
     public int? EffectiveNameLine => NameDeclarationLine ?? DeclarationLine;
     public int? EffectiveNameColumn => NameDeclarationColumn ?? DeclarationColumn;
+
+    /// <summary>
+    /// Exclusive end column of the name, preferring the recorded extent (#1454) and falling back to
+    /// the spelling-derived length for symbols that never had a parsed node.
+    ///
+    /// <para>
+    /// This fallback is the LAST place in the codebase that reconstructs a name extent from
+    /// <c>Name.Length</c> plus a backtick allowance. Handlers must read this accessor rather than
+    /// re-deriving the arithmetic themselves (plan-80eee2 Design Decision 7).
+    /// </para>
+    /// </summary>
+    public int? EffectiveNameColumnEnd =>
+        NameDeclarationColumnEnd
+        ?? (EffectiveNameColumn is int start
+            ? start + Name.Length + (IsNameBacktickEscaped ? 2 : 0)
+            : null);
 
     /// <summary>
     /// The source span of this symbol's declaration (for LSP go-to-definition).
@@ -619,7 +650,8 @@ public record TypeAliasSymbol : Symbol
         DeclarationLine = typeAlias.LineStart,
         DeclarationColumn = typeAlias.ColumnStart,
         NameDeclarationLine = typeAlias.NameLineStart,
-        NameDeclarationColumn = typeAlias.NameColumnStart
+        NameDeclarationColumn = typeAlias.NameColumnStart,
+        NameDeclarationColumnEnd = typeAlias.NameColumnEnd
     };
 
     public virtual bool Equals(TypeAliasSymbol? other) => ReferenceEquals(this, other);

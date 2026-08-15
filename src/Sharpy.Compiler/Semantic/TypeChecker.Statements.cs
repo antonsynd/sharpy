@@ -607,6 +607,7 @@ internal partial class TypeChecker
                 DeclarationColumn = varDecl.ColumnStart,
                 NameDeclarationLine = varDecl.NameLineStart,
                 NameDeclarationColumn = varDecl.NameColumnStart,
+                NameDeclarationColumnEnd = varDecl.NameColumnEnd,
                 DeclarationSpan = varDecl.Span,
                 DeclaringFilePath = _currentFilePath
             };
@@ -644,6 +645,7 @@ internal partial class TypeChecker
             DeclarationColumn = varDecl.ColumnStart,
             NameDeclarationLine = varDecl.NameLineStart,
             NameDeclarationColumn = varDecl.NameColumnStart,
+            NameDeclarationColumnEnd = varDecl.NameColumnEnd,
             DeclarationSpan = varDecl.Span,
             DeclaringFilePath = _currentFilePath
         };
@@ -1262,6 +1264,7 @@ internal partial class TypeChecker
                     DeclarationColumn = handler.ColumnStart,
                     NameDeclarationLine = handler.NameLineStart,
                     NameDeclarationColumn = handler.NameColumnStart,
+                    NameDeclarationColumnEnd = handler.NameColumnEnd,
                     DeclarationSpan = handler.Span,
                     DeclaringFilePath = _currentFilePath
                 };
@@ -1461,6 +1464,7 @@ internal partial class TypeChecker
                 DeclarationColumn = item.ColumnStart,
                 NameDeclarationLine = item.NameLineStart,
                 NameDeclarationColumn = item.NameColumnStart,
+                NameDeclarationColumnEnd = item.NameColumnEnd,
                 DeclarationSpan = item.Span,
                 DeclaringFilePath = _currentFilePath
             };
@@ -1523,6 +1527,7 @@ internal partial class TypeChecker
                     DeclarationColumn = item.ColumnStart,
                     NameDeclarationLine = item.NameLineStart,
                     NameDeclarationColumn = item.NameColumnStart,
+                    NameDeclarationColumnEnd = item.NameColumnEnd,
                     DeclarationSpan = item.Span,
                     DeclaringFilePath = _currentFilePath
                 };

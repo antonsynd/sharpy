@@ -58,6 +58,14 @@ internal record CachedSymbol
     public int? NameDeclarationColumn { get; init; }
 
     /// <summary>
+    /// Exclusive end column of the name token (#1454). A cache that drops it restores a symbol
+    /// whose extent silently falls back to the <c>Name.Length</c> derivation, so a warm build
+    /// would size escaped names differently from a cold one — the same cold/warm divergence
+    /// <see cref="IsNameBacktickEscaped"/> documents. Hence schema v26.
+    /// </summary>
+    public int? NameDeclarationColumnEnd { get; init; }
+
+    /// <summary>
     /// Declaration span start offset (for LSP go-to-definition)
     /// </summary>
     public int? DeclarationSpanStart { get; init; }
