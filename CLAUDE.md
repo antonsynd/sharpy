@@ -1,502 +1,133 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Rules and workflow for Claude Code in this repository. Architecture reference lives in [.github/copilot-instructions.md](.github/copilot-instructions.md), the agent registry in [.github/agents.md](.github/agents.md), and the authoritative language spec in `docs/language_specification/`. `build_tools/` has its own CLAUDE.md.
 
-> **See also:** [.github/copilot-instructions.md](.github/copilot-instructions.md) for full architecture and patterns, [.github/agents.md](.github/agents.md) for the agent registry.
+**GitHub:** `antonsynd/sharpy` · **Pipeline:** `.spy → Lexer → Parser (AST) → Semantic → ValidationPipeline → RoslynEmitter → C# → .NET IL`
 
-## Repository
-
-- **GitHub owner:** `antonsynd`
-- **GitHub repo:** `antonsynd/sharpy`
-
-## Quick Reference
+## Commands
 
 > **Prerequisites:** .NET 10 SDK (`net10.0` TFM). Python 3.9+ for `build_tools/`.
 
 ```bash
 dotnet build sharpy.sln                              # Build all
-dotnet test                                          # Run all tests (sln-level; the #1419 staging race was fixed in 1c29513a8 and three sln gates ran green 2026-08-13 — per-project filters remain faster for iteration)
-dotnet format whitespace                             # Format code (auto-formatted on save by Claude hook)
-dotnet run --project src/Sharpy.Cli -- run file.spy # Compile and execute
-dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C#
-dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Inspect parsed AST
-dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Inspect lexer tokens
+dotnet test                                          # All tests (slow; prefer per-project filters for iteration)
+dotnet run --project src/Sharpy.Cli -- run file.spy          # Compile and execute
+dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C# (also: ast, tokens, diagnostics)
+dotnet run --project src/Sharpy.Cli -- project x.spyproj     # Multi-file build (--incremental skips unchanged files; --clean forces full rebuild)
 ```
 
-> **Sandbox note:** All `dotnet` commands (especially `build` and `test`) hang when run inside the default sandbox, and `gh` fails TLS certificate verification (`x509: OSStatus -26276`). Run both with `dangerouslyDisableSandbox: true`.
+## Operational Contracts
 
-> **Prefer skills over raw commands:** Use `/build`, `/run-tests`, `/spy-emit`, `/spy-run`, `/quick-check` instead of raw `dotnet` commands. Skills handle logging, truncation, and temp file management (avoiding bash escaping issues with `#` and backticks in Sharpy source).
+Each of these exists because violating it has crashed sessions or destroyed work. Do not relax them.
 
-> **CRITICAL — Serialized dotnet execution:** When multiple agents run in parallel, **NEVER** call `dotnet build` or `dotnet test` directly. Use the serialized wrapper `.claude/scripts/dotnet-serialized` which acquires an exclusive **mkdir-based** lock (`~/.claude/locks/dotnet.lock` — atomic on all platforms; not `flock`) so only one dotnet process runs at a time. Concurrent `dotnet test` invocations each consume 5-10 GB RAM (Roslyn + ~20,800 tests); three in parallel will OOM and crash the system. The wrapper is a drop-in replacement — same args, same output, same exit code. Example: `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer" --no-build`. This is **enforced** by a PreToolUse hook (`.claude/hooks/enforce-dotnet-serialized.sh`) that blocks raw `dotnet build`/`dotnet test` Bash commands.
-
-> **Parallel agents share one working tree.** "Read-only" is not a sufficient instruction — it has failed twice; agents read `git restore` as cleanup rather than modification. Enumerate the prohibition: *never run `git checkout` / `restore` / `clean` / `stash` / `reset` / `rm` on repo paths*, and say the tree is shared. A silent revert leaves no stash and no reflog entry, so commit lead work in small slices and re-check `git diff --stat` after each agent wave.
-
-> **Test output logs:** The serialized wrapper tees all stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (rotating deque of 3 slots). `.claude/tmp/dotnet-serialized-latest.log` symlinks to the most recent run. Agents should read these logs to filter/grep test output instead of re-running the full test suite (~22 min wall clock — `Sharpy.Compiler.Tests` alone is ~21 min and the bulk of the sln's ~20,800 tests, since the `[Trait("Category","GapDiscovery")]` sweeps run by default; filter them out for a fast pass). The 3-slot rotation means an agent reading an older log won't be clobbered by a new run writing to a different slot.
-
-## Architecture
-
-```
-Source (.spy) → Lexer → Parser (AST) → Semantic → ValidationPipeline → RoslynEmitter → C# → .NET IL
-```
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| Compiler | `src/Sharpy.Compiler/` | Lexer, Parser, Semantic, CodeGen |
-| Core | `src/Sharpy.Core/` | Runtime essentials: primitives, collections, builtins, protocol interfaces, `Partial.{Type}/` |
-| Stdlib | `src/Sharpy.Stdlib/` | Standard library modules (60 modules: json, os, re, numpy, etc.) |
-| CLI | `src/Sharpy.Cli/` | Command-line interface (`sharpyc`, uses `System.CommandLine`) |
-| LSP | `src/Sharpy.Lsp/` | Language Server Protocol server (OmniSharp-based) |
-| Tests | `src/*.Tests/` | Unit and integration tests |
-| Specs | `docs/language_specification/` | Authoritative language specification |
-| Build Tools | `build_tools/` | Python-based build automation and dogfooding tools |
-| Agents | `.github/agents/` | Domain-specific agent guidance (copilot/AI) |
-| Instructions | `.github/instructions/` | Per-component contribution guides |
+- **Sandbox:** all `dotnet` commands hang in the default sandbox, and `gh` fails TLS certificate verification. Run both with `dangerouslyDisableSandbox: true`.
+- **Serialized dotnet:** when multiple agents run in parallel, **NEVER** call `dotnet build`/`dotnet test` directly — use `.claude/scripts/dotnet-serialized` (drop-in wrapper: same args, output, exit code; exclusive **mkdir-based** lock at `~/.claude/locks/dotnet.lock`, atomic on all platforms). Concurrent `dotnet test` runs each consume 5–10 GB RAM; three in parallel will OOM the machine. Enforced by the PreToolUse hook `.claude/hooks/enforce-dotnet-serialized.sh`.
+- **Parallel agents share one working tree.** "Read-only" is not a sufficient instruction — it has failed twice; agents read `git restore` as cleanup rather than modification. Enumerate the prohibition in agent prompts: *never run `git checkout` / `restore` / `clean` / `stash` / `reset` / `rm` on repo paths*, and say the tree is shared. A silent revert leaves no stash and no reflog entry, so commit lead work in small slices and re-check `git diff --stat` after each agent wave.
+- **Test logs:** the serialized wrapper tees stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (3-slot rotation, so an older log isn't clobbered by a new run; `-latest.log` symlinks the newest). Grep these instead of re-running suites (~22 min wall clock). `Sharpy.Compiler.Tests` dominates because the `[Trait("Category","GapDiscovery")]` sweeps run by default — filter them out for a fast pass.
+- **Prefer skills over raw commands:** `/build`, `/run-tests`, `/spy-emit`, `/spy-run`, `/quick-check`, `/commit`, `/push`, … (the harness injects the full list each session; sources in `.claude/skills/`). Skills handle logging, truncation, and temp files; the `/spy-*` skills accept inline source via the Write tool, avoiding bash-escaping issues with `#` and backticks in Sharpy source. Investigate failures by reading `.claude/tmp/*.log`, not by re-running.
 
 ## Critical Rules
 
-1. **Never modify expected values to make tests pass** — fix the implementation
-2. **RoslynEmitter is a pure translator** — `SyntaxFactory` exclusively (no string templating); makes no type/lowering decisions and performs no reflection. All such decisions are made in semantic analysis and materialized for the emitter to read via one of two patterns, each with its own materialization boundary: (a) **symbol-keyed** on `Symbol.CodeGenInfo`, frozen at `MaterializeCodeGenInfo` — use when a discovered `Symbol` owns the fact; (b) **node-keyed** in a `SemanticInfo` dictionary (e.g. `BinaryOpLowering`, `IndexAccessLowering`, resolved CLR member names), merged at `SemanticInfo.MergeFrom` — use when the fact belongs to an AST node with no owning symbol. CLR inspection belongs to `Discovery/ClrTypeBridge`/`ClrTypeHelper`. Enforced by `EmitterCarrierOnlyConformanceTests`: the deny universe is every type in the compiler's `Semantic` namespaces (enumerated by reflection, so it cannot go stale), and CodeGen may name only the materialized-fact carriers — `SemanticType`/`Symbol` hierarchies, `SemanticInfo`, `SemanticBinding`, `CodeGenInfo`, closed over their public signatures so a new fact record joins automatically — plus four rationale-annotated read-only catalogs. Naming anything else fails, ratcheted per-file-per-type against issues that drain on fix (#1519–#1521 are the first run's findings). `EmitterBannedTokenScanTests` is a five-substring backstop, **not** Rule-2 evidence (#1475). **Any new node-keyed `SemanticInfo` dictionary must be added to `SemanticInfo.MergeFrom`** or its entries are silently dropped in the per-file→project merge that code generation reads from.
-3. **Immutable AST** — annotations go in `SemanticInfo`, not AST nodes
-4. **Axiom precedence**: .NET > Type Safety > Python Syntax
-5. **C# 9.0 minimum for Sharpy.Core** — `Sharpy.Core` multi-targets `net10.0;netstandard2.1`. On `netstandard2.1`: `LangVersion 9.0` (no global usings, file-scoped namespaces, or record structs). On `net10.0`: `LangVersion 14`. Use `#if NET10_0_OR_GREATER` for net10.0-only code paths. `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` with `LangVersion latest`.
-6. **Always verify Python behavior first** — run `python3 -c "..."` before implementing Python semantics
-7. **Language spec is authoritative** — check `docs/language_specification/` before implementing; change implementation to match spec, not the other way around
-8. **TODO/BUG/FIXME comments must have GitHub issues** — when leaving a `TODO`, `BUG`, or `FIXME` comment in code, always create a corresponding GitHub issue first (via `gh issue create`) and reference it in the comment (e.g., `// TODO(#123): ...`). This makes deferred work visible at the project level, not buried in code.
-9. **Warnings are errors** — `TreatWarningsAsErrors` is enabled solution-wide via `Directory.Build.props`
+1. **Never modify expected values to make tests pass** — fix the implementation.
+2. **RoslynEmitter is a pure translator** — `SyntaxFactory` exclusively (no string templating); makes no type/lowering decisions and performs no reflection. All such decisions are made in semantic analysis and materialized for the emitter to read via one of two patterns, each with its own materialization boundary: (a) **symbol-keyed** on `Symbol.CodeGenInfo`, frozen at `MaterializeCodeGenInfo` — use when a discovered `Symbol` owns the fact; (b) **node-keyed** in a `SemanticInfo` dictionary (e.g. `BinaryOpLowering`, `IndexAccessLowering`, resolved CLR member names), merged at `SemanticInfo.MergeFrom` — use when the fact belongs to an AST node with no owning symbol. CLR inspection belongs to `Discovery/ClrTypeBridge`/`ClrTypeHelper`. Enforced by `EmitterCarrierOnlyConformanceTests`: the deny universe is every type in the compiler's `Semantic` namespaces (enumerated by reflection, so it cannot go stale), and CodeGen may name only the materialized-fact carriers, ratcheted per-file-per-type against issues that drain on fix. `EmitterBannedTokenScanTests` is a five-substring backstop, **not** Rule-2 evidence (#1475). **Any new node-keyed `SemanticInfo` dictionary must be added to `SemanticInfo.MergeFrom`** or its entries are silently dropped in the per-file→project merge that code generation reads from.
+3. **Immutable AST** — annotations go in `SemanticInfo`, not AST nodes.
+4. **Axiom precedence**: .NET > Type Safety > Python Syntax (see Axioms below).
+5. **C# 9.0 minimum for Sharpy.Core** — `Sharpy.Core` and `Sharpy.Stdlib` multi-target `net10.0;netstandard2.1`. On `netstandard2.1`: `LangVersion 9.0` (no global usings, file-scoped namespaces, or record structs). On `net10.0`: `LangVersion 14`; use `#if NET10_0_OR_GREATER` for net10.0-only paths. `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` with `LangVersion latest`.
+6. **Always verify Python behavior first** — run `python3 -c "..."` (or `/verify-python`) before implementing Python semantics.
+7. **Language spec is authoritative** — check `docs/language_specification/` before implementing; change the implementation to match the spec, never the reverse.
+8. **TODO/BUG/FIXME comments must have GitHub issues** — create the issue first (`gh issue create`) and reference it in the comment (`// TODO(#123): ...`).
+9. **Warnings are errors** — `TreatWarningsAsErrors` solution-wide via `Directory.Build.props`.
+10. **Every active diagnostic code needs a `DiagnosticExplanations` entry** (`Diagnostics/DiagnosticExplanations.cs`, guarded by `DiagnosticExplanationsTests`).
 
-## Semantic Analysis Pipeline
+## Axioms
 
-The semantic phase runs multiple ordered passes. Understanding this is critical for implementation work.
+Precedence when the three axioms conflict: **.NET > Type Safety > Python Syntax**. If a conflict resolves at zero cost, satisfy all three. Standing resolutions:
 
-**Pass 1 — Name Resolution** (`NameResolver.cs`): Collects all top-level declarations into `SymbolTable`. Runs `ResolveDeclarations()` then `ResolveInheritance()`.
+| Conflict | Resolution |
+|----------|------------|
+| `//` and `%` semantics | Both **floored** (Python semantics, zero cost — see `arithmetic_operators.md`): `//` lowers to `Math.Floor`, `%` to `Sharpy.Builtins.FloorMod`; the divmod identity `a == (a // b) * b + (a % b)` holds |
+| String indexing | Axiom 1 wins — UTF-16 code units with helper methods |
+| `global`/`nonlocal` | Axiom 1 wins — C# scoping rules apply |
+| Duck typing | Axioms 1+3 win — explicit interfaces |
 
-**Pass 1.5 — Import Resolution** (`ImportResolver.cs`): Loads imported modules via `ModuleLoader` (which caches parsed modules and detects circular imports). Registers imported symbols in SymbolTable. `PackageResolver` handles `__init__.spy` packages.
-
-**Pass 2 — Type Resolution** (`TypeResolver.cs`): Resolves type annotations on declarations to concrete types. Type inference provided by `TypeInferenceService` and `GenericTypeInferenceService`.
-
-**Pass 3 — Type Checking** (`TypeChecker.cs`, split into 14 partial files: `.cs`, `.Definitions.cs`, `.Definitions.Dataclass.cs`, `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Access.Calls.Construction.cs`, `.Expressions.Access.Calls.Overloads.cs`, `.Expressions.Access.Lambdas.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Patterns.cs`, `.Utilities.cs`): Traverses AST, infers types, records them in `SemanticInfo`. Then runs `ValidationPipeline`. Type narrowing (e.g., `if x is not None:` narrows `T?` → `T`): statement-level flow comes from CFG dataflow (`NarrowingFlowAnalysis`); expression-level scopes (ternary arms, `and`/`or` RHS) and the match-arm scope guard use `_narrowingContext` (`TypeNarrowingContext`). At every narrowed read the TypeChecker materializes a node-keyed `NarrowedReadLowering` in `SemanticInfo` (`.Unwrap()`/`.Value`/`!`/cast), which codegen applies verbatim — the emitter performs no narrowing flow re-derivation (#1081, #1080).
-
-**Key registries**: `OperatorRegistry`, `ProtocolRegistry`, `BuiltinRegistry`, `ModuleRegistry`, `PrimitiveCatalog` (source of truth for primitive types and CLR mappings).
-
-**Materialization Points**: After each major phase, computed data is frozen from `SemanticBinding` onto `Symbol` properties:
-1. After import resolution → `MaterializeInheritance()` (BaseType, Interfaces)
-2. After type checking → `MaterializeVariableTypes()`, `MaterializeCodeGenInfo()`
-
-### Symbol Position Fields
-
-- `Symbol.DeclarationLine/Column` — statement start (e.g., `async` in `async def foo`). Used for diagnostics and identity comparisons.
-- `Symbol.NameDeclarationLine/Column` — name token position (e.g., `foo` in `async def foo`). Used for text edits and highlight ranges.
-- `Symbol.EffectiveNameLine/Column` — preferred accessor: returns `NameDeclarationLine ?? DeclarationLine`. LSP handlers must use this for text edits and highlight ranges.
-
-### Key Data Structures
-
-- **`SemanticInfo`** — Maps AST nodes → types/symbols. Uses `ReferenceEqualityComparer` because AST nodes are records (value equality) but we need identity.
-- **`SemanticBinding`** — Stores computed semantic data (CodeGenInfo, variable types) separately from symbols, materialized at phase boundaries.
-- **`SymbolTable`** — Global scope of all declared symbols.
-
-### Symbol Hierarchy
-
-Symbols are mutable records that use **reference equality** (overridden from record default) because their properties (Type, BaseType, CodeGenInfo) are set progressively across passes.
-
-```
-Symbol (abstract)              — DeclarationSpan, DeclaringFilePath (all symbols)
-├── VariableSymbol        — Type set during type checking
-├── FunctionSymbol        — Parameters, ReturnType, IsStatic/Abstract/Virtual/Override
-├── TypeSymbol            — TypeKind, BaseType, Interfaces, Fields, Methods, DefiningFilePath
-├── ModuleSymbol          — FilePath
-├── TypeAliasSymbol       — Aliased type reference
-└── TypeParameterSymbol   — Generic type parameters (T in class Box[T])
-
-PropertySymbol   — Standalone record (not a Symbol subclass)
-EventSymbol      — Standalone record (not a Symbol subclass)
-ParameterSymbol  — Standalone record (not a Symbol subclass)
-```
-
-### SemanticType Hierarchy
-
-All types are immutable records inheriting from `SemanticType` (`Semantic/SemanticType.cs`):
-
-```
-SemanticType (abstract)
-├── BuiltinType      — Int, Long, Float, Double, Float32, Bool, Str (singletons)
-├── GenericType       — list[int], dict[str, int] (Name + TypeArguments)
-├── UserDefinedType   — Classes, structs, interfaces (Name + Symbol)
-├── NullableType      — T? for .NET interop (UnderlyingType)
-├── OptionalType      — T? as safe tagged union (UnderlyingType)
-├── FunctionType      — Lambdas/delegates (ParameterTypes + ReturnType)
-├── GenericFunctionType — Generic functions with type parameters
-├── ConstructorReferenceType — Bare builtin type reference as a value (`f = int`) — Sharpy's method group
-├── TupleType         — tuple[int, str] (ElementTypes)
-├── ModuleType        — Imported modules as namespaces
-├── TypeParameterType — Generic type parameters (T in class Box[T])
-├── ResultType        — T !E tagged union (OkType + ErrorType)
-├── SelfType          — Self type for covariant return annotations
-├── UnionType         — Tagged unions (v0.2.x placeholder)
-├── TaskType          — Async Task types (v0.2.x placeholder)
-├── TemplateType      — Template/format string types
-├── LiteralStringType — Compile-time string literal types
-├── VoidType          — None return type
-└── UnknownType       — Error recovery
-```
-
-### ValidationPipeline
-
-Pluggable validators implement `ISemanticValidator` with an `Order` property (lower runs first):
-
-- **Order 50**: `ModuleLevelValidator` — Entry point validation
-- **Order 52**: `CircularImportUsageValidator` — Circular import usage detection
-- **Order 55**: `NamingConventionValidator` — Naming convention checks
-- **Order 56**: `TransitionWarningValidator` — Transition hint diagnostics for Python/C# behavioral differences
-- **Order 57**: `BuiltinNameShadowingValidator` — Value-position builtin shadowing (SPY0483)
-- **Order 58**: `LocalNameCollisionValidator` — Locals colliding after mangling (SPY0522)
-- **Order 60**: `DecoratorValidator` — Decorator validation
-- **Order 62**: `BodylessSyntaxValidator` — Deprecation warnings for body-less method syntax
-- **Order 65**: `SourceGeneratorValidator` — Source generator attribute validation
-- **Order 140**: `ConstructorOverloadValidator` — Duplicate constructor signatures
-- **Order 145**: `StructRulesValidator` — Struct constructor field initialization
-- **Order 146**: `AbstractMemberValidator` — Abstract member in non-abstract class (SPY0493)
-- **Order 147**: `EnumRulesValidator` — Enum value type consistency
-- **Order 150**: `SignatureValidator` — Dunder method signatures
-- **Order 152**: `ConversionOperatorValidator` — Conversion operator validation
-- **Order 155**: `GeneratorValidator` — Generator function validation
-- **Order 160**: `EqualityContractValidator` — Equality contract checks
-- **Order 170**: `InterfaceConflictValidator` — Interface conflict detection
-- **Order 250**: `DefaultParameterValidator` — Default parameter validation
-- **Order 400**: `ControlFlowValidator` — CFG-based unreachable code, missing returns
-- **Order 405**: `ExhaustivenessValidator` — Match statement exhaustiveness checks
-- **Order 410**: `PropertyValidator` — Property validation
-- **Order 411**: `FinalFieldValidator` — Final field validation
-- **Order 412**: `EventValidator` — Event validation
-- **Order 415**: `VarianceValidator` — Variance validation
-- **Order 420**: `UnusedVariableValidator` — Unused variable warnings
-- **Order 430**: `UnusedImportValidator` — Unused import warnings
-- **Order 435**: `MustUseValidator` — Unused must-use carrier warnings (Result/Optional, `@must_use`)
-- **Order 450**: `AccessValidator` — Private/protected member access
-- **Order 460**: `DunderInvocationValidator` — Direct dunder call warnings
-- **Order 480**: `InterfaceImplementationValidator` — Interface method implementation checks
-- **Order 500**: `ProtocolValidator` — Protocol validation
-- **Order 501**: `OperatorValidator` — Operator validation
-
-**Validator base classes**:
-- `ValidatingAstWalker` — for validators that traverse the AST via visitor pattern (e.g., ProtocolValidator, AccessValidator). Override `VisitXxx` methods to inspect nodes.
-- `SemanticValidatorBase` — for validators with custom traversal logic (e.g., SignatureValidator, ModuleLevelValidator). Override `Validate()` and walk the AST manually.
-
-**Responsibility split**: TypeChecker handles type mismatches and in-progress inference. ValidationPipeline handles self-contained AST analyses that don't need active inference state.
-
-## Diagnostic Code Ranges
-
-All diagnostics use `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
-
-| Range | Level | Component |
-|-------|-------|-----------|
-| SPY0001–SPY0099 | Error | Lexer |
-| SPY0100–SPY0199 | Error | Parser |
-| SPY0200–SPY0399 | Error | Semantic |
-| SPY0400–SPY0449 | Error | Validation (primary error sub-band — fully allocated) |
-| SPY0450–SPY0489 | Warning | Validation (unreachable code, naming conventions) |
-| SPY0490–SPY0499 | Error | Validation errors — overflow (SPY0400–SPY0449 full; e.g., property observers SPY0490/0491) |
-| SPY0500–SPY0599 | Error | Code generation |
-| SPY0900–SPY0999 | Error | Infrastructure (compilation, file I/O) |
-| SPY1000–SPY1099 | Info | Informational (e.g., implicit interface synthesis) |
-
-## Code Generation
-
-The `RoslynEmitter` is split into 25 files (~24,700 lines total): `RoslynEmitter.cs` (entry, name resolution), `.Expressions.cs`, `.Expressions.Access.cs`, `.Expressions.Access.Calls.cs`, `.Expressions.Comprehensions.cs`, `.Expressions.Literals.cs`, `.Expressions.Operators.cs`, `.Statements.cs`, `.Statements.Assignments.cs`, `.Statements.ControlFlow.cs`, `.TypeDeclarations.cs`, `.ClassMembers.cs`, `.ClassMembers.Constructors.cs`, `.ClassMembers.Dataclass.cs`, `.ClassMembers.Events.cs`, `.ClassMembers.Iterators.cs`, `.ClassMembers.LruCache.cs`, `.ClassMembers.Methods.cs`, `.ClassMembers.Properties.cs`, `.CompilationUnit.cs`, `.ModuleClass.cs`, `.Operators.cs`, `.Patterns.cs`, `.TestFixtures.cs`, `RoslynEmitterFactory.cs`.
-
-**Name resolution strategy**:
-- Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
-- Local variables → runtime tracking via `_variableVersions` (handles redeclarations: x, x_1, x_2)
-- Types → SymbolTable lookup
-
-**Type mappings** (`CodeGen/TypeSyntaxMapper.cs`): `int` → `int`, `long` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `Sharpy.List<T>`, `dict[K,V]` → `Sharpy.Dict<K,V>`, `set[T]` → `Sharpy.Set<T>` (Sharpy.Core wrappers delegate to .NET types internally). Collection type name constants live in `Shared/CSharpTypeNames.cs`. Note: a separate `Discovery/ClrTypeMapper.cs` maps CLR types back to Sharpy `SemanticType` instances.
-
-**Name mangling** (`NameMangler.cs`): `snake_case` → `PascalCase`, `__init__` → constructor, `__add__` → `operator+`, `__str__` → `ToString()`
+Axiom 1 (.NET-first) governs the **implementation**, not the user-facing API — the surface stays Pythonic.
 
 ## Design Anti-Patterns
-
-Avoid these patterns:
 
 | Pattern | Problem |
 |---------|---------|
 | "Add X because Python has it" | Feature creep — each feature must earn its complexity |
 | Runtime type checking | Should be compile-time |
 | Wrapper types for Pythonic API | Use extension methods instead |
-| Multiple ways to do same thing | Consistency issue |
+| Multiple ways to do the same thing | Consistency issue |
 | Magic behavior | Unpredictable; prefer explicit |
 | Raw .NET collections in public APIs | Use `Sharpy.List<T>`, `Dict<K,V>`, `Set<T>` |
 | `Optional<T>` return from stdlib | Return nullable; users opt in via `maybe` |
 | Throwing for expected failures | Return `Result<T, E>`; reserve exceptions for bugs |
 
-## Axiom Conflict Resolutions
+## Implementing Features
 
-When the three axioms conflict, precedence is: **Axiom 1 (.NET) > Axiom 3 (Types) > Axiom 2 (Python)**. If a conflict can be resolved at zero cost, satisfy all axioms. Common resolved conflicts:
-
-| Conflict | Resolution |
-|----------|------------|
-| Integer division (`//`) and modulo (`%`) | Both resolved as **floored** (Python semantics, sign of divisor, zero cost — see `arithmetic_operators.md`): `//` lowers to `Math.Floor`, `%` to `Sharpy.Builtins.FloorMod`. The divmod identity `a == (a // b) * b + (a % b)` holds (#1153); stale `math.floor_div` docs deleted (#1155) |
-| String indexing (code points vs UTF-16) | Axiom 1 wins — use UTF-16 with helper methods |
-| `global`/`nonlocal` keywords | Axiom 1 wins — C# scoping rules apply |
-| Duck typing | Axiom 1+3 win — use explicit interfaces |
-
-## Feature Implementation Order
-
-> **Experimental features** (default-off, behind a flag) follow the lifecycle in [docs/design/feature-lifecycle.md](docs/design/feature-lifecycle.md): register in `FeatureFlags.KnownFeatures`, gate via the `FeatureGateChecker` registry (ungated use → SPY0331), graduate or delete per that policy.
-
-For new language features, touch components **in this order** (dependencies flow left→right):
+Touch components in dependency order:
 
 ```
-Lexer → Parser → Semantic → Validation → CodeGen → LSP → Tests
+Lexer (Lexer/) → Parser (Parser/Ast/) → Semantic (Semantic/) → Validation (Semantic/Validation/) → CodeGen (CodeGen/) → LSP (src/Sharpy.Lsp/Handlers/) → Tests
 ```
 
-1. **Lexer** (`Lexer/`) — Add `TokenType` and recognition
-2. **Parser** (`Parser/Ast/`) — Add AST record, parsing rule. Parser is split into 6 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Primaries.cs`, `.Statements.cs`, `.Types.cs`
-3. **Semantic** (`Semantic/`) — Add type checking in `TypeChecker*.cs`
-4. **Validation** (`Semantic/Validation/`) — Add validator if needed
-5. **CodeGen** (`CodeGen/RoslynEmitter*.cs`) — Emit via `SyntaxFactory`
-6. **LSP** (`src/Sharpy.Lsp/Handlers/`) — Update handlers if new AST nodes or semantic types affect IDE features (hover, completion, semantic tokens, etc.)
-7. **Tests** — Unit tests per component + `.spy`/`.expected` integration tests + LSP handler tests
+- **Experimental features** are default-off behind a flag ([docs/design/feature-lifecycle.md](docs/design/feature-lifecycle.md)): register in `FeatureFlags.KnownFeatures`, gate via the `FeatureGateChecker` registry (ungated use → SPY0331), then graduate or delete per that policy.
+- **TypeChecker vs. ValidationPipeline**: TypeChecker owns type mismatches and anything needing in-progress inference; validators own self-contained AST analyses. New validators subclass `ValidatingAstWalker` (visitor) or `SemanticValidatorBase` (custom traversal) and set `Order` (full registry in copilot-instructions.md).
+- **LSP handlers** must use `Symbol.EffectiveNameLine/Column` for text edits and highlight ranges (falls back from name-token position to statement start).
 
-## Multi-File Compilation
+## Diagnostic Code Allocation
 
-`ProjectCompiler` (in `Project/`) and `ProjectFileParser` (the single `.spyproj` parser + discovery helper, in `ProjectConfig.cs`) handle multi-file projects using `.spyproj` files:
-```bash
-dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj
-```
+All diagnostics use the `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 
-Programmatic multi-file tests use `ProjectCompilationHelper`:
-```csharp
-using var helper = new ProjectCompilationHelper(output);
-helper.WithRootNamespace("Test")
-    .AddSourceFile("main.spy", "...")
-    .AddSourceFile("lib.spy", "...")
-    .CreateProjectFile();
-var result = helper.Compile();
-```
+| Range | Level | Component |
+|-------|-------|-----------|
+| SPY0001–SPY0099 | Error | Lexer |
+| SPY0100–SPY0199 | Error | Parser |
+| SPY0200–SPY0399 | Error | Semantic |
+| SPY0400–SPY0449 | Error | Validation (fully allocated — overflow to SPY0490–SPY0499) |
+| SPY0450–SPY0489 | Warning | Validation |
+| SPY0490–SPY0499 | Error | Validation overflow |
+| SPY0500–SPY0599 | Error | Code generation |
+| SPY0900–SPY0999 | Error | Infrastructure |
+| SPY1000–SPY1099 | Info | Informational |
 
-### Incremental Compilation
+## Core & Stdlib Conventions
 
-Enable incremental compilation with `--incremental` to skip unchanged files:
-
-```bash
-dotnet run --project src/Sharpy.Cli -- project path/to/project.spyproj --incremental
-```
-
-**How it works:**
-
-1. **First build**: All files are compiled, symbols and generated C# are cached to `obj/{Config}/.sharpy-symbols`
-2. **Subsequent builds**: Files are skipped if their content hash matches the cache AND no dependencies changed
-3. **Transitive dependencies**: If file A imports B and B changes, A is recompiled (uses cached dependency graph)
-
-**Cache files** (in `obj/{Config}/`):
-- `.sharpy-cache` — File content hashes (SHA-256) with compiler version
-- `.sharpy-symbols` — Serialized symbols and generated C# per file with schema version
-
-**Cache invalidation**: Caches are automatically invalidated when:
-- Compiler version changes (assembly hash changes)
-- Symbol cache schema version changes
-- Source file content changes
-
-**Force full rebuild**: Delete the cache files or use `--clean` flag.
-
-**Implementation**: `IncrementalCompilationCache`, `SymbolSerializer`, `SymbolCache` (all in `Project/`)
-
-## Sharpy.Core Patterns (Essentials)
-
-- **Wrap .NET internally, expose Python API** — `list.append()` not `Add()`
-- **Partial class pattern**: Types split across `Partial.{Type}/` directories (e.g., `Partial.List/List.Methods.cs`, `List.Slicing.cs`, `List.Interfaces.cs`)
-- **Builtins**: `partial class Builtins` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
-- **Core modules**: Operator (comparison helpers) and Copy (shallow/deep copy) stay in Core due to collection type dependencies
-- **Python semantics**: Negative indexing, slicing, Python-matching exceptions
-
-## Sharpy.Stdlib (Standard Library)
-
-- **60 stdlib modules** in `src/Sharpy.Stdlib/`: Argparse, Base64, Bisect, Calendar, Collections, Colorsys, Configparser, Csv, Datetime, Difflib, Email, Fnmatch, Fractions, Functools, Glob, Grapheme, Gzip, Hashlib, Heapq, Hmac, Html, Http, Io, Ipaddress, Itertools, Json, Logging, Math, Numpy, Os, Pathlib, Platform, Pprint, Random, Re, Requests, Secrets, Shlex, Shutil, Socket, Sqlite3, Statistics, String, Struct, Subprocess, Sys, Tarfile, Tempfile, Textwrap, Threading, Time, Toml, Unittest, Urllib, Uuid, Xml, Yaml, Zipfile, Zlib, Zoneinfo
-- **Special directories**: `spy/` holds `.spy` **source** modules — for spy-sourced modules (listed in the `MODULES` mapping in `build_tools/regenerate_spy_stdlib.sh`), the C# under `<Module>/` is *generated* from the `.spy` file; never hand-edit generated C#, run the script instead (CI verifies via `check_spy_staleness.sh`). `modules/` holds per-module `.csproj` packaging.
-- **Depends on Sharpy.Core** (ProjectReference), not the other way around
-- **NuGet deps**: MathNet.Numerics (numpy), Microsoft.Data.Sqlite (sqlite3), Tomlyn (toml), YamlDotNet (yaml)
-- **Multi-target**: `net10.0;netstandard2.1` (same as Core)
-- **Compiler has zero compile-time dependency on Stdlib** — stdlib modules are discovered at runtime via `ModuleRegistry.LoadReference()`
-
-### Stdlib API Conventions
-
-**Error handling — what to return:**
-
-| Scenario | Stdlib returns | User opts into safety via |
-|----------|---------------|--------------------------|
-| Absence | `T?` (nullable) | `maybe` → `Optional<T>` |
-| Expected failure | `Result<T, E>` | (already safe) |
-| Bugs | exception | (should crash) |
-
-- **Return nullable for absence**, not Optional — e.g., `re.search()` returns `ReMatch?`, `dict.get()` returns `V?`. This is Pythonic, convenient, and .NET-interop-friendly. Users who want compile-time safety add `maybe` at the call site.
-- **Return Result for expected failures** with typed errors — e.g., `json.loads[T]()` returns `Result<T, JSONDecodeError>`.
-- **Throw only for bugs** — e.g., `list[i]` out of bounds, null where required.
-- **No dual APIs** — don't provide both throwing and Result-returning variants of the same function. `try`/`maybe` bridge .NET interop generically.
-
-**Public API surface:**
-
-- **Use Sharpy collection types** in public signatures — `List<T>`, `Dict<K,V>`, `Set<T>` from `Sharpy.Core`. Never expose `System.Collections.Generic.List<T>` or namespace-aliased `SCG.List<T>` in public APIs. Internal/private code may use raw .NET collections.
-- **Optional parameters** use nullable with `= null` in C# or `T? = None()` in `.spy` definitions. Don't use `Optional<T>` as a parameter type.
-
-### Protocol Interfaces
-
-Protocol interfaces enable builtin function dispatch (e.g., `len()`, `bool()`) via compile-time interfaces:
-
-- `ISized` — `int Count { get; }` — implemented by List, Set, Dict; synthesized when `__len__` is present
-- `IBoolConvertible` — `bool IsTrue { get; }` — synthesized when `__bool__` is present; enables `bool()` dispatch
-- `IReverseEnumerable<T>` — `IEnumerator<T> GetReverseEnumerator()` — synthesized when `__reversed__` is present
-
-The emitter implicitly adds these interfaces to a class's base list when the corresponding dunder method is detected (emits SPY1001 info diagnostic).
-
-## Skills
-
-Available in `.claude/skills/`:
-
-### Build & Test
-All commands below log full output to `.claude/tmp/*.log` for investigation while showing truncated summaries. Test skills auto-build before running.
-
-| Command | Purpose |
-|---------|---------|
-| `/run-tests [filter]` | Build + run tests; shows last 80 lines on failure (log: `last-test-run.log`) |
-| `/build` | Build solution; shows last 100 lines on failure (log: `last-build.log`) |
-| `/format` | Format whitespace (auto-formatted on save by Claude hook) |
-| `/regenerate-snapshots` | Build + update `.expected.cs` files after codegen changes |
-| `/property-stress [rounds] [filter]` | Stress-test property tests across N rounds with fresh seeds (logs: `property-stress/`) |
-| `/benchmark` | Run compiler or cross-language benchmarks and compare results |
-
-### Debug & Development
-
-All `/spy-*` skills accept **inline source** or a file path. Inline source is written to a temp file via the Write tool (no bash escaping needed), so agents should prefer these skills over raw `dotnet run` commands.
-
-| Command | Purpose |
-|---------|---------|
-| `/spy-emit <mode> <source>` | Emit compiler output: `csharp`, `ast`, `tokens`, or `diagnostics` (log: `last-spy-emit.log`) |
-| `/spy-run <source>` | Compile and execute (log: `last-spy-run.log`) |
-| `/quick-check <source>` | Emit C# + run in one shot (logs: `last-quick-check-{emit,run}.log`) |
-| `/lsp-hover <pos>` | Get LSP hover tooltip for a position in a .spy file (emulates VS Code hover) |
-| `/lsp-review` | Interactive LSP review session — report hover/coloring issues from VS Code |
-| `/verify-python <expr>` | Run Python 3 to verify behavior before implementing |
-| `/clean-dotnet` | Kill zombie dotnet processes that cause hangs |
-| `/playground` | Run the Sharpy playground (Blazor WASM) locally with hot reload |
-
-### Git Workflow
-
-| Command | Purpose |
-|---------|---------|
-| `/commit [message]` | Stage and commit changes with auto-generated message |
-| `/push [--close-issues N,N]` | Push current branch; optionally close GitHub issues |
-| `/close-issues [N,N]` | Close GitHub issues that have been implemented, with verification |
-| `/bump-version [--apply]` | Check (or bump) `SharpyVersion` in `Directory.Build.props` vs the last tag — run before release-destined pushes |
-
-### Analysis & Planning
-
-| Command | Purpose |
-|---------|---------|
-| `/create-plan <issues or desc>` | Create implementation plan from GitHub issues or description |
-| `/compiler-audit [focus]` | Run a comprehensive compiler health audit |
-| `/dogfood-analyze [dir]` | Analyze dogfood results and classify failures |
-| `/dogfood-run` | Run dogfooding iterations to test the compiler |
-| `/verify-plan <plan.md>` | Verify a plan for accuracy and architectural soundness |
-| `/implement-plan <plan.md>` | Implement a plan with a coordinated agent team |
-| `/verify-implementation <plan.md>` | Verify implementation, fix gaps/bugs/regressions |
-| `/add-test-fixture <desc>` | Create a file-based integration test (`.spy` + `.expected`/`.error`) |
-| `/add-stdlib-module <name>` | Scaffold a new stdlib module (spy-sourced or handwritten) with conventions, docs, tests |
-| `/gap-analysis` | Run all gap discovery tests and present a unified summary |
-
-**Investigate failures:** Read logs with `/read .claude/tmp/last-test-run.log` (or other log files).
+- **Wrap .NET internally, expose the Python API** — `list.append()`, not `Add()`. Partial-class layout: `Partial.{Type}/` directories; `partial class Builtins` split per function (`Print.cs`, `Len.cs`, …). Match Python semantics: negative indexing, slicing, Python-matching exceptions.
+- **Error handling:** absence → return `T?` (users opt into `Optional<T>` via `maybe`); expected failure → return `Result<T, E>` with typed errors; bugs → throw. **No dual APIs** — never provide both throwing and Result-returning variants; `try`/`maybe` bridge .NET interop generically.
+- **Public API surface:** Sharpy collection types (`List<T>`, `Dict<K,V>`, `Set<T>`) in public signatures — never raw or namespace-aliased .NET collections (internal code may use them). Optional parameters are nullable with `= null` (C#) or `T? = None()` (`.spy`), never `Optional<T>`.
+- **`None` semantics:** bare `None` is null for `T?` (nullable); `None()` constructs the `Optional` union variant.
+- **Spy-sourced stdlib modules:** for modules in the `MODULES` mapping of `build_tools/regenerate_spy_stdlib.sh`, the C# under `<Module>/` is **generated** from the `.spy` source in `spy/` — never hand-edit it; run the script (CI gate: `check_spy_staleness.sh`).
+- **The compiler has zero compile-time dependency on Stdlib** — modules are discovered at runtime via `ModuleRegistry.LoadReference()`.
+- **Dunder-driven protocol synthesis:** the emitter implicitly adds `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>` to a class when `__len__`/`__bool__`/`__reversed__` is present (emits SPY1001).
 
 ## Testing
 
 ```bash
-dotnet test --filter "FullyQualifiedName~Lexer"            # By component
-dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"  # File-based tests
-dotnet test --filter "DisplayName~test_name"               # By test name
-dotnet test --filter "FullyQualifiedName~Lsp"              # LSP tests
-dotnet test --filter "FullyQualifiedName~Lsp.Tests.E2E"    # LSP E2E protocol tests
+dotnet test --filter "FullyQualifiedName~Lexer"                       # By component
+dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"   # File-based tests
+dotnet test --filter "DisplayName~test_name"                          # By test name
 ```
 
-### File-Based Tests
+**File-based fixtures** (`src/Sharpy.Compiler.Tests/Integration/TestFixtures/`; scaffold with `/add-test-fixture`):
 
-Location: `src/Sharpy.Compiler.Tests/Integration/TestFixtures/`
+- `.spy` + `.expected` (exact stdout match) or `.error` (substring match; a line ending `@line:col` also verifies diagnostic location).
+- Multi-file: a subdirectory with a `main.spy` entry point plus `main.expected`/`main.error`.
+- `.warning` — empty file means expect **no** warnings; non-empty lines are expected substrings. Combinable with `.expected`.
+- `.expected.cs` — C# snapshot (Roslyn-normalized), used for a selective set of representative fixtures. Regenerate via `/regenerate-snapshots` or `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`.
+- `.features` — one experimental feature name per line (`main.features` for multi-file, applies project-wide). Unknown names fail fixture discovery loudly. Pair each gated fixture with an ungated twin expecting SPY0331 — see `TestFixtures/experimental/`.
+- `.skip` — skip the fixture.
 
-**Single-file tests**: `.spy` + `.expected` (exact stdout match) or `.spy` + `.error` (substring match in error; line ending with `@line:col` also verifies diagnostic location)
+**Programmatic tests** inherit `IntegrationTestBase` and assert on `CompileAndExecute(source)` (`result.Success`, `result.StandardOutput`). Multi-file tests use `ProjectCompilationHelper` (`WithRootNamespace(...).AddSourceFile(...).CreateProjectFile()` then `Compile()`).
 
-**Multi-file tests**: A subdirectory with multiple `.spy` files and a `main.spy` entry point, plus `main.expected` or `main.error`.
+**Gap-discovery sweeps** are standing conformance harnesses that hunt whole defect classes (contracts and roster: [docs/design/gap-discovery-contracts.md](docs/design/gap-discovery-contracts.md); run via `/gap-analysis`). They **ratchet** against an allowlist file next to the test: a non-allowlisted failure fails the suite; every allowlist entry cites an issue and is deleted when fixed ("drain on fix" — stale entries fail); allowlists must trend to empty. Never add an entry without an issue reference; never close a member bug by patching one cell — enforce the class contract.
 
-**Warning tests**: `.warning` file — empty means expect no warnings, non-empty lines are expected substrings. Can combine with `.expected`.
+## Git & Release
 
-**C# snapshot tests**: `.expected.cs` file — the expected generated C# output (Roslyn-normalized). Used selectively for ~100 representative fixtures to detect codegen changes that don't affect runtime output. To regenerate: `UPDATE_SNAPSHOTS=true dotnet test --filter "FullyQualifiedName~FileBasedIntegrationTests"`.
+Use `/commit` and `/push` — `/push` runs the generated-artifact staleness gates (spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger) that CI also enforces. Run `/bump-version` before release-destined pushes.
 
-**Experimental features**: `.features` file — one experimental feature name per line (`#` comments and blank lines tolerated) enables those features compilation-wide when the fixture compiles (e.g. `matmul`, `defer`). For single-file fixtures the sidecar is `<stem>.features`; for multi-file fixtures it is `main.features` next to the entry point and applies to the whole project. Unknown feature names fail fixture discovery loudly (naming the file and the bad name) rather than being silently ignored. Pair a gated `.spy` (with `.features` + `.expected`) against an ungated twin (same `.spy`, no `.features`, `.error` matching SPY0331) to cover both paths — see `TestFixtures/experimental/`.
+## MCP Navigation
 
-**Skip**: Add a `.skip` file next to the `.spy` file.
-
-### Integration Test Base
-
-Programmatic tests inherit `IntegrationTestBase` and use `CompileAndExecute(source)`:
-```csharp
-var result = CompileAndExecute("print(1 + 2)");
-Assert.True(result.Success);
-Assert.Equal("3\n", result.StandardOutput);
-```
-
-### Gap-Discovery Conformance Sweeps
-
-Standing harnesses hunt whole defect classes (contracts + history: [docs/design/gap-discovery-contracts.md](docs/design/gap-discovery-contracts.md), umbrellas #1143–#1146): `GenericReferenceConformanceTests` (158-cell `callee[T,...]` matrix), `FrontEndParityTests` (diagnostic parity across Analyze/Compile/REPL/LSP), `ModuleExportsMirror`/`WrapperNodeUnwrap` conformance guards (parallel-site completeness), `DifferentialExecutionTests` (compiled stdout vs `python3`), `MetamorphicCorpusSweepTests` (#1157 — every executing fixture × 9 semantics-preserving transforms, ~14,600 cells, with `MetamorphicCorpusInvarianceTests` as its sampled execution half), plus the interop sweep (#1034). Run via `/gap-analysis` or per-name filters; sweeps write JSON reports to `.claude/tmp/` and **ratchet** against an allowlist file next to the test: a non-allowlisted failure fails the suite, every allowlist entry cites an issue and is deleted when fixed ("drain on fix" — the metamorphic sweep enforces this, failing on stale entries), and allowlists must trend to empty. Never add an allowlist entry without an issue reference; never close a member bug by patching one cell — enforce the class contract.
-
-## Compiler Subdirectories
-
-Key subdirectories within `src/Sharpy.Compiler/` not covered above:
-
-| Path | Purpose |
-|------|---------|
-| `Analysis/ControlFlow/` | `ControlFlowGraph`, `ControlFlowGraphBuilder`, `BasicBlock` |
-| `Diagnostics/` | `DiagnosticBag`, `DiagnosticCodes`, `DiagnosticRenderer`, `CompilationMetrics` |
-| `Discovery/` | CLR type discovery: `ClrTypeMapper`, `CachedModuleDiscovery` |
-| `Shared/` | `CSharpKeywords` (keyword escaping), `CSharpTypeNames` (collection type constants), `NameMangler` |
-| `Discovery/Caching/` | `OverloadIndex`, `OverloadIndexCache`, `AssemblyIdentity` |
-| `Model/` | `CompilationUnit`, `CompilationUnitFactory`, `ProjectModel` |
-| `Logging/` | `ICompilerLogger`, `StructuredLogger`, `ConsoleCompilerLogger`, `NullLogger` |
-| `Project/` | `ProjectCompiler` (9 partial files), `DependencyGraph` (`.spyproj` parsing lives in `ProjectConfig.cs`'s `ProjectFileParser`) |
-| `Services/` | `CompilerServices`, `CompilerServicesBuilder` (adapter pattern) |
-| `Text/` | `ILocatable`, `SourceText`, `TextSpan` |
-| `Utilities/` | `EditDistance`, `PathNormalizer` |
-
-## CI/CD
-
-`.github/workflows/`:
-- `dotnet10.yml` — Active; tests on .NET 10
-- `docs.yml` — Deploy documentation (mkdocs + playground)
-- `python-build-tools.yml` — Runs pytest for `build_tools/` on Python 3.12
-- `benchmarks.yml` — Performance benchmarks
-- `cross-language-benchmarks.yml` — Cross-language benchmark comparisons
-- `vscode-extension.yml` — VS Code extension CI
-- `auto-tag.yml` — Automatic version tagging
-- `release.yml` — Release workflow
-
-An `.editorconfig` at the repo root enforces C# formatting and naming conventions.
-
-## MCP Servers for Codebase Navigation
-
-MCP servers provide structural codebase understanding. Prefer them over raw Grep/Glob/Read for structural queries.
-
-> **Availability:** Project-level MCP servers are configured in `.mcp.json` (currently only `code-review-graph`); CodeGraphContext, if present, is user-configured. If a server is not connected in the current session, fall back to the next option in the decision guide below.
-
-### Decision Guide
-
-```
-Find a file by name/pattern?              → Glob
-Search text/regex across files?            → Grep
-Search strings/comments/non-symbol text?   → Grep
-Code review (risk-scored)?                 → code-review-graph (detect_changes + get_review_context)
-Impact analysis, call chains, dead code?   → code-review-graph (get_impact_radius, query_graph, refactor_tool)
-Architecture overview, communities?        → code-review-graph (get_architecture_overview, list_communities)
-Complexity triage?                         → CodeGraphContext (find_most_complex_functions)
-```
-
-### code-review-graph (Knowledge Graph)
-
-Persistent incremental graph (auto-updates via hooks). Key tools: `detect_changes`, `get_review_context`, `get_impact_radius`, `get_affected_flows`, `query_graph` (callers_of/callees_of/imports_of/tests_for), `semantic_search_nodes`, `get_architecture_overview`, `refactor_tool`.
-
-### CodeGraphContext (Architecture & Relationship Queries)
-
-Graph database for deep analysis: `analyze_code_relationships`, `find_dead_code`, `find_most_complex_functions`, `find_code`, `execute_cypher_query`. **First-time setup:** Run `add_code_to_graph` on `src/Sharpy.Compiler/` and `src/Sharpy.Core/`.
+Filename patterns → Glob; text/regex → Grep. For structural queries prefer the MCP servers when connected (fall back down this list otherwise): `code-review-graph` (`.mcp.json`) for risk-scored review context, impact radius, call chains, and architecture overviews; CodeGraphContext (user-configured) for complexity triage and dead-code queries.
