@@ -6,42 +6,18 @@ name: .NET 10
 on:
   push:
     branches: [ "mainline" ]
-    paths-ignore:
-      - 'docs/**'
-      - 'examples/**'
-      - 'samples/**'
-      - 'build_tools/**'
-      - 'dogfood_output/**'
-      - 'editors/**'
-      - 'benchmarks/**'
-      - 'site/**'
-      - '.claude/**'
-      - '.vscode/**'
-      - '.github/agents/**'
-      - '.github/instructions/**'
-      - '*.md'
-      - 'LICENSE'
-      - 'mkdocs.yml'
-      - 'chiri_config.json5'
+    paths:
+      - 'src/**'
+      - 'Directory.Build.props'
+      - 'sharpy.sln'
+      - '.github/workflows/dotnet10.yml'
   pull_request:
     branches: [ "mainline" ]
-    paths-ignore:
-      - 'docs/**'
-      - 'examples/**'
-      - 'samples/**'
-      - 'build_tools/**'
-      - 'dogfood_output/**'
-      - 'editors/**'
-      - 'benchmarks/**'
-      - 'site/**'
-      - '.claude/**'
-      - '.vscode/**'
-      - '.github/agents/**'
-      - '.github/instructions/**'
-      - '*.md'
-      - 'LICENSE'
-      - 'mkdocs.yml'
-      - 'chiri_config.json5'
+    paths:
+      - 'src/**'
+      - 'Directory.Build.props'
+      - 'sharpy.sln'
+      - '.github/workflows/dotnet10.yml'
 
 jobs:
   build:
