@@ -14,6 +14,8 @@ python -m build_tools build run --max-tasks 5      # Auto-builder
 
 > **PYTHONPATH**: Must include the repo root for `build_tools.shared.*` imports. CI sets this automatically.
 
+> **CI test discovery**: CI runs `pytest build_tools/tests/` only — `test_*.py` files at the `build_tools/` root are never run in CI.
+
 ## Structure
 
 | Directory | Purpose |
@@ -28,6 +30,8 @@ python -m build_tools build run --max-tasks 5      # Auto-builder
 | `allocation_gate.py` | BenchmarkDotNet allocation-baseline ratchet (compares runs to `benchmarks/allocation-baseline.json`) |
 | `bench_ab.py` | Interleaved A/B benchmark orchestrator — alternates two refs and reports a wall-clock delta only when both run positions agree in sign (#1318) |
 | `generate_stdlib_docs.py` | Stdlib docs generator — `docs/stdlib` is generated, never hand-edit |
+| `regenerate_spy_stdlib.sh` / `check_spy_staleness.sh` | Regenerate C# for spy-sourced stdlib modules (`MODULES` mapping) / CI staleness gate — never hand-edit the generated C# |
+| `regenerate_spy_tests.sh` / `check_spy_tests_staleness.sh` | Same pair for the ported spy-test C# |
 | `generate_code_walkthroughs.py` | AI-powered C# documentation generator |
 | `cli.py` / `__main__.py` | Unified CLI entry point |
 
