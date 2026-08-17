@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.CommandLine" Version="2.0.10" />
+    <PackageReference Include="System.CommandLine" Version="2.0.11" />
     <!-- #1107: runtime-only assets (batteries_v2/provider/native e_sqlite3) don't flow through the
          Stdlib reference (ReferenceOutputAssembly="false" carries only lib assets like SQLitePCLRaw.core);
          reference the bundle directly so the managed provider DLLs and runtimes/*/native/*e_sqlite3*
