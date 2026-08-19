@@ -271,8 +271,6 @@ internal class ProtocolValidator : ValidatingAstWalker
         // Check generic container types — use TypeSymbol metadata (populated by discovery)
         if (type is GenericType generic)
         {
-
-
             // Arrays support __len__, __iter__, __getitem__, __setitem__, __contains__
             if (generic.Name == BuiltinNames.Array)
             {
@@ -348,7 +346,8 @@ internal class ProtocolValidator : ValidatingAstWalker
                                 t.IsGenericTypeDefinition
                                 && Shared.ClrNameHelper.StripArity(t.Name) == generic.Name
                                 && t.GetGenericArguments().Length == arity);
-                        if (resolvedDef != null) break;
+                        if (resolvedDef != null)
+                            break;
                     }
                     catch { }
                 }

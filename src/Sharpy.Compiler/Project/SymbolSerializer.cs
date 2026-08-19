@@ -1538,7 +1538,8 @@ internal static class SymbolSerializer
                     foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
                     {
                         resolvedClrType = asm.GetType(originName);
-                        if (resolvedClrType != null) break;
+                        if (resolvedClrType != null)
+                            break;
                     }
                 }
             }
