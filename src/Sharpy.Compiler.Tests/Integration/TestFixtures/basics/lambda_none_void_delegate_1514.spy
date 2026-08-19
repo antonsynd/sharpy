@@ -1,6 +1,13 @@
 # Lambda body of None against a void delegate target elides to an empty block.
+# Covers all three emit paths (#1514): untyped delegate, typed parameter list,
+# and the hoisted local-function form that a default parameter forces.
 
 def main() -> None:
     f = lambda: None
     f()
+    g = lambda n: int: None
+    g(5)
+    h = lambda n: int = 3: None
+    h()
+    h(7)
     print("ok")

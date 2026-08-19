@@ -1,0 +1,11 @@
+# return None in an async def -> None lowers to a bare return inside the
+# emitted async Task method (no CS1997). Output order proves execution (#1514).
+
+async def quiet() -> None:
+    print("quiet ran")
+    return None
+
+
+async def main():
+    await quiet()
+    print("done")
