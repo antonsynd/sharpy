@@ -937,6 +937,145 @@ def main() -> None:
             + "reason.\nUnclassified:\n  " + string.Join("\n  ", unclassified));
     }
 
+    // --- CodeGenInfo member census --------------------------------------------------------------
+    //
+    // Every CodeGenInfo property is either serialized (RoundTrips) or rationale'd as same-file-only
+    // with cited read sites. A new property reddens this census until its cache behaviour is stated.
+
+    /// <summary>
+    /// Classification of every <see cref="CodeGenInfo"/> property. "RoundTrips" means the property
+    /// survives <see cref="SymbolSerializer.Serialize"/>/<c>Deserialize</c>; a rationale string
+    /// means the property is same-file-only and cites the emitter read site.
+    /// </summary>
+    private static readonly Dictionary<string, string> CodeGenInfoFacts = new(StringComparer.Ordinal)
+    {
+        // --- RoundTrips: carried through CachedCodeGenInfo ---
+        ["CSharpName"] = "RoundTrips",
+        ["OriginalName"] = "RoundTrips",
+        ["Version"] = "RoundTrips",
+        ["IsModuleLevel"] = "RoundTrips",
+        ["IsConstant"] = "RoundTrips",
+        ["HasExecutionOrderIssues"] = "RoundTrips",
+        ["IsStringEnum"] = "RoundTrips",
+        ["ImportKind"] = "RoundTrips",
+        ["OriginalImportName"] = "RoundTrips",
+        ["ClrMethodName"] = "RoundTrips",
+
+        // --- Same-file-only: read by the emitter for the file that declares the symbol ---
+        ["OverridesClrBaseMember"] = "same-file-only — read at RoslynEmitter.ClassMembers.Methods.cs:155",
+        ["ForwardingConstructors"] = "same-file-only — read at RoslynEmitter.ClassMembers.Constructors.cs:391",
+        ["SelfInterfaceBridges"] = "same-file-only — read at RoslynEmitter.TypeDeclarations.cs:840",
+    };
+
+    /// <summary>
+    /// Completeness guard: every public instance property on <see cref="CodeGenInfo"/> (except the
+    /// record-synthesized <c>EqualityContract</c>) must appear in <see cref="CodeGenInfoFacts"/>.
+    /// Adding a property to CodeGenInfo reddens this test until its serialization behaviour is stated.
+    /// </summary>
+    [Fact]
+    public void EveryCodeGenInfoProperty_IsClassified()
+    {
+        var reflected = typeof(CodeGenInfo)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(p => p.Name != "EqualityContract")
+            .Select(p => p.Name)
+            .ToList();
+
+        var unclassified = reflected
+            .Where(name => !CodeGenInfoFacts.ContainsKey(name))
+            .ToList();
+
+        var stale = CodeGenInfoFacts.Keys
+            .Where(name => !reflected.Contains(name))
+            .ToList();
+
+        stale.Should().BeEmpty(
+            "a CodeGenInfoFacts entry for a property that no longer exists is stale — delete it.\n"
+            + "Stale:\n  " + string.Join("\n  ", stale));
+
+        unclassified.Should().BeEmpty(
+            "every CodeGenInfo property must be classified as RoundTrips (carried through "
+            + "CachedCodeGenInfo) or rationale'd as same-file-only with the emitter read site. "
+            + "An unclassified property is a serialization decision nobody made — the #1309 shape "
+            + "where a warm build silently drops a fact.\nUnclassified:\n  "
+            + string.Join("\n  ", unclassified));
+    }
+
+    /// <summary>
+    /// For properties declared as "RoundTrips", verify they survive a real serialize/deserialize
+    /// cycle. Constructs a <see cref="CodeGenInfo"/> with non-default values for every RoundTrips
+    /// property, attaches it to a symbol, round-trips through <see cref="SymbolSerializer"/>, and
+    /// checks each value came back. A property the serializer silently drops fails here.
+    /// </summary>
+    [Fact]
+    public void RoundTripsEntries_SurviveSerializerRoundTrip()
+    {
+        var original = new CodeGenInfo
+        {
+            CSharpName = "TestName",
+            OriginalName = "test_name",
+            Version = 3,
+            IsModuleLevel = true,
+            IsConstant = true,
+            HasExecutionOrderIssues = true,
+            IsStringEnum = true,
+            ImportKind = ImportKind.FromImportWithAlias,
+            OriginalImportName = "original_import",
+            ClrMethodName = "ClrMethod",
+            OverridesClrBaseMember = true,
+            ForwardingConstructors = new List<FunctionSymbol>(),
+            SelfInterfaceBridges = new List<SelfInterfaceBridgeSpec>(),
+        };
+
+        var symbol = new FunctionSymbol
+        {
+            Name = "probe",
+            Kind = SymbolKind.Function,
+            Parameters = new List<ParameterSymbol>(),
+            ReturnType = SemanticType.Void,
+            CodeGenInfo = original,
+        };
+
+        var cached = SymbolSerializer.Serialize(symbol, "/test/probe.spy");
+        var restored = (FunctionSymbol)SymbolSerializer.Deserialize(
+            cached, new Dictionary<string, Symbol>(StringComparer.Ordinal));
+
+        restored.CodeGenInfo.Should().NotBeNull("the serializer must preserve CodeGenInfo");
+        var rt = restored.CodeGenInfo!;
+
+        var failures = new List<string>();
+        void Check(string prop, object? expected, object? actual)
+        {
+            if (!CodeGenInfoFacts.TryGetValue(prop, out var classification))
+                return;
+            if (classification == "RoundTrips" && !Equals(expected, actual))
+                failures.Add($"{prop}: expected {Render(expected)} but got {Render(actual)}");
+        }
+
+        Check("CSharpName", original.CSharpName, rt.CSharpName);
+        Check("OriginalName", original.OriginalName, rt.OriginalName);
+        Check("Version", original.Version, rt.Version);
+        Check("IsModuleLevel", original.IsModuleLevel, rt.IsModuleLevel);
+        Check("IsConstant", original.IsConstant, rt.IsConstant);
+        Check("HasExecutionOrderIssues", original.HasExecutionOrderIssues, rt.HasExecutionOrderIssues);
+        Check("IsStringEnum", original.IsStringEnum, rt.IsStringEnum);
+        Check("ImportKind", original.ImportKind, rt.ImportKind);
+        Check("OriginalImportName", original.OriginalImportName, rt.OriginalImportName);
+        Check("ClrMethodName", original.ClrMethodName, rt.ClrMethodName);
+
+        failures.Should().BeEmpty(
+            "a property declared as RoundTrips must survive SymbolSerializer. If the serializer no "
+            + "longer writes it, either thread it through or reclassify it as same-file-only with "
+            + "a rationale.\nFailed round-trips:\n  " + string.Join("\n  ", failures));
+
+        rt.OverridesClrBaseMember.Should().BeFalse(
+            "OverridesClrBaseMember is same-file-only and must NOT survive the round trip");
+        rt.ForwardingConstructors.Should().BeNull(
+            "ForwardingConstructors is same-file-only and must NOT survive the round trip");
+        rt.SelfInterfaceBridges.Should().BeNull(
+            "SelfInterfaceBridges is same-file-only and must NOT survive the round trip");
+    }
+
     // --- Measurement ---------------------------------------------------------------------------
 
     /// <summary>
