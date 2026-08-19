@@ -117,7 +117,13 @@ public class SemanticTypeSerializerTotalityTests
         "BuiltinType" => SemanticType.Int,
         "GenericType" => new GenericType { Name = "list", TypeArguments = { SemanticType.Int } },
         "UserDefinedType" => new UserDefinedType { Name = "MyType" },
-        "UnmappedClrType" => new UnmappedClrType { ClrTypeName = "System.Test" },
+        // A RESOLVABLE name: the decoder restores ClrType via the shared origin resolver, and
+        // record equality (which includes ClrType) only holds if resolution actually ran.
+        "UnmappedClrType" => new UnmappedClrType
+        {
+            ClrTypeName = "System.Text.StringBuilder",
+            ClrType = typeof(System.Text.StringBuilder)
+        },
         "NullableType" => new NullableType { UnderlyingType = SemanticType.Int },
         "OptionalType" => new OptionalType { UnderlyingType = SemanticType.Int },
         "ResultType" => new ResultType { OkType = SemanticType.Int, ErrorType = SemanticType.Str },

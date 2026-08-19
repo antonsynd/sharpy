@@ -14,8 +14,12 @@ namespace Sharpy.Compiler.Tests.Project;
 /// <para>This is the scale validation for B4.1's diagnostic replay mechanism. The cold/warm
 /// differential test (B4.2) validates the mechanism on one specimen; this sweep validates it
 /// across the whole corpus.</para>
+///
+/// <para>Deliberately MAIN-LANE, not GapDiscovery-traited: the full sweep measured ~5s over 113
+/// fixtures, well under the ~60s threshold the plan set for staying in the main lane. (It briefly
+/// carried the trait with no matching CI step — an inert halfway state: no dedicated step selected
+/// it, and the main step's name-based exclusions ran it anyway.)</para>
 /// </summary>
-[Trait("Category", "GapDiscovery")]
 public class WarmBuildDiagnosticFidelityTests : IDisposable
 {
     private readonly ITestOutputHelper _output;

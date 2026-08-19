@@ -317,10 +317,33 @@ internal static class ClrTypeHelper
         return result;
     }
 
-    // Caches an open generic definition's assembly-qualified-ish FullName -> the resolved CLR
-    // definition, so the ClrOriginTypeName fallback below scans loaded assemblies at most once
-    // per name. Null is cached too: an unresolvable name stays unresolvable.
+    // Caches a stored CLR type name -> the resolved CLR type, so every channel that records a
+    // CLR identity as text scans loaded assemblies at most once per name. Null is cached too:
+    // an unresolvable name stays unresolvable.
     private static readonly ConcurrentDictionary<string, Type?> _originNameDefinitionCache = new();
+
+    /// <summary>
+    /// Resolves a CLR type by the FullName a cache channel recorded — <c>Type.GetType</c> first,
+    /// then a loaded-assembly scan, null-cached per name. The SHARED origin resolver for every
+    /// serializer channel that stores a CLR identity as text (the #1538 builtin channel, the
+    /// #1534 UnmappedClrType channel) and for <see cref="ResolveOriginDefinition"/>'s
+    /// generic-definition lookup, which layers its arity gates on top.
+    /// </summary>
+    internal static Type? ResolveClrTypeByStoredName(string fullName)
+        => _originNameDefinitionCache.GetOrAdd(fullName, static name =>
+        {
+            var direct = Type.GetType(name);
+            if (direct != null)
+                return direct;
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var found = assembly.GetType(name);
+                if (found != null)
+                    return found;
+            }
+            return null;
+        });
 
     internal static Type? TryConstructClosedGeneric(GenericType generic, Func<SemanticType, Type?> resolveClrType)
     {
@@ -367,20 +390,7 @@ internal static class ClrTypeHelper
         if (generic.ClrOriginTypeName is not { Length: > 0 } originName)
             return null;
 
-        var resolved = _originNameDefinitionCache.GetOrAdd(originName, static name =>
-        {
-            var direct = Type.GetType(name);
-            if (direct != null)
-                return direct;
-
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                var found = assembly.GetType(name);
-                if (found != null)
-                    return found;
-            }
-            return null;
-        });
+        var resolved = ResolveClrTypeByStoredName(originName);
 
         if (resolved is not { IsGenericTypeDefinition: true })
             return null;

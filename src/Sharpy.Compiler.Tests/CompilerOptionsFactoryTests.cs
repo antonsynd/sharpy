@@ -290,4 +290,59 @@ public class CompilerOptionsFactoryTests
             actualValue.Should().Be(expectedValue, $"CompilerOptions.{property.Name} must match");
         }
     }
+
+    /// <summary>
+    /// The end-to-end #1554 acceptance: a PARSER-SCOPED feature declared only in the .spyproj —
+    /// no CLI flag — must reach compilation through the ForProject path. Measured latent at HEAD
+    /// (every current consumer re-merges config.Features downstream), so this pins the contract
+    /// against a future direct reader of the factory's Features. The ungated arm is the
+    /// non-vacuity control: the same source without the project declaration must draw SPY0331.
+    /// </summary>
+    [Fact]
+    public void ForProject_SpyprojDeclaredParserScopedFeature_CompilesGatedCodeEndToEnd()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_forproject_feature_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var mainPath = Path.Combine(tempDir, "main.spy");
+            File.WriteAllText(mainPath, "def main() -> None:\n    defer print(\"deferred\")\n    print(\"body\")\n");
+
+            ProjectConfig Config(params string[] features) => new()
+            {
+                ProjectFilePath = Path.Combine(tempDir, "test.spyproj"),
+                ProjectDirectory = tempDir,
+                RootNamespace = "FeatureE2E",
+                SourceFiles = new List<string> { mainPath },
+                Configuration = "Debug",
+                Features = features.ToList(),
+            };
+
+            // Ungated control: no project declaration, no CLI flag → the gated syntax must refuse.
+            var ungated = Config();
+            var ungatedResult = new Compiler(
+                    CompilerOptionsFactory.ForProject(ungated), Sharpy.Compiler.Logging.NullLogger.Instance)
+                .CompileProject(ungated);
+            ungatedResult.Success.Should().BeFalse(
+                "without the feature anywhere, `defer` must draw SPY0331 — otherwise the gated "
+                + "arm below proves nothing");
+            ungatedResult.Diagnostics.GetAll().Should().Contain(d => d.Code == "SPY0331");
+
+            // The #1554 cell: the feature declared ONLY in the project config, no CLI features arg.
+            var gated = Config("defer");
+            var gatedResult = new Compiler(
+                    CompilerOptionsFactory.ForProject(gated), Sharpy.Compiler.Logging.NullLogger.Instance)
+                .CompileProject(gated);
+            gatedResult.Success.Should().BeTrue(
+                ".spyproj <Features>defer</Features> must reach compilation through ForProject "
+                + "with no CLI flag (#1554). Diagnostics:\n"
+                + string.Join("\n", gatedResult.Diagnostics.GetAll()));
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
 }

@@ -1287,7 +1287,15 @@ internal static class SymbolSerializer
 
             Register<UnmappedClrType>("unmappedclr",
                 uct => uct.ClrTypeName,
-                value => new UnmappedClrType { ClrTypeName = value });
+                value => new UnmappedClrType
+                {
+                    ClrTypeName = value,
+                    // The carried identity is restored when it resolves (shared origin resolver,
+                    // null-cached); an unresolvable name keeps today's graceful null (#1534).
+                    ClrType = value.Length > 0
+                        ? Discovery.ClrTypeHelper.ResolveClrTypeByStoredName(value)
+                        : null
+                });
 
             Register<NullableType>("nullable",
                 nt => Serialize(nt.UnderlyingType),
@@ -1524,24 +1532,16 @@ internal static class SymbolSerializer
         /// </remarks>
         private static SemanticType ResolveBuiltinType(string value)
         {
-            // Split the @-origin format (#1538): "name@ClrFullName" or just "name".
+            // Split the @-origin format (#1538): "name@ClrFullName" or just "name". Resolution
+            // goes through the shared, null-caching origin resolver — every channel that stores
+            // a CLR identity as text uses the same lookup.
             string name;
             Type? resolvedClrType = null;
             var atIndex = value.IndexOf('@', StringComparison.Ordinal);
             if (atIndex >= 0)
             {
                 name = value[..atIndex];
-                var originName = value[(atIndex + 1)..];
-                resolvedClrType = Type.GetType(originName);
-                if (resolvedClrType == null)
-                {
-                    foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-                    {
-                        resolvedClrType = asm.GetType(originName);
-                        if (resolvedClrType != null)
-                            break;
-                    }
-                }
+                resolvedClrType = Discovery.ClrTypeHelper.ResolveClrTypeByStoredName(value[(atIndex + 1)..]);
             }
             else
             {

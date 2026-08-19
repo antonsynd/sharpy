@@ -335,6 +335,59 @@ def main() -> None:
     }
 
     /// <summary>
+    /// Mutation-tests the instrument itself (the batch's Testing Strategy names this exact
+    /// mutation): hand the warm build a cache whose stored diagnostics were stripped, and the
+    /// cold/warm comparison must DISAGREE. If warm still equalled cold after the payload was
+    /// removed, every diagnostics assertion in this class would be decoration.
+    /// </summary>
+    [Fact]
+    public void TheInstrument_DetectsADoctoredCacheEntryMissingItsDiagnostics()
+    {
+        var lib = Write("doctor", "lib.spy", LibSource);
+        var main = Write("doctor", "main.spy", MainSource);
+        var config = Config("doctor", lib, main);
+
+        var cold = Build(config);
+        cold.Success.Should().BeTrue("the specimen must compile. Diagnostics:\n" + Diagnostics(cold));
+        var coldDiagnostics = Diagnostics(cold);
+        coldDiagnostics.Should().Contain("Warning", "with no stored payload there is nothing to strip");
+
+        var symbolCachePath = Path.Combine(_tempDir, "doctor", "obj", "Debug", ".sharpy-symbols");
+        File.Exists(symbolCachePath).Should().BeTrue(
+            "the cold build must have written the symbol cache this test doctors");
+
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(symbolCachePath))!;
+        StripDiagnostics(root);
+        File.WriteAllText(symbolCachePath, root.ToJsonString());
+
+        var warm = Build(config);
+
+        Skipped(warm).Should().BeEquivalentTo(new[] { "lib.spy", "main.spy" },
+            "the doctored cache is schema-valid and must still be ACCEPTED — a rejected cache "
+            + "would recompile everything and this cell would measure nothing");
+
+        Diagnostics(warm).Should().NotBe(coldDiagnostics,
+            "stripping the cached diagnostics must surface as a cold/warm divergence — the "
+            + "sweep and the differential above rely on this comparison actually firing");
+    }
+
+    private static void StripDiagnostics(System.Text.Json.Nodes.JsonNode? node)
+    {
+        switch (node)
+        {
+            case System.Text.Json.Nodes.JsonObject obj:
+                obj.Remove("Diagnostics");
+                foreach (var kv in obj.ToList())
+                    StripDiagnostics(kv.Value);
+                break;
+            case System.Text.Json.Nodes.JsonArray arr:
+                foreach (var item in arr)
+                    StripDiagnostics(item);
+                break;
+        }
+    }
+
+    /// <summary>
     /// The headline divergence, other direction: with -warnaserror from the start, the cold build
     /// fails — and a failing build writes NO cache (save-only-on-success), so the warm no-edit
     /// rebuild recompiles everything and must fail identically. The empty skip set is the proof

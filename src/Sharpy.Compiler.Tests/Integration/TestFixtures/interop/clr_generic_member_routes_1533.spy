@@ -1,5 +1,13 @@
 # #1533: every member-resolution route for an imported CLR generic receiver must keep working.
 # Each call exercises a different resolution path; all must compile and run.
+#
+# Two routes are measured-broken and cited rather than probed:
+#   - word-boundary collection mapping (`xs.append(7)`) binds LINQ Enumerable.Append and
+#     silently discards the result — #1571;
+#   - explicitly-implemented interface members (`xs.is_fixed_size`) pass the absence proof but
+#     codegen cannot bind them bare — CS1061 behind SPY0908, #1572.
+# The generic-instance-method route (#1136, `xs.convert_all[str]`) is pinned by
+# BclMemberAbsenceTests.ExistingGenericMember_WithExplicitTypeArgs_StillResolves.
 from system.collections.generic import List
 
 

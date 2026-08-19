@@ -55,30 +55,29 @@ public class BuiltinTypeSerializerTotalityTests
             yield return ($"catalog:{name}", new BuiltinType { Name = name, ClrType = info.ClrType });
 
         // #1538: CLR-backed builtins — the third producer class. ClrTypeBridge produces
-        // BuiltinType { Name = clrType.Name, ClrType = clrType } for iterator types
-        // (ClrTypeHelper.GetIteratorElementType != null). These carry a non-null ClrType
-        // that the serializer must preserve for IsValueType and disposability checks.
-        // #1538: CLR-backed builtins from the iterator producer class (ClrTypeBridge:274).
-        // Discover by checking for types extending Iterator<T> in the Sharpy.Core assembly.
+        // BuiltinType { Name = clrType.Name, ClrType = clrType } for iterator types. The census
+        // asks the SAME predicate the bridge asks (ClrTypeHelper.GetIteratorElementType) instead
+        // of re-deriving it, so the specimen set cannot drift behind the producer.
         var coreAssembly = AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(a => a.GetName().Name == "Sharpy.Core");
         if (coreAssembly != null)
         {
             foreach (var type in coreAssembly.GetExportedTypes())
             {
-                var baseType = type.BaseType;
-                while (baseType != null)
-                {
-                    if (baseType.IsGenericType
-                        && baseType.GetGenericTypeDefinition().FullName == "Sharpy.Iterator`1")
-                    {
-                        yield return ($"clr-iterator:{type.Name}", new BuiltinType { Name = type.Name, ClrType = type });
-                        break;
-                    }
-                    baseType = baseType.BaseType;
-                }
+                if (Sharpy.Compiler.Discovery.ClrTypeHelper.GetIteratorElementType(type) != null)
+                    yield return ($"clr-iterator:{type.Name}", new BuiltinType { Name = type.Name, ClrType = type });
             }
         }
+
+        // #1538: the CachedModuleDiscovery-shaped specimen — a stored display name that is NOT
+        // the CLR simple name. The decoder must key resolution on the @FullName segment, never
+        // on the name; a decoder that looked the NAME up would return ClrType = null here and
+        // fail record equality.
+        yield return ("clr-renamed:string_builder", new BuiltinType
+        {
+            Name = "string_builder",
+            ClrType = typeof(System.Text.StringBuilder)
+        });
     }
 
     /// <summary>

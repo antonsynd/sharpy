@@ -95,8 +95,9 @@ public static class CompilerOptionsFactory
                 + "Not a compiler option — it is the input, not a setting.",
 
             ["PackageReferences"] =
-                "Resolved per-seam by NuGetResolver in project-mode builds; the resolved "
-                + "assembly paths reach the compiler via References.",
+                "Resolved per-seam by NuGetResolver.ResolvePackage at each of its three "
+                + "consumers (Compiler, CompilerApi, AssemblyCompiler) — nothing rewrites "
+                + "References upstream, so there is no options-side value to thread.",
 
             ["Configuration"] =
                 "Read directly from config by ProjectCompiler for output path computation; "
