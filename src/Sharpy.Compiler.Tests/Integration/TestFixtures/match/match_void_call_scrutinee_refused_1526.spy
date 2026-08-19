@@ -1,9 +1,11 @@
 # A void-returning call as a match scrutinee is refused with SPY0275.
+# The non-wildcard arm proves the refusal doesn't cascade a second
+# pattern-type error (scrutinee downgrades to Unknown, SPY0329 precedent).
 
 def f() -> None:
     print("side effect")
 
 def main() -> None:
     match f():
-        case _:
+        case 5:
             pass

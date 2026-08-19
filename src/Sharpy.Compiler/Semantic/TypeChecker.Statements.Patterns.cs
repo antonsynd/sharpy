@@ -27,6 +27,38 @@ internal partial class TypeChecker
         };
     }
 
+    /// <summary>
+    /// The #1526 void-scrutinee policy, shared by the statement and expression forms of match:
+    /// a bare <c>None</c> scrutinee lowers over a typed null (<c>(object?)None</c>) and the arms
+    /// check against <c>object?</c>; any other None-typed scrutinee (a void call) has no value to
+    /// match on and is refused with SPY0275. Returns the type the arms should check against —
+    /// <c>Unknown</c> after the refusal so non-wildcard arms don't cascade a second TypeMismatch
+    /// (the SPY0329 precedent). The lowered type is also written back to the expression-type table
+    /// so code generation reads the same scrutinee type the arms were checked against.
+    /// </summary>
+    private SemanticType ApplyVoidScrutineePolicy(Expression scrutinee, SemanticType scrutineeType)
+    {
+        if (scrutineeType is not VoidType)
+            return scrutineeType;
+
+        if (UnwrapParenthesized(scrutinee) is NoneLiteral)
+        {
+            _semanticInfo.SetMatchScrutineeLowering(scrutinee,
+                new MatchScrutineeLowering(MatchScrutineeLoweringKind.CastToNullableObject));
+            var lowered = new NullableType { UnderlyingType = SemanticType.Object };
+            _semanticInfo.SetExpressionType(scrutinee, lowered);
+            return lowered;
+        }
+
+        AddError(
+            "Expression of type 'None' has no value and cannot be used as a match scrutinee; " +
+            "call it as a statement, then match on None explicitly",
+            scrutinee.LineStart, scrutinee.ColumnStart,
+            code: DiagnosticCodes.Semantic.VoidMatchScrutinee,
+            span: scrutinee.Span);
+        return SemanticType.Unknown;
+    }
+
     private void CheckMatch(MatchStatement matchStmt)
     {
         // Resolve the subject against the facts in effect at the dispatch point, exactly as CheckIf
@@ -43,25 +75,7 @@ internal partial class TypeChecker
         using (ScopedValue.Push(ref _matchSubjectOperand, UnwrapParenthesized(matchStmt.Scrutinee)))
             scrutineeType = CheckExpression(matchStmt.Scrutinee);
 
-        if (scrutineeType is VoidType)
-        {
-            var unwrapped = UnwrapParenthesized(matchStmt.Scrutinee);
-            if (unwrapped is NoneLiteral)
-            {
-                _semanticInfo.SetMatchScrutineeLowering(matchStmt.Scrutinee,
-                    new MatchScrutineeLowering(MatchScrutineeLoweringKind.CastToNullableObject));
-                scrutineeType = new NullableType { UnderlyingType = SemanticType.Object };
-            }
-            else
-            {
-                AddError(
-                    "Expression of type 'None' has no value and cannot be used as a match scrutinee; " +
-                    "call it as a statement, then match on None explicitly",
-                    matchStmt.Scrutinee.LineStart, matchStmt.Scrutinee.ColumnStart,
-                    code: DiagnosticCodes.Semantic.VoidMatchScrutinee,
-                    span: matchStmt.Scrutinee.Span);
-            }
-        }
+        scrutineeType = ApplyVoidScrutineePolicy(matchStmt.Scrutinee, scrutineeType);
 
         foreach (var matchCase in matchStmt.Cases)
         {
