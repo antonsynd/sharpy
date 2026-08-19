@@ -7,6 +7,11 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-08-19
+
+### Changed
+- No extension-package changes; version realigned with the toolchain (toolchain releases 0.13.0–0.15.0 shipped without an extension bump, so this entry covers the gap since 0.12.0). Toolchain-side, the bundled language server picks up the recent semantic rounds' fixes visible in-editor — notably argument-driven overload selection for ambiguous CLR static calls (#1530) and honest `UnmappedClrType` diagnostics at the CLR seam (#1534) — and the compiler itself is now installable without this repo via `dotnet tool install -g sharpyc`.
+
 ## [0.12.0] - 2026-08-07
 
 ### Changed
