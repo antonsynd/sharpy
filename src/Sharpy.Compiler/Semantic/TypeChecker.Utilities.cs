@@ -900,6 +900,12 @@ internal partial class TypeChecker
               + " ('if x is not None:') or unwrap it first"
             : string.Empty;
 
+    private static string DescribeArrayToListSteer(SemanticType sourceType, SemanticType targetType)
+        => sourceType is GenericType { Name: BuiltinNames.Array }
+           && targetType is GenericType { Name: BuiltinNames.List }
+            ? " — a CLR array does not convert implicitly; copy explicitly with 'list(...)'"
+            : string.Empty;
+
     /// <summary>
     /// The type an argument expression binds through in an iterable position — <c>list[element]</c>,
     /// with <c>element</c> whatever the recorded mark says the source iterates as — or null when the

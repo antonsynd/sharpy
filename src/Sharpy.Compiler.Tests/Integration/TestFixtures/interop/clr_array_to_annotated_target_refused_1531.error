@@ -1,0 +1,1 @@
+Cannot assign type 'array[str]' to variable of type 'list[str]' — a CLR array does not convert implicitly; copy explicitly with 'list(...)' @8:5

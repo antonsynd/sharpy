@@ -1,0 +1,8 @@
+# A CLR array assigned to an annotated list[T] target is refused (#1531).
+# The steer directs the user to copy explicitly with list(...).
+from system import Environment
+
+
+def main() -> None:
+    args = Environment.get_command_line_args()
+    xs: list[str] = args

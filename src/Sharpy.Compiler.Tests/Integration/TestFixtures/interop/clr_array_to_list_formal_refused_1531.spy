@@ -1,0 +1,12 @@
+# A CLR array passed to a Sharpy-native list[T] formal is refused (#1531).
+# The steer directs the user to copy explicitly with list(...).
+from system import Environment
+
+
+def accepts_list(xs: list[str]) -> int:
+    return len(xs)
+
+
+def main() -> None:
+    args = Environment.get_command_line_args()
+    accepts_list(args)

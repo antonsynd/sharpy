@@ -2596,7 +2596,8 @@ internal partial class TypeChecker
                     if (!IsArgumentAssignable(argTypes[i], expected, ArgumentNodeAt(call, i)))
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{expected.GetDisplayName()}'"
-                            + DescribeOptionalArgument(argTypes[i], expected),
+                            + DescribeOptionalArgument(argTypes[i], expected)
+                            + DescribeArrayToListSteer(argTypes[i], expected),
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
                     }
@@ -2738,6 +2739,7 @@ internal partial class TypeChecker
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{paramType.GetDisplayName()}'"
                             + DescribeOptionalArgument(argTypes[i], paramType)
+                            + DescribeArrayToListSteer(argTypes[i], paramType)
                             + DescribeTypeParameterBinding(param.Type, typeBinding),
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
@@ -2778,6 +2780,7 @@ internal partial class TypeChecker
                     {
                         AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{paramType.GetDisplayName()}'"
                             + DescribeOptionalArgument(kwargTypes[kwarg.Name], paramType)
+                            + DescribeArrayToListSteer(kwargTypes[kwarg.Name], paramType)
                             + DescribeTypeParameterBinding(param.Type, typeBinding),
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: kwarg.Span ?? kwarg.Value.Span);
@@ -4434,16 +4437,12 @@ internal partial class TypeChecker
 
     /// <summary>
     /// The type to bind to a static CLR call's result, or null to leave it <c>Unknown</c> as before.
-    /// Three shapes are NOT typed: unresolved type parameters, CLR arrays (TODO(#1531)), and
+    /// Two shapes are NOT typed: unresolved type parameters and
     /// <see cref="UnmappedClrType"/> — the bridge's "I could not express this" sentinel (#1534).
     /// </summary>
     private SemanticType? StaticCallResultTypeOrNull(FunctionCall call, SemanticType returnType)
     {
         if (returnType is UnknownType || ContainsTypeParameter(returnType))
-            return null;
-
-        // TODO(#1531): drop this arm once array[T] is assignable where list[T] is expected.
-        if (returnType is GenericType { Name: BuiltinNames.Array })
             return null;
 
         if (returnType is UnmappedClrType)
