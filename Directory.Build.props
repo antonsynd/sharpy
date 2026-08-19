@@ -7,7 +7,22 @@
     <Version>$(SharpyVersion)</Version>
     <AssemblyVersion>$(SharpyVersion).0</AssemblyVersion>
     <FileVersion>$(SharpyVersion).0</FileVersion>
+
+    <!-- NuGet packaging metadata (shared across all packable projects) -->
+    <Authors>antonsynd</Authors>
+    <PackageLicenseExpression>Apache-2.0 OR MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/antonsynd/sharpy</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/antonsynd/sharpy</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>sharpy;python;dotnet;compiler;transpiler</PackageTags>
+    <PackageIcon>sharpy-icon.png</PackageIcon>
+    <Copyright>Copyright (c) 2025 Anton Nguyen</Copyright>
   </PropertyGroup>
+
+  <!-- Include icon in all packable projects -->
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)assets/sharpy-icon.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <!-- Embed git commit hash into InformationalVersion at build time -->
   <Target Name="_SetSharpyInformationalVersion" BeforeTargets="GetAssemblyVersion;GenerateAssemblyInfo">

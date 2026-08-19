@@ -7,7 +7,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>sharpyc</AssemblyName>
+    <PackageId>sharpyc</PackageId>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>sharpyc</ToolCommandName>
+    <Description>Sharpy compiler — a statically-typed Pythonic language for .NET. Compile .spy files to C# and run them on the CLR.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../../nuget/sharpyc.README.md" Pack="true" PackagePath="\README.md" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.CommandLine" Version="2.0.11" />

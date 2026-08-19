@@ -9,6 +9,8 @@
     <RootNamespace>Sharpy</RootNamespace>
     <AssemblyName>Sharpy.Core</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Description>Runtime library for the Sharpy programming language. Provides Pythonic collection types (List, Dict, Set), Optional, Result, and built-in functions for .NET.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- CS8604: nullable parameter warnings in generic equality comparisons (Eq helper) -->
     <!-- CS1574/CS1580: XML doc cref resolution issues for generic/dunder methods -->
     <!-- CS1591: missing XML docs — suppressed for simple data types in Generators/ -->
@@ -17,6 +19,10 @@
          net10.0 exposes more StringComparison overloads that trigger these. Fix in Phase 1. -->
     <NoWarn Condition="'$(TargetFramework)' == 'net10.0'">$(NoWarn);CA1305;CA1307</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../../nuget/Sharpy.Core.README.md" Pack="true" PackagePath="\README.md" />
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Sharpy.Core.Tests" />

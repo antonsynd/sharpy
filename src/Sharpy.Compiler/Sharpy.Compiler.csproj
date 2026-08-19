@@ -5,7 +5,13 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Description>Sharpy compiler library for embedding. Compile .spy source to C# and .NET assemblies programmatically via Roslyn.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../../nuget/Sharpy.Compiler.README.md" Pack="true" PackagePath="\README.md" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Allow test assemblies to access internal members -->

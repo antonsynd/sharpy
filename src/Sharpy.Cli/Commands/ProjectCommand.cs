@@ -2,6 +2,7 @@ using System.CommandLine;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Cli.Commands;
@@ -94,6 +95,19 @@ internal static class ProjectCommand
             if (clean)
             {
                 CleanProject(projectConfig);
+            }
+
+            if (projectConfig.PackageReferences.Count > 0)
+            {
+                Console.WriteLine($"Restoring {projectConfig.PackageReferences.Count} NuGet package(s)...");
+                if (!NuGetRestorer.RestorePackages(
+                    projectConfig.PackageReferences,
+                    projectConfig.TargetFramework,
+                    logger))
+                {
+                    Console.Error.WriteLine("Error: NuGet package restore failed.");
+                    return 1;
+                }
             }
 
             Console.WriteLine($"Project: {projectConfig.RootNamespace}");
@@ -198,6 +212,20 @@ internal static class ProjectCommand
         try
         {
             var projectConfig = ProjectFileParser.Load(projectFile.FullName, configuration);
+
+            if (projectConfig.PackageReferences.Count > 0)
+            {
+                Console.WriteLine($"Restoring {projectConfig.PackageReferences.Count} NuGet package(s)...");
+                if (!NuGetRestorer.RestorePackages(
+                    projectConfig.PackageReferences,
+                    projectConfig.TargetFramework,
+                    logger))
+                {
+                    Console.Error.WriteLine("Error: NuGet package restore failed.");
+                    metrics = null;
+                    return 1;
+                }
+            }
 
             Console.WriteLine($"Project: {projectConfig.RootNamespace}");
             Console.WriteLine($"Configuration: {projectConfig.Configuration}");

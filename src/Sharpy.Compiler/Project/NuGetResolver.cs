@@ -56,7 +56,7 @@ internal static class NuGetResolver
         var packageDir = Path.Combine(packagesDir, packageRef.Name.ToLowerInvariant(), packageRef.Version);
         if (!Directory.Exists(packageDir))
         {
-            logger?.LogWarning($"NuGet package not found in global cache: {packageRef.Name} {packageRef.Version}. Run 'dotnet restore' to download it.", 0, 0);
+            logger?.LogWarning($"NuGet package not found in global cache: {packageRef.Name} {packageRef.Version}. Package restore may have failed — check the restore output above.", 0, 0);
             return;
         }
 

@@ -27,17 +27,23 @@ not Python; plain Python will not compile.
 
 ## Getting `sharpyc`
 
-> [!NOTE]
-> `dotnet tool install -g sharpyc` does **not** work — sharpyc is not
-> published as a dotnet tool. Use one of these instead:
+```bash
+dotnet tool install -g sharpyc
+```
 
-**GitHub release archive** (self-contained, no build):
+Or update an existing installation:
+
+```bash
+dotnet tool update -g sharpyc
+```
+
+**Alternative: GitHub release archive** (self-contained, no build):
 download `sharpyc-<rid>.tar.gz`/`.zip` for your platform
 (`osx-arm64`, `osx-x64`, `win-x64`, `linux-x64`, `linux-arm64`) from
 <https://github.com/antonsynd/sharpy/releases>, extract, and put `sharpyc` on
 `PATH`.
 
-**From source** (needs the .NET 10 SDK):
+**Alternative: From source** (needs the .NET 10 SDK):
 
 ```bash
 git clone https://github.com/antonsynd/sharpy.git

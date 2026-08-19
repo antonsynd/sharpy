@@ -129,11 +129,18 @@ def main():
 
 Requires [.NET 10.0 SDK](https://dotnet.microsoft.com/download).
 
+### Install
+
+```bash
+dotnet tool install -g sharpyc
+```
+
+### From Source
+
 ```bash
 git clone https://github.com/antonsynd/sharpy.git
 cd sharpy
 dotnet build sharpy.sln
-dotnet test
 
 # Compile and run
 dotnet run --project src/Sharpy.Cli -- run hello.spy
