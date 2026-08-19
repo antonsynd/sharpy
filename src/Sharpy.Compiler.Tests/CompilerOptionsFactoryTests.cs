@@ -340,7 +340,8 @@ public class CompilerOptionsFactoryTests
         }
         finally
         {
-            try { Directory.Delete(tempDir, recursive: true); }
+            try
+            { Directory.Delete(tempDir, recursive: true); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
