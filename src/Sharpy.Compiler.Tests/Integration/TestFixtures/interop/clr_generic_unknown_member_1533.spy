@@ -1,0 +1,10 @@
+# #1533: an unknown member on an imported CLR generic receiver draws SPY0203.
+# Before this, it passed semantic analysis and leaked CS1061 behind SPY0908.
+from system.collections.generic import List
+
+
+def main() -> None:
+    xs: List[int] = List[int]()
+    xs.add(1)
+    print(xs.count)
+    xs.no_such_method(1)

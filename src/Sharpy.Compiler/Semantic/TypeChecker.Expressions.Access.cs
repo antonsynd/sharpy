@@ -653,7 +653,8 @@ internal partial class TypeChecker
         // is not, and drew CS1061 behind SPY0908 with `emit diagnostics` entirely clean.
         if ((memberLookupType is BuiltinType
                 || IsBuiltinContainerReceiver(memberLookupType)
-                || IsObjectReceiver(memberLookupType))
+                || IsObjectReceiver(memberLookupType)
+                || IsConstructedClrGenericReceiver(memberLookupType))
             && ClrReflectionProvesMemberAbsent(memberLookupType, memberAccess.Member, out var builtinSuggestion))
         {
             var absentOnBuiltin =
@@ -899,6 +900,23 @@ internal partial class TypeChecker
             return false;
 
         return TryGetClrType(type) is { } clrType
+            && clrType != typeof(object)
+            && !clrType.IsGenericTypeDefinition;
+    }
+
+    /// <summary>
+    /// Whether the receiver is a constructed CLR generic with a GenericDefinition carrying a live
+    /// CLR type — e.g. <c>HashSet[int]</c> or <c>List[str]</c> from an import. The proof can be
+    /// asked about it because <see cref="TryGetClrType"/> yields a closed constructed type whose
+    /// member surface reflection can enumerate (#1533).
+    /// </summary>
+    private bool IsConstructedClrGenericReceiver(SemanticType type)
+    {
+        if (type is not GenericType { GenericDefinition.ClrType: { } defClr })
+            return false;
+
+        return defClr.IsGenericTypeDefinition
+            && TryGetClrType(type) is { } clrType
             && clrType != typeof(object)
             && !clrType.IsGenericTypeDefinition;
     }
