@@ -137,7 +137,6 @@ _GENERIC_TYPE_MAP: dict[str, str] = {
     "List": "list",
     "Sharpy.List": "list",
     "Dict": "dict",
-    "Dictionary": "dict",
     "Sharpy.Dict": "dict",
     "Set": "set",
     "Sharpy.Set": "set",

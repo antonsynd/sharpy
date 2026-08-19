@@ -197,7 +197,7 @@ Removes the item with the specified key from the defaultdict.
 
 - `KeyError` -- Thrown if the key does not exist.
 
-### `to_dictionary() -> dict[TKey, TValue]`
+### `to_dictionary() -> Dictionary[TKey, TValue]`
 
 Convert to a standard .NET Dictionary.
 
