@@ -107,10 +107,10 @@ def main() -> None:
         => new Compiler(new CompilerOptions { Incremental = true }, NullLogger.Instance)
             .CompileProject(config);
 
-    /// <summary>Diagnostics as a stable, order-independent projection.</summary>
+    /// <summary>Diagnostics as a stable, order-independent projection including Severity (#1553).</summary>
     private static string Diagnostics(ProjectCompilationResult result)
         => string.Join("\n", result.Diagnostics.GetAll()
-            .Select(d => $"{d.Code}@{Path.GetFileName(d.FilePath ?? "")}:{d.Line}:{d.Column} {d.Message}")
+            .Select(d => $"{d.Severity}:{d.Code}@{Path.GetFileName(d.FilePath ?? "")}:{d.Line}:{d.Column} {d.Message}")
             .OrderBy(s => s, StringComparer.Ordinal));
 
     /// <summary>
