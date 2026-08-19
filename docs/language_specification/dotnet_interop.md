@@ -118,7 +118,11 @@ A call whose type arguments cannot be determined is left exactly as it was: no t
 diagnostic is reported, and the emitted C# infers the vector itself. This is the normal outcome for
 an ambiguous overload and for a result type Sharpy cannot represent — `group_by` yields
 `IGrouping<K, T>` elements the bridge can only call `object`, so nothing is recorded and the emitted
-C# keeps the precise type:
+C# keeps the precise type. Two decidable cases are carved out of that silence: when the arguments
+make exactly one overload of an ambiguous-arity static call applicable, its result is typed like any
+single-overload call, and when an annotated destination is compatible with **none** of the
+candidates' return types, the assignment is refused up front (naming the candidate set) rather than
+deferred to a C# error:
 
 ```python
 from system.collections.generic import List
