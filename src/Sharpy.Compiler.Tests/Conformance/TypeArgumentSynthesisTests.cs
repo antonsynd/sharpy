@@ -8,8 +8,11 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// (<see cref="InteropConformanceTests"/>). These exercise the type-argument synthesis
 /// rules directly so the sweep's widening (#1094) rests on a verified mapping rather than
 /// only the aggregate ratchet.
+///
+/// Named to stay OFF the <c>InteropConformance</c> FQN substring that the main CI lane
+/// excludes (#1556). These are fast helper unit tests that belong in the main lane.
 /// </summary>
-public class InteropConformanceHelperTests
+public class TypeArgumentSynthesisTests
 {
     private static TypeParameterInfo Param(
         string name = "T",
