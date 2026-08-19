@@ -882,6 +882,18 @@ internal partial class RoslynEmitter
             return YieldStatement(SyntaxKind.YieldBreakStatement);
         }
 
+        var returnLowering = _context.SemanticInfo?.GetReturnLowering(ret);
+        if (returnLowering != null)
+        {
+            return returnLowering.Kind switch
+            {
+                ReturnLoweringKind.ElideNoneOperand => ReturnStatement(),
+                ReturnLoweringKind.EvaluateOperandThenReturn =>
+                    Block(ExpressionStatement(GenerateExpression(ret.Value!)), ReturnStatement()),
+                _ => throw new InvalidOperationException($"Unknown ReturnLoweringKind: {returnLowering.Kind}")
+            };
+        }
+
         if (ret.Value != null)
         {
             // `return None` against an Optional<T> return type must produce Optional<T>.None

@@ -357,6 +357,25 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Decorator, string> _bracketAttributeResolvedNamespaces =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map valued return statements in void-returning functions to the lowering codegen must apply.
+    // Recorded by the TypeChecker when the return operand types as VoidType inside a VoidType function
+    // (return None → elide; return void_call() → evaluate-then-return). Absent ⇒ normal return path.
+    // Keyed by node identity (#1514, Critical Rule 2 pattern (b)).
+    private readonly ConcurrentDictionary<ReturnStatement, ReturnLowering> _returnLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
+    // Map lambda body expressions to an elision decision when the body is a NoneLiteral against
+    // a void delegate target (Action). Absent ⇒ normal body emission. Keyed by node identity
+    // (#1514, Critical Rule 2 pattern (b)).
+    private readonly ConcurrentDictionary<Expression, LambdaBodyLowering> _lambdaBodyLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
+    // Map match scrutinee expressions to a typed-null cast when the scrutinee is a bare NoneLiteral.
+    // Absent ⇒ normal scrutinee emission. Void-call scrutinees are REFUSED (SPY0275), not lowered.
+    // Keyed by node identity (#1526, Critical Rule 2 pattern (b)).
+    private readonly ConcurrentDictionary<Expression, MatchScrutineeLowering> _matchScrutineeLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track all reference locations for each symbol (for find-references and rename).
     // Key is Symbol (reference-equality), value is a thread-safe bag of references.
     // The FilePath may be null for the main file in single-file compilation.
@@ -810,6 +829,24 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public InterpolationStrWrapping? GetInterpolationStrWrapping(Expression expr) =>
         _interpolationStrWrappings.TryGetValue(expr, out var wrapping) ? wrapping : null;
+
+    public void SetReturnLowering(ReturnStatement ret, ReturnLowering lowering) =>
+        _returnLowerings[ret] = lowering;
+
+    public ReturnLowering? GetReturnLowering(ReturnStatement ret) =>
+        _returnLowerings.TryGetValue(ret, out var lowering) ? lowering : null;
+
+    public void SetLambdaBodyLowering(Expression body, LambdaBodyLowering lowering) =>
+        _lambdaBodyLowerings[body] = lowering;
+
+    public LambdaBodyLowering? GetLambdaBodyLowering(Expression body) =>
+        _lambdaBodyLowerings.TryGetValue(body, out var lowering) ? lowering : null;
+
+    public void SetMatchScrutineeLowering(Expression scrutinee, MatchScrutineeLowering lowering) =>
+        _matchScrutineeLowerings[scrutinee] = lowering;
+
+    public MatchScrutineeLowering? GetMatchScrutineeLowering(Expression scrutinee) =>
+        _matchScrutineeLowerings.TryGetValue(scrutinee, out var lowering) ? lowering : null;
 
     public void AddGeneratorBinding(Statement declaration, TypeSymbol generatorType, Decorator trigger)
     {
@@ -1296,6 +1333,15 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._calleeRoutings)
             _calleeRoutings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._returnLowerings)
+            _returnLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._lambdaBodyLowerings)
+            _lambdaBodyLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._matchScrutineeLowerings)
+            _matchScrutineeLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var (symbol, refs) in other._symbolReferences)
         {
@@ -1813,3 +1859,29 @@ public enum InterpolationStrWrapping
     /// </summary>
     Str
 }
+
+public enum ReturnLoweringKind
+{
+    /// <summary>The return operand is a NoneLiteral — elide it, emitting a bare <c>return;</c>.</summary>
+    ElideNoneOperand,
+    /// <summary>The return operand is a void call — evaluate it, then return: <c>{ f(); return; }</c>.</summary>
+    EvaluateOperandThenReturn
+}
+
+public sealed record ReturnLowering(ReturnLoweringKind Kind);
+
+public enum LambdaBodyLoweringKind
+{
+    /// <summary>The lambda body is a NoneLiteral against a void delegate — emit an empty block body.</summary>
+    ElideNoneBody
+}
+
+public sealed record LambdaBodyLowering(LambdaBodyLoweringKind Kind);
+
+public enum MatchScrutineeLoweringKind
+{
+    /// <summary>The scrutinee is a bare NoneLiteral — cast to <c>(object?)null</c> for a valid switch.</summary>
+    CastToNullableObject
+}
+
+public sealed record MatchScrutineeLowering(MatchScrutineeLoweringKind Kind);

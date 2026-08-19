@@ -1,0 +1,14 @@
+# return None in unannotated and annotated void functions is lowered to bare return.
+
+def f():
+    print("f called")
+    return None
+
+def g() -> None:
+    print("g called")
+    return None
+
+def main() -> None:
+    f()
+    g()
+    print("done")

@@ -1,0 +1,10 @@
+# Lambda body of None against a void delegate target elides to an empty block.
+
+from typing import Callable
+
+def apply(f: Callable[[], None]) -> None:
+    f()
+
+def main() -> None:
+    apply(lambda: None)
+    print("ok")

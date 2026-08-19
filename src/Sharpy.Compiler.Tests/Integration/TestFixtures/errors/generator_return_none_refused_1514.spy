@@ -1,0 +1,7 @@
+# A valued return inside a generator is refused (SPY0267), including return None.
+
+from typing import Iterator
+
+def gen() -> Iterator[int]:
+    yield 1
+    return None

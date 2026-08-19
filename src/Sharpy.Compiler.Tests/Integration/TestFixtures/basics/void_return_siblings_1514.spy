@@ -1,0 +1,23 @@
+# Sibling shapes for void return lowering: nested def, void-call tail return,
+# parenthesized None.
+
+def helper() -> None:
+    print("helper")
+
+def nested_return() -> None:
+    def inner() -> None:
+        return None
+    inner()
+    print("after inner")
+
+def void_call_return() -> None:
+    return helper()
+
+def parenthesized_return() -> None:
+    return (None)
+
+def main() -> None:
+    nested_return()
+    void_call_return()
+    parenthesized_return()
+    print("all done")

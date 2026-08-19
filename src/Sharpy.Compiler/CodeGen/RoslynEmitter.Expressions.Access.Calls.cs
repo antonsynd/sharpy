@@ -51,6 +51,17 @@ internal partial class RoslynEmitter
             .Select(p => Parameter(EscapedIdentifier(NameMangler.ToCamelCase(p.Name))))
             .ToArray();
 
+        if (_context.SemanticInfo?.GetLambdaBodyLowering(lambda.Body) != null)
+        {
+            if (parameters.Length == 0)
+                return ParenthesizedLambdaExpression().WithBlock(Block());
+            if (parameters.Length == 1)
+                return SimpleLambdaExpression(parameters[0]).WithBlock(Block());
+            return ParenthesizedLambdaExpression()
+                .WithParameterList(ParameterList(SeparatedList(parameters)))
+                .WithBlock(Block());
+        }
+
         // A lambda parameter re-binds its name: an accessor-parameter rewrite in force outside
         // must not reach into the body (#1500).
         ExpressionSyntax body;
@@ -89,6 +100,15 @@ internal partial class RoslynEmitter
             var paramType = ResolveParameterTypeSyntax(lambda, lambdaType, i);
 
             parameters.Add(Parameter(EscapedIdentifier(paramName)).WithType(paramType));
+        }
+
+        if (_context.SemanticInfo?.GetLambdaBodyLowering(lambda.Body) != null)
+        {
+            if (parameters.Count == 0)
+                return ParenthesizedLambdaExpression().WithBlock(Block());
+            return ParenthesizedLambdaExpression()
+                .WithParameterList(ParameterList(SeparatedList(parameters)))
+                .WithBlock(Block());
         }
 
         // See GenerateLambdaExpression: the parameter list re-binds these names (#1500).
@@ -173,6 +193,13 @@ internal partial class RoslynEmitter
         else
         {
             returnType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
+
+        if (_context.SemanticInfo?.GetLambdaBodyLowering(lambda.Body) != null)
+        {
+            return LocalFunctionStatement(returnType, Identifier(functionName))
+                .WithParameterList(ParameterList(SeparatedList(parameters)))
+                .WithBody(Block());
         }
 
         // Generate body expression. The parameter list re-binds these names, so an accessor

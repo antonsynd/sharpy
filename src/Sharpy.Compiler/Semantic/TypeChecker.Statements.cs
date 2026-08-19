@@ -694,6 +694,14 @@ internal partial class TypeChecker
                     returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue,
                     span: returnStmt.Span);
             }
+            else if (_currentFunctionReturnType is VoidType && returnType is VoidType)
+            {
+                var unwrapped = UnwrapParenthesized(returnStmt.Value);
+                var kind = unwrapped is NoneLiteral
+                    ? ReturnLoweringKind.ElideNoneOperand
+                    : ReturnLoweringKind.EvaluateOperandThenReturn;
+                _semanticInfo.SetReturnLowering(returnStmt, new ReturnLowering(kind));
+            }
         }
         else if (_currentFunctionReturnType != SemanticType.Void && !_currentFunctionIsGenerator)
         {

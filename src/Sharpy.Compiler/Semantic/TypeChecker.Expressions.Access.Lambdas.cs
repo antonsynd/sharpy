@@ -128,6 +128,12 @@ internal partial class TypeChecker
             returnType = declaredReturnType;
         }
 
+        if (returnType is VoidType && UnwrapParenthesized(lambda.Body) is NoneLiteral)
+        {
+            _semanticInfo.SetLambdaBodyLowering(lambda.Body,
+                new LambdaBodyLowering(LambdaBodyLoweringKind.ElideNoneBody));
+        }
+
         _currentFunctionIsAsync = previousIsAsync;
         _currentFacts = savedFacts;
         _symbolTable.ExitScope();
