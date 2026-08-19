@@ -4389,10 +4389,34 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // #1243's selection rule verbatim: two overloads of this arity keep silence, because which
-        // one the call means is CLR overload resolution's answer and not this seam's.
-        if (candidates.Count != 1)
-            return null;
+        if (candidates.Count > 1)
+        {
+            // #1530: argument-driven unique-candidate selection. For each candidate, check the
+            // mapped parameter types against the argument types. A parameter that MapClrParameterType
+            // cannot express (null — an object/Unknown degradation, or a ClrParameterIsUndecidable
+            // shape) counts as accepting so it cannot manufacture uniqueness. Only decidable,
+            // non-null mapped parameters eliminate a candidate.
+            var argumentCompatible = candidates.Where(c =>
+            {
+                var ps = c.GetParameters();
+                for (int i = 0; i < argTypes.Count && i < ps.Length; i++)
+                {
+                    if (IsClrParamsArray(ps[i]))
+                        break;
+                    var mapped = MapClrParameterType(ps[i]);
+                    if (mapped == null)
+                        continue;
+                    if (!IsArgumentAssignable(argTypes[i], mapped, ArgumentNodeAt(call, i)))
+                        return false;
+                }
+                return true;
+            }).ToList();
+
+            if (argumentCompatible.Count != 1)
+                return null;
+
+            candidates = argumentCompatible;
+        }
 
         var parameters = candidates[0].GetParameters();
 

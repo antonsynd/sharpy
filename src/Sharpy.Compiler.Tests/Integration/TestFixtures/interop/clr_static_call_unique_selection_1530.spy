@@ -1,0 +1,15 @@
+# #1530: argument-driven unique-candidate selection types a previously-ambiguous call.
+# Math.floor has double and decimal overloads; a float literal (double in CLR) has no
+# implicit path to decimal, so Math.floor(1.5) uniquely selects Math.Floor(double) →
+# result typed float. A mismatched destination now draws SPY0220.
+from system import Math
+
+
+def main() -> None:
+    # Positive control: float result into a float slot works.
+    v: float = Math.floor(1.5)
+    print(v)
+
+    # Mismatched destination: float result into a bool slot is refused.
+    b: bool = Math.floor(1.5)
+    print(b)
