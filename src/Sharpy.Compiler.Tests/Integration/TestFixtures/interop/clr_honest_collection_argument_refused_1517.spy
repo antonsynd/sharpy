@@ -1,0 +1,22 @@
+# #1517: an honest CLR collection value passed to a Sharpy-collection parameter is refused
+# with the inward-conversion steer naming the explicit constructor.
+def take_set(s: set[int]) -> int:
+    return len(s)
+
+
+def take_dict(d: dict[str, int]) -> int:
+    return len(d)
+
+
+def take_list(l: list[int]) -> int:
+    return len(l)
+
+
+def main() -> None:
+    a: set[int] = {1, 2}
+    d: dict[str, int] = {"a": 1}
+    xs: list[int] = [1, 2]
+
+    print(take_set(a.to_hash_set()))
+    print(take_dict(d.to_dictionary()))
+    print(take_list(xs.to_list()))

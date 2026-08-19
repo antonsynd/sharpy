@@ -900,11 +900,41 @@ internal partial class TypeChecker
               + " ('if x is not None:') or unwrap it first"
             : string.Empty;
 
-    private static string DescribeArrayToListSteer(SemanticType sourceType, SemanticType targetType)
-        => sourceType is GenericType { Name: BuiltinNames.Array }
-           && targetType is GenericType { Name: BuiltinNames.List }
-            ? " — a CLR array does not convert implicitly; copy explicitly with 'list(...)'"
-            : string.Empty;
+    /// <summary>
+    /// The inward-conversion steer for a CLR value refused at a Sharpy-collection position:
+    /// honest borders (#1517, #1531) refuse the implicit crossing, and the steer names the
+    /// explicit constructor that performs it. Guarded to CLR-origin sources so a user generic
+    /// that happens to share a BCL name never draws BCL advice.
+    /// </summary>
+    private static string DescribeClrCollectionConversionSteer(SemanticType sourceType, SemanticType targetType)
+    {
+        if (sourceType is GenericType { Name: BuiltinNames.Array }
+            && targetType is GenericType { Name: BuiltinNames.List })
+        {
+            return " — a CLR array does not convert implicitly; copy explicitly with 'list(...)'";
+        }
+
+        if (sourceType is GenericType source
+            && (source.ClrOriginTypeName is { Length: > 0 } || source.GenericDefinition?.ClrType is not null)
+            && targetType is GenericType target)
+        {
+            var constructor = (source.Name, target.Name) switch
+            {
+                ("HashSet", BuiltinNames.Set) => "set",
+                ("HashSet", BuiltinNames.FrozenSet) => "frozenset",
+                ("Dictionary", BuiltinNames.Dict) => "dict",
+                ("Dictionary", BuiltinNames.FrozenDict) => "frozendict",
+                ("List", BuiltinNames.List) => "list",
+                _ => null,
+            };
+            if (constructor != null)
+            {
+                return $" — a CLR {source.Name} does not convert implicitly; convert inward with '{constructor}(...)'";
+            }
+        }
+
+        return string.Empty;
+    }
 
     /// <summary>
     /// The type an argument expression binds through in an iterable position — <c>list[element]</c>,
@@ -1126,6 +1156,13 @@ internal partial class TypeChecker
         if (TryGetClrSequenceInterfaceElement(type) is { } interfaceElement)
             return IsMaterializableElement(interfaceElement);
 
+        // #1517 honest borders, decided: a concrete HashSet/Dictionary/List no longer spells a
+        // builtin name, so it deliberately exits this predicate (and the materialization it
+        // gates). That is the policy, not a leak — implicit materialization at the seam was
+        // exactly the double-identity honest borders retired; those values now REFUSE at
+        // annotation/argument/operator positions with an inward-conversion steer instead of
+        // silently copying. Only bridge-collapsed spellings (interfaces, Sharpy wrappers) remain
+        // materialization candidates below.
         if (type is not GenericType { ClrOriginTypeName: { Length: > 0 } origin } mapped)
             return false;
 

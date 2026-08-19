@@ -857,8 +857,10 @@ internal partial class TypeChecker
     /// generic-collapse placeholder (#955), and a Symbol-less <c>object</c> was BOTH the written
     /// annotation and discovery's "could not map this CLR type" fallback — so refusing an unknown
     /// member on the first also refused <c>g.key</c> on a LINQ <c>group_by</c> result, which runs
-    /// (<c>generics/bcl_extension_three_round_1206</c> caught it). The fallback now answers
-    /// <see cref="SemanticType.UnmappedClr"/>, record-equal and reference-distinct.
+    /// (<c>generics/bcl_extension_three_round_1206</c> caught it). The fallback now answers a
+    /// distinct <see cref="UnmappedClrType"/> (#1534) — structurally a different record, no longer
+    /// merely reference-distinct — so this predicate stays OFF unmapped receivers by type, not by
+    /// the fragile identity trick this remark used to describe.
     /// </para>
     /// <para>
     /// A written <c>object</c> reaches here as the singleton itself: <c>TypeResolver</c> returns it

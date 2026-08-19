@@ -207,7 +207,7 @@ internal partial class TypeChecker
                         AddError(
                             $"Cannot assign type '{inferredType.GetDisplayName()}' to variable of type "
                             + $"'{boundExisting.GetDisplayName()}'"
-                            + DescribeArrayToListSteer(inferredType, boundExisting),
+                            + DescribeClrCollectionConversionSteer(inferredType, boundExisting),
                             assignment.LineStart, assignment.ColumnStart,
                             code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: assignment.Span);
@@ -388,7 +388,7 @@ internal partial class TypeChecker
             else
             {
                 AddError($"Cannot assign type '{valueType.GetDisplayName()}' to '{assignmentTargetType.GetDisplayName()}'"
-                    + DescribeArrayToListSteer(valueType, assignmentTargetType),
+                    + DescribeClrCollectionConversionSteer(valueType, assignmentTargetType),
                     assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                     span: assignment.Span);
             }
@@ -591,7 +591,7 @@ internal partial class TypeChecker
                 else
                 {
                     AddError($"Cannot assign type '{initType.GetDisplayName()}' to variable of type '{declaredType.GetDisplayName()}'"
-                        + DescribeArrayToListSteer(initType, declaredType),
+                        + DescribeClrCollectionConversionSteer(initType, declaredType),
                         varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: varDecl.Span);
                 }

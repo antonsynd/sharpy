@@ -1,0 +1,1 @@
+Cannot assign the result of this call to 'bool' — no overload returns a type assignable to 'bool' (candidates return: object) @14:5

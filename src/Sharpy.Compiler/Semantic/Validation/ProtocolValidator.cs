@@ -320,7 +320,10 @@ internal class ProtocolValidator : ValidatingAstWalker
                         if (HasClrProtocol(closedClr, dunderName))
                             return true;
                     }
-                    catch { }
+                    catch (ArgumentException)
+                    {
+                        // Constraint violation — the closed form cannot be constructed here.
+                    }
                 }
             }
 
@@ -328,29 +331,16 @@ internal class ProtocolValidator : ValidatingAstWalker
             // index (ConvertTypeSignature) for a non-module CLR type. Resolve the CLR generic
             // definition from ClrOriginTypeName and check its closed form (#1517 honest borders).
             // When both GenericDefinition and ClrOriginTypeName are missing (the return type lost
-            // its CLR identity through the overload-index → builtin-substitution chain), try to
-            // resolve the CLR type by scanning loaded assemblies for the generic name (#1517).
+            // its CLR identity through the overload-index → builtin-substitution chain), fall back
+            // to the display-name scan. Both lookups go through ClrTypeHelper's null-cached
+            // resolvers — a negative protocol probe must not rescan loaded assemblies each time.
             if (generic.ClrOriginTypeName is { Length: > 0 } || symTableType == null)
             {
-                var typeName = generic.ClrOriginTypeName ?? generic.Name;
-                Type? resolvedDef = null;
                 var arity = generic.TypeArguments.Count;
-                var candidateName = typeName.Contains('`', StringComparison.Ordinal)
-                    ? typeName : typeName + "`" + arity;
-                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    try
-                    {
-                        resolvedDef = asm.GetType("System.Collections.Generic." + candidateName)
-                            ?? asm.GetTypes().FirstOrDefault(t =>
-                                t.IsGenericTypeDefinition
-                                && Shared.ClrNameHelper.StripArity(t.Name) == generic.Name
-                                && t.GetGenericArguments().Length == arity);
-                        if (resolvedDef != null)
-                            break;
-                    }
-                    catch { }
-                }
+                var resolvedDef = generic.ClrOriginTypeName is { Length: > 0 } originName
+                    ? Discovery.ClrTypeHelper.ResolveClrTypeByStoredName(originName)
+                    : Discovery.ClrTypeHelper.ResolveGenericDefinitionByDisplayName(generic.Name, arity);
+
                 if (resolvedDef is { IsGenericTypeDefinition: true }
                     && resolvedDef.GetGenericArguments().Length == arity)
                 {
@@ -363,7 +353,11 @@ internal class ProtocolValidator : ValidatingAstWalker
                         if (HasClrProtocol(closedClr, dunderName))
                             return true;
                     }
-                    catch { }
+                    catch (ArgumentException)
+                    {
+                        // A constraint the placeholder arguments violate — the closed form cannot
+                        // be constructed, so the protocol stays unproven here.
+                    }
                 }
             }
         }

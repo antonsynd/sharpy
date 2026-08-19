@@ -1,0 +1,8 @@
+# #1517: an operator between honest CLR collection values is refused with the HONEST name —
+# the message can no longer claim the receiver is a 'set' while refusing set's operator
+# (the self-contradiction that defined the path-agreement class).
+def main() -> None:
+    a: set[int] = {1, 2}
+    b: set[int] = {2, 3}
+    u = a.to_hash_set() | b.to_hash_set()
+    print(u)

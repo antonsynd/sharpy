@@ -345,6 +345,45 @@ internal static class ClrTypeHelper
             return null;
         });
 
+    // Caches a bare Sharpy display name + arity -> the resolved CLR generic definition (or null),
+    // so the last-resort scan below runs at most once per spelling instead of on every negative
+    // protocol probe.
+    private static readonly ConcurrentDictionary<string, Type?> _displayNameDefinitionCache = new();
+
+    /// <summary>
+    /// Last-resort resolution of a CLR generic definition from a bare Sharpy DISPLAY name (no
+    /// <see cref="GenericType.ClrOriginTypeName"/>, no symbol) — the shape a return type takes
+    /// after losing its identity through the overload-index → builtin-substitution chain (#1517).
+    /// Probes System.Collections.Generic directly, then scans loaded assemblies for an arity
+    /// match on the StripArity'd simple name. Cached per name+arity, nulls included.
+    /// </summary>
+    internal static Type? ResolveGenericDefinitionByDisplayName(string displayName, int arity)
+        => _displayNameDefinitionCache.GetOrAdd($"{displayName}`{arity}", _ =>
+        {
+            var candidateName = displayName.Contains('`', StringComparison.Ordinal)
+                ? displayName
+                : displayName + "`" + arity;
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    var found = assembly.GetType("System.Collections.Generic." + candidateName)
+                        ?? assembly.GetTypes().FirstOrDefault(t =>
+                            t.IsGenericTypeDefinition
+                            && Shared.ClrNameHelper.StripArity(t.Name) == displayName
+                            && t.GetGenericArguments().Length == arity);
+                    if (found != null)
+                        return found;
+                }
+                catch (ReflectionTypeLoadException)
+                {
+                    // A partially-loadable assembly cannot veto the scan — skip it.
+                }
+            }
+            return null;
+        });
+
     internal static Type? TryConstructClosedGeneric(GenericType generic, Func<SemanticType, Type?> resolveClrType)
     {
         // Provenance has two channels and a GenericType may carry either one. TypeResolver's

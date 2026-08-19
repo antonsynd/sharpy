@@ -1,0 +1,15 @@
+# #1534: a static CLR call whose return type is GENUINELY System.Object binds as object —
+# previously IsUnmappedClrObject swallowed it BY NAME and the destination check never saw it.
+# With UnmappedClrType distinct, the genuine object reaches the candidate machinery and a
+# mismatched destination is refused up front instead of leaking CS0029 behind SPY0908.
+from system import Activator
+
+
+def main() -> None:
+    # Positive control: an object destination is compatible and stays accepted.
+    o: object = Activator.create_instance(type(1))
+    print(type(o))
+
+    # Refused: no overload of create_instance returns anything assignable to bool.
+    b: bool = Activator.create_instance(type(1))
+    print(b)

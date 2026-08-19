@@ -1,0 +1,3 @@
+Cannot pass argument of type 'HashSet[int]' to parameter of type 'set[int]' — a CLR HashSet does not convert implicitly; convert inward with 'set(...)' @20:20
+Cannot pass argument of type 'Dictionary[str, int]' to parameter of type 'dict[str, int]' — a CLR Dictionary does not convert implicitly; convert inward with 'dict(...)' @21:21
+Cannot pass argument of type 'List[int]' to parameter of type 'list[int]' — a CLR List does not convert implicitly; convert inward with 'list(...)' @22:21

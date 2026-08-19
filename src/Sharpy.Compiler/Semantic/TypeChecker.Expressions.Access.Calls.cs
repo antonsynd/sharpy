@@ -2597,7 +2597,7 @@ internal partial class TypeChecker
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{expected.GetDisplayName()}'"
                             + DescribeOptionalArgument(argTypes[i], expected)
-                            + DescribeArrayToListSteer(argTypes[i], expected),
+                            + DescribeClrCollectionConversionSteer(argTypes[i], expected),
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
                     }
@@ -2739,7 +2739,7 @@ internal partial class TypeChecker
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{paramType.GetDisplayName()}'"
                             + DescribeOptionalArgument(argTypes[i], paramType)
-                            + DescribeArrayToListSteer(argTypes[i], paramType)
+                            + DescribeClrCollectionConversionSteer(argTypes[i], paramType)
                             + DescribeTypeParameterBinding(param.Type, typeBinding),
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
@@ -2780,7 +2780,7 @@ internal partial class TypeChecker
                     {
                         AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{paramType.GetDisplayName()}'"
                             + DescribeOptionalArgument(kwargTypes[kwarg.Name], paramType)
-                            + DescribeArrayToListSteer(kwargTypes[kwarg.Name], paramType)
+                            + DescribeClrCollectionConversionSteer(kwargTypes[kwarg.Name], paramType)
                             + DescribeTypeParameterBinding(param.Type, typeBinding),
                             kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: kwarg.Span ?? kwarg.Value.Span);
@@ -4392,10 +4392,13 @@ internal partial class TypeChecker
         if (candidates.Count > 1)
         {
             // #1530: argument-driven unique-candidate selection. For each candidate, check the
-            // mapped parameter types against the argument types. A parameter that MapClrParameterType
-            // cannot express (null — an object/Unknown degradation, or a ClrParameterIsUndecidable
-            // shape) counts as accepting so it cannot manufacture uniqueness. Only decidable,
-            // non-null mapped parameters eliminate a candidate.
+            // mapped parameter types against the argument types. Only a parameter that
+            // MapClrParameterType cannot express (null) counts as accepting; every MAPPED
+            // parameter adjudicates. This is deliberately narrower than the plan's
+            // ClrParameterIsUndecidable rule — that predicate calls `decimal` undecidable (it
+            // declares op_Implicit), which would leave Math.floor(1.5) ambiguous and contradict
+            // the plan's own acceptance example. The residue: a LOSSY mapping (enum→int) can
+            // manufacture false uniqueness and leak CS1503 behind SPY0908 — TODO(#1573).
             var argumentCompatible = candidates.Where(c =>
             {
                 var ps = c.GetParameters();
