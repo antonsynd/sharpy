@@ -65,41 +65,57 @@ public class SemanticTypeSerializerTotalityTests
     }
 
     [Fact]
-    public void RoundTripsEntries_AreActuallyRegistered()
+    public void RoundTripsEntries_SurviveSerializerRoundTrip()
     {
         var roundTrips = Classified.Where(kv => kv.Value == "RoundTrips").Select(kv => kv.Key).ToList();
+        var failed = new List<string>();
 
         foreach (var typeName in roundTrips)
         {
-            var concreteType = typeof(SemanticType).Assembly.GetTypes()
-                .First(t => t.Name == typeName && typeof(SemanticType).IsAssignableFrom(t));
-
-            // Verify the type has a codec registered by checking the Serialize method doesn't throw
-            // for a default-constructed instance (or the singleton).
-            var specimen = CreateSpecimen(concreteType);
+            var specimen = CreateSpecimen(typeName);
             if (specimen == null) continue;
 
-            var act = () => SymbolSerializer.TypeCodecRegistry.Serialize(specimen);
-            act.Should().NotThrow($"{typeName} is classified as RoundTrips but has no serializer registration");
+            var symbol = new FunctionSymbol
+            {
+                Name = "probe",
+                Kind = SymbolKind.Function,
+                Parameters = new List<ParameterSymbol>(),
+                ReturnType = specimen,
+            };
+
+            try
+            {
+                var cached = SymbolSerializer.Serialize(symbol, "/test.spy");
+                var restored = (FunctionSymbol)SymbolSerializer.Deserialize(
+                    cached, new Dictionary<string, Symbol>(StringComparer.Ordinal));
+                if (restored.ReturnType is UnknownType)
+                    failed.Add($"{typeName}: decoded to UnknownType");
+            }
+            catch (Exception ex)
+            {
+                failed.Add($"{typeName}: threw {ex.GetType().Name}: {ex.Message}");
+            }
         }
+
+        failed.Should().BeEmpty("all RoundTrips entries must survive serialization");
     }
 
-    private static SemanticType? CreateSpecimen(Type concreteType)
+    private static SemanticType? CreateSpecimen(string typeName) => typeName switch
     {
-        if (concreteType == typeof(UnknownType)) return SemanticType.Unknown;
-        if (concreteType == typeof(VoidType)) return SemanticType.Void;
-        if (concreteType == typeof(BuiltinType)) return SemanticType.Int;
-        if (concreteType == typeof(GenericType)) return new GenericType { Name = "list", TypeArguments = { SemanticType.Int } };
-        if (concreteType == typeof(UserDefinedType)) return new UserDefinedType { Name = "MyType" };
-        if (concreteType == typeof(UnmappedClrType)) return new UnmappedClrType { ClrTypeName = "System.Test" };
-        if (concreteType == typeof(NullableType)) return new NullableType { UnderlyingType = SemanticType.Int };
-        if (concreteType == typeof(OptionalType)) return new OptionalType { UnderlyingType = SemanticType.Int };
-        if (concreteType == typeof(ResultType)) return new ResultType { OkType = SemanticType.Int, ErrorType = SemanticType.Str };
-        if (concreteType == typeof(FunctionType)) return new FunctionType { ParameterTypes = { SemanticType.Int }, ReturnType = SemanticType.Str };
-        if (concreteType == typeof(TupleType)) return new TupleType { ElementTypes = { SemanticType.Int, SemanticType.Str } };
-        if (concreteType == typeof(TaskType)) return new TaskType { ResultType = SemanticType.Int };
-        if (concreteType == typeof(TemplateType)) return TemplateType.Instance;
-        if (concreteType == typeof(TypeParameterType)) return new TypeParameterType { Name = "T" };
-        return null;
-    }
+        "UnknownType" => SemanticType.Unknown,
+        "VoidType" => SemanticType.Void,
+        "BuiltinType" => SemanticType.Int,
+        "GenericType" => new GenericType { Name = "list", TypeArguments = { SemanticType.Int } },
+        "UserDefinedType" => new UserDefinedType { Name = "MyType" },
+        "UnmappedClrType" => new UnmappedClrType { ClrTypeName = "System.Test" },
+        "NullableType" => new NullableType { UnderlyingType = SemanticType.Int },
+        "OptionalType" => new OptionalType { UnderlyingType = SemanticType.Int },
+        "ResultType" => new ResultType { OkType = SemanticType.Int, ErrorType = SemanticType.Str },
+        "FunctionType" => new FunctionType { ParameterTypes = { SemanticType.Int }, ReturnType = SemanticType.Str },
+        "TupleType" => new TupleType { ElementTypes = { SemanticType.Int, SemanticType.Str } },
+        "TaskType" => new TaskType { ResultType = SemanticType.Int },
+        "TemplateType" => TemplateType.Instance,
+        "TypeParameterType" => new TypeParameterType { Name = "T" },
+        _ => null,
+    };
 }

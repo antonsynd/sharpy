@@ -49,13 +49,30 @@ internal partial class ProjectCompiler
                     }
                 }
 
-                // Save the file cache
+                // Capture per-file diagnostics for warm-build replay (#1553)
+                var cachedDiagnostics = unit.Diagnostics.GetAll()
+                    .Select(d => new CachedDiagnostic
+                    {
+                        Code = d.Code ?? string.Empty,
+                        Message = d.Message,
+                        Severity = d.Severity.ToString(),
+                        Line = d.Line ?? 0,
+                        Column = d.Column ?? 0,
+                        FilePath = d.FilePath,
+                        Phase = d.Phase.ToString(),
+                        SpanStart = d.Span?.Start ?? 0,
+                        SpanLength = d.Span?.Length ?? 0,
+                        Data = d.Data?.ToDictionary(kv => kv.Key, kv => kv.Value?.ToString() ?? string.Empty)
+                    })
+                    .ToList();
+
                 _incrementalCache.SaveFileCache(
                     sourceFile,
                     fileSymbols,
                     unit.GeneratedCSharp ?? string.Empty,
                     dependencies,
-                    unit.ModulePath);
+                    unit.ModulePath,
+                    cachedDiagnostics.Count > 0 ? cachedDiagnostics : null);
 
                 savedCount++;
             }

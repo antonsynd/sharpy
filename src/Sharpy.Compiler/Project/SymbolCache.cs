@@ -530,6 +530,30 @@ internal record FileCacheEntry
     /// for backwards compat — pre-v13 cache files won't have this.
     /// </summary>
     public Dictionary<string, GeneratedCacheEntry>? GeneratorOutputs { get; init; }
+
+    /// <summary>
+    /// Diagnostics produced for this file during the cold build (#1553). Nullable for backwards
+    /// compat — pre-v27 cache files won't have this. Replayed into both bags at the skip path
+    /// so warm ≡ cold on diagnostics.
+    /// </summary>
+    public List<CachedDiagnostic>? Diagnostics { get; init; }
+}
+
+/// <summary>
+/// A single diagnostic captured from a cold build for cache replay (#1553).
+/// </summary>
+internal record CachedDiagnostic
+{
+    public required string Code { get; init; }
+    public required string Message { get; init; }
+    public required string Severity { get; init; }
+    public int Line { get; init; }
+    public int Column { get; init; }
+    public string? FilePath { get; init; }
+    public string? Phase { get; init; }
+    public int SpanStart { get; init; }
+    public int SpanLength { get; init; }
+    public Dictionary<string, string>? Data { get; init; }
 }
 
 /// <summary>

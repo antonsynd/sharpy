@@ -57,6 +57,27 @@ internal partial class ProjectCompiler
                         unit.GeneratedCSharp = cached.GeneratedCSharp;
                     }
 
+                    // Replay cached diagnostics into both bags (#1553)
+                    if (cached?.Diagnostics is { Count: > 0 } cachedDiags)
+                    {
+                        foreach (var cd in cachedDiags)
+                        {
+                            var severity = Enum.TryParse<CompilerDiagnosticSeverity>(cd.Severity, out var s)
+                                ? s : CompilerDiagnosticSeverity.Warning;
+                            var phase = Enum.TryParse<CompilerPhase>(cd.Phase, out var p)
+                                ? p : CompilerPhase.Unknown;
+                            var span = cd.SpanLength > 0
+                                ? new Sharpy.Compiler.Text.TextSpan(cd.SpanStart, cd.SpanLength)
+                                : (Sharpy.Compiler.Text.TextSpan?)null;
+                            var diag = new CompilerDiagnostic(
+                                cd.Message, severity, cd.Line, cd.Column, cd.FilePath,
+                                cd.Code, phase, span, cd.Data);
+
+                            unit.Diagnostics.Add(diag);
+                            _diagnostics.Add(diag);
+                        }
+                    }
+
                     unit.Phase = CompilationPhase.Skipped;
                     ProjectMetrics.AddSkippedFile(sourceFile);
 

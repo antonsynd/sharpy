@@ -297,7 +297,8 @@ internal class IncrementalCompilationCache
         List<Symbol> symbols,
         string generatedCSharp,
         List<string> dependencies,
-        string? modulePath = null)
+        string? modulePath = null,
+        List<CachedDiagnostic>? diagnostics = null)
     {
         EnsureFileCacheLoaded();
 
@@ -341,7 +342,8 @@ internal class IncrementalCompilationCache
             GeneratedCSharp = generatedCSharp,
             Dependencies = dependencies.Select(PathNormalizer.Normalize).ToList(),
             ModulePath = modulePath,
-            GeneratorOutputs = generatorOutputs
+            GeneratorOutputs = generatorOutputs,
+            Diagnostics = diagnostics
         };
 
         _fileCache[normalizedPath] = entry;
