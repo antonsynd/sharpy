@@ -135,14 +135,25 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Verify tag matches SharpyVersion
+        run: |
+          VERSION="${{ inputs.tag || github.ref_name }}"
+          VERSION="${VERSION#v}"
+          BASE_VERSION="${VERSION%%-*}"
+          PROPS_VERSION=$(sed -n 's:.*<SharpyVersion>\(.*\)</SharpyVersion>.*:\1:p' Directory.Build.props)
+          if [ "$BASE_VERSION" != "$PROPS_VERSION" ]; then
+            echo "::error::Tag version '$VERSION' does not match SharpyVersion '$PROPS_VERSION' in Directory.Build.props — the packed tool would report a stale --version. Run /bump-version before tagging."
+            exit 1
+          fi
+
       - name: Pack all publishable projects
         run: |
           VERSION="${{ inputs.tag || github.ref_name }}"
           VERSION="${VERSION#v}"
-          dotnet pack src/Sharpy.Cli -c Release -o packages/ /p:Version=$VERSION
-          dotnet pack src/Sharpy.Core -c Release -o packages/ /p:Version=$VERSION
-          dotnet pack src/Sharpy.Stdlib -c Release -o packages/ /p:Version=$VERSION
-          dotnet pack src/Sharpy.Compiler -c Release -o packages/ /p:Version=$VERSION
+          dotnet pack src/Sharpy.Cli -c Release -o packages/ "/p:Version=$VERSION"
+          dotnet pack src/Sharpy.Core -c Release -o packages/ "/p:Version=$VERSION"
+          dotnet pack src/Sharpy.Stdlib -c Release -o packages/ "/p:Version=$VERSION"
+          dotnet pack src/Sharpy.Compiler -c Release -o packages/ "/p:Version=$VERSION"
 
       - name: Upload NuGet packages
         uses: actions/upload-artifact@v7
