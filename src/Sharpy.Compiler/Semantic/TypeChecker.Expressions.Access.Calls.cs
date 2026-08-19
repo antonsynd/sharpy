@@ -4434,28 +4434,8 @@ internal partial class TypeChecker
 
     /// <summary>
     /// The type to bind to a static CLR call's result, or null to leave it <c>Unknown</c> as before.
-    ///
-    /// <para>Two shapes are deliberately NOT typed, both found by measurement when #1451's return
-    /// typing first landed and each turning a shipped fixture red. Making a type VISIBLE without
-    /// making it USABLE converts a working interop seam into a refusal, which is the trade #1243's
-    /// conservatism exists to forbid — a false refusal at an interop seam is strictly worse than the
-    /// ICE it replaces.</para>
-    ///
-    /// <list type="number">
-    ///   <item><description><b>An unresolved type parameter.</b> <c>dict.fromkeys(...)</c> reflects a
-    ///     method returning an open <c>Dict&lt;K,V&gt;</c>, which maps to <c>dict[K, V]</c> with
-    ///     nothing substituted; binding that refused every concrete destination
-    ///     (<c>dict[str, int]</c> and friends). Substituting it means running inference this seam
-    ///     does not own — the same reason generic method definitions are excluded from the candidate
-    ///     set at all.</description></item>
-    ///   <item><description><b>A CLR array.</b> <c>Environment.get_command_line_args()</c> genuinely
-    ///     returns <c>array[str]</c>, and <c>array[T]</c> is not assignable to <c>list[T]</c> today —
-    ///     while <c>interop/clr_sequence_seam_matrix</c> asserts, as the seam's contract, that a CLR
-    ///     array reaching a <c>list[T]</c> parameter or slot WORKS. It worked because the call was
-    ///     untyped. The honest fix is to make the assignment legal rather than to keep the type
-    ///     hidden, so this exclusion is temporary and tracked by #1531; delete it with that
-    ///     issue.</description></item>
-    /// </list>
+    /// Three shapes are NOT typed: unresolved type parameters, CLR arrays (TODO(#1531)), and
+    /// <see cref="UnmappedClrType"/> — the bridge's "I could not express this" sentinel (#1534).
     /// </summary>
     private SemanticType? StaticCallResultTypeOrNull(FunctionCall call, SemanticType returnType)
     {
@@ -4466,16 +4446,7 @@ internal partial class TypeChecker
         if (returnType is GenericType { Name: BuiltinNames.Array })
             return null;
 
-        // Bare `object` from the mapper is "I could not express this CLR type", not "the value is an
-        // object" — the disambiguation #1146's residue calls out as `UnmappedClr`. Binding it turns
-        // the seam's old silence into a FALSE REFUSAL, which was measured, not anticipated:
-        // `Environment.get_environment_variables()` (a non-generic `IDictionary`) and
-        // `TimeZoneInfo.get_system_time_zones()` both map to `object`, and typing them broke the
-        // spy stdlib's own `for entry in ...` loops with SPY0320 "type 'object' is not iterable".
-        // Those loops are correct; the mapping is what cannot describe them. Leaving such a call
-        // `Unknown` keeps it exactly as permissive as before, which is the whole rule this seam
-        // works under.
-        if (IsUnmappedClrObject(returnType))
+        if (returnType is UnmappedClrType)
             return null;
 
         return ProjectClrChar(call, returnType);
@@ -4485,16 +4456,6 @@ internal partial class TypeChecker
     // TYPE NAME rather than of a constructed receiver. Keyed on the CLR type and the resolved method
     // name, which together decide the candidate set.
     private readonly Dictionary<(Type, string), System.Reflection.MethodInfo[]> _clrStaticCallMemo = new();
-
-    /// <summary>
-    /// Whether a mapped type is the bare <c>object</c> the CLR bridge produces for a type it cannot
-    /// express. Deliberately NOT unwrapped through generics: <c>list[object]</c> is a real,
-    /// usable type, while a bare <c>object</c> at the top level carries no information the old
-    /// <c>Unknown</c> did not.
-    /// </summary>
-    private static bool IsUnmappedClrObject(SemanticType type)
-        => type is BuiltinType { Name: BuiltinNames.Object }
-            || type is UserDefinedType { Name: BuiltinNames.Object };
 
     /// <summary>The public static overloads of <paramref name="methodName"/>, memoized.</summary>
     private System.Reflection.MethodInfo[] ClrStaticCallSurfaceOf(Type clrType, string methodName)
