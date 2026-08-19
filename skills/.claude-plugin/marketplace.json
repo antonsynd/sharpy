@@ -1,0 +1,22 @@
+{
+  "name": "sharpy",
+  "owner": {
+    "name": "antonsynd"
+  },
+  "metadata": {
+    "description": "Official Sharpy agent skills",
+    "version": "0.15"
+  },
+  "plugins": [
+    {
+      "name": "skills",
+      "description": "All official Sharpy skills: writing Sharpy code and setting up projects",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./sharpy-syntax",
+        "./new-sharpy-project"
+      ]
+    }
+  ]
+}
