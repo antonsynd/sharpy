@@ -132,7 +132,8 @@ public class CompilerOptionsFactoryTests
             References = { "Project.dll" },
             ModulePaths = { "/project/modules" },
             WarningsAsErrors = true,
-            SuppressedWarnings = { "SPY0452" }
+            SuppressedWarnings = { "SPY0452" },
+            Features = { "matmul" }
         };
 
         var expected = new CompilerOptions
@@ -141,10 +142,44 @@ public class CompilerOptionsFactoryTests
             ModulePaths = config.ModulePaths.ToArray(),
             WarningsAsErrors = true,
             SuppressedWarnings = new HashSet<string>(config.SuppressedWarnings),
-            Incremental = true
+            Incremental = true,
+            Features = FeatureFlags.None.Enable("matmul")
         };
 
         AssertSameOptions(expected, CompilerOptionsFactory.ForProject(config, incremental: true));
+    }
+
+    [Fact]
+    public void ForProject_LayersCliFeaturesOverProjectFeatures()
+    {
+        var config = new ProjectConfig
+        {
+            References = { "Project.dll" },
+            ModulePaths = { "/project/modules" },
+            Features = { "matmul" }
+        };
+
+        var options = CompilerOptionsFactory.ForProject(
+            config,
+            features: FeatureFlags.None.Enable("defer"));
+
+        options.Features.EnabledFeatures.Should().BeEquivalentTo(new[] { "defer", "matmul" });
+    }
+
+    [Fact]
+    public void ForProject_WithNoProjectFeatures_TakesCliOnly()
+    {
+        var config = new ProjectConfig
+        {
+            References = { "Project.dll" },
+            ModulePaths = { "/project/modules" }
+        };
+
+        var options = CompilerOptionsFactory.ForProject(
+            config,
+            features: FeatureFlags.None.Enable("defer"));
+
+        options.Features.EnabledFeatures.Should().BeEquivalentTo(new[] { "defer" });
     }
 
     [Fact]

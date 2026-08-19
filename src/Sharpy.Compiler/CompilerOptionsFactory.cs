@@ -142,7 +142,7 @@ public static class CompilerOptionsFactory
             SuppressedWarnings = suppressed,
             MaxErrors = maxErrors,
             Incremental = incremental,
-            Features = features,
+            Features = (features ?? FeatureFlags.None).Enable(config.Features),
         });
     }
 
