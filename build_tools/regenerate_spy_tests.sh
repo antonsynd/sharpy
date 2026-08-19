@@ -87,20 +87,42 @@ echo "Emitting .spy test modules via project compilation..."
 # spyproj doesn't reference xUnit packages. That's expected — we only need
 # the emitted C# files, which are saved before compilation is attempted.
 # Files excluded in the spyproj (via Exclude=) are not compiled and won't be emitted.
-$SHARPYC project "$SPYPROJ" --emit-cs-to "$EMIT_DIR" 2>/dev/null || true
-echo "Project emission done."
-echo ""
+compiler_log="$WORK_DIR/compiler-output.log"
+compiler_exit=0
+$SHARPYC project "$SPYPROJ" --emit-cs-to "$EMIT_DIR" > "$compiler_log" 2>&1 || compiler_exit=$?
 
-# Verify at least some files were emitted
-emitted_count=$(find "$EMIT_DIR" -name '*.cs' | wc -l | tr -d ' ')
-if [[ "$emitted_count" -eq 0 ]]; then
-    echo "ERROR: No .cs files were emitted. The Sharpy compilation may have failed."
-    echo "Run manually to see diagnostics:"
-    echo "  dotnet run --project src/Sharpy.Cli -- project $SPYPROJ"
+# Build expected stem set from .spy sources
+expected_stems="$(find "$SPY_DIR" -name '*.spy' -not -path '*/generated/*' \
+    | while read -r f; do basename "$f" .spy; done | sort)"
+
+# Build actual stem set from emitted .cs files
+emitted_stems="$(find "$EMIT_DIR" -name '*.cs' \
+    | while read -r f; do basename "$f" .cs; done | sort)"
+
+# Gate: every .spy stem must have a corresponding emitted .cs — checked BEFORE
+# the orphan pass so a partially-emitted project can never delete committed C#.
+missing_stems="$(comm -23 <(echo "$expected_stems") <(echo "$emitted_stems"))"
+if [[ -n "$missing_stems" ]]; then
+    echo ""
+    echo "Compiler diagnostics:"
+    grep -E '^error\[' "$compiler_log" -A 3 || true
+    echo ""
+    echo "Full compiler output: $compiler_log"
+    missing_count=$(echo "$missing_stems" | wc -l | tr -d ' ')
+    total_count=$(echo "$expected_stems" | wc -l | tr -d ' ')
+    echo "FAILED: $missing_count of $total_count modules were not emitted:"
+    echo "$missing_stems" | sed 's/^/  /'
     exit 1
 fi
 
-echo "Emitted $emitted_count files."
+emitted_count=$(echo "$emitted_stems" | wc -l | tr -d ' ')
+
+warning_count=$(grep -cE '^warning\[' "$compiler_log" || true)
+if [[ "$warning_count" -gt 0 ]]; then
+    echo "$warning_count warning(s) in compiler output (see $compiler_log)"
+fi
+
+echo "Project emission done. $emitted_count files emitted."
 
 # Build stems array from the emitted .cs files (respects spyproj Exclude patterns)
 stems=()

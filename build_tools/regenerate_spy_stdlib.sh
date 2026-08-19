@@ -71,12 +71,48 @@ mkdir -p "$EMIT_DIR"
 # --- Pass 1: Emit all modules in one project compilation pass ---
 
 echo "Emitting all .spy modules via project compilation..."
-if ! $SHARPYC project "$SPY_DIR/stdlib.spyproj" --emit-cs-to "$EMIT_DIR" 2>/dev/null; then
-    echo "ERROR: sharpyc project compilation failed"
-    echo "Run manually to see diagnostics:"
-    echo "  dotnet run --project src/Sharpy.Cli -- project src/Sharpy.Stdlib/spy/stdlib.spyproj"
+compiler_log="$WORK_DIR/compiler-output.log"
+compiler_exit=0
+$SHARPYC project "$SPY_DIR/stdlib.spyproj" --emit-cs-to "$EMIT_DIR" > "$compiler_log" 2>&1 || compiler_exit=$?
+
+if [[ "$compiler_exit" -ne 0 ]]; then
+    echo "ERROR: sharpyc project compilation failed (exit $compiler_exit)"
+    echo ""
+    echo "Compiler diagnostics:"
+    grep -E '^error\[' "$compiler_log" -A 3 || true
+    echo ""
+    echo "Full compiler output: $compiler_log"
     exit 1
 fi
+
+# Gate: every module in MODULES must have been emitted — checked BEFORE the
+# stale/orphan comparison so a partially-emitted project can never silently
+# drop a module.
+missing_modules=()
+for entry in "${MODULES[@]}"; do
+    IFS=':' read -r emitted_name _cs_rel <<< "$entry"
+    if [[ ! -f "$EMIT_DIR/${emitted_name}.cs" ]]; then
+        missing_modules+=("$emitted_name")
+    fi
+done
+if [[ "${#missing_modules[@]}" -gt 0 ]]; then
+    echo ""
+    echo "Compiler diagnostics:"
+    grep -E '^error\[' "$compiler_log" -A 3 || true
+    echo ""
+    echo "Full compiler output: $compiler_log"
+    echo "FAILED: ${#missing_modules[@]} of ${#MODULES[@]} modules were not emitted:"
+    for m in "${missing_modules[@]}"; do
+        echo "  $m"
+    done
+    exit 1
+fi
+
+warning_count=$(grep -cE '^warning\[' "$compiler_log" || true)
+if [[ "$warning_count" -gt 0 ]]; then
+    echo "$warning_count warning(s) in compiler output (see $compiler_log)"
+fi
+
 echo "Project compilation succeeded."
 echo ""
 
