@@ -63,29 +63,31 @@ public class ClrTypeBridgeTests
     }
 
     [Fact]
-    public void MapListOfT_ToListType()
+    public void MapListOfT_KeepsHonestClrIdentity()
     {
-        // Arrange & Act
+        // Concrete CLR collections keep honest, distinct identities (#1517 honest borders);
+        // only interfaces and Sharpy wrappers still collapse onto builtin names.
         var result = _mapper.MapClrTypeToSemanticType(typeof(List<string>));
 
-        // Assert
         Assert.IsType<GenericType>(result);
         var genericType = (GenericType)result;
-        Assert.Equal("list", genericType.Name);
+        Assert.Equal("List", genericType.Name);
+        Assert.NotNull(genericType.GenericDefinition);
+        Assert.Equal("System.Collections.Generic.List`1", genericType.ClrOriginTypeName);
         Assert.Single(genericType.TypeArguments);
         Assert.Equal(SemanticType.Str, genericType.TypeArguments[0]);
     }
 
     [Fact]
-    public void MapDictionary_ToDictType()
+    public void MapDictionary_KeepsHonestClrIdentity()
     {
-        // Arrange & Act
         var result = _mapper.MapClrTypeToSemanticType(typeof(Dictionary<string, int>));
 
-        // Assert
         Assert.IsType<GenericType>(result);
         var genericType = (GenericType)result;
-        Assert.Equal("dict", genericType.Name);
+        Assert.Equal("Dictionary", genericType.Name);
+        Assert.NotNull(genericType.GenericDefinition);
+        Assert.Equal("System.Collections.Generic.Dictionary`2", genericType.ClrOriginTypeName);
         Assert.Equal(2, genericType.TypeArguments.Count);
         Assert.Equal(SemanticType.Str, genericType.TypeArguments[0]);
         Assert.Equal(SemanticType.Int, genericType.TypeArguments[1]);
@@ -107,15 +109,15 @@ public class ClrTypeBridgeTests
     }
 
     [Fact]
-    public void MapHashSet_ToSetType()
+    public void MapHashSet_KeepsHonestClrIdentity()
     {
-        // Arrange & Act
         var result = _mapper.MapClrTypeToSemanticType(typeof(HashSet<double>));
 
-        // Assert
         Assert.IsType<GenericType>(result);
         var genericType = (GenericType)result;
-        Assert.Equal("set", genericType.Name);
+        Assert.Equal("HashSet", genericType.Name);
+        Assert.NotNull(genericType.GenericDefinition);
+        Assert.Equal("System.Collections.Generic.HashSet`1", genericType.ClrOriginTypeName);
         Assert.Single(genericType.TypeArguments);
         Assert.Equal(SemanticType.Double, genericType.TypeArguments[0]);
     }

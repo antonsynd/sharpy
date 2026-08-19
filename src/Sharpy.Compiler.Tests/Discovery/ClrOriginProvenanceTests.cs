@@ -52,25 +52,43 @@ public class ClrOriginProvenanceTests
     /// a receiver <c>ThenBy</c> accepts. It is subtracted from the completeness floor below rather
     /// than removed from it, so the probe still has to find it.
     /// </para>
+    ///
+    /// <para>
+    /// Concrete <c>List&lt;T&gt;</c>/<c>Dictionary&lt;K,V&gt;</c>/<c>HashSet&lt;T&gt;</c> left the
+    /// same way under honest borders (#1517) — they keep honest identities instead of collapsing —
+    /// and moved to <see cref="HonestConcreteArms"/> below, joining
+    /// <c>ClrBridgeArmProbe.RequiredNonCollectionArms</c> so the completeness floor stays honest.
+    /// </para>
     /// </summary>
     private static readonly (Type ClrType, string SharpyName)[] Arms =
     {
-        (typeof(List<int>), BuiltinNames.List),
         (typeof(IList<int>), BuiltinNames.List),
         (typeof(ICollection<int>), BuiltinNames.List),
         (typeof(IReadOnlyList<int>), BuiltinNames.List),
         (typeof(IReadOnlyCollection<int>), BuiltinNames.List),
         (typeof(IEnumerable<int>), BuiltinNames.List),
-        (typeof(Dictionary<string, int>), BuiltinNames.Dict),
         (typeof(IDictionary<string, int>), BuiltinNames.Dict),
         (typeof(IReadOnlyDictionary<string, int>), BuiltinNames.Dict),
-        (typeof(HashSet<int>), BuiltinNames.Set),
         (typeof(ISet<int>), BuiltinNames.Set),
         (typeof(SharpyRT::Sharpy.List<int>), BuiltinNames.List),
         (typeof(SharpyRT::Sharpy.Dict<string, int>), BuiltinNames.Dict),
         (typeof(SharpyRT::Sharpy.Set<int>), BuiltinNames.Set),
         (typeof(SharpyRT::Sharpy.FrozenSet<int>), BuiltinNames.FrozenSet),
         (typeof(SharpyRT::Sharpy.FrozenDict<string, int>), BuiltinNames.FrozenDict),
+    };
+
+    /// <summary>
+    /// The concrete BCL collections left the collapsing list under honest borders (#1517): the bridge
+    /// maps them to their own StripArity names with a live <see cref="GenericType.GenericDefinition"/>,
+    /// the <c>IOrderedEnumerable&lt;T&gt;</c> shape (#1390). Their provenance stamp — asserted by
+    /// <see cref="EveryHonestConcreteArm_KeepsItsClrIdentity"/> — must survive that move, or the
+    /// assignability rule that reads the stamp loses exactly these types.
+    /// </summary>
+    private static readonly (Type ClrType, string HonestName)[] HonestConcreteArms =
+    {
+        (typeof(List<int>), "List"),
+        (typeof(Dictionary<string, int>), "Dictionary"),
+        (typeof(HashSet<int>), "HashSet"),
     };
 
     public static TheoryData<Type, string> CollapsingArms()
@@ -141,6 +159,43 @@ public class ClrOriginProvenanceTests
             Definition(clrType),
             "a mapped formal must remember the CLR definition it came from, or assignability cannot "
             + "tell it apart from a list[T] the user wrote");
+    }
+
+    public static TheoryData<Type, string> HonestArms()
+    {
+        var data = new TheoryData<Type, string>();
+        foreach (var (clrType, honestName) in HonestConcreteArms)
+        {
+            data.Add(clrType, honestName);
+        }
+
+        return data;
+    }
+
+    /// <summary>
+    /// The honest half of #1517: a concrete BCL collection keeps its own name, carries a live
+    /// definition symbol, and still stamps provenance. The stamp assertion moved here from
+    /// <see cref="EveryCollapsingArm_StampsItsClrOrigin"/> when these types stopped collapsing —
+    /// losing it would revive the exact class #1294 closed (a warm-cache formal silently stops
+    /// matching the assignability rule that reads the stamp).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(HonestArms))]
+    public void EveryHonestConcreteArm_KeepsItsClrIdentity(Type clrType, string expectedHonestName)
+    {
+        var mapped = _bridge.MapClrTypeToSemanticType(clrType);
+
+        var generic = mapped.Should().BeOfType<GenericType>().Subject;
+        generic.Name.Should().Be(
+            expectedHonestName,
+            "a concrete CLR collection keeps its honest, distinct identity under #1517");
+        generic.GenericDefinition.Should().NotBeNull(
+            "the honest shape carries the CLR definition symbol (the IOrderedEnumerable precedent), "
+            + "or member resolution has no surface to reflect");
+        generic.ClrOriginTypeName.Should().Be(
+            Definition(clrType),
+            "an honest arm still stamps provenance — leaving the collapsing list must not cost the "
+            + "stamp that assignability and the warm cache read");
     }
 
     [Fact]
@@ -238,6 +293,40 @@ public class ClrOriginProvenanceTests
         restoredGeneric.Name.Should().Be(BuiltinNames.List);
         restoredGeneric.ClrOriginTypeName.Should().Be(mapped.ClrOriginTypeName);
         restoredGeneric.TypeArguments.Should().ContainSingle().Which.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void HonestConcreteShape_SurvivesTheSymbolCache()
+    {
+        // #1517's honest shapes are a wire-format change (schema v28): a cache written before the
+        // split holds `set[int]` where a cold build now says `HashSet[int]`. The plan asked for
+        // warm/cold RECORD equality here; measuring it showed that is structurally unattainable —
+        // GenericType.Equals deliberately includes GenericDefinition, a reference-compared
+        // TypeSymbol the serializer does not (and cannot usefully) round-trip. What the cache
+        // actually guarantees, pinned here: Name, ClrOriginTypeName, and TypeArguments survive;
+        // GenericDefinition is null on restore and consumers re-resolve it lazily from the origin
+        // (#1496). Consumers that key on GenericDefinition without that fallback diverge warm from
+        // cold — #1568 tracks them (the #1533 gate is one).
+        var mapped = (GenericType)_bridge.MapClrTypeToSemanticType(typeof(HashSet<int>));
+        var symbol = new VariableSymbol
+        {
+            Name = "hs",
+            Kind = SymbolKind.Variable,
+            Type = mapped
+        };
+
+        var restored = (VariableSymbol)SymbolSerializer.Deserialize(
+            SymbolSerializer.Serialize(symbol, "test.spy"),
+            new Dictionary<string, Symbol>());
+
+        var restoredGeneric = restored.Type.Should().BeOfType<GenericType>().Subject;
+        restoredGeneric.Name.Should().Be("HashSet", "a stale-cache decode of `set` here is exactly "
+            + "the warm≠cold disease the v28 bump discards");
+        restoredGeneric.ClrOriginTypeName.Should().Be("System.Collections.Generic.HashSet`1");
+        restoredGeneric.TypeArguments.Should().ContainSingle().Which.Should().Be(SemanticType.Int);
+        restoredGeneric.GenericDefinition.Should().BeNull(
+            "the definition symbol is per-analysis state, not cache content — if this starts "
+            + "round-tripping, #1568's consumers can key on it again and this pin should flip");
     }
 
     private static Type? ResolveClr(SemanticType type) => type switch

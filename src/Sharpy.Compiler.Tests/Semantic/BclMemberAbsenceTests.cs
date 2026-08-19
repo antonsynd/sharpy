@@ -135,10 +135,11 @@ def main() -> None:
     }
 
     [Fact]
-    public void UnknownMember_ValueIndexed_StaysPermissive()
+    public void UnknownMember_ValueIndexed_IsRefused()
     {
-        // Not a generic reference: `[0]` is a value subscript, not type arguments. The absence proof is
-        // scoped to the explicit-type-argument shape, so ordinary interop member access is untouched.
+        // Flipped from a stays-permissive pin under #1533: the absence gate now answers constructed
+        // CLR generic receivers, so an unknown member behind a value subscript is a semantic-time
+        // SPY0203 instead of a CS1061 behind SPY0908.
         var result = CompileAndExecute(@"
 from system.collections.generic import List
 
@@ -149,7 +150,7 @@ def main() -> None:
     pass
 ");
 
-        Assert.Equal(0, CountDiagnostics(result, DiagnosticCodes.Semantic.UndefinedMember));
+        Assert.Equal(1, CountDiagnostics(result, DiagnosticCodes.Semantic.UndefinedMember));
     }
 
     [Fact]

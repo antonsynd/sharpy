@@ -68,10 +68,21 @@ internal static class ClrBridgeArmProbe
     /// that has already filtered to collection names may subtract it, and having to name it here is
     /// what stops "the filter dropped it" from being indistinguishable from "the arm disappeared".
     /// </para>
+    ///
+    /// <para>
+    /// The three concrete BCL collections joined <c>IOrderedEnumerable&lt;T&gt;</c> here under honest
+    /// borders (#1517): they keep honest, distinct identities (<c>HashSet[int]</c>, not
+    /// <c>set[int]</c>), so they stamp provenance without collapsing. Interfaces and Sharpy wrappers
+    /// still collapse. <c>ClrOriginProvenanceTests.EveryHonestConcreteArm_KeepsItsClrIdentity</c> is
+    /// the sweep that asserts their stamp now that the collection-name sweep can no longer see them.
+    /// </para>
     /// </summary>
     internal static readonly string[] RequiredNonCollectionArms =
     {
         "System.Linq.IOrderedEnumerable`1",
+        "System.Collections.Generic.List`1",
+        "System.Collections.Generic.Dictionary`2",
+        "System.Collections.Generic.HashSet`1",
     };
 
     /// <summary>
