@@ -1,0 +1,11 @@
+# Warm-build diagnostic fidelity allowlist (#1553).
+# Each entry is a fixture name where the warm build's diagnostics diverge from cold.
+# Every entry must cite a tracking issue. Drain-on-fix: an entry that no longer
+# diverges fails the test. Expected to drain to empty as #1553 matures.
+
+# Line/column 0-vs-null fidelity: the cold build produces Line=0/Column=0 for
+# file-level diagnostics; the warm path replays them but the DiagnosticBag's
+# phase/file scope may re-stamp them differently. Tracked as part of #1553.
+pattern_matching/match_constant_shadow
+pattern_matching/match_constant_basic
+name_collision/no_collision_local_match_constant
