@@ -109,27 +109,6 @@ public sealed record CodeGenInfo
     /// </remarks>
     public IReadOnlyList<SelfInterfaceBridgeSpec>? SelfInterfaceBridges { get; init; }
 
-    // ============================================================
-    // FUTURE EXTENSIBILITY (for v0.2.x+)
-    // These fields are reserved for future features. They are
-    // nullable/optional and won't affect current functionality.
-    // ============================================================
-
-    /// <summary>
-    /// Reserved for tagged unions (v0.2.x): The discriminator value for union cases.
-    /// </summary>
-    public int? UnionDiscriminatorValue { get; init; }
-
-    /// <summary>
-    /// Reserved for async/await (v0.2.x): The state ID in async state machine.
-    /// </summary>
-    public int? AsyncStateId { get; init; }
-
-    /// <summary>
-    /// Reserved for properties: The accessor method name for property getters/setters.
-    /// </summary>
-    public string? PropertyAccessorName { get; init; }
-
     /// <summary>
     /// Get the versioned C# name (includes version suffix for redeclared variables).
     /// </summary>

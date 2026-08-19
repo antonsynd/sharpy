@@ -108,9 +108,6 @@ public class CodeGenInfoTests
         Assert.False(info.HasExecutionOrderIssues);
         Assert.Equal(ImportKind.None, info.ImportKind);
         Assert.Null(info.OriginalImportName);
-        Assert.Null(info.UnionDiscriminatorValue);
-        Assert.Null(info.AsyncStateId);
-        Assert.Null(info.PropertyAccessorName);
     }
 
     [Fact]
