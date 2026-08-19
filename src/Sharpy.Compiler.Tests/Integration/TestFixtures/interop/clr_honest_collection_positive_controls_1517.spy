@@ -1,0 +1,31 @@
+# #1517: positive controls for honest CLR collection types.
+# Inward conversions (set/dict/list constructors) and iteration projections work.
+from system.collections.generic import HashSet, Dictionary, List
+
+
+def main() -> None:
+    # set(hs) inward conversion works
+    hs = HashSet[int]()
+    hs.add(1)
+    hs.add(2)
+    sharpy_set: set[int] = set(hs)
+    print(len(sharpy_set))
+
+    # Iteration on honest HashSet works (iterable-position projection)
+    count = 0
+    for x in hs:
+        count += 1
+    print(count)
+
+    # list(l) inward conversion works
+    l = List[int]()
+    l.add(10)
+    l.add(20)
+    sharpy_list: list[int] = list(l)
+    print(sharpy_list)
+
+    # Iteration on honest List works
+    total = 0
+    for n in l:
+        total += n
+    print(total)

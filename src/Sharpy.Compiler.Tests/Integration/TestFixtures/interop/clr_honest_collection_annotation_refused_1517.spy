@@ -1,0 +1,17 @@
+# #1517: an honest CLR collection value assigned to a Sharpy wrapper annotation is refused.
+# The inward-conversion steer names the constructor: set(...), dict(...), list(...).
+from system.collections.generic import HashSet, Dictionary, List
+
+
+def main() -> None:
+    hs = HashSet[int]()
+    hs.add(1)
+    x: set[int] = hs
+
+    d = Dictionary[str, int]()
+    d["a"] = 1
+    y: dict[str, int] = d
+
+    l = List[int]()
+    l.add(1)
+    z: list[int] = l
