@@ -37,69 +37,87 @@ echo "---" | tee -a "$MEMORY_LOG"
 
 cd "$REPO_ROOT"
 
-# Run dotnet test with detailed verbosity to see test names.
-#
-# TODO(#1511): this bypasses .claude/scripts/dotnet-serialized, so it can run concurrently with
-# another agent's suite and OOM the machine — the hazard the wrapper exists to prevent. Not
-# converted here because the harness measures the RSS of $TEST_PID's process tree, and behind
-# the wrapper $TEST_PID would be the wrapper shell rather than dotnet.
-#
-# `> "$TEST_LOG" 2>&1`, not `2>&1 > "$TEST_LOG"`: redirections apply left to right, so the
-# original order pointed stderr at the terminal (the CURRENT stdout) and only then moved stdout
-# to the file — the log silently lacked every error the reader came to it for.
-dotnet test "$PROJECT" --no-build --filter "$FILTER" \
+LOCK_DIR="${HOME}/.claude/locks/dotnet.lock"
+
+# Recursive RSS sum for a process tree rooted at $1 (KB).
+tree_rss_kb() {
+    local root_pid="$1" total=0
+    local rss
+    rss=$(ps -o rss= -p "$root_pid" 2>/dev/null || echo "0")
+    rss="${rss// /}"
+    total=$((total + ${rss:-0}))
+    local kid
+    for kid in $(ps -A -o pid=,ppid= 2>/dev/null | awk -v p="$root_pid" '$2 == p { print $1 }'); do
+        local child_rss
+        child_rss=$(tree_rss_kb "$kid")
+        total=$((total + child_rss))
+    done
+    echo "$total"
+}
+
+kill_tree() {
+    local pid="$1" sig="$2" kid
+    case "$pid" in ''|*[!0-9]*) return 0 ;; esac
+    for kid in $(ps -A -o pid=,ppid= 2>/dev/null | awk -v p="$pid" '$2 == p { print $1 }'); do
+        kill_tree "$kid" "$sig"
+    done
+    kill "$sig" "$pid" 2>/dev/null
+}
+
+"$SCRIPT_DIR/dotnet-serialized" test "$PROJECT" --no-build --filter "$FILTER" \
     --logger "console;verbosity=detailed" \
     > "$TEST_LOG" 2>&1 &
-TEST_PID=$!
+WRAPPER_PID=$!
+
+# Handshake: wait until our wrapper owns the lock and the dotnet child PID is available.
+# While another holder owns it, $LOCK_DIR/child is the OTHER run's pid.
+echo "Waiting for dotnet lock..." | tee -a "$MEMORY_LOG"
+while true; do
+    if ! kill -0 "$WRAPPER_PID" 2>/dev/null; then
+        wait "$WRAPPER_PID" && WRAPPER_EXIT=0 || WRAPPER_EXIT=$?
+        echo "Wrapper exited before sampling started (exit $WRAPPER_EXIT)" | tee -a "$MEMORY_LOG"
+        exit "$WRAPPER_EXIT"
+    fi
+    lock_owner=$(cat "$LOCK_DIR/pid" 2>/dev/null || echo "")
+    if [[ "$lock_owner" == "$WRAPPER_PID" ]]; then
+        if [[ -f "$LOCK_DIR/child" ]]; then
+            DOTNET_PID=$(cat "$LOCK_DIR/child")
+            if [[ -n "$DOTNET_PID" ]]; then
+                echo "Lock acquired. Dotnet PID: $DOTNET_PID" | tee -a "$MEMORY_LOG"
+                break
+            fi
+        fi
+    fi
+    sleep 1
+done
 
 START_TIME=$(date +%s)
 PEAK_RSS=0
 KILLED=false
 
-# Monitor loop
-while kill -0 "$TEST_PID" 2>/dev/null; do
+while kill -0 "$WRAPPER_PID" 2>/dev/null; do
     NOW=$(date +%s)
     ELAPSED=$((NOW - START_TIME))
 
-    # Get RSS of the dotnet test process tree (macOS: KB, convert to MB)
-    if [[ "$(uname)" == "Darwin" ]]; then
-        # Sum RSS of all child processes (dotnet test spawns workers)
-        TOTAL_RSS_KB=0
-        while IFS= read -r pid; do
-            RSS_KB=$(ps -o rss= -p "$pid" 2>/dev/null || echo "0")
-            RSS_KB="${RSS_KB// /}"
-            TOTAL_RSS_KB=$((TOTAL_RSS_KB + ${RSS_KB:-0}))
-        done < <(pgrep -P "$TEST_PID" 2>/dev/null; echo "$TEST_PID")
-        RSS_MB=$((TOTAL_RSS_KB / 1024))
-    else
-        RSS_KB=$(grep -s VmRSS /proc/$TEST_PID/status 2>/dev/null | awk '{print $2}' || echo "0")
-        RSS_MB=$((RSS_KB / 1024))
-    fi
+    TOTAL_RSS_KB=$(tree_rss_kb "$DOTNET_PID")
+    RSS_MB=$((TOTAL_RSS_KB / 1024))
 
     if [[ $RSS_MB -gt $PEAK_RSS ]]; then
         PEAK_RSS=$RSS_MB
     fi
 
-    # Get last test that started (from log)
     CURRENT_TEST=$(grep -E "^\s*(Starting|Passed|Failed)" "$TEST_LOG" 2>/dev/null | tail -1 | sed 's/^[[:space:]]*//' | cut -c1-100)
 
     TIMESTAMP=$(printf "%dm%02ds" $((ELAPSED/60)) $((ELAPSED%60)))
     echo "${TIMESTAMP} | RSS: ${RSS_MB} MB (peak: ${PEAK_RSS} MB) | ${CURRENT_TEST}" | tee -a "$MEMORY_LOG"
 
-    # Auto-kill check
     if [[ $RSS_MB -gt $THRESHOLD_MB ]]; then
         echo "" | tee -a "$MEMORY_LOG"
         echo "!!! KILLED: RSS ${RSS_MB} MB exceeds threshold ${THRESHOLD_MB} MB !!!" | tee -a "$MEMORY_LOG"
         echo "Last test: ${CURRENT_TEST}" | tee -a "$MEMORY_LOG"
-        # Children FIRST. Killing the parent first reparents them to init, after which
-        # `pkill -P "$TEST_PID"` matches nothing and the testhosts survive holding the very
-        # gigabytes that tripped the threshold — the harness would report a kill and free
-        # almost none of the memory.
-        pkill -P "$TEST_PID" 2>/dev/null
-        kill "$TEST_PID" 2>/dev/null
+        kill_tree "$DOTNET_PID" -TERM
         sleep 1
-        pkill -9 -P "$TEST_PID" 2>/dev/null
-        kill -9 "$TEST_PID" 2>/dev/null
+        kill_tree "$DOTNET_PID" -9
         KILLED=true
         break
     fi
@@ -107,15 +125,11 @@ while kill -0 "$TEST_PID" 2>/dev/null; do
     sleep 1
 done
 
-# The exit code is the whole verdict, and this script used to discard it twice over (#1481):
-# the killed branch fell straight through to the trailing echoes, and the completed branch
-# PRINTED $TEST_EXIT without ever propagating it — so both a threshold kill and an ordinary red
-# suite exited 0. Anything reading this harness's status saw a pass.
-#
-# 4 for a kill, matching dotnet-serialized's watchdog, and forced rather than read: dotnet test
-# handles SIGTERM and exits 0 (measured on the 2026-08-12 incident at 181 failures, EXIT=0), so
-# `wait` on a killed run reports success. That is exactly the mask, so the killed branch never
-# consults the child's own code.
+# Exit codes: 4 = threshold kill (matches dotnet-serialized's watchdog convention).
+# Forced rather than read from the child: dotnet test handles SIGTERM and exits 0 (measured
+# 2026-08-12), so `wait` on a killed run reports success — the kill is the finding.
+# Non-kill path: wrapper exit = dotnet's own code (PIPESTATUS[0] inside the wrapper), with
+# 3 = zero results, 4 = watchdog kill, 124 = lock timeout, 125 = sandbox.
 if [[ "$KILLED" == "true" ]]; then
     TEST_EXIT=4
     echo "" | tee -a "$MEMORY_LOG"
@@ -123,7 +137,7 @@ if [[ "$KILLED" == "true" ]]; then
     echo "This run did not complete; exiting 4." | tee -a "$MEMORY_LOG"
     echo "Peak RSS: ${PEAK_RSS} MB (threshold ${THRESHOLD_MB} MB)" | tee -a "$MEMORY_LOG"
 else
-    wait "$TEST_PID" && TEST_EXIT=0 || TEST_EXIT=$?
+    wait "$WRAPPER_PID" && TEST_EXIT=0 || TEST_EXIT=$?
     END_TIME=$(date +%s)
     DURATION=$((END_TIME - START_TIME))
     echo "" | tee -a "$MEMORY_LOG"

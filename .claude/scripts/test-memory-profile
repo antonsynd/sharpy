@@ -24,32 +24,58 @@ echo "Starting dotnet test..."
 
 cd "$REPO_ROOT"
 
-# Start dotnet test in background
-# `> log 2>&1`, not `2>&1 > log`: redirections apply left to right, so the original order sent
-# stderr to the terminal (the CURRENT stdout) and only then moved stdout to the file — the log
-# lacked every error a reader would open it for. This script's exit-code handling is already
-# correct (it propagates TEST_EXIT below) and it kills nothing, so unlike its sibling harness it
-# carried no #1481 mask.
-dotnet test --no-build --filter "Category!=Benchmark" > "$SCRIPT_DIR/../tmp/test-memory-profile.log" 2>&1 &
-TEST_PID=$!
+LOCK_DIR="${HOME}/.claude/locks/dotnet.lock"
+TEST_LOG="$SCRIPT_DIR/../tmp/test-memory-profile.log"
 
-# Track RSS samples
+# Recursive RSS sum for a process tree rooted at $1 (KB).
+tree_rss_kb() {
+    local root_pid="$1" total=0
+    local rss
+    rss=$(ps -o rss= -p "$root_pid" 2>/dev/null || echo "0")
+    rss="${rss// /}"
+    total=$((total + ${rss:-0}))
+    local kid
+    for kid in $(ps -A -o pid=,ppid= 2>/dev/null | awk -v p="$root_pid" '$2 == p { print $1 }'); do
+        local child_rss
+        child_rss=$(tree_rss_kb "$kid")
+        total=$((total + child_rss))
+    done
+    echo "$total"
+}
+
+"$SCRIPT_DIR/dotnet-serialized" test --no-build --filter "Category!=Benchmark" \
+    > "$TEST_LOG" 2>&1 &
+WRAPPER_PID=$!
+
+# Handshake: wait until our wrapper owns the lock and the dotnet child PID is available.
+echo "Waiting for dotnet lock..."
+while true; do
+    if ! kill -0 "$WRAPPER_PID" 2>/dev/null; then
+        wait "$WRAPPER_PID" && WRAPPER_EXIT=0 || WRAPPER_EXIT=$?
+        echo "Wrapper exited before sampling started (exit $WRAPPER_EXIT)"
+        exit "$WRAPPER_EXIT"
+    fi
+    lock_owner=$(cat "$LOCK_DIR/pid" 2>/dev/null || echo "")
+    if [[ "$lock_owner" == "$WRAPPER_PID" ]]; then
+        if [[ -f "$LOCK_DIR/child" ]]; then
+            DOTNET_PID=$(cat "$LOCK_DIR/child")
+            if [[ -n "$DOTNET_PID" ]]; then
+                echo "Lock acquired. Dotnet PID: $DOTNET_PID"
+                break
+            fi
+        fi
+    fi
+    sleep 1
+done
+
 PEAK_RSS=0
 TOTAL_RSS=0
 SAMPLES=0
 START_TIME=$(date +%s)
 
-while kill -0 "$TEST_PID" 2>/dev/null; do
-    # Get RSS of dotnet process tree (in KB on macOS, convert to MB)
-    if [[ "$(uname)" == "Darwin" ]]; then
-        # macOS: ps reports RSS in KB
-        RSS_KB=$(ps -o rss= -p "$TEST_PID" 2>/dev/null || echo "0")
-        RSS_MB=$((RSS_KB / 1024))
-    else
-        # Linux: read from /proc
-        RSS_KB=$(grep -s VmRSS /proc/$TEST_PID/status 2>/dev/null | awk '{print $2}' || echo "0")
-        RSS_MB=$((RSS_KB / 1024))
-    fi
+while kill -0 "$WRAPPER_PID" 2>/dev/null; do
+    TOTAL_RSS_KB=$(tree_rss_kb "$DOTNET_PID")
+    RSS_MB=$((TOTAL_RSS_KB / 1024))
 
     if [[ $RSS_MB -gt 0 ]]; then
         SAMPLES=$((SAMPLES + 1))
@@ -65,8 +91,7 @@ done
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
 
-# Wait for test process and get exit code
-wait "$TEST_PID" && TEST_EXIT=0 || TEST_EXIT=$?
+wait "$WRAPPER_PID" && TEST_EXIT=0 || TEST_EXIT=$?
 
 echo ""
 echo "=== Memory Profile Results ==="
