@@ -558,6 +558,19 @@ internal partial class TypeChecker
                     _semanticInfo.SetTypeAnnotation(varDecl.Type, declaredType);
                 }
             }
+            else if (initType is UnknownType
+                && varDecl.InitialValue is FunctionCall ambiguousCall
+                && _ambiguousStaticCallReturnTypes.TryGetValue(ambiguousCall, out var candidateReturnTypes)
+                && candidateReturnTypes.All(rt => !IsAssignable(rt, declaredType)))
+            {
+                var candidateDisplay = string.Join(", ", candidateReturnTypes.Select(t => t.GetDisplayName()));
+                AddError(
+                    $"Cannot assign the result of this call to '{declaredType.GetDisplayName()}'"
+                    + $" — no overload returns a type assignable to '{declaredType.GetDisplayName()}'"
+                    + $" (candidates return: {candidateDisplay})",
+                    varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: varDecl.Span);
+            }
             else if (!IsAssignable(initType, declaredType)
                 && !IsImplicitConstantConversion(varDecl.InitialValue, initType, declaredType))
             {

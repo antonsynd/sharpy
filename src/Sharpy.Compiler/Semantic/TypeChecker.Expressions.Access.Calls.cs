@@ -4413,7 +4413,19 @@ internal partial class TypeChecker
             }).ToList();
 
             if (argumentCompatible.Count != 1)
+            {
+                // Still ambiguous — record the surviving candidates' mapped return types so the
+                // assignment check can refuse impossible destinations (Design Decision 5).
+                var survivingCandidates = argumentCompatible.Count > 0 ? argumentCompatible : candidates;
+                var returnTypes = survivingCandidates
+                    .Select(c => _bclGenericMethodBridge.MapClrTypeToSemanticType(c.ReturnType))
+                    .Where(t => t is not UnknownType and not UnmappedClrType)
+                    .Distinct()
+                    .ToList();
+                if (returnTypes.Count > 0)
+                    _ambiguousStaticCallReturnTypes[call] = returnTypes;
                 return null;
+            }
 
             candidates = argumentCompatible;
         }
@@ -4479,6 +4491,11 @@ internal partial class TypeChecker
     // TYPE NAME rather than of a constructed receiver. Keyed on the CLR type and the resolved method
     // name, which together decide the candidate set.
     private readonly Dictionary<(Type, string), System.Reflection.MethodInfo[]> _clrStaticCallMemo = new();
+
+    // #1530: for ambiguous-arity static calls whose argument-driven narrowing leaves >1 candidate,
+    // record the candidates' mapped return types so the assignment check can refuse impossible
+    // destinations. Checker-internal (Design Decision 5) — not in SemanticInfo.
+    private readonly Dictionary<FunctionCall, List<SemanticType>> _ambiguousStaticCallReturnTypes = new();
 
     /// <summary>The public static overloads of <paramref name="methodName"/>, memoized.</summary>
     private System.Reflection.MethodInfo[] ClrStaticCallSurfaceOf(Type clrType, string methodName)
