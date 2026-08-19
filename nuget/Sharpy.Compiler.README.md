@@ -11,9 +11,11 @@ dotnet add package Sharpy.Compiler
 ```csharp
 using Sharpy.Compiler;
 
-var options = new CompilerOptions { OutputType = OutputType.CSharp };
-var compiler = new Compiler(options);
-var result = compiler.CompileSource("print('Hello from embedded Sharpy!')");
+var api = new CompilerApi();
+var result = api.Compile("""
+    def main():
+        print("Hello from embedded Sharpy!")
+    """);
 
 if (result.Success)
 {
