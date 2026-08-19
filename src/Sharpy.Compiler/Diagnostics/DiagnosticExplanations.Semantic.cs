@@ -825,6 +825,16 @@ public static partial class DiagnosticExplanations
             "def f() -> None:\n    print(\"side effect\")\n\ndef main() -> None:\n    s: str = \"hello\"\n    if s == f():  # f() has no value\n        pass",
             "Call the function as a statement, then compare separately:\n    f()\n    if s == None:\n        pass");
 
+        Add(dict, DiagnosticCodes.Semantic.VoidMatchScrutinee,
+            "Void-returning call used as a match scrutinee",
+            "Semantic",
+            "A call to a function that returns None was used as the scrutinee of a match statement " +
+            "or match expression. The call has no value to match on, so this is almost certainly a " +
+            "bug. The None literal itself is valid as a scrutinee (it is lowered to a typed null), " +
+            "but a void-returning call produces nothing to switch on.",
+            "def f() -> None:\n    print(\"side effect\")\n\ndef main() -> None:\n    match f():  # f() has no value\n        case _:\n            pass",
+            "Call the function as a statement, then match on None explicitly:\n    f()\n    match None:\n        case None:\n            print(\"matched\")");
+
         Add(dict, DiagnosticCodes.Semantic.UnknownFutureFeature,
             "Unknown or mis-scoped '__future__' feature",
             "Semantic",

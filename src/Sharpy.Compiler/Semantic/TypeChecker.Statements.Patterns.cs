@@ -43,6 +43,26 @@ internal partial class TypeChecker
         using (ScopedValue.Push(ref _matchSubjectOperand, UnwrapParenthesized(matchStmt.Scrutinee)))
             scrutineeType = CheckExpression(matchStmt.Scrutinee);
 
+        if (scrutineeType is VoidType)
+        {
+            var unwrapped = UnwrapParenthesized(matchStmt.Scrutinee);
+            if (unwrapped is NoneLiteral)
+            {
+                _semanticInfo.SetMatchScrutineeLowering(matchStmt.Scrutinee,
+                    new MatchScrutineeLowering(MatchScrutineeLoweringKind.CastToNullableObject));
+                scrutineeType = new NullableType { UnderlyingType = SemanticType.Object };
+            }
+            else
+            {
+                AddError(
+                    "Expression of type 'None' has no value and cannot be used as a match scrutinee; " +
+                    "call it as a statement, then match on None explicitly",
+                    matchStmt.Scrutinee.LineStart, matchStmt.Scrutinee.ColumnStart,
+                    code: DiagnosticCodes.Semantic.VoidMatchScrutinee,
+                    span: matchStmt.Scrutinee.Span);
+            }
+        }
+
         foreach (var matchCase in matchStmt.Cases)
         {
             // Match-case narrowing intentionally stays on the _narrowingContext scope stack rather than

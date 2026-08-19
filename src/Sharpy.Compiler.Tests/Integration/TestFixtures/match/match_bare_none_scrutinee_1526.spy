@@ -1,0 +1,14 @@
+# match None: scrutinee is lowered to a typed null; case None: matches.
+
+def main() -> None:
+    match None:
+        case None:
+            print("matched None")
+        case _:
+            print("wildcard")
+
+    match None:
+        case 5:
+            print("five")
+        case _:
+            print("not five")

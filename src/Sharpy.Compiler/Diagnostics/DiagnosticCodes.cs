@@ -307,7 +307,8 @@ public static class DiagnosticCodes
         public const string YieldInFinallyBlock = "SPY0272";        // Active
         public const string AwaitOutsideAsync = "SPY0273";          // Active
         public const string InvalidAwaitOperand = "SPY0274";        // Active
-        // SPY0275-SPY0279: Reserved for future control flow diagnostics
+        public const string VoidMatchScrutinee = "SPY0275";         // Active
+        // SPY0276-SPY0279: Reserved for future control flow diagnostics
 
         #endregion
 

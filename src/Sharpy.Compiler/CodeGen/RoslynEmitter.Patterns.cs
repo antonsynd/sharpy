@@ -20,6 +20,14 @@ internal partial class RoslynEmitter
     private StatementSyntax GenerateMatch(MatchStatement matchStmt)
     {
         var scrutineeExpr = GenerateExpression(matchStmt.Scrutinee);
+        if (_context.SemanticInfo?.GetMatchScrutineeLowering(matchStmt.Scrutinee) is
+            { Kind: MatchScrutineeLoweringKind.CastToNullableObject })
+        {
+            scrutineeExpr = CastExpression(
+                NullableType(PredefinedType(Token(SyntaxKind.ObjectKeyword))),
+                scrutineeExpr);
+        }
+
         var scrutineeType = _context.SemanticInfo?.GetExpressionType(matchStmt.Scrutinee);
 
         var sections = new List<SwitchSectionSyntax>();
@@ -783,8 +791,15 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateMatchExpression(MatchExpression matchExpr)
     {
         var scrutineeExpr = GenerateExpression(matchExpr.Scrutinee);
-        var scrutineeType = _context.SemanticInfo?.GetExpressionType(matchExpr.Scrutinee);
+        if (_context.SemanticInfo?.GetMatchScrutineeLowering(matchExpr.Scrutinee) is
+            { Kind: MatchScrutineeLoweringKind.CastToNullableObject })
+        {
+            scrutineeExpr = CastExpression(
+                NullableType(PredefinedType(Token(SyntaxKind.ObjectKeyword))),
+                scrutineeExpr);
+        }
 
+        var scrutineeType = _context.SemanticInfo?.GetExpressionType(matchExpr.Scrutinee);
 
         var arms = new List<SwitchExpressionArmSyntax>();
 
