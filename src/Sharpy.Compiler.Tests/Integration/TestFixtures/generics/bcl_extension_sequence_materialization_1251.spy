@@ -55,6 +55,6 @@ def main() -> None:
 
     # A CLR method returning List<T> is the same defect with a different origin, so it is covered by
     # the same rule rather than a second one.
-    listed = lst.to_list()
+    listed = list(lst.to_list())
     listed.append(5)
     print(listed)

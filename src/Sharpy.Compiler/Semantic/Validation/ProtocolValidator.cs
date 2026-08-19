@@ -271,6 +271,8 @@ internal class ProtocolValidator : ValidatingAstWalker
         // Check generic container types — use TypeSymbol metadata (populated by discovery)
         if (type is GenericType generic)
         {
+
+
             // Arrays support __len__, __iter__, __getitem__, __setitem__, __contains__
             if (generic.Name == BuiltinNames.Array)
             {
@@ -305,6 +307,65 @@ internal class ProtocolValidator : ValidatingAstWalker
 
                 if (symTableType.ClrType != null && HasClrProtocol(symTableType.ClrType, dunderName))
                     return true;
+
+                // Open generic definitions (typeof(HashSet<>)) fail IsAssignableFrom checks in
+                // HasClrProtocol. Construct the closed type and re-check (#1517 honest borders).
+                if (symTableType.ClrType is { IsGenericTypeDefinition: true } openDef
+                    && openDef.GetGenericArguments().Length == generic.TypeArguments.Count)
+                {
+                    try
+                    {
+                        var closedClrArgs = generic.TypeArguments
+                            .Select(ta => ta.ClrType ?? typeof(object))
+                            .ToArray();
+                        var closedClr = openDef.MakeGenericType(closedClrArgs);
+                        if (HasClrProtocol(closedClr, dunderName))
+                            return true;
+                    }
+                    catch { }
+                }
+            }
+
+            // The GenericDefinition path is null when the return type came through the overload
+            // index (ConvertTypeSignature) for a non-module CLR type. Resolve the CLR generic
+            // definition from ClrOriginTypeName and check its closed form (#1517 honest borders).
+            // When both GenericDefinition and ClrOriginTypeName are missing (the return type lost
+            // its CLR identity through the overload-index → builtin-substitution chain), try to
+            // resolve the CLR type by scanning loaded assemblies for the generic name (#1517).
+            if (generic.ClrOriginTypeName is { Length: > 0 } || symTableType == null)
+            {
+                var typeName = generic.ClrOriginTypeName ?? generic.Name;
+                Type? resolvedDef = null;
+                var arity = generic.TypeArguments.Count;
+                var candidateName = typeName.Contains('`', StringComparison.Ordinal)
+                    ? typeName : typeName + "`" + arity;
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    try
+                    {
+                        resolvedDef = asm.GetType("System.Collections.Generic." + candidateName)
+                            ?? asm.GetTypes().FirstOrDefault(t =>
+                                t.IsGenericTypeDefinition
+                                && Shared.ClrNameHelper.StripArity(t.Name) == generic.Name
+                                && t.GetGenericArguments().Length == arity);
+                        if (resolvedDef != null) break;
+                    }
+                    catch { }
+                }
+                if (resolvedDef is { IsGenericTypeDefinition: true }
+                    && resolvedDef.GetGenericArguments().Length == arity)
+                {
+                    try
+                    {
+                        var closedClrArgs = generic.TypeArguments
+                            .Select(ta => ta.ClrType ?? typeof(object))
+                            .ToArray();
+                        var closedClr = resolvedDef.MakeGenericType(closedClrArgs);
+                        if (HasClrProtocol(closedClr, dunderName))
+                            return true;
+                    }
+                    catch { }
+                }
             }
         }
 

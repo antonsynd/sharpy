@@ -28,17 +28,3 @@
 # absent here; every line below is something it found on its first run that nobody had reported.
 # See .claude/tmp/path-agreement-conformance-report.json.
 # ---------------------------------------------------------------------------------------------
-
-# #1517 — the #1496 class on two more types. `set.to_hash_set()` and `dict.to_dictionary()` return
-# RAW CLR collections (HashSet<T>, Dictionary<K,V>) that the type system spells `set[int]` /
-# `dict[str, int]`. An annotation of exactly that type accepts the value, and then the operators
-# those types support are refused on the expression form — with a message that names `set[int]` on
-# both sides and says `set[int]` does not support `|`. Confirmed PRE-EXISTING at f6f9bfbdb in a
-# clean worktree, so these are finds, not fallout from the #1496 fix landing beside them.
-# The fix is most likely at the source (return the Sharpy wrappers, per CLAUDE.md's rule against
-# raw .NET collections in public API surfaces), not in operator resolution.
-set.to_hash_set()::op::|
-set.to_hash_set()::op::&
-set.to_hash_set()::op::-
-set.to_hash_set()::op::^
-dict.to_dictionary()::op::|

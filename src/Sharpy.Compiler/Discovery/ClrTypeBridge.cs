@@ -358,34 +358,40 @@ internal class ClrTypeBridge
         var genericDef = clrType.GetGenericTypeDefinition();
         var typeArgs = clrType.GetGenericArguments();
 
-        // Sharpy.List<T>, List<T>, IList<T>, or ICollection<T>.
-        //
-        // ICollection<T> folds into the MUTABLE list arm rather than the IReadOnlyList arm below,
-        // even though both produce `list[T]`, because the two arms differ in the provenance they
-        // stamp and provenance is what assignability reads. The precedent is IReadOnlyCollection<T>,
-        // which sits with IReadOnlyList<T>: an arm's grouping tracks the CLR contract's mutability,
-        // so a formal typed ICollection<T> is satisfied by the same actuals .NET would accept for a
-        // mutable collection, and a read-only formal stays read-only-shaped. Put a new interface with
-        // the arm whose mutability it shares (#1295).
-        if (genericDef.FullName == SpecialCases.SharpyListFullName ||
-            IsGenericTypeDefinition(genericDef, typeof(List<>)) ||
-            IsGenericTypeDefinition(genericDef, typeof(IList<>)) ||
+        // Sharpy.List<T> — the Sharpy wrapper IS list.
+        if (genericDef.FullName == SpecialCases.SharpyListFullName)
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.List,
+                TypeArguments = new List<SemanticType> { MapClrTypeToSemanticType(typeArgs[0]) }
+            };
+        }
+
+        // Concrete SCG List<T> — honest identity (#1517).
+        if (IsGenericTypeDefinition(genericDef, typeof(List<>)))
+        {
+            return new GenericType
+            {
+                Name = ClrNameHelper.StripArity(genericDef.Name),
+                TypeArguments = new List<SemanticType> { MapClrTypeToSemanticType(typeArgs[0]) },
+                GenericDefinition = GetOrCreateClrDefinitionSymbol(genericDef)
+            };
+        }
+
+        // IList<T>, ICollection<T> — interfaces stay assimilated (Design Decision 1, #1517).
+        if (IsGenericTypeDefinition(genericDef, typeof(IList<>)) ||
             IsGenericTypeDefinition(genericDef, typeof(ICollection<>)))
         {
             return new GenericType
             {
                 Name = BuiltinNames.List,
-                TypeArguments = new List<SemanticType>
-                {
-                    MapClrTypeToSemanticType(typeArgs[0])
-                }
+                TypeArguments = new List<SemanticType> { MapClrTypeToSemanticType(typeArgs[0]) }
             };
         }
 
-        // Sharpy.Dict<K, V>, Dictionary<K, V>, or IDictionary<K, V>
-        if (genericDef.FullName == SpecialCases.SharpyDictFullName ||
-            IsGenericTypeDefinition(genericDef, typeof(Dictionary<,>)) ||
-            IsGenericTypeDefinition(genericDef, typeof(IDictionary<,>)))
+        // Sharpy.Dict<K, V> — the Sharpy wrapper IS dict.
+        if (genericDef.FullName == SpecialCases.SharpyDictFullName)
         {
             return new GenericType
             {
@@ -398,18 +404,63 @@ internal class ClrTypeBridge
             };
         }
 
-        // Sharpy.Set<T>, HashSet<T>, or ISet<T>
-        if (genericDef.FullName == SpecialCases.SharpySetFullName ||
-            IsGenericTypeDefinition(genericDef, typeof(HashSet<>)) ||
-            IsGenericTypeDefinition(genericDef, typeof(ISet<>)))
+        // Concrete Dictionary<K,V> — honest identity (#1517).
+        if (IsGenericTypeDefinition(genericDef, typeof(Dictionary<,>)))
+        {
+            return new GenericType
+            {
+                Name = ClrNameHelper.StripArity(genericDef.Name),
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0]),
+                    MapClrTypeToSemanticType(typeArgs[1])
+                },
+                GenericDefinition = GetOrCreateClrDefinitionSymbol(genericDef)
+            };
+        }
+
+        // IDictionary<K,V> — interface stays assimilated.
+        if (IsGenericTypeDefinition(genericDef, typeof(IDictionary<,>)))
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.Dict,
+                TypeArguments = new List<SemanticType>
+                {
+                    MapClrTypeToSemanticType(typeArgs[0]),
+                    MapClrTypeToSemanticType(typeArgs[1])
+                }
+            };
+        }
+
+        // Sharpy.Set<T> — the Sharpy wrapper IS set.
+        if (genericDef.FullName == SpecialCases.SharpySetFullName)
         {
             return new GenericType
             {
                 Name = BuiltinNames.Set,
-                TypeArguments = new List<SemanticType>
-                {
-                    MapClrTypeToSemanticType(typeArgs[0])
-                }
+                TypeArguments = new List<SemanticType> { MapClrTypeToSemanticType(typeArgs[0]) }
+            };
+        }
+
+        // Concrete HashSet<T> — honest identity (#1517).
+        if (IsGenericTypeDefinition(genericDef, typeof(HashSet<>)))
+        {
+            return new GenericType
+            {
+                Name = ClrNameHelper.StripArity(genericDef.Name),
+                TypeArguments = new List<SemanticType> { MapClrTypeToSemanticType(typeArgs[0]) },
+                GenericDefinition = GetOrCreateClrDefinitionSymbol(genericDef)
+            };
+        }
+
+        // ISet<T> — interface stays assimilated.
+        if (IsGenericTypeDefinition(genericDef, typeof(ISet<>)))
+        {
+            return new GenericType
+            {
+                Name = BuiltinNames.Set,
+                TypeArguments = new List<SemanticType> { MapClrTypeToSemanticType(typeArgs[0]) }
             };
         }
 

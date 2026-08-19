@@ -17,7 +17,7 @@ def main() -> None:
     source.add(2)
 
     # Materialized into a Sharpy list: a copy.
-    copied: list[int] = source.to_list()
+    copied: list[int] = list(source.to_list())
     copied.append(99)
     print(copied)
     print(source.count)

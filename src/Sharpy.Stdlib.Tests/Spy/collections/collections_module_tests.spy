@@ -426,7 +426,7 @@ def test_default_dict_to_dictionary_returns_copy():
     dd: collections.DefaultDict[str, int] = collections.DefaultDict[str, int](lambda: 0)
     dd["a"] = 1
     dd["b"] = 2
-    plain: dict[str, int] = dd.to_dictionary()
+    plain: dict[str, int] = dict(dd.to_dictionary())
     assert dd.contains_key("a")
     assert dd.contains_key("b")
     # Verify it's a copy: adding to plain should not affect dd
