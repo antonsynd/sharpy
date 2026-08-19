@@ -53,6 +53,32 @@ public class BuiltinTypeSerializerTotalityTests
 
         foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
             yield return ($"catalog:{name}", new BuiltinType { Name = name, ClrType = info.ClrType });
+
+        // #1538: CLR-backed builtins — the third producer class. ClrTypeBridge produces
+        // BuiltinType { Name = clrType.Name, ClrType = clrType } for iterator types
+        // (ClrTypeHelper.GetIteratorElementType != null). These carry a non-null ClrType
+        // that the serializer must preserve for IsValueType and disposability checks.
+        // #1538: CLR-backed builtins from the iterator producer class (ClrTypeBridge:274).
+        // Discover by checking for types extending Iterator<T> in the Sharpy.Core assembly.
+        var coreAssembly = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Sharpy.Core");
+        if (coreAssembly != null)
+        {
+            foreach (var type in coreAssembly.GetExportedTypes())
+            {
+                var baseType = type.BaseType;
+                while (baseType != null)
+                {
+                    if (baseType.IsGenericType
+                        && baseType.GetGenericTypeDefinition().FullName == "Sharpy.Iterator`1")
+                    {
+                        yield return ($"clr-iterator:{type.Name}", new BuiltinType { Name = type.Name, ClrType = type });
+                        break;
+                    }
+                    baseType = baseType.BaseType;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -135,5 +161,21 @@ public class BuiltinTypeSerializerTotalityTests
         names.Should().Contain(required,
             "these are the spellings the deleted switch got wrong; a census that does not carry them "
             + "cannot see the bug it exists to catch");
+
+        // #1538: at least one specimen must have ClrType != null and a Name that is neither
+        // a singleton nor a catalog entry — the CLR-backed iterator producer class.
+        var singletonNames = typeof(SemanticType).GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(f => f.GetValue(null) is BuiltinType)
+            .Select(f => ((BuiltinType)f.GetValue(null)!).Name)
+            .ToHashSet(StringComparer.Ordinal);
+        var catalogNames = PrimitiveCatalog.GetAllPrimitives().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
+        var clrBacked = Specimens()
+            .Where(s => s.Type.ClrType != null
+                && !singletonNames.Contains(s.Type.Name)
+                && !catalogNames.Contains(s.Type.Name))
+            .ToList();
+        clrBacked.Should().NotBeEmpty(
+            "the census must include at least one CLR-backed BuiltinType (iterator producer class) "
+            + "whose ClrType is non-null — without it, the serializer's ClrType round-trip is untested (#1538)");
     }
 }
