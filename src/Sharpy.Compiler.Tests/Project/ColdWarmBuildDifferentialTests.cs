@@ -68,6 +68,9 @@ class Counter:
     @must_use
     def next_value(self) -> long:
         return self.limit
+
+    def poke(self) -> None:
+        scratch: int = 99
 ";
 
     private const string MainSource = @"from lib import Counter, Point
@@ -103,14 +106,20 @@ def main() -> None:
         };
     }
 
-    private static ProjectCompilationResult Build(ProjectConfig config)
-        => new Compiler(new CompilerOptions { Incremental = true }, NullLogger.Instance)
+    private static ProjectCompilationResult Build(ProjectConfig config, bool warningsAsErrors = false)
+        => new Compiler(
+                new CompilerOptions { Incremental = true, WarningsAsErrors = warningsAsErrors },
+                NullLogger.Instance)
             .CompileProject(config);
 
-    /// <summary>Diagnostics as a stable, order-independent projection including Severity (#1553).</summary>
+    /// <summary>
+    /// Diagnostics as a stable, order-independent projection including Severity and Span (#1553) —
+    /// the two members a naive replay gets wrong.
+    /// </summary>
     private static string Diagnostics(ProjectCompilationResult result)
         => string.Join("\n", result.Diagnostics.GetAll()
-            .Select(d => $"{d.Severity}:{d.Code}@{Path.GetFileName(d.FilePath ?? "")}:{d.Line}:{d.Column} {d.Message}")
+            .Select(d => $"{d.Severity}:{d.Code}@{Path.GetFileName(d.FilePath ?? "")}:{d.Line}:{d.Column}"
+                + $"[{d.Span?.Start.ToString() ?? "-"},{d.Span?.Length.ToString() ?? "-"}] {d.Message}")
             .OrderBy(s => s, StringComparer.Ordinal));
 
     /// <summary>
@@ -150,6 +159,16 @@ def main() -> None:
         string.Concat(coldGenerated.Values).Should().Contain("long",
             "the specimen exists to exercise the int64/long channel — a cold build that never emits "
             + "`long` cannot tell a warm build's decode failure from agreement");
+
+        // Non-vacuity for the #1553 class: the cache-served file must CARRY a diagnostic, or every
+        // diagnostics equality below compares empty strings and a warm build that dropped all
+        // cached diagnostics would still pass (absence assertions pass vacuously).
+        coldDiagnostics.Should().Contain("Warning",
+            "lib.spy's unused local (SPY0451) must produce a warning in the cache-served file — "
+            + "that warning is the payload whose replay this test exists to measure (#1553). "
+            + "(The plan wanted a @must_use ignore too; a discarded call to a NON-overloaded "
+            + "@must_use method records no call target and draws no SPY0480 — the #1537 seam "
+            + "gap — so the unused local carries the cell instead.)");
 
         // --- Build 2: warm. Same sources, cache now on disk, nothing edited. ---
         var warm = Build(config);
@@ -275,5 +294,72 @@ def main() -> None:
             + "or restored. When the decoder had no arm for the encoded name `int64`, the cached "
             + "return type came back UnknownType and this message changed — silently, and only on "
             + "a build that reused a cache (#1474)");
+    }
+
+    /// <summary>
+    /// Design Decision 10 (#1553): policy is configuration, not cache content. The cache stores
+    /// the policy-free per-unit diagnostics; warnings-as-errors is applied by the project bag AT
+    /// REPLAY TIME — so flipping the flag between the cold build and a warm no-edit rebuild must
+    /// escalate the REPLAYED warnings and fail the warm build.
+    /// </summary>
+    [Fact]
+    public void WarnAsErrorPolicy_AppliesAtReplayTime_NotAtCacheWriteTime()
+    {
+        var lib = Write("flip", "lib.spy", LibSource);
+        var main = Write("flip", "main.spy", MainSource);
+        var config = Config("flip", lib, main);
+
+        // Cold, WITHOUT the flag: succeeds, warnings recorded, cache written.
+        var cold = Build(config);
+        cold.Success.Should().BeTrue(
+            "the cold arm must succeed so a cache exists to replay from. Diagnostics:\n"
+            + Diagnostics(cold));
+        Diagnostics(cold).Should().Contain("Warning",
+            "the specimen must carry a warning, or the escalation below has nothing to escalate");
+
+        // Warm, WITH the flag, nothing edited: both files replay from cache; the replayed
+        // warnings meet the CURRENT policy and escalate.
+        var warm = Build(config, warningsAsErrors: true);
+
+        Skipped(warm).Should().BeEquivalentTo(new[] { "lib.spy", "main.spy" },
+            "both files are unchanged, so every diagnostic in the warm build came through the "
+            + "replay path — otherwise this cell measures fresh analysis, not the cache");
+
+        warm.Success.Should().BeFalse(
+            "-warnaserror on the warm build must fail it on the REPLAYED warnings. A cache that "
+            + "baked the cold build's policy into its content would sail through — policy is "
+            + "configuration, not cache content (#1553)");
+
+        Diagnostics(warm).Should().Contain("Error",
+            "the replayed warning must surface escalated to an error under the current policy");
+    }
+
+    /// <summary>
+    /// The headline divergence, other direction: with -warnaserror from the start, the cold build
+    /// fails — and a failing build writes NO cache (save-only-on-success), so the warm no-edit
+    /// rebuild recompiles everything and must fail identically. The empty skip set is the proof
+    /// the no-cache-on-failure guard held; without it the second build would "pass" by replaying
+    /// a cache that should never have existed.
+    /// </summary>
+    [Fact]
+    public void WarnAsErrorColdFailure_RepeatsIdenticallyOnRebuild_BecauseNoCacheWasWritten()
+    {
+        var lib = Write("werror", "lib.spy", LibSource);
+        var main = Write("werror", "main.spy", MainSource);
+        var config = Config("werror", lib, main);
+
+        var cold = Build(config, warningsAsErrors: true);
+        cold.Success.Should().BeFalse(
+            "the specimen's warning must escalate and fail the cold build under -warnaserror");
+
+        var rebuild = Build(config, warningsAsErrors: true);
+        rebuild.Success.Should().BeFalse("identical source under the same policy must fail again");
+        Skipped(rebuild).Should().BeEmpty(
+            "a failing build writes no cache (ProjectCompiler.CodeGen saves only on success), so "
+            + "the rebuild has nothing to skip from — if files were skipped here, a failing "
+            + "build's cache leaked");
+        Diagnostics(rebuild).Should().Be(Diagnostics(cold),
+            "two cache-less builds of identical source under identical policy must report "
+            + "identically");
     }
 }

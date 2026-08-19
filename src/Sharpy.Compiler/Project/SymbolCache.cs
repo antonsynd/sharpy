@@ -533,27 +533,44 @@ internal record FileCacheEntry
 
     /// <summary>
     /// Diagnostics produced for this file during the cold build (#1553). Nullable for backwards
-    /// compat — pre-v27 cache files won't have this. Replayed into both bags at the skip path
+    /// compat — pre-v28 cache files won't have this. Replayed into both bags at the skip path
     /// so warm ≡ cold on diagnostics.
     /// </summary>
     public List<CachedDiagnostic>? Diagnostics { get; init; }
 }
 
 /// <summary>
-/// A single diagnostic captured from a cold build for cache replay (#1553).
+/// A single diagnostic captured from a cold build for cache replay (#1553). Every member mirrors
+/// <see cref="Diagnostics.CompilerDiagnostic"/>'s nullability verbatim — coercing a null
+/// Line/Column/Span/Code to a default is a replay-visible infidelity (the warm-fidelity sweep
+/// caught exactly the 0-vs-null class).
 /// </summary>
 internal record CachedDiagnostic
 {
-    public required string Code { get; init; }
+    public string? Code { get; init; }
     public required string Message { get; init; }
     public required string Severity { get; init; }
-    public int Line { get; init; }
-    public int Column { get; init; }
+    public int? Line { get; init; }
+    public int? Column { get; init; }
     public string? FilePath { get; init; }
     public string? Phase { get; init; }
-    public int SpanStart { get; init; }
-    public int SpanLength { get; init; }
+    public int? SpanStart { get; init; }
+    public int? SpanLength { get; init; }
     public Dictionary<string, string>? Data { get; init; }
+    public List<CachedRelatedLocation>? RelatedLocations { get; init; }
+}
+
+/// <summary>
+/// Mirror of <see cref="Diagnostics.DiagnosticRelatedLocation"/> for cache replay (#1553).
+/// </summary>
+internal record CachedRelatedLocation
+{
+    public required string Message { get; init; }
+    public int? Line { get; init; }
+    public int? Column { get; init; }
+    public string? FilePath { get; init; }
+    public int? SpanStart { get; init; }
+    public int? SpanLength { get; init; }
 }
 
 /// <summary>

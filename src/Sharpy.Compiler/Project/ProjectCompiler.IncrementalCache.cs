@@ -53,16 +53,27 @@ internal partial class ProjectCompiler
                 var cachedDiagnostics = unit.Diagnostics.GetAll()
                     .Select(d => new CachedDiagnostic
                     {
-                        Code = d.Code ?? string.Empty,
+                        Code = d.Code,
                         Message = d.Message,
                         Severity = d.Severity.ToString(),
-                        Line = d.Line ?? 0,
-                        Column = d.Column ?? 0,
+                        Line = d.Line,
+                        Column = d.Column,
                         FilePath = d.FilePath,
                         Phase = d.Phase.ToString(),
-                        SpanStart = d.Span?.Start ?? 0,
-                        SpanLength = d.Span?.Length ?? 0,
-                        Data = d.Data?.ToDictionary(kv => kv.Key, kv => kv.Value?.ToString() ?? string.Empty)
+                        SpanStart = d.Span?.Start,
+                        SpanLength = d.Span?.Length,
+                        Data = d.Data?.ToDictionary(kv => kv.Key, kv => kv.Value?.ToString() ?? string.Empty),
+                        RelatedLocations = d.RelatedLocations?
+                            .Select(rl => new CachedRelatedLocation
+                            {
+                                Message = rl.Message,
+                                Line = rl.Line,
+                                Column = rl.Column,
+                                FilePath = rl.FilePath,
+                                SpanStart = rl.Span?.Start,
+                                SpanLength = rl.Span?.Length
+                            })
+                            .ToList()
                     })
                     .ToList();
 

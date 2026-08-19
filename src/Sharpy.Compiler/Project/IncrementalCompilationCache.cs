@@ -111,6 +111,10 @@ internal class IncrementalCompilationCache
     //          pre-#1553 entry would load with NO diagnostics and the warm build would silently
     //          drop them for every cache-served file — the precise disease #1553 fixes. Discarding
     //          such entries is the fix; tolerant decode alone is the disease with better manners.
+    //          CachedDiagnostic mirrors CompilerDiagnostic's nullability verbatim (nullable
+    //          Code/Line/Column/Span) and carries RelatedLocations — the first cut coerced nulls
+    //          to defaults, and the warm-fidelity sweep measured the 0-vs-null divergence on three
+    //          fixtures before the entries ever shipped in a release.
     internal const int CurrentSchemaVersion = 28;
 
     private readonly string _cacheFilePath;
