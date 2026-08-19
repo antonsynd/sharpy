@@ -195,7 +195,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGetCloseMatchesMatchesPython()
             {
 #line (80, 5) - (80, 75) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                var result = new Sharpy.List<string>(difflib.GetCloseMatches("appel", new Sharpy.List<string>() { "ape", "apple", "peach" }));
+                var result = difflib.GetCloseMatches("appel", new Sharpy.List<string>() { "ape", "apple", "peach" });
 #line (81, 5) - (81, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<string>() { "apple", "ape" }, result);
 #line hidden
@@ -205,7 +205,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGetCloseMatchesHighCutoffFiltersWorse()
             {
 #line (85, 5) - (85, 87) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                var result = new Sharpy.List<string>(difflib.GetCloseMatches("appel", new Sharpy.List<string>() { "ape", "apple", "peach" }, cutoff: 0.9d));
+                var result = difflib.GetCloseMatches("appel", new Sharpy.List<string>() { "ape", "apple", "peach" }, cutoff: 0.9d);
 #line (86, 5) - (86, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                 Xunit.Assert.DoesNotContain("ape", result);
 #line hidden
@@ -215,7 +215,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGetCloseMatchesN1ReturnsBestOnly()
             {
 #line (90, 5) - (90, 80) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                var result = new Sharpy.List<string>(difflib.GetCloseMatches("appel", new Sharpy.List<string>() { "ape", "apple", "peach" }, n: 1));
+                var result = difflib.GetCloseMatches("appel", new Sharpy.List<string>() { "ape", "apple", "peach" }, n: 1);
 #line (91, 5) - (91, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (92, 5) - (92, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
@@ -227,7 +227,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGetCloseMatchesNoMatchesReturnsEmpty()
             {
 #line (96, 5) - (96, 74) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                var result = new Sharpy.List<string>(difflib.GetCloseMatches("xyz", new Sharpy.List<string>() { "abc", "def" }, cutoff: 0.9d));
+                var result = difflib.GetCloseMatches("xyz", new Sharpy.List<string>() { "abc", "def" }, cutoff: 0.9d);
 #line (97, 5) - (97, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                 Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(result));
 #line hidden

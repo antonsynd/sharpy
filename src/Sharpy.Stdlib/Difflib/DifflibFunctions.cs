@@ -172,7 +172,7 @@ namespace Sharpy
             return new Differ(lineJunk, charJunk).Compare(a, b);
         }
 
-        public static System.Collections.Generic.List<string> GetCloseMatches(
+        public static List<string> GetCloseMatches(
             string word,
             IList<string> possibilities,
             int n = 3,
@@ -203,7 +203,7 @@ namespace Sharpy
                 return cmp != 0 ? cmp : string.Compare(a2.word, b2.word, StringComparison.Ordinal);
             });
 
-            var output = new System.Collections.Generic.List<string>();
+            var output = new List<string>();
             int count = Math.Min(n, result.Count);
             for (int i = 0; i < count; i++)
                 output.Add(result[i].word);

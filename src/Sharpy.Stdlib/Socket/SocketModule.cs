@@ -148,7 +148,7 @@ namespace Sharpy
                         throw new Gaierror("Name or service not known", ((int)global::System.Net.Sockets.SocketError.HostNotFound));
                     }
 
-                    global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(ipAddresses[0], address.Item2);
+                    global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(global::Sharpy.ArrayHelpers.GetItem(ipAddresses, 0), address.Item2);
                     this._Socket.Connect(endpoint);
                 }
                 catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
@@ -647,9 +647,9 @@ namespace Sharpy
                 int i = 0;
                 while (i < global::Sharpy.Builtins.Len(addresses))
                 {
-                    if (((int)addresses[i].AddressFamily) == AF_INET)
+                    if (((int)global::Sharpy.ArrayHelpers.GetItem(addresses, i).AddressFamily) == AF_INET)
                     {
-                        return addresses[i].ToString();
+                        return global::Sharpy.ArrayHelpers.GetItem(addresses, i).ToString();
                     }
 
                     i = i + 1;
@@ -657,7 +657,7 @@ namespace Sharpy
 
                 if (global::Sharpy.Builtins.Len(addresses) > 0)
                 {
-                    return addresses[0].ToString();
+                    return global::Sharpy.ArrayHelpers.GetItem(addresses, 0).ToString();
                 }
 
                 throw new Gaierror("Name or service not known", ((int)global::System.Net.Sockets.SocketError.HostNotFound));
