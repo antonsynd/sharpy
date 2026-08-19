@@ -387,7 +387,8 @@ class Thing:
         }
         finally
         {
-            try { Directory.Delete(dir, recursive: true); }
+            try
+            { Directory.Delete(dir, recursive: true); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
@@ -421,7 +422,8 @@ class Thing:
         }
         finally
         {
-            try { Directory.Delete(dir, recursive: true); }
+            try
+            { Directory.Delete(dir, recursive: true); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }

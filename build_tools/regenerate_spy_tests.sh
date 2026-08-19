@@ -88,6 +88,9 @@ echo "Emitting .spy test modules via project compilation..."
 # the emitted C# files, which are saved before compilation is attempted.
 # Files excluded in the spyproj (via Exclude=) are not compiled and won't be emitted.
 compiler_log="$WORK_DIR/compiler-output.log"
+# compiler_exit is captured for set -e safety but deliberately not gated on: the Roslyn-stage
+# failure above makes it nonzero even on healthy runs. The stem-set equality gate below is the
+# health check (front-end failures emit nothing; partial emission is caught per stem). (#1544)
 compiler_exit=0
 $SHARPYC project "$SPYPROJ" --emit-cs-to "$EMIT_DIR" > "$compiler_log" 2>&1 || compiler_exit=$?
 

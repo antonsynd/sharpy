@@ -281,23 +281,23 @@ public class AnnotationExpressionPathAgreementTests
                 return b.Name;
 
             case TypeParameterType p:
-            {
-                var index = owner.TypeParameters.FindIndex(tp => tp.Name == p.Name);
-                return index >= 0 && index < seedArgs.Count ? seedArgs[index] : null;
-            }
+                {
+                    var index = owner.TypeParameters.FindIndex(tp => tp.Name == p.Name);
+                    return index >= 0 && index < seedArgs.Count ? seedArgs[index] : null;
+                }
 
             case GenericType g:
-            {
-                var args = new List<string>();
-                foreach (var arg in g.TypeArguments)
                 {
-                    var spelled = TrySpellType(arg, owner, seedArgs);
-                    if (spelled == null)
-                        return null;
-                    args.Add(spelled);
+                    var args = new List<string>();
+                    foreach (var arg in g.TypeArguments)
+                    {
+                        var spelled = TrySpellType(arg, owner, seedArgs);
+                        if (spelled == null)
+                            return null;
+                        args.Add(spelled);
+                    }
+                    return args.Count == 0 ? g.Name : $"{g.Name}[{string.Join(", ", args)}]";
                 }
-                return args.Count == 0 ? g.Name : $"{g.Name}[{string.Join(", ", args)}]";
-            }
 
             default:
                 return null;
@@ -319,8 +319,12 @@ public class AnnotationExpressionPathAgreementTests
         {
             switch (inner[i])
             {
-                case '[': depth++; break;
-                case ']': depth--; break;
+                case '[':
+                    depth++;
+                    break;
+                case ']':
+                    depth--;
+                    break;
                 case ',' when depth == 0:
                     args.Add(inner.Substring(start, i - start).Trim());
                     start = i + 1;
