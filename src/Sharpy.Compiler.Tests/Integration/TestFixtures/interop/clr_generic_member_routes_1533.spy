@@ -1,0 +1,33 @@
+# #1533: every member-resolution route for an imported CLR generic receiver must keep working.
+# Each call exercises a different resolution path; all must compile and run.
+from system.collections.generic import List
+
+
+def main() -> None:
+    xs: List[int] = List[int]()
+    xs.add(1)
+    xs.add(2)
+    xs.add(3)
+
+    # (a) Instance method via snake_case→PascalCase: add → Add
+    xs.add(4)
+    print(xs.count)
+
+    # (b) Property via candidates: count → Count
+    print(xs.count == 4)
+
+    # (c) Dunder-mapped name: len() → __len__ → Count
+    print(len(xs))
+
+    # (d) Iteration via __iter__ → IEnumerable<T>
+    total = 0
+    for x in xs:
+        total += x
+    print(total)
+
+    # (e) Staged extension method: to_list() → ToList()
+    lst = xs.to_list()
+    print(type(lst))
+
+    # (f) Indexer: xs[0] → this[int]
+    print(xs[0])
