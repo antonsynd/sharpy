@@ -99,7 +99,19 @@ internal class IncrementalCompilationCache
     //      losing the structural distinction and potentially re-enabling the #1389 refusal the
     //      new type exists to prevent. BuiltinType's ClrType origin is encoded as "name@FullName"
     //      so that warm-cache iterator/CLR-backed builtins round-trip record-equal.
-    internal const int CurrentSchemaVersion = 27;
+    // v28: One bump for two wire-format changes that landed after v27 in the same batch (the v25
+    //      combined-bump precedent).
+    //      (a) #1517 honest borders: concrete HashSet<>/Dictionary<,>/SCG List<> now map to their
+    //          own StripArity names instead of collapsing to set/dict/list, and display names
+    //          round-trip the caches via TypeSignature (two-mapper agreement, #1294). A cache
+    //          written before the split decodes `set[int]` where a cold build now says
+    //          `HashSet[int]` — exactly the warm≠cold divergence this schema constant exists to
+    //          prevent.
+    //      (b) #1553: FileCacheEntry gains Diagnostics. The decode is tolerant (nullable), so a
+    //          pre-#1553 entry would load with NO diagnostics and the warm build would silently
+    //          drop them for every cache-served file — the precise disease #1553 fixes. Discarding
+    //          such entries is the fix; tolerant decode alone is the disease with better manners.
+    internal const int CurrentSchemaVersion = 28;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
