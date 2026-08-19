@@ -1246,7 +1246,7 @@ internal static class SymbolSerializer
         private static void RegisterAll()
         {
             Register<BuiltinType>("builtin",
-                bt => bt.Name,
+                bt => bt.ClrType is { } t ? $"{bt.Name}@{t.FullName}" : bt.Name,
                 value => ResolveBuiltinType(value));
 
             // Format: name[args], with `name@ClrOriginTypeName[args]` when the type was mapped from CLR
@@ -1522,8 +1522,31 @@ internal static class SymbolSerializer
         /// singleton). <c>BuiltinTypeSerializerTotalityTests</c> asserts this over the whole
         /// reflection-enumerated census.</para>
         /// </remarks>
-        private static SemanticType ResolveBuiltinType(string name)
+        private static SemanticType ResolveBuiltinType(string value)
         {
+            // Split the @-origin format (#1538): "name@ClrFullName" or just "name".
+            string name;
+            Type? resolvedClrType = null;
+            var atIndex = value.IndexOf('@', StringComparison.Ordinal);
+            if (atIndex >= 0)
+            {
+                name = value[..atIndex];
+                var originName = value[(atIndex + 1)..];
+                resolvedClrType = Type.GetType(originName);
+                if (resolvedClrType == null)
+                {
+                    foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        resolvedClrType = asm.GetType(originName);
+                        if (resolvedClrType != null) break;
+                    }
+                }
+            }
+            else
+            {
+                name = value;
+            }
+
             // A singleton's own name resolves to the singleton, preserving reference identity for
             // the types most of the compiler compares.
             if (s_builtinSingletonsByName.TryGetValue(name, out var singleton))
@@ -1534,13 +1557,8 @@ internal static class SymbolSerializer
             if (PrimitiveCatalog.GetByName(name) is { } info)
                 return new BuiltinType { Name = name, ClrType = info.ClrType };
 
-            // A name that is neither is a CLR-backed builtin (ClrTypeBridge / CachedModuleDiscovery
-            // name these after the CLR type). The encoder never wrote their ClrType, so it cannot be
-            // recovered here — but the NAME is recoverable, and returning it is strictly better than
-            // the silent UnknownType this decoder used to produce, which is #1474's whole mechanism.
-            // TODO(#1538): carry the CLR origin through the channel so this class round-trips
-            // record-equal too, as the GenericType arm already does via `name@ClrOriginTypeName`.
-            return new BuiltinType { Name = name };
+            // A CLR-backed builtin with a resolved origin (#1538).
+            return new BuiltinType { Name = name, ClrType = resolvedClrType };
         }
     }
 }
