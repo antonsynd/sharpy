@@ -92,7 +92,14 @@ internal class IncrementalCompilationCache
     //      build would therefore hand the rename handler a differently-sized extent than a cold one
     //      for any name whose token length differs from its spelling, the same cold/warm divergence
     //      class as v23's IsNameBacktickEscaped.
-    internal const int CurrentSchemaVersion = 26;
+    // v27: UnmappedClrType serializer channel (#1534) and BuiltinType CLR-origin encoding (#1538).
+    //      A v26 cache encodes every UnmappedClrType producer site as "user:object" (the old
+    //      UserDefinedType singleton); the new "unmappedclr:ClrTypeName" channel carries the CLR
+    //      identity the bridge failed to map. A stale cache decodes it as a bare UserDefinedType,
+    //      losing the structural distinction and potentially re-enabling the #1389 refusal the
+    //      new type exists to prevent. BuiltinType's ClrType origin is encoded as "name@FullName"
+    //      so that warm-cache iterator/CLR-backed builtins round-trip record-equal.
+    internal const int CurrentSchemaVersion = 27;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

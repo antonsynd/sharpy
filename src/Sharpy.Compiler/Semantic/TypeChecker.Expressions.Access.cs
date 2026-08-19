@@ -564,7 +564,7 @@ internal partial class TypeChecker
                     // Skip methods whose return type resolved to 'object' — this indicates
                     // the discovery layer couldn't represent the real type (e.g., generic method
                     // return types like Result<U, E> from map()). Let the codegen fallback handle these.
-                    if (resolvedReturnType is not UserDefinedType { Name: "object" })
+                    if (resolvedReturnType is not (UserDefinedType { Name: "object" } or UnmappedClrType))
                     {
                         var substitutedParams = builtinTypeArgs != null
                             ? methodSymbol.Parameters.Select(p => p with

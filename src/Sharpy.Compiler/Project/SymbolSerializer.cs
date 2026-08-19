@@ -1285,6 +1285,10 @@ internal static class SymbolSerializer
                 udt => udt.Name,
                 value => new UserDefinedType { Name = value });
 
+            Register<UnmappedClrType>("unmappedclr",
+                uct => uct.ClrTypeName,
+                value => new UnmappedClrType { ClrTypeName = value });
+
             Register<NullableType>("nullable",
                 nt => Serialize(nt.UnderlyingType),
                 value => new NullableType { UnderlyingType = Deserialize(value) });

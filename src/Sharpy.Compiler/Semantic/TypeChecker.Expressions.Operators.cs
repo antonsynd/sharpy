@@ -1206,7 +1206,7 @@ internal partial class TypeChecker
     /// </summary>
     private static bool IsObjectType(SemanticType type)
     {
-        return type is BuiltinType { Name: "object" } or UserDefinedType { Name: "object" };
+        return type is BuiltinType { Name: "object" } or UserDefinedType { Name: "object" } or UnmappedClrType;
     }
 
     /// <summary>

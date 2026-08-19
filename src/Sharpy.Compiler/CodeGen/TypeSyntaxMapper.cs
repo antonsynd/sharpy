@@ -64,6 +64,10 @@ internal class TypeSyntaxMapper
             // Handle nullable types
             NullableType nullable => NullableType(MapSemanticType(nullable.UnderlyingType)),
 
+            // An unmapped CLR type emits as object — the bridge could not name it, and object is the
+            // only safe C# target. Must precede the UserDefinedType arm.
+            UnmappedClrType => PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+
             // Handle user-defined types
             UserDefinedType udt => RoslynEmitter.ParseQualifiedTypeName(GetMappedTypeNameFromSymbol(udt)),
 

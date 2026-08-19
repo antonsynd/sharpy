@@ -75,28 +75,21 @@ public abstract record SemanticType : ITypeInfo
     public static readonly SemanticType Object = new UserDefinedType { Name = "object" };
 
     /// <summary>
-    /// The type of a CLR value whose type discovery could not map — <c>IEnumerable&lt;IGrouping&lt;K,T&gt;&gt;</c>
-    /// from a LINQ <c>group_by</c>, an unrecognized generic. Record-EQUAL to <see cref="Object"/> (same
-    /// name, no symbol), so every assignability and equality answer is exactly what it was; only its
-    /// reference identity differs, and only one question reads that.
+    /// Singleton for the "could not map" bridge fallback. Carries no CLR identity (the defensive
+    /// arms that produce it have no useful type to carry). Structurally distinct from
+    /// <see cref="Object"/>: <see cref="IsObjectReceiver"/> uses reference equality to the
+    /// <see cref="Object"/> singleton, and <c>UnmappedClrType</c> is a different record type
+    /// entirely, so the #1389 refusal stays off unmapped receivers by construction (#1534).
     /// </summary>
-    /// <remarks>
-    /// That question is "did the USER write <c>object</c> here?", asked by the member-absence refusal
-    /// for <c>object</c> receivers (#1389). Sharpy's <c>object</c> and "discovery could not name this
-    /// type" had been the same singleton, so refusing an unknown member on the first also refused
-    /// <c>g.key</c> on the second — a working program rejected, which the corpus caught. Losing the
-    /// identity (through a <c>with</c> expression, say) fails toward permissiveness, which is the safe
-    /// direction; the conflation itself is #1146's to retire.
-    /// </remarks>
-    public static readonly SemanticType UnmappedClr = new UserDefinedType { Name = "object" };
+    public static readonly SemanticType UnmappedClr = new UnmappedClrType { ClrTypeName = "" };
 
     /// <summary>
     /// Check if this type is assignable to another type
     /// </summary>
     public virtual bool IsAssignableTo(SemanticType other)
     {
-        // All types are assignable to object
-        if (other is UserDefinedType { Name: "object" })
+        // All types are assignable to object (and to the unmapped-CLR sentinel, which displays as object)
+        if (other is UserDefinedType { Name: "object" } or UnmappedClrType)
             return true;
 
         return this.Equals(other);
@@ -243,11 +236,13 @@ public sealed record GenericType : SemanticType
     /// </para>
     ///
     /// <para>
-    /// DELIBERATELY not part of <see cref="Equals(GenericType?)"/> or <see cref="GetHashCode"/>. A
-    /// mapped <c>list[int]</c> and a written <c>list[int]</c> are the same SHARPY type — that is the
-    /// whole point of the mapping — and splitting them would fracture every cache, substitution and
-    /// dictionary keyed on <c>SemanticType</c>. Assignability reads this field; identity must not. Do
-    /// not "complete" the equality by adding it.
+    /// DELIBERATELY not part of <see cref="Equals(GenericType?)"/> or <see cref="GetHashCode"/>. For
+    /// types that the bridge COLLAPSES (interfaces, Sharpy wrappers), a mapped <c>list[int]</c> and a
+    /// written <c>list[int]</c> are the same SHARPY type and splitting them would fracture every cache,
+    /// substitution and dictionary keyed on <c>SemanticType</c>. For types the bridge keeps HONEST
+    /// (concrete <c>HashSet</c>, <c>Dictionary</c>, SCG <c>List</c> — #1517), the name itself differs,
+    /// and provenance serves the same purpose: tracing the CLR definition for assignability.
+    /// Assignability reads this field; identity must not. Do not "complete" the equality by adding it.
     /// </para>
     /// </summary>
     public string? ClrOriginTypeName { get; init; }
@@ -1113,4 +1108,28 @@ public sealed record LiteralStringType : SemanticType
             return true;
         return base.IsAssignableTo(other);
     }
+}
+
+/// <summary>
+/// A CLR value whose type discovery could not map — <c>IEnumerable&lt;IGrouping&lt;K,T&gt;&gt;</c>
+/// from a LINQ <c>group_by</c>, an unrecognized generic, a non-generic interface like
+/// <c>IDictionary</c>. Carries the CLR identity the bridge failed to express so downstream
+/// decisions (enumerability, absence proof) can consult it rather than guessing from <c>object</c>.
+///
+/// <para>
+/// Displays as <c>object</c> and is assignability-compatible with <c>object</c> in both
+/// directions, so no working program changes. The carried identity is for principled declining
+/// and future enumerability, not for assignability — <see cref="TryGetClrType"/> must NOT
+/// return the failed type, or the CLR reflection fallback in <c>IsAssignable</c> would change
+/// answers.
+/// </para>
+/// </summary>
+public sealed record UnmappedClrType : SemanticType
+{
+    public required string ClrTypeName { get; init; }
+    public new Type? ClrType { get; init; }
+
+    public override string GetDisplayName() => "object";
+
+    public override bool IsValueType => false;
 }

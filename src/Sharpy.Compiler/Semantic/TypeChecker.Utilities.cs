@@ -1256,6 +1256,8 @@ internal partial class TypeChecker
         {
             case BuiltinType bt:
                 return bt.ClrType;
+            case UnmappedClrType:
+                return null;
             case UserDefinedType udt:
                 return udt.Symbol?.ClrType;
             case NullableType nt:

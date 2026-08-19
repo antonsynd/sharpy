@@ -91,7 +91,7 @@ internal partial class TypeChecker
         // When LCA falls back to object (or Void, for an all-`None` literal) but a contextual
         // type is available, use the expected element type if all elements are assignable to it.
         // This handles cases like: x: list[float] = [a, b]; x: list[object] = [None] (#950).
-        if (commonType is UserDefinedType { Name: "object" } or VoidType
+        if (commonType is UserDefinedType { Name: "object" } or UnmappedClrType or VoidType
             && _expectedType is GenericType expectedList
             && expectedList.Name == BuiltinNames.List
             && expectedList.TypeArguments.Count == 1
@@ -154,10 +154,10 @@ internal partial class TypeChecker
             && expectedDict.Name == BuiltinNames.Dict
             && expectedDict.TypeArguments.Count == 2)
         {
-            if (commonKeyType is UserDefinedType { Name: "object" }
+            if (commonKeyType is UserDefinedType { Name: "object" } or UnmappedClrType
                 && AllAssignableTo(keyTypes, expectedDict.TypeArguments[0]))
                 commonKeyType = expectedDict.TypeArguments[0];
-            if (commonValueType is UserDefinedType { Name: "object" } or VoidType
+            if (commonValueType is UserDefinedType { Name: "object" } or UnmappedClrType or VoidType
                 && AllAssignableTo(valueTypes, expectedDict.TypeArguments[1]))
                 commonValueType = expectedDict.TypeArguments[1];
         }
@@ -208,7 +208,7 @@ internal partial class TypeChecker
 
         // When LCA falls back to object (or Void, for an all-`None` literal) but a contextual
         // type is available, use the expected element type if all elements are assignable to it.
-        if (commonType is UserDefinedType { Name: "object" } or VoidType
+        if (commonType is UserDefinedType { Name: "object" } or UnmappedClrType or VoidType
             && _expectedType is GenericType expectedSet
             && expectedSet.Name == BuiltinNames.Set
             && expectedSet.TypeArguments.Count == 1
