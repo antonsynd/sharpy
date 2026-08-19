@@ -31,19 +31,21 @@ public class SemanticTypeSerializerTotalityTests
         ["TemplateType"] = "RoundTrips",
         ["TypeParameterType"] = "RoundTrips",
         ["GenericFunctionType"] = "DocumentedLossy: decodes to GenericType by design (SymbolSerializer:1408); the function signature is reconstructed at use site",
-        ["SelfType"] = "OutOfScope: never reaches serialization; the NotSupportedException throw at SymbolSerializer:1457 is the loud backstop",
+        ["ModuleType"] = "DocumentedLossy: registered channel encodes Symbol.Name only and decodes to a placeholder name-only ModuleSymbol (SymbolSerializer Register<ModuleType>); record equality compares Symbol by reference, so a round trip cannot attest it",
+        ["UnionType"] = "DocumentedLossy: registered placeholder channel for v0.2.x tagged unions decodes Name+CaseTypes structurally, but UnionType has no structural Equals over CaseTypes, so record equality cannot attest it; revisit when tagged unions land",
+        ["SelfType"] = "OutOfScope: never reaches serialization; the NotSupportedException throw in SymbolSerializer's Serialize is the loud backstop",
         ["ConstructorReferenceType"] = "OutOfScope: never reaches serialization; pinned or rejected (SPY0342) in semantic analysis",
         ["LiteralStringType"] = "OutOfScope: compile-time-only distinction; emits as string, never serialized",
-        ["ModuleType"] = "OutOfScope: modules are not serialized as types; the NotSupportedException throw is the backstop",
-        ["UnionType"] = "OutOfScope: not yet supported in code generation; the NotSupportedException throw is the backstop",
     };
 
     [Fact]
     public void EveryConcreteSemanticType_IsClassified()
     {
+        // Deliberately NOT filtered to sealed types: an unsealed concrete subclass added tomorrow
+        // must fail the census, not slip past it.
         var concreteTypes = typeof(SemanticType).Assembly
             .GetTypes()
-            .Where(t => t.IsSealed && !t.IsAbstract && typeof(SemanticType).IsAssignableFrom(t))
+            .Where(t => !t.IsAbstract && typeof(SemanticType).IsAssignableFrom(t))
             .Select(t => t.Name)
             .OrderBy(n => n)
             .ToList();
@@ -73,7 +75,13 @@ public class SemanticTypeSerializerTotalityTests
         foreach (var typeName in roundTrips)
         {
             var specimen = CreateSpecimen(typeName);
-            if (specimen == null) continue;
+            if (specimen == null)
+            {
+                // A RoundTrips entry with no specimen would pass vacuously — that is a census hole,
+                // not a pass.
+                failed.Add($"{typeName}: classified RoundTrips but CreateSpecimen has no arm for it");
+                continue;
+            }
 
             var symbol = new FunctionSymbol
             {
@@ -88,8 +96,10 @@ public class SemanticTypeSerializerTotalityTests
                 var cached = SymbolSerializer.Serialize(symbol, "/test.spy");
                 var restored = (FunctionSymbol)SymbolSerializer.Deserialize(
                     cached, new Dictionary<string, Symbol>(StringComparer.Ordinal));
-                if (restored.ReturnType is UnknownType)
-                    failed.Add($"{typeName}: decoded to UnknownType");
+                if (!Equals(specimen, restored.ReturnType))
+                    failed.Add($"{typeName}: decoded to "
+                        + $"{restored.ReturnType?.GetType().Name ?? "null"} "
+                        + $"'{restored.ReturnType?.GetDisplayName()}', not record-equal to the specimen");
             }
             catch (Exception ex)
             {
@@ -97,7 +107,7 @@ public class SemanticTypeSerializerTotalityTests
             }
         }
 
-        failed.Should().BeEmpty("all RoundTrips entries must survive serialization");
+        failed.Should().BeEmpty("all RoundTrips entries must survive serialization record-equal");
     }
 
     private static SemanticType? CreateSpecimen(string typeName) => typeName switch
