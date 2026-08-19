@@ -156,7 +156,23 @@ internal partial class TypeChecker
                 if (boundVoidTarget != null && GetVariableType(boundVoidTarget) is { } keptType
                     && keptType is not UnknownType)
                 {
-                    inferredType = keptType;
+                    // Keeping the type is only legitimate when None is a legal value of it —
+                    // `x: int? = None; x = None` writes an empty optional. For a non-nullable
+                    // binding the kept type silently retyped the write and the emitter produced
+                    // `y = null;` (CS0037 behind SPY0908), so it gets the same SPY0229 refusal as
+                    // the declaration position (#1564; found by ILCompilesPropertyTests).
+                    if (IsAssignable(SemanticType.Void, keptType))
+                    {
+                        inferredType = keptType;
+                    }
+                    else
+                    {
+                        AddError($"Cannot assign 'None' to non-nullable type '{keptType.GetDisplayName()}'",
+                            assignment.LineStart, assignment.ColumnStart,
+                            code: DiagnosticCodes.Semantic.NullabilityViolation,
+                            span: assignment.Value.Span);
+                        return;
+                    }
                 }
                 else if (RefuseUntypedVoidBinding(
                     targetId.Name, assignment.Value, inferredType,

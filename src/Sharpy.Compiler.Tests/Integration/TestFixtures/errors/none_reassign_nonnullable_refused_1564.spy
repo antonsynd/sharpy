@@ -1,0 +1,14 @@
+# Rebinding an existing non-nullable variable with bare None is refused with
+# SPY0229 — the same rule the declaration position applies (#1564). Covers the
+# parameter, non-nullable local, and reference-type shapes; nullable rebinding
+# stays legal (positive control in typed_none_binding_controls_1516).
+
+def run_task(items: int):
+    items = None
+
+
+def main() -> None:
+    y: float = 5.0
+    y = None
+    s: str = "a"
+    s = None
