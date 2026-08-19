@@ -53,6 +53,73 @@ public static class CompilerOptionsFactory
         new Dictionary<string, string>(StringComparer.Ordinal);
 
     /// <summary>
+    /// Public <see cref="ProjectConfig"/> members that <see cref="ForProject"/> deliberately does
+    /// not read, each with the place it reaches the compiler instead. Read by
+    /// <c>ProjectConfigToOptionsConformanceTests</c> (#1554).
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, string> ProjectConfigExemptMembers =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["ProjectFilePath"] =
+                "Project identity; not a compiler option. ProjectCompiler reads it directly "
+                + "from the config for diagnostic paths and file resolution.",
+
+            ["ProjectDirectory"] =
+                "Project identity; not a compiler option. ProjectCompiler reads it directly "
+                + "from the config for relative path resolution and output directory computation.",
+
+            ["RootNamespace"] =
+                "Read directly from config by ProjectCompiler for namespace assignment; "
+                + "ForProject's remarks note that project mode reads this from the config itself, "
+                + "so an options-side value would be inert.",
+
+            ["OutputType"] =
+                "Read directly from config by ProjectCompiler; ForProject's remarks note "
+                + "that project mode reads this from the config itself, so an options-side "
+                + "value would be inert.",
+
+            ["TargetFramework"] =
+                "Used only by the computed OutputPath getter for output directory layout; "
+                + "not a compiler option.",
+
+            ["AssemblyName"] =
+                "Read directly from config by ProjectCompiler; ForProject's remarks note "
+                + "that project mode reads this from the config itself.",
+
+            ["EntryPoint"] =
+                "Read directly from config by ProjectCompiler for entry-point file discovery; "
+                + "not a compiler option.",
+
+            ["SourceFiles"] =
+                "The compile input file list; read directly from config by ProjectCompiler. "
+                + "Not a compiler option — it is the input, not a setting.",
+
+            ["PackageReferences"] =
+                "Resolved per-seam by NuGetResolver in project-mode builds; the resolved "
+                + "assembly paths reach the compiler via References.",
+
+            ["Configuration"] =
+                "Read directly from config by ProjectCompiler for output path computation; "
+                + "ForProject's remarks note that project mode reads this from the config itself.",
+
+            ["OutputPath"] =
+                "Computed getter derived from ProjectDirectory, Configuration, and "
+                + "TargetFramework; no independent value to thread.",
+
+            ["OutputAssemblyPathOverride"] =
+                "Written by the CLI for single-file mode output path placement; "
+                + "read by the computed OutputAssemblyPath getter, not by the options factory.",
+
+            ["UsePrecomputedCodeGenInfo"] =
+                "Read directly from config by ProjectCompiler to control CodeGenInfo "
+                + "materialization; not a compiler option.",
+
+            ["OutputAssemblyPath"] =
+                "Computed virtual getter derived from OutputPath and OutputAssemblyPathOverride; "
+                + "no independent value to thread.",
+        };
+
+    /// <summary>
     /// Options with no surface-specific opinion: exactly <c>new CompilerOptions()</c>. Used by the
     /// <see cref="Compiler"/> and <see cref="CompilerApi"/> constructors/overloads whose callers
     /// supplied nothing, so the compiler's own defaults (exe output, Debug configuration, no
