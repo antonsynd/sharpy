@@ -15,7 +15,10 @@ public class CiFilterCoverageConformanceTests
     private static readonly (string Predicate, string Rationale)[] Exemptions =
     {
         ("Category=Benchmark", "benchmarks run on demand; excluded by every step by design"),
-        ("Category=RandomProperty", "random-property tests belong in /property-stress, not a deterministic CI gate"),
+        ("FullyQualifiedName~MetamorphicCorpusInvarianceTests",
+            "deliberately CI-excluded (documented on both Compiler.Tests steps in dotnet10.yml): " +
+            "spawns a dotnet subprocess per (fixture, transform) pair and draws a fresh sample per " +
+            "run — coverage comes from /property-stress, not a deterministic CI gate"),
     };
 
     [Fact]

@@ -50,14 +50,10 @@ public class PropertySeedDisciplineTests
                 if (invocation.Expression.ToString().EndsWith("GetHashCode") &&
                     invocation.ArgumentList.Arguments.Count == 0)
                 {
-                    var ancestor = invocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-                    if (ancestor != null)
-                    {
-                        var lineSpan = invocation.GetLocation().GetLineSpan();
-                        violations.Add(
-                            $"  {Path.GetFileName(file)}:{lineSpan.StartLinePosition.Line + 1} — " +
-                            "GetHashCode() (process-randomized in .NET; use the CsCheck seed)");
-                    }
+                    var lineSpan = invocation.GetLocation().GetLineSpan();
+                    violations.Add(
+                        $"  {Path.GetFileName(file)}:{lineSpan.StartLinePosition.Line + 1} — " +
+                        "GetHashCode() (process-randomized in .NET; use the CsCheck seed)");
                 }
             }
         }
