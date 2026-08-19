@@ -19,11 +19,25 @@ public class ErrorRecoveryPropertyTests
         _output = output;
     }
 
+    private static Gen<(Module Module, int Seed)> ModuleWithSeed() =>
+        Gen.Select(
+            Gen.Int[1, 3].SelectMany(fuel => GenSharpy.Module(GenContext.Default with { Fuel = fuel })),
+            Gen.Int,
+            (module, seed) => (module, seed));
+
+    private static string Print((Module Module, int Seed) sample)
+        => $"seed {sample.Seed}\n{Sharpy.Compiler.Pretty.Unparser.Unparse(sample.Module)}";
+
     /// <summary>
-    /// Verifies that injecting a single corrupted line into an otherwise valid
+    /// <para>Verifies that injecting a single corrupted line into an otherwise valid
     /// generated program never causes the parser to throw an unhandled exception,
     /// and that error recovery is non-interfering: unmodified top-level definitions
-    /// still survive in the parsed AST. (#726)
+    /// still survive in the parsed AST. (#726)</para>
+    ///
+    /// <para>The corruption index derives from a CsCheck-managed seed so the printed seed
+    /// fully determines the run (#1522, #1439). Before this fix, <c>new Random()</c> with no
+    /// seed meant the printed CsCheck seed could not reproduce the corruption index — re-running
+    /// it reproduced only the module, not the injection point.</para>
     /// </summary>
     [Fact]
     public void Parser_DoesNotCrash_OnMutatedInput()
@@ -32,24 +46,19 @@ public class ErrorRecoveryPropertyTests
         int tested = 0;
         int survived = 0;
 
-        Gen.Int[1, 3].SelectMany(fuel =>
-        {
-            var ctx = GenContext.Default with { Fuel = fuel };
-            return GenSharpy.Module(ctx);
-        }).Sample(module =>
+        ModuleWithSeed().Sample(sample =>
         {
             Interlocked.Increment(ref total);
 
-            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
+            var source = Sharpy.Compiler.Pretty.Unparser.Unparse(sample.Module);
             var lines = source.Split('\n');
             if (lines.Length < 2)
             {
                 return;
             }
 
-            // Record top-level definition names from the original module.
             var originalNames = new HashSet<string>();
-            foreach (var stmt in module.Body)
+            foreach (var stmt in sample.Module.Body)
             {
                 if (stmt is FunctionDef fd)
                 {
@@ -61,8 +70,6 @@ public class ErrorRecoveryPropertyTests
                 }
             }
 
-            // Need at least two top-level definitions to meaningfully test
-            // that corrupting one does not destroy the others.
             if (originalNames.Count < 2)
             {
                 return;
@@ -70,8 +77,7 @@ public class ErrorRecoveryPropertyTests
 
             Interlocked.Increment(ref tested);
 
-            // Corrupt a single line somewhere in the middle of the source.
-            var rng = new Random();
+            var rng = new Random(sample.Seed);
             var lineIdx = rng.Next(1, lines.Length - 1);
             lines[lineIdx] = "!!!GARBAGE!!! @#$% <<<>>>";
             var mutated = string.Join('\n', lines);
@@ -113,7 +119,7 @@ public class ErrorRecoveryPropertyTests
             {
                 Interlocked.Increment(ref survived);
             }
-        }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        }, print: Print, iter: 50);
 
         _output.WriteLine(
             $"Error recovery: generated={total}, tested={tested}, " +
