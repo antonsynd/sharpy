@@ -15,6 +15,7 @@ public class CiFilterCoverageConformanceTests
     private static readonly (string Predicate, string Rationale)[] Exemptions =
     {
         ("Category=Benchmark", "benchmarks run on demand; excluded by every step by design"),
+        ("Category=RandomProperty", "random-property tests belong in /property-stress, not a deterministic CI gate"),
     };
 
     [Fact]
