@@ -33,7 +33,10 @@ namespace Sharpy.Compiler.Tests.Conformance;
 ///   <item><description><b>position</b> — the type-reference positions: <c>annotation</c>,
 ///     <c>baseList</c>, <c>typeTest</c> (<c>isinstance</c>), <c>typeTestCast</c> (<c>as?</c>),
 ///     <c>typeTestExcept</c> (<c>except</c>), <c>constraint</c>, <c>typeAlias</c>,
-///     <c>pattern</c>, plus <c>declSiteAnnotation</c>, where the spelling varies inside the
+///     <c>pattern</c>, <c>nested</c> (a three-segment <c>lib.Registry.Entry</c>, #1523),
+///     <c>valuePattern</c> (<c>case lib.Color.RED:</c>, #1524), <c>value</c> (a constructor
+///     reference, #1182 tiers), <c>call</c> (construction and a type-alias call, #1527), plus
+///     <c>declSiteAnnotation</c>, where the spelling varies inside the
 ///     IMPORTED module rather than
 ///     at the use site (see below). Type-testing is three positions rather than one because #1411
 ///     has two routes: <c>isinstance</c> parses its operand as a <c>MemberAccess</c> and goes
@@ -75,7 +78,7 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// suite, every listed key cites the issue that will drain it, and a listed cell that has started
 /// AGREEING also fails — deleting the line is part of landing the fix.</para>
 ///
-/// <para><b>Baseline and cost.</b> 34 cells, 68 compilations plus the executing subset, ~2.2 s —
+/// <para><b>Baseline and cost.</b> 44 cells, 88 compilations plus the executing subset, ~3 s —
 /// cheap enough for the regular suite, so it carries no <c>GapDiscovery</c> trait. Its first runs
 /// found fourteen divergent cells and every one was a defect: #1445 (a dotted class pattern does
 /// not parse at all), #1446 (a qualified non-generic annotation keeps its dotted name, and outside
@@ -147,6 +150,19 @@ class Box[T]:
 class AppError(Exception):
     def __init__(self, msg: str) -> None:
         super().__init__(msg)
+
+
+class Registry:
+    class Entry:
+        tag: int
+
+        def __init__(self, tag: int) -> None:
+            self.tag = tag
+
+
+enum Color:
+    RED = 1
+    GREEN = 2
 
 
 type Handle = int
@@ -386,6 +402,51 @@ def make() -> {s.Ref("Box")}[int]:
 def main() -> None:
     print(lib.unwrap(lib.make()))
 "), scope => ModuleExportParameterTypeOf(scope, "lib", "unwrap")),
+
+        // ---- nested type (the three-segment walk, #1523) ----
+        //
+        // The qualified spelling appends the module segment in FRONT of an Outer.Inner chain, so
+        // the walk has to cross the module/type boundary once (lib -> Registry, then
+        // NestedTypes for Entry). The bare spelling starts at the imported Outer.
+        new("nested", "plain", s => Two($@"{s.Imports("Registry")}
+
+def main() -> None:
+    e: {s.Ref("Registry")}.Entry = {s.Ref("Registry")}.Entry(9)
+    print(e.tag)
+"), null),
+
+        // ---- value pattern (module-qualified enum member, #1524) ----
+        new("valuePattern", "plain", s => Two($@"{s.Imports("Color")}
+
+def main() -> None:
+    color: {s.Ref("Color")} = {s.Ref("Color")}.RED
+    match color:
+        case {s.Ref("Color")}.RED:
+            print(""red"")
+        case _:
+            print(""other"")
+"), null),
+
+        // ---- value (constructor reference, the #1182 tiers) ----
+        new("value", "plain", s => Two($@"{s.Imports("Circle")}
+
+def main() -> None:
+    mk: () -> {s.Ref("Circle")} = {s.Ref("Circle")}
+    print(mk().sides)
+"), null),
+
+        // ---- call (construction, and a type-alias call via #1527's transparency) ----
+        new("call", "plain", s => Two($@"{s.Imports("Circle")}
+
+def main() -> None:
+    print({s.Ref("Circle")}().sides)
+"), null),
+
+        new("call", "alias", s => Two($@"{s.Imports("Handle")}
+
+def main() -> None:
+    print({s.Ref("Handle")}(""42""))
+"), null),
     };
 
     private static IReadOnlyList<SourceFile> Two(string main)

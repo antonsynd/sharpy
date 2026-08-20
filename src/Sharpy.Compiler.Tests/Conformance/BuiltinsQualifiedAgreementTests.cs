@@ -306,6 +306,18 @@ public class BuiltinsQualifiedAgreementTests
             var qualified = AnalyzeValuePosition(name, qualified: true);
             var agrees = bare.ErrorCodes.SequenceEqual(qualified.ErrorCodes, StringComparer.Ordinal);
 
+            if (DeliberateValueDisagreements.TryGetValue(name, out var expected))
+            {
+                // A deliberate disagreement is asserted POSITIVELY, not exempted: if either
+                // spelling stops producing its designed code — including the two starting to
+                // agree — the design broke and the sweep must say so, not shrug.
+                bare.ErrorCodes.Should().Contain(expected.BareCode,
+                    $"bare '{name}' in value position is designed to draw {expected.BareCode} ({expected.Why})");
+                qualified.ErrorCodes.Should().Contain(expected.QualifiedCode,
+                    $"'builtins.{name}' in value position is designed to draw {expected.QualifiedCode} ({expected.Why})");
+                continue;
+            }
+
             if (KnownValueDisagreements.TryGetValue(name, out var issue))
             {
                 if (agrees)
@@ -335,14 +347,28 @@ public class BuiltinsQualifiedAgreementTests
     /// </summary>
     private static readonly Dictionary<string, string> KnownValueDisagreements = new(StringComparer.Ordinal)
     {
-        // 8 primitive entries DRAINED (#1463): the TryResolveBuiltinsQualifiedType carve-out
-        // became position-aware, so callee position still routes through overload resolution
-        // while value position resolves the type for the constructor-reference tiers.
+        // EMPTY — and it must trend that way. 8 primitive entries DRAINED (#1463): the
+        // TryResolveBuiltinsQualifiedType carve-out became position-aware, so callee position
+        // still routes through overload resolution while value position resolves the type for
+        // the constructor-reference tiers. The former None entry was never a debt at all and
+        // moved to DeliberateValueDisagreements below.
+    };
 
-        // builtins.None is a CPython-matching refusal (SPY0214): bare None produces SPY0227
-        // (VoidType in value position), qualified produces SPY0214 (a literal, not a member).
-        // The disagreement is deliberate — not a defect on the qualified side.
-        ["None"] = "#1463",
+    /// <summary>
+    /// Deliberate, PERMANENT value-position disagreements — not ratchet entries. A ratchet entry
+    /// is a debt that drains when its bug is fixed; these never drain by design, so parking one in
+    /// <see cref="KnownValueDisagreements"/> would create an entry whose stale-check can
+    /// structurally never fire (a vacuous guard) citing an issue that is already closed. Each maps
+    /// a name to the exact codes the design requires of each spelling, and the sweep asserts them
+    /// positively — if the refusal breaks, the sweep goes red.
+    /// </summary>
+    private static readonly Dictionary<string, (string BareCode, string QualifiedCode, string Why)>
+        DeliberateValueDisagreements = new(StringComparer.Ordinal)
+    {
+        // bare None in value position is a VoidType read; builtins.None is refused as a literal,
+        // not a module member — CPython-matching (builtins.None is a SyntaxError there). Ruled in
+        // the 2026-08-18 remediation round, Batch 3 Phase 6 (#1463).
+        ["None"] = ("SPY0227", "SPY0214", "builtins.None is a literal, not a module member — #1463"),
     };
 
     private static string BuildValueSource(string reference) =>
