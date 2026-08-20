@@ -60,7 +60,7 @@ needs `pass` — a comment alone is a parse error (SPY0104).
 | `(x for x in y)` genexps | Do not exist (sync or async) — use a list comprehension |
 | `x = a or default` | `or` returns `bool`, never the operand — use `a ?? default` |
 | `if xs:` / `while xs:` truthiness | Conditions must be `bool` (SPY0220): `if len(xs) > 0:`, `if n != 0:` |
-| `isinstance(x, (A, B))` | SPY0344 — `isinstance(x, A) or isinstance(x, B)` |
+| `isinstance(x, (A, B))` any-of | `(A, B)` means `tuple[A, B]` — use `isinstance(x, A) or isinstance(x, B)` |
 | `x is SomeType` | SPY0349 — `isinstance(x, SomeType)` |
 | `x == None` | Rejected — `x is None` |
 | `obj.__len__()`, `a.__eq__(b)` | Direct dunder calls are errors — use `len(obj)`, `==` |

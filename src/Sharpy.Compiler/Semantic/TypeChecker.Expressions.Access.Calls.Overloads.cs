@@ -1185,7 +1185,7 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Whether the reference names a type being tested for: the type argument of the enclosing type
-    /// test, or one element of the tuple spelling <c>isinstance(x, (int, str))</c>.
+    /// test (including tuple elements, since <c>(A, B)</c> denotes <c>tuple[A, B]</c>).
     /// </summary>
     private bool IsTypeTestTypeArgument(Expression reference)
     {

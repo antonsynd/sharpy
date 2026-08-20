@@ -1587,10 +1587,10 @@ public enum TypeTestLoweringKind
     /// over <see cref="TypeTestLowering.Alternatives"/>:
     /// <c>catch (Base e) when (e is A || e is B)</c> (#1235).
     /// <para>
-    /// This is not the isinstance tuple, which stays refused (SPY0344). The refusal exists because a
-    /// successful <c>isinstance</c> must narrow to one type and a union of types is not spellable;
-    /// an <c>except</c> binding has a principled type to bind at — the same common base
-    /// <c>try[A | B]</c> already uses for its Result error type — so the form is supported here.
+    /// The isinstance tuple form now denotes <c>tuple[A, B]</c> (#1532) — one closed type.
+    /// An <c>except</c> binding has a principled type to bind at — the same common base
+    /// <c>try[A | B]</c> already uses for its Result error type — so the multi-catch form is
+    /// supported here and structurally different from the isinstance case.
     /// </para>
     /// </summary>
     ExceptionAlternation

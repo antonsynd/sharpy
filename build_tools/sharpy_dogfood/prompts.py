@@ -738,7 +738,7 @@ FORBIDDEN_FEATURES_SECTION = """\
 ### ❌ FORBIDDEN - Do NOT use these features (not yet implemented or restricted):
 - **NO main() call at module level**: Do NOT write `main()` after defining it - it's auto-invoked by runtime
 - **NO multi-argument print**: `print(a, b, c)` - use multiple `print()` calls
-- **NO isinstance with tuples**: `isinstance(x, (int, str))` - use `or` instead
+- **NO isinstance any-of tuples**: `isinstance(x, (int, str))` means `tuple[int, str]`, not any-of — use `isinstance(x, int) or isinstance(x, str)` for any-of
 - **NO @interface decorator**: `interface` is a keyword, use `interface IName:` syntax
 - **NO combining @abstract and @virtual**: abstract methods are inherently virtual in .NET — use only `@abstract`
 - **NO bare string indexing in comparisons/assignments**: `s[i] == "a"` or `c: str = s[i]` fails — always wrap with `str()`: `str(s[i]) == "a"`, `c: str = str(s[i])`
