@@ -97,6 +97,7 @@ internal partial class ProjectCompiler
             using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.Materialization))
             {
                 compilationPipeline.MaterializeTypeInfo();
+                compilationPipeline.FreezeTypeInfo();
             }
             ct.ThrowIfCancellationRequested();
 

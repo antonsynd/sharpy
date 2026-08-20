@@ -306,15 +306,21 @@ internal partial class ProjectCompiler
             compilationPipeline.MaterializeTypeInfo();
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Phase 5b: Execute source generators (if any)
+            // Phase 5b: Execute source generators (if any).
+            // Runs after materialization (Stage 1's generator-assembly emit reads materialized
+            // CodeGenInfo) but before the freeze — generated symbols' CodeGenInfo is written
+            // legally by IntegrateGeneratedSource's TypeCheck, then re-materialized (#1535).
             if (generatorPartition.HasGenerators)
             {
                 if (!ExecuteGeneratorPipeline(generatorPartition, compilationPipeline, config, cancellationToken))
                 {
                     return CreateFailureResult();
                 }
+                compilationPipeline.MaterializeTypeInfo();
                 cancellationToken.ThrowIfCancellationRequested();
             }
+
+            compilationPipeline.FreezeTypeInfo();
 
             // Phase 6: Generate C# code for all files
             var generatedCode = GenerateCode(config);

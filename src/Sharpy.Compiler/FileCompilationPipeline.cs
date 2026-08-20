@@ -167,8 +167,9 @@ internal class FileCompilationPipeline
 
     /// <summary>
     /// Materializes CodeGenInfo and VariableTypes onto symbol properties, verifies
-    /// consistency via dual-write assertions, and freezes the data.
-    /// Call this after all type checking has completed successfully.
+    /// consistency via dual-write assertions. Idempotent — safe to call more than once
+    /// (re-copies stores onto symbols, including entries added since the last call).
+    /// Call <see cref="FreezeTypeInfo"/> after the last materialization to freeze the data.
     /// </summary>
     public void MaterializeTypeInfo()
     {
@@ -176,6 +177,15 @@ internal class FileCompilationPipeline
         _semanticBinding.MaterializeVariableTypes();
         DualWriteAssertions.AssertCodeGenInfoConsistency(_symbolTable, _semanticBinding);
         DualWriteAssertions.AssertVariableTypeConsistency(_symbolTable, _semanticBinding);
+    }
+
+    /// <summary>
+    /// Freezes variable types and CodeGenInfo. After this call, any write to either store
+    /// throws <see cref="Semantic.PhaseViolationException"/>. Must be called after the last
+    /// <see cref="MaterializeTypeInfo"/> (#1535).
+    /// </summary>
+    public void FreezeTypeInfo()
+    {
         _semanticBinding.FreezeVariableTypes();
         _semanticBinding.FreezeCodeGenInfo();
     }
