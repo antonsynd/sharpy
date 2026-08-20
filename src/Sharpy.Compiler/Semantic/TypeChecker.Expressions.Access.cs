@@ -629,6 +629,11 @@ internal partial class TypeChecker
                 return userGenericMember;
         }
 
+        // Refuse CLR-only members on builtin exception receivers before the BCL bridge
+        // resolves them — both snake_case and verbatim spellings (#1515).
+        if (TryRefuseBuiltinExceptionMember(memberAccess, memberLookupType))
+            return SemanticType.Unknown;
+
         // Intentional Unknown without error for non-UserDefinedType member access:
         // A RAW BCL member on a builtin receiver is typed from its reflected signature (#1291).
         // `s.to_upper()` is not part of Sharpy's str API — it is System.String.ToUpper reached by
@@ -764,6 +769,19 @@ internal partial class TypeChecker
         var inheritedField = definition.Fields.FirstOrDefault(f => f.Name == member);
         if (inheritedField != null)
             return Substitute(GetVariableType(inheritedField));
+
+        // Refuse inherited CLR-only members on builtin exception ancestors (#1515).
+        if (definition.ClrType != null
+            && Discovery.BuiltinExceptionSurface.IsRefusedMember(definition.ClrType, member))
+        {
+            var steer = Discovery.BuiltinExceptionSurface.RefusalSteer(member);
+            AddError(
+                $"'{member}' is not part of the Python exception surface of '{receiver.Name}'; {steer}",
+                memberAccess.LineStart, memberAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.BuiltinExceptionClrMemberRefused,
+                span: memberAccess.Span);
+            return SemanticType.Unknown;
+        }
 
         // Nothing discovered on the ancestor. The #1141 absence proof decides between a refusal and the
         // permissive channel, measured against the ancestor instantiated at the written arguments — the
@@ -1025,6 +1043,35 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Returns true (and emits SPY0215) when <paramref name="memberAccess"/> references a CLR-only
+    /// member on a builtin exception receiver — both snake_case and verbatim spellings, on both
+    /// <c>BuiltinType</c> and <c>UserDefinedType</c> receivers whose CLR type is a builtin exception
+    /// (#1515). The check covers reads, writes, and calls because every resolution route converges
+    /// through <see cref="CheckMemberAccessCore"/>.
+    /// </summary>
+    private bool TryRefuseBuiltinExceptionMember(MemberAccess memberAccess, SemanticType receiverType)
+    {
+        var clrType = receiverType switch
+        {
+            BuiltinType bt => bt.ClrType,
+            UserDefinedType udt => (udt.Symbol as TypeSymbol)?.ClrType,
+            _ => null
+        };
+
+        if (clrType == null || !Discovery.BuiltinExceptionSurface.IsRefusedMember(clrType, memberAccess.Member))
+            return false;
+
+        var steer = Discovery.BuiltinExceptionSurface.RefusalSteer(memberAccess.Member);
+        AddError(
+            $"'{memberAccess.Member}' is not part of the Python exception surface of " +
+            $"'{receiverType.GetDisplayName()}'; {steer}",
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.BuiltinExceptionClrMemberRefused,
+            span: memberAccess.Span);
+        return true;
     }
 
     /// <summary>
@@ -1506,6 +1553,14 @@ internal partial class TypeChecker
         }
 
         suggestion = EditDistance.FindClosestMatch(memberName, clrNames!);
+
+        // Don't suggest refused CLR names on builtin exception receivers (#1515).
+        if (suggestion != null && ownerSymbol.ClrType != null
+            && Discovery.BuiltinExceptionSurface.IsRefusedMember(ownerSymbol.ClrType, suggestion))
+        {
+            suggestion = null;
+        }
+
         return true;
     }
 
@@ -1904,6 +1959,10 @@ internal partial class TypeChecker
         // Resolve a method name first (preserves the #705/#974 acronym-casing behavior), falling
         // back to a property name so a verbatim CLR property (e.g. socket's lowercase `type`) is
         // emitted unmangled instead of forward-mangled to `Type` (CS1061, #1093).
+        // Don't materialize CLR names for refused members on builtin exceptions (#1515).
+        if (Discovery.BuiltinExceptionSurface.IsRefusedMember(clrType, memberAccess.Member))
+            return;
+
         var clrName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member)
             ?? Discovery.ClrTypeHelper.ResolveClrPropertyName(clrType, memberAccess.Member);
         if (clrName != null)
