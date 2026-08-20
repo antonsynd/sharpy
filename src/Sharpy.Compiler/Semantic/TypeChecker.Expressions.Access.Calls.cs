@@ -2311,19 +2311,18 @@ internal partial class TypeChecker
         if (overloads == null || overloads.Count <= 1)
             return null;
 
-        // Shadow check: if a user-defined function with the same name exists and it
-        // was NOT imported from the same source as the overloads, it shadows them.
-        // Skip overload resolution so the normal call path uses the user's function.
+        // Shadow check: if the bound symbol IS one of the overloads (or a clone of one via
+        // OriginSymbol), it is not shadowed and overload resolution proceeds. Otherwise a
+        // local definition shadows the imported overloads (#1525). Uses reference identity
+        // first (fast path); for re-export clones across object graphs, falls back to
+        // comparing the root declaration's file path — strict, no null tolerance.
         var funcSymbol = _symbolTable.Lookup(id.Name) as FunctionSymbol;
-        if (funcSymbol != null)
+        if (funcSymbol != null
+            && !overloads.Any(o => ReferenceEquals(o, funcSymbol)
+                || ReferenceEquals(o, funcSymbol.OriginSymbol))
+            && !SharesDeclaringFileViaOrigin(funcSymbol, overloads[0]))
         {
-            // Check if funcSymbol is from a different source than the overloads.
-            // Imported overloads share a DeclaringFilePath; a local shadow won't.
-            // Guard against null paths (e.g. CLR-discovered symbols) to avoid
-            // null == null being treated as "same source".
-            var overloadPath = overloads[0].DeclaringFilePath;
-            if (overloadPath != null && funcSymbol.DeclaringFilePath != overloadPath)
-                return null;
+            return null;
         }
 
         var kwNames = ExtractKeywordArgNames(call);
@@ -2343,6 +2342,20 @@ internal partial class TypeChecker
         RecordResolvedCallTarget(call, matchingOverload);
 
         return InferGenericReturnType(matchingOverload, argTypes, call);
+    }
+
+    private static bool SharesDeclaringFileViaOrigin(FunctionSymbol a, FunctionSymbol b)
+    {
+        var rootA = RootOrigin(a);
+        var rootB = RootOrigin(b);
+        return rootA.DeclaringFilePath != null && rootA.DeclaringFilePath == rootB.DeclaringFilePath;
+
+        static FunctionSymbol RootOrigin(FunctionSymbol s)
+        {
+            while (s.OriginSymbol is FunctionSymbol origin)
+                s = origin;
+            return s;
+        }
     }
 
     /// <summary>

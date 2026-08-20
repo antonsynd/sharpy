@@ -226,6 +226,13 @@ internal partial class ImportResolver
                                 if (registryBinding != null)
                                     symbol = registryBinding.Value.Symbol;
 
+                                // Resolve overloads BEFORE cloning so the clone's OriginSymbol
+                                // can point into the same object graph the overload list uses —
+                                // the shadow check in ResolveImportedFunctionOverload needs
+                                // reference identity between the two (#1525).
+                                var importedOverloads = registryBinding?.Overloads
+                                    ?? OverloadsFor(moduleInfo, lookupName);
+
                                 if (importAlias.AsName != null)
                                 {
                                     // The alias binds a different SPELLING of the same builtin, so the
@@ -235,6 +242,11 @@ internal partial class ImportResolver
                                     symbol = CloneSymbolWithName(symbol, registerName);
                                     if (registryBinding != null)
                                         symbol = symbol with { BuiltinAliasOf = registryBinding.Value.Symbol };
+
+                                    // Stamp OriginSymbol from the overload list so identity holds
+                                    // across module-loader vs. module-scope object graphs.
+                                    if (symbol is FunctionSymbol clonedFunc && importedOverloads is { Count: > 0 })
+                                        symbol = clonedFunc with { OriginSymbol = importedOverloads[0] };
                                 }
                                 var defined = TryDefineFromImport(symbolTable, symbol, registerName, sourceModule,
                                     importedSymbolSources, fromImport, importAlias);
@@ -243,8 +255,6 @@ internal partial class ImportResolver
                                     _deferredCycleSymbols.Add(registerName);
 
                                 // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
-                                var importedOverloads = registryBinding?.Overloads
-                                    ?? OverloadsFor(moduleInfo, lookupName);
                                 if (defined && importedOverloads is { Count: > 1 })
                                 {
                                     symbolTable.DefineFunctionOverloads(registerName, importedOverloads);

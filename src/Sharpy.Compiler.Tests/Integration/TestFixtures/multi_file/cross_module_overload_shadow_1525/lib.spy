@@ -1,0 +1,5 @@
+def describe(x: int) -> str:
+    return "lib-int:" + str(x)
+
+def describe(x: str) -> str:
+    return "lib-str:" + x

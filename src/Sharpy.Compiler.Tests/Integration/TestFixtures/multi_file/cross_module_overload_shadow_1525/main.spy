@@ -1,0 +1,8 @@
+# #1525: a local function with the same name shadows the imported overloads.
+from lib import describe
+
+def describe(x: int) -> str:
+    return "local:" + str(x)
+
+def main():
+    print(describe(42))

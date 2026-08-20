@@ -102,6 +102,13 @@ public abstract record Symbol
     public Symbol? BuiltinAliasOf { get; init; }
 
     /// <summary>
+    /// The symbol this one was cloned from at an import or alias boundary; identity lives here,
+    /// spelling in <see cref="Name"/>. Used for shadow dispatch: a bound symbol that IS one of
+    /// the overloads (or a clone of one) is not shadowed (#1525).
+    /// </summary>
+    public Symbol? OriginSymbol { get; init; }
+
+    /// <summary>
     /// Indicates if this symbol is re-exported from another module (e.g., via "from .submodule import func")
     /// </summary>
     public bool IsReExport { get; init; }

@@ -118,7 +118,8 @@ internal partial class ImportResolver
                 DeclarationLine = fromImport.LineStart,
                 DeclarationColumn = fromImport.ColumnStart,
                 IsReExport = true,
-                OriginalModule = fromImport.Module
+                OriginalModule = fromImport.Module,
+                OriginSymbol = originalSymbol
             },
             TypeSymbol type => CreateReExportedTypeSymbol(type, fromImport, effectiveName),
             // Carry unless listed — the same shape as the function arm above (#1440). The hand-built
@@ -133,7 +134,8 @@ internal partial class ImportResolver
                 DeclarationLine = fromImport.LineStart,
                 DeclarationColumn = fromImport.ColumnStart,
                 IsReExport = true,
-                OriginalModule = fromImport.Module
+                OriginalModule = fromImport.Module,
+                OriginSymbol = originalSymbol
             },
             _ => originalSymbol
         };
@@ -273,10 +275,10 @@ internal partial class ImportResolver
     {
         return symbol switch
         {
-            FunctionSymbol func => func with { Name = newName },
-            TypeSymbol type => type with { Name = newName },
-            VariableSymbol var => var with { Name = newName },
-            ModuleSymbol mod => mod with { Name = newName },
+            FunctionSymbol func => func with { Name = newName, OriginSymbol = symbol },
+            TypeSymbol type => type with { Name = newName, OriginSymbol = symbol },
+            VariableSymbol var => var with { Name = newName, OriginSymbol = symbol },
+            ModuleSymbol mod => mod with { Name = newName, OriginSymbol = symbol },
             _ => symbol
         };
     }
