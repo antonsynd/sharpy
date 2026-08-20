@@ -726,9 +726,8 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Computes synthesized interfaces using SynthesisAnalyzer (the single source of truth)
-    /// and converts them to Roslyn BaseTypeSyntax entries for class/struct declarations.
-    /// Avoids duplicates if the user already explicitly listed the interface.
+    /// Reads synthesized interfaces from CodeGenInfo (computed in semantic analysis) and converts
+    /// them to Roslyn BaseTypeSyntax entries for class/struct declarations (#1521).
     /// </summary>
     private List<BaseTypeSyntax> CollectSynthesizedInterfaces(
         IReadOnlyList<Statement> body,
@@ -737,47 +736,15 @@ internal partial class RoslynEmitter
         string originalTypeName)
     {
         var result = new List<BaseTypeSyntax>();
-        var explicitNames = new HashSet<string>(explicitBaseClasses.Select(bc => bc.Name));
 
-        // Look up the TypeSymbol to use SynthesisAnalyzer
         var typeSymbol = _context.LookupSymbol(originalTypeName) as TypeSymbol;
-        if (typeSymbol == null)
+        var synthesized = typeSymbol?.CodeGenInfo?.SynthesizedInterfaces;
+        if (synthesized == null || synthesized.Count == 0)
             return result;
-
-        var synthesized = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
-
-        // Find AST nodes for diagnostic line/column reporting
-        var dunderFuncs = new Dictionary<string, FunctionDef>();
-        foreach (var stmt in body)
-        {
-            if (stmt is FunctionDef fd && DunderMapping.IsDunderMethod(fd.Name) && !dunderFuncs.ContainsKey(fd.Name))
-                dunderFuncs[fd.Name] = fd;
-        }
 
         foreach (var info in synthesized)
         {
-            // Skip if user already explicitly listed this interface
-            if (explicitNames.Contains(info.InterfaceName))
-                continue;
-
-            var baseType = ConvertSynthesizedInterfaceToBaseType(info);
-            result.Add(baseType);
-            explicitNames.Add(info.InterfaceName);
-
-            // Emit SPY1001 info diagnostic
-            var displayName = info.TypeArgs.Length > 0
-                ? $"{info.InterfaceName}<{string.Join(", ", info.TypeArgs.Select(t => t.GetDisplayName()))}>"
-                : info.InterfaceName;
-            var qualifiedName = info.Namespace.Length > 0
-                ? $"{info.Namespace}.{displayName}"
-                : displayName;
-
-            dunderFuncs.TryGetValue(info.TriggeringDunder, out var triggeringFunc);
-            _context.AddInfo(
-                $"Type '{className}' implicitly implements '{qualifiedName}' via '{info.TriggeringDunder}'.",
-                DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
-                triggeringFunc?.LineStart ?? 0,
-                triggeringFunc?.ColumnStart ?? 0);
+            result.Add(ConvertSynthesizedInterfaceToBaseType(info));
         }
 
         return result;

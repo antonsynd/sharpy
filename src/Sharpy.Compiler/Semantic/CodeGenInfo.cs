@@ -125,6 +125,13 @@ public sealed record CodeGenInfo
     public IReadOnlyList<SelfInterfaceBridgeSpec>? SelfInterfaceBridges { get; init; }
 
     /// <summary>
+    /// Protocol interfaces synthesized by <see cref="SynthesisAnalyzer"/> for this type declaration,
+    /// pre-filtered against the explicit base list. Computed in semantic analysis and frozen here
+    /// so the emitter reads the list without re-running the analyzer (#1521).
+    /// </summary>
+    public IReadOnlyList<SynthesizedInterfaceInfo>? SynthesizedInterfaces { get; init; }
+
+    /// <summary>
     /// Get the versioned C# name (includes version suffix for redeclared variables).
     /// </summary>
     public string GetVersionedCSharpName()

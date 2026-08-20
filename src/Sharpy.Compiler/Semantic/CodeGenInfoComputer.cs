@@ -251,6 +251,8 @@ internal class CodeGenInfoComputer
                 OriginalName = classDef.Name
             });
 
+            ComputeSynthesizedInterfaces(typeSymbol, classDef.BaseClasses, classDef.Body);
+
             // Process class members
             ProcessTypeMembers(typeSymbol, classDef.Body);
             DetectMemberCollisions(typeSymbol, classDef.Body);
@@ -267,6 +269,8 @@ internal class CodeGenInfoComputer
                 CSharpName = NameCasing.ResolveType(structDef.Name, structDef.IsNameBacktickEscaped),
                 OriginalName = structDef.Name
             });
+
+            ComputeSynthesizedInterfaces(typeSymbol, structDef.BaseClasses, structDef.Body);
 
             ProcessTypeMembers(typeSymbol, structDef.Body);
             DetectMemberCollisions(typeSymbol, structDef.Body);
@@ -391,6 +395,54 @@ internal class CodeGenInfoComputer
         }
 
         return false;
+    }
+
+    private void ComputeSynthesizedInterfaces(
+        TypeSymbol typeSymbol,
+        IReadOnlyList<TypeAnnotation> explicitBaseClasses,
+        IReadOnlyList<Statement> body)
+    {
+        var synthesized = SynthesisAnalyzer.ComputeSynthesizedInterfaces(typeSymbol);
+        if (synthesized.Count == 0)
+            return;
+
+        var explicitNames = new HashSet<string>(explicitBaseClasses.Select(bc => bc.Name));
+        var filtered = new List<SynthesizedInterfaceInfo>();
+
+        var dunderFuncs = new Dictionary<string, FunctionDef>();
+        foreach (var stmt in body)
+        {
+            if (stmt is FunctionDef funcDef && DunderDetector.IsDunderMethod(funcDef.Name) && !dunderFuncs.ContainsKey(funcDef.Name))
+                dunderFuncs[funcDef.Name] = funcDef;
+        }
+
+        foreach (var info in synthesized)
+        {
+            if (explicitNames.Contains(info.InterfaceName))
+                continue;
+
+            filtered.Add(info);
+            explicitNames.Add(info.InterfaceName);
+
+            var displayName = info.TypeArgs.Length > 0
+                ? $"{info.InterfaceName}<{string.Join(", ", info.TypeArgs.Select(t => t.GetDisplayName()))}>"
+                : info.InterfaceName;
+            var qualifiedName = info.Namespace.Length > 0
+                ? $"{info.Namespace}.{displayName}"
+                : displayName;
+
+            dunderFuncs.TryGetValue(info.TriggeringDunder, out var triggeringFunc);
+            _diagnostics.AddInfo(
+                $"Type '{typeSymbol.Name}' implicitly implements '{qualifiedName}' via '{info.TriggeringDunder}'.",
+                triggeringFunc?.LineStart ?? 0,
+                triggeringFunc?.ColumnStart ?? 0,
+                _sourceFilePath,
+                code: DiagnosticCodes.Info.ImplicitInterfaceSynthesis,
+                phase: CompilerPhase.TypeChecking);
+        }
+
+        if (filtered.Count > 0)
+            _semanticBinding.SetSynthesizedInterfaces(typeSymbol, filtered);
     }
 
     private void ProcessFunctionDef(FunctionDef funcDef, bool isModuleLevel)

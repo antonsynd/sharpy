@@ -71,6 +71,11 @@ public class SemanticBinding
     private readonly ConcurrentDictionary<Symbol, IReadOnlyList<SelfInterfaceBridgeSpec>> _selfInterfaceBridges =
         new(ReferenceEqualityComparer.Instance);
 
+    // #1521: synthesized protocol interfaces per type declaration. Written by CodeGenInfoComputer
+    // during the compute pass; bridged onto CodeGenInfo.SynthesizedInterfaces at MaterializeCodeGenInfo.
+    private readonly ConcurrentDictionary<Symbol, IReadOnlyList<SynthesizedInterfaceInfo>> _synthesizedInterfaces =
+        new(ReferenceEqualityComparer.Instance);
+
     // Maps variable symbols to their resolved types
     private readonly ConcurrentDictionary<VariableSymbol, SemanticType> _variableTypes =
         new(ReferenceEqualityComparer.Instance);
@@ -254,6 +259,18 @@ public class SemanticBinding
     /// </summary>
     public IReadOnlyList<SelfInterfaceBridgeSpec>? GetSelfInterfaceBridges(Symbol symbol)
         => _selfInterfaceBridges.TryGetValue(symbol, out var bridges) ? bridges : null;
+
+    public void SetSynthesizedInterfaces(Symbol symbol, IReadOnlyList<SynthesizedInterfaceInfo> interfaces)
+    {
+        if (_codeGenInfoFrozen)
+        {
+            AssertNotFrozen("CodeGenInfo", symbol.Name);
+        }
+        _synthesizedInterfaces[symbol] = interfaces;
+    }
+
+    public IReadOnlyList<SynthesizedInterfaceInfo>? GetSynthesizedInterfaces(Symbol symbol)
+        => _synthesizedInterfaces.TryGetValue(symbol, out var ifaces) ? ifaces : null;
 
     #endregion
 
@@ -442,6 +459,12 @@ public class SemanticBinding
                 && _selfInterfaceBridges.TryGetValue(symbol, out var bridges))
                 effective = effective with { SelfInterfaceBridges = bridges };
 
+            // Bridge synthesized protocol interfaces (#1521): the analyzer's result is frozen so
+            // the emitter reads it without re-running SynthesisAnalyzer.
+            if (effective.SynthesizedInterfaces is null
+                && _synthesizedInterfaces.TryGetValue(symbol, out var synthesized))
+                effective = effective with { SynthesizedInterfaces = synthesized };
+
             symbol.CodeGenInfo = effective;
         }
     }
@@ -473,6 +496,9 @@ public class SemanticBinding
         // bridged at MaterializeCodeGenInfo on the project-level binding, after this merge.
         foreach (var (symbol, bridges) in other._selfInterfaceBridges)
             _selfInterfaceBridges.TryAdd(symbol, bridges);
+
+        foreach (var (symbol, ifaces) in other._synthesizedInterfaces)
+            _synthesizedInterfaces.TryAdd(symbol, ifaces);
 
         foreach (var (symbol, type) in other._variableTypes)
             _variableTypes.TryAdd(symbol, type);

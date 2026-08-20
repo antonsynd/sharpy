@@ -129,10 +129,7 @@ public class EmitterCarrierOnlyConformanceTests
     /// five-substring predecessor scan reported green.</para>
     /// </summary>
     private static readonly (string File, string Type, int Count, string Issue)[] Ratchet =
-    {
-        ("RoslynEmitter.TypeDeclarations.cs", "SynthesisAnalyzer", 1, "#1521"),
-        ("RoslynEmitter.TypeDeclarations.cs", "SynthesizedInterfaceInfo", 1, "#1521"),
-    };
+        Array.Empty<(string, string, int, string)>();
 
     // ---- the guard ---------------------------------------------------------------------------
 
