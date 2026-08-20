@@ -20,7 +20,7 @@ def mkdtemp(prefix: str = "tmp") -> str:
         Directory.create_directory(full_path)
         return full_path
     except Exception as ex:
-        raise OSError("Failed to create temporary directory: " + ex.Message)
+        raise OSError("Failed to create temporary directory: " + str(ex))
 
 def mkstemp(prefix: str = "tmp", suffix: str = "") -> tuple[int, str]:
     """Create and return a unique temporary file."""
@@ -31,7 +31,7 @@ def mkstemp(prefix: str = "tmp", suffix: str = "") -> tuple[int, str]:
         File.write_all_text(full_path, "")
         return (0, full_path)
     except Exception as ex:
-        raise OSError("Failed to create temporary file: " + ex.Message)
+        raise OSError("Failed to create temporary file: " + str(ex))
 
 class NamedTemporaryFile:
     """A temporary file with a visible name, deleted on close by default."""

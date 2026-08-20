@@ -47,7 +47,7 @@ namespace Sharpy
             }
             catch (global::System.Exception ex)
             {
-                throw new global::Sharpy.OSError("Failed to create temporary directory: " + ex.Message);
+                throw new global::Sharpy.OSError("Failed to create temporary directory: " + global::Sharpy.Builtins.Str(ex));
             }
         }
 
@@ -66,7 +66,7 @@ namespace Sharpy
             }
             catch (global::System.Exception ex)
             {
-                throw new global::Sharpy.OSError("Failed to create temporary file: " + ex.Message);
+                throw new global::Sharpy.OSError("Failed to create temporary file: " + global::Sharpy.Builtins.Str(ex));
             }
         }
 
