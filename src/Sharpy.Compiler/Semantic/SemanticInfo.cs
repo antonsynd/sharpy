@@ -166,6 +166,12 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Pattern, TypeSymbol> _patternUnionCases =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map MemberAccessPatterns to their resolved type symbol + the index of the type
+    // segment in the Parts array. Recorded by CheckMemberAccessPattern so
+    // GenerateMemberAccessValue reads the materialized fact (#1524, Rule 2).
+    private readonly ConcurrentDictionary<MemberAccessPattern, (TypeSymbol TypeSymbol, int TypeIndex)> _patternMemberAccessResolutions =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map BindingPatterns to constant VariableSymbols when the identifier resolves
     // to a module-level Final/const variable (RFC 3535 — constants in match patterns)
     private readonly ConcurrentDictionary<Pattern, VariableSymbol> _patternConstants =
@@ -714,6 +720,16 @@ public class SemanticInfo : ISemanticQuery
     public TypeSymbol? GetPatternUnionCase(Pattern pattern)
     {
         return _patternUnionCases.TryGetValue(pattern, out var symbol) ? symbol : null;
+    }
+
+    public void SetPatternMemberAccessResolution(MemberAccessPattern pattern, TypeSymbol typeSymbol, int typeIndex)
+    {
+        _patternMemberAccessResolutions[pattern] = (typeSymbol, typeIndex);
+    }
+
+    public (TypeSymbol TypeSymbol, int TypeIndex)? GetPatternMemberAccessResolution(MemberAccessPattern pattern)
+    {
+        return _patternMemberAccessResolutions.TryGetValue(pattern, out var resolution) ? resolution : null;
     }
 
     /// <summary>
@@ -1266,6 +1282,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._patternUnionCases)
             _patternUnionCases.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._patternMemberAccessResolutions)
+            _patternMemberAccessResolutions.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._patternConstants)
             _patternConstants.TryAdd(kvp.Key, kvp.Value);

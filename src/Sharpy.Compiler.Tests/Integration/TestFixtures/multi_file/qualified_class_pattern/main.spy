@@ -3,8 +3,8 @@
 # so a module qualifier changed whether the program parsed at all.
 #
 # `case Color.RED:` is the negative control: a dotted name with NO parens still parses as a value
-# pattern rather than being swept into the class-pattern arm. It is written bare because the
-# module-qualified spelling `case lib.Color.RED:` does not resolve — see TODO(#1524).
+# pattern rather than being swept into the class-pattern arm. Both bare and module-qualified
+# spellings work (#1524).
 import lib
 from lib import Circle
 from lib import Color
@@ -29,5 +29,12 @@ def main() -> None:
     match color:
         case Color.RED:
             print("red")
+        case _:
+            print("other")
+
+    q_color: lib.Color = lib.Color.GREEN
+    match q_color:
+        case lib.Color.GREEN:
+            print("qualified green")
         case _:
             print("other")

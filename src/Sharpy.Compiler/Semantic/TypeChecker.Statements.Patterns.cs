@@ -932,24 +932,61 @@ internal partial class TypeChecker
     /// </summary>
     private void CheckMemberAccessPattern(MemberAccessPattern memberAccess, SemanticType scrutineeType)
     {
-        // Resolve the dotted path as a member access (e.g., Color.RED).
-        // Look up the first part as a type, then resolve subsequent parts as fields/members.
-        var typeName = memberAccess.Parts[0];
-        var typeSymbol = _symbolTable.Lookup(typeName) as TypeSymbol;
+        // Resolve the dotted path. Consume leading MODULE segments first (so
+        // `lib.Color.RED` works like `Color.RED` after `from lib import Color`), then
+        // read the remainder as <Type>.<Member> (#1524).
+        TypeSymbol? typeSymbol = null;
+        int typeIndex = 0;
+
+        var firstSymbol = _symbolTable.Lookup(memberAccess.Parts[0]);
+        if (firstSymbol is TypeSymbol ts)
+        {
+            typeSymbol = ts;
+            typeIndex = 0;
+        }
+        else if (firstSymbol is ModuleSymbol moduleSymbol)
+        {
+            // Walk module segments until we find a type.
+            var current = moduleSymbol;
+            for (int i = 1; i < memberAccess.Parts.Length; i++)
+            {
+                if (current.Exports.TryGetValue(memberAccess.Parts[i], out var exported))
+                {
+                    if (exported is TypeSymbol exportedType)
+                    {
+                        typeSymbol = exportedType;
+                        typeIndex = i;
+                        break;
+                    }
+                    if (exported is ModuleSymbol nestedModule)
+                    {
+                        current = nestedModule;
+                        continue;
+                    }
+                }
+                break;
+            }
+        }
+
         if (typeSymbol == null)
         {
             AddError(
-                $"Undefined type '{typeName}' in pattern",
+                $"Undefined type '{memberAccess.Parts[0]}' in pattern",
                 memberAccess.LineStart, memberAccess.ColumnStart,
                 code: DiagnosticCodes.Semantic.UndefinedType,
                 span: memberAccess.Span);
             return;
         }
 
+        _semanticInfo.SetPatternMemberAccessResolution(memberAccess, typeSymbol, typeIndex);
+
+        // The member name is the part AFTER the type.
+        int memberStartIndex = typeIndex + 1;
+
         // Check if this is a union case pattern (e.g., Option.None, Result.Ok)
-        if (typeSymbol.TypeKind == TypeKind.Union && memberAccess.Parts.Length == 2)
+        if (typeSymbol.TypeKind == TypeKind.Union && memberAccess.Parts.Length == memberStartIndex + 1)
         {
-            var caseName = memberAccess.Parts[1];
+            var caseName = memberAccess.Parts[memberStartIndex];
             var caseSymbol = typeSymbol.UnionCases.FirstOrDefault(c => c.Name == caseName);
             if (caseSymbol != null)
             {
@@ -968,22 +1005,20 @@ internal partial class TypeChecker
         }
 
         // Check if this is an enum member pattern (e.g., Color.RED)
-        if (typeSymbol.TypeKind == TypeKind.Enum && memberAccess.Parts.Length == 2)
+        if (typeSymbol.TypeKind == TypeKind.Enum && memberAccess.Parts.Length == memberStartIndex + 1)
         {
-            var memberName = memberAccess.Parts[1];
+            var memberName = memberAccess.Parts[memberStartIndex];
             var enumField = typeSymbol.Fields.FirstOrDefault(f => f.Name == memberName);
             if (enumField != null)
             {
-                // Verify the enum type matches the scrutinee type
                 if (scrutineeType is UserDefinedType udt && udt.Symbol == typeSymbol)
                 {
-                    // Valid enum member pattern matching the scrutinee
                     return;
                 }
                 else
                 {
                     AddError(
-                        $"Enum member '{typeName}.{memberName}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                        $"Enum member '{typeSymbol.Name}.{memberName}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
                         memberAccess.LineStart, memberAccess.ColumnStart,
                         code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: memberAccess.Span);
@@ -1003,7 +1038,7 @@ internal partial class TypeChecker
 
         // Resolve remaining parts as field or property access
         SemanticType? resolvedType = null;
-        for (int i = 1; i < memberAccess.Parts.Length; i++)
+        for (int i = memberStartIndex; i < memberAccess.Parts.Length; i++)
         {
             var fieldName = memberAccess.Parts[i];
             var field = typeSymbol.Fields.FirstOrDefault(f => f.Name == fieldName);
@@ -1021,7 +1056,7 @@ internal partial class TypeChecker
                 else
                 {
                     AddError(
-                        $"Type '{typeName}' has no member '{fieldName}'",
+                        $"Type '{typeSymbol.Name}' has no member '{fieldName}'",
                         memberAccess.LineStart, memberAccess.ColumnStart,
                         code: DiagnosticCodes.Semantic.UndefinedMember,
                         span: memberAccess.Span);

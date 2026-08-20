@@ -109,22 +109,33 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateMemberAccessValue(MemberAccessPattern memberAccess)
     {
-        // Build member access expression: Color.RED -> Color.Red
-        // Type name is preserved as-is (ToTypeName), member names use context-appropriate casing
-        ExpressionSyntax expr = IdentifierName(
-            NameMangler.Transform(memberAccess.Parts[0], NameContext.Type));
+        // Read the resolution the TypeChecker recorded: the resolved TypeSymbol and the
+        // index of the type segment in the Parts array (#1524, Rule 2).
+        var resolution = _context.SemanticInfo?.GetPatternMemberAccessResolution(memberAccess);
+        var typeSymbol = resolution?.TypeSymbol
+            ?? _context.SymbolTable?.Lookup(memberAccess.Parts[0]) as TypeSymbol;
+        int typeIndex = resolution?.TypeIndex ?? 0;
 
-        // An enum member is spelled by the one helper the expression path uses. This arm used to
-        // pick NameContext.EnumMember for EVERY enum, which is right only for a source int-backed
-        // enum: a string-backed enum's members are class fields emitted in NameContext.Constant,
-        // and a CLR enum's members are already correctly cased. The two contexts agree on
-        // SCREAMING_SNAKE_CASE, single-word and snake_case names and disagree on everything else,
-        // so `case Mode.DebugMode:` emitted `Mode.Debugmode` and `case StringComparison
-        // .OrdinalIgnoreCase:` emitted `Ordinalignorecase` — CS0117 behind SPY0908 (#1284).
-        var typeSymbol = _context.SymbolTable?.Lookup(memberAccess.Parts[0]) as TypeSymbol;
         var enumSymbol = typeSymbol?.TypeKind == TypeKind.Enum ? typeSymbol : null;
 
-        for (int i = 1; i < memberAccess.Parts.Length; i++)
+        // Build the type name. For module-qualified patterns (typeIndex > 0), use the
+        // TypeSyntaxMapper to emit the full declaring chain with namespace prefix.
+        ExpressionSyntax expr;
+        if (typeSymbol != null && typeIndex > 0)
+        {
+            var mappedType = _typeMapper.MapSemanticType(
+                new Semantic.UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol });
+            expr = mappedType is NameSyntax nameSyntax
+                ? nameSyntax
+                : IdentifierName(NameMangler.Transform(typeSymbol.Name, NameContext.Type));
+        }
+        else
+        {
+            expr = IdentifierName(
+                NameMangler.Transform(memberAccess.Parts[0], NameContext.Type));
+        }
+
+        for (int i = typeIndex + 1; i < memberAccess.Parts.Length; i++)
         {
             expr = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
