@@ -237,10 +237,11 @@ class TestMapType:
         assert map_type("SCG.List<string>") == "list[str]"
 
     def test_scg_dictionary(self):
-        assert map_type("SCG.Dictionary<string, int>") == "dict[str, int]"
+        """CLR Dictionary keeps its honest identity in docs (#1517) — it is not a Sharpy dict."""
+        assert map_type("SCG.Dictionary<string, int>") == "Dictionary[str, int]"
 
     def test_scg_dictionary_nested(self):
-        assert map_type("SCG.Dictionary<string, SCG.List<int>>") == "dict[str, list[int]]"
+        assert map_type("SCG.Dictionary<string, SCG.List<int>>") == "Dictionary[str, list[int]]"
 
     def test_scg_ienumerable(self):
         assert map_type("SCG.IEnumerable<IPv4Address>") == "Iterable[IPv4Address]"
@@ -249,7 +250,7 @@ class TestMapType:
         assert map_type("System.Collections.Generic.List<object>") == "list[object]"
 
     def test_system_collections_generic_dictionary(self):
-        assert map_type("System.Collections.Generic.Dictionary<string, string>") == "dict[str, str]"
+        assert map_type("System.Collections.Generic.Dictionary<string, string>") == "Dictionary[str, str]"
 
     def test_unknown_alias_passthrough(self):
         assert map_type("UnknownAlias.Something<int>") == "UnknownAlias.Something[int]"
