@@ -211,11 +211,15 @@ public class GenerateExpressionReentryTests
     /// same shape: it spells <c>import builtins</c> + <c>builtins.int</c> in value position. The
     /// seam does not register the builtins module.</para>
     ///
+    /// <para>Raised to <b>11</b> for the #1527 alias transparency fixtures:
+    /// <c>builtin_type_from_import_alias_1489</c> and
+    /// <c>type_alias_call_transparency_1527</c> — same <c>from builtins import</c> shape.</para>
+    ///
     /// <para>Lower this whenever the real number drops; never raise it without saying why in the
     /// same commit. A rise means either a regression or a deliberate scope change, and both are
     /// things a reader must be told rather than left to infer from a silently larger skip list.</para>
     /// </summary>
-    private const int MaxUncompilableFixtures = 9;
+    private const int MaxUncompilableFixtures = 11;
 
     // ----------------------------------------------------------------------------------------- //
 

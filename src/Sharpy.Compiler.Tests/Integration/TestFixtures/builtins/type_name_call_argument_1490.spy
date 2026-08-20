@@ -45,9 +45,7 @@ def main():
     # Unfamilied builtin, ordinary parameter: the issue's own repro.
     takes(ValueError)
 
-    # Unfamilied builtin, generic delegate parameter. The delegate target does not rescue it —
-    # `bytes` has no signature to pin against any target (#1347).
-    print(list(map(bytes, xs)))
+    # bytes now has the Conversion family (#1347) — map(bytes, xs) is working code.
 
     # Familied builtin whose signature exists but whose parameter cannot hold one.
     takes(int)

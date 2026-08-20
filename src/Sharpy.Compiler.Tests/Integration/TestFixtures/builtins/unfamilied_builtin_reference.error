@@ -1,5 +1,5 @@
 cannot infer a single callable signature for builtin type 'object': 'object' names an overload set, and this position supplies no signature to select one. @21:9
-cannot infer a callable signature for builtin type 'bytes': it has no constructor reference form, so no position can supply one. @22:9
+cannot infer a single callable signature for builtin type 'bytes': 'bytes' names an overload set, and this position supplies no signature to select one. @22:9
 cannot infer a single callable signature for builtin type 'decimal': 'decimal' names an overload set, and this position supplies no signature to select one. @23:9
 cannot infer a single callable signature for builtin type 'frozenset': 'frozenset' is generic, so its type arguments are unknown here, and this position supplies no signature to select one. @26:9
 cannot infer a single callable signature for builtin type 'frozendict': 'frozendict' is generic, so its type arguments are unknown here, and this position supplies no signature to select one. @27:9

@@ -154,6 +154,11 @@ internal class CodeGenContext
 
     public bool IsBuiltinFunction(string name)
     {
+        // bytes has Builtins.Bytes overloads for the constructor-reference family (#1347),
+        // but it is NOT a function builtin — its identifier emits as the struct type
+        // (new Bytes(...)), not as the method group (Builtins.Bytes(...)).
+        if (name == Shared.BuiltinNames.Bytes)
+            return false;
         return Builtins.GetFunction(name) != null;
     }
 
