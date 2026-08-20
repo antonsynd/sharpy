@@ -110,11 +110,17 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateMemberAccessValue(MemberAccessPattern memberAccess)
     {
         // Read the resolution the TypeChecker recorded: the resolved TypeSymbol and the
-        // index of the type segment in the Parts array (#1524, Rule 2).
-        var resolution = _context.SemanticInfo?.GetPatternMemberAccessResolution(memberAccess);
-        var typeSymbol = resolution?.TypeSymbol
-            ?? _context.SymbolTable?.Lookup(memberAccess.Parts[0]) as TypeSymbol;
-        int typeIndex = resolution?.TypeIndex ?? 0;
+        // index of the type segment in the Parts array (#1524, Rule 2). No lookup fallback:
+        // CheckMemberAccessPattern records unconditionally on success and errors otherwise,
+        // so a missing entry here means the pattern was never checked (or a new SemanticInfo
+        // dictionary missed MergeFrom) — surface that loudly instead of re-deriving.
+        var resolution = _context.SemanticInfo?.GetPatternMemberAccessResolution(memberAccess)
+            ?? throw new InvalidOperationException(
+                $"No recorded resolution for member-access pattern "
+                + $"'{string.Join(".", memberAccess.Parts)}' — semantic analysis must record "
+                + "every pattern the emitter is asked to generate (#1524)");
+        var typeSymbol = resolution.TypeSymbol;
+        int typeIndex = resolution.TypeIndex;
 
         var enumSymbol = typeSymbol?.TypeKind == TypeKind.Enum ? typeSymbol : null;
 

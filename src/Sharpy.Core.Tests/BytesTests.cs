@@ -160,7 +160,7 @@ public class BytesTests
     [Fact]
     public void Fromhex_ValidHex_ReturnsBytes()
     {
-        var b = Bytes.Fromhex("68656c6c6f");
+        var b = BytesFromhex.Fromhex("68656c6c6f");
         b.Length.Should().Be(5);
         b[0].Should().Be(104);
         b[4].Should().Be(111);
@@ -169,7 +169,7 @@ public class BytesTests
     [Fact]
     public void Fromhex_WithSpaces_IgnoresSpaces()
     {
-        var b = Bytes.Fromhex("68 65 6C 6C 6F");
+        var b = BytesFromhex.Fromhex("68 65 6C 6C 6F");
         b.Length.Should().Be(5);
         b.Hex().Should().Be("68656c6c6f");
     }
@@ -177,7 +177,7 @@ public class BytesTests
     [Fact]
     public void Fromhex_InvalidHex_ThrowsValueError()
     {
-        var act = () => Bytes.Fromhex("xyz");
+        var act = () => BytesFromhex.Fromhex("xyz");
         act.Should().Throw<ValueError>();
     }
 

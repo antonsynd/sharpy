@@ -199,12 +199,6 @@ namespace Sharpy
             }
         }
 
-        /// <summary>Create a Bytes instance from a hex string.</summary>
-        /// <remarks>Forwarding shim — the canonical implementation is in
-        /// <see cref="BytesFromhex.Fromhex"/>; this keeps existing callers
-        /// (hand-written tests, stdlib modules) working without a source change.</remarks>
-        public static Bytes Fromhex(string hexString) => BytesFromhex.Fromhex(hexString);
-
         #region ISized
 
         /// <summary>Gets the number of bytes for len() dispatch.</summary>

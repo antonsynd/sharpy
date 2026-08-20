@@ -129,9 +129,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCompareDigestBytes()
             {
 #line (57, 5) - (57, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
-                Sharpy.Bytes a = global::Sharpy.Bytes.Fromhex("010203");
+                Sharpy.Bytes a = global::Sharpy.BytesFromhex.Fromhex("010203");
 #line (58, 5) - (58, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
-                Sharpy.Bytes b = global::Sharpy.Bytes.Fromhex("010203");
+                Sharpy.Bytes b = global::Sharpy.BytesFromhex.Fromhex("010203");
 #line (59, 5) - (59, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
                 Xunit.Assert.True(hmac.CompareDigest(a, b));
 #line hidden

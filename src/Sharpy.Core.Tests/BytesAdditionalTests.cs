@@ -135,7 +135,7 @@ public class BytesAdditionalTests
     [Fact]
     public void Fromhex_EmptyString_ReturnsEmptyBytes()
     {
-        var b = Bytes.Fromhex("");
+        var b = BytesFromhex.Fromhex("");
         b.Length.Should().Be(0);
     }
 
@@ -143,7 +143,7 @@ public class BytesAdditionalTests
     public void Fromhex_OddLength_ThrowsValueError()
     {
         // Python: bytes.fromhex("abc") raises ValueError (odd length)
-        var act = () => Bytes.Fromhex("abc");
+        var act = () => BytesFromhex.Fromhex("abc");
         act.Should().Throw<ValueError>();
     }
 

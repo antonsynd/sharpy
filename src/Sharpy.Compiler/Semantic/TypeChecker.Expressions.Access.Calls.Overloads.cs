@@ -787,9 +787,10 @@ internal partial class TypeChecker
     /// The family grants that were once "the other half of #1272" have since LANDED for four of the
     /// seven: <c>mk: () -&gt; frozenset[int] = frozenset</c> pins the way <c>list</c> does, and so do
     /// <c>frozendict</c>, <c>object</c> and <c>decimal</c> (504a8eb25; fixture
-    /// <c>builtins/constructor_reference_families_1272</c>). What is still unfamilied is
-    /// <c>bytes</c> — its <c>Builtins.Bytes</c> overload set would shadow the TYPE in a
-    /// static-member qualifier (#1347) — and <c>Iterator</c>/the view types, which are
+    /// <c>builtins/constructor_reference_families_1272</c>). <c>bytes</c> has since joined them
+    /// with the Conversion family (#1347 — its statics moved to <c>BytesFromhex</c>, so the
+    /// <c>Builtins.Bytes</c> overload set no longer shadows the TYPE in a static-member
+    /// qualifier). What is still unfamilied is <c>Iterator</c>/the view types, which are
     /// non-constructible and now draw SPY0346 instead (#1346).</para>
     /// </summary>
     private ConstructorReferenceClassification ClassifyConstructorReference(
@@ -1015,8 +1016,9 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Refuses a reference to a builtin type that constructs but has no constructor-reference
-    /// family — <c>object</c>, <c>bytes</c>, <c>decimal</c>, <c>frozenset</c>, <c>frozendict</c>,
-    /// <c>Iterator</c>, the view types (#1272) — or returns null to leave the position the typing it
+    /// family — <c>object</c>, <c>decimal</c>, <c>frozenset</c>, <c>frozendict</c>,
+    /// <c>Iterator</c>, the view types (#1272; <c>bytes</c> left this list when it gained the
+    /// Conversion family, #1347) — or returns null to leave the position the typing it
     /// has today.
     ///
     /// <para>SPY0342 rather than SPY0346, because the reason is that no signature is available to
@@ -1081,8 +1083,8 @@ internal partial class TypeChecker
     /// <para>Interfaces, enums, unions, delegates and abstract classes return null, and none of
     /// them has a construction for a reference to denote: <see cref="NonConstructibleTypeNameOf"/>
     /// refuses all five in a value position (SPY0346, #1250). That is NOT the same posture
-    /// <see cref="ConstructorReferenceFamilyOf"/> takes for <c>object</c>/<c>bytes</c> — those
-    /// construct, so they fall through unrefused (#1272). The VIEW types no longer belong in that
+    /// <see cref="ConstructorReferenceFamilyOf"/> takes for <c>object</c> — it
+    /// constructs, so it falls through unrefused (#1272). The VIEW types no longer belong in that
     /// list: their only constructor is <c>internal</c>, so they are refused here too (#1346).</para>
     /// </summary>
     private static ConstructorReferenceFamily? UserConstructorReferenceFamilyOf(TypeSymbol typeSymbol)
@@ -1092,8 +1094,9 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Which construction shape a builtin type emits as, or null for a builtin type this rule does
-    /// not govern (<c>object</c>, <c>bytes</c>, <c>decimal</c>, <c>frozenset</c>, the view and
-    /// iterator types): those keep the behavior they have today.
+    /// not govern (<c>object</c>, <c>decimal</c>, <c>frozenset</c>, the view and
+    /// iterator types): those keep the behavior they have today. <c>bytes</c> IS governed —
+    /// the explicit Conversion arm below (#1347).
     ///
     /// <para>Null here means "no family", NOT necessarily "not constructible": <c>object()</c> and
     /// <c>frozenset()</c> (with a target type) construct, and a reference to one falls through to

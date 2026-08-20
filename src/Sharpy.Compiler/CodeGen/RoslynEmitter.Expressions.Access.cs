@@ -489,7 +489,9 @@ internal partial class RoslynEmitter
 
             // Handle static method calls on primitive types: int.parse(s), float.parse(s),
             // bytes.fromhex(s). The TypeChecker records these via SetMemberAccessResolution;
-            // fall back to a direct name check for cases where the resolution is missing.
+            // the emitter reads the recorded fact only (Rule 2) — there is deliberately no
+            // name-based fallback, because a missing resolution means the call was never
+            // semantically checked and must not be silently forwarded to Roslyn (#1347).
             var staticResolution = _context.SemanticInfo?.GetMemberAccessResolution(memberAccess);
             if (staticResolution is { } sr && sr.Member is FunctionSymbol { IsStatic: true } staticMethod)
             {
@@ -499,20 +501,6 @@ internal partial class RoslynEmitter
                     var staticArgs = call.Arguments.Select(a => Argument(GenerateExpression(a))).ToArray();
                     return InvocationExpression(ParseQualifiedName(staticCallTarget))
                         .WithArgumentList(ArgumentList(SeparatedList(staticArgs)));
-                }
-            }
-
-            // Direct name-based intercept (#1347): catches bytes.fromhex when the semantic
-            // resolution is absent (bytes is a builtin type with overloads, so the identifier
-            // is emitted as Builtins.Bytes — a method group — without this).
-            if (memberAccess.Object is Identifier primitiveTypeId)
-            {
-                var directTarget = GetPrimitiveStaticCallTarget(primitiveTypeId.Name, memberAccess.Member);
-                if (directTarget != null)
-                {
-                    var directArgs = call.Arguments.Select(a => Argument(GenerateExpression(a))).ToArray();
-                    return InvocationExpression(ParseQualifiedName(directTarget))
-                        .WithArgumentList(ArgumentList(SeparatedList(directArgs)));
                 }
             }
 

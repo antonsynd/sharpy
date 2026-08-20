@@ -55,7 +55,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestUrlsafeB64encodeReplacesChars()
             {
 #line (19, 5) - (19, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
-                Sharpy.Bytes data = global::Sharpy.Bytes.Fromhex("fffefd");
+                Sharpy.Bytes data = global::Sharpy.BytesFromhex.Fromhex("fffefd");
 #line (20, 5) - (20, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
                 Sharpy.Bytes result = base64.UrlsafeB64encode(data);
 #line (21, 5) - (21, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
@@ -116,7 +116,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestB16encodeProducesUppercase()
             {
 #line (44, 5) - (44, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
-                Sharpy.Bytes result = base64.B16encode(global::Sharpy.Bytes.Fromhex("dead"));
+                Sharpy.Bytes result = base64.B16encode(global::Sharpy.BytesFromhex.Fromhex("dead"));
 #line (45, 5) - (45, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
                 Xunit.Assert.Equal("DEAD", result.Decode("ascii"));
 #line hidden
@@ -153,7 +153,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (56, 5) - (56, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
                 Sharpy.Bytes result = base64.B16decode(inputData, casefold: true);
 #line (57, 5) - (57, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/base64/base64_tests.spy"
-                Xunit.Assert.Equal(global::Sharpy.Bytes.Fromhex("dead"), result);
+                Xunit.Assert.Equal(global::Sharpy.BytesFromhex.Fromhex("dead"), result);
 #line hidden
             }
 

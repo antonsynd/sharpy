@@ -554,7 +554,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictMissingKeyReturnsDefault()
             {
 #line (252, 5) - (252, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (253, 5) - (253, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.Equal(0, dd["new_key"]);
 #line hidden
@@ -564,7 +564,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictMissingKeyCreatesEntry()
             {
 #line (257, 5) - (257, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (258, 5) - (258, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 int _val = dd["key"];
 #line (259, 5) - (259, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -576,7 +576,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictSetAndGetWorksNormally()
             {
 #line (263, 5) - (263, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (264, 5) - (264, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["x"] = 42;
 #line (265, 5) - (265, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -593,7 +593,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 try
                 {
 #line (270, 9) - (270, 90) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                    Sharpy.DefaultDict<string, int> _dd = new global::Sharpy.DefaultDict<string, int>(null);
+                    global::Sharpy.DefaultDict<string, int> _dd = new global::Sharpy.DefaultDict<string, int>(null);
 #line hidden
                 }
                 catch (TypeError)
@@ -609,7 +609,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictGetWithDefaultDoesNotCreateEntry()
             {
 #line (274, 5) - (274, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (275, 5) - (275, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.Equal(99, dd.Get("absent", 99));
 #line (276, 5) - (276, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -621,7 +621,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictKeysReturnsAllKeys()
             {
 #line (280, 5) - (280, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (281, 5) - (281, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 1;
 #line (282, 5) - (282, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -641,7 +641,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictValuesReturnsAllValues()
             {
 #line (290, 5) - (290, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (291, 5) - (291, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 1;
 #line (292, 5) - (292, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -661,13 +661,13 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictCopyPreservesFactoryAndItems()
             {
 #line (300, 5) - (300, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (301, 5) - (301, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 1;
 #line (302, 5) - (302, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["b"] = 2;
 #line (303, 5) - (303, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> copy = dd.Copy();
+                global::Sharpy.DefaultDict<string, int> copy = dd.Copy();
 #line (304, 5) - (304, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.Equal(1, copy["a"]);
 #line (305, 5) - (305, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -683,7 +683,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictClearRemovesAllItems()
             {
 #line (311, 5) - (311, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (312, 5) - (312, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 1;
 #line (313, 5) - (313, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -701,7 +701,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictPopExistingKeyReturnsAndRemoves()
             {
 #line (320, 5) - (320, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (321, 5) - (321, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 1;
 #line (322, 5) - (322, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -717,7 +717,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictPopMissingKeyThrowsKeyError()
             {
 #line (328, 5) - (328, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (329, 5) - (332, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 bool __raised_6 = false;
 #line hidden
@@ -740,7 +740,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictPopWithDefaultReturnDefault()
             {
 #line (334, 5) - (334, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (335, 5) - (335, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.Equal(99, dd.Pop("missing", 99));
 #line hidden
@@ -750,7 +750,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictItemsReturnsKeyValueTuples()
             {
 #line (339, 5) - (339, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (340, 5) - (340, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["x"] = 10;
 #line (341, 5) - (341, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -770,7 +770,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictUpdateMergesFromDictionary()
             {
 #line (349, 5) - (349, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (350, 5) - (350, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 1;
 #line (351, 5) - (351, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -799,7 +799,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictSetDefaultExistingKeyReturnsExisting()
             {
 #line (358, 5) - (358, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (359, 5) - (359, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 42;
 #line (360, 5) - (360, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -813,7 +813,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictSetDefaultMissingKeyInsertsAndReturns()
             {
 #line (365, 5) - (365, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (366, 5) - (366, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.Equal(5, dd.SetDefault("a", 5));
 #line (367, 5) - (367, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -825,7 +825,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictCountReflectsSize()
             {
 #line (371, 5) - (371, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (372, 5) - (372, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 Xunit.Assert.Equal(0, dd.Count);
 #line (373, 5) - (373, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -841,7 +841,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictUpdateFromTuplesMergesEntries()
             {
 #line (379, 5) - (379, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (380, 5) - (380, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 1;
 #line (381, 5) - (381, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -857,7 +857,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictPopItemFifoReturnsFirstPair()
             {
 #line (387, 5) - (387, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (388, 5) - (388, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 1;
 #line (389, 5) - (389, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -875,7 +875,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictPopItemLifoReturnsLastPair()
             {
 #line (396, 5) - (396, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (397, 5) - (397, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 1;
 #line (398, 5) - (398, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -893,7 +893,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictPopItemEmptyThrowsKeyError()
             {
 #line (405, 5) - (405, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (406, 5) - (409, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 bool __raised_7 = false;
 #line hidden
@@ -916,7 +916,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictRemoveExistingKeyRemovesEntry()
             {
 #line (411, 5) - (411, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (412, 5) - (412, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 1;
 #line (413, 5) - (413, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
@@ -934,7 +934,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictRemoveMissingKeyThrowsKeyError()
             {
 #line (420, 5) - (420, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (421, 5) - (424, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 bool __raised_8 = false;
 #line hidden
@@ -957,7 +957,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestDefaultDictToDictionaryReturnsCopy()
             {
 #line (426, 5) - (426, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
+                global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (427, 5) - (427, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 dd["a"] = 1;
 #line (428, 5) - (428, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"

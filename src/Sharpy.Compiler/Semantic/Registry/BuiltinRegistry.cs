@@ -297,6 +297,22 @@ internal class BuiltinRegistry
         };
 
         PopulateMethodOverloads(typeSymbol);
+
+        // bytes.fromhex is registered manually (ApplyNonDiscoverableDefinitions) before this
+        // TypeSymbol exists, so its bytes return type carries no Symbol at that point; patch
+        // the freshly built symbol in so the RESULT of bytes.fromhex(...) has members (#1347).
+        if (sharpyName == BuiltinNames.Bytes)
+        {
+            foreach (var method in typeSymbol.Methods)
+            {
+                if (method.Name == "fromhex"
+                    && method.ReturnType is UserDefinedType { Symbol: null } bytesReturn)
+                {
+                    method.ReturnType = bytesReturn with { Symbol = typeSymbol };
+                }
+            }
+        }
+
         _types[sharpyName] = typeSymbol;
 
         // Defer interface population until all builtin types are registered, so that
@@ -583,6 +599,16 @@ internal class BuiltinRegistry
                 else
                     methods.Add(MakeParseMethod(SemanticType.Float));
                 break;
+
+            case BuiltinNames.Bytes:
+                // bytes.fromhex lives in the standalone BytesFromhex class (the IntParse
+                // design, #1347) so the Builtins.Bytes overload set never shadows the TYPE in
+                // static-member position. CLR reflection therefore cannot surface it off the
+                // struct, and it is registered manually like int.parse/float.parse above —
+                // which is also what gives the call real argument-type checking instead of a
+                // CS1503 leak behind SPY0908.
+                methods.Add(MakeFromhexMethod());
+                break;
         }
     }
 
@@ -737,6 +763,29 @@ internal class BuiltinRegistry
     }
 
     private static readonly UserDefinedType ValueErrorType = new() { Name = "ValueError" };
+
+    /// <summary>
+    /// The <c>bytes.fromhex</c> static: <c>fromhex(string) -> bytes</c>, implemented by
+    /// <c>Sharpy.BytesFromhex.Fromhex</c> (#1347). CPython-matching semantics: returns bytes
+    /// and raises ValueError on malformed input, so the return type is plain bytes rather
+    /// than a Result. The bytes <see cref="TypeSymbol"/> is patched onto the return type by
+    /// <c>RegisterType</c> once that symbol exists.
+    /// </summary>
+    private static FunctionSymbol MakeFromhexMethod()
+    {
+        return new FunctionSymbol
+        {
+            Name = "fromhex",
+            Kind = SymbolKind.Function,
+            Parameters = new List<ParameterSymbol>
+            {
+                new ParameterSymbol { Name = "string", Type = SemanticType.Str }
+            },
+            ReturnType = new UserDefinedType { Name = BuiltinNames.Bytes },
+            AccessLevel = AccessLevel.Public,
+            IsStatic = true,
+        };
+    }
 
     private static FunctionSymbol MakeParseMethod(SemanticType resultOkType)
     {
