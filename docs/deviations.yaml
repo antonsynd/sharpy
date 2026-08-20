@@ -1599,7 +1599,7 @@ deviations:
     sharpy_behavior: |
       Sharpy's int/float/complex are CLR primitives whose GetHashCode cannot be overridden
       without wrapper types (Axiom 1 violation, anti-pattern). Same-type hashing is consistent;
-      cross-type pairs diverge. Measured matrix at 31f8e3e15:
+      cross-type pairs diverge. Measured matrix at 8e1d6b5af:
 
         hash(3)                     = 3      (agrees with CPython)
         hash(True) == hash(1)       = True   (agrees)
@@ -1607,10 +1607,16 @@ deviations:
         hash(decimal(3)) == hash(3) = True   (agrees)
         hash(3.0)                   = 1074266112  (CPython: 3)
         hash(3.0) == hash(3)        = False  (CPython: True)
-        hash(complex(3,0))          = -279744320  (CPython: 3)
+        hash(complex(3,0))          = process-randomized  (CPython: 3, stable)
         hash(complex(3,0)) == hash(3) = False (CPython: True)
         hash(2**62)                 = 1073741824  (CPython: 2)
         hash(-1)                    = -1     (CPython: -2; same-type value divergence)
+
+      hash(complex(...)) is additionally NON-DETERMINISTIC across processes (measured: three
+      runs at 8e1d6b5af gave -279744320, -252378607, 1850970276): System.Numerics.Complex
+      combines its components with the per-process-seeded HashCode.Combine. CPython's complex
+      hash is a stable arithmetic function. Within one process the value is stable, which is
+      all dict/set need — but complex hashes must never be persisted or compared across runs.
 
       Equals/GetHashCode self-consistency is preserved: Complex.Equals(object) only returns true
       for another Complex, and boxed CLR primitives don't cross-type-equal. No dict/set invariant
