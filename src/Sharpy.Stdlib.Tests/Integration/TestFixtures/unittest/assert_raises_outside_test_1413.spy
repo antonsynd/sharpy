@@ -20,7 +20,7 @@ def main() -> None:
     # than a scope-introducing block.
     with assert_raises(ValueError) as exc:
         parse("")
-    print(exc.message)
+    print(str(exc))
 
     with assert_raises(ValueError, match="empty"):
         parse("")
@@ -33,4 +33,4 @@ def main() -> None:
         with assert_raises(Exception):
             print("nothing raised here")
     except AssertionError as failure:
-        print(failure.message)
+        print(str(failure))
