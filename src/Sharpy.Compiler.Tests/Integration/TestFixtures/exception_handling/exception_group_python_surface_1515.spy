@@ -1,0 +1,4 @@
+def main() -> None:
+    eg: ExceptionGroup = ExceptionGroup("group", [ValueError("v1"), TypeError("t1")])
+    print(eg.message)
+    print(len(eg.exceptions))

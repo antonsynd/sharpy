@@ -1,0 +1,1 @@
+'stack_trace' is not part of the Python exception surface of 'ValueError'; builtin exceptions present Python's exception surface; this .NET member is not part of it @5:15

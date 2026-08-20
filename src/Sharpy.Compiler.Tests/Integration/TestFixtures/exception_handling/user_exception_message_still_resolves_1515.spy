@@ -1,0 +1,8 @@
+class Alert:
+    message: str
+    def __init__(self, message: str) -> None:
+        self.message = message
+
+def main() -> None:
+    a: Alert = Alert("fire drill")
+    print(a.message)
