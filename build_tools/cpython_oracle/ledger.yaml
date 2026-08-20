@@ -261,6 +261,14 @@ deviations:
   spec_ref: docs/language_specification/arithmetic_operators.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: isinstance-non-type-expression
+  category: types
+  audience: python
+  severity: error
+  code: SPY0344
+  spec_ref: docs/language_specification/builtin_functions.md
+  existing_diagnostic: SPY0344
+  planned_diagnostic: null
 - id: isinstance-open-generic
   category: types
   audience: python
@@ -269,13 +277,13 @@ deviations:
   spec_ref: docs/language_specification/builtin_functions.md
   existing_diagnostic: SPY0345
   planned_diagnostic: null
-- id: isinstance-single-type
-  category: stdlib
+- id: isinstance-tuple-is-a-tuple-type
+  category: types
   audience: python
-  severity: error
-  code: SPY0344
+  severity: none
+  code: null
   spec_ref: docs/language_specification/builtin_functions.md
-  existing_diagnostic: SPY0344
+  existing_diagnostic: null
   planned_diagnostic: null
 - id: iterator-repr-no-address
   category: stdlib

@@ -515,19 +515,39 @@ deviations:
         # use an async list comprehension instead
         results: list[int] = [x async for x in source()]
 
-  - id: isinstance-single-type
+  - id: isinstance-tuple-is-a-tuple-type
+    code: null
+    category: types
+    audience: python
+    severity: none
+    python_behavior: "`isinstance(x, (A, B))` checks whether `x` is an instance of `A` or `B` (any-of). `isinstance(x, (int))` collapses to `isinstance(x, int)`. `isinstance(x, int or str)` is legal but evaluates `int or str` to `int` (truthy short-circuit). `isinstance(x, tuple[int, str])` raises `TypeError: isinstance() argument 2 cannot be a parameterized generic`."
+    sharpy_behavior: "The second argument to `isinstance` is a type position. `(A, B)` denotes `tuple[A, B]` — a structural `ValueTuple` runtime test that narrows to `tuple[A, B]` on success. `(T)` denotes `tuple[T]`. `isinstance(x, tuple[int, str])` is the canonical spelling and works. Non-type expressions (including `int or str`) are refused with SPY0344. This is a same-spelling-different-meaning deviation: the tuple form has identical syntax but tests a structural tuple type rather than checking any-of."
+    spec_ref: docs/language_specification/builtin_functions.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        isinstance(1, (int, str))        # True (any-of check)
+        isinstance(1, (int))             # True (parens collapse to int)
+        isinstance('a', int or str)      # False (int or str -> int)
+      sharpy: |
+        isinstance(x, (int, str))        # tests tuple[int, str]
+        isinstance(x, (int))            # tests tuple[int]
+        isinstance(x, int or str)        # SPY0344: not a type expression
+
+  - id: isinstance-non-type-expression
     code: SPY0344
-    category: stdlib
+    category: types
     audience: python
     severity: error
-    python_behavior: "`isinstance(x, (A, B))` checks against a tuple of types."
-    sharpy_behavior: "`isinstance()` accepts a single type only, so a successful check narrows to one concrete type. A tuple has nothing to narrow to (Sharpy has no usable union type), and a test that compiles but cannot narrow is worse than a clean refusal — so this is an error, not a hint. Combine multiple checks with explicit `or`, or use a tagged union / pattern matching. Inside a `@test` function, `assert isinstance(x, (A, B))` is unaffected: it lowers to an xUnit assertion that only needs the boolean."
+    python_behavior: "`isinstance(x, int or str)` is syntactically legal (evaluates `int or str` to `int`)."
+    sharpy_behavior: "The second argument must be a type expression. Non-type expressions — including `int or str` — are refused with SPY0344. For an any-of check, write `isinstance(x, int) or isinstance(x, str)`; note that `(A, B)` denotes the tuple type `tuple[A, B]`."
     spec_ref: docs/language_specification/builtin_functions.md
     existing_diagnostic: SPY0344
     planned_diagnostic: null
     example:
       python: |
-        if isinstance(x, (int, str)):
+        if isinstance(x, int or str):
             ...
       sharpy: |
         if isinstance(x, int) or isinstance(x, str):

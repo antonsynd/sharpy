@@ -47,7 +47,7 @@ f: Result[float, ValueError] = float.parse("3.14")
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
-| `isinstance(x, T)` | Check if `x` is an instance of type `T` | `x is T` |
+| `isinstance(x, T)` | Check if `x` is an instance of type `T` (second arg is a type position) | `x is T` |
 | `type(x)` | Get runtime type of `x` | `x.GetType()` |
 
 > The `x is T` in the C# Mapping column is the **generated C# target syntax**, not Sharpy source.
@@ -97,7 +97,7 @@ This is because primitive literals are values with concrete runtime types, where
 
 **`isinstance(x, T)`**
 
-Checks whether `x` is an instance of type `T` at runtime. Returns `True` if `x` is an instance of `T` or any subclass of `T`.
+Checks whether `x` is an instance of type `T` at runtime. Returns `True` if `x` is an instance of `T` or any subclass of `T`. The second argument is a **type position**: it must name a type, and a successful check narrows the variable to that type in the branch.
 
 ```python
 value: object = get_value()
@@ -116,38 +116,56 @@ if isinstance(value, IDrawable):
     value.draw()
 ```
 
-**Single Type Only:**
+**Tuple Types:**
 
-Unlike Python's `isinstance()` which accepts a tuple of types, Sharpy's `isinstance()` only accepts a single type argument. Sharpy does not have union types.
+Because the second argument is a type position, `(A, B)` denotes `tuple[A, B]` — the structural
+`ValueTuple` type — not an any-of check. The check tests whether the value is a `tuple[A, B]`
+at runtime and narrows to that tuple type on success.
 
-The restriction is load-bearing rather than stylistic: a successful check narrows the value to one
-concrete type for the rest of the branch, and a tuple has nothing to narrow to. A multi-type test
-would return a correct boolean and then silently fail to narrow at the very next line, so it is
-refused instead (SPY0344).
+This is a **same-spelling-different-meaning** deviation from Python, where `isinstance(x, (int, str))`
+checks whether `x` is an `int` or a `str`. In Sharpy, `isinstance(x, (int, str))` checks whether
+`x` is a `tuple[int, str]`. See `docs/deviations.yaml`, entry `isinstance-tuple-is-a-tuple-type`.
 
 ```python
-# ✅ Valid - single type
-if isinstance(x, int):
-    pass
+x: object = (1, "hello")
 
-if isinstance(x, IDrawable):
-    pass
+# Structural tuple type test — (int, str) means tuple[int, str]
+if isinstance(x, (int, str)):
+    # x is narrowed to tuple[int, str]
+    print(x[0])   # int
+    print(x[1])   # str
 
-# ❌ Invalid - multiple types not supported
-if isinstance(x, (int, str)):      # SPY0344: isinstance() takes exactly one type argument
-    pass
+# Equivalent explicit spelling
+if isinstance(x, tuple[int, str]):
+    print(x[0])
 
-if isinstance(x, int | str):       # ERROR: union types not supported
+# Single-element tuple: (int) means tuple[int]
+if isinstance(x, (int)):
+    print(x[0])
+
+# The qualified spelling works identically
+if isinstance(x, builtins.isinstance.__module__ and False):
     pass
 ```
 
-**To check multiple types**, use explicit `or`:
+**Checking Multiple Types:**
+
+To check whether a value is one of several types, use explicit `or`:
 
 ```python
 if isinstance(x, int) or isinstance(x, str):
     # x could be int or str here
     # Note: no automatic type narrowing in this case
     pass
+```
+
+Non-type expressions in the second argument — including `int or str` — are refused with SPY0344:
+
+```python
+# SPY0344 — the second argument must be a type expression
+if isinstance(x, int or str):      # SPY0344: not a type; for an any-of check
+    pass                            # write isinstance(x, int) or isinstance(x, str);
+                                    # (A, B) denotes the tuple type tuple[A, B]
 ```
 
 **Generic Types:**
@@ -158,19 +176,19 @@ where generics are erased: CPython accepts the open form `isinstance(x, Box)` an
 `isinstance(x, Box[int])`, and Sharpy does the opposite.
 
 ```python
-# ✅ Valid - the closed spelling names a runtime type, and narrows to it
+# Valid — the closed spelling names a runtime type, and narrows to it
 if isinstance(x, Box[int]):
     pass
 
 if isinstance(x, dict[str, int]):
     pass
 
-# ✅ Valid - the bare name is accepted when the value's own static type fills the vector
+# Valid — the bare name is accepted when the value's own static type fills the vector
 b: Box[int] = Box[int](5)
 if isinstance(b, Box):             # tests Box[int]
     pass
 
-# ❌ SPY0345 - nothing here determines Box's type arguments
+# SPY0345 — nothing here determines Box's type arguments
 y: object = make_box()
 if isinstance(y, Box):
     pass
@@ -181,7 +199,7 @@ type arguments test against their non-generic protocol interface (`Sharpy.IList`
 which every instantiation implements, so the check succeeds for any element type.
 
 ```python
-# ✅ Valid - matches any list[T]
+# Valid — matches any list[T]
 if isinstance(x, list):
     pass  # x could be list[int], list[str], etc.
 ```
@@ -203,7 +221,7 @@ def process(value: object) -> str:
     return "unknown"
 ```
 
-*Implementation: ✅ Native - Maps to C# `is` pattern matching with type narrowing.*
+*Implementation: Maps to C# `is` pattern matching with type narrowing.*
 
 ## Iterator Functions
 

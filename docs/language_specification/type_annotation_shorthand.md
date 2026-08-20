@@ -113,7 +113,7 @@ x: (int) = (42,)
 y: (int,) = (42,)
 ```
 
-**Note:** In expression context, `(x)` is grouping while `(x,)` is a single-element tuple. In *type* annotation context, there is no ambiguity - `(T)` always means tuple.
+**Note:** In expression context, `(x)` is grouping while `(x,)` is a single-element tuple. In *type* annotation context, there is no ambiguity - `(T)` always means tuple. This applies to all type positions, including `isinstance`'s second argument: `isinstance(x, (int, str))` tests `tuple[int, str]`, not any-of.
 
 ### Function Types vs Tuple Shorthand
 
