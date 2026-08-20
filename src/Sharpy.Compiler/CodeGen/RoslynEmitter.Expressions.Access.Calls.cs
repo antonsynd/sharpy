@@ -640,57 +640,6 @@ internal partial class RoslynEmitter
         return typeSymbol.Constructors.Count == 1 ? typeSymbol.Constructors[0] : null;
     }
 
-    /// <summary>
-    /// Resolves the FunctionSymbol for a method call on an object.
-    /// Uses the receiver's semantic type to look up the method by name.
-    /// Returns null if the method cannot be resolved.
-    /// </summary>
-    private FunctionSymbol? ResolveMethodForCall(Expression receiver, string methodName)
-    {
-        var receiverType = GetExpressionSemanticType(receiver);
-
-        // Module member calls: look up the function from the module's exports.
-        if (receiverType is Semantic.ModuleType moduleType)
-        {
-            if (moduleType.Symbol.TryGetExport(methodName, out var exportedSymbol)
-                && exportedSymbol is FunctionSymbol exportedFunc)
-            {
-                return exportedFunc;
-            }
-            if (moduleType.Symbol.FunctionOverloads.TryGetValue(methodName, out var moduleOverloads)
-                && moduleOverloads.Count > 0)
-            {
-                return moduleOverloads[0];
-            }
-            return null;
-        }
-
-        TypeSymbol? typeSymbol = receiverType switch
-        {
-            UserDefinedType udt => udt.Symbol as TypeSymbol,
-            GenericType gt => _context.LookupSymbol(gt.Name) as TypeSymbol,
-            _ => null
-        };
-
-        if (typeSymbol == null)
-            return null;
-
-        // Search Methods in the type hierarchy (including interfaces)
-        var (method, _) = TypeHierarchyService.FindMethod(typeSymbol, methodName);
-        if (method != null)
-            return method;
-
-        // Fall back to MethodOverloads (walk base class chain for overloaded methods)
-        if (typeSymbol.MethodOverloads.TryGetValue(methodName, out var overloads) && overloads.Count > 0)
-            return overloads[0];
-        foreach (var baseType in TypeHierarchyService.GetAllBaseTypes(typeSymbol))
-        {
-            if (baseType.MethodOverloads.TryGetValue(methodName, out overloads) && overloads.Count > 0)
-                return overloads[0];
-        }
-
-        return null;
-    }
 
     /// <summary>
     /// Returns true if the function's C# signature has been reordered relative

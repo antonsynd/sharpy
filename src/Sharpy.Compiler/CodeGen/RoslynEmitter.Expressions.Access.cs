@@ -573,8 +573,7 @@ internal partial class RoslynEmitter
             // First check for dunder methods, then Python list method mappings (append -> Add, etc.)
             // For discovery-loaded CLR methods, prefer the original CLR name (preserves acronym casing).
             var resolvedMethodSymbol = (Symbol?)_context.SemanticInfo?.GetCallTarget(call)
-                ?? _context.SemanticInfo?.GetMemberAccessResolution(memberAccess)?.Member
-                ?? ResolveMethodForCall(memberAccess.Object, memberAccess.Member);
+                ?? _context.SemanticInfo?.GetMemberAccessResolution(memberAccess)?.Member;
             var resolvedClrMethodName = GetClrMethodName(resolvedMethodSymbol)
                 ?? GetIrResolvedClrMemberName(memberAccess);
             // The word-boundary table (setdefault/popitem, #1069) applies only to the builtin
@@ -611,11 +610,9 @@ internal partial class RoslynEmitter
             }
 
             // Generate arguments (reorder for C# compliance if needed).
-            // Prefer the semantic-info-resolved symbol (from overload resolution during
-            // type checking) — it is the correct overload for this call site. Fall back to
-            // ResolveMethodForCall when semantic info is not available.
-            var methodCallTarget = resolvedMethodSymbol as FunctionSymbol
-                ?? ResolveMethodForCall(memberAccess.Object, memberAccess.Member);
+            // The semantic-info-resolved symbol (from overload resolution during type checking)
+            // is the correct overload for this call site. No emitter-side re-resolution (#1519).
+            var methodCallTarget = resolvedMethodSymbol as FunctionSymbol;
             var allArgs = GenerateReorderedCallArguments(call, methodCallTarget);
 
             // Handle null conditional method calls: obj?.Method(args)
