@@ -1,0 +1,7 @@
+# SPY0344: isinstance second argument is not a type expression (#1532).
+# int or str is not a type — it evaluates to int via short-circuit.
+
+def main() -> None:
+    x: object = 5
+    if isinstance(x, int or str):
+        print("matched")

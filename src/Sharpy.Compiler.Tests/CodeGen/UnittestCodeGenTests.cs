@@ -254,23 +254,21 @@ def main():
     }
 
     [Fact]
-    public void AssertRewrite_Isinstance_TupleOfCollections_ErasesEachAlternative()
+    public void AssertRewrite_Isinstance_OrOfSingles_ErasesEachAlternative()
     {
-        // The tuple spelling is the one shape exempt from SPY0344 inside a @test assert, because the
-        // rewrite lowers it to a boolean nobody narrows through. Exempt from the REFUSAL, not from
-        // classification: each element is still classified, so the erasure below comes from the
-        // recorded decision rather than from a second derivation in the emitter.
+        // Union-intent rewritten from (list, dict) to or-of-singles (#1532).
         var source = @"
 @test
-def test_isinstance_tuple():
+def test_isinstance_or():
     x: object = [1]
-    assert isinstance(x, (list, dict))
+    assert isinstance(x, list) or isinstance(x, dict)
 
 def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("x is global::Sharpy.IList || x is global::Sharpy.IDict");
+        code.Should().Contain("global::Sharpy.IList");
+        code.Should().Contain("global::Sharpy.IDict");
     }
 
     [Fact]
@@ -1054,27 +1052,29 @@ def main():
     }
 
     [Fact]
-    public void AssertIsinstance_TupleForm_GeneratesMultiTypeCheck()
+    public void AssertIsinstance_TupleForm_GeneratesStructuralTupleCheck()
     {
+        // (int, str) denotes tuple[int, str] — structural ValueTuple test (#1532).
         var source = @"
 @test
-def test_multi_type():
-    x: object = 42
+def test_tuple_type():
+    x: object = (42, ""hello"")
     assert isinstance(x, (int, str))
 
 def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.True(x is int || x is string)");
+        code.Should().Contain("IsAssignableFrom<global::System.ValueTuple<int, string>>");
     }
 
     [Fact]
     public void AssertIsinstance_NegatedTupleForm_GeneratesAssertFalse()
     {
+        // Negated structural tuple test (#1532).
         var source = @"
 @test
-def test_not_multi_type():
+def test_not_tuple_type():
     x: object = 3.14
     assert not isinstance(x, (int, str))
 
@@ -1082,7 +1082,7 @@ def main():
     print(""ok"")
 ";
         var code = CompileToCSharp(source);
-        code.Should().Contain("Xunit.Assert.False(x is int || x is string)");
+        code.Should().Contain("Xunit.Assert.False(x is global::System.ValueTuple<int, string>)");
     }
 
     #endregion

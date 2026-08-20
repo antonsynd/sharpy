@@ -12,7 +12,7 @@ public static partial class TestIsinstanceAssert
 {
     public static void Main()
     {
-#line (22, 5) - (22, 16) 8 "test_isinstance_assert.spy"
+#line (24, 5) - (24, 16) 8 "test_isinstance_assert.spy"
         global::Sharpy.Builtins.Print("ok");
 #line hidden
     }
@@ -41,22 +41,22 @@ public partial class TestIsinstanceAssertTests
     }
 
     [Xunit.FactAttribute]
-    public void TestIsinstanceTuple()
+    public void TestIsinstanceTupleStructural()
     {
-#line (13, 5) - (13, 20) 8 "test_isinstance_assert.spy"
-        object x = 42;
-#line (14, 5) - (14, 38) 8 "test_isinstance_assert.spy"
-        Xunit.Assert.True(x is int || x is string);
+#line (14, 5) - (14, 31) 8 "test_isinstance_assert.spy"
+        object x = (42, "hello");
+#line (15, 5) - (15, 38) 8 "test_isinstance_assert.spy"
+        Xunit.Assert.IsAssignableFrom<global::System.ValueTuple<int, string>>(x);
 #line hidden
     }
 
     [Xunit.FactAttribute]
-    public void TestIsinstanceNegatedTuple()
+    public void TestIsinstanceNegatedTupleStructural()
     {
-#line (18, 5) - (18, 22) 8 "test_isinstance_assert.spy"
+#line (20, 5) - (20, 22) 8 "test_isinstance_assert.spy"
         object x = 3.14d;
-#line (19, 5) - (19, 42) 8 "test_isinstance_assert.spy"
-        Xunit.Assert.False(x is int || x is string);
+#line (21, 5) - (21, 42) 8 "test_isinstance_assert.spy"
+        Xunit.Assert.False(x is global::System.ValueTuple<int, string>);
 #line hidden
     }
 }

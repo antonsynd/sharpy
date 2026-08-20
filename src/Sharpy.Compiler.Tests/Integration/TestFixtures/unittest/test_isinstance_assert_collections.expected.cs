@@ -12,7 +12,7 @@ public static partial class TestIsinstanceAssertCollections
 {
     public static void Main()
     {
-#line (37, 5) - (37, 16) 8 "test_isinstance_assert_collections.spy"
+#line (40, 5) - (40, 16) 8 "test_isinstance_assert_collections.spy"
         global::Sharpy.Builtins.Print("ok");
 #line hidden
     }
@@ -70,9 +70,9 @@ public partial class TestIsinstanceAssertCollectionsTests
     }
 
     [Xunit.FactAttribute]
-    public void TestIsinstanceTupleCollections()
+    public void TestIsinstanceOrOfSinglesCollections()
     {
-#line (18, 5) - (18, 26) 8 "test_isinstance_assert_collections.spy"
+#line (19, 5) - (19, 26) 8 "test_isinstance_assert_collections.spy"
         object x = new Sharpy.Dict<string, int>()
 #line hidden
         {
@@ -81,7 +81,7 @@ public partial class TestIsinstanceAssertCollectionsTests
                 1
             }
         };
-#line (19, 5) - (19, 40) 8 "test_isinstance_assert_collections.spy"
+#line (20, 5) - (20, 55) 8 "test_isinstance_assert_collections.spy"
         Xunit.Assert.True(x is global::Sharpy.IDict || x is global::Sharpy.IList);
 #line hidden
     }
@@ -89,34 +89,34 @@ public partial class TestIsinstanceAssertCollectionsTests
     [Xunit.FactAttribute]
     public void TestIsinstanceNegatedDict()
     {
-#line (23, 5) - (23, 25) 8 "test_isinstance_assert_collections.spy"
+#line (24, 5) - (24, 25) 8 "test_isinstance_assert_collections.spy"
         object x = "hello";
-#line (24, 5) - (24, 36) 8 "test_isinstance_assert_collections.spy"
+#line (25, 5) - (25, 36) 8 "test_isinstance_assert_collections.spy"
         Xunit.Assert.False(x is global::Sharpy.IDict);
 #line hidden
     }
 
     [Xunit.FactAttribute]
-    public void TestIsinstanceNegatedTupleCollections()
+    public void TestIsinstanceNegatedOrOfSinglesCollections()
     {
-#line (28, 5) - (28, 25) 8 "test_isinstance_assert_collections.spy"
+#line (30, 5) - (30, 25) 8 "test_isinstance_assert_collections.spy"
         object x = "hello";
-#line (29, 5) - (29, 43) 8 "test_isinstance_assert_collections.spy"
-        Xunit.Assert.False(x is global::Sharpy.IList || x is global::Sharpy.ISet);
+#line (31, 5) - (31, 63) 8 "test_isinstance_assert_collections.spy"
+        Xunit.Assert.True(!(x is global::Sharpy.IList) && !(x is global::Sharpy.ISet));
 #line hidden
     }
 
     [Xunit.FactAttribute]
-    public void TestIsinstanceMixedCollectionAndPrimitive()
+    public void TestIsinstanceOrOfSinglesMixed()
     {
-#line (33, 5) - (33, 24) 8 "test_isinstance_assert_collections.spy"
+#line (36, 5) - (36, 24) 8 "test_isinstance_assert_collections.spy"
         object x = new Sharpy.List<int>()
 #line hidden
         {
             1,
             2
         };
-#line (34, 5) - (34, 45) 8 "test_isinstance_assert_collections.spy"
+#line (37, 5) - (37, 77) 8 "test_isinstance_assert_collections.spy"
         Xunit.Assert.True(x is global::Sharpy.IDict || x is int || x is global::Sharpy.IList);
 #line hidden
     }

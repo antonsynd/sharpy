@@ -14,9 +14,10 @@ def test_isinstance_set():
     assert isinstance(x, set)
 
 @test
-def test_isinstance_tuple_collections():
+def test_isinstance_or_of_singles_collections():
+    # Union-intent: rewritten from (dict, list) to or-of-singles (#1532).
     x: object = {"a": 1}
-    assert isinstance(x, (dict, list))
+    assert isinstance(x, dict) or isinstance(x, list)
 
 @test
 def test_isinstance_negated_dict():
@@ -24,14 +25,16 @@ def test_isinstance_negated_dict():
     assert not isinstance(x, dict)
 
 @test
-def test_isinstance_negated_tuple_collections():
+def test_isinstance_negated_or_of_singles_collections():
+    # Union-intent: rewritten from (list, set) to or-of-singles (#1532).
     x: object = "hello"
-    assert not isinstance(x, (list, set))
+    assert not isinstance(x, list) and not isinstance(x, set)
 
 @test
-def test_isinstance_mixed_collection_and_primitive():
+def test_isinstance_or_of_singles_mixed():
+    # Union-intent: rewritten from (dict, int, list) to or-of-singles (#1532).
     x: object = [1, 2]
-    assert isinstance(x, (dict, int, list))
+    assert isinstance(x, dict) or isinstance(x, int) or isinstance(x, list)
 
 def main():
     print("ok")

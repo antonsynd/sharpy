@@ -13,9 +13,9 @@
 #   - No user-class row in the direct-call-argument position. `map(Point, xs)` did not work before
 #     #1211 either (SPY0908 at 14da6dcc9), so it is new capability, not something to guard against
 #     regressing; it belongs with the change that adds it.
-#   - No tuple type-test row (`isinstance(x, (A, B))`). Sharpy refuses that spelling outright with
-#     SPY0344 so that a successful check narrows to one concrete type (#1207), so there is no
-#     working behavior to protect.
+#   - No tuple type-test row (`isinstance(x, (A, B))`). That spelling now denotes `tuple[A, B]`
+#     (#1532) — a structural type test, not an any-of check — and is covered by the
+#     isinstance_tuple_type_explicit_1532 fixture.
 #
 # Python's defaultdict(list) factory convention (#1175) belongs to the same family but needs the
 # stdlib, which this harness does not load; it is pinned by

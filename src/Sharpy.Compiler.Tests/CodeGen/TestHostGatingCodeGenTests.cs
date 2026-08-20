@@ -15,9 +15,8 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 ///   <item>A module-level <c>@test</c> function is emitted as an ordinary static method ON the module
 ///     class, not lifted into a sibling <c>{Module}Tests</c> class, so a module-level caller can reach
 ///     it (the lift left the caller naming a symbol not in scope — CS0103).</item>
-///   <item><c>assert isinstance(x, (A, B))</c> — the tuple form — lowers to the framework-free
-///     disjunction <c>x is A || x is B</c>, not to a raw <c>Builtins.Isinstance</c> with a tuple
-///     argument that does not bind (CS1503).</item>
+///   <item><c>assert isinstance(x, (A, B))</c> — the tuple form — denotes <c>tuple[A, B]</c> (#1532)
+///     and lowers through the ordinary single-type path on both hosts.</item>
 /// </list>
 ///
 /// Each test carries a companion TEST-HOST assertion (<see cref="CompilerOptions.TargetsTestHost"/>
@@ -94,18 +93,17 @@ def main() -> None:
         code.Should().Contain("Xunit.FactAttribute");
     }
 
-    // ── Surface 2: the isinstance-tuple assert lowers framework-free (#1532) ─────────────────
+    // ── Surface 2: isinstance tuple type under both hosts (#1532) ─────────────────
 
     [Fact]
-    public void IsinstanceTupleAssert_UnderRun_LowersToIsDisjunction()
+    public void IsinstanceTupleAssert_UnderRun_LowersToStructuralTupleTest()
     {
-        // MUTATION: remove the TryBuildIsinstanceTupleCondition arm in GenerateAssert →
-        // GenerateExpression hands the tuple to Builtins.Isinstance (CS1503), the compilation fails,
-        // and Compile()'s Success assertion goes red.
+        // (int, str) denotes tuple[int, str] (#1532). Under run, the assert lowers
+        // framework-free via the ordinary single-type path.
         var source = @"
 @test
 def check() -> None:
-    x: object = 42
+    x: object = (42, ""hello"")
     assert isinstance(x, (int, str))
 
 def main() -> None:
@@ -113,14 +111,12 @@ def main() -> None:
     print(""ok"")
 ";
         var code = Compile(source, targetsTestHost: false);
-        code.Should().Contain("x is int || x is string");
-        // The tuple never reaches Builtins.Isinstance (which takes a single Type), and no Xunit.
-        code.Should().NotContain("Builtins.Isinstance");
+        code.Should().Contain("ValueTuple<int, string>");
         code.Should().NotContain("Xunit");
     }
 
     [Fact]
-    public void NegatedIsinstanceTupleAssert_UnderRun_LowersToNegatedDisjunction()
+    public void NegatedIsinstanceTupleAssert_UnderRun_LowersToNegatedTupleTest()
     {
         var source = @"
 @test
@@ -133,56 +129,31 @@ def main() -> None:
     print(""ok"")
 ";
         var code = Compile(source, targetsTestHost: false);
-        code.Should().Contain("!(x is int || x is string)");
-        code.Should().NotContain("Builtins.Isinstance");
+        code.Should().Contain("ValueTuple<int, string>");
         code.Should().NotContain("Xunit");
     }
 
     [Fact]
-    public void IsinstanceTupleOfCollections_UnderRun_ErasesEachAlternative()
+    public void IsinstanceTupleAssert_UnderTestHost_KeepsXunitIsAssignableFrom()
     {
-        // The classifier's #912 collection-erasure decision reaches the framework-free arm through the
-        // SAME MapTestAssertTypeOperand the test-host arm uses — each alternative erases to its protocol
-        // interface, read from the recorded decision (Critical Rule 2), not re-derived in the emitter.
+        // Under a test host, the tuple type test emits IsAssignableFrom<ValueTuple<...>>.
         var source = @"
 @test
 def check() -> None:
-    x: object = [1]
-    assert isinstance(x, (list, dict))
-
-def main() -> None:
-    check()
-    print(""ok"")
-";
-        var code = Compile(source, targetsTestHost: false);
-        code.Should().Contain("x is global::Sharpy.IList || x is global::Sharpy.IDict");
-        code.Should().NotContain("Builtins.Isinstance");
-    }
-
-    [Fact]
-    public void IsinstanceTupleAssert_UnderTestHost_KeepsXunitAssertTrue_Unchanged()
-    {
-        // The byte-identity control for surface 2: under a test host the tuple assert is still the
-        // Xunit.Assert.True disjunction, unchanged.
-        var source = @"
-@test
-def check() -> None:
-    x: object = 42
+    x: object = (42, ""hello"")
     assert isinstance(x, (int, str))
 
 def main() -> None:
     print(""ok"")
 ";
         var code = Compile(source, targetsTestHost: true);
-        code.Should().Contain("Xunit.Assert.True(x is int || x is string)");
+        code.Should().Contain("IsAssignableFrom<global::System.ValueTuple<int, string>>");
     }
 
     [Fact]
-    public void SingleTypeIsinstanceAssert_UnderRun_UnaffectedByTupleArm()
+    public void SingleTypeIsinstanceAssert_UnderRun_UnaffectedByTupleSemantics()
     {
-        // Control: the single-type isinstance is an ordinary expression that already lowered correctly;
-        // the tuple helper returns null for it, so it keeps its ordinary lowering (no disjunction, no
-        // Xunit) and still compiles.
+        // Control: single-type isinstance lowering is unchanged.
         var source = @"
 @test
 def check() -> None:

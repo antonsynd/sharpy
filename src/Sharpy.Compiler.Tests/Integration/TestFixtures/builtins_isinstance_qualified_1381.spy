@@ -1,9 +1,8 @@
 # `builtins.isinstance` must behave exactly like bare `isinstance` in every position (#1322,
 # #1381): as a narrowing condition, and inside a @test body where assert-isinstance gets its
-# three special rewrites (RoslynEmitter.Statements.ControlFlow.cs). The semantic half landed in
-# 5c924ced2; the @test-body codegen half rode the #1413 commit; #1381's own comment records that
-# NO fixture spelled the qualified form anywhere — this is that fixture. Each shape is written
-# both ways beside its bare twin, so agreement is asserted, not assumed.
+# special rewrites. The semantic half landed in 5c924ced2; the @test-body codegen half rode
+# the #1413 commit. Each shape is written both ways beside its bare twin, so agreement is
+# asserted, not assumed.
 import builtins
 
 
@@ -20,9 +19,10 @@ def test_qualified_negated():
 
 
 @test
-def test_qualified_tuple():
+def test_qualified_or_of_singles():
+    # Union-intent: rewritten from (int, str) to or-of-singles (#1532).
     x: object = 42
-    assert builtins.isinstance(x, (int, str))
+    assert builtins.isinstance(x, int) or builtins.isinstance(x, str)
 
 
 def main() -> None:

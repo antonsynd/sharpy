@@ -1,0 +1,16 @@
+# isinstance(x, (A, B)) denotes tuple[A, B] — structural ValueTuple test (#1532).
+# The check narrows to tuple[A, B] so element access works in the branch.
+
+def main() -> None:
+    x: object = (42, "hello")
+    if isinstance(x, (int, str)):
+        print(x[0])
+        print(x[1])
+    else:
+        print("not a tuple")
+
+    y: object = 5
+    if isinstance(y, (int, str)):
+        print("y is tuple")
+    else:
+        print("y is not tuple")

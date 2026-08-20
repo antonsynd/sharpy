@@ -9,12 +9,14 @@ def test_isinstance_negated():
     assert not isinstance(x, int)
 
 @test
-def test_isinstance_tuple():
-    x: object = 42
+def test_isinstance_tuple_structural():
+    # (int, str) denotes tuple[int, str] (#1532). Test with a genuinely tuple-typed value.
+    x: object = (42, "hello")
     assert isinstance(x, (int, str))
 
 @test
-def test_isinstance_negated_tuple():
+def test_isinstance_negated_tuple_structural():
+    # Negative: 3.14 is not a tuple[int, str].
     x: object = 3.14
     assert not isinstance(x, (int, str))
 

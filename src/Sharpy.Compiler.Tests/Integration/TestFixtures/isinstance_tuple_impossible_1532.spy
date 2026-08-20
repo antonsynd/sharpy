@@ -1,0 +1,7 @@
+# SPY0499: isinstance tuple type test is statically impossible (#1532).
+# The scrutinee's static type (str) is never a tuple.
+
+def main() -> None:
+    x: str = "hello"
+    if isinstance(x, (int, str)):
+        print("impossible")
