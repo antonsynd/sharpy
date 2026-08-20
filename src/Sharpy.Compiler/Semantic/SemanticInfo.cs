@@ -133,6 +133,11 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<FunctionCall, bool> _clrPropertyCallLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // #1520: functools.partial spec — the target symbol and fixed-arg metadata resolved during
+    // type checking, so the emitter reads the spec instead of re-deriving the target (#1520).
+    private readonly ConcurrentDictionary<FunctionCall, FunctoolsPartialSpec> _functoolsPartialSpecs =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track functions that contain yield statements (generators)
     //
     // TRANSPORT (E2 #1056): the CODEGEN routing consumers now read this fact from the lowering IR
@@ -480,6 +485,16 @@ public class SemanticInfo : ISemanticQuery
     public bool IsClrPropertyCall(FunctionCall call)
     {
         return _clrPropertyCallLowerings.TryGetValue(call, out _);
+    }
+
+    public void SetFunctoolsPartialSpec(FunctionCall call, FunctoolsPartialSpec spec)
+    {
+        _functoolsPartialSpecs[call] = spec;
+    }
+
+    public FunctoolsPartialSpec? GetFunctoolsPartialSpec(FunctionCall call)
+    {
+        return _functoolsPartialSpecs.TryGetValue(call, out var spec) ? spec : null;
     }
 
     public void SetCalleeRouting(FunctionCall call, CalleeRouting routing)
@@ -1275,6 +1290,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._clrPropertyCallLowerings)
             _clrPropertyCallLowerings.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._functoolsPartialSpecs)
+            _functoolsPartialSpecs.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._typeAnnotations)
             _typeAnnotations.TryAdd(kvp.Key, kvp.Value);
 
@@ -1941,3 +1959,11 @@ public enum MatchScrutineeLoweringKind
 }
 
 public sealed record MatchScrutineeLowering(MatchScrutineeLoweringKind Kind);
+
+/// <summary>
+/// The materialized spec for a <c>functools.partial(f, ...)</c> call, recorded by the TypeChecker
+/// so the emitter reads the resolved target symbol instead of re-deriving it (#1520).
+/// </summary>
+public sealed record FunctoolsPartialSpec(
+    FunctionSymbol? TargetSymbol,
+    int FixedPositionalCount);

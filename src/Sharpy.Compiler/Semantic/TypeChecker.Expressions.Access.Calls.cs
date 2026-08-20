@@ -4221,6 +4221,8 @@ internal partial class TypeChecker
         }
 
         _semanticInfo.SetExpressionType(call, resultType);
+        _semanticInfo.SetFunctoolsPartialSpec(call, new FunctoolsPartialSpec(
+            targetFunctionSymbol, fixedPositionalCount));
         return resultType;
     }
 

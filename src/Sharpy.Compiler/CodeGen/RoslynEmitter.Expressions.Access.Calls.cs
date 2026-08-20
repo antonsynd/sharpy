@@ -1224,7 +1224,7 @@ internal partial class RoslynEmitter
     /// parameters to the target function:
     /// <code>functools.partial(add, 5) -> (int x) => add(5, x)</code>
     /// </summary>
-    private ExpressionSyntax GenerateFunctoolsPartialCall(FunctionCall call)
+    private ExpressionSyntax GenerateFunctoolsPartialCall(FunctionCall call, Semantic.FunctoolsPartialSpec spec)
     {
         // call.Arguments[0] is the target callable; remaining positional args are fixed.
         var targetExpr = call.Arguments[0];
@@ -1233,18 +1233,10 @@ internal partial class RoslynEmitter
         var resultType = GetExpressionSemanticType(call) as Semantic.FunctionType;
         if (resultType == null)
         {
-            // Defensive fallback: semantic analysis failed to compute a FunctionType
-            // (should not happen when IsFunctoolsPartialCall returns true and type checking succeeded).
             return GenerateCall(call);
         }
 
-        // Resolve target FunctionSymbol so we can name the remaining lambda parameters
-        // after the original function's parameter names (preserves keyword-fix support).
-        FunctionSymbol? targetSymbol = null;
-        if (targetExpr is Parser.Ast.Identifier targetId)
-        {
-            targetSymbol = _context.LookupSymbol(targetId.Name) as FunctionSymbol;
-        }
+        var targetSymbol = spec.TargetSymbol;
 
         // Evaluate fixed positional and keyword args. Side-effect-bearing expressions are
         // hoisted into local temps so they execute exactly once (matching Python semantics

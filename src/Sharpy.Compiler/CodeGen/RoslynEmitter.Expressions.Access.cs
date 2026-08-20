@@ -19,10 +19,12 @@ internal partial class RoslynEmitter
 {
     private ExpressionSyntax GenerateCall(FunctionCall call)
     {
-        // Handle functools.partial(f, ...) — compatibility shim that emits an equivalent lambda
-        if (Semantic.FunctoolsPartialHelper.IsFunctoolsPartialCall(call, _context.SymbolTable))
+        // Handle functools.partial(f, ...) — compatibility shim that emits an equivalent lambda.
+        // The spec is recorded by the TypeChecker; the emitter reads it instead of
+        // re-classifying via FunctoolsPartialHelper (#1520).
+        if (_context.SemanticInfo?.GetFunctoolsPartialSpec(call) is { } partialSpec)
         {
-            return GenerateFunctoolsPartialCall(call);
+            return GenerateFunctoolsPartialCall(call, partialSpec);
         }
 
         // A parenthesized callee — (foo)(5), (p.method)(5), (identity[int])(5) — wraps the inner
