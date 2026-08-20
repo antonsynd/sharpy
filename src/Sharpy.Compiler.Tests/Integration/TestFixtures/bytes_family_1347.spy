@@ -7,3 +7,6 @@ def main() -> None:
     print(b2.decode("utf-8"))
     mk: (int) -> bytes = bytes
     print(len(mk(3)))
+    # list(map(bytes, xs)) is NOT here: bytes' conversion overloads have divergent arities
+    # (0/1/1), so the argument position has no target to select one at inference time and is
+    # refused SPY0336 where map(int, xs) works — #1589 tracks it.

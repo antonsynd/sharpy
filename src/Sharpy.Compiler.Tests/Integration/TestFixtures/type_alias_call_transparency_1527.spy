@@ -2,6 +2,10 @@
 # `type bint = int; bint("42")` lowers exactly as `int("42")`.
 # This is a deliberate CPython deviation — Python 3.12 raises TypeError
 # for `type bint = int; bint("42")` because TypeAliasType is not callable.
+#
+# VALUE and ARGUMENT positions are NOT here: measured 2026-08-20, the alias never enters the
+# constructor-reference tiers (`conv: (str) -> int = bint` is SPY0220; `map(bint, xs)` ICEs
+# with CS0103 behind SPY0908) — #1588 tracks completing the transparency the spec rules.
 
 type bint = int
 

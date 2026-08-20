@@ -1,0 +1,21 @@
+# #1528: a nested struct IMPLEMENTS a nested interface — the Interfaces list is resolved by
+# pass 2 reading the pass-1 symbol, and PropagateInterfaceMethods now runs for nested types too
+# (both were dead for them before the fix).
+
+class Container:
+    interface IShaped:
+        def area(self) -> int: ...
+
+    struct Square(IShaped):
+        side: int
+
+        def __init__(self, side: int) -> None:
+            self.side = side
+
+        def area(self) -> int:
+            return self.side * self.side
+
+
+def main() -> None:
+    sq: Container.Square = Container.Square(3)
+    print(sq.area())

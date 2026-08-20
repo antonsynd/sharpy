@@ -1,6 +1,7 @@
 # #1272: frozenset, frozendict, object and decimal have constructor-reference families, so an
-# annotated target pins them the way `list` has always pinned. bytes (#1347) and
-# Iterator/DictKeyView (#1346) stay unfamilied — their blockers are recorded on those issues.
+# annotated target pins them the way `list` has always pinned. bytes joined them with the
+# Conversion family when its statics moved to BytesFromhex (#1347); only Iterator/DictKeyView
+# stay unfamilied — non-constructible, refused as SPY0346 (#1346).
 def main() -> None:
     mkfs: () -> frozenset[int] = frozenset
     print(len(mkfs()))
@@ -13,3 +14,6 @@ def main() -> None:
 
     mkd: (str) -> decimal = decimal
     print(mkd("1.5"))
+
+    mkb: (int) -> bytes = bytes
+    print(len(mkb(4)))

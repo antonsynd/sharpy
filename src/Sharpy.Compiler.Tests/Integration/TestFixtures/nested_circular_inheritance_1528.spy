@@ -1,0 +1,15 @@
+# #1528: circular inheritance is DETECTED for nested types. Before the fix, pass 2's
+# DetectCircularInheritance looked the declaring type up by bare name, which returned null for
+# every nested type (class scopes are transient), so the cycle walk never ran — this is its
+# first real nested test.
+
+class Outer:
+    class A(B):
+        pass
+
+    class B(A):
+        pass
+
+
+def main() -> None:
+    print("unreachable")

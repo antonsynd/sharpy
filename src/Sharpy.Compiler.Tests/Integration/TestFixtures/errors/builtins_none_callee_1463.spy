@@ -1,0 +1,9 @@
+# #1463: builtins.None refused in CALLEE position too — the member access is checked before the
+# call, so the same SPY0214 fires. A separate fixture from builtins_none_refused_1463 because the
+# .error matcher binds each expected line to the FIRST diagnostic with that message, so two
+# identical messages in one fixture cannot both be location-verified.
+
+import builtins
+
+def main() -> None:
+    y = builtins.None("x")
