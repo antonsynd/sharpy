@@ -1,0 +1,12 @@
+# #1527: type aliases are transparent in expression and call positions.
+# `type bint = int; bint("42")` lowers exactly as `int("42")`.
+# This is a deliberate CPython deviation — Python 3.12 raises TypeError
+# for `type bint = int; bint("42")` because TypeAliasType is not callable.
+
+type bint = int
+
+def main() -> None:
+    v: bint = bint("42")
+    print(v)
+    w: int = bint("7")
+    print(w)

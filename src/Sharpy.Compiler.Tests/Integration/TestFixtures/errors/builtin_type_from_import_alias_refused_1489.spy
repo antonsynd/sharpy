@@ -1,16 +1,5 @@
-# A builtin TYPE imported under an alias stays refused, with the did-you-mean steer (#1489).
-#
-# This is a regression guard for a fix, not for a bug. #1383 made an aliased builtin FUNCTION work
-# by binding the registry's own symbol under the alias's spelling. Applying the same treatment to a
-# TYPE was measured and rejected: it makes `x: bint` RESOLVE, and the emitter — which maps types by
-# name — then emits `Bint`, so the clean SPY0202 below became CS0246 behind SPY0908. Trading a
-# diagnostic that names the mistake for an internal error that names a generated C# type is
-# strictly worse than not fixing it.
-#
-# So the alias rebinding is restricted to FunctionSymbol at both from-import loops, and this fixture
-# is what fails if that restriction is ever lifted without teaching the name-keyed type paths
-# (TypeResolver's primitive switch, TypeSyntaxMapper) to follow the alias.
-
+# A builtin TYPE imported under an alias now works — type aliases are transparent (#1527).
+# Previously SPY0312 refused this at the import; now it compiles and runs.
 from builtins import int as bint
 
 

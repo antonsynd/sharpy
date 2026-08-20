@@ -1,24 +1,5 @@
-# #1489: a builtin TYPE imported under an alias. Refused at the import (SPY0312), owner ruling
-# 2026-08-13.
-#
-# The FUNCTION half of this spelling works and is pinned next door
-# (`builtin_from_import_alias_1383.spy`): the alias clone carries a `BuiltinAliasOf` back-pointer
-# and its three consumers ask for the identity rather than the spelling. A TYPE cannot take that
-# shape today, because its consumers are keyed by NAME — `TypeResolver`'s primitive `name switch`
-# and `TypeSyntaxMapper`'s emission — so binding the registry's `TypeSymbol` under the alias makes
-# `x: bint` resolve and then emit as `Bint`: CS0246 behind SPY0908.
-#
-# #1383 therefore restricted the registry binding to `FunctionSymbol`, which protected the
-# ANNOTATION form and left the CALL form leaking a DIFFERENT internal error — `bint("42")` stayed
-# pointed at the module's discovered export and emitted `Int(…)`, CS0103 behind SPY0908. Both
-# spellings are now one deliberate refusal, which is the #1146 contract: works, or refused at
-# semantic time.
-#
-# The did-you-mean errors after the refusal are the ordinary consequence of the name never being
-# bound, and they are listed here rather than hidden so the fixture shows what a user actually sees.
-#
-# Not suggested by the diagnostic, and deliberately: `type bint = int` was RUN before being
-# recommended and carries the identical CALL-position ICE (#1527).
+# #1489: a builtin TYPE imported under an alias. Previously refused at the import (SPY0312).
+# Now works — type aliases are transparent in every position (#1527).
 from builtins import int as bint
 
 def main() -> None:

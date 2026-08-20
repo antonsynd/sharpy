@@ -68,6 +68,11 @@ internal class TypeSyntaxMapper
             // only safe C# target. Must precede the UserDefinedType arm.
             UnmappedClrType => PredefinedType(Token(SyntaxKind.ObjectKeyword)),
 
+            // Alias transparency (#1527): an import alias of a builtin type resolves as
+            // UserDefinedType with the alias name; re-route to the builtin's own name.
+            UserDefinedType { Symbol.BuiltinAliasOf: Symbol original }
+                => MapSemanticType(new UserDefinedType { Name = original.Name, Symbol = original as TypeSymbol }),
+
             // Handle user-defined types
             UserDefinedType udt => RoslynEmitter.ParseQualifiedTypeName(GetMappedTypeNameFromSymbol(udt)),
 

@@ -361,35 +361,11 @@ internal partial class ProjectCompiler
                                         var registryBinding = BuiltinNameShadowing.RegistryBindingFor(
                                             SymbolTable.BuiltinRegistry, moduleInfo, lookupName);
 
-                                        // An aliased builtin TYPE is REFUSED (SPY0312, #1489): the
-                                        // restriction below kept `x: bint` from becoming an ICE but
-                                        // left `bint("42")` emitting `Int(…)` — CS0103 behind
-                                        // SPY0908. Applied on this path as well as in ImportResolver
-                                        // for the reason the notes above give: this is the loop
-                                        // multi-file compilation actually runs, and an import
-                                        // refusal that covers only the single-file loop covers
-                                        // exactly the case that cannot arise (#1145).
-                                        if (importAlias.AsName != null
-                                            && BuiltinNameShadowing.AliasesBuiltinType(
-                                                SymbolTable.BuiltinRegistry, moduleInfo, lookupName))
-                                        {
-                                            _diagnostics.AddPhaseError(
-                                                BuiltinNameShadowing.TypeAliasRefusalMessage(
-                                                    lookupName, importAlias.AsName),
-                                                CompilerPhase.ImportResolution,
-                                                span: importAlias.Span,
-                                                line: importAlias.LineStart,
-                                                column: importAlias.ColumnStart,
-                                                filePath: unit.FilePath,
-                                                code: BuiltinNameShadowing.TypeAliasRefusalCode);
-                                            continue;
-                                        }
+                                        // SPY0312 RETIRED (#1527): type aliases are now transparent
+                                        // in every position.
 
-                                        // Functions only under an alias, belt-and-braces behind the
-                                        // refusal above: same rule as ImportResolver (#1383).
-                                        if (importAlias.AsName != null
-                                            && registryBinding?.Symbol is not FunctionSymbol)
-                                            registryBinding = null;
+                                        // SPY0312 RETIRED (#1527): the FunctionSymbol restriction
+                                        // is removed — type aliases are now transparent.
 
                                         if (registryBinding != null)
                                             symbol = registryBinding.Value.Symbol;

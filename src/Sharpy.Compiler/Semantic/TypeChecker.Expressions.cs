@@ -522,6 +522,9 @@ internal partial class TypeChecker
             VariableSymbol varSymbol => GetVariableType(varSymbol),
             FunctionSymbol funcSymbol => FunctionType.FromParameters(funcSymbol.Parameters, funcSymbol.ReturnType),
             ModuleSymbol moduleSymbol => new ModuleType { Symbol = moduleSymbol },
+            // Type aliases are transparent in every position (#1527): resolve the alias
+            // to its target and type the identifier as if it were the target's own spelling.
+            TypeAliasSymbol aliasSymbol => ResolveTypeAliasInExpressionPosition(aliasSymbol),
             // Primitive type names (int, str, bool, float, etc.) used as function references
             // (e.g., map(int, items)) get a synthesized FunctionType so downstream consumers
             // like BuiltinReturnTypeInference can extract the return type.
@@ -553,6 +556,31 @@ internal partial class TypeChecker
     /// over-constrain T from the predicate's parameter — only the iterable argument
     /// should bind T.
     /// </summary>
+    private SemanticType ResolveTypeAliasInExpressionPosition(TypeAliasSymbol aliasSymbol)
+    {
+        if (aliasSymbol.TypeAnnotation == null)
+            return SemanticType.Unknown;
+
+        var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+        if (expanded is BuiltinType bt)
+        {
+            var registryType = _symbolTable.BuiltinRegistry.GetType(bt.Name);
+            if (registryType != null && PrimitiveCatalog.IsPrimitive(registryType.Name))
+                return SynthesizePrimitiveFunctionType(registryType);
+            return new UserDefinedType { Name = bt.Name, Symbol = registryType };
+        }
+
+        if (expanded is UserDefinedType { Symbol: TypeSymbol ts })
+        {
+            if (PrimitiveCatalog.IsPrimitive(ts.Name)
+                && ReferenceEquals(ts, _symbolTable.BuiltinRegistry.GetType(ts.Name)))
+                return SynthesizePrimitiveFunctionType(ts);
+            return SemanticType.Unknown;
+        }
+
+        return SemanticType.Unknown;
+    }
+
     private SemanticType SynthesizePrimitiveFunctionType(TypeSymbol ts)
     {
         var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(ts.Name);

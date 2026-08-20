@@ -238,6 +238,27 @@ internal partial class TypeChecker
                 }
             }
 
+            // Type alias transparency (#1527): expand the alias and route the call through
+            // the target type, so `type bint = int; bint("42")` takes int("42")'s path.
+            if (symbol is TypeAliasSymbol calleeAlias && calleeAlias.TypeAnnotation != null)
+            {
+                var expanded = _typeResolver.ResolveTypeAnnotation(calleeAlias.TypeAnnotation);
+                TypeSymbol? aliasTarget = expanded switch
+                {
+                    BuiltinType bt => _symbolTable.BuiltinRegistry.GetType(bt.Name),
+                    UserDefinedType { Symbol: TypeSymbol ts } => ts,
+                    _ => null
+                };
+
+                if (aliasTarget != null)
+                {
+                    symbol = aliasTarget;
+                    builtinName = aliasTarget.BuiltinAliasOf?.Name ?? aliasTarget.Name;
+                    if (_symbolTable.BuiltinRegistry.IsBuiltinSymbol(aliasTarget) && _semanticInfo != null)
+                        _semanticInfo.SetCalleeRouting(call, CalleeRouting.Builtin);
+                }
+            }
+
             // Special handling for constructor calls (calling a type)
             if (symbol is TypeSymbol typeSymbol)
             {

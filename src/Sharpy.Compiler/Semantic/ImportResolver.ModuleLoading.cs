@@ -218,31 +218,10 @@ internal partial class ImportResolver
                                 // spelling outright (#1489, owner ruling 2026-08-13), which is why
                                 // the restriction below is now belt-and-braces rather than the rule.
                                 //
-                                // MEASURED while mutation-testing the pair: disabling THIS arm turns
-                                // no fixture red, while disabling the ProjectCompiler twin turns both
-                                // #1489 fixtures red. `FileCompilationPipeline.ResolveImports` — the
-                                // only caller of this loop — has no production caller left; every
-                                // front door reaches `ProjectCompiler.ResolveImports` instead, single
-                                // file included (via SyntheticProject). The arm stays because this
-                                // loop is still live for its own unit tests and is the documented
-                                // half of the parallel-site pair (#1145, #1322); it is recorded as
-                                // fixture-uncovered rather than presented as if it were guarded.
-                                if (importAlias.AsName != null
-                                    && BuiltinNameShadowing.AliasesBuiltinType(
-                                        symbolTable.BuiltinRegistry, moduleInfo, lookupName))
-                                {
-                                    AddError(
-                                        BuiltinNameShadowing.TypeAliasRefusalMessage(
-                                            lookupName, importAlias.AsName),
-                                        importAlias.LineStart, importAlias.ColumnStart,
-                                        code: BuiltinNameShadowing.TypeAliasRefusalCode,
-                                        span: importAlias.Span);
-                                    continue;
-                                }
-
-                                if (importAlias.AsName != null
-                                    && registryBinding?.Symbol is not FunctionSymbol)
-                                    registryBinding = null;
+                                // SPY0312 RETIRED (#1527): type aliases are now transparent in
+                                // every position, so `from builtins import int as bint` binds
+                                // the registry symbol under the alias and bint("42") works.
+                                // The FunctionSymbol restriction that was here is removed.
 
                                 if (registryBinding != null)
                                     symbol = registryBinding.Value.Symbol;

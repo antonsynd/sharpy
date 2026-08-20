@@ -73,6 +73,26 @@ internal partial class RoslynEmitter
                 Span = builtinsQualified.Span
             };
         }
+        // Type alias transparency (#1527): an alias callee routed to Builtin needs its
+        // name rewritten to the TARGET's name so the emitter's name-keyed paths find it.
+        if (!isBuiltinsQualified
+            && _context.SemanticInfo?.GetCalleeRouting(call) == CalleeRouting.Builtin
+            && callee is Identifier aliasId)
+        {
+            var aliasSymbol = _context.LookupSymbol(aliasId.Name) as TypeAliasSymbol;
+            if (aliasSymbol?.TypeAnnotation != null)
+            {
+                callee = new Identifier
+                {
+                    Name = aliasSymbol.TypeAnnotation.Name,
+                    LineStart = aliasId.LineStart,
+                    ColumnStart = aliasId.ColumnStart,
+                    LineEnd = aliasId.LineEnd,
+                    ColumnEnd = aliasId.ColumnEnd,
+                    Span = aliasId.Span
+                };
+            }
+        }
 
         if (callee is Identifier funcName)
         {

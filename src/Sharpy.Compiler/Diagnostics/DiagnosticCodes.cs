@@ -350,7 +350,8 @@ public static class DiagnosticCodes
         // "redirect" was aspirational, the BAND is imports, and an aliased-import refusal is an
         // import diagnostic reported at the import statement. Renumbering the two redirects to
         // carve a new sub-band would break shipped `.error` fixtures for no gain.
-        public const string BuiltinTypeAliasUnsupported = "SPY0312";  // Active (#1489)
+        // Retired — superseded by alias transparency (#1527); reserved, never reused
+        public const string BuiltinTypeAliasUnsupported = "SPY0312";
         // SPY0313-SPY0319: Reserved for future import diagnostics
 
         #endregion
