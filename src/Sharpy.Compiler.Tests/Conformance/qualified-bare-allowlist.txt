@@ -27,12 +27,8 @@
 # See .claude/tmp/qualified-bare-conformance-report.json.
 # ---------------------------------------------------------------------------------------------
 
-# #1445 — TWO CELLS REMAIN. The pattern's annotation resolves through TypeResolver's non-generic
-# arm (now gated with ClrType == null), so `case lib.Box():` resolves to the bare name. But the
-# generic pattern fill (`ApplyBareGenericPatternRule`) keys on the bare spelling only, so a
-# qualified generic pattern does not fill from the scrutinee — SPY0361.
-pattern::generic::inSourceSet
-pattern::generic::outsideSourceSet
+# #1445 — FULLY DRAINED. ApplyBareGenericPatternRule now keys on the resolved symbol rather than
+# the bare spelling, so a qualified generic pattern fills from the scrutinee identically.
 
 # #1446 — FULLY DRAINED. In-source-set annotation and declSiteAnnotation drained with the
 # TypeResolver normalization gate; outside-source-set cells drained when InheritanceResolver was

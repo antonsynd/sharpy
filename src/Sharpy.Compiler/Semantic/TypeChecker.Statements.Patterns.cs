@@ -738,8 +738,14 @@ internal partial class TypeChecker
     private SemanticType? ApplyBareGenericPatternRule(
         Pattern pattern, TypeAnnotation patternType, SemanticType resolvedType, SemanticType scrutineeType)
     {
-        if (patternType.TypeArguments.Length != 0
-            || _symbolTable.Lookup(patternType.Name) is not TypeSymbol { IsGeneric: true } genericPatternType)
+        if (patternType.TypeArguments.Length != 0)
+            return resolvedType;
+
+        // Key on the RESOLVED symbol rather than the bare spelling, so a qualified
+        // spelling like `case lib.Box():` engages the fill rule identically (#1445).
+        var genericPatternType = (resolvedType as UserDefinedType)?.Symbol
+            ?? _symbolTable.Lookup(patternType.Name) as TypeSymbol;
+        if (genericPatternType is not { IsGeneric: true })
         {
             return resolvedType;
         }
