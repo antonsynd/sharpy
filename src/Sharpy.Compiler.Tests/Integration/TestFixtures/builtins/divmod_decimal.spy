@@ -59,7 +59,7 @@ def main() -> None:
         show(divmod(7m, 0m))
         print("ERROR: should not reach here")
     except InvalidOperation as e:
-        print(e.message)
+        print(str(e))
 
     # Negative control: `except ZeroDivisionError` must NOT catch it. The two are
     # siblings under ArithmeticError.

@@ -9,4 +9,4 @@ def main() -> None:
     try:
         check(-1)
     except AssertionError as e:
-        print(e.message)
+        print(str(e))

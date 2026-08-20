@@ -8,14 +8,14 @@ def main() -> None:
         print(divmod(10, 0))
         print("ERROR: should not reach here")
     except ZeroDivisionError as e:
-        print(e.message)
+        print(str(e))
 
     # Float divmod by zero carries a distinct CPython message
     try:
         print(divmod(10.0, 0.0))
         print("ERROR: should not reach here")
     except ZeroDivisionError as e:
-        print(e.message)
+        print(str(e))
 
     # A tiny-but-nonzero divisor computes (the deleted 1e-10 epsilon raised here)
     tiny: tuple[float, float] = divmod(1e-9, 1e-11)

@@ -1,9 +1,9 @@
 def main():
     try:
         raise ValueError("second")
-    except ValueError as e when e.message == "first":
+    except ValueError as e when str(e) == "first":
         print("matched first")
-    except ValueError as e when e.message == "second":
+    except ValueError as e when str(e) == "second":
         print("matched second")
     except ValueError as e:
         print("matched fallback")

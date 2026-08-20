@@ -18,7 +18,7 @@ def main() -> None:
         print(7m % 0m)
         print("ERROR: should not reach here")
     except InvalidOperation as e:
-        print(e.message)
+        print(str(e))
 
     # Variable zero divisor — the runtime-escape half of #1189.
     zero: decimal = 0m
