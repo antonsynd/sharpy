@@ -557,6 +557,14 @@ deviations:
   spec_ref: docs/language_specification/type_hierarchy.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: type-alias-call-transparency
+  category: semantic
+  audience: python
+  severity: none
+  code: null
+  spec_ref: type_aliases.md#transparency
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: type-narrowing-or-not-supported
   category: types
   audience: python
