@@ -43,6 +43,15 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// justification), or a generator limitation. The single reviewed baseline draws that
 /// line; the ratchet holds it.
 /// </para>
+///
+/// <para>
+/// A snippet whose only errors are SPY0215 (CLR-only member refused on a builtin
+/// exception, #1515) is a <b>refused-by-design</b> verdict, not a failure: the refusal
+/// IS the contract, mirroring the re-representation matrix's "every cell either compiles
+/// or is refused by a deliberate Sharpy diagnostic". Refusals are reported separately and
+/// never enter the allowlist — the allowlist stays reserved for genuine gaps that drain
+/// on fix.
+/// </para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]
 public class InteropConformanceTests
@@ -309,7 +318,8 @@ public class InteropConformanceTests
                 evaluated.Add(record);
         });
 
-        var failures = evaluated.Where(r => r.Stage != "crash").ToList();
+        var refusals = evaluated.Where(r => r.Stage == "refused").ToList();
+        var failures = evaluated.Where(r => r.Stage != "crash" && r.Stage != "refused").ToList();
         var crashes = evaluated.Where(r => r.Stage == "crash").ToList();
         var byPosition = snippets.GroupBy(s => s.Position).ToDictionary(g => g.Key, g => new PositionStats { Generated = g.Count() });
         foreach (var record in evaluated)
@@ -318,12 +328,14 @@ public class InteropConformanceTests
             {
                 if (record.Stage == "crash")
                     st.Crash++;
+                else if (record.Stage == "refused")
+                    st.Refused++;
                 else
                     st.Fail++;
             }
         }
         foreach (var st in byPosition.Values)
-            st.Pass = st.Generated - st.Fail - st.Crash;
+            st.Pass = st.Generated - st.Fail - st.Crash - st.Refused;
         // Fold the notAttempted tally into the per-position breakdown so each position reports
         // pass/fail/crash AND notAttempted (a position may be entirely notAttempted with no
         // generated snippet, so create the entry if absent).
@@ -336,7 +348,7 @@ public class InteropConformanceTests
             }
             st.NotAttempted += count;
         }
-        var passCount = snippets.Count - failures.Count - crashes.Count;
+        var passCount = snippets.Count - failures.Count - crashes.Count - refusals.Count;
 
         // Ratchet: any non-allowlisted failure/crash fails CI once an allowlist exists.
         var allowlist = LoadAllowlist();
@@ -355,13 +367,14 @@ public class InteropConformanceTests
                 pass = passCount,
                 fail = failures.Count,
                 crash = crashes.Count,
+                refusedByDesign = refusals.Count,
                 notAttempted = notAttempted.Count,
                 skippedModules = skippedModules.Count,
                 allowlistSize = allowlist.Count,
                 nonAllowlistedFailures = offenders.Count,
             },
             ratchetMode = AllowlistFileExists(),
-            byPosition = byPosition.ToDictionary(kv => kv.Key, kv => new { kv.Value.Generated, kv.Value.Pass, kv.Value.Fail, kv.Value.Crash, kv.Value.NotAttempted }),
+            byPosition = byPosition.ToDictionary(kv => kv.Key, kv => new { kv.Value.Generated, kv.Value.Pass, kv.Value.Fail, kv.Value.Crash, kv.Value.Refused, kv.Value.NotAttempted }),
             // Full (uncapped) per-position/per-reason notAttempted tally — the flat list below is
             // capped, so this is the authoritative source for bucket deltas.
             notAttemptedByReason = notAttemptedByReason
@@ -379,6 +392,7 @@ public class InteropConformanceTests
             },
             crashes = crashes.Take(100).Select(f => f.ToReport(allowlist)),
             failures = failures.Take(500).Select(f => f.ToReport(allowlist)),
+            refusedByDesign = refusals.Take(500).Select(f => f.ToReport(allowlist)),
             notAttempted = notAttempted.Take(200),
             skippedModules,
         });
@@ -388,7 +402,7 @@ public class InteropConformanceTests
 
         _output.WriteLine($"Members enumerated: {membersEnumerated}");
         _output.WriteLine($"Snippets generated: {snippets.Count}");
-        _output.WriteLine($"Pass: {passCount}  Fail: {failures.Count}  Crash: {crashes.Count}  NotAttempted: {notAttempted.Count}");
+        _output.WriteLine($"Pass: {passCount}  Fail: {failures.Count}  Crash: {crashes.Count}  Refused-by-design: {refusals.Count}  NotAttempted: {notAttempted.Count}");
         _output.WriteLine($"Allowlist size: {allowlist.Count}  Non-allowlisted failures: {offenders.Count}");
 
         // Enumeration sanity always holds (a bridge that discovers nothing is itself a bug).
@@ -619,7 +633,15 @@ public class InteropConformanceTests
             .ToList();
 
         if (errors.Count > 0)
-            return new FailureRecord(snippet, "sharpy", errors);
+        {
+            // An SPY0215-only error set is the deliberate builtin-exception surface refusal
+            // (#1515) — a by-design verdict, not a bridge gap. Mixed error sets stay failures.
+            var stage = errors.All(e => e.StartsWith(
+                    DiagnosticCodes.Semantic.BuiltinExceptionClrMemberRefused + ":", StringComparison.Ordinal))
+                ? "refused"
+                : "sharpy";
+            return new FailureRecord(snippet, stage, errors);
+        }
 
         if (doCSharpBind && result.GeneratedCSharp != null)
         {
@@ -1187,6 +1209,7 @@ public class InteropConformanceTests
         public int Pass;
         public int Fail;
         public int Crash;
+        public int Refused;
         public int NotAttempted;
     }
 }
