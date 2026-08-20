@@ -28,6 +28,17 @@ def process_data[T, E](items: dict[str, list[Result[T, E]]]) -> dict[str, list[R
     return result
 ```
 
+## Transparency
+
+An alias is the target type in every position, including call position:
+
+```python
+type bint = int
+v: bint = bint("42")  # compiles and runs identically to int("42")
+```
+
+This is a deliberate deviation from CPython 3.12, where `type bint = int; bint("42")` raises `TypeError` because `typing.TypeAliasType` is not callable. Sharpy's `type` aliases are compile-time transparent — the alias IS the target type, and every spelling the target accepts, the alias accepts identically. See `docs/deviations.yaml` for the formal record.
+
 Type aliases with function types are the preferred way to name callable signatures for internal use. For cases requiring variance annotations, event handler types, or a distinct named C# type, use a [delegate](delegates.md) instead. See [Delegates — When to use delegates](delegates.md#when-to-use-delegates) and [Function Types — Delegates vs function types](function_types.md#delegates-vs-function-types).
 
 *Implementation*

@@ -1279,9 +1279,24 @@ internal partial class TypeChecker
     private bool ConversionSignatureSatisfies(ConstructorReferenceType constructorReference, FunctionType target)
     {
         var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(constructorReference.Name);
-        return overloads != null
-            && overloads.Any(overload =>
-                SignatureSatisfiesTarget(ReferenceSignatureOf(overload, t => t), target));
+        if (overloads == null)
+            return false;
+
+        // The target's return type names the builtin (e.g., `bytes`). The overload's return
+        // type may name the CLR struct (e.g., `Bytes`). Normalize the comparison: if the
+        // target return type matches the constructor-reference's OWN type, accept any overload
+        // whose arity and parameter types fit — the return type is the type being constructed.
+        var registryType = _symbolTable.BuiltinRegistry.GetType(constructorReference.Name);
+        var normalizedTarget = target;
+        if (registryType != null
+            && target.ReturnType is UserDefinedType { Symbol: not null } targetUdt
+            && ReferenceEquals(targetUdt.Symbol, registryType))
+        {
+            normalizedTarget = target with { ReturnType = SemanticType.Unknown };
+        }
+
+        return overloads.Any(overload =>
+            SignatureSatisfiesTarget(ReferenceSignatureOf(overload, t => t), normalizedTarget));
     }
 
     /// <summary>
@@ -1841,6 +1856,9 @@ internal partial class TypeChecker
     /// SPY0336. Returns <paramref name="referencedType"/> unchanged when nothing is ambiguous.</returns>
     private SemanticType CheckReferencedCallableOverloads(Expression reference, FunctionType referencedType)
     {
+        if (IsCurrentMemberAccessQualifier(reference))
+            return referencedType;
+
         if (ResolveReferencedCallableOverloads(reference) is not var (overloads, substitute)
             || overloads.Count <= 1)
         {
@@ -1932,7 +1950,16 @@ internal partial class TypeChecker
                 return false;
         }
 
-        return target.ReturnType is UnknownType || candidate.ReturnType.IsAssignableTo(target.ReturnType);
+        if (target.ReturnType is UnknownType)
+            return true;
+        if (candidate.ReturnType.IsAssignableTo(target.ReturnType))
+            return true;
+        // CLR type fallback: `bytes` (BuiltinType) and `Bytes` (UserDefinedType from a
+        // Builtins overload) name the same CLR type. Without this, the constructor-reference
+        // pin for bytes cannot match the overload's return type (#1582).
+        if (candidate.ReturnType.ClrType != null && candidate.ReturnType.ClrType == target.ReturnType.ClrType)
+            return true;
+        return false;
     }
 
     /// <summary>How to name a callable reference in a diagnostic.</summary>

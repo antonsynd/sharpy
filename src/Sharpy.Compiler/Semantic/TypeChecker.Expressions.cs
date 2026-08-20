@@ -528,8 +528,13 @@ internal partial class TypeChecker
             // Primitive type names (int, str, bool, float, etc.) used as function references
             // (e.g., map(int, items)) get a synthesized FunctionType so downstream consumers
             // like BuiltinReturnTypeInference can extract the return type.
+            // bytes joins this gate only outside member-access qualifier position, because
+            // bytes.fromhex needs the type-reference path (#1583, #1347).
             // Non-primitive TypeSymbols remain Unknown — resolved at FunctionCall level.
             TypeSymbol ts when PrimitiveCatalog.IsPrimitive(ts.Name) =>
+                SynthesizePrimitiveFunctionType(ts),
+            TypeSymbol ts when ts.Name == Shared.BuiltinNames.Bytes
+                && !IsCurrentMemberAccessQualifier(id) =>
                 SynthesizePrimitiveFunctionType(ts),
             TypeSymbol => SemanticType.Unknown,
             _ => SemanticType.Unknown

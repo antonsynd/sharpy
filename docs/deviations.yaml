@@ -1569,3 +1569,22 @@ deviations:
       sharpy: |
         np.split(a6, 0)                # ValueError: number sections must be larger than 0.
         np.split(a6, -1)               # ValueError: number sections must be larger than 0.
+
+  - id: type-alias-call-transparency
+    code: null
+    category: semantic
+    audience: python
+    severity: none
+    python_behavior: "Python 3.12 raises `TypeError: 'typing.TypeAliasType' object is not callable` for `type bint = int; bint(\"42\")`. The PEP 695 `type` statement creates a `TypeAliasType` which is a descriptor, not a callable — it has no `__call__` method."
+    sharpy_behavior: "Type aliases are compile-time transparent: `type bint = int; bint(\"42\")` compiles and runs identically to `int(\"42\")`. The alias IS the target type in every position (annotation, call, value, argument). Owner-ruled 2026-08-18 (#1527)."
+    spec_ref: "type_aliases.md#transparency"
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        type bint = int
+        bint("42")     # TypeError: 'typing.TypeAliasType' object is not callable
+      sharpy: |
+        type bint = int
+        v: bint = bint("42")  # compiles, prints 42
+
