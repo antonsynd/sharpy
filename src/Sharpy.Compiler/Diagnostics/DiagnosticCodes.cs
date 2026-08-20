@@ -241,7 +241,8 @@ public static class DiagnosticCodes
         // ValueError, C# masks the count to 5/6 bits and computes a silently different value
         // (`1 << -1` is -2147483648). Runtime negative counts keep .NET's masking (Axiom 1).
         public const string NegativeConstantShiftCount = "SPY0213";  // Active
-        // SPY0214-SPY0219: Reserved for future name resolution diagnostics
+        public const string BuiltinsNoneLiteral = "SPY0214";  // Active — builtins.None refused
+        // SPY0215-SPY0219: Reserved for future name resolution diagnostics
 
         #endregion
 

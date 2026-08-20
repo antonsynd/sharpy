@@ -828,10 +828,17 @@ internal partial class TypeChecker
     /// disagree about what <c>builtins.X</c> names.
     /// </summary>
     private TypeSymbol? BuiltinsQualifiedTypeOf(MemberAccess memberAccess)
-        => _semanticInfo.GetExpressionType(memberAccess.Object) is ModuleType moduleType
-            ? TryResolveBuiltinsQualifiedType(
-                moduleType.Symbol, memberAccess.Member, memberAccess.IsMemberBacktickEscaped)
-            : null;
+    {
+        if (_semanticInfo.GetExpressionType(memberAccess.Object) is not ModuleType moduleType)
+            return null;
+        // builtins.None is refused by SPY0214 before this point; do not re-resolve it
+        // for the constructor-reference tiers or it draws a cascading SPY0342.
+        if (memberAccess.Member == BuiltinNames.None)
+            return null;
+        return TryResolveBuiltinsQualifiedType(
+            moduleType.Symbol, memberAccess.Member, memberAccess.IsMemberBacktickEscaped,
+            isCalleePosition: false);
+    }
 
     /// <summary>
     /// Classifies a reference whose type symbol is already resolved, shared by the bare and the

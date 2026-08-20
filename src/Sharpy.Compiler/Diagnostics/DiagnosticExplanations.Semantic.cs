@@ -801,6 +801,15 @@ public static partial class DiagnosticExplanations
             "Shift the other way with a positive count: '256 >> 1' instead of '256 << -1'. If the " +
             "count is computed, check its sign before shifting.");
 
+        Add(dict, DiagnosticCodes.Semantic.BuiltinsNoneLiteral,
+            "'None' is a literal, not a member of builtins",
+            "Semantic",
+            "'None' is a language literal — it is not callable, subscribable, or importable " +
+            "from the builtins module. CPython raises a SyntaxError for 'builtins.None' because " +
+            "None is a keyword, not a module attribute. Use the bare 'None' literal instead.",
+            "import builtins\nx = builtins.None  # error: None is a literal",
+            "Use the bare literal:\nx: int? = None");
+
         Add(dict, DiagnosticCodes.Semantic.IsTypeTestRetired,
             "'is' used as a type test (retired)",
             "Semantic",

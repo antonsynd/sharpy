@@ -1,0 +1,10 @@
+# #1463: builtins-qualified primitives in value position take the constructor-reference
+# tiers, so `conv: (str) -> int = builtins.int` pins exactly like `conv: ... = int`.
+
+import builtins
+
+def main() -> None:
+    conv: (str) -> int = builtins.int
+    print(conv("42"))
+    bare: (str) -> int = int
+    print(bare("42"))

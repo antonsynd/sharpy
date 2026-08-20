@@ -155,11 +155,24 @@ internal partial class TypeChecker
             var moduleSymbol = moduleType.Symbol;
             var memberName = memberAccess.Member;
 
+            // builtins.None is a literal, not a module member (CPython: SyntaxError).
+            if (IsBuiltinsModule(moduleSymbol) && memberName == BuiltinNames.None
+                && !memberAccess.IsMemberBacktickEscaped)
+            {
+                AddError("'None' is a literal, not a member of builtins — use the bare 'None' literal",
+                    memberAccess.LineStart, memberAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.BuiltinsNoneLiteral, span: memberAccess.Span);
+                MarkExpressionAsErrorRecovery(memberAccess,
+                    ErrorRecoveryReason.AlreadyReported("builtins.None is a literal (SPY0214)"));
+                return SemanticType.Unknown;
+            }
+
             // The builtins module's TYPE surface is the registry, consulted BEFORE the discovered
             // exports so that `builtins.X()` denotes what a bare `X()` denotes. See
             // TryResolveBuiltinsQualifiedType for why the two disagreed in both directions (#1322).
             //
-            if (TryResolveBuiltinsQualifiedType(moduleSymbol, memberName, memberAccess.IsMemberBacktickEscaped)
+            if (TryResolveBuiltinsQualifiedType(moduleSymbol, memberName, memberAccess.IsMemberBacktickEscaped,
+                    isCalleePosition: IsCurrentCallCallee(memberAccess))
                 is { } builtinsQualifiedType)
             {
                 // CALLEE position: the spelling denotes the type, and the call path resolves it.

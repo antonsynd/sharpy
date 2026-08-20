@@ -1257,7 +1257,8 @@ internal partial class TypeChecker
     /// and the registry's names are bare.</para>
     /// </remarks>
     private TypeSymbol? TryResolveBuiltinsQualifiedType(
-        ModuleSymbol moduleSymbol, string memberName, bool isMemberBacktickEscaped)
+        ModuleSymbol moduleSymbol, string memberName, bool isMemberBacktickEscaped,
+        bool isCalleePosition = true)
     {
         if (isMemberBacktickEscaped || !IsBuiltinsModule(moduleSymbol))
             return null;
@@ -1266,9 +1267,16 @@ internal partial class TypeChecker
         if (registryType == null)
             return null;
 
-        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(memberName);
-        if (PrimitiveCatalog.IsPrimitive(memberName) && overloads is { Count: > 0 })
-            return null;
+        // Primitives with overloads (int, str, float, …) are carved out in CALLEE position
+        // so CheckBuiltinsQualifiedCall routes them through overload resolution rather than
+        // CheckConstructorCall. In VALUE position the carve-out lifts: the constructor-
+        // reference tiers need the resolved type (#1463).
+        if (isCalleePosition)
+        {
+            var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(memberName);
+            if (PrimitiveCatalog.IsPrimitive(memberName) && overloads is { Count: > 0 })
+                return null;
+        }
 
         return registryType;
     }

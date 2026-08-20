@@ -1,0 +1,6 @@
+# #1463: builtins.None is a literal, not a module member (CPython: SyntaxError).
+
+import builtins
+
+def main() -> None:
+    x = builtins.None

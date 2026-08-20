@@ -335,24 +335,13 @@ public class BuiltinsQualifiedAgreementTests
     /// </summary>
     private static readonly Dictionary<string, string> KnownValueDisagreements = new(StringComparer.Ordinal)
     {
-        // A primitive is not a REGISTRY type, so TryResolveBuiltinsQualifiedType never resolves it and
-        // the qualified spelling falls through to the Builtins.X method group. Measured pre-existing
-        // at fb5fc7f43, before #1382: `conv: (str) -> int = builtins.int` fails with SPY0220
-        // ('(ulong) -> int'), while the bare twin compiles and prints. #1382 neither caused nor fixed
-        // it; #1347 is weighing PrimitiveCatalog membership for the adjacent question.
-        ["bool"] = "#1463",
-        ["decimal"] = "#1463",
-        ["double"] = "#1463",
-        ["float"] = "#1463",
-        ["int"] = "#1463",
-        ["long"] = "#1463",
-        ["object"] = "#1463",
-        ["str"] = "#1463",
+        // 8 primitive entries DRAINED (#1463): the TryResolveBuiltinsQualifiedType carve-out
+        // became position-aware, so callee position still routes through overload resolution
+        // while value position resolves the type for the constructor-reference tiers.
 
-        // Bare `None` is the none LITERAL and is legal; `builtins.None` names the registry's None type
-        // and is refused as a non-pinnable constructor reference. Strictly better than the SPY0203 it
-        // replaced ("Did you mean 'long'?"), but whether the qualified spelling should be legal at all
-        // is a decision, not an accident of registry membership.
+        // builtins.None is a CPython-matching refusal (SPY0214): bare None produces SPY0227
+        // (VoidType in value position), qualified produces SPY0214 (a literal, not a member).
+        // The disagreement is deliberate — not a defect on the qualified side.
         ["None"] = "#1463",
     };
 
