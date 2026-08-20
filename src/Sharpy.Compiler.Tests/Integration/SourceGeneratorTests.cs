@@ -147,7 +147,8 @@ def main():
         //      IsSourceGeneratorBracketAttribute exemption).
         // Asserted end to end (not just at the validator) because all three live upstream of the
         // compile. This uses an EMPTY-output generator — the shape #1431 measured. A generator that
-        // emits a NEW top-level declaration is a deeper, separate defect (SPY0909, #1535).
+        // emits a NEW top-level declaration is covered by GeneratorEmittingNewDeclaration_CompilesAndRuns
+        // below (#1535 — fixed by the materialize/freeze split).
         var helper = CreateHelper();
 
         helper.AddSourceFile("gen.spy", @"
@@ -208,6 +209,132 @@ def main():
 
         Assert.Contains(controlResult.Diagnostics.GetErrors(),
             e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.Validation.UnknownBracketAttribute);
+    }
+
+    [Fact]
+    public void GeneratorEmittingNewDeclaration_CompilesAndRuns()
+    {
+        // #1535's own repro: a generator returning a NEW top-level declaration. Before the
+        // materialize/freeze split (cc15802a4) this ICE'd — Phase 5b ran after the CodeGenInfo
+        // freeze, so integrating `greeting` threw PhaseViolationException behind SPY0909.
+        // MUTATION-VERIFIED (2026-08-20, plan-930411 Task 3.2): with FreezeTypeInfo() locally moved
+        // back before ExecuteGeneratorPipeline in ProjectCompiler.cs, this test fails with the
+        // SPY0909 phase violation the issue reported; with the split restored it passes. That is
+        // the red-run evidence the plan asked for, taken against the mutated (pre-fix-shaped)
+        // pipeline rather than a historical checkout.
+        var helper = CreateHelper();
+
+        helper.AddSourceFile("gen.spy", @"
+from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
+
+class AddGreeting(SourceGenerator):
+    def generate(self, context: GeneratorContext) -> GeneratorOutput:
+        return GeneratorOutput('def greeting() -> str:\n    return ""generated!""\n')
+");
+
+        helper.AddSourceFile("main.spy", @"
+from gen import AddGreeting
+
+@[AddGreeting]
+class Point:
+    x: int
+
+def main():
+    print('hello')
+");
+
+        helper.WithRootNamespace("GenNewDeclTest").WithEntryPoint("main.spy")
+            .WithRuntimeReferences().CreateProjectFile();
+        var result = helper.CompileAndExecute();
+
+        Assert.True(result.Success,
+            "a generator emitting a new top-level declaration must compile and run (#1535): "
+            + string.Join("; ", result.CompilationErrors));
+        Assert.Contains("hello", result.StandardOutput);
+
+        // The generated declaration actually reached codegen: the integrated C# carries Greeting.
+        var compilation = helper.LastCompilationResult!;
+        Assert.Contains(compilation.GeneratedCSharpFiles,
+            kvp => kvp.Value.Contains("Greeting", StringComparison.Ordinal));
+
+        // SPY0909 unreachable via generators (the #1146 contract): no internal-compiler-error
+        // diagnostic may appear on this path.
+        Assert.DoesNotContain(compilation.Diagnostics.GetErrors(), e => e.Code == "SPY0909");
+    }
+
+    [Fact]
+    public void GeneratorEmittingPlainClass_WithoutBases_CompilesAndRuns()
+    {
+        // Task 3.2(b) of plan-930411 said decide this shape by measurement: a generated CLASS with
+        // no base clause works end-to-end (measured 2026-08-20), so it is pinned as supported —
+        // only base clauses are refused (SPY0555, the shape inheritance-freeze cannot take).
+        var helper = CreateHelper();
+
+        helper.AddSourceFile("gen.spy", @"
+from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
+
+class AddClass(SourceGenerator):
+    def generate(self, context: GeneratorContext) -> GeneratorOutput:
+        return GeneratorOutput('class Generated:\n    n: int = 5\n')
+");
+
+        helper.AddSourceFile("main.spy", @"
+from gen import AddClass
+
+@[AddClass]
+class Point:
+    x: int
+
+def main():
+    print('hello')
+");
+
+        helper.WithRootNamespace("GenPlainClassTest").WithEntryPoint("main.spy")
+            .WithRuntimeReferences().CreateProjectFile();
+        var result = helper.CompileAndExecute();
+
+        Assert.True(result.Success,
+            "a generated base-less class must compile and run: "
+            + string.Join("; ", result.CompilationErrors));
+        Assert.Contains("hello", result.StandardOutput);
+    }
+
+    [Fact]
+    public void GeneratorEmittingClassWithBaseClause_IsRefusedWithSPY0555_NotSPY0909()
+    {
+        // IntegrateGeneratedSource never runs ResolveInheritance and inheritance froze at Phase 4c:
+        // a generated class with a base clause is structurally unsupported this round. The contract
+        // (#1146): refused loudly with the named diagnostic, never the SPY0909 net. Full support is
+        // #1592.
+        var helper = CreateHelper();
+
+        helper.AddSourceFile("gen.spy", @"
+from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
+
+class AddDerived(SourceGenerator):
+    def generate(self, context: GeneratorContext) -> GeneratorOutput:
+        return GeneratorOutput('class GenChild(Point):\n    pass\n')
+");
+
+        helper.AddSourceFile("main.spy", @"
+from gen import AddDerived
+
+@[AddDerived]
+class Point:
+    x: int
+
+def main():
+    print('hello')
+");
+
+        helper.WithRootNamespace("GenBaseClauseTest").WithEntryPoint("main.spy")
+            .WithRuntimeReferences().CreateProjectFile();
+        var result = helper.Compile();
+
+        Assert.False(result.Success, "a generated class with a base clause must be refused");
+        Assert.Contains(result.Diagnostics.GetErrors(),
+            e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.GeneratorUnsupportedShape);
+        Assert.DoesNotContain(result.Diagnostics.GetErrors(), e => e.Code == "SPY0909");
     }
 
     [Fact]

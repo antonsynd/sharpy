@@ -1,0 +1,12 @@
+# `builtins.isinstance(x, (A, B))` must classify as tuple[A, B] exactly like the bare
+# spelling (#1532): a qualifier changes lookup scope, never meaning (#1381 agreement).
+# Structural test plus narrowing — the qualified twin of isinstance_tuple_structural_1532.
+import builtins
+
+
+def main() -> None:
+    x: object = (1, "a")
+    if builtins.isinstance(x, (int, str)):
+        print(x[1])
+    else:
+        print("no")

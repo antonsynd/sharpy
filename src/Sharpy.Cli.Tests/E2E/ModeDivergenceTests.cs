@@ -85,6 +85,79 @@ public class ModeDivergenceTests : IDisposable
             """);
 
     [Fact]
+    public void FunctoolsPartialPositional_LowersFromTheSpec_UnderRun()
+    {
+        // #1520: the partial lowering reads the recorded FunctoolsPartialSpec — target symbol,
+        // remaining parameters, kwarg C# names all resolved at check time. This is the positional
+        // cell; the CLI harness because the functools module resolves via ModuleRegistry only in
+        // the deployed layout.
+        WriteFixture("""
+            import functools
+
+            def add(a: int, b: int) -> int:
+                return a + b
+
+            def main():
+                add5: (int) -> int = functools.partial(add, 5)
+                print(add5(3))
+            """);
+
+        var run = ExecCli("run", _ws.PathFor("main.spy"));
+        run.ExitCode.Should().Be(0, $"run mode failed:\n{run.StdOut}\n{run.StdErr}");
+        Normalize(ExtractRunProgramOutput(run.StdOut)).Should().Be("8");
+    }
+
+    [Fact]
+    public void FunctoolsPartialKeywordOnFirstParameter_BindsRemainingByName_UnderRun()
+    {
+        // #1520: fixing the FIRST parameter by keyword forces the remaining argument to bind by
+        // its resolved C# parameter name from the spec — bound positionally it walks into the
+        // keyword-fixed slot (CS1744 behind SPY0908, the live defect found by /verify-implementation
+        // on 2026-08-20; the pre-fix emitter generated `Greet(name, greeting: "hi")`).
+        // MUTATION-VERIFIED: with the spec's FixedKeywords blanked locally in
+        // CheckFunctoolsPartialCall, this test fails (the kwarg vanishes from the lowering);
+        // restored, it passes.
+        WriteFixture("""
+            import functools
+
+            def greet(greeting: str, name: str) -> str:
+                return greeting + ", " + name
+
+            def main():
+                hi: (str) -> str = functools.partial(greet, greeting="hi")
+                print(hi("sam"))
+            """);
+
+        var run = ExecCli("run", _ws.PathFor("main.spy"));
+        run.ExitCode.Should().Be(0, $"run mode failed:\n{run.StdOut}\n{run.StdErr}");
+        Normalize(ExtractRunProgramOutput(run.StdOut)).Should().Be("hi, sam");
+    }
+
+    [Fact]
+    public void OutOfSourceSetRenamedAlias_DispatchesImportedOverloads_UnderRun()
+    {
+        // #1525: the identity chain must hold OUT of the source set — `mylog` is a with-clone of
+        // ModuleLoader's extracted math.log; Symbol.OriginSymbol links the clone back to the same
+        // extraction object the overload list holds, so the renamed alias dispatches BOTH
+        // overloads instead of being spuriously judged "shadowed". Lives in the CLI harness
+        // because stdlib MODULE resolution (ModuleRegistry.LoadReference) only exists in the
+        // deployed layout; the in-source-set twins are the compiler fixtures
+        // cross_module_function_overloads_alias and cross_module_overload_shadow_1525.
+        WriteFixture("""
+            from math import log as mylog
+
+            def main():
+                print(mylog(8.0, 2.0))
+                print(mylog(1.0))
+            """);
+
+        var run = ExecCli("run", _ws.PathFor("main.spy"));
+        run.ExitCode.Should().Be(0, $"run mode failed:\n{run.StdOut}\n{run.StdErr}");
+        Normalize(ExtractRunProgramOutput(run.StdOut)).Should().Be("3.0\n0.0",
+            "both math.log overloads must dispatch through the renamed alias (#1525)");
+    }
+
+    [Fact]
     public void TestFunctionCalledFromMain_RunsFrameworkFreeInBothModes() =>
         // #1495/#1532: a @test program is an ordinary runnable program outside a test host. Both CLI
         // modes are non-test-host, so the @test function must be an ordinary module-level function a

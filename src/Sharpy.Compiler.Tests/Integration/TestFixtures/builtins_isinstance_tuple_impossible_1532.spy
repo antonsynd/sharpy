@@ -1,0 +1,18 @@
+# Qualified twin of the SPY0499 impossible-test refusal (#1532): a `builtins.`-qualified
+# tuple isinstance must classify and refuse exactly like the bare spelling — the qualified
+# impossible-test twin of transition/transition_isinstance_tuple.
+import builtins
+
+class Animal:
+    name: str = ""
+
+class Dog(Animal):
+    pass
+
+class Cat(Animal):
+    pass
+
+def main() -> None:
+    a: Animal = Dog()
+    if builtins.isinstance(a, (Dog, Cat)):
+        print("matched")

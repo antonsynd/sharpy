@@ -359,6 +359,33 @@ def add(a: int, b: int) -> int:
 
     // ----- Helper -----
 
+    [Fact]
+    public void Analyze_ClassWithLen_ReportsSPY1001WithoutCodeGeneration()
+    {
+        // #1521's user-visible fix: protocol-interface synthesis runs in SEMANTIC analysis, so
+        // an analysis-only run (no code generation) sees SPY1001. Before the move the analyzer
+        // ran on the emission path and `emit diagnostics` / LSP-style analysis never saw it.
+        var source = @"
+class Box:
+    _n: int = 3
+
+    def __len__(self) -> int:
+        return self._n
+
+def main():
+    b: Box = Box()
+    print(len(b))
+";
+        var compiler = new Compiler();
+        var result = compiler.Analyze(source, "test.spy");
+
+        result.Success.Should().BeTrue(because: FormatDiagnostics(result));
+        result.Diagnostics.GetAll().Should().Contain(
+            d => d.Code == DiagnosticCodes.Info.ImplicitInterfaceSynthesis
+                 && d.Message.Contains("ISized"),
+            "analysis-only runs must see the synthesis decision (#1521)");
+    }
+
     private static string FormatDiagnostics(CompilationResult result)
     {
         var errors = result.Diagnostics.GetErrors().ToList();

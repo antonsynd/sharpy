@@ -1,0 +1,16 @@
+# isinstance(x, (int)) denotes tuple[int] (#1532): a parenthesized single element is the
+# 1-tuple type per type_annotation_shorthand — the structural ValueTuple<T> arity-1 cell.
+# The plain int does NOT match: (int) is not a collapsed int under type-position semantics.
+
+def main() -> None:
+    x: object = (7,)
+    if isinstance(x, (int)):
+        print(x[0])
+    else:
+        print("not a 1-tuple")
+
+    y: object = 7
+    if isinstance(y, (int)):
+        print("y matched")
+    else:
+        print("y is not a 1-tuple")

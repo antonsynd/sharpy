@@ -1,0 +1,17 @@
+# Design Decision 2 of plan-930411 (#1536): @must_use on __init__ is documented
+# not-applicable BECAUSE the type channel already covers a discarded construction — this
+# fixture is the execution evidence. The class-level @must_use draws SPY0480 when the
+# constructed value is dropped; binding it silences the warning.
+
+@must_use
+class Widget:
+    n: int = 0
+
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+
+def main() -> None:
+    Widget(3)
+    w: Widget = Widget(4)
+    print(w.n)
