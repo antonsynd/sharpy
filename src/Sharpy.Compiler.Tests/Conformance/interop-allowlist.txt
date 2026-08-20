@@ -14,3 +14,16 @@
 
 # The file's presence keeps the interop sweep in RATCHET mode: any new non-allowlisted
 # failure fails CI.
+
+# #1515: builtin exceptions present Python's exception surface only (SPY0215).
+# CLR-only members inherited from System.Exception are refused by design.
+# See docs/deviations.yaml id: builtin-exception-python-surface.
+builtins::property::*.message::property          # #1515 SPY0215
+builtins::property::*.stack_trace::property      # #1515 SPY0215
+builtins::property::*.h_result::property         # #1515 SPY0215
+builtins::property::*.source::property           # #1515 SPY0215
+builtins::property::*.help_link::property        # #1515 SPY0215
+builtins::property::*.inner_exception::property  # #1515 SPY0215
+builtins::property::*.data::property             # #1515 SPY0215
+builtins::property::*.target_site::property      # #1515 SPY0215
+builtins::method::*.get_base_exception::method   # #1515 SPY0215
