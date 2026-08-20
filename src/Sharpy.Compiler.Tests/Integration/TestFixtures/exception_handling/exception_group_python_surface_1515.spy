@@ -1,5 +1,5 @@
 def main() -> None:
-    errors: list[Exception] = [ValueError("v1"), TypeError("t1")]
+    errors: list[Exception] = [ValueError("v1")]
     try:
         raise ExceptionGroup("group", errors)
     except ExceptionGroup as eg:
