@@ -224,18 +224,16 @@ public static partial class DiagnosticExplanations
             + "to supplies the types.");
 
         Add(dict, DiagnosticCodes.Semantic.MultiTypeTypeTest,
-            "isinstance takes a single type", "Semantic",
-            "Python's isinstance(x, (A, B)) tests against a tuple of types. Sharpy keeps the form "
-            + "single-typed on purpose: a successful check narrows the value to one concrete type for "
-            + "the rest of the branch, and a tuple has no single type to narrow to — Sharpy has no "
-            + "usable union type to narrow to either, so a multi-type test would return a correct "
-            + "boolean and then silently fail to narrow at the very next line. A type test that "
-            + "compiles but cannot narrow is worse than a clean refusal, so this is an error rather "
-            + "than a hint (Axiom 3 over Axiom 2 — see docs/deviations.yaml). The @test assertion "
-            + "form (`assert isinstance(x, (A, B))` inside a @test function) is unaffected: it lowers "
-            + "to an xUnit assertion that only needs the boolean.",
-            "x: object = 5\nif isinstance(x, (int, str)):  # no single type to narrow to\n    ...",
-            "Combine single-typed checks with `or` when you only need the boolean:\n"
+            "isinstance second argument is not a type expression", "Semantic",
+            "isinstance()'s second argument is a type position: it must name a type that the value "
+            + "can be tested against and narrowed to. In Sharpy, `(A, B)` denotes the tuple type "
+            + "`tuple[A, B]`, not Python's any-of check. Non-type expressions — including "
+            + "`int or str` (which Python evaluates to `int` via short-circuit) — are refused because "
+            + "a type test whose operand is not a type cannot narrow. For an any-of check, write "
+            + "`isinstance(x, A) or isinstance(x, B)`. See docs/deviations.yaml, entry "
+            + "isinstance-tuple-is-a-tuple-type.",
+            "x: object = 5\nif isinstance(x, int or str):  # SPY0344 — not a type\n    ...",
+            "For an any-of check, write separate isinstance calls joined with `or`:\n"
             + "  if isinstance(x, int) or isinstance(x, str): ...\n"
             + "To narrow, test one type at a time (`if isinstance(x, int): ... elif isinstance(x, str): ...`), "
             + "or model the alternatives as a tagged union and use `match`.");

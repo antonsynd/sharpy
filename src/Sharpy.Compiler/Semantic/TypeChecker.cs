@@ -93,17 +93,8 @@ internal partial class TypeChecker
     // match's subject see their own state.
     private Expression? _matchSubjectOperand;
 
-    // The test expression of the `assert` currently being checked, but only inside a @test-decorated
-    // function — null everywhere else. The @test assert is not an ordinary expression: the emitter
-    // rewrites it wholesale into an xUnit assertion (RoslynEmitter.GenerateTestAssert), pre-empting
-    // the ordinary call lowering, and that rewrite carries its own isinstance forms — including the
-    // multi-type tuple spelling the type-test classifier rejects everywhere else. The classifier
-    // therefore leaves this one statement alone (#1213); a special-purpose test lowering is not a
-    // precedent for general expression lowering, and this batch does not generalize it.
-    private Expression? _testAssertTest;
-
     // Whether the function body currently being checked is @test-decorated (or nested inside one,
-    // matching how the emitter's _isInTestFunction propagates). Only _testAssertTest reads it.
+    // matching how the emitter's _isInTestFunction propagates).
     private bool _inTestFunction;
 
     // The callee expression of the FunctionCall currently being checked (`call.Function`). A

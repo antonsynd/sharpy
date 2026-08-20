@@ -142,7 +142,11 @@ internal partial class TypeChecker
         // operand and type argument survive rather than being cleared for this call's arguments. The
         // type-argument scope carries the conjunction — the second argument only names a type when
         // there IS a second argument.
-        var isTypeTest = callee is Identifier { Name: BuiltinNames.Isinstance } && call.Arguments.Length > 0;
+        var isTypeTest = (callee is Identifier { Name: BuiltinNames.Isinstance }
+            || (callee is MemberAccess { IsMemberBacktickEscaped: false, Member: BuiltinNames.Isinstance } qualifiedIsinstanceCallee
+                && _semanticInfo.GetExpressionType(qualifiedIsinstanceCallee.Object) is ModuleType isinstanceCalleeModule
+                && IsBuiltinsModule(isinstanceCalleeModule.Symbol)))
+            && call.Arguments.Length > 0;
         List<SemanticType> argTypes;
         Dictionary<string, SemanticType> kwargTypes;
         // The direct-argument set covers every internal argument path CheckCallArguments takes, so the
@@ -393,8 +397,34 @@ internal partial class TypeChecker
                     return overloadResult;
             }
 
-            // Builtin method overloads (dict.get, list.pop) are now handled by
-            // ResolveUserMethodOverload above via discovery-populated metadata.
+            // Record the call target for single (non-overloaded) instance-method calls.
+            // ResolveUserMethodOverload declines these (overloads.Count <= 1); the call still
+            // validates through CheckLambdaCall below, but the seam never saw it — so @deprecated,
+            // @must_use, LSP go-to-definition, and codegen's GetCallTarget were all blind (#1537).
+            // Dunders are excluded: __init__ belongs to the constructor-delegation route (#1536),
+            // and recording it here would silently change that route's semantics.
+            // TODO(#1591): kwarg names/types on single-method calls are unvalidated
+            {
+                var rawObjType = _semanticInfo.GetExpressionType(memberAccessCall.Object);
+                if (rawObjType != null)
+                {
+                    var objType = UnwrapCallTarget(rawObjType);
+                    TypeSymbol? receiverSymbol = objType is UserDefinedType { Symbol: { } uds }
+                        ? uds
+                        : ResolveBuiltinTypeInfo(objType).TypeSymbol;
+
+                    if (receiverSymbol != null
+                        && !DunderDetector.IsDunderMethod(memberAccessCall.Member))
+                    {
+                        var (method, _) = TypeHierarchyService.FindMethod(
+                            receiverSymbol, memberAccessCall.Member, SemanticBinding);
+                        if (method != null)
+                        {
+                            RecordResolvedCallTarget(call, method);
+                        }
+                    }
+                }
+            }
 
             // Nothing above typed this call, so it is on the name-only interop channel: the emitter
             // writes it verbatim and Roslyn performs the only binding check it ever gets — which is
@@ -427,9 +457,9 @@ internal partial class TypeChecker
                 isNullConditionalCall, isOptionalNullConditional);
         }
 
-        // Fallback to FunctionType validation (no default parameter support)
+        // Fallback to FunctionType validation (handles defaults via FunctionType.OptionalParameterCount).
         // Use the already-computed calleeType to avoid re-evaluating call.Function
-        // (which causes double validation, e.g., super().__init__() being flagged as duplicate)
+        // (which causes double validation, e.g., super().__init__() being flagged as duplicate).
         if (calleeType is FunctionType ft)
         {
             return CheckLambdaCall(call, ft, argTypes, totalArgCount,
@@ -466,41 +496,24 @@ internal partial class TypeChecker
     }
 
     // ============================================================
-    // isinstance type-operand classification (#1207, #1213)
+    // isinstance type-operand classification (#1207, #1213, #1532)
     // ============================================================
 
     /// <summary>
     /// Decides what the TYPE OPERAND of an <c>isinstance(x, T)</c> call denotes, and records the
     /// resulting type test on the operand node for codegen and for narrowing to read.
     /// <para>
-    /// This is the single authority on the question. Before it existed, nothing classified the operand
-    /// during semantic analysis: any shape the checker tolerated reached the emitter, which re-derived
-    /// the C# type from the operand's syntax and produced raw Roslyn errors for the shapes it could not
-    /// spell — an open generic (<c>Box</c> → <c>typeof(Box&lt;T&gt;)</c>, CS0305, #1207) and a tuple of
-    /// types (CS1503/CS0119, #1213), both surfacing as SPY0908. Un-lowerable shapes must be
-    /// semantic-time diagnostics (#1146), so those two are now errors here and never reach codegen.
+    /// The second argument is a <b>type position</b>: <c>(A, B)</c> denotes <c>tuple[A, B]</c>, not
+    /// Python's any-of check (#1532). Classification is total — every second argument either resolves
+    /// as a type or is refused with a diagnostic; nothing reaches codegen unbound.
     /// </para>
     /// <para>
-    /// The governing rule for what to accept is narrowing, not expressiveness: <b>a type test that
-    /// compiles but cannot narrow is worse than a clean refusal.</b> That is why the tuple form stays
-    /// rejected even though <c>Sharpy.Builtins.Isinstance(object, params Type[])</c> exists and would
-    /// return a correct boolean — no narrowing fact is produced for a tuple operand and Sharpy has no
-    /// usable union type to narrow to, so the binding would silently fail on the next line. It is also
-    /// why the open generic is rejected rather than lowered to a <c>GetGenericTypeDefinition()</c>
-    /// runtime check: a successful test would narrow to <c>Box[T]</c> for an unknown T, which is not
-    /// spellable.
-    /// </para>
-    /// <para>
-    /// Shapes this method does not recognise are left unrecorded, and the ordinary call path lowers
-    /// them exactly as before — classification adds decisions, it does not remove fallbacks.
+    /// Open generics are rejected because a successful test would narrow to <c>Box[T]</c> for an
+    /// unknown T, which is not spellable (SPY0345, #1207).
     /// </para>
     /// </summary>
     private void ClassifyTypeTestOperand(FunctionCall call, Expression callee, List<SemanticType> argTypes)
     {
-        // The BARE spelling, or the qualified escape from a shadowed one. Both name the builtin, so
-        // both classify: leaving `builtins.isinstance(x, T)` unclassified would give the escape a
-        // type test that compiles without narrowing — the one outcome this classifier exists to
-        // prevent (#1322).
         var isQualifiedIsinstance = callee is MemberAccess { IsMemberBacktickEscaped: false, Member: BuiltinNames.Isinstance } qualifiedIsinstance
             && _semanticInfo.GetExpressionType(qualifiedIsinstance.Object) is ModuleType isinstanceModule
             && IsBuiltinsModule(isinstanceModule.Symbol);
@@ -510,12 +523,6 @@ internal partial class TypeChecker
         if (call.Arguments.Length != 2 || call.KeywordArguments.Length != 0)
             return;
 
-        // Shadowing guard, carried over from the hint this classifier's tuple diagnostic replaces
-        // (TransitionWarningValidator.CheckIsinstanceSingleType). A user-defined `isinstance` — their
-        // own function or a variable — is an ordinary call whose second argument is an ordinary value.
-        // Builtins are seeded into the global scope, so the name always resolves; identity against the
-        // registry's own overloads is what separates the builtin from a shadow. The qualified
-        // spelling needs no such separation — being unshadowable is what it is for.
         if (!isQualifiedIsinstance)
         {
             var resolvedCallee = _symbolTable.Lookup(isinstanceId!.Name);
@@ -529,40 +536,21 @@ internal partial class TypeChecker
         }
 
         var operandNode = call.Arguments[1];
-        var typeOperand = UnwrapParenthesized(operandNode);
         var subjectType = argTypes.Count > 0 ? argTypes[0] : null;
 
-        // A @test-decorated function's `assert` is not an ordinary expression: the emitter rewrites the
-        // whole statement into an xUnit assertion (RoslynEmitter.GenerateTestAssert), pre-empting the
-        // call lowering this classifier feeds. Only the TUPLE spelling is exempt from the refusal
-        // there, and the asymmetry with expression-position isinstance is deliberate: the rewrite
-        // lowers a tuple to `a is T1 || a is T2`, a boolean nobody narrows through, so it handles
-        // correctly the one form SPY0344 refuses — and refusing it would break a working form.
-        //
-        // Exempt from the REFUSAL, not from classification: each element is still classified in its
-        // own right, so the rewrite reads decided types for `(list, dict)` instead of re-deriving the
-        // #912 erasure itself (#1235, #1254).
-        if (typeOperand is TupleLiteral testAssertTuple && IsTestAssertTypeTest(call))
+        // (A, B) denotes tuple[A, B] — the second argument is a type position (#1532).
+        // A parenthesized single (T) denotes tuple[T] per type_annotation_shorthand.md.
+        var rawOperand = operandNode is Parenthesized paren ? paren.Expression : operandNode;
+        if (rawOperand is TupleLiteral tuple)
         {
-            foreach (var element in testAssertTuple.Elements)
-                ClassifyTypeTestExpressionOperand(call, element, subjectType);
+            ClassifyTupleTypeTestOperand(call, operandNode, tuple, subjectType);
             return;
         }
 
-        // The tuple spelling — Python's OR-of-types. Rejected by design; see the class-level rationale.
-        if (typeOperand is TupleLiteral tuple)
+        // A parenthesized single expression that is NOT a TupleLiteral: (T) means tuple[T].
+        if (operandNode is Parenthesized singleParen)
         {
-            var typeNames = string.Join(", ", tuple.Elements.Select(DescribeTypeOperand));
-            AddError(
-                $"isinstance() in Sharpy accepts only a single type argument, but a tuple of "
-                    + $"{tuple.Elements.Length} types ({typeNames}) was passed. "
-                    + "Unlike Python's `isinstance(x, (A, B))`, Sharpy keeps the form single-typed "
-                    + "so that successful checks narrow to one concrete type. "
-                    + "Combine multiple checks with `or` (e.g., "
-                    + "`isinstance(x, A) or isinstance(x, B)`), or use a tagged union with `match`.",
-                call.LineStart, call.ColumnStart,
-                code: DiagnosticCodes.Semantic.MultiTypeTypeTest,
-                span: call.Span);
+            ClassifySingleElementTupleTypeTestOperand(call, operandNode, singleParen.Expression, subjectType);
             return;
         }
 
@@ -570,9 +558,113 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Classifies one expression-shaped type operand — an <c>isinstance</c> argument, or one element of
-    /// the tuple spelling a <c>@test</c> assert lowers to an <c>is</c>-alternation. Records the
-    /// decision on <paramref name="operandNode"/> so the emitter applies it verbatim.
+    /// Classifies a tuple-literal type-test operand as a structural tuple type.
+    /// Each element must resolve as a type; the result is <c>tuple[A, B, ...]</c>.
+    /// </summary>
+    private void ClassifyTupleTypeTestOperand(
+        FunctionCall call, Expression operandNode, TupleLiteral tuple, SemanticType? subjectType)
+    {
+        var elementTypes = new List<SemanticType>();
+        foreach (var element in tuple.Elements)
+        {
+            var resolved = TryResolveExpressionAsType(element, TypeOperandShapes.TypeTestOperand);
+            if (resolved == null)
+            {
+                AddError(
+                    "isinstance()'s second argument is a type position, but this expression "
+                    + "is not a type. For Python's any-of check, write "
+                    + "`isinstance(x, A) or isinstance(x, B)`; "
+                    + "`(A, B)` denotes the tuple type `tuple[A, B]`.",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.MultiTypeTypeTest,
+                    span: call.Span);
+                return;
+            }
+
+            if (resolved is UserDefinedType { Symbol: { IsGeneric: true } openDef })
+            {
+                ClassifyResolvedTypeOperand(
+                    call, element, element, openDef, DescribeTypeOperand(element), subjectType);
+                return;
+            }
+
+            elementTypes.Add(resolved);
+        }
+
+        var tupleType = new TupleType { ElementTypes = elementTypes };
+
+        if (subjectType != null
+            && subjectType is not UnknownType
+            && !IsObjectType(subjectType)
+            && subjectType is not TupleType)
+        {
+            AddError(
+                $"isinstance() tuple type test is statically impossible: the scrutinee's type "
+                + $"'{subjectType.GetDisplayName()}' is never a tuple. "
+                + "For Python's any-of check, write "
+                + "`isinstance(x, A) or isinstance(x, B)`; "
+                + "`(A, B)` denotes the tuple type `tuple[A, B]`.",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Validation.ImpossibleTupleTypeTest,
+                span: call.Span);
+            return;
+        }
+
+        _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, tupleType));
+    }
+
+    /// <summary>
+    /// Classifies a parenthesized single expression <c>(T)</c> as <c>tuple[T]</c>.
+    /// </summary>
+    private void ClassifySingleElementTupleTypeTestOperand(
+        FunctionCall call, Expression operandNode, Expression innerExpr, SemanticType? subjectType)
+    {
+        var resolved = TryResolveExpressionAsType(innerExpr, TypeOperandShapes.TypeTestOperand);
+        if (resolved == null)
+        {
+            AddError(
+                "isinstance()'s second argument is a type position, but this expression "
+                + "is not a type. For Python's any-of check, write "
+                + "`isinstance(x, A) or isinstance(x, B)`; "
+                + "`(A, B)` denotes the tuple type `tuple[A, B]`.",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.MultiTypeTypeTest,
+                span: call.Span);
+            return;
+        }
+
+        if (resolved is UserDefinedType { Symbol: { IsGeneric: true } openDef })
+        {
+            ClassifyResolvedTypeOperand(
+                call, innerExpr, innerExpr, openDef, DescribeTypeOperand(innerExpr), subjectType);
+            return;
+        }
+
+        var tupleType = new TupleType { ElementTypes = new List<SemanticType> { resolved } };
+
+        if (subjectType != null
+            && subjectType is not UnknownType
+            && !IsObjectType(subjectType)
+            && subjectType is not TupleType)
+        {
+            AddError(
+                $"isinstance() tuple type test is statically impossible: the scrutinee's type "
+                + $"'{subjectType.GetDisplayName()}' is never a tuple. "
+                + "For Python's any-of check, write "
+                + "`isinstance(x, A) or isinstance(x, B)`; "
+                + "`(A, B)` denotes the tuple type `tuple[A, B]`.",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Validation.ImpossibleTupleTypeTest,
+                span: call.Span);
+            return;
+        }
+
+        _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, tupleType));
+    }
+
+    /// <summary>
+    /// Classifies one expression-shaped type operand — a non-tuple <c>isinstance</c> second argument.
+    /// Records the decision on <paramref name="operandNode"/> so the emitter applies it verbatim.
     /// </summary>
     private void ClassifyTypeTestExpressionOperand(
         FunctionCall call, Expression operandNode, SemanticType? subjectType)
@@ -593,7 +685,17 @@ internal partial class TypeChecker
         // (#1257).
         var resolved = TryResolveExpressionAsType(typeOperand, TypeOperandShapes.TypeTestOperand);
         if (resolved == null)
+        {
+            AddError(
+                "isinstance()'s second argument is a type position, but this expression "
+                + "is not a type. For Python's any-of check, write "
+                + "`isinstance(x, A) or isinstance(x, B)`; "
+                + "`(A, B)` denotes the tuple type `tuple[A, B]`.",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.MultiTypeTypeTest,
+                span: call.Span);
             return;
+        }
 
         // ...with one exception the "already names its arguments" reading gets wrong: a QUALIFIED
         // name whose declaration is generic (`mod.Box`) names no more than a bare `Box` does. The
@@ -798,23 +900,6 @@ internal partial class TypeChecker
         BuiltinNames.Str => SemanticType.Str,
         _ => null
     };
-
-    /// <summary>
-    /// True when <paramref name="call"/> is the test expression of an <c>assert</c> inside a
-    /// <c>@test</c>-decorated function (directly, parenthesized, or under <c>not</c>) — the statement
-    /// the emitter rewrites into an xUnit assertion instead of lowering as an expression.
-    /// </summary>
-    private bool IsTestAssertTypeTest(FunctionCall call)
-    {
-        if (_testAssertTest == null)
-            return false;
-
-        var test = UnwrapParenthesized(_testAssertTest);
-        if (test is UnaryOp { Operator: UnaryOperator.Not } negated)
-            test = UnwrapParenthesized(negated.Operand);
-
-        return ReferenceEquals(test, call);
-    }
 
     /// <summary>
     /// Best-effort textual rendering of a type-position expression for the multi-type diagnostic.

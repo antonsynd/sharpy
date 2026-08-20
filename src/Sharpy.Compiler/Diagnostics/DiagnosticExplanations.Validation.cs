@@ -651,14 +651,12 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.Validation.SingleIsinstanceTypeHint,
             "isinstance() takes exactly one type argument (retired — see SPY0344)",
             "Validation",
-            "Unlike Python, Sharpy's isinstance() accepts only a single type, not a tuple of types. This keeps the " +
-            "result type narrowing precise (the value is narrowed to that one type) and avoids tuple-shaped " +
-            "argument quirks. Compose multiple checks with `or`. This was a HINT, so compilation continued and " +
-            "the tuple form went on to fail inside the generated C# as a compiler ICE (SPY0908). The rejection is " +
-            "now a semantic-time error carrying this same guidance — SPY0344, emitted by the isinstance " +
-            "type-operand classifier (#1213). The code is retained as a retired, reserved number and is never reused.",
-            "if isinstance(x, (int, str)):  # SPY0344 — not supported\n    ...",
-            "Combine type checks with `or`: `if isinstance(x, int) or isinstance(x, str): ...`");
+            "This hint was retired when isinstance's second argument became a type position (#1532). "
+            + "`(A, B)` now denotes `tuple[A, B]` and is classified as a structural tuple type test. "
+            + "Non-type expressions in the second argument draw SPY0344. The code is retained as a "
+            + "retired, reserved number and is never reused.",
+            "if isinstance(x, (int, str)):  # now tests tuple[int, str]\n    ...",
+            "For an any-of check: `if isinstance(x, int) or isinstance(x, str): ...`");
 
         Add(dict, DiagnosticCodes.Validation.NegativeTupleIndexHint,
             "Negative tuple indices are rejected at compile time",
@@ -917,5 +915,20 @@ public static partial class DiagnosticExplanations
             + "    match x:\n"
             + "        case str() as s:\n"
             + "            print(s)");
+
+        Add(dict, DiagnosticCodes.Validation.ImpossibleTupleTypeTest,
+            "isinstance tuple type test is statically impossible",
+            "Validation",
+            "isinstance()'s second argument is a type position. `(A, B)` denotes the tuple type "
+            + "`tuple[A, B]` — a structural ValueTuple runtime test. When the scrutinee's static type "
+            + "is neither `object`, `Unknown`, nor a tuple type, the test can never succeed. This is "
+            + "almost always ported union-intent from Python's `isinstance(x, (A, B))`, which checks "
+            + "any-of. For an any-of check, write `isinstance(x, A) or isinstance(x, B)`. "
+            + "See docs/deviations.yaml, entry isinstance-tuple-is-a-tuple-type.",
+            "class Animal:\n    pass\n\na: Animal = Animal()\n"
+            + "if isinstance(a, (int, str)):  # SPY0499 — Animal is never a tuple\n"
+            + "    ...",
+            "For an any-of check, write separate isinstance calls joined with `or`:\n"
+            + "  if isinstance(a, int) or isinstance(a, str): ...");
     }
 }

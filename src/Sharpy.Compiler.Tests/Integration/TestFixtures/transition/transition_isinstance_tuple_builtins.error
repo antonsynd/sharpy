@@ -1,1 +1,0 @@
-isinstance() in Sharpy accepts only a single type argument, but a tuple of 2 types (int, str) was passed

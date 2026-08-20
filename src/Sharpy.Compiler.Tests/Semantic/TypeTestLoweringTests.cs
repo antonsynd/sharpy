@@ -153,21 +153,24 @@ def f(x: object) -> bool:
     // --- Rejected shapes -----------------------------------------------------------------------
 
     [Fact]
-    public void TupleOperand_IsRejectedWithExactlyOneDiagnostic()
+    public void TupleOperand_IsClassifiedAsTupleType()
     {
-        var diagnostics = Diagnose(@"
+        // (int, str) denotes tuple[int, str] in a type position (#1532).
+        var (module, info, _) = Check(@"
 def main() -> None:
     x: object = 5
     if isinstance(x, (int, str)):
         print(""tuple ok"")
 ");
 
-        // One actionable message, not a hint plus an ICE. The tuple form stays rejected by design:
-        // no narrowing fact is produced for it and Sharpy has no usable union type, so lowering it
-        // would compile and then silently fail to narrow (#1213).
-        diagnostics.Select(d => d.Code).Should().Equal(DiagnosticCodes.Semantic.MultiTypeTypeTest);
-        diagnostics[0].Message.Should().Contain("only a single type argument");
-        diagnostics[0].Message.Should().Contain("`isinstance(x, A) or isinstance(x, B)`");
+        var lowerings = TypeTestLowerings(module, info);
+        lowerings.Should().HaveCount(1);
+        lowerings[0].Kind.Should().Be(TypeTestLoweringKind.ClosedType);
+        lowerings[0].TestType.Should().BeOfType<Sharpy.Compiler.Semantic.TupleType>();
+        var tupleType = (Sharpy.Compiler.Semantic.TupleType)lowerings[0].TestType;
+        tupleType.ElementTypes.Should().HaveCount(2);
+        tupleType.ElementTypes[0].Should().Be(SemanticType.Int);
+        tupleType.ElementTypes[1].Should().Be(SemanticType.Str);
     }
 
     [Fact]
@@ -191,10 +194,9 @@ def main() -> None:
     }
 
     [Fact]
-    public void RejectedShapesRecordNoLowering()
+    public void TupleOperand_RecordsLowering()
     {
-        // The negative half of the contract: a rejected operand must not also reach codegen with a
-        // lowering, or the diagnostic and the emission would disagree about whether the form exists.
+        // The tuple form now classifies as a tuple type test (#1532) and records a lowering.
         var (module, info, _) = Check(@"
 def main() -> None:
     x: object = 5
@@ -202,7 +204,7 @@ def main() -> None:
         print(""tuple ok"")
 ");
 
-        TypeTestLowerings(module, info).Should().BeEmpty();
+        TypeTestLowerings(module, info).Should().HaveCount(1);
     }
 
     // --- Shapes the classifier deliberately leaves alone ---------------------------------------
@@ -224,11 +226,9 @@ def main() -> None:
     }
 
     [Fact]
-    public void TestAssertTupleForm_IsNotClassified()
+    public void TestAssertTupleForm_IsClassifiedAsTupleType()
     {
-        // Inside a @test function the emitter rewrites the whole assert into an xUnit assertion,
-        // pre-empting the call lowering — and that rewrite handles the tuple form. Rejecting there
-        // would break a spelling that path lowers correctly.
+        // Classification is uniform in every position (#1532) — the @test exemption is deleted.
         var (module, info) = Analyze(@"
 @test
 def test_tuple():
@@ -244,7 +244,7 @@ def main():
     print(""ok"")
 ");
 
-        TypeTestLowerings(module, info).Should().BeEmpty();
+        TypeTestLowerings(module, info).Should().HaveCount(2);
     }
 
     [Fact]
@@ -262,11 +262,10 @@ def main():
     }
 
     [Fact]
-    public void TupleOutsideATestAssert_IsStillRejectedInsideATestFunction()
+    public void TupleInsideTestFunction_IsClassifiedUniformly()
     {
-        // The exemption is the ASSERT statement, not the whole @test function: an ordinary expression
-        // there still lowers through GenerateCall and would leak.
-        var diagnostics = Diagnose(@"
+        // Classification is uniform — tuple form is a tuple type test everywhere (#1532).
+        var (module, info) = Analyze(@"
 @test
 def test_tuple():
     x: object = 42
@@ -277,7 +276,7 @@ def main():
     print(""ok"")
 ");
 
-        diagnostics.Select(d => d.Code).Should().Equal(DiagnosticCodes.Semantic.MultiTypeTypeTest);
+        TypeTestLowerings(module, info).Should().HaveCount(1);
     }
 
     // --- Materialization -----------------------------------------------------------------------

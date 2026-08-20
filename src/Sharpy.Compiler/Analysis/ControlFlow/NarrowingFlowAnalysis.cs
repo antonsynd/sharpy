@@ -231,17 +231,35 @@ internal static class NarrowingConditionInterpreter
     /// </summary>
     private static string? DescribeTypeExpression(Expression typeExpression) => typeExpression switch
     {
-        Parenthesized paren => DescribeTypeExpression(paren.Expression),
+        // (A, B) denotes tuple[A, B] in a type position (#1532); (T) denotes tuple[T].
+        Parenthesized paren => DescribeTupleTypeExpression(paren.Expression),
+        TupleLiteral tuple => DescribeTupleElements(tuple),
         Identifier id => id.Name,
         MemberAccess ma when DescribeTypeExpression(ma.Object) is { } objKey => $"{objKey}.{ma.Member}",
-        // `Box[int]` — the base name plus its written type arguments. Without this the closed generic
-        // spelling would lower as a type test (the classifier accepts it) and narrow nothing, which is
-        // the compiles-but-cannot-narrow outcome the type-test rules exist to prevent (#1207).
         IndexAccess { Object: { } baseName } index
             when DescribeTypeExpression(baseName) is { } baseKey
                 && DescribeTypeArgumentList(index.Index) is { } argsKey => $"{baseKey}[{argsKey}]",
         _ => null
     };
+
+    private static string? DescribeTupleTypeExpression(Expression inner) => inner switch
+    {
+        TupleLiteral tuple => DescribeTupleElements(tuple),
+        _ when DescribeTypeExpression(inner) is { } key => $"({key})",
+        _ => null
+    };
+
+    private static string? DescribeTupleElements(TupleLiteral tuple)
+    {
+        var keys = new List<string>();
+        foreach (var element in tuple.Elements)
+        {
+            var key = DescribeTypeExpression(element);
+            if (key == null) return null;
+            keys.Add(key);
+        }
+        return $"({string.Join(", ", keys)})";
+    }
 
     /// <summary>
     /// Describes a generic argument list — a single type expression, or the <c>TupleLiteral</c> a

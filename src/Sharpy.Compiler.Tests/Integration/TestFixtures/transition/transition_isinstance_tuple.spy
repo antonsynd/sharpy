@@ -1,11 +1,7 @@
-# SPY0344: isinstance() in Sharpy accepts only a single type argument.
-# Passing a tuple of types — the legal Python 3 spelling for OR-of-types —
-# is rejected at semantic time. The restriction is load-bearing, not stylistic:
-# a successful check narrows to one concrete type, and a tuple has nothing to
-# narrow to. Lowering it would emit a correct boolean and then silently fail to
-# narrow at the next line, so the form is refused instead.
-# This diagnostic replaces the retired SPY0475 hint, which let compilation
-# continue into a generated-C# failure (SPY0908).
+# SPY0499: isinstance() tuple type test is statically impossible.
+# Under type-position semantics (#1532), (Dog, Cat) denotes tuple[Dog, Cat].
+# The scrutinee's static type is Animal, which is never a tuple —
+# the test is statically impossible and is refused.
 
 class Animal:
     name: str = ""

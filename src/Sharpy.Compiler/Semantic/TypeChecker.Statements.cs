@@ -1794,12 +1794,7 @@ internal partial class TypeChecker
 
     private void CheckAssert(AssertStatement assertStmt)
     {
-        // Inside a @test function the emitter rewrites the whole assert into an xUnit assertion
-        // rather than lowering its test as an ordinary expression, so the type-test classifier
-        // steps aside for exactly this expression (see _testAssertTest).
-        SemanticType testType;
-        using (ScopedValue.Push(ref _testAssertTest, _inTestFunction ? assertStmt.Test : null))
-            testType = CheckExpression(assertStmt.Test);
+        SemanticType testType = CheckExpression(assertStmt.Test);
 
         // The same condition rule `if`/`while` enforce, which `assert` was missing: Sharpy has no
         // implicit truthiness, so a non-boolean test is an error rather than an emptiness check.

@@ -447,12 +447,11 @@ public static class DiagnosticCodes
 
         #region Type-test operands (SPY0344-SPY0345)
 
-        // The isinstance type-operand classifier's rejections. Both say the same thing in two shapes:
-        // a type test must name ONE closed type, because a test that compiles but cannot narrow is
-        // worse than a clean refusal (#1207, #1213). Borrowed from the module-level reserve above,
-        // which the semantic range's exhaustion left as the only contiguous space. (SPY0343 was
-        // reserved when this was written; the inference-overflow region above has since taken it.)
-        public const string MultiTypeTypeTest = "SPY0344";          // Active — isinstance against a tuple of types; Sharpy keeps the form single-typed so a successful check narrows (#1213)
+        // The isinstance type-operand classifier's rejections. SPY0344 refuses non-type expressions
+        // in the second argument (a type position since #1532); SPY0345 refuses open generics whose
+        // type arguments the operand does not determine (#1207). Borrowed from the module-level
+        // reserve above, which the semantic range's exhaustion left as the only contiguous space.
+        public const string MultiTypeTypeTest = "SPY0344";          // Active — isinstance second argument is not a type expression; steers to or-of-singles for any-of intent (#1532, #1213)
         public const string OpenGenericTypeTest = "SPY0345";        // Active — isinstance against a bare generic type name whose type arguments the operand does not determine (#1207)
 
         #endregion
@@ -778,6 +777,14 @@ public static class DiagnosticCodes
         // the SPY0522/SPY0523 precedent (a semantic-phase diagnostic taking a number from a later
         // band); unlike those it stays in-scope [0001,0499] for the front-end parity sweep.
         public const string PayloadTypePatternOverUnion = "SPY0498"; // Active (#1510, #1476)
+
+        // isinstance tuple type test where the scrutinee's static type is never a tuple
+        // (SPY0499, #1532). Emitted at SEMANTIC time from the type-test classifier. Same
+        // precedent as SPY0498: the semantic range SPY0200-SPY0399 is fully allocated and
+        // this diagnostic belongs to no family-specific reserve, so it takes the last slot
+        // in the validation-overflow band. Stays in-scope [0001,0499] for the front-end
+        // parity sweep.
+        public const string ImpossibleTupleTypeTest = "SPY0499"; // Active (#1532)
 
         #endregion
     }
