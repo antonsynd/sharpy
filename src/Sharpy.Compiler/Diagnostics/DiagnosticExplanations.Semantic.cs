@@ -808,6 +808,17 @@ public static partial class DiagnosticExplanations
             "import builtins\nx = builtins.None  # error: None is a literal",
             "Use the bare literal:\nx: int? = None");
 
+        Add(dict, DiagnosticCodes.Semantic.BuiltinExceptionClrMemberRefused,
+            "CLR-only member refused on a builtin exception",
+            "Semantic",
+            "Builtin exception types (ValueError, KeyError, TypeError, etc.) present Python's " +
+            "exception surface — members inherited from System.Exception and other .NET base " +
+            "classes are not part of it and do not resolve. For the exception message, use " +
+            "str(e). Types that are not builtin exceptions (imported CLR types, user classes) " +
+            "are unaffected.",
+            "try:\n    raise ValueError(\"boom\")\nexcept ValueError as e:\n    print(e.message)  # error: not part of the Python surface",
+            "Use str(e) to get the message:\ntry:\n    raise ValueError(\"boom\")\nexcept ValueError as e:\n    print(str(e))");
+
         Add(dict, DiagnosticCodes.Semantic.IsTypeTestRetired,
             "'is' used as a type test (retired)",
             "Semantic",

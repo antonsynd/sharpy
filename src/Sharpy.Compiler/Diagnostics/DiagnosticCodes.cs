@@ -242,7 +242,12 @@ public static class DiagnosticCodes
         // (`1 << -1` is -2147483648). Runtime negative counts keep .NET's masking (Axiom 1).
         public const string NegativeConstantShiftCount = "SPY0213";  // Active
         public const string BuiltinsNoneLiteral = "SPY0214";  // Active — builtins.None refused
-        // SPY0215-SPY0219: Reserved for future name resolution diagnostics
+        // Family: member-resolution refusal. SPY0203 (UndefinedMember) refuses non-existent members;
+        // SPY0215 refuses members that exist on the CLR type but are not part of the Python surface
+        // of a builtin exception (#1515). The member IS discoverable via reflection, so "has no
+        // member" would be misleading — this code carries a steer instead.
+        public const string BuiltinExceptionClrMemberRefused = "SPY0215"; // Active
+        // SPY0216-SPY0219: Reserved for future name resolution diagnostics
 
         #endregion
 
