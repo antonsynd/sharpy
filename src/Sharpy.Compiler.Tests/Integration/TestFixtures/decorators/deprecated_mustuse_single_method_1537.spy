@@ -1,0 +1,31 @@
+# #1537: single (non-overloaded) instance-method calls must record a call target
+# so that @deprecated draws SPY0466 and @must_use draws SPY0480.
+
+class Calc:
+    @deprecated("Use compute_v2")
+    def compute(self, x: int) -> int:
+        return x * 2
+
+class Calc2:
+    @must_use
+    def result(self) -> int:
+        return 42
+
+@deprecated("Use greet_v2")
+def greet() -> str:
+    return "hi"
+
+@must_use
+def get_value() -> int:
+    return 99
+
+def main():
+    c = Calc()
+    r: int = c.compute(3)       # @deprecated single method -> SPY0466
+    print(r)
+
+    c2 = Calc2()
+    c2.result()                 # @must_use single method, discarded -> SPY0480
+
+    print(greet())              # control: free function @deprecated -> SPY0466
+    get_value()                 # control: free function @must_use -> SPY0480

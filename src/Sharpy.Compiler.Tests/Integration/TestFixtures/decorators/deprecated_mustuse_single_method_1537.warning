@@ -1,0 +1,4 @@
+'compute' is deprecated: Use compute_v2
+the result of '@must_use' function 'result' is silently discarded
+'greet' is deprecated: Use greet_v2
+the result of '@must_use' function 'get_value' is silently discarded
