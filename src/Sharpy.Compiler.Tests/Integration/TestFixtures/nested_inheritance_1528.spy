@@ -1,0 +1,22 @@
+# #1528: nested types resolve their inheritance. Before this fix, pass 2 of
+# NameResolver looked up the declaring class by bare name, which returned null for
+# every nested type (class scopes are transient). The fix carries the TypeSymbol
+# from pass 1 directly, so no lookup is needed.
+
+class Outer:
+    class Base:
+        @virtual
+        def greet(self) -> str:
+            return "base"
+
+    class Derived(Base):
+        @override
+        def greet(self) -> str:
+            return "derived"
+
+
+def main() -> None:
+    d: Outer.Derived = Outer.Derived()
+    b: Outer.Base = d
+    print(b.greet())
+    print(d.greet())

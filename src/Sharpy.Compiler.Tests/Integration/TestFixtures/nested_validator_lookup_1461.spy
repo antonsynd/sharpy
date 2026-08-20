@@ -22,9 +22,7 @@
 # `InterfaceImplementationValidator` and `SourceGeneratorValidator` both key off INHERITANCE facts
 # (`Interfaces`, `IsSourceGenerator`), and `NameResolver.ResolveClassInheritance` carries the same
 # bare-name lookup one pass earlier, so a nested type's inheritance is never resolved at all
-# (#1528). Their lookups are converted and correct; their cells are unreportable until #1528, and
-# `class Bad(IShape): pass` nested draws nothing while the top-level twin draws SPY0325. Recorded
-# here rather than left as a silently missing row.
+# (#1528, now fixed). InterfaceImplementationValidator is exercised below (SPY0325).
 interface IShape:
     def area(self) -> int:
         ...
@@ -69,6 +67,11 @@ class Outer:
 
         def bump(self) -> None:
             self.v = 1
+
+    # InterfaceImplementationValidator — SPY0325. Previously unreportable (#1528): nested types'
+    # BaseType was never resolved, so the validator's interface-implementation check was dead.
+    class Bad(IShape):
+        pass
 
     # AccessValidator — SPY0283, reported at the USE below.
     class Holder:

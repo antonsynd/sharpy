@@ -472,17 +472,6 @@ internal class PropertyValidator : SemanticValidatorBase
     /// with a compatible (covariant) return type.
     /// </summary>
     /// <summary>
-    /// Whether a type DECLARATION names at least one base type in the source. The AST's answer,
-    /// used only to detect that the symbol's answer is missing rather than negative — see the guard
-    /// in <see cref="ValidatePropertyOverride"/> and #1528.
-    /// </summary>
-    private static bool DeclaresABaseType(Statement declaration) => declaration switch
-    {
-        ClassDef classDef => classDef.BaseClasses.Length > 0,
-        StructDef structDef => structDef.BaseClasses.Length > 0,
-        _ => false
-    };
-
     private void ValidatePropertyOverride(
         Statement declaration, string typeName, PropertyDef propDef, TypeSymbol? typeSymbol)
     {
@@ -493,19 +482,6 @@ internal class PropertyValidator : SemanticValidatorBase
         var baseType = typeSymbol.BaseType;
         if (baseType == null)
         {
-            // The symbol says there is no base type. Before reporting that, check whether the
-            // DECLARATION says otherwise: `NameResolver.ResolveClassInheritance` resolves the
-            // declaring class by bare name and so never sets `BaseType` for a NESTED type (#1528,
-            // the #1461 root cause one pass upstream). Reading an unset fact as "no base class"
-            // refuses a program that compiles and runs, which is strictly worse than the check
-            // being absent — so where the two disagree the rule stays silent and says why.
-            //
-            // DELETE THIS GUARD with #1528: once nested types carry their BaseType, the symbol is
-            // the whole answer again and this arm becomes unreachable.
-            if (DeclaresABaseType(declaration))
-                return;
-
-
             AddError(_context,
                 $"Property '{propDef.Name}' in '{typeName}' is marked @override but the class has no base class",
                 propDef.LineStart, propDef.ColumnStart,

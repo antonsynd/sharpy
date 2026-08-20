@@ -18,9 +18,9 @@ internal partial class NameResolver
     // Each pending definition carries the file it was declared in as well as its module scope
     // (#1369): pass 2 can run on an aggregate resolver that has no file of its own, and a
     // definition that arrives there without its path produces an unattributable diagnostic.
-    private readonly List<(ClassDef Def, string? ModulePath, string? FilePath)> _classDefs = new();
-    private readonly List<(StructDef Def, string? ModulePath, string? FilePath)> _structDefs = new();
-    private readonly List<(InterfaceDef Def, string? ModulePath, string? FilePath)> _interfaceDefs = new();
+    private readonly List<(ClassDef Def, TypeSymbol Symbol, string? ModulePath, string? FilePath)> _classDefs = new();
+    private readonly List<(StructDef Def, TypeSymbol Symbol, string? ModulePath, string? FilePath)> _structDefs = new();
+    private readonly List<(InterfaceDef Def, TypeSymbol Symbol, string? ModulePath, string? FilePath)> _interfaceDefs = new();
     private string? _currentFilePath;
     private string? _currentModulePath;
 
@@ -33,9 +33,9 @@ internal partial class NameResolver
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
-    public IReadOnlyList<(ClassDef Def, string? ModulePath, string? FilePath)> ClassDefs => _classDefs;
-    public IReadOnlyList<(StructDef Def, string? ModulePath, string? FilePath)> StructDefs => _structDefs;
-    public IReadOnlyList<(InterfaceDef Def, string? ModulePath, string? FilePath)> InterfaceDefs => _interfaceDefs;
+    public IReadOnlyList<(ClassDef Def, TypeSymbol Symbol, string? ModulePath, string? FilePath)> ClassDefs => _classDefs;
+    public IReadOnlyList<(StructDef Def, TypeSymbol Symbol, string? ModulePath, string? FilePath)> StructDefs => _structDefs;
+    public IReadOnlyList<(InterfaceDef Def, TypeSymbol Symbol, string? ModulePath, string? FilePath)> InterfaceDefs => _interfaceDefs;
 
     /// <summary>
     /// Aggregates type definition lists from per-file resolvers into this resolver.
@@ -124,7 +124,7 @@ internal partial class NameResolver
         var previousFilePath = _currentFilePath;
         try
         {
-            foreach (var (classDef, modulePath, filePath) in _classDefs)
+            foreach (var (classDef, symbol, modulePath, filePath) in _classDefs)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 _currentFilePath = filePath;
@@ -132,7 +132,7 @@ internal partial class NameResolver
                     _symbolTable.EnterModuleScope(modulePath);
                 try
                 {
-                    ResolveClassInheritance(classDef);
+                    ResolveClassInheritance(classDef, symbol);
                 }
                 finally
                 {
@@ -141,7 +141,7 @@ internal partial class NameResolver
                 }
             }
 
-            foreach (var (structDef, modulePath, filePath) in _structDefs)
+            foreach (var (structDef, symbol, modulePath, filePath) in _structDefs)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 _currentFilePath = filePath;
@@ -149,7 +149,7 @@ internal partial class NameResolver
                     _symbolTable.EnterModuleScope(modulePath);
                 try
                 {
-                    ResolveStructInheritance(structDef);
+                    ResolveStructInheritance(structDef, symbol);
                 }
                 finally
                 {
@@ -158,7 +158,7 @@ internal partial class NameResolver
                 }
             }
 
-            foreach (var (interfaceDef, modulePath, filePath) in _interfaceDefs)
+            foreach (var (interfaceDef, symbol, modulePath, filePath) in _interfaceDefs)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 _currentFilePath = filePath;
@@ -166,7 +166,7 @@ internal partial class NameResolver
                     _symbolTable.EnterModuleScope(modulePath);
                 try
                 {
-                    ResolveInterfaceInheritance(interfaceDef);
+                    ResolveInterfaceInheritance(interfaceDef, symbol);
                 }
                 finally
                 {
@@ -194,16 +194,14 @@ internal partial class NameResolver
     private void DetectCircularInheritance()
     {
         // Check class base-type chains for cycles
-        foreach (var (classDef, modulePath, filePath) in _classDefs)
+        foreach (var (classDef, symbol, modulePath, filePath) in _classDefs)
         {
             _currentFilePath = filePath;
             if (modulePath != null)
                 _symbolTable.EnterModuleScope(modulePath);
             try
             {
-                var typeSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
-                if (typeSymbol == null)
-                    continue;
+                var typeSymbol = symbol;
 
                 var visited = new HashSet<string>();
                 var current = typeSymbol;
@@ -229,16 +227,14 @@ internal partial class NameResolver
         }
 
         // Check struct base-type chains for cycles (structs only implement interfaces)
-        foreach (var (structDef, modulePath, filePath) in _structDefs)
+        foreach (var (structDef, symbol, modulePath, filePath) in _structDefs)
         {
             _currentFilePath = filePath;
             if (modulePath != null)
                 _symbolTable.EnterModuleScope(modulePath);
             try
             {
-                var typeSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
-                if (typeSymbol == null)
-                    continue;
+                var typeSymbol = symbol;
 
                 DetectInterfaceCycleForType(typeSymbol, structDef.LineStart, structDef.ColumnStart, structDef.Span);
             }
@@ -250,16 +246,14 @@ internal partial class NameResolver
         }
 
         // Check interface chains for cycles
-        foreach (var (interfaceDef, modulePath, filePath) in _interfaceDefs)
+        foreach (var (interfaceDef, symbol, modulePath, filePath) in _interfaceDefs)
         {
             _currentFilePath = filePath;
             if (modulePath != null)
                 _symbolTable.EnterModuleScope(modulePath);
             try
             {
-                var typeSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;
-                if (typeSymbol == null)
-                    continue;
+                var typeSymbol = symbol;
 
                 DetectInterfaceCycle(typeSymbol, interfaceDef);
             }
@@ -352,13 +346,9 @@ internal partial class NameResolver
             span, line, column, _currentFilePath, code, _logger);
     }
 
-    private void ResolveClassInheritance(ClassDef classDef)
+    private void ResolveClassInheritance(ClassDef classDef, TypeSymbol typeSymbol)
     {
         if (classDef.BaseClasses.Length == 0)
-            return;
-
-        var typeSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
-        if (typeSymbol == null)
             return;
 
         // Process all base classes
@@ -367,11 +357,9 @@ internal partial class NameResolver
 
         foreach (var baseAnnot in classDef.BaseClasses)
         {
-            var baseSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol);
+            var baseSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol, resolvingType: typeSymbol);
             if (baseSymbol == null)
             {
-                // Check if this is an error recovery symbol (from a failed import).
-                // If so, suppress this error - the import error was already reported.
                 if (rawSymbol?.IsErrorRecovery == true)
                 {
                     continue;
@@ -394,7 +382,6 @@ internal partial class NameResolver
 
             if (baseSymbol.TypeKind == TypeKind.Class)
             {
-                // Only one base class allowed (C# single inheritance)
                 if (hasSetBaseType)
                 {
                     AddError($"Class '{classDef.Name}' cannot have multiple base classes (only one class inheritance allowed)",
@@ -428,23 +415,17 @@ internal partial class NameResolver
         }
     }
 
-    private void ResolveStructInheritance(StructDef structDef)
+    private void ResolveStructInheritance(StructDef structDef, TypeSymbol typeSymbol)
     {
         if (structDef.BaseClasses.Length == 0)
-            return;
-
-        var typeSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
-        if (typeSymbol == null)
             return;
 
         // Structs can only implement interfaces
         foreach (var baseAnnot in structDef.BaseClasses)
         {
-            var interfaceSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol);
+            var interfaceSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol, resolvingType: typeSymbol);
             if (interfaceSymbol == null)
             {
-                // Check if this is an error recovery symbol (from a failed import).
-                // If so, suppress this error - the import error was already reported.
                 if (rawSymbol?.IsErrorRecovery == true)
                 {
                     continue;
@@ -474,23 +455,17 @@ internal partial class NameResolver
         }
     }
 
-    private void ResolveInterfaceInheritance(InterfaceDef interfaceDef)
+    private void ResolveInterfaceInheritance(InterfaceDef interfaceDef, TypeSymbol typeSymbol)
     {
         if (interfaceDef.BaseInterfaces.Length == 0)
-            return;
-
-        var typeSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;
-        if (typeSymbol == null)
             return;
 
         // Interfaces can extend other interfaces
         foreach (var baseAnnot in interfaceDef.BaseInterfaces)
         {
-            var baseInterfaceSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol);
+            var baseInterfaceSymbol = ResolveBaseReference(baseAnnot, out var rawSymbol, resolvingType: typeSymbol);
             if (baseInterfaceSymbol == null)
             {
-                // Check if this is an error recovery symbol (from a failed import).
-                // If so, suppress this error - the import error was already reported.
                 if (rawSymbol?.IsErrorRecovery == true)
                 {
                     continue;
@@ -530,9 +505,30 @@ internal partial class NameResolver
     /// falls back to the registry instead). An escaped spelling binding a bare-declared
     /// user/import symbol is quoting (#713's interop imports) and stands.
     /// </summary>
-    private TypeSymbol? ResolveBaseReference(TypeAnnotation baseAnnot, out Symbol? rawSymbol)
+    private TypeSymbol? ResolveBaseReference(TypeAnnotation baseAnnot, out Symbol? rawSymbol,
+        TypeSymbol? resolvingType = null)
     {
         rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
+
+        // For nested types, the base name may be a sibling nested type whose class scope
+        // is transient and gone by pass 2. Walk the enclosing chain's NestedTypes
+        // (innermost first — an inner name shadows an outer one, the #1371 rule).
+        if (rawSymbol == null && resolvingType?.DeclaringType != null
+            && !baseAnnot.Name.Contains('.', StringComparison.Ordinal))
+        {
+            var enclosing = resolvingType.DeclaringType;
+            while (enclosing != null)
+            {
+                var nested = enclosing.NestedTypes.FirstOrDefault(n => n.Name == baseAnnot.Name);
+                if (nested != null)
+                {
+                    rawSymbol = nested;
+                    break;
+                }
+                enclosing = enclosing.DeclaringType;
+            }
+        }
+
         if (rawSymbol != null)
         {
             if (baseAnnot.IsNameBacktickEscaped && _symbolTable.BuiltinRegistry.IsBuiltinSymbol(rawSymbol))
@@ -541,8 +537,32 @@ internal partial class NameResolver
                 rawSymbol = _symbolTable.BuiltinRegistry.GetType(baseAnnot.Name);
         }
 
-        return rawSymbol as TypeSymbol
-            ?? (baseAnnot.IsNameBacktickEscaped ? null : LookupModuleQualifiedType(baseAnnot.Name));
+        if (rawSymbol is TypeSymbol ts)
+            return ts;
+
+        if (baseAnnot.IsNameBacktickEscaped)
+            return null;
+
+        // Dotted base name: try the module-qualified path first, then the nested-type path
+        // (e.g., `class Dog(Animal.Speakable)` where Animal is a class, not a module).
+        var moduleResult = LookupModuleQualifiedType(baseAnnot.Name);
+        if (moduleResult != null)
+            return moduleResult;
+
+        if (baseAnnot.Name.Contains('.', StringComparison.Ordinal))
+        {
+            var parts = baseAnnot.Name.Split('.');
+            if (_symbolTable.Lookup(parts[0]) is TypeSymbol outerType)
+            {
+                var current = outerType;
+                for (int i = 1; i < parts.Length && current != null; i++)
+                    current = current.NestedTypes.FirstOrDefault(n => n.Name == parts[i]);
+                if (current != null)
+                    return current;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
