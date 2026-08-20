@@ -137,5 +137,8 @@ fixture::bare_clr_sequence_display_1453
 # deviations.yaml: isinstance-tuple-is-a-tuple-type. Permanent.
 fixture::isinstance_tuple_structural_1532
 fixture::transition/transition_isinstance_tuple_builtins
+# The (int) single-element cell: Sharpy reads tuple[int] (structural 1-tuple test); CPython
+# collapses the parens and reads plain int — both branches flip. Same ruling, same entry class.
+fixture::isinstance_tuple_single_element_1532
 
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---

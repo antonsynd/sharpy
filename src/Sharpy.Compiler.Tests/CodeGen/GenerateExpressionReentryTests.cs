@@ -215,11 +215,17 @@ public class GenerateExpressionReentryTests
     /// <c>builtin_type_from_import_alias_1489</c> and
     /// <c>type_alias_call_transparency_1527</c> — same <c>from builtins import</c> shape.</para>
     ///
+    /// <para>Raised to <b>12</b> for <c>builtins_isinstance_tuple_qualified_1532</c>, the twelfth
+    /// of the same shape: <c>import builtins</c> + <c>builtins.isinstance(x, (int, str))</c>, the
+    /// qualified structural-tuple parity fixture added by the plan-930411 verification round.
+    /// Nothing about re-entry changed — the sweep still reports 0 re-entries — and the fixture is
+    /// swept by the file-based harness, which does register the module.</para>
+    ///
     /// <para>Lower this whenever the real number drops; never raise it without saying why in the
     /// same commit. A rise means either a regression or a deliberate scope change, and both are
     /// things a reader must be told rather than left to infer from a silently larger skip list.</para>
     /// </summary>
-    private const int MaxUncompilableFixtures = 11;
+    private const int MaxUncompilableFixtures = 12;
 
     // ----------------------------------------------------------------------------------------- //
 
