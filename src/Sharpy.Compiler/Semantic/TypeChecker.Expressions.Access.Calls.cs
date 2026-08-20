@@ -2039,11 +2039,14 @@ internal partial class TypeChecker
             ?? CheckExpression(memberAccess.Object);
         if (objectType is not ModuleType moduleType)
         {
-            // A TYPE qualifier: the same symbol-table walk the explicit-type-argument spelling
-            // (Outer.Inner[int]) already uses, so both spellings agree on what the member names.
-            // Accessibility is not filtered here for the same reason it is not there — the
-            // AccessValidator owns that report, and suppressing the symbol would degrade a precise
-            // "not accessible" into a bare "not callable".
+            // A TYPE qualifier: use the already-resolved expression type to find nested types
+            // rather than re-walking from scratch. This handles module→type→nested chains
+            // like `lib.Registry.Entry` where the root is a module (#1523).
+            if (objectType is UserDefinedType qualUdt)
+            {
+                var qualSym = qualUdt.Symbol ?? _symbolTable.LookupType(qualUdt.Name);
+                return qualSym?.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member);
+            }
             return LookupNestedTypeSymbol(memberAccess);
         }
 

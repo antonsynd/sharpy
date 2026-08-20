@@ -3,9 +3,8 @@
 # correct while the imported one was CS0426 behind SPY0908. All three nested kinds are here because
 # the issue names all three and they take different emission paths.
 #
-# The three-segment spelling `lib.Registry.Entry` is NOT covered here: a module-qualified NESTED
-# type does not resolve at all (SPY0202), because the qualified walk requires every intermediate
-# segment to be a module. That is a resolution gap rather than an emission one — see TODO(#1523).
+# Both spellings: from-imported bare and three-segment module-qualified (#1523).
+import lib
 from lib import Registry
 
 
@@ -18,3 +17,6 @@ def main() -> None:
 
     level: Registry.Level = Registry.Level.HIGH
     print(level == Registry.Level.HIGH)
+
+    q_entry: lib.Registry.Entry = lib.Registry.Entry(42)
+    print(q_entry.tag)

@@ -68,25 +68,54 @@ internal static class ModuleSymbolExtensions
     /// <returns>The resolved <see cref="TypeSymbol"/>, or <c>null</c> if resolution fails at any step.</returns>
     public static TypeSymbol? ResolveQualifiedType(this ModuleSymbol rootModule, string[] parts, int startIndex)
     {
-        var moduleSymbol = WalkToOwningModule(rootModule, parts, startIndex);
-        if (moduleSymbol == null)
+        var moduleSymbol = rootModule;
+
+        for (int i = startIndex; i < parts.Length; i++)
+        {
+            // Try as a module export (the common module-qualified path).
+            if (moduleSymbol.TryGetExportedType(parts[i], out var exportedType))
+            {
+                if (i == parts.Length - 1)
+                    return exportedType;
+
+                // Intermediate segment is a TYPE, not a module: hand off to NestedTypes
+                // for the remaining segments (e.g., lib.Registry.Entry — #1523).
+                return WalkNestedTypes(exportedType, parts, i + 1);
+            }
+
+            if (moduleSymbol.TryGetExport(parts[i], out var exportedSymbol))
+            {
+                if (exportedSymbol is TypeSymbol typeSymbol)
+                {
+                    if (i == parts.Length - 1)
+                        return typeSymbol;
+                    return WalkNestedTypes(typeSymbol, parts, i + 1);
+                }
+
+                if (exportedSymbol is ModuleSymbol nestedModule)
+                {
+                    moduleSymbol = nestedModule;
+                    continue;
+                }
+            }
+
             return null;
-
-        // The final part must resolve to an exported type. Consult the types-only lookup first
-        // so a value-position export sharing the name (e.g. sqlite3.Row's row_factory field)
-        // does not shadow the type in annotation position (#1092), then fall back to Exports.
-        if (moduleSymbol.TryGetExportedType(parts[^1], out var exportedType))
-        {
-            return exportedType;
-        }
-
-        if (moduleSymbol.TryGetExport(parts[^1], out var exportedSymbol)
-            && exportedSymbol is TypeSymbol typeSymbol)
-        {
-            return typeSymbol;
         }
 
         return null;
+    }
+
+    private static TypeSymbol? WalkNestedTypes(TypeSymbol outerType, string[] parts, int startIndex)
+    {
+        var current = outerType;
+        for (int i = startIndex; i < parts.Length; i++)
+        {
+            var nested = current.NestedTypes.FirstOrDefault(n => n.Name == parts[i]);
+            if (nested == null)
+                return null;
+            current = nested;
+        }
+        return current;
     }
 
     /// <summary>

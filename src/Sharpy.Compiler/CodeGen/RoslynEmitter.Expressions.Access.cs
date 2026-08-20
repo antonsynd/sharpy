@@ -406,15 +406,41 @@ internal partial class RoslynEmitter
 
             // Check for nested type construction: Outer.Inner(42) → new Outer.Inner(42)
             // Also handles multi-level: Outer.Middle.Inner(42)
+            // Module-qualified: lib.Registry.Entry(9) → new Lib.Registry.Entry(9) (#1523)
             {
                 var nestedSym = ResolveNestedTypeFromAccess(memberAccess);
                 if (nestedSym != null && (nestedSym.TypeKind == Semantic.TypeKind.Class ||
                                           nestedSym.TypeKind == Semantic.TypeKind.Struct))
                 {
-                    // C# has no generic constructor inference, so a nested generic construction
-                    // written without type arguments must spell the vector semantic analysis
-                    // inferred: Outer.Inner(5) -> new Outer.Inner<int>(5) (#1193).
-                    var qualifiedName = BuildNestedTypeName(nestedSym, ResolvedConstructionTypeArguments(call));
+                    var typeArgsSyntax = ResolvedConstructionTypeArguments(call);
+                    NameSyntax qualifiedName;
+
+                    // For nested types from other modules, use TypeSyntaxMapper to emit
+                    // the full module-qualified declaring chain (#1523, mirrors #1435).
+                    if (!string.IsNullOrEmpty(nestedSym.DefiningModule)
+                        || (!string.IsNullOrEmpty(nestedSym.DefiningFilePath)
+                            && !string.Equals(nestedSym.DefiningFilePath, _context.SourceFilePath, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var mappedType = _typeMapper.MapSemanticType(
+                            new Semantic.UserDefinedType { Name = nestedSym.Name, Symbol = nestedSym });
+                        if (typeArgsSyntax is { Length: > 0 } && mappedType is NameSyntax baseName)
+                        {
+                            qualifiedName = baseName;
+                        }
+                        else if (mappedType is NameSyntax nameSyntax)
+                        {
+                            qualifiedName = nameSyntax;
+                        }
+                        else
+                        {
+                            qualifiedName = BuildNestedTypeName(nestedSym, typeArgsSyntax);
+                        }
+                    }
+                    else
+                    {
+                        qualifiedName = BuildNestedTypeName(nestedSym, typeArgsSyntax);
+                    }
+
                     var nestedCallTarget = ResolveConstructorForCall(nestedSym, call);
                     var nestedAllArgs = GenerateReorderedCallArguments(call, nestedCallTarget);
 
@@ -2076,6 +2102,20 @@ internal partial class RoslynEmitter
             {
                 return parentSym.NestedTypes.FirstOrDefault(
                     n => n.Name == memberAccess.Member);
+            }
+
+            // Module-qualified nested type: lib.Registry.Entry — the root is a module,
+            // the next segment is a type in its exports, and the member is a nested type.
+            if (innerAccess.Object is Identifier moduleId)
+            {
+                var moduleSym = _context.LookupSymbol(moduleId.Name);
+                if (moduleSym is ModuleSymbol mod
+                    && mod.Exports.TryGetValue(innerAccess.Member, out var exported)
+                    && exported is TypeSymbol exportedType)
+                {
+                    return exportedType.NestedTypes.FirstOrDefault(
+                        n => n.Name == memberAccess.Member);
+                }
             }
         }
 
