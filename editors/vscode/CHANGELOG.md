@@ -7,6 +7,11 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-08-19
+
+### Changed
+- No extension-facing changes; version bumped with the toolchain. Toolchain-side, the NuGet library packages were renamed to the `SharpyLang.*` family (`SharpyLang.Core`, `SharpyLang.Stdlib`, `SharpyLang.Compiler`) because the `Sharpy.*` NuGet namespace is owned by an unrelated package family; assembly names and the `sharpyc` tool ID are unchanged.
+
 ## [0.16.0] - 2026-08-19
 
 ### Changed
