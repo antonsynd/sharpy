@@ -364,12 +364,12 @@ public class BuiltinsQualifiedAgreementTests
     /// </summary>
     private static readonly Dictionary<string, (string BareCode, string QualifiedCode, string Why)>
         DeliberateValueDisagreements = new(StringComparer.Ordinal)
-    {
-        // bare None in value position is a VoidType read; builtins.None is refused as a literal,
-        // not a module member — CPython-matching (builtins.None is a SyntaxError there). Ruled in
-        // the 2026-08-18 remediation round, Batch 3 Phase 6 (#1463).
-        ["None"] = ("SPY0227", "SPY0214", "builtins.None is a literal, not a module member — #1463"),
-    };
+        {
+            // bare None in value position is a VoidType read; builtins.None is refused as a literal,
+            // not a module member — CPython-matching (builtins.None is a SyntaxError there). Ruled in
+            // the 2026-08-18 remediation round, Batch 3 Phase 6 (#1463).
+            ["None"] = ("SPY0227", "SPY0214", "builtins.None is a literal, not a module member — #1463"),
+        };
 
     private static string BuildValueSource(string reference) =>
         "import builtins\n"
