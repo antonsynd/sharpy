@@ -171,12 +171,14 @@ def main():
     }
 
     [Fact]
-    public void ClrInheritedProperty_AccessedThroughSharpySubclass_ResolvesType()
+    public void ClrInheritedProperty_RefusedOnSharpySubclass_StrProvidesMessage()
     {
         // System.Exception.Message is a CLR property inherited by Sharpy's
         // TypeError. Since #1515 (the builtin-exception Python-surface allowlist),
-        // .message is refused on builtin exception receivers and their subclasses.
-        // User code should use str(e) instead.
+        // .message is refused on builtin exception receivers and their subclasses —
+        // the refusal itself is pinned by BuiltinExceptionSurfaceConformanceTests'
+        // subclass_without_declaration_read route cell. This test keeps the runtime
+        // half: str(e) is the sanctioned path to the message.
         var source = @"
 class MyError(TypeError):
     def __init__(self, msg: str):
