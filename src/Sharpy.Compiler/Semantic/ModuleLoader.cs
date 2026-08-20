@@ -874,7 +874,7 @@ internal class ModuleLoader
         // `Box[int]`), and the two spellings of one program named two different types (#1448).
         var annotationName = NormalizeQualifiedAnnotationName(typeAnnotation.Name);
 
-        SemanticType? baseType = typeAnnotation.Name switch
+        SemanticType? baseType = annotationName switch
         {
             BuiltinNames.Int => SemanticType.Int,
             BuiltinNames.Long => SemanticType.Long,
@@ -914,19 +914,19 @@ internal class ModuleLoader
                 .Select(a => ConvertTypeAnnotationToSemanticType(a, typeParameterNames))
                 .ToList();
 
-            if (typeAnnotation.Name == BuiltinNames.Tuple)
+            if (annotationName == BuiltinNames.Tuple)
             {
                 baseType = new TupleType { ElementTypes = typeArgs };
             }
-            else if (typeAnnotation.Name == BuiltinNames.Optional && typeArgs.Count == 1)
+            else if (annotationName == BuiltinNames.Optional && typeArgs.Count == 1)
             {
                 baseType = new OptionalType { UnderlyingType = typeArgs[0] };
             }
-            else if (typeAnnotation.Name == BuiltinNames.Result && typeArgs.Count == 2)
+            else if (annotationName == BuiltinNames.Result && typeArgs.Count == 2)
             {
                 baseType = new ResultType { OkType = typeArgs[0], ErrorType = typeArgs[1] };
             }
-            else if (typeAnnotation.Name == BuiltinNames.Function)
+            else if (annotationName == BuiltinNames.Function)
             {
                 var returnType = typeArgs[^1];
                 var paramTypes = typeArgs.Take(typeArgs.Count - 1).ToList();

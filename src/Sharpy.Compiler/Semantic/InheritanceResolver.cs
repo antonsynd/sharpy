@@ -184,6 +184,20 @@ internal class InheritanceResolver
         var types = new List<TypeSymbol>();
         types.AddRange(_symbolTable.GetAllModuleScopeSymbols().OfType<TypeSymbol>());
         types.AddRange(_symbolTable.GlobalScope.GetAllSymbols().OfType<TypeSymbol>());
+        // Walk module exports so `import lib`-style imports have their extracted
+        // symbols' inheritance resolved alongside `from lib import`-imported ones.
+        // ModuleSymbols may appear in the global scope, in module scopes, or both.
+        var seen = new HashSet<string>();
+        foreach (var mod in _symbolTable.GlobalScope.GetAllSymbols().OfType<ModuleSymbol>())
+        {
+            if (seen.Add(mod.Name))
+                types.AddRange(mod.Exports.Values.OfType<TypeSymbol>());
+        }
+        foreach (var mod in _symbolTable.GetAllModuleScopeSymbols().OfType<ModuleSymbol>())
+        {
+            if (seen.Add(mod.Name))
+                types.AddRange(mod.Exports.Values.OfType<TypeSymbol>());
+        }
         return types;
     }
 

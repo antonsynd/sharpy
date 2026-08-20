@@ -27,39 +27,17 @@
 # See .claude/tmp/qualified-bare-conformance-report.json.
 # ---------------------------------------------------------------------------------------------
 
-# #1445 — PARTLY DRAINED. `case lib.Circle():` was a PARSE error (SPY0100/SPY0103/SPY0104): the
-# parser's dotted arm consumed the whole chain into a value pattern and never looked for the call
-# parens, so a qualifier changed whether the program parsed at all. It now parses as a class
-# pattern, and pattern::plain::inSourceSet agrees.
-#
-# The three cells below still diverge, and the measured reason is no longer #1445's: the pattern's
-# annotation resolves through the SAME non-generic arm of TypeResolver that #1446 is about, so
-# `case lib.Box():` produces `UserDefinedType { Name = "lib.Box" }` and the compatibility check
-# refuses it against the scrutinee — `Type pattern 'lib.Box' is incompatible with scrutinee type
-# 'Box[int]'` (SPY0361), plus SPY0220 outside the source set. Measured at the #1445 fix, 2026-08-14.
-# They are left under #1445 rather than re-attributed because #1446 is CLOSED with no fix in the
-# tree and its cells are under an owner ruling; re-pointing a line at a closed issue would be the
-# ratchet violation the rules above forbid. Re-attribute or reopen with that ruling.
-pattern::plain::outsideSourceSet
+# #1445 — TWO CELLS REMAIN. The pattern's annotation resolves through TypeResolver's non-generic
+# arm (now gated with ClrType == null), so `case lib.Box():` resolves to the bare name. But the
+# generic pattern fill (`ApplyBareGenericPatternRule`) keys on the bare spelling only, so a
+# qualified generic pattern does not fill from the scrutinee — SPY0361.
 pattern::generic::inSourceSet
 pattern::generic::outsideSourceSet
 
-# #1446 — PARTLY DRAINED. In-source-set annotation and declSiteAnnotation now agree (the non-generic
-# arm at `TypeResolver.cs:281` normalizes to the bare name when `ClrType == null`, matching the
-# generic arm at `:745`). The five cells below are the outside-source-set representation half:
-# `ModuleLoader`-built extracted types carry no `Symbol`, so `IsAssignable` falls to name comparison
-# and the qualified spelling refuses every relation asked of it — assignment (SPY0220),
-# where the two symbols are one object since #1366; outside the source set the name is what remains
-# to compare and the qualified spelling refuses every relation asked of it — assignment (SPY0220),
-# isinstance (SPY0220), constraint (SPY0237), `as?` (SPY0220+SPY0228 InvalidCast) and `except`
-# (SPY0399 TryExceptionTypeNotException, i.e. the walk to Exception came back empty). Those are the
-# #1366/#1407 symptoms on the path that fix did not cover. Note the two annotation-shaped cells
-# AGREE in-source-set, so #1411's fix holds and only the extraction path is affected.
-annotation::plain::outsideSourceSet
-typeTest::plain::outsideSourceSet
-typeTestCast::plain::outsideSourceSet
-typeTestExcept::plain::outsideSourceSet
-constraint::plain::outsideSourceSet
+# #1446 — FULLY DRAINED. In-source-set annotation and declSiteAnnotation drained with the
+# TypeResolver normalization gate; outside-source-set cells drained when InheritanceResolver was
+# extended to walk module exports so `import lib`-style imports get their extracted symbols'
+# inheritance resolved.
 
 # #1447 — DRAINED. `isinstance(box, lib.Box[int])` analyzed clean and then leaked CS0305 behind
 # SPY0908. The expression-as-type resolver recognised a type-argument list only when it was applied
