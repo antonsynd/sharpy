@@ -1960,10 +1960,5 @@ public enum MatchScrutineeLoweringKind
 
 public sealed record MatchScrutineeLowering(MatchScrutineeLoweringKind Kind);
 
-/// <summary>
-/// The materialized spec for a <c>functools.partial(f, ...)</c> call, recorded by the TypeChecker
-/// so the emitter reads the resolved target symbol instead of re-deriving it (#1520).
-/// </summary>
-public sealed record FunctoolsPartialSpec(
-    FunctionSymbol? TargetSymbol,
-    int FixedPositionalCount);
+// FunctoolsPartialSpec (#1520) lives in FunctoolsPartialSpec.cs, sibling to
+// SelfInterfaceBridgeSpec — the same fully-resolved-spec pattern, node-keyed.

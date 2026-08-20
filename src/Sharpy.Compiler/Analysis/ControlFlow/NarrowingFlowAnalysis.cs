@@ -255,7 +255,8 @@ internal static class NarrowingConditionInterpreter
         foreach (var element in tuple.Elements)
         {
             var key = DescribeTypeExpression(element);
-            if (key == null) return null;
+            if (key == null)
+                return null;
             keys.Add(key);
         }
         return $"({string.Join(", ", keys)})";

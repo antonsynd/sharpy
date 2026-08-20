@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Globalization;
 using Sharpy.Compiler.Diagnostics;
@@ -397,13 +398,9 @@ internal partial class TypeChecker
                     return overloadResult;
             }
 
-            // Record the call target for single (non-overloaded) instance-method calls.
-            // ResolveUserMethodOverload declines these (overloads.Count <= 1); the call still
-            // validates through CheckLambdaCall below, but the seam never saw it — so @deprecated,
-            // @must_use, LSP go-to-definition, and codegen's GetCallTarget were all blind (#1537).
-            // Dunders are excluded: __init__ belongs to the constructor-delegation route (#1536),
-            // and recording it here would silently change that route's semantics.
-            // TODO(#1591): kwarg names/types on single-method calls are unvalidated
+            // One shared receiver resolution for the two recording blocks below — the resolution
+            // chain (GetExpressionType → UnwrapCallTarget → UserDefinedType-or-builtin) must stay
+            // identical for both, so it is derived once.
             {
                 var rawObjType = _semanticInfo.GetExpressionType(memberAccessCall.Object);
                 if (rawObjType != null)
@@ -413,40 +410,36 @@ internal partial class TypeChecker
                         ? uds
                         : ResolveBuiltinTypeInfo(objType).TypeSymbol;
 
-                    if (receiverSymbol != null
-                        && !DunderDetector.IsDunderMethod(memberAccessCall.Member))
+                    if (receiverSymbol != null)
                     {
-                        var (method, _) = TypeHierarchyService.FindMethod(
-                            receiverSymbol, memberAccessCall.Member, SemanticBinding);
-                        if (method != null)
+                        // Record the call target for single (non-overloaded) instance-method calls.
+                        // ResolveUserMethodOverload declines these (overloads.Count <= 1); the call
+                        // still validates through CheckLambdaCall below, but the seam never saw it —
+                        // so @deprecated, @must_use, LSP go-to-definition, and codegen's
+                        // GetCallTarget were all blind (#1537). Dunders are excluded: __init__
+                        // belongs to the constructor-delegation route (#1536), and recording it here
+                        // would silently change that route's semantics.
+                        // TODO(#1591): kwarg names/types on single-method calls are unvalidated
+                        if (!DunderDetector.IsDunderMethod(memberAccessCall.Member))
                         {
-                            RecordResolvedCallTarget(call, method);
+                            var (method, _) = TypeHierarchyService.FindMethod(
+                                receiverSymbol, memberAccessCall.Member, SemanticBinding);
+                            if (method != null)
+                            {
+                                RecordResolvedCallTarget(call, method);
+                            }
                         }
-                    }
-                }
-            }
 
-            // Record default-interface dispatch and CLR-property-call lowerings for the
-            // emitter (#1519). Both run after resolution to avoid re-deriving hierarchy facts
-            // at emit time.
-            {
-                var rawObjType2 = _semanticInfo.GetExpressionType(memberAccessCall.Object);
-                if (rawObjType2 != null)
-                {
-                    var objType2 = UnwrapCallTarget(rawObjType2);
-                    TypeSymbol? receiverSymbol2 = objType2 is UserDefinedType { Symbol: { } uds2 }
-                        ? uds2
-                        : ResolveBuiltinTypeInfo(objType2).TypeSymbol;
-
-                    if (receiverSymbol2 != null)
-                    {
+                        // Record default-interface dispatch and CLR-property-call lowerings for the
+                        // emitter (#1519). Both run after resolution to avoid re-deriving hierarchy
+                        // facts at emit time.
                         var defaultIface = TryGetDefaultMethodInterfaceName(
-                            receiverSymbol2, memberAccessCall.Member);
+                            receiverSymbol, memberAccessCall.Member);
                         if (defaultIface != null)
                             _semanticInfo.SetDefaultInterfaceDispatch(call, defaultIface);
 
                         if (call.Arguments.Length == 0 && call.KeywordArguments.Length == 0
-                            && IsClrPropertyOnType(receiverSymbol2, memberAccessCall.Member))
+                            && IsClrPropertyOnType(receiverSymbol, memberAccessCall.Member))
                             _semanticInfo.SetClrPropertyCallLowering(call);
                     }
                 }
@@ -569,14 +562,15 @@ internal partial class TypeChecker
         var rawOperand = operandNode is Parenthesized paren ? paren.Expression : operandNode;
         if (rawOperand is TupleLiteral tuple)
         {
-            ClassifyTupleTypeTestOperand(call, operandNode, tuple, subjectType);
+            ClassifyTupleTypeTestOperand(call, operandNode, tuple.Elements, subjectType);
             return;
         }
 
         // A parenthesized single expression that is NOT a TupleLiteral: (T) means tuple[T].
         if (operandNode is Parenthesized singleParen)
         {
-            ClassifySingleElementTupleTypeTestOperand(call, operandNode, singleParen.Expression, subjectType);
+            ClassifyTupleTypeTestOperand(
+                call, operandNode, ImmutableArray.Create(singleParen.Expression), subjectType);
             return;
         }
 
@@ -584,14 +578,17 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Classifies a tuple-literal type-test operand as a structural tuple type.
-    /// Each element must resolve as a type; the result is <c>tuple[A, B, ...]</c>.
+    /// Classifies a tuple-shaped type-test operand as a structural tuple type: the elements of a
+    /// <c>TupleLiteral</c>, or a parenthesized single expression as the 1-tuple <c>tuple[T]</c>
+    /// (per type_annotation_shorthand). Each element must resolve as a type; the result is
+    /// <c>tuple[A, B, ...]</c>.
     /// </summary>
     private void ClassifyTupleTypeTestOperand(
-        FunctionCall call, Expression operandNode, TupleLiteral tuple, SemanticType? subjectType)
+        FunctionCall call, Expression operandNode, IReadOnlyList<Expression> elements,
+        SemanticType? subjectType)
     {
         var elementTypes = new List<SemanticType>();
-        foreach (var element in tuple.Elements)
+        foreach (var element in elements)
         {
             var resolved = TryResolveExpressionAsType(element, TypeOperandShapes.TypeTestOperand);
             if (resolved == null)
@@ -618,55 +615,6 @@ internal partial class TypeChecker
         }
 
         var tupleType = new TupleType { ElementTypes = elementTypes };
-
-        if (subjectType != null
-            && subjectType is not UnknownType
-            && !IsObjectType(subjectType)
-            && subjectType is not TupleType)
-        {
-            AddError(
-                $"isinstance() tuple type test is statically impossible: the scrutinee's type "
-                + $"'{subjectType.GetDisplayName()}' is never a tuple. "
-                + "For Python's any-of check, write "
-                + "`isinstance(x, A) or isinstance(x, B)`; "
-                + "`(A, B)` denotes the tuple type `tuple[A, B]`.",
-                call.LineStart, call.ColumnStart,
-                code: DiagnosticCodes.Validation.ImpossibleTupleTypeTest,
-                span: call.Span);
-            return;
-        }
-
-        _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, tupleType));
-    }
-
-    /// <summary>
-    /// Classifies a parenthesized single expression <c>(T)</c> as <c>tuple[T]</c>.
-    /// </summary>
-    private void ClassifySingleElementTupleTypeTestOperand(
-        FunctionCall call, Expression operandNode, Expression innerExpr, SemanticType? subjectType)
-    {
-        var resolved = TryResolveExpressionAsType(innerExpr, TypeOperandShapes.TypeTestOperand);
-        if (resolved == null)
-        {
-            AddError(
-                "isinstance()'s second argument is a type position, but this expression "
-                + "is not a type. For Python's any-of check, write "
-                + "`isinstance(x, A) or isinstance(x, B)`; "
-                + "`(A, B)` denotes the tuple type `tuple[A, B]`.",
-                call.LineStart, call.ColumnStart,
-                code: DiagnosticCodes.Semantic.MultiTypeTypeTest,
-                span: call.Span);
-            return;
-        }
-
-        if (resolved is UserDefinedType { Symbol: { IsGeneric: true } openDef })
-        {
-            ClassifyResolvedTypeOperand(
-                call, innerExpr, innerExpr, openDef, DescribeTypeOperand(innerExpr), subjectType);
-            return;
-        }
-
-        var tupleType = new TupleType { ElementTypes = new List<SemanticType> { resolved } };
 
         if (subjectType != null
             && subjectType is not UnknownType
@@ -2337,16 +2285,15 @@ internal partial class TypeChecker
         if (overloads == null || overloads.Count <= 1)
             return null;
 
-        // Shadow check: if the bound symbol IS one of the overloads (or a clone of one via
-        // OriginSymbol), it is not shadowed and overload resolution proceeds. Otherwise a
-        // local definition shadows the imported overloads (#1525). Uses reference identity
-        // first (fast path); for re-export clones across object graphs, falls back to
-        // comparing the root declaration's file path — strict, no null tolerance.
+        // Shadow check: if the bound symbol IS one of the overloads — or both are clones of
+        // the same declaration, compared by following the OriginSymbol chain to its root —
+        // it is not shadowed and overload resolution proceeds. Otherwise a local definition
+        // shadows the imported overloads (#1525). Pure reference identity through the chain;
+        // no path agreement anywhere (the DeclaringFilePath comparison this replaced disabled
+        // itself silently when the extraction left the path null).
         var funcSymbol = _symbolTable.Lookup(id.Name) as FunctionSymbol;
         if (funcSymbol != null
-            && !overloads.Any(o => ReferenceEquals(o, funcSymbol)
-                || ReferenceEquals(o, funcSymbol.OriginSymbol))
-            && !SharesDeclaringFileViaOrigin(funcSymbol, overloads[0]))
+            && !overloads.Any(o => ReferenceEquals(RootOrigin(o), RootOrigin(funcSymbol))))
         {
             return null;
         }
@@ -2407,18 +2354,16 @@ internal partial class TypeChecker
         return false;
     }
 
-    private static bool SharesDeclaringFileViaOrigin(FunctionSymbol a, FunctionSymbol b)
+    /// <summary>
+    /// Follows the <see cref="Symbol.OriginSymbol"/> chain to the declaration a clone was
+    /// ultimately made from. Identity of two symbols' roots IS the shadow decision (#1525):
+    /// clones of the same declaration are the same function, whatever their spelling.
+    /// </summary>
+    private static FunctionSymbol RootOrigin(FunctionSymbol s)
     {
-        var rootA = RootOrigin(a);
-        var rootB = RootOrigin(b);
-        return rootA.DeclaringFilePath != null && rootA.DeclaringFilePath == rootB.DeclaringFilePath;
-
-        static FunctionSymbol RootOrigin(FunctionSymbol s)
-        {
-            while (s.OriginSymbol is FunctionSymbol origin)
-                s = origin;
-            return s;
-        }
+        while (s.OriginSymbol is FunctionSymbol origin)
+            s = origin;
+        return s;
     }
 
     /// <summary>
@@ -4221,9 +4166,67 @@ internal partial class TypeChecker
         }
 
         _semanticInfo.SetExpressionType(call, resultType);
+
+        // The full spec (#1520): remaining parameters (name + resolved C# name + type, matching
+        // the result FunctionType's vector positionally) and the keyword fixes with their resolved
+        // C# parameter names. The emitter reads this verbatim — no Parameters walk, no name
+        // re-resolution at emit time.
+        var remainingParameters =
+            new List<(string Name, string CSharpName, SemanticType Type)>(resultType.ParameterTypes.Count);
+        if (targetFunctionSymbol != null)
+        {
+            var parameters = targetFunctionSymbol.Parameters;
+            for (var i = Math.Min(fixedPositionalCount, parameters.Count); i < parameters.Count; i++)
+            {
+                var p = parameters[i];
+                if (fixedKwargNames.Contains(p.Name))
+                    continue;
+                if (remainingParameters.Count >= resultType.ParameterTypes.Count)
+                    break;
+                remainingParameters.Add((p.Name,
+                    ResolveCSharpParameterName(p.Name, targetFunctionSymbol),
+                    resultType.ParameterTypes[remainingParameters.Count]));
+            }
+        }
+        while (remainingParameters.Count < resultType.ParameterTypes.Count)
+        {
+            var syntheticName = $"__partial_arg{remainingParameters.Count}";
+            remainingParameters.Add((syntheticName,
+                NameMangler.ToCamelCase(syntheticName),
+                resultType.ParameterTypes[remainingParameters.Count]));
+        }
+
+        var fixedKeywords = new List<(string CSharpName, int ArgumentIndex)>(call.KeywordArguments.Length);
+        for (var i = 0; i < call.KeywordArguments.Length; i++)
+        {
+            fixedKeywords.Add((
+                ResolveCSharpParameterName(call.KeywordArguments[i].Name, targetFunctionSymbol),
+                i));
+        }
+
         _semanticInfo.SetFunctoolsPartialSpec(call, new FunctoolsPartialSpec(
-            targetFunctionSymbol, fixedPositionalCount));
+            targetFunctionSymbol, fixedPositionalCount, remainingParameters, fixedKeywords));
         return resultType;
+    }
+
+    /// <summary>
+    /// Resolves the C# parameter name a Sharpy-spelled keyword binds to on <paramref name="funcSymbol"/>.
+    /// For CLR-backed targets (<c>ClrMethodName != null</c>) reflection parameter names are the
+    /// actual C# identifiers stored UNMANGLED (#942), so the declared name is matched and used
+    /// verbatim (keyword-escaped); Sharpy-defined parameters camelCase-mangle. The decision half of
+    /// the emitter's <c>GetCSharpParameterName</c>, made at check time for the partial spec (#1520).
+    /// </summary>
+    private static string ResolveCSharpParameterName(string sharpyName, FunctionSymbol? funcSymbol)
+    {
+        if (funcSymbol?.ClrMethodName != null)
+        {
+            var camelName = NameMangler.ToCamelCase(sharpyName);
+            var match = funcSymbol.Parameters.FirstOrDefault(p => p.Name == sharpyName)
+                ?? funcSymbol.Parameters.FirstOrDefault(p => p.Name == camelName);
+            if (match != null)
+                return CSharpKeywords.EscapeIfNeeded(match.Name);
+        }
+        return NameMangler.ToCamelCase(sharpyName);
     }
 
     /// <summary>

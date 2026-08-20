@@ -433,6 +433,12 @@ public class SemanticBinding
             "the fact would be silently dropped at materialization and the Self member would leak " +
             "CS0535/CS0738 behind SPY0908 (#1342).");
 
+        System.Diagnostics.Debug.Assert(
+            System.Linq.Enumerable.All(_synthesizedInterfaces.Keys, s => _codeGenInfo.ContainsKey(s)),
+            "Synthesized-interface lists were recorded for a symbol with no CodeGenInfo entry; " +
+            "the fact would be silently dropped at materialization and the emitter would omit the " +
+            "protocol interfaces the dunders promised (#1521).");
+
         foreach (var (symbol, info) in _codeGenInfo)
         {
             var effective = info;

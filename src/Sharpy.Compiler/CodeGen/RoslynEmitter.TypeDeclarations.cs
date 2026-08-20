@@ -571,9 +571,9 @@ internal partial class RoslynEmitter
             members = members.Concat(selfBridges).ToList();
         }
 
-        // NOTE: Default interface methods are handled at the call site by
-        // TryGetDefaultMethodInterface() in RoslynEmitter.Expressions.Access.cs,
-        // which emits ((IInterface)obj).Method() casts. Forwarding stubs were removed
+        // NOTE: Default interface methods are handled at the call site, which reads the
+        // recorded SemanticInfo default-interface dispatch (#1519) and emits
+        // ((IInterface)obj).Method() casts. Forwarding stubs were removed
         // because they cause infinite recursion in C# (the stub becomes the most-derived
         // implementation, so ((IInterface)this).Method() dispatches back to the stub).
 

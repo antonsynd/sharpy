@@ -46,8 +46,8 @@ internal static class FunctoolsPartialHelper
         // name is what we check against.
         //
         // Matched against the canonical (paren-stripped) callee so `(functools.partial)(f, 1)`
-        // desugars like the direct form (#1170). Both the TypeChecker and the emitter call this
-        // predicate, so normalizing here keeps the two sides in step.
+        // desugars like the direct form (#1170). Semantic-side only since #1520: the emitter
+        // dispatches on the recorded FunctoolsPartialSpec, never on this predicate.
         if (Shared.AstHelper.UnwrapParenthesized(call.Function) is not MemberAccess memberAccess)
         {
             return false;

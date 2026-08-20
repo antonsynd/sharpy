@@ -381,6 +381,22 @@ internal partial class ProjectCompiler
                                                     BuiltinAliasOf = registryBinding.Value.Symbol
                                                 }
                                                 : symbol;
+
+                                        // Resolve overloads BEFORE defining so the alias clone's
+                                        // OriginSymbol can point into the same object graph the
+                                        // overload list uses — the shadow check decides by root-origin
+                                        // reference identity, and the bound clone and the list come
+                                        // from different graphs on this path (#1525). Mirrors the
+                                        // ModuleLoading.cs stamp at its registration seam.
+                                        var importedOverloads = registryBinding?.Overloads
+                                            ?? ImportResolver.OverloadsFor(moduleInfo, lookupName);
+                                        if (importAlias.AsName != null && registryBinding == null
+                                            && symbolToRegister is FunctionSymbol aliasFunc
+                                            && importedOverloads is { Count: > 0 })
+                                        {
+                                            symbolToRegister = aliasFunc with { OriginSymbol = importedOverloads[0] };
+                                        }
+
                                         if (!SymbolTable.TryDefine(symbolToRegister))
                                         {
                                             ReportDuplicateFromImport(symbolName, sourceModule, importedSymbolSources,
@@ -391,8 +407,6 @@ internal partial class ProjectCompiler
                                             importedSymbolSources[symbolName] = sourceModule;
 
                                             // Only register when there are actual overloads; single functions are already in the symbol table via TryDefine
-                                            var importedOverloads = registryBinding?.Overloads
-                                                ?? ImportResolver.OverloadsFor(moduleInfo, lookupName);
                                             if (importedOverloads is { Count: > 1 })
                                             {
                                                 SymbolTable.DefineFunctionOverloads(symbolName, importedOverloads);

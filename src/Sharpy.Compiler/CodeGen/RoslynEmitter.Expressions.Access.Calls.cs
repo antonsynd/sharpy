@@ -1236,8 +1236,6 @@ internal partial class RoslynEmitter
             return GenerateCall(call);
         }
 
-        var targetSymbol = spec.TargetSymbol;
-
         // Evaluate fixed positional and keyword args. Side-effect-bearing expressions are
         // hoisted into local temps so they execute exactly once (matching Python semantics
         // where partial captures its arguments at construction time).
@@ -1247,60 +1245,43 @@ internal partial class RoslynEmitter
             fixedPositionalArgs.Add(CaptureFixedArg(call.Arguments[i]));
         }
 
-        var fixedKwargNames = new HashSet<string>(StringComparer.Ordinal);
-        var fixedKwargs = new List<(string Name, ExpressionSyntax Value)>(call.KeywordArguments.Length);
-        foreach (var kwarg in call.KeywordArguments)
+        // The lambda's parameters come verbatim from the spec's remaining-parameter list — the
+        // TypeChecker already resolved the subset, order, C# names and types (#1520). Only the
+        // camelCase spelling of the lambda parameter is applied here.
+        var lambdaParams = new List<ParameterSyntax>(spec.RemainingParameters.Count);
+        var lambdaParamIdentifiers = new List<string>(spec.RemainingParameters.Count);
+        foreach (var (name, _, type) in spec.RemainingParameters)
         {
-            fixedKwargs.Add((kwarg.Name, CaptureFixedArg(kwarg.Value)));
-            fixedKwargNames.Add(kwarg.Name);
-        }
-
-        // Determine names for the lambda's remaining parameters. Prefer the original
-        // function's parameter names (when a FunctionSymbol target is available); fall
-        // back to synthetic names otherwise.
-        var remainingParamNames = new List<string>(resultType.ParameterTypes.Count);
-        if (targetSymbol != null)
-        {
-            int fixedPosCount = fixedPositionalArgs.Count;
-            for (int i = fixedPosCount; i < targetSymbol.Parameters.Count; i++)
-            {
-                var p = targetSymbol.Parameters[i];
-                if (fixedKwargNames.Contains(p.Name))
-                    continue;
-                remainingParamNames.Add(p.Name);
-            }
-        }
-
-        while (remainingParamNames.Count < resultType.ParameterTypes.Count)
-        {
-            remainingParamNames.Add($"__partial_arg{remainingParamNames.Count}");
-        }
-
-        var lambdaParams = new List<ParameterSyntax>(resultType.ParameterTypes.Count);
-        var lambdaParamIdentifiers = new List<string>(resultType.ParameterTypes.Count);
-        for (int i = 0; i < resultType.ParameterTypes.Count; i++)
-        {
-            var paramTypeSyntax = _typeMapper.MapSemanticType(resultType.ParameterTypes[i]);
-            var paramName = NameMangler.ToCamelCase(remainingParamNames[i]);
+            var paramTypeSyntax = _typeMapper.MapSemanticType(type);
+            var paramName = NameMangler.ToCamelCase(name);
             lambdaParams.Add(Parameter(EscapedIdentifier(paramName)).WithType(paramTypeSyntax));
             lambdaParamIdentifiers.Add(paramName);
         }
 
         // Build the call inside the lambda body:
-        //   target(fixed_positional..., remaining_positional..., fixedKw1: val1, ...)
+        //   target(fixed_positional..., remaining..., fixedKw1: val1, ...)
+        // With keyword fixes present, the remaining arguments are bound BY NAME (the spec's
+        // resolved C# parameter names): positionally they would walk into the keyword-fixed
+        // parameter's slot whenever it precedes a remaining one (CS1744 behind SPY0908).
+        var bindRemainingByName = spec.FixedKeywords.Count > 0;
         var bodyArgs = new List<ArgumentSyntax>();
         foreach (var fa in fixedPositionalArgs)
         {
             bodyArgs.Add(Argument(fa));
         }
-        foreach (var lpn in lambdaParamIdentifiers)
+        for (int i = 0; i < lambdaParamIdentifiers.Count; i++)
         {
-            bodyArgs.Add(Argument(IdentifierName(lpn)));
+            var arg = Argument(IdentifierName(lambdaParamIdentifiers[i]));
+            if (bindRemainingByName)
+            {
+                arg = arg.WithNameColon(
+                    NameColon(EscapedIdentifierName(spec.RemainingParameters[i].CSharpName)));
+            }
+            bodyArgs.Add(arg);
         }
-        foreach (var (kwName, kwValue) in fixedKwargs)
+        foreach (var (csharpName, argumentIndex) in spec.FixedKeywords)
         {
-            var csharpName = GetCSharpParameterName(kwName, targetSymbol);
-            bodyArgs.Add(Argument(kwValue)
+            bodyArgs.Add(Argument(CaptureFixedArg(call.KeywordArguments[argumentIndex].Value))
                 .WithNameColon(NameColon(EscapedIdentifierName(csharpName))));
         }
 
