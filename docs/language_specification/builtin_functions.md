@@ -143,9 +143,9 @@ if isinstance(x, tuple[int, str]):
 if isinstance(x, (int)):
     print(x[0])
 
-# The qualified spelling works identically
-if isinstance(x, builtins.isinstance.__module__ and False):
-    pass
+# The qualified spelling works identically (import builtins first)
+if builtins.isinstance(x, (int, str)):
+    print(x[1])   # str — narrows exactly like the bare spelling
 ```
 
 **Checking Multiple Types:**

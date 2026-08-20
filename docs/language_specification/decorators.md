@@ -429,6 +429,40 @@ def old_method() -> None:
 
 This is equivalent to `@[obsolete("Use new_method instead")]` but uses the Pythonic `@deprecated` name (PEP 702). Requires exactly one string argument.
 
+### Constructors: `@deprecated` applies, `@must_use` does not
+
+`@deprecated` on an `__init__` overload warns (SPY0466) at every construction that resolves to
+that overload — including the single-`__init__` case (#1536):
+
+```python
+class Widget:
+    value: int
+
+    @deprecated("Use Widget(str, str)")
+    def __init__(self, n: int):
+        self.value = n
+
+    def __init__(self, a: str, b: str):
+        self.value = len(a) + len(b)
+
+w = Widget(5)        # SPY0466: resolves to the deprecated int overload
+v = Widget("a", "b") # no warning
+```
+
+`@must_use` on `__init__` is **not applicable**: must-be-used semantics belongs to the
+constructed *type*, and `@must_use` on the class already draws SPY0480 for a discarded
+construction through the type channel (verified by the
+`decorators/must_use_class_discarded_1536` fixture):
+
+```python
+@must_use
+class Widget:
+    ...
+
+Widget(3)            # SPY0480: value of '@must_use' type 'Widget' is silently discarded
+w = Widget(4)        # no warning
+```
+
 ## Flexible Argument Decorators
 
 > **Dropped** — `@kwargs` and `@dynamic_kwargs` were removed from the roadmap. Compiler-understood transforming decorators violate the "no magic" principle, and `@dynamic_kwargs` conflicts with Axiom 3 (type safety). Named arguments with default values and user-defined option structs provide equivalent functionality without invisible code generation. See [SRP-0001](../rejected_proposals/SRP-0001-kwargs-decorator.md) and [SRP-0002](../rejected_proposals/SRP-0002-dynamic-kwargs-decorator.md) for full rationale.
