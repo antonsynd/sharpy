@@ -88,24 +88,24 @@ public class ModeDivergenceTests : IDisposable
     public void TestFunctionCalledFromMain_RunsFrameworkFreeInBothModes() =>
         // #1495/#1532: a @test program is an ordinary runnable program outside a test host. Both CLI
         // modes are non-test-host, so the @test function must be an ordinary module-level function a
-        // caller can reach (else CS0103), and its asserts — including the tuple `isinstance` form that
-        // has no ordinary-expression lowering (else CS1503) — must lower framework-free and ENFORCE
+        // caller can reach (else CS0103), and its asserts must lower framework-free and ENFORCE
         // (this program's asserts all hold, so it exits 0 and prints; a broken lowering would ICE at
         // compile time before any output). Historically every @test program was uncompilable here.
+        // isinstance uses or-of-singles: (A, B) now denotes tuple[A, B] (#1532).
         AssertModesAgree("""
             @test
             def passing_assert() -> None:
                 assert 2 == 2
 
             @test
-            def isinstance_tuple() -> None:
+            def isinstance_check() -> None:
                 x: object = 42
-                assert isinstance(x, (int, str))
-                assert not isinstance(x, (str, float))
+                assert isinstance(x, int) or isinstance(x, str)
+                assert not (isinstance(x, str) or isinstance(x, float))
 
             def main() -> None:
                 passing_assert()
-                isinstance_tuple()
+                isinstance_check()
                 print("tests-ran")
             """);
 
