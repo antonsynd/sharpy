@@ -61,6 +61,14 @@ deviations:
   spec_ref: docs/language_specification/dunder_invocation_rules.md
   existing_diagnostic: SPY0464
   planned_diagnostic: null
+- id: builtin-exception-python-surface
+  category: semantics
+  audience: python
+  severity: error
+  code: SPY0215
+  spec_ref: null
+  existing_diagnostic: SPY0215
+  planned_diagnostic: null
 - id: builtin-name-shadowing-in-value-position
   category: scoping
   audience: python
@@ -100,6 +108,14 @@ deviations:
   code: SPY0200
   spec_ref: docs/language_specification/comprehensions.md
   existing_diagnostic: SPY0200
+  planned_diagnostic: null
+- id: cross-type-numeric-hash
+  category: semantics
+  audience: python
+  severity: none
+  code: null
+  spec_ref: null
+  existing_diagnostic: null
   planned_diagnostic: null
 - id: dataclass-field-ordering
   category: syntax
