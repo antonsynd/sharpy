@@ -129,4 +129,13 @@ fixture::builtins/builtin_iterator_reprs_1354
 # deviations.yaml: iterator-repr-no-address. Permanent.
 fixture::bare_clr_sequence_display_1453
 
+# `isinstance(x, (A, B))` means `isinstance(x, tuple[A, B])` in Sharpy — a structural
+# tuple type test — where CPython reads it as an any-of check (True if x is A or B).
+# `isinstance(x, tuple[A, B])` raises TypeError in CPython. This is a same-spelling-
+# different-meaning deviation ruled by the owner (#1532). The divergence is total on any
+# fixture that uses the tuple isinstance form or tests for its ABSENCE.
+# deviations.yaml: isinstance-tuple-is-a-tuple-type. Permanent.
+fixture::isinstance_tuple_structural_1532
+fixture::transition/transition_isinstance_tuple_builtins
+
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
