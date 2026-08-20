@@ -311,6 +311,9 @@ internal class CachedModuleDiscovery
         Caching.DiscoveredTypeInfo typeInfo,
         TypeParameterType[]? sharedTypeParams)
     {
+        var isBuiltinException = typeSymbol.ClrType != null
+            && BuiltinExceptionSurface.IsBuiltinExceptionType(typeSymbol.ClrType);
+
         // Convert methods from discovery, expanding default parameters into separate overloads
         if (typeInfo.Methods.Count > 0)
         {
@@ -318,6 +321,10 @@ internal class CachedModuleDiscovery
 
             foreach (var sig in typeInfo.Methods)
             {
+                if (isBuiltinException
+                    && BuiltinExceptionSurface.IsRefusedMember(typeSymbol.ClrType!, sig.Name))
+                    continue;
+
                 var expanded = OverloadExpander.Expand(sig, expanderTypeName);
                 foreach (var overloadSig in expanded)
                 {
@@ -344,6 +351,10 @@ internal class CachedModuleDiscovery
         // Convert properties from discovery
         foreach (var p in typeInfo.Properties)
         {
+            if (isBuiltinException
+                && BuiltinExceptionSurface.IsRefusedMember(typeSymbol.ClrType!, p.Name))
+                continue;
+
             typeSymbol.Properties.Add(new PropertySymbol
             {
                 Name = NameMangler.ToSharpyName(p.Name, ReverseNameContext.Property),
