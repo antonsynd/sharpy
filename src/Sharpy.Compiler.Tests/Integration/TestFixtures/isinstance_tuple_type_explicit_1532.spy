@@ -1,0 +1,13 @@
+def main():
+    x: object = (1, "hello")
+    if isinstance(x, tuple[int, str]):
+        print(x[0])
+        print(x[1])
+    else:
+        print("not matched")
+
+    y: object = 5
+    if isinstance(y, tuple[int, str]):
+        print("should not print")
+    else:
+        print("not a tuple")
