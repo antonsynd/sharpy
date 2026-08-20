@@ -184,6 +184,16 @@ public static partial class DiagnosticExplanations
             null,
             "Check the generator's Generate() method to ensure it returns non-empty source code.");
 
+        // TODO(#1592): full generated-inheritance support
+        Add(dict, DiagnosticCodes.CodeGen.GeneratorUnsupportedShape, "Generated source contains unsupported shape", "CodeGen",
+            "A source generator emitted a class or struct declaration with base types (inheritance or " +
+            "interface implementation). Generated declarations with base clauses are not yet supported: " +
+            "inheritance is resolved before generators run, so a generated class with a base clause " +
+            "would bypass inheritance resolution.",
+            null,
+            "Declare the class with its base types in ordinary source, or emit only members " +
+            "(functions, fields) from the generator.");
+
         // ── Informational diagnostics (SPY1000-SPY1099) ────────────────────
 
         Add(dict, DiagnosticCodes.Info.ImplicitInterfaceSynthesis, "Implicit interface synthesis", "CodeGen",
