@@ -35,10 +35,9 @@ internal class CodeGenContext
     /// and the integration-test harness, which supplies an Xunit reference of its own. Those paths
     /// keep the Xunit lowering byte-for-byte, which is the owner's condition on this change.</para>
     ///
-    /// <para>TODO(#1532): two surfaces still ignore this flag and emit Xunit unconditionally — the
-    /// test-CLASS emission (so a module-level caller cannot reach a <c>@test</c> function under
-    /// <c>run</c>, CS0103) and the TUPLE form of <c>assert isinstance(x, (A, B))</c>, which has no
-    /// framework-free lowering (CS1503). #1495 closes when those follow.</para>
+    /// <para>The test-CLASS emission is gated on this flag (b9586a46d). The tuple form of
+    /// <c>assert isinstance(x, (A, B))</c> now denotes <c>tuple[A, B]</c> (#1532) and lowers
+    /// through the ordinary single-type path on both hosts.</para>
     /// </summary>
     public bool TargetsTestHost { get; set; }
 

@@ -58,17 +58,9 @@ internal partial class RoslynEmitter
         // approx(...) comparisons generalize to a tolerance form here too (#1074), so
         // `assert x == approx(y)` works in plain functions and helpers, not only @test bodies.
         //
-        // `isinstance(x, (A, B, ...))` is the ONE shape that does not lower as an ordinary
-        // expression (#1532): Builtins.Isinstance takes a single Type, so a tuple argument does
-        // not bind (CS1503). It gets an `x is A || x is B || ...` disjunction here — the same
-        // success shape the test-host tuple arm expresses through Assert.True. Every other assert
-        // shape (==, in, is, startswith, single-type isinstance, not, ...) lowers correctly through
-        // GenerateExpression, so the helper returns null for them.
         var successCondition = TryGetApproxParts(assert.Test) is { } parts
             ? BuildApproxSuccessCondition(parts)
-            : TryBuildIsinstanceTupleCondition(assert.Test) is { } tupleCondition
-                ? tupleCondition
-                : WrapTruthinessIfNeeded(GenerateExpression(assert.Test), assert.Test);
+            : WrapTruthinessIfNeeded(GenerateExpression(assert.Test), assert.Test);
 
         var ctorArgs = assert.Message != null
             ? ArgumentList(SingletonSeparatedList(Argument(GenerateExpression(assert.Message))))
@@ -88,56 +80,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// The framework-free success condition for <c>assert isinstance(x, (A, B, ...))</c> and its
-    /// negation — the ONE isinstance shape the ordinary-expression fallback cannot lower, because
-    /// <c>Builtins.Isinstance</c> takes a single <c>Type</c> and a tuple of types does not bind
-    /// (CS1503, #1532). Returns <c>x is A || x is B || ...</c> for the positive form and
-    /// <c>!(x is A || x is B || ...)</c> for <c>not isinstance(...)</c>; returns <c>null</c> for
-    /// every other shape (single-type isinstance and all non-isinstance asserts lower correctly
-    /// through <see cref="GenerateExpression"/>).
-    /// <para>
-    /// Each alternative is rendered through <see cref="MapTestAssertTypeOperand"/>, so it applies
-    /// the classification the TypeChecker recorded for that element (Critical Rule 2) — the same
-    /// rendering, and the same <c>is</c>-disjunction, the test-host tuple arm produces. The tuple's
-    /// SPY0344 exemption and per-element classification are keyed on the enclosing <c>@test</c>
-    /// function, not on the test host, so they hold under <c>sharpyc run</c> too.
-    /// </para>
-    /// </summary>
-    private ExpressionSyntax? TryBuildIsinstanceTupleCondition(Expression test)
-    {
-        var negated = test is UnaryOp { Operator: UnaryOperator.Not };
-        var inner = negated ? ((UnaryOp)test).Operand : test;
-
-        if (inner is not FunctionCall call
-            || call.Arguments.Length != 2
-            || call.Arguments[1] is not TupleLiteral typeTuple)
-        {
-            return null;
-        }
-
-        // Confirm the callee is isinstance — bare, or builtins-qualified reading the routing the
-        // TypeChecker recorded rather than re-deciding the receiver (Critical Rule 2, #1381).
-        var callee = Shared.AstHelper.UnwrapParenthesized(call.Function);
-        var isIsinstance = callee is Identifier { Name: "isinstance" }
-            || (callee is MemberAccess { IsMemberBacktickEscaped: false, Member: "isinstance" }
-                && _context.SemanticInfo?.GetCalleeRouting(call) == CalleeRouting.Builtin);
-        if (!isIsinstance)
-        {
-            return null;
-        }
-
-        var subject = GenerateExpression(call.Arguments[0]);
-        var disjunction = typeTuple.Elements
-            .Select(typeExpr => (ExpressionSyntax)BinaryExpression(
-                SyntaxKind.IsExpression, subject, MapTestAssertTypeOperand(typeExpr)))
-            .Aggregate((left, right) => BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
-
-        return negated
-            ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(disjunction))
-            : disjunction;
-    }
-
-    /// <summary>
     /// Decompose an assert statement inside a @test-decorated function into the most
     /// appropriate xUnit assertion. Uses fully qualified Xunit.Assert to avoid ambiguity
     /// with System.Diagnostics.Debug.Assert.
@@ -149,10 +91,9 @@ internal partial class RoslynEmitter
 
         // The @test assert rewrites below select a Xunit assertion from the shape of `test`, and
         // several of them key on a CALL's callee. Those read this canonical (paren-stripped) callee so
-        // `assert (isinstance)(x, (int, str))` lowers exactly like the unparenthesized form (#1170) —
-        // it used to miss the tuple rewrite and fall through to a raw Builtins.Isinstance call with a
-        // tuple argument, which does not bind (CS1503). Only the pattern match is normalized; the call
-        // node itself stays intact, so the argument expressions keep their SemanticInfo identity.
+        // `assert (isinstance)(x, int)` lowers exactly like the unparenthesized form (#1170).
+        // Only the pattern match is normalized; the call node itself stays intact, so the argument
+        // expressions keep their SemanticInfo identity.
         var testCallee = test switch
         {
             FunctionCall directCall => Shared.AstHelper.UnwrapParenthesized(directCall.Function),
@@ -297,19 +238,11 @@ internal partial class RoslynEmitter
 
         // assert isinstance(a, T) → Xunit.Assert.IsAssignableFrom<T>(a)
         //
-        // WHAT THE OPERAND DENOTES IS NOT DECIDED HERE (Critical Rule 2). This arm used to carry its
-        // own type resolution — a bare-name collection-erasure check falling back to
-        // MapTypeFromExpression — which is a second derivation of what the classifier already decides,
-        // and it emitted a bare `Box` for a generic operand (CS0305). It now reads the classifier's
-        // answer, so the #912 erasure rule and the open-generic refusal reach @test asserts for free
-        // (#1235, #1254).
-        //
-        // Tuples are excluded so the tuple arm below still claims them: that spelling is refused in
-        // expression position (SPY0344) but lowered correctly here to `a is T1 || a is T2`, and the
-        // classifier skips exactly that shape under a @test assert for the same reason.
+        // WHAT THE OPERAND DENOTES IS NOT DECIDED HERE (Critical Rule 2). The classifier records
+        // the type test (including tuple types: (A, B) denotes tuple[A, B] since #1532), and
+        // MapTestAssertTypeOperand reads it.
         if (isIsinstanceCallee && test is FunctionCall isinstCall
-            && isinstCall.Arguments.Length == 2
-            && isinstCall.Arguments[1] is not TupleLiteral)
+            && isinstCall.Arguments.Length == 2)
         {
             var typeSyntax = MapTestAssertTypeOperand(isinstCall.Arguments[1]);
             return ExpressionStatement(InvocationExpression(
@@ -319,41 +252,14 @@ internal partial class RoslynEmitter
                 .AddArgumentListArguments(Argument(GenerateExpression(isinstCall.Arguments[0]))));
         }
 
-        // assert isinstance(a, (T1, T2, ...)) → Xunit.Assert.True(a is T1 || a is T2 || ...)
-        if (isIsinstanceCallee && test is FunctionCall isinstTupleCall
-            && isinstTupleCall.Arguments.Length == 2
-            && isinstTupleCall.Arguments[1] is TupleLiteral typeTuple)
-        {
-            var subject = GenerateExpression(isinstTupleCall.Arguments[0]);
-            var isChecks = typeTuple.Elements.Select(typeExpr =>
-                (ExpressionSyntax)BinaryExpression(
-                    SyntaxKind.IsExpression, subject, MapTestAssertTypeOperand(typeExpr)));
-            var combined = isChecks.Aggregate((left, right) =>
-                BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
-            return ExpressionStatement(InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("True")))
-                .AddArgumentListArguments(Argument(combined)));
-        }
-
         // assert not isinstance(a, T) → Xunit.Assert.False(a is T)
         if (isIsinstanceCallee
             && test is UnaryOp { Operator: UnaryOperator.Not, Operand: FunctionCall negIsinstCall }
             && negIsinstCall.Arguments.Length == 2)
         {
             var subject = GenerateExpression(negIsinstCall.Arguments[0]);
-            ExpressionSyntax isCheck;
-            if (negIsinstCall.Arguments[1] is TupleLiteral negTypeTuple)
-            {
-                isCheck = negTypeTuple.Elements
-                    .Select(typeExpr => (ExpressionSyntax)BinaryExpression(
-                        SyntaxKind.IsExpression, subject, MapTestAssertTypeOperand(typeExpr)))
-                    .Aggregate((left, right) => BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
-            }
-            else
-            {
-                isCheck = BinaryExpression(
-                    SyntaxKind.IsExpression, subject, MapTestAssertTypeOperand(negIsinstCall.Arguments[1]));
-            }
+            var isCheck = BinaryExpression(
+                SyntaxKind.IsExpression, subject, MapTestAssertTypeOperand(negIsinstCall.Arguments[1]));
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("False")))
                 .AddArgumentListArguments(Argument(isCheck)));
@@ -1640,13 +1546,10 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Renders one type operand of an <c>isinstance</c> inside a <c>@test</c> assert, applying the
-    /// classification the TypeChecker recorded for it (#1235, #1254).
-    /// <para>
-    /// The tuple spelling is the one shape the classifier deliberately skips here — the rewrite lowers
-    /// it to <c>a is T1 || a is T2</c>, which is correct and which SPY0344 would otherwise forbid — so
-    /// its elements have no recorded decision and fall back to mapping the written expression, exactly
-    /// as they did before. Every other spelling reads the decision.
-    /// </para>
+    /// classification the TypeChecker recorded for it (#1235, #1254). Under type-position semantics
+    /// (#1532), every operand — including <c>(A, B)</c> which denotes <c>tuple[A, B]</c> — has a
+    /// recorded decision; the fallback to <see cref="Shared.TypeMapper.MapTypeFromExpression"/> is
+    /// kept only for robustness.
     /// </summary>
     private TypeSyntax MapTestAssertTypeOperand(Expression typeOperand)
         => _context.SemanticInfo?.GetTypeTestLowering(typeOperand) is { } lowering
