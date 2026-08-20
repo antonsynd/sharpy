@@ -279,6 +279,18 @@ Drop into the debugger. No-op when no debugger is attached.
     Maps to `System.Diagnostics.Debugger.Break()`.
     When no debugger is attached, this method does nothing.
 
+### `bytes() -> Bytes`
+
+Construct an empty bytes object.
+
+### `bytes(size: int) -> Bytes`
+
+Construct a bytes object of the given size, filled with zero bytes.
+
+### `bytes(source: Iterable[int]) -> Bytes`
+
+Construct a bytes object from an iterable of ints.
+
 ### `chr(i: int) -> str`
 
 Return a string of one character whose Unicode code point is the integer i.
