@@ -7,6 +7,10 @@
 <p align="center">
   <a href="https://github.com/antonsynd/sharpy/actions/workflows/dotnet10.yml"><img src="https://github.com/antonsynd/sharpy/actions/workflows/dotnet10.yml/badge.svg" alt=".NET 10 Build" /></a>
   <img src="https://img.shields.io/badge/.NET-10.0-blue" alt=".NET" />
+  <a href="https://www.nuget.org/packages/sharpyc"><img src="https://img.shields.io/nuget/v/sharpyc?label=sharpyc" alt="sharpyc NuGet" /></a>
+  <a href="https://www.nuget.org/packages/SharpyLang.Core"><img src="https://img.shields.io/nuget/v/SharpyLang.Core?label=SharpyLang.Core" alt="SharpyLang.Core NuGet" /></a>
+  <a href="https://www.nuget.org/packages/SharpyLang.Stdlib"><img src="https://img.shields.io/nuget/v/SharpyLang.Stdlib?label=SharpyLang.Stdlib" alt="SharpyLang.Stdlib NuGet" /></a>
+  <a href="https://www.nuget.org/packages/SharpyLang.Compiler"><img src="https://img.shields.io/nuget/v/SharpyLang.Compiler?label=SharpyLang.Compiler" alt="SharpyLang.Compiler NuGet" /></a>
 </p>
 
 <p align="center"><strong>A statically-typed Pythonic language for .NET</strong></p>
