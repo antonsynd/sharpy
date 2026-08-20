@@ -302,6 +302,20 @@ internal partial class TypeChecker
                 if (clrField != null)
                     return GetVariableType(clrField);
 
+                // Refuse CLR-only members on builtin exception receivers before
+                // falling through to the absence proof or permissive channel (#1515).
+                if (Discovery.BuiltinExceptionSurface.IsRefusedMember(udt.Symbol.ClrType, memberAccess.Member))
+                {
+                    var steer = Discovery.BuiltinExceptionSurface.RefusalSteer(memberAccess.Member);
+                    AddError(
+                        $"'{memberAccess.Member}' is not part of the Python exception surface of " +
+                        $"'{udt.Symbol.Name}'; {steer}",
+                        memberAccess.LineStart, memberAccess.ColumnStart,
+                        code: DiagnosticCodes.Semantic.BuiltinExceptionClrMemberRefused,
+                        span: memberAccess.Span);
+                    return SemanticType.Unknown;
+                }
+
                 // Reflection can sometimes PROVE the member does not exist, and when it can, falling
                 // back to codegen only defers the failure into an internal error: `sb.no_such_xyz()`
                 // reached Roslyn and came back as CS1061 behind SPY0908, a compiler-bug report for a
