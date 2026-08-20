@@ -143,26 +143,24 @@ internal partial class RoslynEmitter
             // virtual+override conflict is resolved by ResolveModifierConflicts() below
         }
 
+        // Resolve the method symbol for hierarchy-fact reads — shared by the override,
+        // strip-override, and implements-interface blocks below.
+        var methodSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m =>
+            m.Name == func.Name && m.DeclarationLine == func.LineStart);
+
         // #1122: add 'override' for a method that overrides an abstract/virtual member of a
-        // CLR-backed base type. The decision was made in semantic analysis and frozen onto
-        // CodeGenInfo.OverridesClrBaseMember — the emitter applies it verbatim (no reflection,
-        // no base-chain re-derivation). ShouldStripOverrideKeyword below keeps the token because
-        // the matched base member is abstract/virtual.
-        if (!modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
+        // CLR-backed base type.
+        if (!modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
+            && methodSymbol?.CodeGenInfo?.OverridesClrBaseMember == true)
         {
-            var overrideMethodSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m =>
-                m.Name == func.Name && m.DeclarationLine == func.LineStart);
-            if (overrideMethodSymbol?.CodeGenInfo?.OverridesClrBaseMember == true)
-            {
-                modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
-            }
+            modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
         }
 
         // In C#, you cannot use 'override' for interface methods (default or abstract).
         // If @override targets an interface method (not a base class), remove the override keyword.
+        // The decision is made in semantic analysis and frozen onto CodeGenInfo (#1519).
         if (modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
-            && _currentTypeSymbol != null
-            && ShouldStripOverrideKeyword(func.Name))
+            && methodSymbol?.CodeGenInfo?.StripsOverrideKeyword == true)
         {
             modifiers = TokenList(modifiers.Where(m => !m.IsKind(SyntaxKind.OverrideKeyword)));
         }
@@ -180,6 +178,7 @@ internal partial class RoslynEmitter
 
         // Add virtual keyword for methods that implement an interface method in a non-sealed class.
         // Without virtual, subclasses cannot use @override on these methods.
+        // The implements-interface fact is frozen onto CodeGenInfo (#1519).
         if (_currentTypeSymbol != null
             && _currentTypeSymbol.TypeKind == Semantic.TypeKind.Class
             && !modifiers.Any(m => m.IsKind(SyntaxKind.VirtualKeyword))
@@ -187,7 +186,7 @@ internal partial class RoslynEmitter
             && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword))
             && !modifiers.Any(m => m.IsKind(SyntaxKind.SealedKeyword))
             && !func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Final)
-            && ImplementsInterfaceMethod(func.Name))
+            && methodSymbol?.CodeGenInfo?.ImplementsInterfaceMethod == true)
         {
             modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
         }
@@ -235,7 +234,6 @@ internal partial class RoslynEmitter
             RegisterLocalSlot(baseName, param.Name);
         }
 
-        var methodSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == func.Name);
         bool isAbstract = methodSymbol?.IsAbstract ?? false;
 
         // If method is abstract, ensure it has the abstract modifier in the token list
@@ -559,57 +557,6 @@ internal partial class RoslynEmitter
         return modifiers;
     }
 
-    /// <summary>
-    /// Determines whether the 'override' keyword should be stripped from a method.
-    /// In C#, interface methods (both default and abstract) cannot be overridden with
-    /// the 'override' keyword — the class simply provides its own implementation.
-    /// However, if a base class has the method, 'override' must be kept.
-    /// </summary>
-    private bool ShouldStripOverrideKeyword(string methodName)
-    {
-        if (_currentTypeSymbol == null)
-            return false;
-
-        // Walk the base class chain — if any base has this method as virtual/abstract/override, keep override
-        var baseTypes = TypeHierarchyService.GetAllBaseTypes(_currentTypeSymbol, _context.SemanticBinding);
-        foreach (var baseType in baseTypes)
-        {
-            if (baseType.Methods.Any(m => m.Name == methodName && (m.IsVirtual || m.IsAbstract || m.IsOverride)))
-                return false; // Found in base class, keep override
-        }
-
-        // No base class method found — check only DIRECT interfaces (not inherited ones,
-        // since base classes synthesize abstract methods for inherited interface methods)
-        var interfaceRefs = _context.SemanticBinding.GetInterfaces(_currentTypeSymbol)
-            ?? (IReadOnlyList<Semantic.InterfaceReference>)_currentTypeSymbol.Interfaces;
-        foreach (var ifaceRef in interfaceRefs)
-        {
-            if (ifaceRef.Definition.Methods.Any(m => m.Name == methodName))
-                return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Checks whether the given method name matches a method declared in any interface
-    /// implemented by the current type. Used to add 'virtual' to interface implementations
-    /// so that subclasses can override them.
-    /// </summary>
-    private bool ImplementsInterfaceMethod(string methodName)
-    {
-        if (_currentTypeSymbol == null)
-            return false;
-
-        var interfaces = Semantic.TypeHierarchyService.GetAllInterfaces(_currentTypeSymbol, _context.SemanticBinding);
-        foreach (var iface in interfaces)
-        {
-            if (iface.Methods.Any(m => m.Name == methodName))
-                return true;
-        }
-
-        return false;
-    }
 
     private MethodDeclarationSyntax GenerateInterfaceMethod(FunctionDef func)
     {

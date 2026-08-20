@@ -354,9 +354,43 @@ internal class CodeGenInfoComputer
                 CSharpName = DunderNameMapping.ResolveCSharpName(funcDef.Name)
                     ?? NameCasing.ResolveMethod(funcDef.Name, funcDef.IsNameBacktickEscaped),
                 OriginalName = funcDef.Name,
-                IsModuleLevel = false
+                IsModuleLevel = false,
+                StripsOverrideKeyword = ShouldStripOverrideKeyword(typeSymbol, funcDef.Name),
+                ImplementsInterfaceMethod = ImplementsInterfaceMethod(typeSymbol, funcDef.Name)
             });
         }
+    }
+
+    private bool ShouldStripOverrideKeyword(TypeSymbol typeSymbol, string methodName)
+    {
+        var baseTypes = TypeHierarchyService.GetAllBaseTypes(typeSymbol, _semanticBinding);
+        foreach (var baseType in baseTypes)
+        {
+            if (baseType.Methods.Any(m => m.Name == methodName && (m.IsVirtual || m.IsAbstract || m.IsOverride)))
+                return false;
+        }
+
+        var interfaceRefs = _semanticBinding.GetInterfaces(typeSymbol)
+            ?? (IReadOnlyList<InterfaceReference>)typeSymbol.Interfaces;
+        foreach (var ifaceRef in interfaceRefs)
+        {
+            if (ifaceRef.Definition.Methods.Any(m => m.Name == methodName))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool ImplementsInterfaceMethod(TypeSymbol typeSymbol, string methodName)
+    {
+        var interfaces = TypeHierarchyService.GetAllInterfaces(typeSymbol, _semanticBinding);
+        foreach (var iface in interfaces)
+        {
+            if (iface.Methods.Any(m => m.Name == methodName))
+                return true;
+        }
+
+        return false;
     }
 
     private void ProcessFunctionDef(FunctionDef funcDef, bool isModuleLevel)

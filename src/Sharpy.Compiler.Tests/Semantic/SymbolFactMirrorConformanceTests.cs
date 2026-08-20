@@ -481,6 +481,10 @@ def main() -> None:
             + "an importer: an aliased builtin binding is file-local, measured — a second module "
             + "spelling `from lib import blen` is refused with SPY0301 'Module lib has no exported "
             + "symbol blen', so there is no imported view to mirror",
+        ["Symbol.OriginSymbol"] = "provenance of the BINDING — set by CreateReExportSymbol and "
+            + "CloneSymbolWithName to trace back to the original declaration for identity-based "
+            + "shadow dispatch (#1525). Null by construction on every declaration; set only on "
+            + "import-boundary clones, which are file-local bindings",
 
         // Later-phase products, not declaration facts. An extraction is produced in Pass 1.5 and
         // nothing runs these passes over it, by design.
@@ -960,6 +964,8 @@ def main() -> None:
         ["ImportKind"] = "RoundTrips",
         ["OriginalImportName"] = "RoundTrips",
         ["ClrMethodName"] = "RoundTrips",
+        ["StripsOverrideKeyword"] = "RoundTrips",
+        ["ImplementsInterfaceMethod"] = "RoundTrips",
 
         // --- Same-file-only: read by the emitter for the file that declares the symbol ---
         ["OverridesClrBaseMember"] = "same-file-only — read at RoslynEmitter.ClassMembers.Methods.cs:155",

@@ -492,6 +492,10 @@ internal record CachedCodeGenInfo
     /// For discovery-loaded methods, the original CLR method name.
     /// </summary>
     public string? ClrMethodName { get; init; }
+
+    public bool StripsOverrideKeyword { get; init; }
+
+    public bool ImplementsInterfaceMethod { get; init; }
 }
 
 /// <summary>

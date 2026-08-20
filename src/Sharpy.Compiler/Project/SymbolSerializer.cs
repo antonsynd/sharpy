@@ -487,7 +487,9 @@ internal static class SymbolSerializer
             IsStringEnum = cgi.IsStringEnum,
             ImportKind = cgi.ImportKind.ToString(),
             OriginalImportName = cgi.OriginalImportName,
-            ClrMethodName = cgi.ClrMethodName
+            ClrMethodName = cgi.ClrMethodName,
+            StripsOverrideKeyword = cgi.StripsOverrideKeyword,
+            ImplementsInterfaceMethod = cgi.ImplementsInterfaceMethod
         };
     }
 
@@ -882,7 +884,9 @@ internal static class SymbolSerializer
             IsStringEnum = cached.IsStringEnum,
             ImportKind = Enum.Parse<ImportKind>(cached.ImportKind),
             OriginalImportName = cached.OriginalImportName,
-            ClrMethodName = cached.ClrMethodName
+            ClrMethodName = cached.ClrMethodName,
+            StripsOverrideKeyword = cached.StripsOverrideKeyword,
+            ImplementsInterfaceMethod = cached.ImplementsInterfaceMethod
         };
     }
 

@@ -130,7 +130,6 @@ public class EmitterCarrierOnlyConformanceTests
     /// </summary>
     private static readonly (string File, string Type, int Count, string Issue)[] Ratchet =
     {
-        ("RoslynEmitter.ClassMembers.Methods.cs", "TypeHierarchyService", 2, "#1519"),
         ("RoslynEmitter.Expressions.Access.Calls.cs", "TypeHierarchyService", 5, "#1519"),
         ("RoslynEmitter.Expressions.Access.cs", "FunctoolsPartialHelper", 1, "#1520"),
         ("RoslynEmitter.TypeDeclarations.cs", "SynthesisAnalyzer", 1, "#1521"),

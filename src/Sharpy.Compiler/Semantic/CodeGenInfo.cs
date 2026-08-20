@@ -78,6 +78,21 @@ public sealed record CodeGenInfo
     public bool OverridesClrBaseMember { get; init; }
 
     /// <summary>
+    /// True when the <c>override</c> modifier on this method targets an interface method rather
+    /// than a base-class method, meaning C# requires the keyword be stripped (#1519).
+    /// Computed in semantic analysis from the type hierarchy; code generation reads this fact
+    /// without re-walking the hierarchy.
+    /// </summary>
+    public bool StripsOverrideKeyword { get; init; }
+
+    /// <summary>
+    /// True when this method implements an interface method, meaning the emitter should add
+    /// <c>virtual</c> so subclasses can override it (#1519). Computed in semantic analysis;
+    /// code generation reads this fact directly.
+    /// </summary>
+    public bool ImplementsInterfaceMethod { get; init; }
+
+    /// <summary>
     /// For a class that declares no <c>__init__</c> and inherits constructors from an ancestor, the
     /// forwarders code generation must synthesize — with the base clause's written type arguments
     /// already substituted into every parameter (#1408). Null when the class declares its own
