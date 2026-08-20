@@ -426,6 +426,32 @@ internal partial class TypeChecker
                 }
             }
 
+            // Record default-interface dispatch and CLR-property-call lowerings for the
+            // emitter (#1519). Both run after resolution to avoid re-deriving hierarchy facts
+            // at emit time.
+            {
+                var rawObjType2 = _semanticInfo.GetExpressionType(memberAccessCall.Object);
+                if (rawObjType2 != null)
+                {
+                    var objType2 = UnwrapCallTarget(rawObjType2);
+                    TypeSymbol? receiverSymbol2 = objType2 is UserDefinedType { Symbol: { } uds2 }
+                        ? uds2
+                        : ResolveBuiltinTypeInfo(objType2).TypeSymbol;
+
+                    if (receiverSymbol2 != null)
+                    {
+                        var defaultIface = TryGetDefaultMethodInterfaceName(
+                            receiverSymbol2, memberAccessCall.Member);
+                        if (defaultIface != null)
+                            _semanticInfo.SetDefaultInterfaceDispatch(call, defaultIface);
+
+                        if (call.Arguments.Length == 0 && call.KeywordArguments.Length == 0
+                            && IsClrPropertyOnType(receiverSymbol2, memberAccessCall.Member))
+                            _semanticInfo.SetClrPropertyCallLowering(call);
+                    }
+                }
+            }
+
             // Nothing above typed this call, so it is on the name-only interop channel: the emitter
             // writes it verbatim and Roslyn performs the only binding check it ever gets — which is
             // how `xs.add("not an int")` came back as CS1503 behind SPY0908, the compiler reporting
@@ -2342,6 +2368,43 @@ internal partial class TypeChecker
         RecordResolvedCallTarget(call, matchingOverload);
 
         return InferGenericReturnType(matchingOverload, argTypes, call);
+    }
+
+    private string? TryGetDefaultMethodInterfaceName(TypeSymbol typeSymbol, string methodName)
+    {
+        if (typeSymbol.TypeKind != TypeKind.Class)
+            return null;
+
+        var (existingMethod, _) = TypeHierarchyService.FindMember<FunctionSymbol>(
+            typeSymbol, methodName, t => t.Methods, searchInterfaces: false);
+        if (existingMethod != null)
+            return null;
+
+        foreach (var ifaceRef in typeSymbol.Interfaces)
+        {
+            if (ifaceRef.Definition.Methods.Any(m => m.Name == methodName && !m.IsAbstract))
+                return NameMangler.Transform(ifaceRef.Definition.Name, NameContext.Interface);
+        }
+
+        return null;
+    }
+
+    private static bool IsClrPropertyOnType(TypeSymbol typeSymbol, string memberName)
+    {
+        var current = typeSymbol;
+        while (current != null)
+        {
+            if (current.Properties.Any(p =>
+                string.Equals(p.Name, memberName, StringComparison.OrdinalIgnoreCase)))
+            {
+                var (method, _) = TypeHierarchyService.FindMethod(typeSymbol, memberName);
+                return method == null;
+            }
+
+            current = current.BaseType;
+        }
+
+        return false;
     }
 
     private static bool SharesDeclaringFileViaOrigin(FunctionSymbol a, FunctionSymbol b)

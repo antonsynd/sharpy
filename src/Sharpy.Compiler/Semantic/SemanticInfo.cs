@@ -122,6 +122,17 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<MemberAccess, (TypeSymbol Owner, Symbol Member)> _memberAccessResolutions =
         new(ReferenceEqualityComparer.Instance);
 
+    // #1519: default-interface dispatch — when a call dispatches to a default method on an
+    // interface the class doesn't override, the emitter must cast through that interface.
+    // Keyed on the FunctionCall node; value is the interface name (C# spelling, post-mangling).
+    private readonly ConcurrentDictionary<FunctionCall, string> _defaultInterfaceDispatches =
+        new(ReferenceEqualityComparer.Instance);
+
+    // #1519: CLR-property-call lowering — when a zero-arg call's member resolves to a CLR
+    // property with no same-named method, the emitter emits property access without parens (#555).
+    private readonly ConcurrentDictionary<FunctionCall, bool> _clrPropertyCallLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track functions that contain yield statements (generators)
     //
     // TRANSPORT (E2 #1056): the CODEGEN routing consumers now read this fact from the lowering IR
@@ -449,6 +460,26 @@ public class SemanticInfo : ISemanticQuery
     public FunctionSymbol? GetCallTarget(FunctionCall call)
     {
         return _callTargets.TryGetValue(call, out var target) ? target : null;
+    }
+
+    public void SetDefaultInterfaceDispatch(FunctionCall call, string interfaceName)
+    {
+        _defaultInterfaceDispatches[call] = interfaceName;
+    }
+
+    public string? GetDefaultInterfaceDispatch(FunctionCall call)
+    {
+        return _defaultInterfaceDispatches.TryGetValue(call, out var name) ? name : null;
+    }
+
+    public void SetClrPropertyCallLowering(FunctionCall call)
+    {
+        _clrPropertyCallLowerings[call] = true;
+    }
+
+    public bool IsClrPropertyCall(FunctionCall call)
+    {
+        return _clrPropertyCallLowerings.TryGetValue(call, out _);
     }
 
     public void SetCalleeRouting(FunctionCall call, CalleeRouting routing)
@@ -1237,6 +1268,12 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._callTargets)
             _callTargets.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._defaultInterfaceDispatches)
+            _defaultInterfaceDispatches.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._clrPropertyCallLowerings)
+            _clrPropertyCallLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._typeAnnotations)
             _typeAnnotations.TryAdd(kvp.Key, kvp.Value);

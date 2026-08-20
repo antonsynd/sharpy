@@ -234,7 +234,9 @@ internal partial class RoslynEmitter
             RegisterLocalSlot(baseName, param.Name);
         }
 
-        bool isAbstract = methodSymbol?.IsAbstract ?? false;
+        var methodSymbolByName = methodSymbol
+            ?? _currentTypeSymbol?.Methods.FirstOrDefault(m => m.Name == func.Name);
+        bool isAbstract = methodSymbolByName?.IsAbstract ?? false;
 
         // If method is abstract, ensure it has the abstract modifier in the token list
         if (isAbstract && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)))

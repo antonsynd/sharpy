@@ -520,32 +520,6 @@ internal partial class RoslynEmitter
     /// that the concrete class doesn't override. Returns the mangled C# interface name if so,
     /// or null if the method is defined directly on the class.
     /// </summary>
-    private string? TryGetDefaultMethodInterface(Parser.Ast.Expression objectExpr, string methodName)
-    {
-        var objType = GetExpressionSemanticType(objectExpr);
-        if (objType is not UserDefinedType udt || udt.Symbol == null)
-            return null;
-
-        var typeSymbol = udt.Symbol;
-
-        // Only applies to class types (not interfaces, enums, structs)
-        if (typeSymbol.TypeKind != Semantic.TypeKind.Class)
-            return null;
-
-        // Check if the class itself defines this method (including inherited concrete methods)
-        if (HasMethodDefined(typeSymbol, methodName))
-            return null;
-
-        // Search interfaces for a default method with this name
-        foreach (var ifaceRef in typeSymbol.Interfaces)
-        {
-            if (HasDefaultMethod(ifaceRef.Definition, methodName))
-                return NameMangler.Transform(ifaceRef.Definition.Name, NameContext.Interface);
-        }
-
-        return null;
-    }
-
     /// <summary>
     /// Maps primitive type static method calls to their Sharpy.Core helper class methods.
     /// Returns the fully qualified C# method name, or null if not a known primitive static call.
@@ -559,26 +533,6 @@ internal partial class RoslynEmitter
             ("bytes", "fromhex") => "global::Sharpy.BytesFromhex.Fromhex",
             _ => null
         };
-    }
-
-    /// <summary>
-    /// Checks whether a type (or its base classes) defines a method with the given name.
-    /// Does not search interfaces — only the class hierarchy.
-    /// </summary>
-    private static bool HasMethodDefined(TypeSymbol typeSymbol, string methodName)
-    {
-        var (method, _) = TypeHierarchyService.FindMember<FunctionSymbol>(
-            typeSymbol, methodName, t => t.Methods, searchInterfaces: false);
-        return method != null;
-    }
-
-    /// <summary>
-    /// Checks whether an interface has a default (non-abstract) method with the given name.
-    /// Uses symbol metadata (IsAbstract) rather than inspecting AST body shape.
-    /// </summary>
-    private static bool HasDefaultMethod(TypeSymbol interfaceSymbol, string methodName)
-    {
-        return interfaceSymbol.Methods.Any(m => m.Name == methodName && !m.IsAbstract);
     }
 
     /// <summary>
@@ -1314,50 +1268,6 @@ internal partial class RoslynEmitter
             typeExpr,
             EscapedIdentifierName(fieldName));
     }
-
-    /// <summary>
-    /// Returns true if <paramref name="memberName"/> (Python name) resolves to a CLR
-    /// property on the receiver's type, AND no method with the same PascalCase name exists.
-    /// Used to emit property access (no parens) instead of method invocation (#555).
-    /// </summary>
-    private bool IsClrPropertyAccess(Expression receiver, string memberName)
-    {
-        var receiverType = GetExpressionSemanticType(receiver);
-        TypeSymbol? typeSymbol = receiverType switch
-        {
-            UserDefinedType udt => udt.Symbol as TypeSymbol,
-            GenericType gt => _context.LookupSymbol(gt.Name) as TypeSymbol
-                              ?? gt.GenericDefinition,
-            _ => null
-        };
-
-        if (typeSymbol == null)
-            return false;
-
-        // Check the type hierarchy for a property with this Sharpy name
-        foreach (var ts in GetTypeAndBases(typeSymbol))
-        {
-            foreach (var prop in ts.Properties)
-            {
-                if (string.Equals(prop.Name, memberName, StringComparison.OrdinalIgnoreCase))
-                {
-                    // Confirm no method with the same name exists (method takes priority)
-                    var (method, _) = TypeHierarchyService.FindMethod(typeSymbol, memberName);
-                    return method == null;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static IEnumerable<TypeSymbol> GetTypeAndBases(TypeSymbol typeSymbol)
-    {
-        yield return typeSymbol;
-        foreach (var baseType in TypeHierarchyService.GetAllBaseTypes(typeSymbol))
-            yield return baseType;
-    }
-
 
     /// <summary>
     /// Generates code for a <c>functools.partial(f, fixed_args..., kw=val, ...)</c> call.

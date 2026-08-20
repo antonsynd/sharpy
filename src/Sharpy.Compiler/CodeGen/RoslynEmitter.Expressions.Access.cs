@@ -592,7 +592,8 @@ internal partial class RoslynEmitter
             // CLR property access: if the member is a property (not a method) on a
             // discovery-loaded type and the call has no arguments, emit property access
             // without invocation parens. E.g., Python d.keys() → C# d.Keys (not d.Keys()).
-            if (call.Arguments.Length == 0 && IsClrPropertyAccess(memberAccess.Object, memberAccess.Member))
+            // The decision is recorded in SemanticInfo by the TypeChecker (#1519).
+            if (_context.SemanticInfo?.IsClrPropertyCall(call) == true)
             {
                 return MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
@@ -626,7 +627,8 @@ internal partial class RoslynEmitter
             // Interface default method promotion: if the method is a default method
             // on an interface (not overridden by the class), call through an interface cast.
             // In C#, default interface methods can only be called through interface-typed refs.
-            var defaultMethodInterface = TryGetDefaultMethodInterface(memberAccess.Object, memberAccess.Member);
+            // The decision is recorded in SemanticInfo by the TypeChecker (#1519).
+            var defaultMethodInterface = _context.SemanticInfo?.GetDefaultInterfaceDispatch(call);
             if (defaultMethodInterface != null)
             {
                 var castExpr = ParenthesizedExpression(
