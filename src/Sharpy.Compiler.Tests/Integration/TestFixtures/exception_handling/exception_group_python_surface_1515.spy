@@ -4,3 +4,6 @@ def main() -> None:
         raise ExceptionGroup("group", errors)
     except ExceptionGroup as eg:
         print(eg.message)
+        # .exceptions resolves (declared Python surface), but its value types as 'object' —
+        # len(eg.exceptions) is SPY0320 until #1595; restore the print when that fix lands.
+        _x = eg.exceptions

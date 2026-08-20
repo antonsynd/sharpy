@@ -1,8 +1,15 @@
-class Alert:
+# Positive control for the #1515 builtin-exception surface allowlist: a USER subclass of a
+# builtin exception declaring its own `message: str` keeps it — the declared member wins over
+# the refused CLR fallthrough (System.Exception.Message).
+class MyError(Exception):
     message: str
+
     def __init__(self, message: str) -> None:
+        super().__init__(message)
         self.message = message
 
 def main() -> None:
-    a: Alert = Alert("fire drill")
-    print(a.message)
+    try:
+        raise MyError("custom boom")
+    except MyError as e:
+        print(e.message)
