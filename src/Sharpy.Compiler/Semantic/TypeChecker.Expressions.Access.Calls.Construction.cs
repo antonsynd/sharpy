@@ -17,11 +17,6 @@ internal partial class TypeChecker
         FunctionCall call, TypeSymbol typeSymbol, List<SemanticType> argTypes,
         Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
     {
-        // This checks the TYPE-symbol deprecation channel only. A @deprecated CONSTRUCTOR overload
-        // (function-symbol channel) is not checked here: constructor calls never flow through the
-        // RecordResolvedCallTarget seam that #1438 gave the function channel, so the resolved
-        // __init__ overload's DeprecationMessage is ignored.
-        // TODO(#1536): run CheckDeprecatedUsage on the resolved __init__ overload below.
         CheckDeprecatedUsage(typeSymbol, call);
 
         // Validate constructor arguments against __init__ parameters (skip 'self').
@@ -47,6 +42,8 @@ internal partial class TypeChecker
             // inference below decides them exactly as before.
             ValidateCallArguments(call, initParams, argTypes, kwargTypes, totalArgCount,
                 UnwrittenTypeParameterBinding(typeSymbol));
+
+            CheckDeprecatedUsage(initMethods[0], call);
         }
         else if (initMethods.Count > 1)
         {
@@ -56,8 +53,10 @@ internal partial class TypeChecker
             if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
                 return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
 
-            ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes, totalArgCount,
+            var resolvedInit = ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes, totalArgCount,
                 UnwrittenTypeParameterBinding(typeSymbol));
+            if (resolvedInit != null)
+                CheckDeprecatedUsage(resolvedInit, call);
         }
 
         // A type with no construction cannot be constructed. Reads the same authority as the

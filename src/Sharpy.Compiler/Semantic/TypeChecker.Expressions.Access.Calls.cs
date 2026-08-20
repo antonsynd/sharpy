@@ -1060,6 +1060,8 @@ internal partial class TypeChecker
                     // argument positions rather than the user's own binding (#1243).
                     ValidateCallArguments(call, initParams, argTypes, kwargTypes, totalArgCount,
                         WrittenTypeParameterBinding(genericTypeSymbol, typeArgs));
+
+                    CheckDeprecatedUsage(initMethods[0], call);
                 }
                 else if (initMethods.Count > 1)
                 {
@@ -1072,8 +1074,10 @@ internal partial class TypeChecker
                             GenericDefinition = genericTypeSymbol
                         };
 
-                    ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes,
+                    var resolvedInit = ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes,
                         totalArgCount, WrittenTypeParameterBinding(genericTypeSymbol, typeArgs));
+                    if (resolvedInit != null)
+                        CheckDeprecatedUsage(resolvedInit, call);
                 }
 
                 // A type with no construction cannot be constructed — same authority as the
@@ -2943,32 +2947,35 @@ internal partial class TypeChecker
     /// never chooses between candidates. Two overloads of the same arity bail out above before any
     /// type check runs, so no ambiguity can be created.</para>
     /// </summary>
-    private void ValidateSoleArityMatchingOverload(
+    private FunctionSymbol? ValidateSoleArityMatchingOverload(
         FunctionCall call, IReadOnlyList<FunctionSymbol> initMethods,
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
         int totalArgCount, TypeParameterBinding? typeBinding)
     {
+        FunctionSymbol? soleMatchSymbol = null;
         List<ParameterSymbol>? soleMatch = null;
         foreach (var init in initMethods)
         {
             var parameters = init.Parameters.Skip(1).ToList();
             if (parameters.Any(p => p.IsVariadic))
-                return; // a variadic overload can absorb any count; arity decides nothing
+                return null; // a variadic overload can absorb any count; arity decides nothing
 
             var required = parameters.Count(p => !p.HasDefault);
             if (totalArgCount < required || totalArgCount > parameters.Count)
                 continue;
 
             if (soleMatch != null)
-                return; // more than one overload accepts this count — leave resolution alone
+                return null; // more than one overload accepts this count — leave resolution alone
 
+            soleMatchSymbol = init;
             soleMatch = parameters;
         }
 
         if (soleMatch == null)
-            return; // none fits: the count diagnostic belongs to overload resolution, not here
+            return null; // none fits: the count diagnostic belongs to overload resolution, not here
 
         ValidateCallArguments(call, soleMatch, argTypes, kwargTypes, totalArgCount, typeBinding);
+        return soleMatchSymbol;
     }
 
     /// <summary>
@@ -3982,8 +3989,10 @@ internal partial class TypeChecker
     /// runs the deprecation check. Every call-node resolution route (single-candidate, overload,
     /// generic-function-type, pipe-forward) MUST go through this helper rather than calling
     /// <see cref="SemanticInfo.SetCallTarget"/> directly, so a future route inherits the deprecation
-    /// check by construction (#1438). The construction route checks type-symbol deprecation
-    /// separately via <see cref="CheckDeprecatedUsage"/> (type-symbol channel).
+    /// check by construction (#1438). The construction route checks type-symbol and function-symbol
+    /// deprecation directly via <see cref="CheckDeprecatedUsage"/> (#1536) without recording a call
+    /// target — recording __init__ as a call target would make emitter consumers see targets on
+    /// constructor-call nodes, an unmeasured blast radius for zero benefit.
     /// </summary>
     private void RecordResolvedCallTarget(FunctionCall call, FunctionSymbol symbol)
     {

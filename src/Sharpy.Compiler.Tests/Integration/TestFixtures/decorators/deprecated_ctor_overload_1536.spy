@@ -1,0 +1,43 @@
+# #1536: @deprecated on a constructor overload must warn when the deprecated
+# overload is selected by arity.
+
+class Widget:
+    value: int
+
+    @deprecated("Use new_widget instead")
+    def __init__(self, n: int):
+        self.value = n
+
+    def __init__(self, a: str, b: str):
+        self.value = len(a) + len(b)
+
+class Simple:
+    value: int
+
+    @deprecated("Use SimpleV2 instead")
+    def __init__(self, n: int):
+        self.value = n
+
+# Two same-arity overloads: silence is deliberate — arity cannot select one,
+# so no deprecation warning fires (weaker guarantee than the function channel).
+class SameArity:
+    value: int
+
+    @deprecated("Use alt ctor")
+    def __init__(self, n: int):
+        self.value = n
+
+    def __init__(self, s: str):
+        self.value = len(s)
+
+def main():
+    w1 = Widget(3)               # deprecated int overload selected -> SPY0466
+    w2 = Widget("a", "b")        # non-deprecated 2-arg overload -> no warning
+    print(w1.value)
+    print(w2.value)
+
+    s = Simple(5)                 # single-init deprecated ctor -> SPY0466
+    print(s.value)
+
+    sa = SameArity(7)             # same arity -> no warning (deliberate silence)
+    print(sa.value)
