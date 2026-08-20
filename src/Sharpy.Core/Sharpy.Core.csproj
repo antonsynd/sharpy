@@ -8,6 +8,8 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>Sharpy</RootNamespace>
     <AssemblyName>Sharpy.Core</AssemblyName>
+    <!-- NuGet ID Sharpy.Core is owned by an unrelated package family; the assembly name stays Sharpy.Core -->
+    <PackageId>SharpyLang.Core</PackageId>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Description>Runtime library for the Sharpy programming language. Provides Pythonic collection types (List, Dict, Set), Optional, Result, and built-in functions for .NET.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -21,7 +23,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)../../nuget/Sharpy.Core.README.md" Pack="true" PackagePath="\README.md" />
+    <None Include="$(MSBuildThisFileDirectory)../../nuget/SharpyLang.Core.README.md" Pack="true" PackagePath="\README.md" />
   </ItemGroup>
 
   <ItemGroup>

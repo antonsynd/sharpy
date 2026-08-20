@@ -1,11 +1,11 @@
-# Sharpy.Compiler
+# SharpyLang.Compiler
 
 Compiler library for the [Sharpy](https://github.com/antonsynd/sharpy) programming language. Embed the Sharpy compiler in your .NET application to compile `.spy` source to C# and .NET assemblies programmatically.
 
 ## Usage
 
 ```bash
-dotnet add package Sharpy.Compiler
+dotnet add package SharpyLang.Compiler
 ```
 
 ```csharp

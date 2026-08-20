@@ -6,11 +6,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Description>Sharpy compiler library for embedding. Compile .spy source to C# and .NET assemblies programmatically via Roslyn.</Description>
+    <!-- SharpyLang.* NuGet family (Sharpy.* is owned by an unrelated package family); assembly name unchanged -->
+    <PackageId>SharpyLang.Compiler</PackageId>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)../../nuget/Sharpy.Compiler.README.md" Pack="true" PackagePath="\README.md" />
+    <None Include="$(MSBuildThisFileDirectory)../../nuget/SharpyLang.Compiler.README.md" Pack="true" PackagePath="\README.md" />
   </ItemGroup>
 
   <ItemGroup>

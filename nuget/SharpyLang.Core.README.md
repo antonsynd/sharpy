@@ -1,4 +1,4 @@
-# Sharpy.Core
+# SharpyLang.Core
 
 Runtime library for the [Sharpy](https://github.com/antonsynd/sharpy) programming language. Provides Pythonic collection types and built-in functions for .NET.
 
@@ -16,7 +16,7 @@ This package is a runtime dependency of compiled Sharpy programs. You typically 
 For .NET projects that interop with Sharpy code:
 
 ```bash
-dotnet add package Sharpy.Core
+dotnet add package SharpyLang.Core
 ```
 
 ## Links

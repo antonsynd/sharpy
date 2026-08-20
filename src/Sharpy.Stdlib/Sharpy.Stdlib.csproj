@@ -8,6 +8,8 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>Sharpy</RootNamespace>
     <AssemblyName>Sharpy.Stdlib</AssemblyName>
+    <!-- SharpyLang.* NuGet family (Sharpy.* is owned by an unrelated package family); assembly name unchanged -->
+    <PackageId>SharpyLang.Stdlib</PackageId>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Description>Standard library for the Sharpy programming language. Provides json, os, re, math, and 60+ modules with Pythonic APIs on .NET.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -19,7 +21,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)../../nuget/Sharpy.Stdlib.README.md" Pack="true" PackagePath="\README.md" />
+    <None Include="$(MSBuildThisFileDirectory)../../nuget/SharpyLang.Stdlib.README.md" Pack="true" PackagePath="\README.md" />
   </ItemGroup>
 
   <ItemGroup>

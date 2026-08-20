@@ -1,4 +1,4 @@
-# Sharpy.Stdlib
+# SharpyLang.Stdlib
 
 Standard library for the [Sharpy](https://github.com/antonsynd/sharpy) programming language. Provides 60+ modules with Pythonic APIs on .NET.
 
@@ -13,7 +13,7 @@ This package is a runtime dependency of compiled Sharpy programs that use `impor
 For .NET projects that interop with Sharpy code:
 
 ```bash
-dotnet add package Sharpy.Stdlib
+dotnet add package SharpyLang.Stdlib
 ```
 
 ## Links
