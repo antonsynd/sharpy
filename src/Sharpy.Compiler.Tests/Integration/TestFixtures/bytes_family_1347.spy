@@ -1,0 +1,10 @@
+# #1347: bytes gets the Conversion family. bytes() constructs via Builtins.Bytes,
+# bytes.fromhex() routes through the BytesFromhex helper class.
+
+def main() -> None:
+    b1 = bytes(5)
+    print(len(b1))
+    b2 = bytes.fromhex("68656c6c6f")
+    print(b2.decode("utf-8"))
+    b3 = bytes(3)
+    print(len(b3))

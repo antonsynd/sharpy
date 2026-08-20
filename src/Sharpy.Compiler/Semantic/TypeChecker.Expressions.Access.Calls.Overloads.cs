@@ -1106,8 +1106,16 @@ internal partial class TypeChecker
     {
         // Exactly the set whose reference synthesizes a signature today (SynthesizePrimitiveFunctionType):
         // a primitive backed by a Sharpy.Builtins overload set. `object` and `decimal` join it here
-        // because Core now carries their overloads (#1272); `bytes` does NOT — see #1347.
+        // because Core now carries their overloads (#1272).
         if (PrimitiveCatalog.IsPrimitive(typeSymbol.Name)
+            && _symbolTable.BuiltinRegistry.GetFunctionOverloads(typeSymbol.Name) is { Count: > 0 })
+        {
+            return ConstructorReferenceFamily.Conversion;
+        }
+
+        // bytes gets the Conversion family via an explicit arm, not PrimitiveCatalog membership —
+        // PrimitiveCatalog's CSharpName invariant is "a C# keyword" and `bytes` has none (#1347).
+        if (typeSymbol.Name == BuiltinNames.Bytes
             && _symbolTable.BuiltinRegistry.GetFunctionOverloads(typeSymbol.Name) is { Count: > 0 })
         {
             return ConstructorReferenceFamily.Conversion;

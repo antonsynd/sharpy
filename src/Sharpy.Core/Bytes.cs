@@ -200,38 +200,10 @@ namespace Sharpy
         }
 
         /// <summary>Create a Bytes instance from a hex string.</summary>
-        public static Bytes Fromhex(string hexString)
-        {
-            if (hexString == null)
-            {
-                throw new ValueError("non-hexadecimal number found in fromhex() arg");
-            }
-
-#pragma warning disable CA1307
-            var clean = hexString.Replace(" ", "");
-#pragma warning restore CA1307
-
-            if (clean.Length % 2 != 0)
-            {
-                throw new ValueError("non-hexadecimal number found in fromhex() arg at position " + clean.Length);
-            }
-
-            var data = new byte[clean.Length / 2];
-            for (int i = 0; i < data.Length; i++)
-            {
-                var hexByte = clean.Substring(i * 2, 2);
-                try
-                {
-                    data[i] = Convert.ToByte(hexByte, 16);
-                }
-                catch (FormatException)
-                {
-                    throw new ValueError("non-hexadecimal number found in fromhex() arg at position " + (i * 2));
-                }
-            }
-
-            return Bytes.Wrap(data);
-        }
+        /// <remarks>Forwarding shim — the canonical implementation is in
+        /// <see cref="BytesFromhex.Fromhex"/>; this keeps existing callers
+        /// (hand-written tests, stdlib modules) working without a source change.</remarks>
+        public static Bytes Fromhex(string hexString) => BytesFromhex.Fromhex(hexString);
 
         #region ISized
 

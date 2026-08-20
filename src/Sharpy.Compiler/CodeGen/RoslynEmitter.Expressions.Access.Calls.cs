@@ -556,6 +556,7 @@ internal partial class RoslynEmitter
         {
             ("int", "parse") => "global::Sharpy.IntParse.Parse",
             ("float", "parse") => "global::Sharpy.DoubleParse.Parse",
+            ("bytes", "fromhex") => "global::Sharpy.BytesFromhex.Fromhex",
             _ => null
         };
     }
