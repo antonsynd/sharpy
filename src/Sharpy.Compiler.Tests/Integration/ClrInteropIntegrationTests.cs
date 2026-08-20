@@ -174,8 +174,9 @@ def main():
     public void ClrInheritedProperty_AccessedThroughSharpySubclass_ResolvesType()
     {
         // System.Exception.Message is a CLR property inherited by Sharpy's
-        // TypeError. A user subclass of TypeError must be able to read .message.
-        // (property name mangling 'Message' -> 'message')
+        // TypeError. Since #1515 (the builtin-exception Python-surface allowlist),
+        // .message is refused on builtin exception receivers and their subclasses.
+        // User code should use str(e) instead.
         var source = @"
 class MyError(TypeError):
     def __init__(self, msg: str):
@@ -183,7 +184,7 @@ class MyError(TypeError):
 
 def main():
     err = MyError(""boom"")
-    print(err.message)
+    print(str(err))
 ";
         var result = CompileAndExecute(source);
         Assert.True(result.Success, $"Compilation failed: {string.Join("; ", result.CompilationErrors)}");

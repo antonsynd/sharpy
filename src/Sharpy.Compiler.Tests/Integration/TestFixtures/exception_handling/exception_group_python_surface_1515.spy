@@ -1,4 +1,6 @@
 def main() -> None:
-    eg: ExceptionGroup = ExceptionGroup("group", [ValueError("v1"), TypeError("t1")])
-    print(eg.message)
-    print(len(eg.exceptions))
+    errors: list[Exception] = [ValueError("v1"), TypeError("t1")]
+    try:
+        raise ExceptionGroup("group", errors)
+    except ExceptionGroup as eg:
+        print(eg.message)
