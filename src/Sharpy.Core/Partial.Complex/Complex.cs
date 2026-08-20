@@ -174,25 +174,12 @@ namespace Sharpy
 
         /// <inheritdoc/>
         /// <remarks>
-        /// KNOWN DIVERGENCE (#1543), recorded rather than silently left. #1507 widened <c>==</c>
-        /// so that <c>complex(3,0) == 3</c> is <c>true</c>, matching CPython. CPython ALSO keeps
-        /// its hash consistent with that equality — <c>hash(complex(3,0)) == hash(3) == 3</c>
-        /// (measured, python3 3.12) — because Python's numeric tower guarantees equal numbers hash
-        /// equally across types. This delegates to <c>System.Numerics.Complex.GetHashCode()</c>,
-        /// which combines both components and so does NOT agree with <c>3.GetHashCode()</c>.
-        ///
-        /// <para>
-        /// The .NET contract this breaks is narrower than it looks: <c>Equals(object)</c> is still
-        /// consistent with <c>GetHashCode</c>, because it only ever returns <c>true</c> for
-        /// another <c>Complex</c>. The gap is cross-TYPE — a real-valued Complex and the equal
-        /// <c>int</c> hash differently — which matters only for a heterogeneous hash container
-        /// keyed on <c>object</c>. Closing it means deciding the whole tower's hash contract
-        /// (int/long/double/decimal/complex together), not patching this one method: a per-type
-        /// patch would leave SOME cross-type pairs consistent and others not, which is harder to
-        /// reason about than the current uniform divergence. Tracked as #1543, which carries the
-        /// measured cells and the Axiom 1/2 tension; #1507 delivered the arithmetic and equality
-        /// half and closes without it.
-        /// </para>
+        /// KNOWN DIVERGENCE — see <c>cross-type-numeric-hash</c> in docs/deviations.yaml for the
+        /// measured pair matrix and the full Axiom 1/2 tension analysis (#1543). In short: CPython's
+        /// numeric tower guarantees equal numbers hash equally across types (<c>hash(3.0) == hash(3)</c>);
+        /// Sharpy's int/float/complex are CLR primitives whose <c>GetHashCode</c> cannot be overridden
+        /// without wrapper types (Axiom 1 violation). <c>Equals</c>/<c>GetHashCode</c> self-consistency
+        /// IS preserved; the divergence is observable only in heterogeneous <c>object</c>-keyed containers.
         /// </remarks>
         public override int GetHashCode() => _inner.GetHashCode();
 
