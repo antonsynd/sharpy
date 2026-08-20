@@ -45,10 +45,9 @@ namespace Sharpy
             //
             // The .NET rendering stays available through the object itself for anyone who wants it.
             //
-            // SCOPE, STATED: this arm is reached by `str(e)` and by `print(e)` (Builtins.Print
-            // formats each value through Str). It is NOT reached by an f-string — `f"{e}"` lowers to
-            // a C# interpolated string, which calls e.ToString() directly and never consults this
-            // method. #1415 stays open for that half.
+            // SCOPE: this arm is reached by `str(e)`, `print(e)`, and f-strings (`f"{e}"` —
+            // InterpolationStrWrapping routes interpolated exception values through Builtins.Str
+            // since cc6ffdbf5). All three paths produce the message alone.
             if (x is Exception ex)
             {
                 return ex.Message;

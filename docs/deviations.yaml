@@ -1590,6 +1590,69 @@ deviations:
         np.split(a6, 0)                # ValueError: number sections must be larger than 0.
         np.split(a6, -1)               # ValueError: number sections must be larger than 0.
 
+  - id: cross-type-numeric-hash
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "CPython's numeric tower guarantees that equal numbers hash equally across types: `hash(3) == hash(3.0) == hash(complex(3,0)) == hash(Decimal(3)) == 3` (python3 3.12, measured). This extends to `hash(True) == hash(1)` and large integers: `hash(2**62) == 2`."
+    sharpy_behavior: |
+      Sharpy's int/float/complex are CLR primitives whose GetHashCode cannot be overridden
+      without wrapper types (Axiom 1 violation, anti-pattern). Same-type hashing is consistent;
+      cross-type pairs diverge. Measured matrix at 31f8e3e15:
+
+        hash(3)                     = 3      (agrees with CPython)
+        hash(True) == hash(1)       = True   (agrees)
+        hash(small_long) == hash(3) = True   (agrees; long(3))
+        hash(decimal(3)) == hash(3) = True   (agrees)
+        hash(3.0)                   = 1074266112  (CPython: 3)
+        hash(3.0) == hash(3)        = False  (CPython: True)
+        hash(complex(3,0))          = -279744320  (CPython: 3)
+        hash(complex(3,0)) == hash(3) = False (CPython: True)
+        hash(2**62)                 = 1073741824  (CPython: 2)
+        hash(-1)                    = -1     (CPython: -2; same-type value divergence)
+
+      Equals/GetHashCode self-consistency is preserved: Complex.Equals(object) only returns true
+      for another Complex, and boxed CLR primitives don't cross-type-equal. No dict/set invariant
+      breaks. The divergence is observable only as two entries where CPython would have one, in a
+      heterogeneous object-keyed container.
+    spec_ref: null
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        hash(3.0) == hash(3)            # True
+        hash(complex(3, 0)) == hash(3)  # True
+        d = {3: "int"}; d[3.0]          # "int" (same slot)
+      sharpy: |
+        print(hash(3.0) == hash(3))            # False
+        print(hash(complex(3, 0)) == hash(3))  # False
+        # A dict[object, str] with key 3 and key 3.0 stores two entries, not one
+
+  - id: builtin-exception-python-surface
+    code: SPY0215
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "Builtin exceptions (ValueError, KeyError, TypeError, etc.) have a minimal public surface: `args`, `with_traceback(tb)`, and `add_note(note)` (3.11+). `.message` was removed in Python 3.0. The underlying .NET members (`StackTrace`, `InnerException`, `HelpLink`, `Source`, `Data`, `TargetSite`, `GetBaseException()`) do not exist in CPython."
+    sharpy_behavior: "Builtin exception types present Python's exception surface only. Members inherited from System.Exception or other .NET base classes are refused at semantic time with SPY0215 and a steer (`message` steers to `str(e)`). Members the Sharpy class itself declares (ExceptionGroup's `message`/`exceptions`/`subgroup`/`split`/`derive`, SystemExit's `code`) resolve normally. Python's `args`/`with_traceback`/`add_note` are not implemented (a pre-existing gap, not this entry's scope). Imported CLR exception types and user subclasses declaring their own members are unaffected."
+    spec_ref: null
+    existing_diagnostic: SPY0215
+    planned_diagnostic: null
+    example:
+      python: |
+        try:
+            raise ValueError("boom")
+        except ValueError as e:
+            print(e.message)        # AttributeError: 'ValueError' has no attribute 'message'
+            print(str(e))           # boom
+      sharpy: |
+        try:
+            raise ValueError("boom")
+        except ValueError as e:
+            print(e.message)        # SPY0215: not part of the Python exception surface; use str(e)
+            print(str(e))           # boom
+
   - id: type-alias-call-transparency
     code: null
     category: semantic
