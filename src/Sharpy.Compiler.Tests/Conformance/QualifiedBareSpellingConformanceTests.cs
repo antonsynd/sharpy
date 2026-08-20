@@ -32,8 +32,9 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <list type="bullet">
 ///   <item><description><b>position</b> — the type-reference positions: <c>annotation</c>,
 ///     <c>baseList</c>, <c>typeTest</c> (<c>isinstance</c>), <c>typeTestCast</c> (<c>as?</c>),
-///     <c>typeTestExcept</c> (<c>except</c>), <c>constraint</c>, <c>pattern</c>, plus
-///     <c>declSiteAnnotation</c>, where the spelling varies inside the IMPORTED module rather than
+///     <c>typeTestExcept</c> (<c>except</c>), <c>constraint</c>, <c>typeAlias</c>,
+///     <c>pattern</c>, plus <c>declSiteAnnotation</c>, where the spelling varies inside the
+///     IMPORTED module rather than
 ///     at the use site (see below). Type-testing is three positions rather than one because #1411
 ///     has two routes: <c>isinstance</c> parses its operand as a <c>MemberAccess</c> and goes
 ///     through <c>ClassifyTypeTestExpressionOperand</c>, while <c>as?</c>/<c>as!</c>,
@@ -42,12 +43,12 @@ namespace Sharpy.Compiler.Tests.Conformance;
 ///     position while measuring half of it.</description></item>
 ///   <item><description><b>shape</b> — <c>plain</c> (a non-generic class) and <c>generic</c> (a
 ///     generic class at a concrete argument). The generic column exists because the two spellings
-///     are made to agree by a deliberate normalization — <c>TypeResolver.cs:721</c> stores the BARE
+///     are made to agree by a deliberate normalization — <c>TypeResolver.cs:745</c> stores the BARE
 ///     type name on a module-qualified generic so both spellings build the same
 ///     <c>GenericType</c> (#1134/#1244). That normalization holding is this sweep's contract, not a
 ///     violation of it; the column is what would notice if it were removed — and the plain column
 ///     is what noticed that the normalization was never applied to the NON-generic arm beside it
-///     (#1446).</description></item>
+///     (#1446). The same gate now covers the non-generic arm at <c>:281</c>.</description></item>
 ///   <item><description><b>sourceSet</b> — whether the imported module is itself a compilation
 ///     unit. <c>inSourceSet</c> resolves through the compilation's own symbols (#1366/#1407);
 ///     <c>outsideSourceSet</c> resolves through <c>ModuleLoader</c>'s extraction, which is the
@@ -74,7 +75,7 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// suite, every listed key cites the issue that will drain it, and a listed cell that has started
 /// AGREEING also fails — deleting the line is part of landing the fix.</para>
 ///
-/// <para><b>Baseline and cost.</b> 30 cells, 60 compilations plus the executing subset, ~2.2 s —
+/// <para><b>Baseline and cost.</b> 34 cells, 68 compilations plus the executing subset, ~2.2 s —
 /// cheap enough for the regular suite, so it carries no <c>GapDiscovery</c> trait. Its first runs
 /// found fourteen divergent cells and every one was a defect: #1445 (a dotted class pattern does
 /// not parse at all), #1446 (a qualified non-generic annotation keeps its dotted name, and outside

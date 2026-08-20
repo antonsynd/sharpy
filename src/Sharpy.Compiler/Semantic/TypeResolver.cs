@@ -238,8 +238,18 @@ internal class TypeResolver
         else
         {
             var typeSymbol = _symbolTable.LookupType(annotation.Name)
-                ?? LookupNestedType(annotation.Name)
-                ?? LookupModuleQualifiedType(annotation.Name);
+                ?? LookupNestedType(annotation.Name);
+
+            // Module-qualified lookup: an escaped spelling never takes the qualified path —
+            // the annotation's own escape names the user's declaration, not a module export
+            // (contract documented at LookupModuleQualifiedType's remarks block).
+            var isModuleQualified = false;
+            if (typeSymbol == null && !escaped)
+            {
+                typeSymbol = LookupModuleQualifiedType(annotation.Name);
+                if (typeSymbol != null)
+                    isModuleQualified = typeSymbol.ClrType == null;
+            }
 
             // Identity, not flag equality: an escaped reference never binds the registry's own
             // symbol (that is the namespace the escape exists to escape), a bare reference never
@@ -278,7 +288,7 @@ internal class TypeResolver
                 {
                     result = new UserDefinedType
                     {
-                        Name = annotation.Name,
+                        Name = isModuleQualified ? typeSymbol.Name : annotation.Name,
                         Symbol = typeSymbol
                     };
                 }
@@ -652,13 +662,15 @@ internal class TypeResolver
         // Module-qualified generic type (e.g. difflib.SequenceMatcher[str], geometry.Box[int]).
         // Track this so the GenericType name can be normalized to the bare type name below —
         // the dotted annotation name would otherwise mismatch the bare name produced by
-        // generic instantiation (Box[int]) and emit a false assignment error.
+        // generic instantiation (Box[int]) and emit a false assignment error. The CLR gate
+        // keeps CLR-discovered types' qualified names intact — their dotted spelling IS the
+        // honest identity codegen's #1090 guard needs (#1446 revert lesson).
         var isModuleQualified = false;
         if (typeSymbol == null && !escaped)
         {
             typeSymbol = LookupModuleQualifiedType(annotation.Name);
             if (typeSymbol != null)
-                isModuleQualified = true;
+                isModuleQualified = typeSymbol.ClrType == null;
         }
 
         if (!escaped)
