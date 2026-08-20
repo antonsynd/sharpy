@@ -700,7 +700,7 @@ namespace Sharpy
                 }
                 catch (global::System.Exception ex)
                 {
-                    throw new Error(ex.Message, patternStr);
+                    throw new Error(global::Sharpy.Builtins.Str(ex), patternStr);
                 }
             }
         }

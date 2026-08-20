@@ -219,7 +219,7 @@ class Pattern:
         try:
             self._regex = NetRegex(translated, _flags_to_options(flags))
         except Exception as ex:
-            raise error(ex.message, pattern_str)
+            raise error(str(ex), pattern_str)
 
     property get pattern_str(self) -> str:
         """The original pattern string."""
