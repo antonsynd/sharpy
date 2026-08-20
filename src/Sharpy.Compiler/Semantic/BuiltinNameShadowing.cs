@@ -142,48 +142,14 @@ internal static class BuiltinNameShadowing
         return overloads is { Count: > 0 } ? (overloads[0], overloads) : null;
     }
 
-    /// <summary>
-    /// Whether <c>from builtins import <paramref name="name"/> as …</c> is aliasing a builtin TYPE,
-    /// which Sharpy refuses (#1489). Null <see cref="RegistryBindingFor"/> — a different module, or
-    /// an unregistered name — is not this rule's business and answers false.
-    /// </summary>
-    /// <remarks>
-    /// The FUNCTION half of the same spelling works (#1383): the alias clone carries a
-    /// <c>BuiltinAliasOf</c> back-pointer and the three symbol-aware consumers ask for the identity
-    /// rather than the spelling. A TYPE cannot take that shape today, because its consumers are
-    /// keyed by NAME and not by symbol — <c>TypeResolver</c>'s primitive <c>name switch</c> and
-    /// <c>TypeSyntaxMapper</c>'s emission — so binding the registry's <c>TypeSymbol</c> under the
-    /// alias makes <c>x: bint</c> resolve and then emit as <c>Bint</c>: CS0246 behind SPY0908, an
-    /// internal error where a clean SPY0202 stood. Measured during #1383 and the reason the loops
-    /// restricted the binding to <c>FunctionSymbol</c> in the first place.
-    ///
-    /// <para>That restriction closed the ANNOTATION form and left the CALL form leaking: <c>bint</c>
-    /// stayed bound to the module's discovered export, and <c>bint("42")</c> emitted <c>Int(…)</c> —
-    /// CS0103. So the restriction alone was never the whole answer; this refusal is. Owner ruling
-    /// (2026-08-13): refuse at the import. <c>int</c> is reachable unaliased and as
-    /// <c>builtins.int</c>, so nothing is lost, and a later decision to SUPPORT the alias is an
-    /// additive change to the two name-keyed paths.</para>
-    /// </remarks>
-    public static bool AliasesBuiltinType(
-        Registry.BuiltinRegistry registry, ModuleInfo moduleInfo, string name)
-        => RegistryBindingFor(registry, moduleInfo, name)?.Symbol is TypeSymbol;
-
-    /// <summary>
-    /// The refusal message (SPY0312), naming the spellings that do work.
-    ///
-    /// <para>It deliberately does NOT suggest <c>type {alias} = {name}</c>. That spelling was RUN
-    /// before being recommended: the annotation form works, but its call form <c>bint("42")</c>
-    /// emits <c>Bint(…)</c> and ICEs with CS0103 — the same leak under a different spelling
-    /// (#1527). A diagnostic must not steer a user into an internal compiler error.</para>
-    /// </summary>
-    public static string TypeAliasRefusalMessage(string name, string alias) =>
-        $"builtin type '{name}' cannot be imported under an alias: '{alias}' would resolve as a "
-        + $"type name and emit as '{alias}' rather than as '{name}'. Use the builtin's own spelling "
-        + $"('{name}'), or qualify it ('builtins.{name}'). Aliasing a builtin FUNCTION on this "
-        + "import is supported and unaffected";
-
-    /// <summary>The diagnostic code for the builtin-type alias refusal.</summary>
-    public const string TypeAliasRefusalCode = DiagnosticCodes.Semantic.BuiltinTypeAliasUnsupported;
+    // The builtin-type import-alias refusal (SPY0312, #1489) lived here until #1527 made type
+    // aliases transparent: the name-keyed consumers it guarded against (TypeResolver's primitive
+    // name switch, TypeSyntaxMapper's emission) became symbol-keyed, so `from builtins import int
+    // as bint` now binds the registry TypeSymbol under the alias — via the same BuiltinAliasOf
+    // identity split the FUNCTION half has used since #1383 — and both spellings work. The
+    // refusal's helpers (AliasesBuiltinType, TypeAliasRefusalMessage, TypeAliasRefusalCode) were
+    // deleted with the two enforcement sites; SPY0312 is retired in DiagnosticCodes.cs, reserved
+    // and never reused.
 
     /// <summary>The warning message (SPY0483).</summary>
     public static string WarningMessage(string name) =>

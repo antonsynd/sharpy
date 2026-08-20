@@ -105,7 +105,14 @@ internal static class ModuleSymbolExtensions
         return null;
     }
 
-    private static TypeSymbol? WalkNestedTypes(TypeSymbol outerType, string[] parts, int startIndex)
+    /// <summary>
+    /// Walks <paramref name="parts"/> from <paramref name="startIndex"/> down a
+    /// <see cref="TypeSymbol.NestedTypes"/> chain (e.g., <c>Outer.Inner.Innermost</c>). The one
+    /// shared home for the nested-type walk: used by the module-qualified walk above (#1523) and
+    /// by <c>NameResolver.ResolveBaseReference</c>'s dotted base-name arm (#1528), so callers do
+    /// not grow per-site copies of the same loop.
+    /// </summary>
+    internal static TypeSymbol? WalkNestedTypes(TypeSymbol outerType, string[] parts, int startIndex)
     {
         var current = outerType;
         for (int i = startIndex; i < parts.Length; i++)

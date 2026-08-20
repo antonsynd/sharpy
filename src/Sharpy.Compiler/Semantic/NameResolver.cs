@@ -554,11 +554,9 @@ internal partial class NameResolver
             var parts = baseAnnot.Name.Split('.');
             if (_symbolTable.Lookup(parts[0]) is TypeSymbol outerType)
             {
-                var current = outerType;
-                for (int i = 1; i < parts.Length && current != null; i++)
-                    current = current.NestedTypes.FirstOrDefault(n => n.Name == parts[i]);
-                if (current != null)
-                    return current;
+                var nested = ModuleSymbolExtensions.WalkNestedTypes(outerType, parts, startIndex: 1);
+                if (nested != null)
+                    return nested;
             }
         }
 

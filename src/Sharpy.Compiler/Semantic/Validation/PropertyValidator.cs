@@ -471,7 +471,6 @@ internal class PropertyValidator : SemanticValidatorBase
     /// Rule 7: @override property must have a matching virtual/abstract property in the base class
     /// with a compatible (covariant) return type.
     /// </summary>
-    /// <summary>
     private void ValidatePropertyOverride(
         Statement declaration, string typeName, PropertyDef propDef, TypeSymbol? typeSymbol)
     {
