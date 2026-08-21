@@ -29,7 +29,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAsciiLowercaseMatchesPython()
             {
-#line (5, 5) - (5, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/string/string_module_tests.spy"
+#line (5, 5) - (5, 67) 16 "src/Sharpy.Stdlib.Tests/Spy/string/string_module_tests.spy"
                 Xunit.Assert.Equal("abcdefghijklmnopqrstuvwxyz", @string.AsciiLowercase);
 #line hidden
             }
@@ -37,7 +37,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAsciiUppercaseMatchesPython()
             {
-#line (9, 5) - (9, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/string/string_module_tests.spy"
+#line (9, 5) - (9, 67) 16 "src/Sharpy.Stdlib.Tests/Spy/string/string_module_tests.spy"
                 Xunit.Assert.Equal("ABCDEFGHIJKLMNOPQRSTUVWXYZ", @string.AsciiUppercase);
 #line hidden
             }
@@ -45,7 +45,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAsciiLettersIsConcatenationOfLowercaseAndUppercase()
             {
-#line (13, 5) - (13, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/string/string_module_tests.spy"
+#line (13, 5) - (13, 91) 16 "src/Sharpy.Stdlib.Tests/Spy/string/string_module_tests.spy"
                 Xunit.Assert.Equal("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", @string.AsciiLetters);
 #line hidden
             }

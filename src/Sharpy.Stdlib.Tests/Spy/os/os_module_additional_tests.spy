@@ -8,7 +8,7 @@ from os.path import isabs, isdir
 # Each filesystem test takes the pytest-style `tmp_path: str` fixture (#842). os.walk
 # 3-tuples are unpacked in the for-loop; list/dict membership goes through the
 # `contains` helper / a bool local to dodge the xUnit2009 analyzer (warnings are errors).
-# Module constants use their C# field names (os.Altsep, os.Pathsep, os.Environ) — in
+# Module constants use their C# field names (os.altsep, os.pathsep, os.environ) — in
 # project-compilation mode static fields/properties are not snake_case-mapped (SPY0203),
 # matching how the C# test referenced OsModule.Altsep, etc.
 
@@ -24,14 +24,14 @@ def contains(items: list[str], value: str) -> bool:
 
 @test
 def test_altsep_is_string_value():
-    s: str = os.Altsep
+    s: str = os.altsep
     # Altsep is always a string (empty or a separator char).
     assert len(s) >= 0
 
 
 @test
 def test_pathsep_is_not_empty():
-    assert len(os.Pathsep) > 0
+    assert len(os.pathsep) > 0
 
 
 # ===== File operations =====
@@ -132,7 +132,7 @@ def test_walk_deep_tree_visits_all_levels(tmp_path: str):
 
 @test
 def test_environ_contains_path_variable():
-    env = os.Environ
+    env = os.environ
     has_path: bool = "PATH" in env or "Path" in env
     assert has_path
 

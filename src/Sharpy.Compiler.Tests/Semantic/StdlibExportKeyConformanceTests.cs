@@ -87,11 +87,14 @@ public class StdlibExportKeyConformanceTests : System.IDisposable
         {
             var typeNames = ModuleTypeNames(moduleName);
             var fields = _discovery.GetModuleFields(moduleName);
-            foreach (var (name, _, _, clrName) in fields)
+            foreach (var (name, _, _, clrName, recordedName) in fields)
             {
+                // A SharpyFieldNameAttribute-recorded name is the authoritative spelling —
+                // the reverse mangle is non-injective for 1-char names (re.I vs math.e, #1607).
                 var expectedSharpyName = typeNames.Contains(clrName ?? name)
                     ? clrName ?? name
-                    : NameMangler.ToSharpyName(clrName ?? name, ReverseNameContext.Field);
+                    : recordedName
+                      ?? NameMangler.ToSharpyName(clrName ?? name, ReverseNameContext.Field);
 
                 if (name != expectedSharpyName)
                 {
@@ -145,14 +148,15 @@ public class StdlibExportKeyConformanceTests : System.IDisposable
                 exportKeys.Add(function.Name);
             foreach (var type in _discovery.GetModuleTypes(moduleName))
                 exportKeys.Add(type.Name);
-            foreach (var (fieldName, _, _, _) in _discovery.GetModuleFields(moduleName))
+            foreach (var (fieldName, _, _, _, _) in _discovery.GetModuleFields(moduleName))
                 exportKeys.Add(fieldName);
 
-            foreach (var (fieldName, _, _, clrName) in _discovery.GetModuleFields(moduleName))
+            foreach (var (fieldName, _, _, clrName, recordedName) in _discovery.GetModuleFields(moduleName))
             {
                 var sharpySpelling = typeNames.Contains(clrName ?? fieldName)
                     ? clrName ?? fieldName
-                    : NameMangler.ToSharpyName(clrName ?? fieldName, ReverseNameContext.Field);
+                    : recordedName
+                      ?? NameMangler.ToSharpyName(clrName ?? fieldName, ReverseNameContext.Field);
 
                 // The raw lookup the checker performs first must succeed for the spelling a
                 // Sharpy user writes. Before #1540 this failed ('pi' was not a key; only 'Pi'
@@ -223,5 +227,34 @@ public class StdlibExportKeyConformanceTests : System.IDisposable
 
         pi.ClrName.Should().Be("Pi",
             "the CLR name must be preserved for code generation to emit the correct member access");
+    }
+
+    /// <summary>
+    /// The 1-char ambiguity pinned both ways (#1607): the forward mangle is non-injective for
+    /// single characters — Sharpy <c>e</c> PascalCases to CLR <c>E</c> while Sharpy <c>I</c>
+    /// keeps its constant-case spelling — so re's flags carry a recorded
+    /// <c>SharpyFieldNameAttribute</c> and math's <c>e</c> reverses by inference. Regressing
+    /// either direction (re.I → 'i', or math.e → 'E') broke real Python API surface.
+    /// </summary>
+    [Fact]
+    public void OneCharConstants_ReFlagsKeepPythonCase_MathEStaysLower()
+    {
+        var reKeys = _discovery.GetModuleFields("re").Select(f => f.Name).ToList();
+        foreach (var flag in new[] { "I", "M", "S", "X", "U", "A" })
+        {
+            reKeys.Should().Contain(flag, $"Python spells the flag re.{flag}");
+            reKeys.Should().NotContain(flag.ToLowerInvariant(),
+                $"'{flag.ToLowerInvariant()}' would be the mis-inferred snake_case key (#1607)");
+        }
+
+        var reI = _discovery.GetModuleFields("re").First(f => f.Name == "I");
+        reI.RecordedPythonName.Should().Be("I",
+            "the attribute, not inference, must be the source of the re.I key — a regression "
+            + "that re-keys by inference alone would silently pass without this pin");
+
+        var mathKeys = _discovery.GetModuleFields("math").Select(f => f.Name).ToList();
+        mathKeys.Should().Contain("e").And.NotContain("E",
+            "math.e reverses by inference; treating 1-char caps as constant-case identity "
+            + "would break it the other way");
     }
 }

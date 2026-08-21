@@ -13,8 +13,8 @@ from os.path import exists, isdir, basename
 # `contains` helper (a bare `x in list` would lower to Assert.True + .Contains and trip
 # the xUnit2009 analyzer, which is an error since warnings are errors).
 #
-# Module constants are accessed by their C# field names (os.Sep, os.Linesep, os.Name,
-# os.Environ) — exactly as the C# test did (OsModule.Sep, etc.). In project-compilation
+# Module constants are accessed by their C# field names (os.sep, os.linesep, os.name,
+# os.environ) — exactly as the C# test did (OsModule.Sep, etc.). In project-compilation
 # mode the snake_case->PascalCase mapping applies to module methods but not to static
 # fields/properties, so lowercase os.sep does not resolve here (SPY0203).
 
@@ -30,17 +30,17 @@ def contains(items: list[str], value: str) -> bool:
 
 @test
 def test_sep_is_not_empty():
-    assert len(os.Sep) > 0
+    assert len(os.sep) > 0
 
 
 @test
 def test_linesep_is_not_empty():
-    assert len(os.Linesep) > 0
+    assert len(os.linesep) > 0
 
 
 @test
 def test_name_is_posix_or_nt():
-    assert os.Name == "posix" or os.Name == "nt"
+    assert os.name == "posix" or os.name == "nt"
 
 
 # ===== File operations =====
@@ -207,7 +207,7 @@ def test_putenv_and_getenv_round_trip():
 
 @test
 def test_environ_returns_dict_with_entries():
-    assert len(os.Environ) > 0
+    assert len(os.environ) > 0
 
 
 # ===== PathExists =====

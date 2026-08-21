@@ -152,11 +152,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestConstantsDayNameHasSevenEntriesStartingMonday()
             {
-#line (79, 5) - (79, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
+#line (79, 5) - (79, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal(7, global::Sharpy.Builtins.Len(calendar.DayName));
-#line (80, 5) - (80, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
+#line (80, 5) - (80, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal("Monday", calendar.DayName[0]);
-#line (81, 5) - (81, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
+#line (81, 5) - (81, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal("Sunday", calendar.DayName[6]);
 #line hidden
             }
@@ -164,11 +164,11 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestConstantsMonthNameFirstEntryEmptyThenJanuary()
             {
-#line (85, 5) - (85, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
+#line (85, 5) - (85, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal("", calendar.MonthName[0]);
-#line (86, 5) - (86, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
+#line (86, 5) - (86, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal("January", calendar.MonthName[1]);
-#line (87, 5) - (87, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
+#line (87, 5) - (87, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal("December", calendar.MonthName[12]);
 #line hidden
             }
@@ -176,9 +176,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestConstantsMonthAbbrFirstEntryEmptyThenJan()
             {
-#line (91, 5) - (91, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
+#line (91, 5) - (91, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal("", calendar.MonthAbbr[0]);
-#line (92, 5) - (92, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
+#line (92, 5) - (92, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/calendar/calendar_tests.spy"
                 Xunit.Assert.Equal("Jan", calendar.MonthAbbr[1]);
 #line hidden
             }
