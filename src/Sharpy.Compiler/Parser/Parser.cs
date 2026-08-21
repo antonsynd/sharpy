@@ -1195,7 +1195,20 @@ public partial class Parser
             } while (true);
         }
 
-        Expect(TokenType.RightParen);
+        if (Current.Type == TokenType.RightParen)
+        {
+            Advance();
+        }
+        else if (_diagnostics.HasErrors)
+        {
+            // Recovery (#1360): a prior error (e.g. trailing-dot) already diagnosed the problem.
+            // Tolerating the missing close-paren lets the partial call node survive in the AST
+            // so LSP can resolve the receiver for completion.
+        }
+        else
+        {
+            Expect(TokenType.RightParen);
+        }
         return (args, kwargs);
     }
 

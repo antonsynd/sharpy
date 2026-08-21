@@ -999,26 +999,51 @@ public partial class Parser
                     Advance();
 
                     var memberToken = Current;
-                    var member = ExpectIdentifierOrKeyword();
-
-                    expr = new MemberAccess
+                    if (Current.Type == TokenType.Identifier || IsKeywordToken(Current.Type))
                     {
-                        Object = expr,
-                        Member = member,
-                        IsNullConditional = isNullConditional,
-                        IsMemberBacktickEscaped = memberToken.IsBacktickEscaped,
-                        // The member name's own position, so nothing downstream has to infer it
-                        // from the dot's adjacency to the receiver — whitespace is legal on both
-                        // sides of the dot and a chain may cross lines (#1503).
-                        MemberNameLineStart = memberToken.Line,
-                        MemberNameColumnStart = memberToken.Column,
-                        MemberNameColumnEnd = memberToken.Column + memberToken.Length,
-                        LineStart = expr.LineStart,
-                        ColumnStart = expr.ColumnStart,
-                        LineEnd = Previous.Line,
-                        ColumnEnd = Previous.Column + Previous.Length,
-                        Span = CombineSpans(expr.Span, GetSpanFromToken(Previous))
-                    };
+                        var member = Current.Value;
+                        Advance();
+
+                        expr = new MemberAccess
+                        {
+                            Object = expr,
+                            Member = member,
+                            IsNullConditional = isNullConditional,
+                            IsMemberBacktickEscaped = memberToken.IsBacktickEscaped,
+                            MemberNameLineStart = memberToken.Line,
+                            MemberNameColumnStart = memberToken.Column,
+                            MemberNameColumnEnd = memberToken.Column + memberToken.Length,
+                            LineStart = expr.LineStart,
+                            ColumnStart = expr.ColumnStart,
+                            LineEnd = Previous.Line,
+                            ColumnEnd = Previous.Column + Previous.Length,
+                            Span = CombineSpans(expr.Span, GetSpanFromToken(Previous))
+                        };
+                    }
+                    else
+                    {
+                        // Trailing-dot recovery (#1360): record SPY0101 without throwing so the
+                        // partial AST survives for LSP completion on the receiver.
+                        ReportError($"Expected identifier, got {Current.Type}", Current.Line, Current.Column,
+                            DiagnosticCodes.Parser.ExpectedIdentifier, span: CurrentSpan);
+
+                        var dotToken = Previous;
+                        expr = new MemberAccess
+                        {
+                            Object = expr,
+                            Member = "",
+                            IsNullConditional = isNullConditional,
+                            MemberNameLineStart = memberToken.Line,
+                            MemberNameColumnStart = memberToken.Column,
+                            MemberNameColumnEnd = memberToken.Column,
+                            LineStart = expr.LineStart,
+                            ColumnStart = expr.ColumnStart,
+                            LineEnd = dotToken.Line,
+                            ColumnEnd = dotToken.Column + dotToken.Length,
+                            Span = CombineSpans(expr.Span, GetSpanFromToken(dotToken))
+                        };
+                        break;
+                    }
                 }
                 else if (Current.Type == TokenType.LeftBracket)
                 {

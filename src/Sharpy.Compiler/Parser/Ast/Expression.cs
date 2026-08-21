@@ -446,7 +446,9 @@ public record MemberAccess : Expression
     {
         base.ValidateInvariants();
         Debug.Assert(Object != null, "MemberAccess.Object cannot be null");
-        Debug.Assert(!string.IsNullOrEmpty(Member), "MemberAccess.Member cannot be null or empty");
+        Debug.Assert(Member != null, "MemberAccess.Member cannot be null");
+        Debug.Assert(Member.Length > 0 || MemberNameLineStart > 0,
+            "MemberAccess.Member is empty without recovery coordinates");
     }
 
     /// <inheritdoc/>
