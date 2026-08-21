@@ -256,6 +256,99 @@ public class ConvertFormsProviderTests
         convertAction.Should().BeNull();
     }
 
+    /// <summary>
+    /// Pins ConvertFormsProvider behavior for backtick-escaped variable names (#1454).
+    ///
+    /// Findings (measured, not assumed):
+    /// - Line 365 (add-type-annotation): UNREACHABLE — Sharpy VariableDeclaration always carries
+    ///   a type annotation; <c>varDecl.Type is null</c> never holds, so the reconstruction defect
+    ///   at <c>ColumnStart + Name.Length</c> is dead code.
+    /// - Line 412 (remove-type-annotation): MASKED — <c>nameEndOffset</c> is computed from
+    ///   <c>ColumnStart</c> (statement start) instead of <c>NameColumnStart</c> (name token start),
+    ///   and uses <c>Name.Length</c> (logical name, no backticks) instead of the recorded extent.
+    ///   For a non-const variable both positions coincide, so the offset lands 2 chars early but
+    ///   the <c>IndexOf(':')</c> search overshoots to the correct colon. For a <c>const</c>
+    ///   variable, <c>ColumnStart</c> points at <c>const</c>, making the offset even more wrong,
+    ///   but the forward search still finds the colon.
+    ///
+    /// This test pins the CURRENT correct-by-accident output. When Task 4 fixes lines 365/412
+    /// to use <c>NameColumnStart</c>/<c>NameColumnEnd</c>, the edit range stays the same (the colon
+    /// search was forgiving), so the test stays green — the value is as a regression guard.
+    /// </summary>
+    [Fact]
+    public async Task RemoveTypeAnnotation_BacktickEscapedName_RemovesAnnotation()
+    {
+        var source = "def main():\n    `class`: int = 1\n    print(`class`)";
+        var provider = new ConvertFormsProvider();
+
+        var range = new LspRange(new Position(1, 4), new Position(1, 4));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var removeAction = actions.FirstOrDefault(a => a.Title.Contains("Remove type annotation"));
+        removeAction.Should().NotBeNull("backtick-escaped VariableDeclaration with type should offer removal");
+        removeAction!.Kind.Should().Be(CodeActionKind.Refactor);
+        removeAction.Edit.Should().NotBeNull();
+
+        var edits = removeAction.Edit!.Changes![TestUri].ToList();
+        edits.Should().ContainSingle();
+
+        var edit = edits[0];
+        edit.NewText.Should().BeEmpty("removal replaces the annotation span with nothing");
+
+        // Pin the removal range (0-based LSP coordinates).
+        // `: int` spans from the colon (1-based col 12 → 0-based 11) to the space before `=`.
+        // The current code finds the colon correctly despite the wrong nameEndOffset because
+        // IndexOf(':') searches forward past the error.
+        edit.Range.Start.Line.Should().Be(1);
+        edit.Range.Start.Character.Should().Be(11, "colon at 1-based column 12 → 0-based 11");
+        edit.Range.End.Line.Should().Be(1);
+        edit.Range.End.Character.Should().Be(16, "removal ends before the '=' sign");
+    }
+
+    [Fact]
+    public async Task RemoveTypeAnnotation_ConstBacktickEscapedName_RemovesAnnotation()
+    {
+        var source = "def main():\n    const `class`: int = 1\n    print(`class`)";
+        var provider = new ConvertFormsProvider();
+
+        var range = new LspRange(new Position(1, 10), new Position(1, 10));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var removeAction = actions.FirstOrDefault(a => a.Title.Contains("Remove type annotation"));
+        removeAction.Should().NotBeNull("const backtick-escaped VariableDeclaration with type should offer removal");
+
+        var edits = removeAction!.Edit!.Changes![TestUri].ToList();
+        edits.Should().ContainSingle();
+
+        var edit = edits[0];
+        edit.NewText.Should().BeEmpty();
+
+        // Pin the removal range. ColumnStart points at `const` (col 5), NameColumnStart at
+        // the backtick (col 11). The nameEndOffset is computed from ColumnStart (wrong) but
+        // IndexOf(':') still finds the colon at the correct position.
+        edit.Range.Start.Line.Should().Be(1);
+        edit.Range.Start.Character.Should().Be(17, "colon at 1-based column 18 → 0-based 17");
+        edit.Range.End.Line.Should().Be(1);
+        edit.Range.End.Character.Should().Be(22, "removal ends before the '=' sign");
+    }
+
+    [Fact]
+    public async Task AddTypeAnnotation_BacktickEscapedName_NotOffered()
+    {
+        // In Sharpy, VariableDeclaration always carries a type annotation, so the
+        // add-type-annotation code path (ConvertFormsProvider.cs:365) is unreachable.
+        // This test pins that fact — if it ever starts returning an action, the
+        // reconstruction defect at ColumnStart + Name.Length must be fixed first (#1454).
+        var source = "def main():\n    `class`: int = 1\n    print(`class`)";
+        var provider = new ConvertFormsProvider();
+
+        var range = new LspRange(new Position(1, 4), new Position(1, 4));
+        var actions = await GetActionsAsync(provider, source, range);
+
+        var addAction = actions.FirstOrDefault(a => a.Title.Contains("Add type annotation"));
+        addAction.Should().BeNull("VariableDeclaration with type never offers add-type-annotation");
+    }
+
     [Fact]
     public async Task ConvertMatchToIf_SimpleTwoCaseMatch_ReturnsActionWithIfElse()
     {
