@@ -452,16 +452,8 @@ namespace Sharpy
 
         /// <summary>
         /// The first required field of <typeparamref name="T"/> that <paramref name="json"/>'s
-        /// top-level object omits, or <c>null</c> when none is missing.
+        /// document tree omits, walking the whole tree (#1513), or <c>null</c> when none is missing.
         /// </summary>
-        /// <remarks>
-        /// Reads the key set with a throwaway <see cref="JsonDocument"/> parse rather than
-        /// inspecting the deserialized value, because the value is exactly what cannot be trusted
-        /// here: the constructor has already substituted a placeholder for the absent field by the
-        /// time it exists. A malformed document parses no keys and falls through to the real
-        /// deserialization below, so the JsonException it raises stays the reported error rather
-        /// than being reported as a missing field.
-        /// </remarks>
         private static string? MissingRequiredField<T>(string json)
         {
             try
@@ -475,11 +467,8 @@ namespace Sharpy
                 if (document.RootElement.ValueKind != JsonValueKind.Object)
                     return null;
 
-                var keys = new List<string>();
-                foreach (var property in document.RootElement.EnumerateObject())
-                    keys.Add(property.Name);
-
-                return TypedLoadContract.FirstMissingRequiredField<T>(keys);
+                return TypedLoadContract.FirstMissingRequiredFieldPath<T>(
+                    new JsonElementNode(document.RootElement));
             }
             catch (JsonException)
             {
@@ -503,6 +492,47 @@ namespace Sharpy
 
             string content = fp.Read();
             return Loads<T>(content);
+        }
+
+        /// <summary>
+        /// <see cref="TypedLoadContract.IDocumentNode"/> adapter over <see cref="JsonElement"/>.
+        /// </summary>
+        private readonly struct JsonElementNode : TypedLoadContract.IDocumentNode
+        {
+            private readonly JsonElement _element;
+
+            public JsonElementNode(JsonElement element)
+            {
+                _element = element;
+            }
+
+            public bool IsMapping => _element.ValueKind == JsonValueKind.Object;
+            public bool IsSequence => _element.ValueKind == JsonValueKind.Array;
+
+            public System.Collections.Generic.IEnumerable<string> Keys
+            {
+                get
+                {
+                    foreach (var property in _element.EnumerateObject())
+                        yield return property.Name;
+                }
+            }
+
+            public TypedLoadContract.IDocumentNode GetChild(string key)
+                => new JsonElementNode(_element.GetProperty(key));
+
+            public System.Collections.Generic.IEnumerable<(string indexLabel, TypedLoadContract.IDocumentNode element)> Elements
+            {
+                get
+                {
+                    int i = 0;
+                    foreach (var item in _element.EnumerateArray())
+                    {
+                        yield return (i.ToString(System.Globalization.CultureInfo.InvariantCulture), new JsonElementNode(item));
+                        i++;
+                    }
+                }
+            }
         }
 #endif
     }
