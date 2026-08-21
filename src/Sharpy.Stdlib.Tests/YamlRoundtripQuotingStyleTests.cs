@@ -121,39 +121,27 @@ public class YamlRoundtripQuotingStyleTests
     }
 
     /// <summary>
-    /// The cross-surface disagreement that REMAINS after #1472, pinned so it is a known residue
-    /// with an issue behind it rather than a gap — #1542.
-    ///
-    /// <para>
-    /// #1472 was the RENDERING split, for strings both surfaces already agreed needed quoting.
-    /// What is left is the PREDICATE split: <c>roundtrip_dump</c> asks <c>NeedsQuoting</c>'s
-    /// character loop, which quotes on any <c>:</c> or <c>#</c>, while <c>safe_dump</c> delegates
-    /// to YamlDotNet's scalar analysis. YAML's real rule is narrower (<c>": "</c> and
-    /// <c>" #"</c>), so <c>roundtrip_dump</c> over-quotes; and in the other direction
-    /// <c>safe_dump</c> emits tabs plain and multi-line strings as folded blocks where PyYAML
-    /// quotes. Both are wider than this issue — closing them changes the shape of every
-    /// multi-line string in every dumped document.
-    /// </para>
-    ///
-    /// <para>
-    /// Pinned as assertions rather than left as prose so #1542 flips loudly instead of becoming
-    /// folklore — the discipline that made #1467 and #1471 visible in the first place.
-    /// </para>
+    /// The former cross-surface residue (#1542) is now AGREEMENT — both surfaces consult
+    /// <see cref="YamlScalarStyleAuthority"/> and produce the same output. Converted from
+    /// divergence pins to agreement assertions.
     /// </summary>
     [Fact]
-    public void TheCrossSurfaceResidueOutside1472sCorpus_IsPinnedTo1542()
+    public void FormerResidue_NowAgreement_BothSurfacesConsultOneAuthority()
     {
-        // roundtrip_dump over-quotes a bare colon; safe_dump and PyYAML leave it plain. (PyYAML
-        // quotes `12:30` only because it resolves sexagesimal, which Sharpy declines — #1465 —
-        // so plain is Sharpy's correct answer and roundtrip_dump is the odd one out.)
-        Assert.Equal("12:30\n...\n", Yaml.SafeDump("12:30"));
-        Assert.Equal("'12:30'\n", Yaml.RoundtripDump("12:30"));
+        // 12:30 is plain on BOTH surfaces — Sharpy's resolver declines sexagesimal (#1465),
+        // so the authority says plain. A deviation from PyYAML (which quotes it), not a bug.
+        Assert.Equal(Yaml.SafeDump("12:30"), Yaml.RoundtripDump("12:30"));
 
-        // safe_dump emits a raw tab plain; PyYAML and roundtrip_dump double-quote it.
-        Assert.Equal("tab\tchar\n...\n", Yaml.SafeDump("tab\tchar"));
+        // a:b and a#b are both plain — no space before colon/hash.
+        Assert.Equal(Yaml.SafeDump("a:b"), Yaml.RoundtripDump("a:b"));
+        Assert.Equal(Yaml.SafeDump("a#b"), Yaml.RoundtripDump("a#b"));
 
-        // safe_dump folds a multi-line string into a block scalar; PyYAML single-quotes it.
-        Assert.Equal(">-\n  line1\n\n  line2\n", Yaml.SafeDump("line1\nline2"));
+        // tab is double-quoted on BOTH surfaces (matching PyYAML).
+        Assert.Equal(Yaml.SafeDump("tab\tchar"), Yaml.RoundtripDump("tab\tchar"));
+        Assert.StartsWith("\"", Yaml.SafeDump("tab\tchar"));
+
+        // multi-line is single-quoted on BOTH surfaces (matching PyYAML).
+        Assert.Equal(Yaml.SafeDump("line1\nline2"), Yaml.RoundtripDump("line1\nline2"));
     }
 
     /// <summary>
