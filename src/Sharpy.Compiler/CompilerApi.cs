@@ -652,7 +652,8 @@ public sealed class CompilerApi
 
         static long GetMtimeTicks(string path)
         {
-            try { return File.GetLastWriteTimeUtc(path).Ticks; }
+            try
+            { return File.GetLastWriteTimeUtc(path).Ticks; }
             catch { return 0; }
         }
     }

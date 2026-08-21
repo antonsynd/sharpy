@@ -56,9 +56,11 @@ internal class OverloadIndexBuilder
         {
             var attr = type.CustomAttributes.FirstOrDefault(
                 a => a.AttributeType.FullName == "Sharpy.SharpyModuleTypeAttribute");
-            if (attr == null) continue;
+            if (attr == null)
+                continue;
             var args = attr.ConstructorArguments;
-            if (args.Count < 2) continue;
+            if (args.Count < 2)
+                continue;
             var modName = args[0].Value as string ?? string.Empty;
             var pyName = args[1].Value as string ?? type.Name;
             if (!moduleTypeNames.TryGetValue(modName, out var names))

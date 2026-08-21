@@ -216,29 +216,29 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case EnumDef e:
-            {
-                PushNameToken(tokens, e.NameLineStart, e.NameColumnStart, e.NameColumnEnd - e.NameColumnStart, TEnum, ModDeclaration | ModDefinition | genMod);
-                // Backticked member names ARE legal (`for` = 1 compiles with only SPY0453), so
-                // each member's extent routes through its symbol's EffectiveNameColumnEnd — the
-                // single sanctioned reconstruction home (#1454). The member symbols live on the
-                // enum's module-scope TypeSymbol, matched here by recorded name position.
-                // EnumMember itself records no name extent or escape flag and the resolver
-                // copies neither (#1604), so today both routes still measure an escaped member
-                // two columns short — that fix lands in the compiler, and this site inherits it.
-                var enumSymbol = semanticQuery?.FindSymbolByDeclaration(e.Name, e.LineStart, e.ColumnStart)
-                    as Sharpy.Compiler.Semantic.TypeSymbol;
-                foreach (var member in e.Members)
                 {
-                    var memberSymbol = enumSymbol?.Fields.Find(f =>
-                        f.NameDeclarationLine == member.LineStart
-                        && f.NameDeclarationColumn == member.ColumnStart);
-                    var memberLength = memberSymbol != null
-                        ? SymbolExtents.NameExtentLength(memberSymbol)
-                        : SymbolExtents.SourceNameLength(member.Name, isBacktickEscaped: false);
-                    PushNameToken(tokens, member.LineStart, member.ColumnStart, memberLength, TEnumMember, ModDeclaration | genMod);
+                    PushNameToken(tokens, e.NameLineStart, e.NameColumnStart, e.NameColumnEnd - e.NameColumnStart, TEnum, ModDeclaration | ModDefinition | genMod);
+                    // Backticked member names ARE legal (`for` = 1 compiles with only SPY0453), so
+                    // each member's extent routes through its symbol's EffectiveNameColumnEnd — the
+                    // single sanctioned reconstruction home (#1454). The member symbols live on the
+                    // enum's module-scope TypeSymbol, matched here by recorded name position.
+                    // EnumMember itself records no name extent or escape flag and the resolver
+                    // copies neither (#1604), so today both routes still measure an escaped member
+                    // two columns short — that fix lands in the compiler, and this site inherits it.
+                    var enumSymbol = semanticQuery?.FindSymbolByDeclaration(e.Name, e.LineStart, e.ColumnStart)
+                        as Sharpy.Compiler.Semantic.TypeSymbol;
+                    foreach (var member in e.Members)
+                    {
+                        var memberSymbol = enumSymbol?.Fields.Find(f =>
+                            f.NameDeclarationLine == member.LineStart
+                            && f.NameDeclarationColumn == member.ColumnStart);
+                        var memberLength = memberSymbol != null
+                            ? SymbolExtents.NameExtentLength(memberSymbol)
+                            : SymbolExtents.SourceNameLength(member.Name, isBacktickEscaped: false);
+                        PushNameToken(tokens, member.LineStart, member.ColumnStart, memberLength, TEnumMember, ModDeclaration | genMod);
+                    }
+                    break;
                 }
-                break;
-            }
 
             case VariableDeclaration v:
                 var varMods = ModDeclaration | genMod;
