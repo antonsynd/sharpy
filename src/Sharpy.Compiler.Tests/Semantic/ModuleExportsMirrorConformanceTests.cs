@@ -95,7 +95,10 @@ public class ModuleExportsMirrorConformanceTests
     /// </summary>
     private static readonly Dictionary<string, string> MutationAllowlist = new(StringComparer.Ordinal)
     {
-        // (empty — every writer goes through ModuleExports.Add / MergeFrom / RestoreFrom)
+        ["OverloadIndexBuilder.cs :: DiscoverPublicTypes"] =
+            "Writes to OverloadIndex.ModuleOverloads.Types (List<DiscoveredTypeInfo>), not ModuleExports.Types",
+        ["OverloadIndexBuilder.cs :: DiscoverNestedModuleTypes"] =
+            "Writes to OverloadIndex.ModuleOverloads.Types (List<DiscoveredTypeInfo>), not ModuleExports.Types",
     };
 
     [Fact]
