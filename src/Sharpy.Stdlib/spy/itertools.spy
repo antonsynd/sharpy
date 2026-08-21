@@ -2,43 +2,26 @@
 
 from system import IEquatable
 
-# WHY SOME PRODUCERS HERE ARE WRAPPERS AND MOST ARE NOT YET (#1354, #1518)
+# WHY EVERY PRODUCER IS A WRAPPER AROUND A PRIVATE CORE
 #
 # Every function in this module is a generator in CPython: `itertools.count(0)` hands back a lazy
-# `count` object, not a list. A Sharpy generator lowers to a C# iterator method returning
+# `count` object, not a list.  A Sharpy generator lowers to a C# iterator method returning
 # IEnumerable<T>; the bridge maps an IEnumerable<T> return onto list[T], and #1251 then binds
-# NativeCollectionForm at the assignment site. So `c = itertools.count(0)` emitted
+# NativeCollectionForm at the assignment site.  So `c = itertools.count(0)` emitted
 # `new Sharpy.List<int>(Itertools.Count(0))` and ran the producer to exhaustion before the next
-# statement — Out of memory for the infinite ones, a silent eager walk for the finite ones. Direct
+# statement — Out of memory for the infinite ones, a silent eager walk for the finite ones.  Direct
 # iteration (`for n in itertools.count():`) binds no variable and so never materialized, which is
 # why the whole pre-existing suite stayed green through the defect.
 #
-# The cure is the landed glob.iglob recipe (f9507543e): a type deriving from Sharpy.Iterator<T>
-# takes a different bridge arm — it maps to a BuiltinType, not a GenericType — so the
-# materialization rule rejects it at its first check and never fires. The generator body moves to a
-# private `_..._core` (a function containing `yield` cannot itself declare an Iterator[T] return;
-# the C# it lowers to must return IEnumerable<T>), and the public name becomes a one-line wrapper
-# returning `iter[T](...)`. Builtins.Iter adds no eagerness — it defers to the same enumerator.
+# The cure is the iglob recipe (f9507543e): a type deriving from Sharpy.Iterator<T> takes a
+# different bridge arm — it maps to a BuiltinType, not a GenericType — so the materialization
+# rule rejects it at its first check and never fires.  The generator body moves to a private
+# `_..._core` (a function containing `yield` cannot itself declare an Iterator[T] return; the C#
+# it lowers to must return IEnumerable<T>), and the public name becomes a one-line wrapper
+# returning `iter[<type-arg>](...)`.  Builtins.Iter adds no eagerness — it defers to the same
+# enumerator.
 #
-# ONLY THE NON-GENERIC PRODUCERS CAN TAKE THAT SHAPE TODAY. The wrapper needs a fully CLOSED
-# explicit type argument. Measured 2026-08-14 at 16e35a0cd, one probe, all six rows:
-#
-#   iter[int](_core(...))            in a non-generic def   OK
-#   iter(_core(...))                 inferred, non-generic  SPY0237
-#   iter[T](_core(...))              in a generic def       SPY0354
-#   iter(_core(...))                 inferred, generic      SPY0237
-#   iter[tuple[T, T]](_core(...))    in a generic def       SPY0354
-#   iter[list[T]](_core(...))        in a generic def       SPY0354
-#
-# The inferred spelling fails everywhere because the generator call's type is IEnumerable[T] while
-# iter's formal is list[T], and those are not assignable — the closed call is accepted by the
-# iterable-position projection, not by assignability, and that projection does not cover an open
-# formal. That is #1518, filed with its trace. So `count` is flipped here, `accumulate`'s
-# non-generic overload is flipped, and the 22 generic producers keep their generator shape with a
-# TODO(#1518) at each cluster until the projection reaches them. os.walk (non-generic, closed tuple
-# type argument) is flipped in os_module.spy.
-#
-# Keep the docstring on the PUBLIC wrapper. The `_..._core` helpers are deliberately undocumented:
+# Keep the docstring on the PUBLIC wrapper.  The `_..._core` helpers are deliberately undocumented:
 # docs/stdlib is generated from doc comments, and a docstring here would publish the plumbing onto
 # the user-facing page.
 
@@ -52,13 +35,7 @@ def count(start: int = 0, step: int = 1) -> Iterator[int]:
     """Make an iterator that returns evenly spaced values starting with number start."""
     return iter[int](_count_core(start, step))
 
-# TODO(#1518): every generic producer from here to the end of the file still returns its element
-# type (i.e. lowers to IEnumerable<T>) and so still materializes when bound to a variable. Each one
-# needs `iter[T](...)` / `iter[tuple[T, T]](...)` / `iter[list[T]](...)`, which is refused while the
-# type argument stays open. Flip them in one pass when #1518 lands — the transformation is
-# mechanical and identical to `count` above.
-def repeat[T](elem: T, n: int = -1) -> T:
-    """Make an iterator that returns object over and over again, optionally limited by n times."""
+def _repeat_core[T](elem: T, n: int) -> T:
     if n < 0:
         while True:
             yield elem
@@ -68,8 +45,11 @@ def repeat[T](elem: T, n: int = -1) -> T:
             yield elem
             i = i + 1
 
-def cycle[T](iterable: list[T]) -> T:
-    """Make an iterator returning elements from the iterable and saving a copy of each."""
+def repeat[T](elem: T, n: int = -1) -> Iterator[T]:
+    """Make an iterator that returns object over and over again, optionally limited by n times."""
+    return iter[T](_repeat_core(elem, n))
+
+def _cycle_core[T](iterable: list[T]) -> T:
     saved: list[T] = list(iterable)
     if len(saved) == 0:
         return
@@ -77,8 +57,11 @@ def cycle[T](iterable: list[T]) -> T:
         for element in saved:
             yield element
 
-def compress[T](data: list[T], selectors: list[bool]) -> T:
-    """Make an iterator that filters elements from data returning only those that have a corresponding element in selectors that evaluates to True."""
+def cycle[T](iterable: list[T]) -> Iterator[T]:
+    """Make an iterator returning elements from the iterable and saving a copy of each."""
+    return iter[T](_cycle_core(iterable))
+
+def _compress_core[T](data: list[T], selectors: list[bool]) -> T:
     i: int = 0
     limit: int = len(data)
     sel_limit: int = len(selectors)
@@ -87,8 +70,11 @@ def compress[T](data: list[T], selectors: list[bool]) -> T:
             yield data[i]
         i = i + 1
 
-def dropwhile[T](predicate: (T) -> bool, iterable: list[T]) -> T:
-    """Make an iterator that drops elements from the iterable as long as the predicate is true; afterwards, returns every element."""
+def compress[T](data: list[T], selectors: list[bool]) -> Iterator[T]:
+    """Make an iterator that filters elements from data returning only those that have a corresponding element in selectors that evaluates to True."""
+    return iter[T](_compress_core(data, selectors))
+
+def _dropwhile_core[T](predicate: (T) -> bool, iterable: list[T]) -> T:
     dropping: bool = True
     for element in iterable:
         if dropping:
@@ -98,22 +84,31 @@ def dropwhile[T](predicate: (T) -> bool, iterable: list[T]) -> T:
         else:
             yield element
 
-def takewhile[T](predicate: (T) -> bool, iterable: list[T]) -> T:
-    """Make an iterator that returns elements from the iterable as long as the predicate is true."""
+def dropwhile[T](predicate: (T) -> bool, iterable: list[T]) -> Iterator[T]:
+    """Make an iterator that drops elements from the iterable as long as the predicate is true; afterwards, returns every element."""
+    return iter[T](_dropwhile_core(predicate, iterable))
+
+def _takewhile_core[T](predicate: (T) -> bool, iterable: list[T]) -> T:
     for element in iterable:
         if predicate(element):
             yield element
         else:
             return
 
-def filterfalse[T](predicate: (T) -> bool, iterable: list[T]) -> T:
-    """Make an iterator that filters elements from iterable returning only those for which the predicate is false."""
+def takewhile[T](predicate: (T) -> bool, iterable: list[T]) -> Iterator[T]:
+    """Make an iterator that returns elements from the iterable as long as the predicate is true."""
+    return iter[T](_takewhile_core(predicate, iterable))
+
+def _filterfalse_core[T](predicate: (T) -> bool, iterable: list[T]) -> T:
     for element in iterable:
         if not predicate(element):
             yield element
 
-def islice[T](iterable: list[T], stop: int) -> T:
-    """Make an iterator that returns selected elements from the iterable."""
+def filterfalse[T](predicate: (T) -> bool, iterable: list[T]) -> Iterator[T]:
+    """Make an iterator that filters elements from iterable returning only those for which the predicate is false."""
+    return iter[T](_filterfalse_core(predicate, iterable))
+
+def _islice_core[T](iterable: list[T], stop: int) -> T:
     i: int = 0
     for element in iterable:
         if i >= stop:
@@ -121,8 +116,11 @@ def islice[T](iterable: list[T], stop: int) -> T:
         yield element
         i = i + 1
 
-def islice_range[T](iterable: list[T], start: int, stop: int, step: int = 1) -> T:
-    """Make an iterator that returns selected elements from the iterable with start, stop, and step."""
+def islice[T](iterable: list[T], stop: int) -> Iterator[T]:
+    """Make an iterator that returns selected elements from the iterable."""
+    return iter[T](_islice_core(iterable, stop))
+
+def _islice_range_core[T](iterable: list[T], start: int, stop: int, step: int) -> T:
     i: int = 0
     next_yield: int = start
     for element in iterable:
@@ -133,18 +131,21 @@ def islice_range[T](iterable: list[T], start: int, stop: int, step: int = 1) -> 
             next_yield = next_yield + step
         i = i + 1
 
-def pairwise[T](iterable: list[T]) -> tuple[T, T]:
-    """Return successive overlapping pairs taken from the input iterable."""
+def islice_range[T](iterable: list[T], start: int, stop: int, step: int = 1) -> Iterator[T]:
+    """Make an iterator that returns selected elements from the iterable with start, stop, and step."""
+    return iter[T](_islice_range_core(iterable, start, stop, step))
+
+def _pairwise_core[T](iterable: list[T]) -> tuple[T, T]:
     items: list[T] = list(iterable)
     i: int = 0
     while i < len(items) - 1:
         yield (items[i], items[i + 1])
         i = i + 1
 
-# The one accumulate overload with no type parameter, hence the one that can be flipped today. Its
-# two generic siblings below keep the generator shape under the same TODO(#1518) as the rest, so
-# the overload set is deliberately asymmetric until that lands. Like _count_core, this must precede
-# its wrapper.
+def pairwise[T](iterable: list[T]) -> Iterator[tuple[T, T]]:
+    """Return successive overlapping pairs taken from the input iterable."""
+    return iter[tuple[T, T]](_pairwise_core(iterable))
+
 def _accumulate_core(iterable: list[int]) -> int:
     items: list[int] = list(iterable)
     if len(items) == 0:
@@ -161,8 +162,7 @@ def accumulate(iterable: list[int]) -> Iterator[int]:
     """Make an iterator that returns accumulated sums."""
     return iter[int](_accumulate_core(iterable))
 
-def accumulate[T](iterable: list[T], func: (T, T) -> T) -> T:
-    """Make an iterator that returns accumulated results of a binary function."""
+def _accumulate_core[T](iterable: list[T], func: (T, T) -> T) -> T:
     items: list[T] = list(iterable)
     if len(items) == 0:
         return
@@ -174,23 +174,32 @@ def accumulate[T](iterable: list[T], func: (T, T) -> T) -> T:
         yield total
         i = i + 1
 
-def accumulate[T](iterable: list[T], func: (T, T) -> T, initial: T) -> T:
-    """Make an iterator that returns accumulated results of a binary function, starting with an initial value."""
+def accumulate[T](iterable: list[T], func: (T, T) -> T) -> Iterator[T]:
+    """Make an iterator that returns accumulated results of a binary function."""
+    return iter[T](_accumulate_core(iterable, func))
+
+def _accumulate_core[T](iterable: list[T], func: (T, T) -> T, initial: T) -> T:
     total: T = initial
     yield total
     for item in iterable:
         total = func(total, item)
         yield total
 
-def chain[T](first: list[T], second: list[T]) -> T:
-    """Make an iterator that returns elements from the first iterable until it is exhausted, then proceeds to the next iterable."""
+def accumulate[T](iterable: list[T], func: (T, T) -> T, initial: T) -> Iterator[T]:
+    """Make an iterator that returns accumulated results of a binary function, starting with an initial value."""
+    return iter[T](_accumulate_core(iterable, func, initial))
+
+def _chain_core[T](first: list[T], second: list[T]) -> T:
     for x in first:
         yield x
     for y in second:
         yield y
 
-def chain[T](first: list[T], second: list[T], third: list[T]) -> T:
-    """Make an iterator that returns elements from each iterable in turn until all are exhausted."""
+def chain[T](first: list[T], second: list[T]) -> Iterator[T]:
+    """Make an iterator that returns elements from the first iterable until it is exhausted, then proceeds to the next iterable."""
+    return iter[T](_chain_core(first, second))
+
+def _chain_core[T](first: list[T], second: list[T], third: list[T]) -> T:
     for x in first:
         yield x
     for y in second:
@@ -198,19 +207,28 @@ def chain[T](first: list[T], second: list[T], third: list[T]) -> T:
     for z in third:
         yield z
 
-def chain_from_iterable[T](iterables: list[list[T]]) -> T:
-    """Make an iterator that chains all iterables from a single list of iterables."""
+def chain[T](first: list[T], second: list[T], third: list[T]) -> Iterator[T]:
+    """Make an iterator that returns elements from each iterable in turn until all are exhausted."""
+    return iter[T](_chain_core(first, second, third))
+
+def _chain_from_iterable_core[T](iterables: list[list[T]]) -> T:
     for inner in iterables:
         for item in inner:
             yield item
 
-def starmap[T1, T2, R](func: (T1, T2) -> R, iterable: list[tuple[T1, T2]]) -> R:
-    """Make an iterator that computes the function using arguments obtained from the iterable."""
+def chain_from_iterable[T](iterables: list[list[T]]) -> Iterator[T]:
+    """Make an iterator that chains all iterables from a single list of iterables."""
+    return iter[T](_chain_from_iterable_core(iterables))
+
+def _starmap_core[T1, T2, R](func: (T1, T2) -> R, iterable: list[tuple[T1, T2]]) -> R:
     for a, b in iterable:
         yield func(a, b)
 
-def zip_longest[T](first: list[T], second: list[T], fillvalue: T) -> tuple[T, T]:
-    """Make an iterator that aggregates elements from each iterable, filling missing values with fillvalue."""
+def starmap[T1, T2, R](func: (T1, T2) -> R, iterable: list[tuple[T1, T2]]) -> Iterator[R]:
+    """Make an iterator that computes the function using arguments obtained from the iterable."""
+    return iter[R](_starmap_core(func, iterable))
+
+def _zip_longest_core[T](first: list[T], second: list[T], fillvalue: T) -> tuple[T, T]:
     len_first: int = len(first)
     len_second: int = len(second)
     limit: int = len_first if len_first > len_second else len_second
@@ -221,8 +239,11 @@ def zip_longest[T](first: list[T], second: list[T], fillvalue: T) -> tuple[T, T]
         yield (x, y)
         i = i + 1
 
-def groupby[T, K: IEquatable[K]](iterable: list[T], key: (T) -> K) -> tuple[K, list[T]]:
-    """Make an iterator that returns consecutive keys and groups from the iterable."""
+def zip_longest[T](first: list[T], second: list[T], fillvalue: T) -> Iterator[tuple[T, T]]:
+    """Make an iterator that aggregates elements from each iterable, filling missing values with fillvalue."""
+    return iter[tuple[T, T]](_zip_longest_core(first, second, fillvalue))
+
+def _groupby_core[T, K: IEquatable[K]](iterable: list[T], key: (T) -> K) -> tuple[K, list[T]]:
     items: list[T] = list(iterable)
     if len(items) == 0:
         return
@@ -240,21 +261,30 @@ def groupby[T, K: IEquatable[K]](iterable: list[T], key: (T) -> K) -> tuple[K, l
         i = i + 1
     yield (current_key, group)
 
-def product[T1, T2](first: list[T1], second: list[T2]) -> tuple[T1, T2]:
-    """Cartesian product of two input iterables, equivalent to nested for-loops."""
+def groupby[T, K: IEquatable[K]](iterable: list[T], key: (T) -> K) -> Iterator[tuple[K, list[T]]]:
+    """Make an iterator that returns consecutive keys and groups from the iterable."""
+    return iter[tuple[K, list[T]]](_groupby_core(iterable, key))
+
+def _product_core[T1, T2](first: list[T1], second: list[T2]) -> tuple[T1, T2]:
     for x in first:
         for y in second:
             yield (x, y)
 
-def product[T1, T2, T3](first: list[T1], second: list[T2], third: list[T3]) -> tuple[T1, T2, T3]:
-    """Cartesian product of three input iterables, equivalent to nested for-loops."""
+def product[T1, T2](first: list[T1], second: list[T2]) -> Iterator[tuple[T1, T2]]:
+    """Cartesian product of two input iterables, equivalent to nested for-loops."""
+    return iter[tuple[T1, T2]](_product_core(first, second))
+
+def _product_core[T1, T2, T3](first: list[T1], second: list[T2], third: list[T3]) -> tuple[T1, T2, T3]:
     for x in first:
         for y in second:
             for z in third:
                 yield (x, y, z)
 
-def combinations[T](iterable: list[T], r: int) -> list[T]:
-    """Return successive r-length combinations of elements in the iterable."""
+def product[T1, T2, T3](first: list[T1], second: list[T2], third: list[T3]) -> Iterator[tuple[T1, T2, T3]]:
+    """Cartesian product of three input iterables, equivalent to nested for-loops."""
+    return iter[tuple[T1, T2, T3]](_product_core(first, second, third))
+
+def _combinations_core[T](iterable: list[T], r: int) -> list[T]:
     if r < 0:
         raise ValueError("r must be non-negative")
     pool: list[T] = list(iterable)
@@ -293,8 +323,11 @@ def combinations[T](iterable: list[T], r: int) -> list[T]:
     for result in results:
         yield result
 
-def permutations[T](iterable: list[T], r: int = -1) -> list[T]:
-    """Return successive r-length permutations of elements in the iterable. A negative r means full length."""
+def combinations[T](iterable: list[T], r: int) -> Iterator[list[T]]:
+    """Return successive r-length combinations of elements in the iterable."""
+    return iter[list[T]](_combinations_core(iterable, r))
+
+def _permutations_core[T](iterable: list[T], r: int) -> list[T]:
     pool: list[T] = list(iterable)
     n: int = len(pool)
     size: int = n if r < 0 else r
@@ -350,8 +383,11 @@ def permutations[T](iterable: list[T], r: int = -1) -> list[T]:
     for result in results:
         yield result
 
-def combinations_with_replacement[T](iterable: list[T], r: int) -> list[T]:
-    """Return successive r-length combinations of elements in the iterable allowing individual elements to be repeated."""
+def permutations[T](iterable: list[T], r: int = -1) -> Iterator[list[T]]:
+    """Return successive r-length permutations of elements in the iterable. A negative r means full length."""
+    return iter[list[T]](_permutations_core(iterable, r))
+
+def _combinations_with_replacement_core[T](iterable: list[T], r: int) -> list[T]:
     if r < 0:
         raise ValueError("r must be non-negative")
     pool: list[T] = list(iterable)
@@ -389,3 +425,7 @@ def combinations_with_replacement[T](iterable: list[T], r: int) -> list[T]:
         results.append(combo)
     for result in results:
         yield result
+
+def combinations_with_replacement[T](iterable: list[T], r: int) -> Iterator[list[T]]:
+    """Return successive r-length combinations of elements in the iterable allowing individual elements to be repeated."""
+    return iter[list[T]](_combinations_with_replacement_core(iterable, r))
