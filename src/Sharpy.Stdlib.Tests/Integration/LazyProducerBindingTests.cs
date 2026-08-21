@@ -1,3 +1,4 @@
+using System.Linq;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -596,5 +597,81 @@ def main() -> None:
 
         Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
         Assert.Equal("3\n", result.StandardOutput);
+    }
+
+    /// <summary>
+    /// Type-level pin for the whole #1354 flip: every flipped itertools producer returns
+    /// <c>Sharpy.Iterator&lt;T&gt;</c> in the COMPILED stdlib assembly — the artifact user
+    /// code actually binds against.
+    /// </summary>
+    /// <remarks>
+    /// The per-producer <c>*_OutputMatchesCPython</c> cells above prove CPython output parity,
+    /// but for a finite, side-effect-free producer the final output is identical whether the
+    /// sequence is lazily generated or eagerly materialized — output parity alone cannot pin
+    /// laziness. The laziness fact is the return TYPE (an <c>Iterator&lt;T&gt;</c> takes the
+    /// bridge arm that #1251's materialization rule never touches — see the class remarks), so
+    /// this sweep asserts it directly for every producer at once, on the built assembly rather
+    /// than on emitted C#: a stale committed artifact cannot fake it, and a future revert of
+    /// any single producer fails here by name.
+    /// </remarks>
+    [Fact]
+    public void EveryFlippedProducer_ReturnsIteratorInCompiledAssembly()
+    {
+        var flippedProducers = new[]
+        {
+            "Count", "Repeat", "Cycle", "Compress", "Dropwhile", "Takewhile", "Filterfalse",
+            "Islice", "IsliceRange", "Pairwise", "Accumulate", "Chain", "ChainFromIterable",
+            "Starmap", "ZipLongest", "Product", "Combinations", "Permutations",
+            "CombinationsWithReplacement",
+        };
+
+        var publicStatic = typeof(Sharpy.Itertools).GetMethods(
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+
+        // Itertools/__Init__.cs (#835) deliberately keeps a handwritten .NET-interop adapter
+        // layer next to the generated producers: overloads taking IEnumerable<T> (or, for
+        // Repeat, uint) that delegate inward. They are not reachable from Sharpy source —
+        // itertools.cycle(generator) is refused SPY0354 (measured at 445f0d80c) — so their
+        // eager IEnumerable<T> return type cannot re-trigger #1251's materialization. The
+        // exemption is SHAPE-keyed, not name-keyed, so it stays falsifiable: a generated
+        // producer that regressed to IEnumerable<T> still takes Sharpy.List<T>/scalar
+        // parameters and fails below.
+        static bool IsInteropAdapterShape(System.Reflection.MethodInfo method)
+            => method.GetParameters().Any(p =>
+                (p.ParameterType.IsGenericType
+                    && p.ParameterType.GetGenericTypeDefinition()
+                        == typeof(System.Collections.Generic.IEnumerable<>))
+                || (p.ParameterType.IsArray
+                    && p.ParameterType.GetElementType() is { IsGenericType: true } elem
+                    && elem.GetGenericTypeDefinition()
+                        == typeof(System.Collections.Generic.IEnumerable<>))
+                || p.ParameterType == typeof(uint));
+
+        foreach (var name in flippedProducers)
+        {
+            var producerOverloads = publicStatic
+                .Where(m => m.Name == name && !IsInteropAdapterShape(m))
+                .ToList();
+            Assert.True(
+                producerOverloads.Count > 0,
+                $"expected a public non-adapter producer named {name} on Sharpy.Itertools");
+            foreach (var method in producerOverloads)
+            {
+                Assert.True(
+                    method.ReturnType.IsGenericType
+                    && method.ReturnType.GetGenericTypeDefinition() == typeof(Sharpy.Iterator<>),
+                    $"{name} returns {method.ReturnType} — a flipped producer must return Sharpy.Iterator<T> (#1354)");
+            }
+        }
+
+        // groupby is the one producer NOT flipped — iter[tuple[K, list[T]]] is refused when K
+        // carries a type constraint (#1600). Pin its CURRENT eager shape positively (not by
+        // skipping it) so the day #1600 lands this assertion goes red and Groupby moves into
+        // flippedProducers above — the exemption drains on fix instead of going stale.
+        var groupby = Assert.Single(publicStatic, m => m.Name == "Groupby");
+        Assert.True(
+            groupby.ReturnType.IsGenericType
+            && groupby.ReturnType.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IEnumerable<>),
+            $"Groupby returns {groupby.ReturnType} — if it now returns Iterator<T>, #1600 is fixed: move it into flippedProducers");
     }
 }
