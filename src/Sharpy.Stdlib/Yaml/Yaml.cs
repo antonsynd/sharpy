@@ -414,27 +414,65 @@ namespace Sharpy
 
         /// <summary>
         /// The first required field of <typeparamref name="T"/> that <paramref name="text"/>'s
-        /// top-level mapping omits, or <c>null</c> when none is missing.
+        /// document tree omits, walking the whole tree (#1513), or <c>null</c> when none is missing.
         /// </summary>
-        /// <remarks>
-        /// Reads the key set from a throwaway UNTYPED deserialization rather than from the typed
-        /// value, because the typed value is exactly what cannot be trusted here: the object
-        /// factory has already substituted a placeholder for the absent field by the time it
-        /// exists. A malformed document yields no keys here and falls through to the real
-        /// deserialization below, so its YamlException stays the reported error rather than being
-        /// reported as a missing field.
-        /// </remarks>
         private static string? MissingRequiredField<T>(string text)
         {
             try
             {
                 object? untyped = CreateDeserializer().Deserialize<object>(text);
-                return TypedLoadContract.FirstMissingRequiredField<T>(
-                    TypedLoadContract.KeysOf(untyped));
+                return TypedLoadContract.FirstMissingRequiredFieldPath<T>(
+                    new YamlObjectNode(untyped));
             }
             catch (YamlException)
             {
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// <see cref="TypedLoadContract.IDocumentNode"/> adapter over the untyped YAML object
+        /// graph (<c>IDictionary</c> → mapping, <c>IList</c> → sequence).
+        /// </summary>
+        private readonly struct YamlObjectNode : TypedLoadContract.IDocumentNode
+        {
+            private readonly object? _value;
+
+            public YamlObjectNode(object? value)
+            {
+                _value = value;
+            }
+
+            public bool IsMapping => _value is System.Collections.IDictionary;
+            public bool IsSequence => _value is System.Collections.IList && !(_value is string);
+
+            public IEnumerable<string> Keys => TypedLoadContract.KeysOf(_value);
+
+            public TypedLoadContract.IDocumentNode GetChild(string key)
+            {
+                if (_value is IDictionary<string, object?> typed)
+                    return new YamlObjectNode(typed[key]);
+
+                if (_value is System.Collections.IDictionary untyped)
+                    return new YamlObjectNode(untyped[key]);
+
+                throw new InvalidOperationException("not a mapping");
+            }
+
+            public IEnumerable<(string indexLabel, TypedLoadContract.IDocumentNode element)> Elements
+            {
+                get
+                {
+                    if (_value is System.Collections.IList list)
+                    {
+                        for (int i = 0; i < list.Count; i++)
+                        {
+                            yield return (
+                                i.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                                new YamlObjectNode(list[i]));
+                        }
+                    }
+                }
             }
         }
 
