@@ -1,0 +1,3 @@
+import math
+
+x: float = math.Pi
