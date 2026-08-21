@@ -3,7 +3,6 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
-using Sharpy.Compiler.Parser.Ast;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Sharpy.Lsp.Handlers;
@@ -39,13 +38,7 @@ internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
         if (node == null)
             return null;
 
-        // Resolve the symbol
-        var symbol = node switch
-        {
-            Identifier id => analysis.SemanticQuery.GetIdentifierSymbol(id),
-            FunctionCall call => analysis.SemanticQuery.GetCallTarget(call),
-            _ => null
-        };
+        var symbol = DeclarationCursorResolver.Resolve(node, analysis.SemanticQuery, line, col, logger: null);
 
         if (symbol == null)
             return null;
@@ -55,8 +48,8 @@ internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
         // reported twice at the same range (#1263).
         var seen = new RangeDedupe();
 
-        // Include declaration if requested
-        if (request.Context.IncludeDeclaration && symbol.DeclarationSpan != null)
+        // Unified gate: previously DeclarationSpan (refs) vs DeclarationLine (highlight)
+        if (request.Context.IncludeDeclaration && symbol.EffectiveNameLine != null)
         {
             var declLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
             var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);

@@ -2,8 +2,6 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler;
-using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Semantic;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Sharpy.Lsp.Handlers;
@@ -39,13 +37,7 @@ internal sealed class SharpyDocumentHighlightHandler : DocumentHighlightHandlerB
         if (node == null)
             return null;
 
-        // Resolve the symbol
-        var symbol = node switch
-        {
-            Identifier id => analysis.SemanticQuery.GetIdentifierSymbol(id),
-            FunctionCall call => analysis.SemanticQuery.GetCallTarget(call) as Symbol,
-            _ => null
-        };
+        var symbol = DeclarationCursorResolver.Resolve(node, analysis.SemanticQuery, line, col, logger: null);
 
         if (symbol == null)
             return null;
@@ -55,8 +47,8 @@ internal sealed class SharpyDocumentHighlightHandler : DocumentHighlightHandlerB
         // the declaration is added first, so the Read duplicate is the one dropped (#1263).
         var seen = new RangeDedupe();
 
-        // Add declaration highlight (Write kind)
-        if (symbol.DeclarationLine != null)
+        // Unified gate: previously DeclarationSpan (refs) vs DeclarationLine (highlight)
+        if (symbol.EffectiveNameLine != null)
         {
             var declLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
             var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
