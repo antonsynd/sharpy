@@ -242,8 +242,15 @@ public class ProtocolTests : IAsyncLifetime
             await _client.DidChangeAsync(uri, $"def main():\n    x: int = {i}\n    print(x)", i);
         }
 
-        // The last diagnostics we receive should be for valid code (zero diagnostics)
-        JsonNode? lastNotification = null;
+        // The last diagnostics we receive should be for valid code (zero diagnostics).
+        // Wait generously (and loudly) for the FIRST post-change notification — analyzing
+        // the burst can outlast the drain window on a slow CI runner, and the short timeout
+        // below means "no more coming", not "first one not here yet" (conflating the two
+        // was a mainline CI flake at 9455e7799: the notification landed just after the
+        // 5 s waiter gave up).
+        JsonNode? lastNotification = await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(30));
         while (true)
         {
             try
@@ -347,8 +354,12 @@ public class ProtocolTests : IAsyncLifetime
             ]);
         }
 
-        // Drain all diagnostics and verify the last one is clean
-        JsonNode? lastNotification = null;
+        // Drain all diagnostics and verify the last one is clean. Same first-wait-then-drain
+        // shape as RapidDidChange_ProducesLatestDiagnostics: the generous first wait throws
+        // loudly if nothing arrives; the short timeout only ends the drain.
+        JsonNode? lastNotification = await _client.WaitForNotificationAsync(
+            "textDocument/publishDiagnostics",
+            TimeSpan.FromSeconds(30));
         while (true)
         {
             try
