@@ -389,6 +389,33 @@ def main() -> None:
             "options-supplied features must reach AnalyzeProject's feature gate");
     }
 
+    // ----- Option immutability tests (#1140 H8) -----
+
+    [Fact]
+    public void Analyze_DoesNotMutateCallerOptions()
+    {
+        var options = new CompilerOptions { References = new[] { "/fake/ref.dll" } };
+        var originalRefs = options.References.ToArray();
+
+        _api.Analyze("x: int = 1", options);
+        _api.Analyze("y: int = 2", options);
+
+        options.References.Should().BeEquivalentTo(originalRefs,
+            "MergeDefaultReferences must not mutate the caller's CompilerOptions (#1140 H8)");
+    }
+
+    [Fact]
+    public void Compile_DoesNotMutateCallerOptions()
+    {
+        var options = new CompilerOptions { References = new[] { "/fake/ref.dll" } };
+        var originalRefs = options.References.ToArray();
+
+        _api.Compile("print(1)", options);
+
+        options.References.Should().BeEquivalentTo(originalRefs,
+            "MergeDefaultReferences must not mutate the caller's CompilerOptions (#1140 H8)");
+    }
+
     // ----- Result immutability tests -----
 
     [Fact]

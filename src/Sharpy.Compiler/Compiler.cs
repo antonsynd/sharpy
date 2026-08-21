@@ -551,4 +551,11 @@ public class CompilerOptions
     /// assembly emission entirely.
     /// </summary>
     public string? OutputAssemblyPath { get; set; }
+
+    internal CompilerOptions WithReferences(string[] references)
+    {
+        var copy = (CompilerOptions)MemberwiseClone();
+        copy.References = references;
+        return copy;
+    }
 }

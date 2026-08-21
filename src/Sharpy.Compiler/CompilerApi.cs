@@ -82,8 +82,7 @@ public sealed class CompilerApi
         string? filePath = null,
         CancellationToken cancellationToken = default)
     {
-        var opts = options ?? CompilerOptionsFactory.Default();
-        MergeDefaultReferences(opts);
+        var opts = WithMergedReferences(options ?? CompilerOptionsFactory.Default());
 
         // #1038: a single-file compile is a synthetic project-of-one-file driven through
         // ProjectCompiler. When the entry is a real file on disk, the project pipeline
@@ -424,8 +423,7 @@ public sealed class CompilerApi
     private SemanticResult AnalyzeCore(string source, string entryPath, bool nullifyEntryFilePath,
         CompilerOptions options, CompilationMetrics? stageMetrics, CancellationToken cancellationToken)
     {
-        var opts = options ?? CompilerOptionsFactory.ForLibraryAnalysis();
-        MergeDefaultReferences(opts);
+        var opts = WithMergedReferences(options ?? CompilerOptionsFactory.ForLibraryAnalysis());
 
         ProjectConfig config;
         using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.SyntheticProjectSetup))
@@ -546,15 +544,18 @@ public sealed class CompilerApi
     }
 
     /// <summary>
-    /// Merges <see cref="_defaultReferences"/> into the given options.
+    /// Returns <paramref name="options"/> with <see cref="_defaultReferences"/> folded into
+    /// <see cref="CompilerOptions.References"/>. Never mutates the input — the LSP's shared
+    /// <c>_workspaceOptions</c> stays pristine so <c>SameAnalysisInputs</c> compares like
+    /// against like (#1140 H8).
     /// </summary>
-    private void MergeDefaultReferences(CompilerOptions options)
+    private CompilerOptions WithMergedReferences(CompilerOptions options)
     {
         if (_defaultReferences.Length == 0)
-            return;
+            return options;
 
         var existing = options.References ?? Array.Empty<string>();
-        options.References = existing.Concat(_defaultReferences).Distinct().ToArray();
+        return options.WithReferences(existing.Concat(_defaultReferences).Distinct().ToArray());
     }
 
     /// <summary>
