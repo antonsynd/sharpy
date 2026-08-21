@@ -598,7 +598,7 @@ internal class ModuleRegistry
         return null;
     }
 
-    private static readonly HashSet<string> _loadedRuntimeNamespaces = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, byte> _loadedRuntimeNamespaces = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Loads runtime assemblies whose names match or start with the given .NET namespace.
@@ -607,7 +607,7 @@ internal class ModuleRegistry
     /// </summary>
     private void EnsureRuntimeAssembliesLoaded(string netNamespace)
     {
-        if (!_loadedRuntimeNamespaces.Add(netNamespace))
+        if (!_loadedRuntimeNamespaces.TryAdd(netNamespace, 0))
             return;
 
         var tpaString = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;

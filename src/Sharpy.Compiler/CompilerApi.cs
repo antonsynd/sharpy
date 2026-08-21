@@ -36,6 +36,9 @@ public sealed class CompilerApi
     private readonly AstPositionService _positionService = new();
     private readonly string[] _defaultReferences;
 
+    private readonly object _analysisCacheLock = new();
+    private AnalysisCacheEntry? _analysisCache;
+
     /// <summary>
     /// Creates a new CompilerApi with default settings.
     /// </summary>
@@ -433,17 +436,14 @@ public sealed class CompilerApi
         }
 
         ModuleRegistry? registry;
+        BuiltinRegistry builtins;
         using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.ModuleRegistry))
         {
-            registry = BuildModuleRegistry(config);
+            (registry, builtins) = GetOrBuildAnalysisContext(config);
         }
 
-        // SyntheticProject.Analyze constructs the ProjectCompiler with the caller's full
-        // options (WarningsAsErrors, SuppressedWarnings, MaxErrors, Features), locates the
-        // entry unit, and positions the shared symbol table at the entry file's module scope
-        // so bare SymbolTable.Lookup resolves module-level symbols.
         var result = SyntheticProject.Analyze(config, opts, _logger, registry,
-            _emitterFactory, cancellationToken, stageMetrics);
+            _emitterFactory, cancellationToken, stageMetrics, builtins);
         var analysis = result.Analysis;
         Project.FileAnalysisResult? entryResult;
         using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.EntryFileResult))
@@ -488,15 +488,13 @@ public sealed class CompilerApi
     {
         var opts = options ?? CompilerOptionsFactory.Default();
 
-        // Same option×project merge the compile path uses, so .spyproj analysis gates (SPY0331)
-        // and warns identically to .spyproj compilation (#1109). Analysis never emits, so
-        // incremental stays false and MaxErrors comes from the options only.
-        var registry = BuildModuleRegistry(config);
+        var (registry, builtins) = GetOrBuildAnalysisContext(config);
         var compiler = new Project.ProjectCompiler(
             logger: _logger,
             moduleRegistry: registry,
             options: ProjectOptionsMerge.Merge(opts, config, incremental: false),
-            emitterFactory: _emitterFactory);
+            emitterFactory: _emitterFactory,
+            builtinRegistry: builtins);
         return compiler.AnalyzeProject(config, cancellationToken);
     }
 
@@ -587,5 +585,72 @@ public sealed class CompilerApi
             registry.AddModulePath(modulePath);
 
         return registry;
+    }
+
+    /// <summary>
+    /// Returns a cached <see cref="AnalysisCacheEntry"/> when the reference set is unchanged
+    /// (path + mtime identity), or builds a fresh one and caches it. The compile path bypasses
+    /// this entirely — H5/H6/H9 make per-call fresh registries essential there.
+    /// </summary>
+    private (ModuleRegistry? Registry, BuiltinRegistry Builtins) GetOrBuildAnalysisContext(
+        ProjectConfig config)
+    {
+        var key = BuildAnalysisCacheKey(config);
+
+        lock (_analysisCacheLock)
+        {
+            if (_analysisCache != null && _analysisCache.Key.SequenceEqual(key))
+                return (_analysisCache.Registry, _analysisCache.Builtins);
+        }
+
+        var builtins = new BuiltinRegistry(_logger);
+        var registry = BuildModuleRegistry(config);
+
+        var entry = new AnalysisCacheEntry(key, registry, builtins);
+        lock (_analysisCacheLock)
+        {
+            _analysisCache = entry;
+        }
+
+        return (registry, builtins);
+    }
+
+    private IReadOnlyList<(string Path, long Ticks)> BuildAnalysisCacheKey(ProjectConfig config)
+    {
+        var parts = new List<(string Path, long Ticks)>();
+
+        foreach (var r in _defaultReferences)
+            parts.Add((r, GetMtimeTicks(r)));
+
+        foreach (var r in config.References)
+            parts.Add((r, GetMtimeTicks(r)));
+
+        foreach (var m in config.ModulePaths)
+            parts.Add((m, GetMtimeTicks(m)));
+
+        return parts;
+
+        static long GetMtimeTicks(string path)
+        {
+            try { return File.GetLastWriteTimeUtc(path).Ticks; }
+            catch { return 0; }
+        }
+    }
+
+    private sealed class AnalysisCacheEntry
+    {
+        public IReadOnlyList<(string Path, long Ticks)> Key { get; }
+        public ModuleRegistry? Registry { get; }
+        public BuiltinRegistry Builtins { get; }
+
+        public AnalysisCacheEntry(
+            IReadOnlyList<(string Path, long Ticks)> key,
+            ModuleRegistry? registry,
+            BuiltinRegistry builtins)
+        {
+            Key = key;
+            Registry = registry;
+            Builtins = builtins;
+        }
     }
 }
