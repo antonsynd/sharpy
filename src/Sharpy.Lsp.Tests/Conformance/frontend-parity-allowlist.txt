@@ -21,4 +21,42 @@
 # baseline and `compile` included — so all five doors now describe the same named program and both
 # entries were deleted.
 
-# (empty — the ratchet currently holds at ZERO known violations)
+# --- Partial-AST analysis divergence (#1360) — PERMANENT ---
+#
+# Phase 5 of Batch 9 (#1360) introduced ParsedWithErrors: the Analyze baseline now
+# runs semantic phases over parse-errored files, surfacing additional diagnostics
+# (SPY0200, SPY0220, SPY0260, SPY0451, SPY0452) that the compile path correctly
+# does NOT produce (compile stops at parse errors — DD6). This is by design: the
+# LSP needs the extra diagnostics for squiggles, but compile's door stays shut.
+compile::errors/nested_placeholder
+compile::errors/parser_recovery_try_errors
+compile::errors/parser_recovery_while_for_errors
+compile::errors/missing_colon_def
+compile::imports/import_decorator_rejected
+compile::errors/parser_recovery_nested_brackets
+compile::errors/walrus_type_annotation_error
+compile::errors/parser_recovery_consecutive_errors
+compile::errors/del_rejected
+compile::expressions/dict_spread_call
+compile::errors/inline_non_stub_body
+compile::async/async_invalid_keyword_error
+compile::pattern_matching/list_pattern_two_stars
+compile::errors/partial_with_spread
+compile::decorators/bracket_attr_missing_close
+compile::errors/parser_recovery_const_type_alias_errors
+compile::lambdas/lambda_operand_boolean_or
+compile::lambdas/arrow_lambda_missing_body
+compile::errors/parser_recovery_nested_errors
+compile::errors/parser_recovery_mixed_statements
+compile::errors/match_generic_type_pattern_error
+compile::errors/free_union_not_supported
+compile::errors/parser_recovery_compound_chain
+compile::errors/variadic_with_default
+compile::exceptions/raise_from_not_supported
+compile::lambdas/lambda_operand_comprehension_iter
+compile::lambdas/lambda_operand_comparison
+compile::lambdas/lambda_operand_conditional_test
+compile::errors/parser_recovery_deeply_nested
+compile::exception_handling/raise_from_variable_0001
+compile::errors/parser_recovery_expression_error
+compile::lambdas/lambda_operand_not

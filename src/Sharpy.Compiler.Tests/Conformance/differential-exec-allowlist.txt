@@ -141,4 +141,13 @@ fixture::transition/transition_isinstance_tuple_builtins
 # collapses the parens and reads plain int — both branches flip. Same ruling, same entry class.
 fixture::isinstance_tuple_single_element_1532
 
+# JSON serialization of non-finite floats: Sharpy's json.dumps permits Infinity/NaN
+# by default (matching JavaScript's JSON.stringify), while CPython's json.dumps raises
+# ValueError unless allow_nan=True is passed. The fixture was previously excluded from
+# the oracle by its PascalCase spellings (math.Inf/math.Nan); Batch 9 #1540 re-keyed
+# those to math.inf/math.nan, which brought the fixture into the shared subset and
+# exposed this long-standing designed deviation.
+# deviations.yaml: json-non-finite-default. Permanent.
+fixture::stdlib-tests/stdlib_json_non_finite_1296
+
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
