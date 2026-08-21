@@ -46,7 +46,7 @@ namespace Sharpy
         /// So the condition is the emitted scalar's STYLE, not the value's kind: a quoted scalar
         /// gets no marker even though it is a scalar. That is why this reads the emitted text rather
         /// than the value — style is not a function of the value alone.
-        /// <c>YamlAmbiguousStringTypeConverter</c> quotes what the resolver would re-type (#1417),
+        /// <c>YamlStringStyleConverter</c> quotes what the resolver would re-type (#1417),
         /// and YamlDotNet independently quotes anything whose spelling would not survive plain: a
         /// colon-space, a leading indicator character, a control character. Only the output knows
         /// which of them fired.

@@ -248,7 +248,7 @@ namespace Sharpy
 
             // Unconditional for the same reason: whether a string needs quotes is not a style
             // choice either — it is whether the text would read back as something else (#1417).
-            builder = builder.WithTypeConverter(new YamlAmbiguousStringTypeConverter());
+            builder = builder.WithTypeConverter(new YamlStringStyleConverter());
 
             if (defaultFlowStyle)
             {
@@ -578,41 +578,17 @@ namespace Sharpy
     }
 
     /// <summary>
-    /// Quotes a string whose text would read back as something other than a string (#1417).
+    /// Styles every string scalar through <see cref="YamlScalarStyleAuthority"/> — the one
+    /// authority that implements PyYAML 6.0.3's scalar-style rules (#1542). Never emits
+    /// <c>ScalarStyle.Any</c> — every string gets an explicit decision.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <c>safe_dump("true")</c> emitted the bare scalar <c>true</c>, which <c>safe_load</c> then
-    /// read as the BOOLEAN — silent type corruption across a serialization boundary, and the
-    /// round trip <c>safe_load(safe_dump(x)) == x</c> that PyYAML holds did not hold here. The same
-    /// went for <c>"42"</c>, <c>"1.5"</c>, <c>"null"</c> and every other text the implicit resolver
-    /// claims.
-    /// </para>
-    /// <para>
-    /// The rule is PyYAML's: quote a plain scalar exactly when the implicit resolver would give it
-    /// a non-<c>str</c> tag. It is asked of <see cref="YamlScalarResolver"/> — the same authority
-    /// <c>safe_load</c> and <c>roundtrip_load</c> resolve through — so the two directions cannot
-    /// disagree by construction. A rule spelled twice is a rule that will disagree with itself
-    /// (#1145); this is the third consumer of that one spelling, not a fourth copy of it.
-    /// </para>
-    /// <para>
-    /// Scope, stated because it is narrower than it looks: this makes dump agree with Sharpy's
-    /// LOAD, not with PyYAML's. Sharpy's resolver implements a subset of YAML 1.1, and #1465
-    /// closed most of the gap — <c>yes</c>, <c>0x1A</c> and <c>1_000</c> are now typed, so they
-    /// are now quoted here too, without a line changing in this class. That is the one-authority
-    /// design paying out: the families were added to <c>YamlScalarResolver</c> and the dump side
-    /// followed. What remains bare is what the resolver deliberately does not claim —
-    /// <c>12:30</c> (sexagesimal, declined) and <c>2024-01-01</c> (timestamp, deferred), both
-    /// recorded as decisions on <c>YamlScalarResolver.Resolve</c>.
-    /// </para>
-    /// <para>
     /// A type converter rather than a <c>ChainedEventEmitter</c>, for the reason recorded on
     /// <see cref="YamlFloatTypeConverter"/>: an emitter that sets <c>RenderedValue</c> is
     /// overwritten by the built-in type-assigning emitter further down the chain. Registered on the
     /// SERIALIZER only, so reading is untouched.
-    /// </para>
     /// </remarks>
-    internal sealed class YamlAmbiguousStringTypeConverter : IYamlTypeConverter
+    internal sealed class YamlStringStyleConverter : IYamlTypeConverter
     {
         /// <inheritdoc />
         public bool Accepts(Type type) => type == typeof(string);
@@ -620,18 +596,21 @@ namespace Sharpy
         /// <inheritdoc />
         public object? ReadYaml(IParser parser, Type type, ObjectDeserializer rootDeserializer)
             => throw new NotSupportedException(
-                "YamlAmbiguousStringTypeConverter is registered on the serializer only; parsing strings stays with the deserializer.");
+                "YamlStringStyleConverter is registered on the serializer only.");
 
         /// <inheritdoc />
         public void WriteYaml(IEmitter emitter, object? value, Type type, ObjectSerializer serializer)
         {
             string text = value as string ?? string.Empty;
+            bool wouldResolve = !(YamlScalarResolver.Resolve(text) is string);
+            var decided = YamlScalarStyleAuthority.Choose(text, wouldResolve);
 
-            // Single-quoted is PyYAML's choice for this case, and it is the weakest quoting that
-            // does the job: it suppresses resolution without introducing escape processing.
-            ScalarStyle style = YamlScalarResolver.Resolve(text) is string
-                ? ScalarStyle.Any
-                : ScalarStyle.SingleQuoted;
+            ScalarStyle style = decided switch
+            {
+                YamlScalarStyleAuthority.Style.SingleQuoted => ScalarStyle.SingleQuoted,
+                YamlScalarStyleAuthority.Style.DoubleQuoted => ScalarStyle.DoubleQuoted,
+                _ => ScalarStyle.Plain,
+            };
 
             emitter.Emit(new Scalar(AnchorName.Empty, TagName.Empty, text, style, true, false));
         }

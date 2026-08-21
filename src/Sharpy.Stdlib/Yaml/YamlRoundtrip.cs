@@ -527,7 +527,7 @@ namespace Sharpy
         /// </para>
         /// <para>
         /// Single quoting is preferred because it suppresses resolution without introducing
-        /// escape processing — the same reason <c>YamlAmbiguousStringTypeConverter</c> gives for
+        /// escape processing — the same reason <c>YamlStringStyleConverter</c> gives for
         /// choosing it. Double quoting is reached for only when single quoting CANNOT carry the
         /// text, and PyYAML 6.0.3's boundary for that was measured rather than guessed: a newline
         /// is fine single-quoted (<c>'line1\n\n  line2'</c>), and so are leading and trailing
