@@ -53,6 +53,18 @@ internal partial class TypeChecker
 
     private SemanticType CheckMemberAccessCore(MemberAccess memberAccess)
     {
+        // Trailing-dot recovery (#1360): the parser produced a MemberAccess with Member = ""
+        // to preserve the receiver for LSP completion. Resolve the receiver normally so
+        // completion can read its type, then suppress cascading diagnostics.
+        if (memberAccess.Member.Length == 0)
+        {
+            using (ScopedValue.Push(ref _currentMemberAccessQualifier, memberAccess.Object))
+                CheckExpression(memberAccess.Object);
+            MarkExpressionAsErrorRecovery(memberAccess,
+                ErrorRecoveryReason.AlreadyReported("parser SPY0101 trailing-dot recovery"));
+            return SemanticType.Unknown;
+        }
+
         // Check for super() usage - the parser directly produces SuperExpression for super()
         if (memberAccess.Object is SuperExpression superExpr)
         {
