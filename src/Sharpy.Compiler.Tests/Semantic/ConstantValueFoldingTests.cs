@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -11,6 +13,12 @@ namespace Sharpy.Compiler.Tests.Semantic;
 public class ConstantValueFoldingTests
 {
     private (SymbolTable, SemanticInfo) RunTypeCheck(string source)
+    {
+        var (symbolTable, semanticInfo, _) = RunTypeCheckWithModule(source);
+        return (symbolTable, semanticInfo);
+    }
+
+    private (SymbolTable, SemanticInfo, Module) RunTypeCheckWithModule(string source)
     {
         var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
         var tokens = lexer.TokenizeAll();
@@ -29,7 +37,17 @@ public class ConstantValueFoldingTests
         var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        return (symbolTable, semanticInfo);
+        return (symbolTable, semanticInfo, module);
+    }
+
+    private static IEnumerable<Node> AllNodes(Node node)
+    {
+        yield return node;
+        foreach (var child in node.GetChildNodes())
+        {
+            foreach (var descendant in AllNodes(child))
+                yield return descendant;
+        }
     }
 
     [Fact]
@@ -103,10 +121,19 @@ def main():
     const LOCAL_LIMIT: int = 42
     print(LOCAL_LIMIT)
 ";
-        var (symbolTable, _) = RunTypeCheck(source);
+        // The function scope is popped before the harness returns, so the symbol is
+        // unreachable through the module-level table — fetch it through the declaration
+        // binding SemanticInfo records instead (the same route later passes read it by).
+        var (_, semanticInfo, module) = RunTypeCheckWithModule(source);
 
-        // Function-level const won't be in the module-level symbol table
-        // after exiting the function scope, so test via the module-level path
+        var declaration = AllNodes(module)
+            .OfType<VariableDeclaration>()
+            .Single(d => d.Name == "LOCAL_LIMIT");
+        var symbol = semanticInfo.GetDeclarationSymbol(declaration) as VariableSymbol;
+
+        symbol.Should().NotBeNull();
+        symbol!.IsConstant.Should().BeTrue();
+        symbol.ConstantValue.Should().Be((BigInteger)42);
     }
 
     [Fact]

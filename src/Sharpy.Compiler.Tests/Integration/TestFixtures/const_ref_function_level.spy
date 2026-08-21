@@ -1,0 +1,6 @@
+# #1460: a FUNCTION-LEVEL const reference is a constant expression too — the
+# function-level fold arm (TypeChecker const creation) has its own symbol path.
+def main() -> None:
+    const LOCAL_LIMIT: int = 200
+    b: uint8 = LOCAL_LIMIT
+    print(b)

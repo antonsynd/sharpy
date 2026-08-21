@@ -636,6 +636,7 @@ internal partial class TypeChecker
                 Kind = SymbolKind.Variable,
                 Type = declaredType,
                 IsConstant = true,
+                IsNameBacktickEscaped = varDecl.IsNameBacktickEscaped,
                 DeclarationLine = varDecl.LineStart,
                 DeclarationColumn = varDecl.ColumnStart,
                 NameDeclarationLine = varDecl.NameLineStart,

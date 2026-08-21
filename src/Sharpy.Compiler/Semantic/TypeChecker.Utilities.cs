@@ -597,9 +597,17 @@ internal partial class TypeChecker
         if (value == null)
             return false;
 
-        System.Numerics.BigInteger? ResolveConstant(string name)
+        System.Numerics.BigInteger? ResolveConstant(Identifier id)
         {
-            var sym = _symbolTable.Lookup(name);
+            var sym = _symbolTable.Lookup(id.Name);
+
+            // The escape decides which symbol this spelling denotes, both ways (SPY0212's rule;
+            // mirrors CheckFunctionCall's identifier arm). Without this, a bare spelling folded the
+            // value of an identity-mismatched escaped const while the emitter bound the symbol the
+            // spelling actually names — admitting a conversion the emitted C# cannot perform (SPY0908).
+            if (sym != null && id.IsNameBacktickEscaped != sym.IsNameBacktickEscaped)
+                return null;
+
             return sym is VariableSymbol { IsConstant: true, ConstantValue: not null } vs
                 ? vs.ConstantValue
                 : null;

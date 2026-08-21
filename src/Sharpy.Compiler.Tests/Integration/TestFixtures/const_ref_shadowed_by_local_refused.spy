@@ -1,0 +1,8 @@
+# #1460 scope control: the const-reference resolver answers per-SCOPE symbol,
+# not per-name — a local non-const shadowing a module const must not fold.
+const LIMIT: int = 200
+
+def main() -> None:
+    LIMIT: int = 300
+    b: uint8 = LIMIT
+    print(b)

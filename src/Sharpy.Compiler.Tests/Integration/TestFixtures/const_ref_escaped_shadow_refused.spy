@@ -1,0 +1,11 @@
+# #1460 identity control: a BARE spelling must never fold through a const that
+# was declared backtick-escaped (SPY0212's rule, both ways). Before the fix the
+# escaped local const's symbol dropped its escape flag, the bare `y` below
+# resolved to it, folded 200, and the admitted conversion emitted C# the module
+# -level non-const y could not satisfy — an SPY0908 ICE.
+y: int = 300
+
+def main() -> None:
+    const `y`: int = 200
+    b: uint8 = y
+    print(b)

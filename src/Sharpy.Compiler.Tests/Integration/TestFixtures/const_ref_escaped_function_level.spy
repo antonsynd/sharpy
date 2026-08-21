@@ -1,0 +1,7 @@
+# #1460: a backtick-escaped function-level const folds through its ESCAPED
+# spelling — the symbol records IsNameBacktickEscaped, and the const-reference
+# resolver honors the identity (the escaped spelling names the const).
+def main() -> None:
+    const `y`: int = 200
+    b: uint8 = `y`
+    print(b)

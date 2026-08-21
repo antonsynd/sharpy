@@ -32,9 +32,13 @@ internal static class IntegerConstantEvaluator
     /// lookup. When non-null, an <see cref="Identifier"/> node consults the resolver before giving up,
     /// enabling <c>const LIMIT: int = 200</c> then <c>LIMIT + 1</c> to fold (#1460). The resolver is
     /// threaded through recursive calls so compound expressions over constants fold transitively.
+    /// It receives the whole <see cref="Identifier"/> node, not just the name, because which symbol a
+    /// spelling denotes depends on <see cref="Identifier.IsNameBacktickEscaped"/> (SPY0212's rule) —
+    /// a name-keyed resolver answered a bare spelling from an escaped symbol, folding the WRONG
+    /// symbol's value while the emitter bound the right one: an SPY0908 ICE.
     /// </summary>
     public static bool TryGetConstantInteger(
-        Expression expr, out BigInteger value, Func<string, BigInteger?>? resolver)
+        Expression expr, out BigInteger value, Func<Identifier, BigInteger?>? resolver)
     {
         value = BigInteger.Zero;
 
@@ -45,7 +49,7 @@ internal static class IntegerConstantEvaluator
 
             case Identifier id when resolver != null:
                 {
-                    var resolved = resolver(id.Name);
+                    var resolved = resolver(id);
                     if (resolved == null)
                         return false;
                     value = resolved.Value;
