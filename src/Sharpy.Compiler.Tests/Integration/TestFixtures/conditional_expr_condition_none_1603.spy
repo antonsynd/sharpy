@@ -1,0 +1,5 @@
+# A None literal in ternary condition position must be refused like if/while/assert (#1603);
+# before the fix it reached Roslyn as `null ? … : …`.
+def main() -> None:
+    x: int = 1 if None else 2
+    print(x)

@@ -894,7 +894,16 @@ internal partial class TypeChecker
 
     private SemanticType CheckConditionalExpression(ConditionalExpression cond)
     {
-        CheckExpression(cond.Test);
+        var testType = CheckExpression(cond.Test);
+
+        // The ternary's condition is a truthiness position like if/while/assert (#1603):
+        // without this check a non-bool condition reaches Roslyn as `5 ? … : …`.
+        if (!IsTruthTestable(testType))
+        {
+            AddError($"Conditional expression condition must be boolean, got '{testType.GetDisplayName()}'",
+                cond.LineStart, cond.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: cond.Test.Span);
+        }
 
         // Expression-level narrowing (#1080): the true arm is evaluated only when the condition holds,
         // so it sees the condition's positive narrowings; the false arm sees the negative narrowings.
