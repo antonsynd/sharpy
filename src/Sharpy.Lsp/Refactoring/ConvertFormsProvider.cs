@@ -359,10 +359,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
 
         var typeAnnotation = SharpySourceGenerator.FormatTypeAnnotation(inferredType);
 
-        // The edit inserts ": <type>" after the variable name.
-        // Variable name ends at (LineStart, ColumnStart + Name.Length - 1) in 1-based coords.
-        // We insert right after the name.
-        var nameEndLsp = PositionConverter.ToLsp(varDecl.LineStart, varDecl.ColumnStart + varDecl.Name.Length);
+        var nameEndLsp = PositionConverter.ToLsp(varDecl.NameLineStart, varDecl.NameColumnEnd);
         var insertRange = new LspRange(nameEndLsp, nameEndLsp);
 
         var edit = CreateWorkspaceEdit(context.DocumentUri, insertRange, $": {typeAnnotation}");
@@ -408,8 +405,7 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
 
         var declLine = lines[declLineIndex];
 
-        // Find the colon after the variable name
-        var nameEndOffset = varDecl.ColumnStart - 1 + varDecl.Name.Length;
+        var nameEndOffset = varDecl.NameColumnEnd - 1;
         var colonIndex = declLine.IndexOf(':', nameEndOffset);
         if (colonIndex < 0)
             return;

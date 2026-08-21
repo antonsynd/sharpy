@@ -147,16 +147,16 @@ public sealed class HoverService
     {
         return node switch
         {
-            FunctionDef f when IsOnHeaderName(cursorLine, cursorCol, f.NameLineStart, f.NameColumnStart, f.Name)
-                => (f.NameLineStart, f.NameColumnStart, f.NameColumnStart + f.Name.Length),
-            ClassDef c when IsOnHeaderName(cursorLine, cursorCol, c.NameLineStart, c.NameColumnStart, c.Name)
-                => (c.NameLineStart, c.NameColumnStart, c.NameColumnStart + c.Name.Length),
-            StructDef s when IsOnHeaderName(cursorLine, cursorCol, s.NameLineStart, s.NameColumnStart, s.Name)
-                => (s.NameLineStart, s.NameColumnStart, s.NameColumnStart + s.Name.Length),
-            InterfaceDef i when IsOnHeaderName(cursorLine, cursorCol, i.NameLineStart, i.NameColumnStart, i.Name)
-                => (i.NameLineStart, i.NameColumnStart, i.NameColumnStart + i.Name.Length),
-            EnumDef e when IsOnHeaderName(cursorLine, cursorCol, e.NameLineStart, e.NameColumnStart, e.Name)
-                => (e.NameLineStart, e.NameColumnStart, e.NameColumnStart + e.Name.Length),
+            FunctionDef f when IsOnHeaderName(cursorLine, cursorCol, f.NameLineStart, f.NameColumnStart, f.NameColumnEnd)
+                => (f.NameLineStart, f.NameColumnStart, f.NameColumnEnd),
+            ClassDef c when IsOnHeaderName(cursorLine, cursorCol, c.NameLineStart, c.NameColumnStart, c.NameColumnEnd)
+                => (c.NameLineStart, c.NameColumnStart, c.NameColumnEnd),
+            StructDef s when IsOnHeaderName(cursorLine, cursorCol, s.NameLineStart, s.NameColumnStart, s.NameColumnEnd)
+                => (s.NameLineStart, s.NameColumnStart, s.NameColumnEnd),
+            InterfaceDef i when IsOnHeaderName(cursorLine, cursorCol, i.NameLineStart, i.NameColumnStart, i.NameColumnEnd)
+                => (i.NameLineStart, i.NameColumnStart, i.NameColumnEnd),
+            EnumDef e when IsOnHeaderName(cursorLine, cursorCol, e.NameLineStart, e.NameColumnStart, e.NameColumnEnd)
+                => (e.NameLineStart, e.NameColumnStart, e.NameColumnEnd),
             AwaitExpression aw
                 => (aw.LineStart, aw.ColumnStart, aw.ColumnStart + 5), // "await"
             ReturnStatement ret
@@ -309,7 +309,7 @@ public sealed class HoverService
                     // header identifier — not in the body whitespace or elsewhere.
                     if (line != funcDef.NameLineStart ||
                         col < funcDef.NameColumnStart ||
-                        col >= funcDef.NameColumnStart + funcDef.Name.Length)
+                        col >= funcDef.NameColumnEnd)
                         break;
 
                     // Hover on function name — try global scope first, then class scope
@@ -333,7 +333,7 @@ public sealed class HoverService
                             return baseHover;
                     }
 
-                    if (!IsOnHeaderName(line, col, classDef.NameLineStart, classDef.NameColumnStart, classDef.Name))
+                    if (!IsOnHeaderName(line, col, classDef.NameLineStart, classDef.NameColumnStart, classDef.NameColumnEnd))
                         break;
 
                     var typeSymbol = analysis.SymbolTable?.LookupType(classDef.Name);
@@ -344,7 +344,7 @@ public sealed class HoverService
 
             case StructDef structDef:
                 {
-                    if (!IsOnHeaderName(line, col, structDef.NameLineStart, structDef.NameColumnStart, structDef.Name))
+                    if (!IsOnHeaderName(line, col, structDef.NameLineStart, structDef.NameColumnStart, structDef.NameColumnEnd))
                         break;
 
                     var typeSymbol = analysis.SymbolTable?.LookupType(structDef.Name);
@@ -355,7 +355,7 @@ public sealed class HoverService
 
             case InterfaceDef interfaceDef:
                 {
-                    if (!IsOnHeaderName(line, col, interfaceDef.NameLineStart, interfaceDef.NameColumnStart, interfaceDef.Name))
+                    if (!IsOnHeaderName(line, col, interfaceDef.NameLineStart, interfaceDef.NameColumnStart, interfaceDef.NameColumnEnd))
                         break;
 
                     var typeSymbol = analysis.SymbolTable?.LookupType(interfaceDef.Name);
@@ -366,7 +366,7 @@ public sealed class HoverService
 
             case EnumDef enumDef:
                 {
-                    if (!IsOnHeaderName(line, col, enumDef.NameLineStart, enumDef.NameColumnStart, enumDef.Name))
+                    if (!IsOnHeaderName(line, col, enumDef.NameLineStart, enumDef.NameColumnStart, enumDef.NameColumnEnd))
                         break;
 
                     var typeSymbol = analysis.SymbolTable?.LookupType(enumDef.Name);
@@ -382,7 +382,7 @@ public sealed class HoverService
                         if (item.Name != null &&
                             line == item.NameLineStart &&
                             col >= item.NameColumnStart &&
-                            col < item.NameColumnStart + item.Name.Length)
+                            col < item.NameColumnEnd)
                         {
                             var withVarSymbol = analysis.SemanticQuery?.GetWithItemSymbol(item);
                             if (withVarSymbol != null)
@@ -397,7 +397,7 @@ public sealed class HoverService
                     // Check if cursor is on the variable name
                     if (line == varDecl.NameLineStart &&
                         col >= varDecl.NameColumnStart &&
-                        col < varDecl.NameColumnStart + varDecl.Name.Length)
+                        col < varDecl.NameColumnEnd)
                     {
                         var nameSymbol = analysis.SymbolTable?.LookupVariable(varDecl.Name);
                         if (nameSymbol != null)
@@ -724,9 +724,9 @@ public sealed class HoverService
         return $"({paramTypes}) -> {returnType}";
     }
 
-    private static bool IsOnHeaderName(int line, int col, int nameLine, int nameCol, string name)
+    private static bool IsOnHeaderName(int line, int col, int nameLine, int nameColStart, int nameColEnd)
     {
-        return line == nameLine && col >= nameCol && col < nameCol + name.Length;
+        return line == nameLine && col >= nameColStart && col < nameColEnd;
     }
 
     internal static bool IsPositionInRange(int line, int col, int startLine, int startCol, int endLine, int endCol)

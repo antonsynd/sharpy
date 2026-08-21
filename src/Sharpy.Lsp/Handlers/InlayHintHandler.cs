@@ -123,7 +123,7 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                     // nothing and showed no type (#1222).
                     AddInferredTypeHint(
                         analysis.SemanticQuery!.GetDeclarationSymbol(varDecl),
-                        varDecl.Name, varDecl.NameLineStart, varDecl.NameColumnStart, range, hints);
+                        varDecl.NameLineStart, varDecl.NameColumnStart, varDecl.NameColumnEnd, range, hints);
                 }
 
                 // Check initializer for function calls
@@ -146,7 +146,8 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                     {
                         AddInferredTypeHint(
                             analysis.SemanticQuery!.GetIdentifierSymbol(assignTarget),
-                            assignTarget.Name, assignTarget.LineStart, assignTarget.ColumnStart,
+                            assignTarget.LineStart, assignTarget.ColumnStart,
+                            assignTarget.ColumnStart + SymbolExtents.SourceNameLength(assignTarget.Name, assignTarget.IsNameBacktickEscaped),
                             range, hints);
                     }
                 }
@@ -350,9 +351,9 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
     /// </summary>
     private static void AddInferredTypeHint(
         Symbol? symbol,
-        string name,
         int nameLine,
         int nameColumn,
+        int nameColumnEnd,
         LspRange range,
         List<InlayHint> hints)
     {
@@ -370,7 +371,7 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
         if (lspLine < range.Start.Line || lspLine > range.End.Line)
             return;
 
-        var col = System.Math.Max(0, nameColumn - 1) + name.Length;
+        var col = System.Math.Max(0, nameColumnEnd - 1);
         hints.Add(new InlayHint
         {
             Position = new Position(lspLine, col),

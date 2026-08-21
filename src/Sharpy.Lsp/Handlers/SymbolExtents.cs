@@ -47,6 +47,14 @@ internal static class SymbolExtents
     /// symbol. Editing to the bare name there is the conservative choice — it under-reaches
     /// rather than eating the following segments.
     /// </remarks>
+    /// <summary>
+    /// Source-visible length of a name token that carries no recorded end column (EnumMember,
+    /// Identifier reference, TypeAnnotation). The backtick flag bridges the gap: an escaped
+    /// spelling's source length is the logical name length plus the backtick pair.
+    /// </summary>
+    internal static int SourceNameLength(string name, bool isBacktickEscaped) =>
+        name.Length + (isBacktickEscaped ? BacktickPairLength : 0);
+
     internal static int ReferenceExtentLength(SymbolReference reference, string symbolName)
     {
         var spanLength = reference.Span.Length;

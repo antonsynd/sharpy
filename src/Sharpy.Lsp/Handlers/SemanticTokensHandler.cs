@@ -198,28 +198,29 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case ClassDef c:
-                PushNameToken(tokens, c.NameLineStart, c.NameColumnStart, c.Name.Length, TClass, ModDeclaration | ModDefinition | genMod);
+                PushNameToken(tokens, c.NameLineStart, c.NameColumnStart, c.NameColumnEnd - c.NameColumnStart, TClass, ModDeclaration | ModDefinition | genMod);
                 CollectDecorators(c.Decorators, tokens);
                 CollectTokens(c.Body, tokens, semanticQuery);
                 break;
 
             case StructDef s:
-                PushNameToken(tokens, s.NameLineStart, s.NameColumnStart, s.Name.Length, TStruct, ModDeclaration | ModDefinition | genMod);
+                PushNameToken(tokens, s.NameLineStart, s.NameColumnStart, s.NameColumnEnd - s.NameColumnStart, TStruct, ModDeclaration | ModDefinition | genMod);
                 CollectDecorators(s.Decorators, tokens);
                 CollectTokens(s.Body, tokens, semanticQuery);
                 break;
 
             case InterfaceDef i:
-                PushNameToken(tokens, i.NameLineStart, i.NameColumnStart, i.Name.Length, TInterface, ModDeclaration | ModDefinition | genMod);
+                PushNameToken(tokens, i.NameLineStart, i.NameColumnStart, i.NameColumnEnd - i.NameColumnStart, TInterface, ModDeclaration | ModDefinition | genMod);
                 CollectDecorators(i.Decorators, tokens);
                 CollectTokens(i.Body, tokens, semanticQuery);
                 break;
 
             case EnumDef e:
-                PushNameToken(tokens, e.NameLineStart, e.NameColumnStart, e.Name.Length, TEnum, ModDeclaration | ModDefinition | genMod);
+                PushNameToken(tokens, e.NameLineStart, e.NameColumnStart, e.NameColumnEnd - e.NameColumnStart, TEnum, ModDeclaration | ModDefinition | genMod);
                 foreach (var member in e.Members)
                 {
-                    PushNameToken(tokens, member.LineStart, member.ColumnStart, member.Name.Length, TEnumMember, ModDeclaration | genMod);
+                    // EnumMember carries no NameColumnEnd; names cannot be backtick-escaped (#1454)
+                    PushNameToken(tokens, member.LineStart, member.ColumnStart, SymbolExtents.SourceNameLength(member.Name, isBacktickEscaped: false), TEnumMember, ModDeclaration | genMod);
                 }
                 break;
 
@@ -227,14 +228,14 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 var varMods = ModDeclaration | genMod;
                 if (v.IsConst)
                     varMods |= ModReadonly;
-                PushNameToken(tokens, v.NameLineStart, v.NameColumnStart, v.Name.Length, TVariable, varMods);
+                PushNameToken(tokens, v.NameLineStart, v.NameColumnStart, v.NameColumnEnd - v.NameColumnStart, TVariable, varMods);
                 CollectDecorators(v.Decorators, tokens);
                 if (v.InitialValue != null)
                     CollectExpressionTokens(v.InitialValue, tokens, parameterNames, semanticQuery);
                 break;
 
             case PropertyDef p:
-                PushNameToken(tokens, p.NameLineStart, p.NameColumnStart, p.Name.Length, TProperty, ModDeclaration | genMod);
+                PushNameToken(tokens, p.NameLineStart, p.NameColumnStart, p.NameColumnEnd - p.NameColumnStart, TProperty, ModDeclaration | genMod);
                 CollectDecorators(p.Decorators, tokens);
                 CollectTokens(p.Body, tokens, semanticQuery);
                 foreach (var observer in p.Observers)
@@ -360,8 +361,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         if (HasDecorator(f.Decorators, "static"))
             mods |= ModStatic;
 
-        // Function name — use Method when inside a class, Function at top level
-        PushNameToken(tokens, f.NameLineStart, f.NameColumnStart, f.Name.Length, TFunction, mods);
+        PushNameToken(tokens, f.NameLineStart, f.NameColumnStart, f.NameColumnEnd - f.NameColumnStart, TFunction, mods);
 
         CollectDecorators(f.Decorators, tokens);
 
@@ -374,7 +374,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         {
             if (param.Name == "self" || param.Name == "cls")
                 continue;
-            PushNameToken(tokens, param.LineStart, param.ColumnStart, param.Name.Length, TParameter, paramMods);
+            PushNameToken(tokens, param.NameLineStart, param.NameColumnStart, param.NameColumnEnd - param.NameColumnStart, TParameter, paramMods);
             parameterNames ??= new HashSet<string>();
             parameterNames.Add(param.Name);
         }
@@ -479,10 +479,9 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case Identifier id:
-                // Emit TParameter for identifiers that match a parameter name
                 if (parameterNames != null && parameterNames.Contains(id.Name))
                 {
-                    PushNameToken(tokens, id.LineStart, id.ColumnStart, id.Name.Length, TParameter, 0);
+                    PushNameToken(tokens, id.LineStart, id.ColumnStart, SymbolExtents.SourceNameLength(id.Name, id.IsNameBacktickEscaped), TParameter, 0);
                 }
                 break;
 
@@ -591,7 +590,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 HashSet<string>? lambdaParamNames = null;
                 foreach (var param in lambda.Parameters)
                 {
-                    PushNameToken(tokens, param.LineStart, param.ColumnStart, param.Name.Length, TParameter, ModDeclaration);
+                    PushNameToken(tokens, param.NameLineStart, param.NameColumnStart, param.NameColumnEnd - param.NameColumnStart, TParameter, ModDeclaration);
                     lambdaParamNames ??= new HashSet<string>();
                     lambdaParamNames.Add(param.Name);
                     if (param.Type != null)
@@ -688,7 +687,7 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
         TypeAnnotation type,
         System.Collections.Generic.List<RawToken> tokens)
     {
-        PushNameToken(tokens, type.LineStart, type.ColumnStart, type.Name.Length, TType, 0);
+        PushNameToken(tokens, type.LineStart, type.ColumnStart, SymbolExtents.SourceNameLength(type.Name, type.IsNameBacktickEscaped), TType, 0);
         foreach (var arg in type.TypeArguments)
             CollectTypeAnnotationTokens(arg, tokens);
     }
