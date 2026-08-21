@@ -63,9 +63,19 @@ internal static class EditDistance
     /// </summary>
     internal static string? FindClosestMatch(string name, IEnumerable<string> candidates, int maxDistance = 2)
     {
-        // Don't suggest for very short names (too many false positives)
+        // Don't suggest for very short names (too many false positives) — except a
+        // case-only respelling (distance 0), which is never a false positive: a 2-char
+        // probe like `math.Pi` must still steer to `pi` (#1540).
         if (name.Length <= 2)
+        {
+            foreach (var candidate in candidates)
+            {
+                if (!string.Equals(name, candidate, StringComparison.Ordinal)
+                    && string.Equals(name, candidate, StringComparison.OrdinalIgnoreCase))
+                    return candidate;
+            }
             return null;
+        }
 
         string? bestMatch = null;
         var bestDistance = int.MaxValue;

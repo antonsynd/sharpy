@@ -58,6 +58,23 @@ public class EditDistanceTests
     }
 
     [Fact]
+    public void FindClosestMatch_ShortName_CaseOnlyRespellingIsSuggested()
+    {
+        // A distance-0 (case-only) match is never a false positive, so the short-name
+        // guard does not apply: `math.Pi` must steer to `pi` (#1540).
+        var candidates = new[] { "pi", "e", "tau" };
+        Assert.Equal("pi", EditDistance.FindClosestMatch("Pi", candidates));
+    }
+
+    [Fact]
+    public void FindClosestMatch_ShortName_DistanceOneStaysRefused()
+    {
+        // The false-positive guard still holds for real edits on short names.
+        var candidates = new[] { "pa", "pe" };
+        Assert.Null(EditDistance.FindClosestMatch("Pi", candidates));
+    }
+
+    [Fact]
     public void FindClosestMatch_SkipsExactMatch()
     {
         var candidates = new[] { "print", "prnt" };
