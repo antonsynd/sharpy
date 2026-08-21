@@ -39,10 +39,14 @@ internal partial class ProjectCompiler
 
         try
         {
-            // Phase 1: Parse all source files
+            // Phase 1: Parse all source files. Parse errors no longer abort analysis —
+            // ParsedWithErrors units carry a partial AST that semantic analysis can process,
+            // giving LSP receivers for trailing-dot completion (#1360). Only abort if every
+            // file failed at the lexer stage (no AST at all).
             using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.ProjectParse))
             {
-                if (!ParseAllFiles(config, ct))
+                ParseAllFiles(config, ct);
+                if (!_projectModel!.Units.Values.Any(u => u.Ast != null))
                 {
                     return CreateAnalysisResult(success: false);
                 }

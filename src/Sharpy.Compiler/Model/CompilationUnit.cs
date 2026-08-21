@@ -243,6 +243,9 @@ public enum CompilationPhase
     /// <summary>Parsing completed, AST available.</summary>
     Parsed,
 
+    /// <summary>Parsing completed with errors; AST available but incomplete (#1360).</summary>
+    ParsedWithErrors,
+
     /// <summary>Name resolution completed, symbols declared.</summary>
     NamesResolved,
 

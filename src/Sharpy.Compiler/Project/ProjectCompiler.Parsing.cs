@@ -174,11 +174,12 @@ internal partial class ProjectCompiler
                 // Check if parser collected any errors
                 if (parser.Diagnostics.HasErrors)
                 {
-                    // Preserve partial metrics (token/AST-node counts already captured above) on the
-                    // failed unit for error-path observability, matching the former single-file driver.
+                    // Preserve partial AST and metrics so downstream phases (semantic analysis)
+                    // can still resolve receivers for LSP completion (#1360).
+                    compilationUnit.Ast = module;
                     compilationUnit.Metrics = fileMetrics;
                     MergeWithPhase(compilationUnit.Diagnostics, parser.Diagnostics, CompilerPhase.Parser, sourceFile);
-                    compilationUnit.Phase = CompilationPhase.Failed;
+                    compilationUnit.Phase = CompilationPhase.ParsedWithErrors;
                     fileMetrics.DiagnosticCount = parser.Diagnostics.GetAll().Count;
                     MergeWithPhase(_diagnostics, parser.Diagnostics, CompilerPhase.Parser, sourceFile);
                     ProjectMetrics.AddFileMetrics(fileMetrics);
