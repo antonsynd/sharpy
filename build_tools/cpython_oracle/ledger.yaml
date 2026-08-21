@@ -309,6 +309,14 @@ deviations:
   spec_ref: docs/language_specification/builtin_functions.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: json-lone-surrogate-escapes-refused
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: null
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: late-bound-default-self-reference
   category: semantics
   audience: python

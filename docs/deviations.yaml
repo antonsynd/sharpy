@@ -1590,6 +1590,25 @@ deviations:
         np.split(a6, 0)                # ValueError: number sections must be larger than 0.
         np.split(a6, -1)               # ValueError: number sections must be larger than 0.
 
+  - id: json-lone-surrogate-escapes-refused
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "CPython's `json.loads` accepts unpaired UTF-16 surrogate escapes (`\\ud800`) and produces a string containing the lone surrogate code unit. The resulting string explodes on its first `encode('utf-8')` with `UnicodeEncodeError: 'utf-8' codec can't encode character '\\ud800'` (measured: python3 3.12.13, `json.loads('\"\\ud800\"')` returns a 1-char string, `.encode('utf-8')` raises)."
+    sharpy_behavior: "Both `json.loads` (untyped) and `json.loads[T]` (typed) refuse unpaired surrogate escapes at parse time with `JSONDecodeError('Unpaired UTF-16 surrogate escape \\ud800')`. The refusal is Axiom 1 (.NET-first): .NET strings are validated UTF-16 and lone surrogates are a deferred trap. One shared scanner (`JsonSurrogateEscapes`) serves both doors so they refuse the same documents with the same message (#1487, owner ruling 2026-08-13)."
+    spec_ref: null
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        import json
+        s = json.loads('"\\ud800"')    # returns '\ud800' (lone surrogate)
+        s.encode('utf-8')              # UnicodeEncodeError
+      sharpy: |
+        import json
+        json.loads('"\\ud800"')        # JSONDecodeError: Unpaired UTF-16 surrogate escape \ud800
+
   - id: cross-type-numeric-hash
     code: null
     category: semantics
