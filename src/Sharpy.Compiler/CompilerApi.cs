@@ -492,9 +492,8 @@ public sealed class CompilerApi
         var compiler = new Project.ProjectCompiler(
             logger: _logger,
             moduleRegistry: registry,
-            options: ProjectOptionsMerge.Merge(opts, config, incremental: false),
-            emitterFactory: _emitterFactory,
-            builtinRegistry: builtins);
+            options: ProjectOptionsMerge.Merge(opts, config, incremental: false, sharedBuiltins: builtins),
+            emitterFactory: _emitterFactory);
         return compiler.AnalyzeProject(config, cancellationToken);
     }
 

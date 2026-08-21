@@ -44,8 +44,13 @@ internal static class ProjectOptionsMerge
     /// project-of-one-file pass <c>false</c>: the incremental cache is keyed on a real project's
     /// <c>obj/</c> directory and neither emits an assembly.
     /// </param>
+    /// <param name="sharedBuiltins">
+    /// A cached <see cref="Semantic.Registry.BuiltinRegistry"/> the analyze paths share across
+    /// analyses (#1140), or null to have the compiler construct a fresh one.
+    /// </param>
     public static ProjectCompilerOptions Merge(
-        CompilerOptions options, ProjectConfig? config = null, bool? incremental = null)
+        CompilerOptions options, ProjectConfig? config = null, bool? incremental = null,
+        Semantic.Registry.BuiltinRegistry? sharedBuiltins = null)
     {
         var suppressed = new HashSet<string>(options.SuppressedWarnings, StringComparer.OrdinalIgnoreCase);
         var warningsAsErrors = options.WarningsAsErrors;
@@ -60,7 +65,7 @@ internal static class ProjectOptionsMerge
 
         return new ProjectCompilerOptions(
             warningsAsErrors, suppressed, options.MaxErrors,
-            incremental ?? options.Incremental, features);
+            incremental ?? options.Incremental, features, sharedBuiltins);
     }
 }
 
@@ -71,7 +76,8 @@ internal static class ProjectOptionsMerge
 /// </summary>
 internal readonly record struct ProjectCompilerOptions(
     bool WarningsAsErrors, HashSet<string>? SuppressedWarnings, int MaxErrors,
-    bool Incremental, FeatureFlags? Features)
+    bool Incremental, FeatureFlags? Features,
+    Semantic.Registry.BuiltinRegistry? SharedBuiltinRegistry = null)
 {
     /// <summary>
     /// The all-defaults set, for callers with no options of their own (tests and tools that just

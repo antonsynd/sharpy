@@ -128,8 +128,8 @@ internal static class SyntheticProject
         Semantic.Registry.BuiltinRegistry? builtinRegistry = null)
     {
         var projectCompiler = new ProjectCompiler(logger, moduleRegistry,
-            Services.ProjectOptionsMerge.Merge(options, incremental: false), emitterFactory,
-            builtinRegistry);
+            Services.ProjectOptionsMerge.Merge(options, incremental: false, sharedBuiltins: builtinRegistry),
+            emitterFactory);
 
         var analysis = projectCompiler.AnalyzeProject(config, cancellationToken, stageMetrics);
 
