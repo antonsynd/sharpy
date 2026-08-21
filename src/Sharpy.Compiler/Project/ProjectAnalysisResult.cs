@@ -53,7 +53,11 @@ public sealed class ProjectAnalysisResult
         if (unit == null)
             return null;
 
-        var succeeded = unit.Phase == CompilationPhase.TypeChecked;
+        // Phase alone is not success: since #1360 a unit that parsed with errors still advances
+        // to TypeChecked when the type checker itself adds nothing, so the unit's accumulated
+        // diagnostics must also be clean (matching the single-file path, which derives success
+        // from the diagnostic bag).
+        var succeeded = unit.Phase == CompilationPhase.TypeChecked && !unit.Diagnostics.HasErrors;
         var semanticInfo = unit.FileSemanticInfo ?? ProjectModel.SemanticInfo;
 
         return new FileAnalysisResult(
