@@ -1,0 +1,6 @@
+# #1460: const reference across module boundary
+from constants import LIMIT
+
+def main() -> None:
+    b: uint8 = LIMIT
+    print(b)

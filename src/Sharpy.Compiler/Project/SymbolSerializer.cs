@@ -263,6 +263,7 @@ internal static class SymbolSerializer
             IsReExport = vs.IsReExport,
             OriginalModule = vs.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(vs.CodeGenInfo),
+            ConstantValue = vs.ConstantValue?.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Documentation = vs.Documentation,
             // #1444
             DeprecationMessage = vs.DeprecationMessage,
@@ -678,7 +679,10 @@ internal static class SymbolSerializer
             DeprecationMessage = cached.DeprecationMessage,
             ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel),
             IsStatic = GetBoolProperty(props, "IsStatic"),
-            IsFinal = GetBoolProperty(props, "IsFinal")
+            IsFinal = GetBoolProperty(props, "IsFinal"),
+            ConstantValue = !string.IsNullOrEmpty(cached.ConstantValue)
+                ? System.Numerics.BigInteger.Parse(cached.ConstantValue, System.Globalization.CultureInfo.InvariantCulture)
+                : null
         };
         symbol.Documentation = cached.Documentation;
         return symbol;

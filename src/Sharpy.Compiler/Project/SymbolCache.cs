@@ -290,6 +290,13 @@ internal record CachedSymbol
     public List<CachedEvent>? Events { get; init; }
 
     /// <summary>
+    /// For VariableSymbol: invariant-culture string representation of
+    /// <see cref="Semantic.VariableSymbol.ConstantValue"/> (<see cref="System.Numerics.BigInteger"/>).
+    /// Null when the variable is not a foldable integer const (#1460).
+    /// </summary>
+    public string? ConstantValue { get; init; }
+
+    /// <summary>
     /// Additional properties for extensibility
     /// </summary>
     public Dictionary<string, object>? Properties { get; init; }

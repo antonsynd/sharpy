@@ -443,8 +443,8 @@ def main() -> None:
         F<VariableSymbol>("IsFinal", v => v.IsFinal, CacheStatus.RoundTrips,
             "CachedSymbol.Properties[IsFinal] (#1444)"),
         F<VariableSymbol>("ConstantValue", v => v.ConstantValue?.ToString(),
-            CacheStatus.Dropped,
-            "not yet serialized — will round-trip after SymbolSerializer is updated (#1460)"),
+            CacheStatus.RoundTrips,
+            "CachedSymbol.ConstantValue — BigInteger? serialized as invariant-culture string (#1460)"),
 
         // ---- TypeAliasSymbol ----
         F<TypeAliasSymbol>("TypeAnnotation", a => a.TypeAnnotation?.Name, CacheStatus.Dropped,
@@ -596,22 +596,8 @@ def main() -> None:
     /// </summary>
     private static readonly Dictionary<string, string> KnownDivergences = new(StringComparer.Ordinal)
     {
-        ["constVar::Symbol.DeclarationSpan::fromImport"] =
-            "#1460 — module-level const not yet threaded through import path",
-        ["constVar::Symbol.DeclaringFilePath::fromImport"] =
-            "#1460 — module-level const not yet threaded through import path",
-        ["constVar::Symbol.DeclarationSpan::qualifiedImport"] =
-            "#1460 — module-level const not yet threaded through ModuleLoader",
-        ["constVar::Symbol.DeclaringFilePath::qualifiedImport"] =
-            "#1460 — module-level const not yet threaded through ModuleLoader",
-        ["constVar::VariableSymbol.HasDefaultValue::fromImport"] =
-            "#1460 — ModuleLoader extraction sets HasDefaultValue incorrectly for const",
-        ["constVar::VariableSymbol.HasDefaultValue::qualifiedImport"] =
-            "#1460 — ModuleLoader extraction sets HasDefaultValue incorrectly for const",
-        ["constVar::VariableSymbol.ConstantValue::fromImport"] =
-            "#1460 — ConstantValue not yet serialized or mirrored through import path",
-        ["constVar::VariableSymbol.ConstantValue::qualifiedImport"] =
-            "#1460 — ConstantValue not yet serialized or mirrored through ModuleLoader",
+        // Empty: every recorded divergence has drained on its fix. A new entry here is a recorded
+        // defect awaiting a fix, citing its issue; it must be deleted in the change that fixes it.
     };
 
     // --- The mirror ----------------------------------------------------------------------------

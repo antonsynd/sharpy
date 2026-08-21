@@ -327,6 +327,17 @@ internal class ModuleLoader
 
             case VariableDeclaration varDecl:
                 var varAccessLevel = GetAccessLevel(varDecl.Name);
+                System.Numerics.BigInteger? varConstValue = null;
+                if (varDecl.IsConst && varDecl.InitialValue != null)
+                {
+                    var declType = ConvertTypeAnnotationToSemanticType(varDecl.Type);
+                    var primInfo = Registry.PrimitiveCatalog.GetPrimitiveInfo(declType);
+                    if (primInfo != null
+                        && primInfo.Kind is Registry.PrimitiveCatalog.NumericKind.SignedInteger
+                            or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger
+                        && IntegerConstantEvaluator.TryGetConstantInteger(varDecl.InitialValue, out var folded))
+                        varConstValue = folded;
+                }
                 var varSymbol = new VariableSymbol
                 {
                     Name = varDecl.Name,
@@ -334,13 +345,16 @@ internal class ModuleLoader
                     Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
                     IsConstant = varDecl.IsConst,
                     IsFinal = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Final),
-                    HasDefaultValue = varDecl.InitialValue != null,
+                    HasDefaultValue = !varDecl.IsConst && varDecl.InitialValue != null,
+                    ConstantValue = varConstValue,
                     AccessLevel = varAccessLevel,
                     DeclarationLine = varDecl.LineStart,
                     DeclarationColumn = varDecl.ColumnStart,
                     NameDeclarationLine = varDecl.NameLineStart,
                     NameDeclarationColumn = varDecl.NameColumnStart,
-                    NameDeclarationColumnEnd = varDecl.NameColumnEnd
+                    NameDeclarationColumnEnd = varDecl.NameColumnEnd,
+                    DeclarationSpan = varDecl.Span,
+                    DeclaringFilePath = CurrentModulePath
                 };
                 moduleInfo.ExportedSymbols.Add(varDecl.Name, varSymbol);
                 break;

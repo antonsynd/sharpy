@@ -1,0 +1,2 @@
+# Module A: declares a const
+const LIMIT: int = 200
