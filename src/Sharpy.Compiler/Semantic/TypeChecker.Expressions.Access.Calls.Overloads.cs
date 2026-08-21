@@ -463,9 +463,14 @@ internal partial class TypeChecker
 
     /// <summary>
     /// C# §12.6.4.7: a signed integer type is a better conversion target than an unsigned
-    /// integer type of the same or smaller width. The pairs are: int8 beats uint8/uint16/uint32/uint64;
+    /// integer type of the same or LARGER width. The pairs are: int8 beats uint8/uint16/uint32/uint64;
     /// int16 beats uint16/uint32/uint64; int32 beats uint32/uint64; int64 beats uint64.
-    /// Only applies when the two types are otherwise lattice-incomparable (#1464).
+    /// Only applies when the two types are otherwise lattice-incomparable (#1464) — which is
+    /// also why no width check is needed here: an unsigned type NARROWER than the signed one
+    /// converts implicitly into it, so the lattice comparison above decides those pairs before
+    /// this rule is consulted, leaving exactly the enumerated table reachable. Measured against
+    /// csc (2026-08-21): f(sbyte)/f(ulong) with f(100) picks sbyte, f(short)/f(ulong) picks
+    /// short — pinned by overload_constant_conv_sbyte_uint64.
     /// </summary>
     private static bool IsSignedBeatsUnsigned(SemanticType signed, SemanticType unsigned)
     {

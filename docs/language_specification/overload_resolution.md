@@ -211,12 +211,28 @@ def f(s: int16) -> None:
     print("int16 arm")
 f(100)   # prints "uint8 arm" — criterion 2, uint8→int16 exists
 
+# The lattice also decides against a WIDER candidate (uint8→int64 exists):
+def q(b: uint8) -> None:
+    print("uint8 arm")
+def q(l: int64) -> None:
+    print("int64 arm")
+q(200)   # prints "uint8 arm" — criterion 2, uint8→int64 exists
+
 # Signed beats unsigned when the lattice is neutral:
 def g(sb: int8) -> None:
     print("int8 arm")
 def g(b: uint8) -> None:
     print("uint8 arm")
 g(100)   # prints "int8 arm" — criterion 4, int8 beats uint8
+
+# ...across widths too, exactly as C#'s §12.6.4.7 table: the rule is only ever
+# reached when the unsigned candidate is the same width or wider (a narrower
+# unsigned converts into the signed type, so the lattice decides first):
+def r(sb: int8) -> None:
+    print("int8 arm")
+def r(u: uint64) -> None:
+    print("uint64 arm")
+r(100)   # prints "int8 arm" — criterion 4, int8 beats uint64
 
 # Identity match trumps constant conversion:
 def h(b: uint8) -> None:

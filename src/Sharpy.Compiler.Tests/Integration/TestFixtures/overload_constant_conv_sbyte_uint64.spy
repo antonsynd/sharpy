@@ -1,0 +1,16 @@
+# Cross-width §12.6.4.7 pin: f(int8)/f(uint64) with f(100) — both constant-applicable,
+# lattice-incomparable (no implicit conversion either way), and signed beats unsigned
+# ACROSS widths, not just at matching width. Measured C# verdict (csc, 2026-08-21):
+# f(sbyte)/f(ulong) called f(100) picks sbyte; f(short)/f(ulong) picks short. The
+# implementation needs no width check because a NARROWER unsigned type never reaches
+# the rule — it implicitly converts into the wider signed type, so the lattice decides
+# first — making the reachable set exactly C#'s enumerated table.
+
+def f(sb: int8) -> None:
+    print("int8 arm")
+
+def f(u: uint64) -> None:
+    print("uint64 arm")
+
+def main() -> None:
+    f(100)
