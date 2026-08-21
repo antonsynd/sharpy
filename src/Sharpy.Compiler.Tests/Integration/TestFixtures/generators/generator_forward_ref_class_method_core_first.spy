@@ -1,0 +1,16 @@
+class Walker:
+    def gen(self, items: list[int]) -> int:
+        for item in items:
+            yield item * 10
+
+    def walk(self, items: list[int]) -> list[int]:
+        result: list[int] = list[int]()
+        for x in self.gen(items):
+            result.append(x)
+        return result
+
+def main():
+    w = Walker()
+    values = w.walk(list[int]([1, 2, 3]))
+    for v in values:
+        print(v)

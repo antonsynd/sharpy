@@ -1,0 +1,14 @@
+def _walk_core(items: list[int]) -> int:
+    for item in items:
+        yield item * 2
+
+def walk(items: list[int]) -> list[int]:
+    result: list[int] = list[int]()
+    for x in _walk_core(items):
+        result.append(x)
+    return result
+
+def main():
+    values = walk(list[int]([1, 2, 3]))
+    for v in values:
+        print(v)

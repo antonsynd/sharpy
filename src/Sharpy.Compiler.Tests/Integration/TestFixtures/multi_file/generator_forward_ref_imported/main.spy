@@ -1,0 +1,5 @@
+from genlib import gen_doubles
+
+def main():
+    for v in gen_doubles(list[int]([5, 10, 15])):
+        print(v)
