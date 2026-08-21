@@ -127,6 +127,25 @@ internal partial class TypeChecker
         // Using `with` would create a new record, breaking reference sharing.
         functionSymbol.ReturnType = returnType;
 
+        // Generator wrap: if the body yields, wrap the return type so forward
+        // references see IEnumerable<T> before the def is visited. The visit-time
+        // ProcessGeneratorMetadata re-wraps after UpdateFunctionSymbol clobbers
+        // back to the element type, so this is idempotent-by-clobber — no skip guard.
+        if (ContainsYield(functionDef.Body)
+            && !DunderDetector.IsDunderMethod(functionDef.Name)
+            && returnType is not (VoidType or UnknownType))
+        {
+            var enumerableName = functionDef.IsAsync
+                ? CSharpTypeNames.IAsyncEnumerable
+                : CSharpTypeNames.IEnumerable;
+            functionSymbol.ReturnType = new GenericType
+            {
+                Name = enumerableName,
+                TypeArguments = new List<SemanticType> { returnType }
+            };
+            functionSymbol.IsGenerator = true;
+        }
+
         _symbolTable.ExitScope();
     }
 

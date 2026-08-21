@@ -2633,4 +2633,86 @@ class Config:
     }
 
     #endregion
+
+    #region Generator Forward References (#1557)
+
+    [Theory]
+    [InlineData("wrapper_first", """
+def walk(items: list[int]) -> list[int]:
+    result: list[int] = list[int]()
+    for x in gen(items):
+        result.append(x)
+    return result
+
+def gen(items: list[int]) -> int:
+    for item in items:
+        yield item
+""")]
+    [InlineData("core_first", """
+def gen(items: list[int]) -> int:
+    for item in items:
+        yield item
+
+def walk(items: list[int]) -> list[int]:
+    result: list[int] = list[int]()
+    for x in gen(items):
+        result.append(x)
+    return result
+""")]
+    public void GeneratorReturnTypeIsExactlyOneWrapLayer(string label, string source)
+    {
+        var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
+            $"({label}) generator forward reference must not produce errors");
+
+        var genSymbol = symbolTable.LookupFunction("gen");
+        genSymbol.Should().NotBeNull($"({label}) 'gen' function should be in the symbol table");
+        genSymbol!.IsGenerator.Should().BeTrue($"({label}) 'gen' should be marked as a generator");
+
+        genSymbol.ReturnType.Should().BeOfType<GenericType>($"({label}) return type should be IEnumerable<int>");
+        var genericReturn = (GenericType)genSymbol.ReturnType;
+        genericReturn.Name.Should().Be("IEnumerable");
+        genericReturn.TypeArguments.Should().HaveCount(1);
+        genericReturn.TypeArguments[0].Should().Be(SemanticType.Int,
+            $"({label}) element type should be int, not IEnumerable<int> (double-wrap)");
+    }
+
+    [Fact]
+    public void GeneratorClassMethodReturnTypeIsExactlyOneWrapLayer()
+    {
+        var source = """
+class Walker:
+    def walk(self, items: list[int]) -> list[int]:
+        result: list[int] = list[int]()
+        for x in self.gen(items):
+            result.append(x)
+        return result
+
+    def gen(self, items: list[int]) -> int:
+        for item in items:
+            yield item
+""";
+        var (module, symbolTable, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty(
+            "class method generator forward reference must not produce errors");
+
+        var walkerType = symbolTable.Lookup("Walker") as TypeSymbol;
+        walkerType.Should().NotBeNull();
+        var genMethod = walkerType!.Methods.FirstOrDefault(m => m.Name == "gen");
+        genMethod.Should().NotBeNull("'gen' method should exist on Walker");
+        genMethod!.IsGenerator.Should().BeTrue();
+
+        genMethod.ReturnType.Should().BeOfType<GenericType>("return type should be IEnumerable<int>");
+        var genericReturn = (GenericType)genMethod.ReturnType;
+        genericReturn.Name.Should().Be("IEnumerable");
+        genericReturn.TypeArguments.Should().HaveCount(1);
+        genericReturn.TypeArguments[0].Should().Be(SemanticType.Int,
+            "element type should be int, not IEnumerable<int> (double-wrap)");
+    }
+
+    #endregion
 }
