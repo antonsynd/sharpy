@@ -585,10 +585,16 @@ All four combinations, so the effect of each defect is separable:
 | parse-truncated (227 lines, historical) | server defaults | 7.6 ms | 6.4 ms | 10.6 ms |
 | valid (230 lines, analyzes cleanly) | none | 9.2 ms | 7.7 ms | 11.0 ms |
 | **valid (230 lines) — what the server actually runs** | **server defaults** | **14.4 ms** | **12.5 ms** | **22.7 ms** |
+| *post-#1140 cache (same input, same refs)* | *server defaults* | ***7.1 ms*** | *5.1 ms* | *13.1 ms* |
 
 The corrected figure is **~6× the recorded 2.3 ms**. Reference loading alone accounts for ~5 ms of
 the difference — more than ten times the ~0.4 ms residual footnote † blames, and roughly twice the
 entire number that row has been reporting.
+
+> **#1140 update (2026-08-21, `a44cdc33d`):** the server-lifetime analysis cache recovers the
+> reference-loading and BuiltinRegistry cost: **14.4 ms → 7.1 ms** (median), **12.5 ms → 5.1 ms**
+> (min). The cached stages (Module Registry + Shared State Init) contribute 0.08 ms of the 5.8 ms
+> stage sum, down from 6.74 ms (44%).
 
 ### Correction (2026-08-07): the two project rows were poisoned the same way, and nobody checked
 
@@ -660,21 +666,46 @@ call whose wall time is reported, so the two are directly comparable:
 The stages account for 98.3% of wall; the ~0.27 ms remainder is workspace overhead outside the
 compiler call (the analysis task hop, the per-document semaphores, the parse-result projection).
 
-Two of these stages are **pure per-call rebuild of state that does not change between keystrokes**,
-totalling 6.74 ms — 44% of the row, and more than the actual type-checking work:
+Two of these stages ~~are~~ **were** pure per-call rebuild of state that does not change between
+keystrokes, totalling 6.74 ms — 44% of the row, and more than the actual type-checking work.
+**#1140 landed a server-lifetime cache for both (2026-08-21, `a44cdc33d`); see the post-cache
+attribution table below.** The historical description is preserved for context:
 
-- **Module Registry (4.00 ms)** — a fresh `ModuleRegistry` per call SHA-256s `Sharpy.Core.dll` and
-  `Sharpy.Stdlib.dll` (`AssemblyIdentity.FromAssembly` → `ComputeFileHash`) and re-runs
-  `CachedModuleDiscovery`'s three-pass `TypeSymbol` materialization over all 60 stdlib modules.
-  The deserialized `OverloadIndex` itself is already shared process-wide via
+- **Module Registry (4.00 ms → 0.02 ms)** — ~~a fresh `ModuleRegistry` per call SHA-256s~~ `Sharpy.Core.dll` and
+  `Sharpy.Stdlib.dll` (`AssemblyIdentity.FromAssembly` → `ComputeFileHash`) ~~and re-runs
+  `CachedModuleDiscovery`'s three-pass `TypeSymbol` materialization over all 60 stdlib modules.~~
+  Now served from a `CompilerApi`-level cache keyed on `(path, mtime)`. The deserialized `OverloadIndex` itself is already shared process-wide via
   `OverloadIndexCache.s_inMemoryIndices` (#1049); the hashing and the per-instance symbol
   materialization are not.
-- **Shared State Init (2.74 ms)** — `new BuiltinRegistry()` + `new SymbolTable()` per call. (Not
-  separated further; the split between the two is unmeasured.)
+- **Shared State Init (2.74 ms → 0.06 ms)** — ~~`new BuiltinRegistry()` +~~ `new SymbolTable()` per call.
+  The `BuiltinRegistry` is now shared across analyses (#1140); `SymbolTable` stays per-call (DD7).
 
 By contrast the whole-project scaffolding #1087 introduced — Project Setup, Project Parse, Type
 Declarations, Import Resolution, Inheritance Resolution, Materialization, Entry File Result — sums
 to **0.99 ms, 6% of the row**.
+
+#### Post-cache stage attribution (#1140)
+
+> **Recorded:** 2026-08-21 (`a44cdc33d`) · same machine/toolchain as the pre-cache row.
+
+| Stage | pre-cache | post-cache | delta |
+|-------|----------:|-----------:|------:|
+| Semantic Analysis | 6.25 ms | 4.14 ms | −2.11 ms |
+| Module Registry | 4.00 ms | **0.02 ms** | −3.98 ms |
+| Shared State Init | 2.74 ms | **0.06 ms** | −2.68 ms |
+| Synthetic Project Setup | 1.00 ms | 1.05 ms | +0.05 ms |
+| Project Parse | 0.51 ms | 0.22 ms | −0.29 ms |
+| Type Declarations | 0.31 ms | 0.10 ms | −0.21 ms |
+| Inheritance Resolution | 0.04 ms | 0.06 ms | +0.02 ms |
+| Materialization | 0.02 ms | 0.02 ms | 0 |
+| Import Resolution | 0.01 ms | 0.01 ms | 0 |
+| Entry File Result | 0.11 ms | 0.00 ms | −0.11 ms |
+| Project Setup | 0.00 ms | 0.00 ms | 0 |
+| **stage sum** | **15.16 ms** | **5.78 ms** | **−9.38 ms** |
+| *(wall)* | *15.43 ms* | *5.80 ms* | *−9.63 ms* |
+
+The two cached stages contribute **0.08 ms** of the 5.78 ms warm median — down from 6.74 ms (44%
+of the pre-cache row) to 1.4%.
 
 #### Real edit session (confirmation)
 
