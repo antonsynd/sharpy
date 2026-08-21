@@ -27,44 +27,67 @@ namespace Sharpy
     /// property rather than an intention — see the typed-door agreement corpus, which runs the same
     /// document through both and asserts they answer cell-by-cell alike.</para>
     ///
-    /// <para><b>Scope: the ROOT object only.</b> A required field missing from a NESTED object is
-    /// not detected — the check reads the top-level key set, not the whole document tree. Stated
-    /// rather than implied, and filed as #1513; the nested case still deserializes as before.</para>
+    /// <para><b>Scope: the whole document tree</b> (#1513). The walk is document-driven: it
+    /// recurses only where the document actually has a nested mapping or sequence, so recursive
+    /// type shapes terminate without a visited-set.</para>
     /// </summary>
     internal static class TypedLoadContract
     {
-        private static readonly ConcurrentDictionary<Type, IReadOnlyList<RequiredField>> Cache = new();
+        private static readonly ConcurrentDictionary<Type, IReadOnlyList<FieldDescriptor>> FieldCache = new();
 
         /// <summary>
-        /// A required field of a typed-load target: the name to report, plus the normalized key the
-        /// document would have to carry for it to count as present.
+        /// Abstract view of a document node, supplied by each door so the recursive walk is
+        /// library-agnostic. json provides a view over <c>JsonElement</c>; yaml provides one
+        /// over its untyped <c>object</c> graph.
         /// </summary>
-        private readonly struct RequiredField
+        internal interface IDocumentNode
         {
-            public RequiredField(string reportedName, string normalizedKey)
-            {
-                ReportedName = reportedName;
-                NormalizedKey = normalizedKey;
-            }
-
-            /// <summary>The spelling the user wrote in the <c>.spy</c> source, snake_case.</summary>
-            public string ReportedName { get; }
-
-            /// <summary>Case- and underscore-insensitive form, for matching document keys.</summary>
-            public string NormalizedKey { get; }
+            bool IsMapping { get; }
+            bool IsSequence { get; }
+            IEnumerable<string> Keys { get; }
+            IDocumentNode GetChild(string key);
+            IEnumerable<(string indexLabel, IDocumentNode element)> Elements { get; }
         }
 
         /// <summary>
-        /// The name of the first required field of <typeparamref name="T"/> that
-        /// <paramref name="presentKeys"/> does not cover, or <c>null</c> when every required field
-        /// is present (including when <typeparamref name="T"/> has none, which is every non-record
-        /// shape both doors already handled).
+        /// A field of a typed-load target: the name to report, the normalized key for matching,
+        /// and the CLR type for recursion into nested objects.
         /// </summary>
-        /// <param name="presentKeys">The document's top-level keys, in the source spelling.</param>
+        private readonly struct FieldDescriptor
+        {
+            public FieldDescriptor(string reportedName, string normalizedKey, Type fieldType, bool isRequired)
+            {
+                ReportedName = reportedName;
+                NormalizedKey = normalizedKey;
+                FieldType = fieldType;
+                IsRequired = isRequired;
+            }
+
+            public string ReportedName { get; }
+            public string NormalizedKey { get; }
+            public Type FieldType { get; }
+            public bool IsRequired { get; }
+        }
+
+        /// <summary>
+        /// The dotted path of the first required field of <typeparamref name="T"/> that the
+        /// document node omits, walking the entire tree. Returns <c>null</c> when every required
+        /// field at every depth is present (#1513).
+        /// </summary>
+        internal static string? FirstMissingRequiredFieldPath<T>(IDocumentNode root)
+        {
+            return WalkNode(typeof(T), root, prefix: "");
+        }
+
+        /// <summary>
+        /// Backward-compatible entry point for callers that only have a flat key list (used
+        /// during the Phase 2 transition — callers should migrate to the
+        /// <see cref="IDocumentNode"/> overload).
+        /// </summary>
         internal static string? FirstMissingRequiredField<T>(IEnumerable<string> presentKeys)
         {
-            var required = RequiredFieldsOf(typeof(T));
-            if (required.Count == 0)
+            var fields = FieldDescriptorsOf(typeof(T));
+            if (fields.Count == 0)
                 return null;
 
             var present = new HashSet<string>(StringComparer.Ordinal);
@@ -74,13 +97,85 @@ namespace Sharpy
                     present.Add(Normalize(key));
             }
 
-            foreach (var field in required)
+            foreach (var field in fields)
             {
-                if (!present.Contains(field.NormalizedKey))
+                if (field.IsRequired && !present.Contains(field.NormalizedKey))
                     return field.ReportedName;
             }
 
             return null;
+        }
+
+        private static string? WalkNode(Type targetType, IDocumentNode node, string prefix)
+        {
+            var fields = FieldDescriptorsOf(targetType);
+            if (fields.Count == 0 || !node.IsMapping)
+                return null;
+
+            var presentNormalized = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var key in node.Keys)
+            {
+                if (key != null)
+                    presentNormalized.Add(Normalize(key));
+            }
+
+            foreach (var field in fields)
+            {
+                string path = prefix.Length == 0 ? field.ReportedName : prefix + "." + field.ReportedName;
+
+                if (!presentNormalized.Contains(field.NormalizedKey))
+                {
+                    if (field.IsRequired)
+                        return path;
+                    continue;
+                }
+
+                var nestedType = UnwrapToRecordType(field.FieldType);
+                if (nestedType == null)
+                    continue;
+
+                IDocumentNode child;
+                try
+                {
+                    child = FindChild(node, field.NormalizedKey);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (child.IsMapping)
+                {
+                    var nested = WalkNode(nestedType, child, path);
+                    if (nested != null)
+                        return nested;
+                }
+                else if (child.IsSequence)
+                {
+                    foreach (var (indexLabel, element) in child.Elements)
+                    {
+                        if (element.IsMapping)
+                        {
+                            var nested = WalkNode(nestedType, element, path + "[" + indexLabel + "]");
+                            if (nested != null)
+                                return nested;
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static IDocumentNode FindChild(IDocumentNode node, string normalizedKey)
+        {
+            foreach (var key in node.Keys)
+            {
+                if (key != null && Normalize(key) == normalizedKey)
+                    return node.GetChild(key);
+            }
+
+            throw new InvalidOperationException("key not found");
         }
 
         /// <summary>
@@ -91,40 +186,42 @@ namespace Sharpy
             => $"missing required field '{fieldName}' for {target.Name}";
 
         /// <summary>
-        /// The required fields of <paramref name="target"/>: the parameters of its single
-        /// all-fields constructor that have NO declared default and are NOT optional-typed. The
-        /// constructor is the authority because it is what both doors construct through, and a
-        /// dataclass emits exactly one.
+        /// All fields of <paramref name="target"/>: the parameters of its single all-fields
+        /// constructor, each tagged as required or optional. Required = no declared default and
+        /// not optional-typed. The constructor is the authority because it is what both doors
+        /// construct through, and a dataclass emits exactly one.
         ///
         /// <para>A type with no constructor, a parameterless one, or several is treated as having
-        /// no required fields — the same conservative fallthrough
-        /// <c>AllFieldsConstructorObjectFactory</c> takes, since guessing among overloads would be
-        /// worse than the behaviour that already exists.</para>
+        /// no fields — the same conservative fallthrough
+        /// <c>AllFieldsConstructorObjectFactory</c> takes.</para>
         /// </summary>
-        private static IReadOnlyList<RequiredField> RequiredFieldsOf(Type target)
-            => Cache.GetOrAdd(target, static t =>
+        private static IReadOnlyList<FieldDescriptor> FieldDescriptorsOf(Type target)
+            => FieldCache.GetOrAdd(target, static t =>
             {
                 var constructors = t.GetConstructors();
                 if (constructors.Length != 1)
-                    return Array.Empty<RequiredField>();
+                    return Array.Empty<FieldDescriptor>();
 
                 var parameters = constructors[0].GetParameters();
                 if (parameters.Length == 0)
-                    return Array.Empty<RequiredField>();
+                    return Array.Empty<FieldDescriptor>();
 
                 var nullability = new NullabilityInfoContext();
-                var required = new List<RequiredField>();
+                var descriptors = new List<FieldDescriptor>();
                 foreach (var parameter in parameters)
                 {
-                    if (parameter.Name == null || IsOptional(parameter, nullability))
+                    if (parameter.Name == null)
                         continue;
 
-                    required.Add(new RequiredField(
+                    bool optional = IsOptional(parameter, nullability);
+                    descriptors.Add(new FieldDescriptor(
                         ReportedNameFor(parameter, t),
-                        Normalize(parameter.Name)));
+                        Normalize(parameter.Name),
+                        parameter.ParameterType,
+                        isRequired: !optional));
                 }
 
-                return required;
+                return descriptors;
             });
 
         /// <summary>
@@ -230,6 +327,53 @@ namespace Sharpy
                     .Select(k => k?.ToString() ?? string.Empty),
                 _ => Array.Empty<string>(),
             };
+
+        /// <summary>
+        /// Unwraps container types to find the element type worth recursing into, or <c>null</c>
+        /// if the type is a scalar/primitive/string. Strips <c>Optional&lt;T&gt;</c>,
+        /// <c>Nullable&lt;T&gt;</c>, <c>List&lt;T&gt;</c>, <c>Dict&lt;K,V&gt;</c> and their BCL
+        /// equivalents. A type with required fields (a dataclass shape) is a recursion target.
+        /// </summary>
+        private static Type? UnwrapToRecordType(Type type)
+        {
+            var unwrapped = Unwrap(type);
+            if (unwrapped == null || unwrapped == typeof(string) || unwrapped.IsPrimitive)
+                return null;
+
+            if (FieldDescriptorsOf(unwrapped).Count == 0)
+                return null;
+
+            return unwrapped;
+        }
+
+        private static Type? Unwrap(Type type)
+        {
+            if (!type.IsGenericType)
+                return type;
+
+            var def = type.GetGenericTypeDefinition();
+
+            // Optional<T>, Nullable<T> → unwrap T
+            if (def == typeof(Optional<>) || def == typeof(Nullable<>))
+                return Unwrap(type.GetGenericArguments()[0]);
+
+            // List<T>, IEnumerable<T>, IList<T> → element T
+            if (def == typeof(List<>)
+                || def == typeof(IEnumerable<>)
+                || def == typeof(IList<>)
+                || def == typeof(System.Collections.Generic.List<>)
+                || def == typeof(IReadOnlyList<>))
+                return Unwrap(type.GetGenericArguments()[0]);
+
+            // Dict<K,V>, Dictionary<K,V> → value V
+            if (def == typeof(Dict<,>)
+                || def == typeof(Dictionary<,>)
+                || def == typeof(IDictionary<,>)
+                || def == typeof(IReadOnlyDictionary<,>))
+                return Unwrap(type.GetGenericArguments()[1]);
+
+            return type;
+        }
     }
 }
 #endif
