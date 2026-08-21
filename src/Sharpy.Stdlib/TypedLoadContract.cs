@@ -79,33 +79,6 @@ namespace Sharpy
             return WalkNode(typeof(T), root, prefix: "");
         }
 
-        /// <summary>
-        /// Backward-compatible entry point for callers that only have a flat key list (used
-        /// during the Phase 2 transition — callers should migrate to the
-        /// <see cref="IDocumentNode"/> overload).
-        /// </summary>
-        internal static string? FirstMissingRequiredField<T>(IEnumerable<string> presentKeys)
-        {
-            var fields = FieldDescriptorsOf(typeof(T));
-            if (fields.Count == 0)
-                return null;
-
-            var present = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var key in presentKeys)
-            {
-                if (key != null)
-                    present.Add(Normalize(key));
-            }
-
-            foreach (var field in fields)
-            {
-                if (field.IsRequired && !present.Contains(field.NormalizedKey))
-                    return field.ReportedName;
-            }
-
-            return null;
-        }
-
         private static string? WalkNode(Type targetType, IDocumentNode node, string prefix)
         {
             var fields = FieldDescriptorsOf(targetType);
@@ -130,8 +103,7 @@ namespace Sharpy
                     continue;
                 }
 
-                var nestedType = UnwrapToRecordType(field.FieldType);
-                if (nestedType == null)
+                if (!CouldRecurse(field.FieldType))
                     continue;
 
                 IDocumentNode child;
@@ -144,27 +116,81 @@ namespace Sharpy
                     continue;
                 }
 
-                if (child.IsMapping)
-                {
-                    var nested = WalkNode(nestedType, child, path);
-                    if (nested != null)
-                        return nested;
-                }
-                else if (child.IsSequence)
-                {
-                    foreach (var (indexLabel, element) in child.Elements)
-                    {
-                        if (element.IsMapping)
-                        {
-                            var nested = WalkNode(nestedType, element, path + "[" + indexLabel + "]");
-                            if (nested != null)
-                                return nested;
-                        }
-                    }
-                }
+                var nested = WalkValue(field.FieldType, child, path);
+                if (nested != null)
+                    return nested;
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Recurses into a PRESENT value by its DECLARED type, one container layer at a time:
+        /// a dict-typed layer descends per VALUE (<c>servers[key]</c> — the dict's keys are
+        /// document data, not fields of the value type), a list-typed layer per element
+        /// (<c>items[2]</c>), and a dataclass-shaped type walks its own fields. A node whose
+        /// shape does not match the declared layer is not this check's business — the
+        /// deserializer's own error reports it, exactly as malformed documents do today.
+        /// </summary>
+        private static string? WalkValue(Type declaredType, IDocumentNode node, string path)
+        {
+            var type = StripOptional(declaredType);
+
+            if (TryDictValueType(type, out var dictValueType))
+            {
+                if (!node.IsMapping)
+                    return null;
+
+                foreach (var key in node.Keys)
+                {
+                    if (key == null)
+                        continue;
+
+                    var nested = WalkValue(dictValueType, node.GetChild(key), path + "[" + key + "]");
+                    if (nested != null)
+                        return nested;
+                }
+
+                return null;
+            }
+
+            if (TryListElementType(type, out var elementType))
+            {
+                if (!node.IsSequence)
+                    return null;
+
+                foreach (var (indexLabel, element) in node.Elements)
+                {
+                    var nested = WalkValue(elementType, element, path + "[" + indexLabel + "]");
+                    if (nested != null)
+                        return nested;
+                }
+
+                return null;
+            }
+
+            if (type == typeof(string) || type.IsPrimitive || FieldDescriptorsOf(type).Count == 0)
+                return null;
+
+            return WalkNode(type, node, path);
+        }
+
+        /// <summary>
+        /// Whether <see cref="WalkValue"/> could find anything under this declared type — a
+        /// pre-filter so scalar fields never pay for a child lookup. Follows the same layers
+        /// the walk does, so the two cannot disagree about what is worth descending into.
+        /// </summary>
+        private static bool CouldRecurse(Type declaredType)
+        {
+            var type = StripOptional(declaredType);
+
+            if (TryDictValueType(type, out var dictValueType))
+                return CouldRecurse(dictValueType);
+
+            if (TryListElementType(type, out var elementType))
+                return CouldRecurse(elementType);
+
+            return type != typeof(string) && !type.IsPrimitive && FieldDescriptorsOf(type).Count > 0;
         }
 
         private static IDocumentNode FindChild(IDocumentNode node, string normalizedKey)
@@ -328,51 +354,61 @@ namespace Sharpy
                 _ => Array.Empty<string>(),
             };
 
-        /// <summary>
-        /// Unwraps container types to find the element type worth recursing into, or <c>null</c>
-        /// if the type is a scalar/primitive/string. Strips <c>Optional&lt;T&gt;</c>,
-        /// <c>Nullable&lt;T&gt;</c>, <c>List&lt;T&gt;</c>, <c>Dict&lt;K,V&gt;</c> and their BCL
-        /// equivalents. A type with required fields (a dataclass shape) is a recursion target.
-        /// </summary>
-        private static Type? UnwrapToRecordType(Type type)
+        /// <summary>Strips <c>Optional&lt;T&gt;</c>/<c>Nullable&lt;T&gt;</c> wrappers — absence is
+        /// the caller's business; the walk only ever sees present values.</summary>
+        private static Type StripOptional(Type type)
         {
-            var unwrapped = Unwrap(type);
-            if (unwrapped == null || unwrapped == typeof(string) || unwrapped.IsPrimitive)
-                return null;
+            while (type.IsGenericType)
+            {
+                var def = type.GetGenericTypeDefinition();
+                if (def != typeof(Optional<>) && def != typeof(Nullable<>))
+                    break;
 
-            if (FieldDescriptorsOf(unwrapped).Count == 0)
-                return null;
-
-            return unwrapped;
-        }
-
-        private static Type? Unwrap(Type type)
-        {
-            if (!type.IsGenericType)
-                return type;
-
-            var def = type.GetGenericTypeDefinition();
-
-            // Optional<T>, Nullable<T> → unwrap T
-            if (def == typeof(Optional<>) || def == typeof(Nullable<>))
-                return Unwrap(type.GetGenericArguments()[0]);
-
-            // List<T>, IEnumerable<T>, IList<T> → element T
-            if (def == typeof(List<>)
-                || def == typeof(IEnumerable<>)
-                || def == typeof(IList<>)
-                || def == typeof(System.Collections.Generic.List<>)
-                || def == typeof(IReadOnlyList<>))
-                return Unwrap(type.GetGenericArguments()[0]);
-
-            // Dict<K,V>, Dictionary<K,V> → value V
-            if (def == typeof(Dict<,>)
-                || def == typeof(Dictionary<,>)
-                || def == typeof(IDictionary<,>)
-                || def == typeof(IReadOnlyDictionary<,>))
-                return Unwrap(type.GetGenericArguments()[1]);
+                type = type.GetGenericArguments()[0];
+            }
 
             return type;
+        }
+
+        /// <summary>Dict&lt;K,V&gt;/Dictionary&lt;K,V&gt; and interface shapes → value V.</summary>
+        private static bool TryDictValueType(Type type, out Type valueType)
+        {
+            if (type.IsGenericType)
+            {
+                var def = type.GetGenericTypeDefinition();
+                if (def == typeof(Dict<,>)
+                    || def == typeof(Dictionary<,>)
+                    || def == typeof(IDictionary<,>)
+                    || def == typeof(IReadOnlyDictionary<,>))
+                {
+                    valueType = type.GetGenericArguments()[1];
+                    return true;
+                }
+            }
+
+            valueType = typeof(object);
+            return false;
+        }
+
+        /// <summary>List&lt;T&gt;/sequence interface shapes → element T.</summary>
+        private static bool TryListElementType(Type type, out Type elementType)
+        {
+            if (type.IsGenericType)
+            {
+                var def = type.GetGenericTypeDefinition();
+                if (def == typeof(List<>)
+                    || def == typeof(IEnumerable<>)
+                    || def == typeof(IList<>)
+                    || def == typeof(System.Collections.Generic.List<>)
+                    || def == typeof(IReadOnlyList<>))
+                {
+                    elementType = type.GetGenericArguments()[0];
+                    return true;
+                }
+            }
+
+            elementType = typeof(object);
+            return false;
         }
     }
 }

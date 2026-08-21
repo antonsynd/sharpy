@@ -161,6 +161,74 @@ public class TypedDoorAgreementTests
         }
     }
 
+    /// <summary>
+    /// Outer with a dict of Inner, for testing servers[key].field paths (#1513).
+    /// <code>
+    /// @dataclass
+    /// class OuterDict:
+    ///     name: str
+    ///     servers: dict[str, Inner]
+    /// </code>
+    /// </summary>
+    public class OuterDict
+    {
+        public string Name { get; set; }
+        public Dict<string, Inner> Servers { get; set; }
+
+        public OuterDict(string name, Dict<string, Inner> servers)
+        {
+            Name = name;
+            Servers = servers;
+        }
+    }
+
+    /// <summary>
+    /// Three-level nesting for the a.b.c dotted-path rows (#1513).
+    /// <code>
+    /// @dataclass
+    /// class Level3:
+    ///     c: int
+    /// @dataclass
+    /// class Level2:
+    ///     b: Level3
+    /// @dataclass
+    /// class Level1:
+    ///     name: str
+    ///     a: Level2
+    /// </code>
+    /// </summary>
+    public class Level3
+    {
+        public int C { get; set; }
+
+        public Level3(int c)
+        {
+            C = c;
+        }
+    }
+
+    public class Level2
+    {
+        public Level3 B { get; set; }
+
+        public Level2(Level3 b)
+        {
+            B = b;
+        }
+    }
+
+    public class Level1
+    {
+        public string Name { get; set; }
+        public Level2 A { get; set; }
+
+        public Level1(string name, Level2 a)
+        {
+            Name = name;
+            A = a;
+        }
+    }
+
     /// <summary>One document in both spellings, plus what the doors must jointly answer.</summary>
     public sealed record Row(string Name, string Json, string Yaml, string Expected);
 
@@ -396,6 +464,36 @@ public class TypedDoorAgreementTests
             /*yaml*/ "name: web\nitems:\n- port: 80\n- port: 443\n",
             "ok-list: name=web items=[80, 443]"));
 
+        // Missing field inside a dict VALUE → servers[key].field, using the document's key text.
+        // The dict's own keys (web, db) are document data, not Inner's fields — a walk that
+        // confuses the two either misses this or falsely refuses dict-all-complete below.
+        data.Add(new Row(
+            "dict-value-missing-required",
+            /*json*/ "{\"name\": \"web\", \"servers\": {\"web\": {\"host\": \"h\"}, \"db\": {\"port\": 443}}}",
+            /*yaml*/ "name: web\nservers:\n  web:\n    host: h\n  db:\n    port: 443\n",
+            "err: missing required field 'servers[web].port' for OuterDict"));
+
+        // Dict with every value complete → Ok. The false-refusal control: Inner's field names
+        // appear nowhere among the dict's keys, so a key-confused walk reports a phantom missing.
+        data.Add(new Row(
+            "dict-all-complete",
+            /*json*/ "{\"name\": \"web\", \"servers\": {\"web\": {\"port\": 80}, \"db\": {\"port\": 443}}}",
+            /*yaml*/ "name: web\nservers:\n  web:\n    port: 80\n  db:\n    port: 443\n",
+            "ok-dict: name=web servers={db:443, web:80}"));
+
+        // Two-level nesting: the dotted path grows one segment per level.
+        data.Add(new Row(
+            "two-level-missing-required",
+            /*json*/ "{\"name\": \"web\", \"a\": {\"b\": {}}}",
+            /*yaml*/ "name: web\na:\n  b: {}\n",
+            "err: missing required field 'a.b.c' for Level1"));
+
+        data.Add(new Row(
+            "two-level-complete",
+            /*json*/ "{\"name\": \"web\", \"a\": {\"b\": {\"c\": 7}}}",
+            /*yaml*/ "name: web\na:\n  b:\n    c: 7\n",
+            "ok-deep: name=web a.b.c=7"));
+
         return data.ToArray();
     }
 
@@ -414,6 +512,16 @@ public class TypedDoorAgreementTests
         {
             json = RenderJsonList(row.Json);
             yaml = RenderYamlList(row.Yaml);
+        }
+        else if (row.Name.StartsWith("dict"))
+        {
+            json = RenderJsonDict(row.Json);
+            yaml = RenderYamlDict(row.Yaml);
+        }
+        else if (row.Name.StartsWith("two-level"))
+        {
+            json = RenderJsonDeep(row.Json);
+            yaml = RenderYamlDeep(row.Yaml);
         }
         else
         {
@@ -475,5 +583,38 @@ public class TypedDoorAgreementTests
     }
 
     private static string RenderOk(OuterList outer)
-        => $"ok-list: name={outer.Name} items=[{string.Join(", ", ((System.Collections.Generic.IEnumerable<Inner>)outer.Items).Select(i => i.Port.ToString()))}]";
+        => $"ok-list: name={outer.Name} items=[{string.Join(", ", outer.Items.Select(i => i.Port.ToString()))}]";
+
+    private static string RenderJsonDict(string document)
+    {
+        var result = Json.Loads<OuterDict>(document);
+        return result.IsOk ? RenderOk(result.Unwrap()) : "err: " + result.UnwrapErr().Msg;
+    }
+
+    private static string RenderYamlDict(string document)
+    {
+        var result = Yaml.SafeLoadTyped<OuterDict>(document);
+        return result.IsOk ? RenderOk(result.Unwrap()) : "err: " + result.UnwrapErr().Message;
+    }
+
+    private static string RenderOk(OuterDict outer)
+        => $"ok-dict: name={outer.Name} servers="
+        + "{"
+        + string.Join(", ", outer.Servers.OrderBy(kv => kv.Key, System.StringComparer.Ordinal).Select(kv => $"{kv.Key}:{kv.Value.Port}"))
+        + "}";
+
+    private static string RenderJsonDeep(string document)
+    {
+        var result = Json.Loads<Level1>(document);
+        return result.IsOk ? RenderOk(result.Unwrap()) : "err: " + result.UnwrapErr().Msg;
+    }
+
+    private static string RenderYamlDeep(string document)
+    {
+        var result = Yaml.SafeLoadTyped<Level1>(document);
+        return result.IsOk ? RenderOk(result.Unwrap()) : "err: " + result.UnwrapErr().Message;
+    }
+
+    private static string RenderOk(Level1 outer)
+        => $"ok-deep: name={outer.Name} a.b.c={outer.A.B.C}";
 }
