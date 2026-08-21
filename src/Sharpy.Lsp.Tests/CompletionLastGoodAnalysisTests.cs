@@ -82,13 +82,22 @@ public class CompletionLastGoodAnalysisTests : IDisposable
     }
 
     [Fact]
-    public async Task TrailingDot_WithNoPriorGoodAnalysis_ReturnsEmptyGracefully()
+    public async Task LexerError_WithNoPriorGoodAnalysis_ReturnsEmptyGracefully()
     {
-        // A document that has never analysed has nothing to fall back to. The contract is an empty
-        // list, not an exception and not a guess.
-        _workspace.OpenDocument(Uri, MidEdit, 1);
+        // A buffer with a lexer error produces no AST at all — no partial tree to recover from.
+        // The contract is an empty list, not an exception and not a guess. (#1360: trailing-dot
+        // buffers now produce a partial AST, so this tests the genuine empty case.)
+        const string lexerBroken =
+            "class Counter:\n"
+            + "    total: int = 0\n"
+            + "\n"
+            + "def main() -> None:\n"
+            + "    c: Counter = Counter()\n"
+            + "    s: str = \"unterminated\n";
+
+        _workspace.OpenDocument(Uri, lexerBroken, 1);
         (await _service.GetAnalysisAsync(Uri))!.SymbolTable.Should().BeNull(
-            "precondition: the mid-edit text really does fail to analyse");
+            "precondition: a lexer error produces no AST and no symbol table");
 
         var result = await CompleteAsync(DotLine, DotChar, trigger: ".");
 
@@ -122,13 +131,22 @@ public class CompletionLastGoodAnalysisTests : IDisposable
     }
 
     [Fact]
-    public async Task NonMemberRequest_InABufferThatDoesNotParse_StillReturnsEmpty()
+    public async Task NonMemberRequest_WithLexerError_StillReturnsEmpty()
     {
-        // Deliberate scope limit: only member completion is served from a stale tree. A whole
-        // visible-symbol list has no comparable staleness bound, so it keeps today's behaviour.
+        // Deliberate scope limit: when the buffer produces no analysis at all (lexer error,
+        // not trailing-dot), scope completion has nothing to answer from. A trailing-dot buffer
+        // now produces a partial analysis (#1360) and legitimately returns scope completions.
+        const string lexerBroken =
+            "class Counter:\n"
+            + "    total: int = 0\n"
+            + "\n"
+            + "def main() -> None:\n"
+            + "    c: Counter = Counter()\n"
+            + "    s: str = \"unterminated\n";
+
         _workspace.OpenDocument(Uri, Valid, 1);
         (await _service.GetAnalysisAsync(Uri)).Should().NotBeNull();
-        _workspace.UpdateDocument(Uri, MidEdit, 2);
+        _workspace.UpdateDocument(Uri, lexerBroken, 2);
 
         var result = await CompleteAsync(DotLine, DotChar, trigger: null);
 
@@ -154,7 +172,10 @@ public class CompletionLastGoodAnalysisTests : IDisposable
         current!.Success.Should().BeFalse("the CURRENT text does not parse");
         current.Diagnostics.Select(d => d.Code).Should().Contain(DiagnosticCodes.Parser.ExpectedIdentifier,
             "the trailing dot's own diagnostic, not one recovered from the earlier text");
-        current.SymbolTable.Should().BeNull();
+        // #1360: the partial-AST pipeline gives a non-null SymbolTable even for parse-errored
+        // buffers, so LSP can serve member completion from the current analysis.
+        current.SymbolTable.Should().NotBeNull(
+            "the partial analysis resolves the receiver's type even though the buffer has errors");
 
         // ...while the separate accessor does have something to offer.
         _service.GetLastGoodAnalysis(Uri).Should().NotBeNull(

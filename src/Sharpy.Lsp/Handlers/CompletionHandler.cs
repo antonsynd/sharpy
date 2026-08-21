@@ -51,9 +51,12 @@ internal sealed class SharpyCompletionHandler : CompletionHandlerBase
         var items = new System.Collections.Generic.List<CompletionItem>();
 
         // Check if this is a member completion (after '.')
-        if (isMemberRequest && analysis.Ast != null && analysis.SemanticQuery != null
-            && TryAddMemberCompletions(analysis, line, col, items))
+        if (isMemberRequest && analysis.Ast != null && analysis.SemanticQuery != null)
         {
+            // Return members when the receiver resolves; return EMPTY when it does not.
+            // Falling through to scope completion for a dot-triggered request would dump every
+            // visible symbol — none of which are reachable through that dot (#1360).
+            TryAddMemberCompletions(analysis, line, col, items);
             return new CompletionList(items);
         }
 
