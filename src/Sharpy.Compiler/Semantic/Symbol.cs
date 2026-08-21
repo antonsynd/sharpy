@@ -198,6 +198,13 @@ public record VariableSymbol : Symbol
     public bool HasDefaultValue { get; init; }
 
     /// <summary>
+    /// The original CLR field name for discovery-loaded module fields.
+    /// Used by code generation to emit the exact CLR name (e.g. "Pi")
+    /// while the Sharpy-side key uses the canonical spelling ("pi").
+    /// </summary>
+    public string? ClrFieldName { get; init; }
+
+    /// <summary>
     /// The folded integer constant value for this variable, when it is a <c>const</c> whose
     /// initializer folds to a <see cref="System.Numerics.BigInteger"/> via
     /// <see cref="IntegerConstantEvaluator"/> and whose declared type is an integer primitive.

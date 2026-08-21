@@ -268,20 +268,28 @@ internal static class SymbolSerializer
             // #1444
             DeprecationMessage = vs.DeprecationMessage,
             ExplicitAccessLevel = vs.ExplicitAccessLevel?.ToString(),
-            Properties = new Dictionary<string, object>
-            {
-                ["IsParameter"] = vs.IsParameter,
-                ["IsConstant"] = vs.IsConstant,
-                ["HasDefaultValue"] = vs.HasDefaultValue,
-                ["IsModuleProperty"] = vs.IsModuleProperty,
-                ["HasPropertyGetter"] = vs.HasPropertyGetter,
-                ["HasPropertySetter"] = vs.HasPropertySetter,
-                // #1444 — the bag already carries six field flags; these two were simply missing,
-                // and a warm build let a @final field be assigned outside a constructor.
-                ["IsStatic"] = vs.IsStatic,
-                ["IsFinal"] = vs.IsFinal
-            }
+            Properties = BuildVariableProperties(vs)
         };
+    }
+
+    private static Dictionary<string, object> BuildVariableProperties(VariableSymbol vs)
+    {
+        var props = new Dictionary<string, object>
+        {
+            ["IsParameter"] = vs.IsParameter,
+            ["IsConstant"] = vs.IsConstant,
+            ["HasDefaultValue"] = vs.HasDefaultValue,
+            ["IsModuleProperty"] = vs.IsModuleProperty,
+            ["HasPropertyGetter"] = vs.HasPropertyGetter,
+            ["HasPropertySetter"] = vs.HasPropertySetter,
+            // #1444 — the bag already carries six field flags; these two were simply missing,
+            // and a warm build let a @final field be assigned outside a constructor.
+            ["IsStatic"] = vs.IsStatic,
+            ["IsFinal"] = vs.IsFinal
+        };
+        if (vs.ClrFieldName != null)
+            props["ClrFieldName"] = vs.ClrFieldName;
+        return props;
     }
 
     private static CachedSymbol SerializeModuleSymbol(ModuleSymbol ms, string id, string filePath)
@@ -680,6 +688,7 @@ internal static class SymbolSerializer
             ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel),
             IsStatic = GetBoolProperty(props, "IsStatic"),
             IsFinal = GetBoolProperty(props, "IsFinal"),
+            ClrFieldName = GetStringProperty(props, "ClrFieldName"),
             ConstantValue = !string.IsNullOrEmpty(cached.ConstantValue)
                 ? System.Numerics.BigInteger.Parse(cached.ConstantValue, System.Globalization.CultureInfo.InvariantCulture)
                 : null
@@ -756,6 +765,18 @@ internal static class SymbolSerializer
 
         // Handle direct boolean or other IConvertible
         return Convert.ToBoolean(value, CultureInfo.InvariantCulture);
+    }
+
+    private static string? GetStringProperty(Dictionary<string, object> props, string key)
+    {
+        if (!props.TryGetValue(key, out var value))
+            return null;
+        if (value is string s)
+            return s;
+        if (value is System.Text.Json.JsonElement jsonElement &&
+            jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
+            return jsonElement.GetString();
+        return value?.ToString();
     }
 
     private static ModuleSymbol DeserializeModuleSymbol(

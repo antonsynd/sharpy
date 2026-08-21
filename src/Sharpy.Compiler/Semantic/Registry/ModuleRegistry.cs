@@ -168,7 +168,7 @@ internal class ModuleRegistry
     /// Get fields exported by a module (e.g., string constants from the string module).
     /// Returns tuples of (Name, SemanticType, IsConst) for each field.
     /// </summary>
-    public List<(string Name, SemanticType Type, bool IsConst)> GetModuleFields(string moduleName)
+    public List<(string Name, SemanticType Type, bool IsConst, string? ClrName)> GetModuleFields(string moduleName)
     {
         try
         {
@@ -180,12 +180,12 @@ internal class ModuleRegistry
         catch (KeyNotFoundException ex)
         {
             _logger.LogWarning($"Module '{moduleName}' not found: {ex.Message}", 0, 0);
-            return new List<(string Name, SemanticType Type, bool IsConst)>();
+            return new List<(string Name, SemanticType Type, bool IsConst, string? ClrName)>();
         }
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning($"Error getting fields for module '{moduleName}': {ex.Message}", 0, 0);
-            return new List<(string Name, SemanticType Type, bool IsConst)>();
+            return new List<(string Name, SemanticType Type, bool IsConst, string? ClrName)>();
         }
     }
 

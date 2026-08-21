@@ -541,6 +541,7 @@ def main() -> None:
         ["TypeSymbol.ClrType"] = "CLR interop — set by assembly discovery, never by .spy extraction",
         ["FunctionSymbol.ClrMethod"] = "CLR interop — see TypeSymbol.ClrType",
         ["FunctionSymbol.ClrMethodName"] = "CLR interop — see TypeSymbol.ClrType",
+        ["VariableSymbol.ClrFieldName"] = "CLR interop — set by assembly discovery (#1540), never by .spy extraction",
 
         // Overload/dunder indexes: derived views over Methods, which is mirrored.
         ["TypeSymbol.OperatorMethods"] = "an index over Methods, rebuilt by "
