@@ -81,13 +81,14 @@ public class Program
                 .WithServices(services =>
                 {
                     var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
-                    var sharpyCorePath = sharpyCoreAssembly.Location;
-                    var coreDir = Path.GetDirectoryName(sharpyCorePath)!;
-                    var defaultRefs = new List<string> { sharpyCorePath };
-                    var stdlibPath = Path.Combine(coreDir, "Sharpy.Stdlib.dll");
-                    if (File.Exists(stdlibPath))
-                        defaultRefs.Add(stdlibPath);
-                    services.AddSingleton(new CompilerApi(null, defaultRefs.ToArray()));
+                    var resolved = DefaultReferenceSet.Resolve(sharpyCoreAssembly.Location);
+                    foreach (var warning in resolved.Warnings)
+                    {
+                        Console.Error.WriteLine($"[Warning] {warning}");
+                        if (loggerFactory != null)
+                            loggerFactory.CreateLogger(nameof(DefaultReferenceSet)).LogWarning(warning);
+                    }
+                    services.AddSingleton(new CompilerApi(null, resolved.References.ToArray()));
                     services.AddSingleton<LspConfiguration>();
                     services.AddSingleton<SharpyWorkspace>();
                     services.AddSingleton<DiagnosticPublisher>();
