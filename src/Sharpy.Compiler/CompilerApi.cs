@@ -591,7 +591,10 @@ public sealed class CompilerApi
     /// Returns a cached <see cref="AnalysisCacheEntry"/> when the reference, module-path, and
     /// package-reference set is unchanged (path + mtime identity), or builds a fresh one and
     /// caches it. The compile path bypasses this entirely — H5/H6/H9 make per-call fresh
-    /// registries essential there.
+    /// registries essential there. Sharing the registry across analyses is safe for inheritance
+    /// materialization because its TypeSymbols are constructed fully resolved — never with
+    /// deferred base/interface names — so per-analysis freezes write nothing onto them
+    /// (see <c>SemanticBinding.MaterializeInheritance</c>, #1140 H3).
     /// </summary>
     internal (ModuleRegistry? Registry, BuiltinRegistry Builtins) GetOrBuildAnalysisContext(
         ProjectConfig config)

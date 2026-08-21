@@ -385,6 +385,13 @@ public class SemanticBinding
     /// </summary>
     internal void MaterializeInheritance()
     {
+        // Cross-analysis safety (#1140 H3): shared (registry-cached) module TypeSymbols are
+        // constructed fully resolved by discovery — they never carry UnresolvedBaseName /
+        // UnresolvedInterfaces — so the writes below target only per-analysis symbols
+        // (deferred-inheritance symbols come from the per-analysis ModuleLoader, not the shared
+        // registry). The duplicate check on Interfaces makes residual write-backs no-ops. If
+        // deferred-inheritance symbols ever enter the shared registry, this materialization
+        // becomes a cross-analysis write hazard.
         foreach (var (symbol, baseType) in _baseTypes)
             symbol.BaseType = baseType;
         foreach (var (symbol, baseRef) in _baseTypeRefs)

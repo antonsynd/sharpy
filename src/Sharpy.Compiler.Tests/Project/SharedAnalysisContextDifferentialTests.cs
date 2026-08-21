@@ -93,12 +93,59 @@ def add(a: int, b: int) -> int:
             "third analysis (same source as first) must match first analysis");
     }
 
-    [Fact]
-    public void ConcurrentAnalyses_ProduceConsistentResults()
-    {
-        var api = new CompilerApi();
+    /// <summary>
+    /// Exercises the shared-TypeSymbol materialization path a bare function cannot: stdlib
+    /// modules whose types carry interfaces (math, collections.Counter), a user class
+    /// inheriting a CLR base (Exception), and calls forcing member resolution.
+    /// </summary>
+    private const string InheritanceSource = @"
+import math
+import collections
 
-        api.Analyze(SimpleSource);
+class ShapeError(Exception):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+def circle_area(radius: float) -> float:
+    if radius < 0.0:
+        raise ShapeError(""negative radius"")
+    return math.pi * radius * radius
+
+def count_words(words: list[str]) -> int:
+    counter = collections.Counter[str](words)
+    pairs = counter.most_common(1)
+    return len(pairs)
+";
+
+    private static string[] StdlibReferences()
+    {
+        var baseDir = Path.GetDirectoryName(
+            typeof(SharedAnalysisContextDifferentialTests).Assembly.Location)!;
+        return new[]
+        {
+            Path.Combine(baseDir, "Sharpy.Core.dll"),
+            Path.Combine(baseDir, "Sharpy.Stdlib.dll")
+        };
+    }
+
+    private static (string? BaseName, int InterfaceCount, string? AreaReturn, string? CountReturn)
+        ProbeMemberResolution(SemanticResult result)
+    {
+        var shapeError = result.SymbolTable?.Lookup("ShapeError") as TypeSymbol;
+        var area = result.SymbolTable?.Lookup("circle_area") as FunctionSymbol;
+        var count = result.SymbolTable?.Lookup("count_words") as FunctionSymbol;
+        return (shapeError?.BaseType?.Name, shapeError?.Interfaces.Count ?? -1,
+            area?.ReturnType?.ToString(), count?.ReturnType?.ToString());
+    }
+
+    [Fact]
+    public void ConcurrentAnalyses_OnSharedContext_MatchFreshContextAnalysis()
+    {
+        var refs = StdlibReferences();
+        refs.Should().OnlyContain(r => File.Exists(r), "stdlib assemblies must be in the test output");
+
+        var sharedApi = new CompilerApi(null, refs);
+        sharedApi.Analyze(InheritanceSource);
 
         const int parallelism = 4;
         var results = new SemanticResult[parallelism];
@@ -108,7 +155,7 @@ def add(a: int, b: int) -> int:
         {
             try
             {
-                results[i] = api.Analyze(SimpleSource);
+                results[i] = sharedApi.Analyze(InheritanceSource);
             }
             catch (Exception ex)
             {
@@ -116,19 +163,72 @@ def add(a: int, b: int) -> int:
             }
         });
 
+        var fresh = new CompilerApi(null, refs).Analyze(InheritanceSource);
+        fresh.Success.Should().BeTrue(
+            "fresh-context analysis of the inheritance source must succeed; diagnostics: {0}",
+            string.Join("; ", fresh.Diagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        var freshCodes = fresh.Diagnostics.Select(d => d.Code).OrderBy(c => c).ToList();
+        var freshProbe = ProbeMemberResolution(fresh);
+        freshProbe.BaseName.Should().NotBeNull("ShapeError's CLR base must resolve");
+        freshProbe.AreaReturn.Should().NotBeNull("circle_area's return type must resolve");
+
         for (int i = 0; i < parallelism; i++)
         {
-            exceptions[i].Should().BeNull($"analysis {i} must not throw");
-            results[i].Should().NotBeNull($"analysis {i} must produce a result");
-            results[i].Success.Should().BeTrue($"analysis {i} must succeed");
-        }
+            exceptions[i].Should().BeNull($"shared-context analysis {i} must not throw");
+            results[i].Should().NotBeNull($"shared-context analysis {i} must produce a result");
+            results[i].Success.Should().Be(fresh.Success,
+                $"shared-context analysis {i} must agree with the fresh-context analysis on success");
 
-        var baseline = results[0].Diagnostics.Select(d => d.Code).OrderBy(c => c).ToList();
-        for (int i = 1; i < parallelism; i++)
-        {
             var codes = results[i].Diagnostics.Select(d => d.Code).OrderBy(c => c).ToList();
-            codes.Should().BeEquivalentTo(baseline,
-                $"concurrent analysis {i} must produce the same diagnostics as analysis 0");
+            codes.Should().BeEquivalentTo(freshCodes,
+                $"shared-context analysis {i} must produce the fresh-context diagnostics");
+
+            ProbeMemberResolution(results[i]).Should().Be(freshProbe,
+                $"shared-context analysis {i} must resolve inheritance and member types "
+                + "identically to a fresh context");
+        }
+    }
+
+    [Fact]
+    public void TouchedReference_InvalidatesCachedAnalysisContext()
+    {
+        var baseDir = Path.GetDirectoryName(
+            typeof(SharedAnalysisContextDifferentialTests).Assembly.Location)!;
+        var realCore = Path.Combine(baseDir, "Sharpy.Core.dll");
+        File.Exists(realCore).Should().BeTrue($"Sharpy.Core.dll must be in the test output at {realCore}");
+
+        var tempDir = Path.Combine(Path.GetTempPath(), "sharpy-mtime-cell-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            // A copy in a temp dir so bumping the mtime never touches real build outputs.
+            var refCopy = Path.Combine(tempDir, "Sharpy.Core.dll");
+            File.Copy(realCore, refCopy);
+
+            var api = new CompilerApi();
+            var config = new ProjectConfig
+            {
+                ProjectFilePath = Path.Combine(tempDir, "mtime.spyproj"),
+                ProjectDirectory = tempDir,
+                RootNamespace = "MtimeCell"
+            };
+            config.References.Add(refCopy);
+
+            var (registry1, _) = api.GetOrBuildAnalysisContext(config);
+            var (registry2, _) = api.GetOrBuildAnalysisContext(config);
+            registry1.Should().NotBeNull("a config with a reference must build a registry");
+            ReferenceEquals(registry1, registry2).Should().BeTrue(
+                "an untouched reference set must hit the cached context (positive control)");
+
+            File.SetLastWriteTimeUtc(refCopy, File.GetLastWriteTimeUtc(refCopy).AddSeconds(7));
+
+            var (registry3, _) = api.GetOrBuildAnalysisContext(config);
+            ReferenceEquals(registry1, registry3).Should().BeFalse(
+                "touching a referenced assembly's mtime must invalidate the cached context");
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
         }
     }
 
