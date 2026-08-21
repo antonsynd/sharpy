@@ -588,11 +588,12 @@ public sealed class CompilerApi
     }
 
     /// <summary>
-    /// Returns a cached <see cref="AnalysisCacheEntry"/> when the reference set is unchanged
-    /// (path + mtime identity), or builds a fresh one and caches it. The compile path bypasses
-    /// this entirely — H5/H6/H9 make per-call fresh registries essential there.
+    /// Returns a cached <see cref="AnalysisCacheEntry"/> when the reference, module-path, and
+    /// package-reference set is unchanged (path + mtime identity), or builds a fresh one and
+    /// caches it. The compile path bypasses this entirely — H5/H6/H9 make per-call fresh
+    /// registries essential there.
     /// </summary>
-    private (ModuleRegistry? Registry, BuiltinRegistry Builtins) GetOrBuildAnalysisContext(
+    internal (ModuleRegistry? Registry, BuiltinRegistry Builtins) GetOrBuildAnalysisContext(
         ProjectConfig config)
     {
         var key = BuildAnalysisCacheKey(config);
@@ -615,7 +616,7 @@ public sealed class CompilerApi
         return (registry, builtins);
     }
 
-    private IReadOnlyList<(string Path, long Ticks)> BuildAnalysisCacheKey(ProjectConfig config)
+    internal IReadOnlyList<(string Path, long Ticks)> BuildAnalysisCacheKey(ProjectConfig config)
     {
         var parts = new List<(string Path, long Ticks)>();
 
@@ -627,6 +628,23 @@ public sealed class CompilerApi
 
         foreach (var m in config.ModulePaths)
             parts.Add((m, GetMtimeTicks(m)));
+
+        // BuildModuleRegistry also loads the assemblies resolved from PackageReferences, so the
+        // key must cover those same inputs: the declared package identity (which includes the
+        // target framework the resolution depends on, and distinguishes configs whose packages
+        // resolve to no assemblies) plus each resolved assembly with its mtime, so a re-restored
+        // package invalidates. Resolution is a local ~/.nuget directory scan — no network. The
+        // logger is withheld here so resolution warnings are reported once by the actual registry
+        // build, not on every cache probe.
+        foreach (var packageRef in config.PackageReferences)
+        {
+            parts.Add(($"nuget:{packageRef.Name}/{packageRef.Version}@{config.TargetFramework}", 0));
+            foreach (var assemblyPath in Project.NuGetResolver.ResolvePackage(
+                packageRef, config.TargetFramework, logger: null))
+            {
+                parts.Add((assemblyPath, GetMtimeTicks(assemblyPath)));
+            }
+        }
 
         return parts;
 

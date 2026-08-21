@@ -9,7 +9,8 @@ namespace Sharpy.Compiler.Tests.Project;
 /// <summary>
 /// Warm ≡ cold: analyzing with a cached analysis context (ModuleRegistry + BuiltinRegistry)
 /// must produce identical results to analyzing with a fresh context. The cache key is the
-/// reference set + mtime; touching a reference invalidates.
+/// reference + module-path + package-reference set with mtimes; touching a reference or
+/// changing a package reference invalidates.
 /// </summary>
 public class SharedAnalysisContextDifferentialTests
 {
@@ -129,6 +130,46 @@ def add(a: int, b: int) -> int:
             codes.Should().BeEquivalentTo(baseline,
                 $"concurrent analysis {i} must produce the same diagnostics as analysis 0");
         }
+    }
+
+    private static ProjectConfig ConfigWithPackages(params PackageRef[] packages)
+    {
+        var config = new ProjectConfig
+        {
+            ProjectFilePath = "/test/pkg.spyproj",
+            ProjectDirectory = "/test",
+            RootNamespace = "PkgDelta"
+        };
+        config.PackageReferences.AddRange(packages);
+        return config;
+    }
+
+    [Fact]
+    public void PackageReferenceDelta_ProducesDifferentKey_AndFreshContext()
+    {
+        // Two configs identical except for PackageReferences must not share a cached analysis
+        // context: BuildModuleRegistry loads assemblies resolved from PackageReferences, so a
+        // key that omitted them served a registry missing (or carrying) package modules.
+        var api = new CompilerApi();
+
+        var baseConfig = ConfigWithPackages(new PackageRef("Sharpy.Test.FakeA", "1.0.0"));
+        var withExtraPackage = ConfigWithPackages(
+            new PackageRef("Sharpy.Test.FakeA", "1.0.0"),
+            new PackageRef("Sharpy.Test.FakeB", "2.0.0"));
+
+        var baseKey = api.BuildAnalysisCacheKey(baseConfig);
+        var extraKey = api.BuildAnalysisCacheKey(withExtraPackage);
+        extraKey.SequenceEqual(baseKey).Should().BeFalse(
+            "configs that differ only in PackageReferences must produce different cache keys");
+
+        var (registry1, _) = api.GetOrBuildAnalysisContext(baseConfig);
+        var (registry2, _) = api.GetOrBuildAnalysisContext(baseConfig);
+        ReferenceEquals(registry1, registry2).Should().BeTrue(
+            "an unchanged config must hit the cached context (positive control)");
+
+        var (registry3, _) = api.GetOrBuildAnalysisContext(withExtraPackage);
+        ReferenceEquals(registry1, registry3).Should().BeFalse(
+            "a config with different PackageReferences must get a fresh registry");
     }
 
     [Fact]
