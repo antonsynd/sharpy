@@ -83,7 +83,7 @@ internal sealed class SharpyCallHierarchyIncomingHandler : CallHierarchyIncoming
                     // The fromRanges indicate where in the caller the call occurs
                     var callLine = System.Math.Max(0, refLoc.Line - 1);
                     var callCol = System.Math.Max(0, refLoc.Column - 1);
-                    var callEnd = callCol + symbolName.Length;
+                    var callEnd = callCol + SymbolExtents.ReferenceExtentLength(refLoc, symbolName);
                     var fromRange = new LspRange(
                         new Position(callLine, callCol),
                         new Position(callLine, callEnd));

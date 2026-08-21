@@ -26,7 +26,7 @@ internal static class SymbolLocationHelper
 
         var startLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
         var startCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
-        var endCol = startCol + symbol.Name.Length;
+        var endCol = startCol + SymbolExtents.NameExtentLength(symbol);
 
         return new Location
         {

@@ -53,7 +53,7 @@ internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
         {
             var declLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
             var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
-            var declEnd = declCol + symbol.Name.Length;
+            var declEnd = declCol + SymbolExtents.NameExtentLength(symbol);
 
             var declFilePath = symbol.DeclaringFilePath ?? uri;
             var declUri = declFilePath.StartsWith("file://", StringComparison.Ordinal)
@@ -127,7 +127,7 @@ internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
         {
             var refLine = System.Math.Max(0, refLoc.Line - 1);
             var refCol = System.Math.Max(0, refLoc.Column - 1);
-            var refEnd = refCol + symbolName.Length;
+            var refEnd = refCol + SymbolExtents.ReferenceExtentLength(refLoc, symbolName);
 
             var refFilePath = refLoc.FilePath ?? fallbackUri;
             var refUri = refFilePath.StartsWith("file://", StringComparison.Ordinal)

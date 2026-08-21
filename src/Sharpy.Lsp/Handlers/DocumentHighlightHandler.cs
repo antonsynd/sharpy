@@ -52,7 +52,7 @@ internal sealed class SharpyDocumentHighlightHandler : DocumentHighlightHandlerB
         {
             var declLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
             var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
-            var declEnd = declCol + symbol.Name.Length;
+            var declEnd = declCol + SymbolExtents.NameExtentLength(symbol);
 
             var declRange = new LspRange(
                 new Position(declLine, declCol),
@@ -79,7 +79,7 @@ internal sealed class SharpyDocumentHighlightHandler : DocumentHighlightHandlerB
 
             var refLine = System.Math.Max(0, refLoc.Line - 1);
             var refCol = System.Math.Max(0, refLoc.Column - 1);
-            var refEnd = refCol + symbol.Name.Length;
+            var refEnd = refCol + SymbolExtents.ReferenceExtentLength(refLoc, symbol.Name);
 
             var refRange = new LspRange(
                 new Position(refLine, refCol),

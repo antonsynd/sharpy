@@ -98,7 +98,7 @@ internal sealed class SharpyCallHierarchyPrepareHandler : CallHierarchyPrepareHa
 
         var startLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? symbol.DeclarationLine!.Value) - 1);
         var startCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? symbol.DeclarationColumn!.Value) - 1);
-        var endCol = startCol + symbol.Name.Length;
+        var endCol = startCol + SymbolExtents.NameExtentLength(symbol);
 
         var filePath = symbol.DeclaringFilePath ?? fallbackUri;
         var docUri = filePath.StartsWith("file://", StringComparison.Ordinal)

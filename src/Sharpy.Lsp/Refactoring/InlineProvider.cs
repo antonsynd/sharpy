@@ -2,6 +2,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Services;
+using Sharpy.Lsp.Handlers;
 using LspRange = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 using SCG = System.Collections.Generic;
 
@@ -111,8 +112,7 @@ internal sealed class InlineProvider : ICodeActionProvider
         foreach (var reference in references)
         {
             var refStart = PositionConverter.ToLsp(reference.Line, reference.Column);
-            // The reference span covers the identifier name
-            var nameLength = varDecl.Name.Length;
+            var nameLength = SymbolExtents.ReferenceExtentLength(reference, symbol.Name);
             var refEnd = new Position(refStart.Line, refStart.Character + nameLength);
 
             // Wrap the initializer in parentheses if it's a compound expression

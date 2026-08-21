@@ -24,7 +24,7 @@ internal static class TypeHierarchyHelper
 
         var startLine = System.Math.Max(0, (type.EffectiveNameLine ?? 1) - 1);
         var startCol = System.Math.Max(0, (type.EffectiveNameColumn ?? 1) - 1);
-        var endCol = startCol + type.Name.Length;
+        var endCol = startCol + SymbolExtents.NameExtentLength(type);
 
         var filePath = type.DeclaringFilePath ?? type.DefiningFilePath ?? fallbackUri;
         var uri = filePath.StartsWith("file://", StringComparison.Ordinal)
