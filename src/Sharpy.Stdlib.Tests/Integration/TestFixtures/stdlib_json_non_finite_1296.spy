@@ -28,6 +28,6 @@ def main() -> None:
 
     # allow_nan=False keeps the strict branch, with CPython's message including the value.
     try:
-        print(json.dumps(math.inf, allowNan=False))
+        print(json.dumps(math.inf, allow_nan=False))
     except ValueError:
         print("refused")
