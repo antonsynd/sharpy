@@ -1136,6 +1136,31 @@ class TestFindNonpublicClassRanges:
         assert "internal class Bar" in src[start]
         assert src[end].strip() == "}"
 
+    def test_private_readonly_struct_is_nonpublic(self):
+        """`private readonly struct` must be flagged — the `readonly` modifier is not one of
+        sealed/abstract/static/partial, and missing it leaked the json/yaml IDocumentNode view
+        adapters' members (is_mapping, get_child, ...) into docs/stdlib as phantom module API."""
+        src = textwrap.dedent(
+            """\
+            public class Foo
+            {
+                public int A;
+            }
+            private readonly struct ViewAdapter
+            {
+                public bool IsMapping => true;
+            }
+            internal ref struct Cursor
+            {
+                public int Position;
+            }
+            """
+        ).split("\n")
+        ranges = _find_nonpublic_class_ranges(src)
+        assert len(ranges) == 2
+        assert "private readonly struct ViewAdapter" in src[ranges[0][0]]
+        assert "internal ref struct Cursor" in src[ranges[1][0]]
+
     def test_braces_in_line_comment(self):
         """Braces in // comments must not confuse depth tracking."""
         src = textwrap.dedent(

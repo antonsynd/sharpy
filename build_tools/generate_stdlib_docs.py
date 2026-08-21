@@ -666,7 +666,8 @@ _PROPERTY_PATTERN = re.compile(
 
 
 _NON_PUBLIC_CLASS_RE = re.compile(
-    r"(?:internal|private|protected)\s+(?:(?:sealed|abstract|static|partial)\s+)*"
+    r"(?:internal|private|protected)\s+"
+    r"(?:(?:sealed|abstract|static|partial|readonly|ref|record)\s+)*"
     r"(?:class|struct)\s"
 )
 
