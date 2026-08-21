@@ -625,6 +625,7 @@ internal partial class TypeChecker
                 // Update its type now that we've resolved it
                 SemanticBinding.SetVariableType(existingConst, declaredType);
                 _semanticInfo.SetDeclarationSymbol(varDecl, existingConst);
+                TryFoldConstantValue(existingConst, declaredType, varDecl.InitialValue);
                 return;
             }
 
@@ -646,6 +647,7 @@ internal partial class TypeChecker
             _symbolTable.Define(constSymbol);
             SemanticBinding.SetVariableType(constSymbol, declaredType);
             _semanticInfo.SetDeclarationSymbol(varDecl, constSymbol);
+            TryFoldConstantValue(constSymbol, declaredType, varDecl.InitialValue);
             return;
         }
 
@@ -1997,5 +1999,23 @@ internal partial class TypeChecker
                 System.Globalization.CultureInfo.InvariantCulture,
                 out var value)
             && !double.IsInfinity((double)(float)value);
+    }
+
+    private static void TryFoldConstantValue(
+        VariableSymbol symbol, SemanticType declaredType, Expression? initializer)
+    {
+        if (initializer == null)
+            return;
+
+        var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(declaredType);
+        if (info == null)
+            return;
+
+        if (info.Kind is not (Registry.PrimitiveCatalog.NumericKind.SignedInteger
+                or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger))
+            return;
+
+        if (IntegerConstantEvaluator.TryGetConstantInteger(initializer, out var folded))
+            symbol.ConstantValue = folded;
     }
 }

@@ -196,6 +196,17 @@ public record VariableSymbol : Symbol
     /// </summary>
     public bool IsFinal { get; init; }
     public bool HasDefaultValue { get; init; }
+
+    /// <summary>
+    /// The folded integer constant value for this variable, when it is a <c>const</c> whose
+    /// initializer folds to a <see cref="System.Numerics.BigInteger"/> via
+    /// <see cref="IntegerConstantEvaluator"/> and whose declared type is an integer primitive.
+    /// Null for non-const variables, non-integer consts, and consts whose initializers cannot
+    /// be folded. Used by <c>IsImplicitConstantConversion</c> to treat a const reference as a
+    /// constant expression at every §10.2.11 site (#1460).
+    /// </summary>
+    public System.Numerics.BigInteger? ConstantValue { get; internal set; }
+
     public Parser.Ast.ParameterModifier ParameterModifier { get; init; } = Parser.Ast.ParameterModifier.None;
 
     /// <summary>
