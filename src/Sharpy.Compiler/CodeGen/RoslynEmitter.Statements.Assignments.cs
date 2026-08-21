@@ -1122,8 +1122,25 @@ internal partial class RoslynEmitter
                 Token(SyntaxKind.StaticKeyword));
         }
 
-        return FieldDeclaration(declaration)
+        var fieldDeclaration = FieldDeclaration(declaration)
             .WithModifiers(modifiers);
+
+        // The reverse mangle cannot recover every original spelling from the CLR name —
+        // it is non-injective for single characters (Sharpy `e` → CLR `E` by PascalCase,
+        // Sharpy `I` → CLR `I` by constant-case identity). When inference would round-trip
+        // wrong, record the authoritative Python name for discovery to read (#1607).
+        if (NameMangler.ToSharpyName(varName, ReverseNameContext.Field) != varDecl.Name)
+        {
+            fieldDeclaration = fieldDeclaration.AddAttributeLists(
+                AttributeList(SingletonSeparatedList(
+                    Attribute(ParseName("global::Sharpy.SharpyFieldName"))
+                        .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(
+                            AttributeArgument(LiteralExpression(
+                                SyntaxKind.StringLiteralExpression,
+                                Literal(varDecl.Name)))))))));
+        }
+
+        return fieldDeclaration;
     }
 
     /// <summary>

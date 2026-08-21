@@ -16,16 +16,22 @@ namespace Sharpy
     public static partial class ReModule
     {
         public static int IGNORECASE = 2;
+        [global::Sharpy.SharpyFieldName("I")]
         public static int I = 2;
         public static int MULTILINE = 8;
+        [global::Sharpy.SharpyFieldName("M")]
         public static int M = 8;
         public static int DOTALL = 16;
+        [global::Sharpy.SharpyFieldName("S")]
         public static int S = 16;
         public static int VERBOSE = 64;
+        [global::Sharpy.SharpyFieldName("X")]
         public static int X = 64;
         public static int UNICODE = 32;
+        [global::Sharpy.SharpyFieldName("U")]
         public static int U = 32;
         public static int ASCII = 256;
+        [global::Sharpy.SharpyFieldName("A")]
         public static int A = 256;
         /// <summary>
         /// Fast path: check if pattern contains Python-specific syntax.

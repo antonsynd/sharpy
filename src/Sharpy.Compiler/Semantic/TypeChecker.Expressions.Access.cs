@@ -2570,7 +2570,7 @@ internal partial class TypeChecker
                     subModule.Exports.Add(type.Name, type);
 
                 // Add fields
-                foreach (var (fieldName, _, _, _) in subModuleFields)
+                foreach (var (fieldName, _, _, _, _) in subModuleFields)
                     if (ModuleRegistry.TryResolveNetType(subModuleName, fieldName) is { } fieldType)
                     {
                         var fieldSymbol = ModuleRegistry.CreateTypeSymbolFromClrType(fieldType);

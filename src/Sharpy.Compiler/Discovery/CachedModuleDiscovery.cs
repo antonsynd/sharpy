@@ -436,11 +436,13 @@ internal class CachedModuleDiscovery
 
     /// <summary>
     /// Get all field symbols from a specific module.
-    /// Returns tuples of (Name, SemanticType, IsConst) for each field.
+    /// Returns tuples of (Name, SemanticType, IsConst, ClrName, RecordedPythonName) for each
+    /// field; <c>RecordedPythonName</c> is non-null when a <c>SharpyFieldNameAttribute</c>
+    /// carried the authoritative spelling (#1607).
     /// </summary>
-    public List<(string Name, SemanticType Type, bool IsConst, string? ClrName)> GetModuleFields(string moduleName)
+    public List<(string Name, SemanticType Type, bool IsConst, string? ClrName, string? RecordedPythonName)> GetModuleFields(string moduleName)
     {
-        var fields = new List<(string Name, SemanticType Type, bool IsConst, string? ClrName)>();
+        var fields = new List<(string Name, SemanticType Type, bool IsConst, string? ClrName, string? RecordedPythonName)>();
 
         foreach (var lazy in _loadedIndices.Values)
         {
@@ -451,7 +453,8 @@ internal class CachedModuleDiscovery
             foreach (var (fieldName, fieldSignature) in moduleOverloads.Fields)
             {
                 var semanticType = ConvertTypeSignature(fieldSignature.FieldType);
-                fields.Add((fieldName, semanticType, fieldSignature.IsConst, fieldSignature.ClrName));
+                fields.Add((fieldName, semanticType, fieldSignature.IsConst,
+                    fieldSignature.ClrName, fieldSignature.RecordedPythonName));
             }
         }
 

@@ -496,6 +496,20 @@ internal class OverloadIndexBuilder
         return attr.ConstructorArguments[1].Value as string;
     }
 
+    /// <summary>
+    /// Reads the Python name recorded by <c>Sharpy.SharpyFieldNameAttribute</c> on a generated
+    /// module field or property. Codegen emits it exactly when the reverse mangle would not
+    /// round-trip the declared spelling (1-char ambiguity: CLR E → e but CLR I → I, #1607).
+    /// </summary>
+    private static string? GetRecordedPythonName(IEnumerable<CustomAttributeData> attributes)
+    {
+        var attr = attributes.FirstOrDefault(
+            a => a.AttributeType.FullName == "Sharpy.SharpyFieldNameAttribute");
+        if (attr == null || attr.ConstructorArguments.Count < 1)
+            return null;
+        return attr.ConstructorArguments[0].Value as string;
+    }
+
     private string DeriveModuleNameFromNamespace(string? ns)
     {
         if (ns == null)
@@ -587,16 +601,21 @@ internal class OverloadIndexBuilder
                 // Preserve the CLR name when a type with the same python name exists in this
                 // module — the type/field collision is deliberate (e.g. sqlite3.Row is both a
                 // type and the value assigned to row_factory; documented in ModuleExports.cs:27-32).
+                // A recorded SharpyFieldNameAttribute beats inference: the reverse mangle is
+                // non-injective for 1-char names (CLR E → e but CLR I → I, #1607).
                 var hasTypeCollision = moduleTypePythonNames?.Contains(field.Name) == true;
+                var recordedName = GetRecordedPythonName(field.CustomAttributes);
                 var sharpyName = hasTypeCollision
                     ? field.Name
-                    : NameMangler.ToSharpyName(field.Name, ReverseNameContext.Field);
+                    : recordedName
+                      ?? NameMangler.ToSharpyName(field.Name, ReverseNameContext.Field);
                 var fieldSignature = new FieldSignature
                 {
                     Name = sharpyName,
                     FieldType = CreateTypeSignature(field.FieldType),
                     IsConst = field.IsLiteral,
-                    ClrName = field.Name
+                    ClrName = field.Name,
+                    RecordedPythonName = recordedName
                 };
 
                 moduleOverloads.Fields[sharpyName] = fieldSignature;
@@ -617,7 +636,9 @@ internal class OverloadIndexBuilder
 
         foreach (var property in staticProperties)
         {
-            var sharpyPropertyName = NameMangler.ToSharpyName(property.Name, ReverseNameContext.Field);
+            var recordedPropertyName = GetRecordedPythonName(property.CustomAttributes);
+            var sharpyPropertyName = recordedPropertyName
+                ?? NameMangler.ToSharpyName(property.Name, ReverseNameContext.Field);
             if (moduleOverloads.Fields.ContainsKey(sharpyPropertyName))
                 continue;
 
@@ -628,7 +649,8 @@ internal class OverloadIndexBuilder
                     Name = sharpyPropertyName,
                     FieldType = CreateTypeSignature(property.PropertyType),
                     IsConst = false,
-                    ClrName = property.Name
+                    ClrName = property.Name,
+                    RecordedPythonName = recordedPropertyName
                 };
 
                 moduleOverloads.Fields[sharpyPropertyName] = propertyFieldSignature;

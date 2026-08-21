@@ -42,6 +42,14 @@ internal class FieldSignature
     public TypeSignature FieldType { get; set; } = new();
     public bool IsConst { get; set; }
     public string? ClrName { get; set; }
+
+    /// <summary>
+    /// The Python name recorded by <c>SharpyFieldNameAttribute</c> on the CLR member, when
+    /// present. Codegen emits the attribute exactly where the reverse mangle cannot recover
+    /// the declared spelling (1-char ambiguity: CLR E → e but CLR I → I, #1607); when set,
+    /// it is the authoritative source of <see cref="Name"/>.
+    /// </summary>
+    public string? RecordedPythonName { get; set; }
 }
 
 /// <summary>

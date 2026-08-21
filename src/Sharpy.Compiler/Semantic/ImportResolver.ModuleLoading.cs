@@ -955,7 +955,7 @@ internal partial class ImportResolver
         foreach (var type in types)
             moduleInfo.ExportedSymbols.Add(type.Name, type);
 
-        foreach (var (fieldName, fieldType, isConst, clrName) in fields)
+        foreach (var (fieldName, fieldType, isConst, clrName, _) in fields)
         {
             moduleInfo.ExportedSymbols.Add(fieldName, new VariableSymbol
             {
