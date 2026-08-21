@@ -101,6 +101,14 @@ namespace Sharpy
                 return cls.Decode(s);
             }
 
+            // Both doors refuse unpaired surrogate escapes with the same message (#1487).
+            // The rule is JsonSurrogateEscapes — one scanner, two callers.
+            if (JsonSurrogateEscapes.FirstUnpaired(s) is { } unpaired)
+            {
+                throw new JSONDecodeError(
+                    SurrogateRefusalMessage(unpaired.escapeText), s, unpaired.position);
+            }
+
             return JsonParser.Parse(s, objectHook);
         }
 
@@ -183,6 +191,13 @@ namespace Sharpy
             string content = fp.Read();
             return Loads(content, cls, objectHook);
         }
+
+        /// <summary>
+        /// The refusal message both doors use for an unpaired surrogate escape, so the agreement
+        /// corpus sees identical text from both sides (#1487).
+        /// </summary>
+        private static string SurrogateRefusalMessage(string escapeText)
+            => "Unpaired UTF-16 surrogate escape " + escapeText;
 
 #if NET10_0_OR_GREATER
         private static readonly JsonSerializerOptions _typedOptions = new JsonSerializerOptions
@@ -384,6 +399,13 @@ namespace Sharpy
             if (s == null)
             {
                 throw new TypeError("the JSON object must be str, not NoneType");
+            }
+
+            // Both doors refuse unpaired surrogate escapes with the same message (#1487).
+            if (JsonSurrogateEscapes.FirstUnpaired(s) is { } unpaired)
+            {
+                return Result<T, JSONDecodeError>.Err(new JSONDecodeError(
+                    SurrogateRefusalMessage(unpaired.escapeText), s, unpaired.position));
             }
 
             try
