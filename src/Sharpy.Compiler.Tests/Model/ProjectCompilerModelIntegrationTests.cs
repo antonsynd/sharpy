@@ -112,7 +112,7 @@ x = helper()");
 
         var unit = result.ProjectModel.GetUnit(mainSpy);
         Assert.NotNull(unit);
-        Assert.Equal(CompilationPhase.Failed, unit.Phase);
+        Assert.Equal(CompilationPhase.ParsedWithErrors, unit.Phase);
     }
 
     [Fact]

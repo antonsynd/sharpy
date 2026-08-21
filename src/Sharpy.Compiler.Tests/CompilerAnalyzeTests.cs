@@ -201,9 +201,11 @@ def foo(
 
         result.Success.Should().BeFalse("syntax error should cause analysis failure");
         result.Diagnostics.HasErrors.Should().BeTrue();
-        // SemanticInfo should be null since semantic analysis was not reached
-        result.SemanticInfo.Should().BeNull(
-            "semantic analysis should not run when parsing fails");
+        // #1360: semantic analysis now runs on partial ASTs (ParsedWithErrors) so LSP can
+        // resolve receivers for trailing-dot completion. SemanticInfo is non-null even when
+        // the parse had errors.
+        result.SemanticInfo.Should().NotBeNull(
+            "semantic analysis runs on partial ASTs to support LSP completion");
     }
 
     [Fact]
