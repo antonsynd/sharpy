@@ -296,6 +296,97 @@ def main() -> None:
             + "a build that reused a cache (#1474)");
     }
 
+    private const string ConstLibSource = @"const LIMIT: int = 200
+const BIG: int = 100 + 100
+";
+
+    private const string ConstMainInitialSource = @"from lib import LIMIT, BIG
+
+
+def main() -> None:
+    print(LIMIT)
+    print(BIG)
+";
+
+    private const string ConstMainSmallWidthSource = @"from lib import LIMIT, BIG
+
+
+def main() -> None:
+    b: uint8 = LIMIT
+    c: uint8 = BIG
+    print(b)
+    print(c)
+";
+
+    /// <summary>
+    /// #1460's ConstantValue making the serializer round trip, measured as the warm ≡ cold
+    /// property (#1553's contract applied to the new fact): a const restored from the cache must
+    /// still be a constant expression at a §10.2.11 site.
+    ///
+    /// <para>The warm arm's SUCCESS is the discriminating observation: <c>b: uint8 = LIMIT</c> is
+    /// admitted ONLY because the decoded <see cref="Sharpy.Compiler.Semantic.VariableSymbol"/>
+    /// still carries <c>ConstantValue</c> — the non-const spelling of the same binding is refused
+    /// SPY0220 (pinned by <c>const_ref_nonconst_uint8_refused</c>), so a serializer or import seam
+    /// that dropped the fact fails exactly this build, loudly. <c>BIG</c> adds the
+    /// folded-expression shape (<c>100 + 100</c>), whose emitter half is the Design-Decision-1
+    /// alignment cell (<c>const_ref_expr_init_uint8</c>) compiled from a CACHED symbol here.</para>
+    /// </summary>
+    [Fact]
+    public void AfterAWarmRestore_AConstReferenceIsStillAConstantExpression()
+    {
+        // --- Warm arm: a succeeding build writes the cache; the edit then makes main CONSUME the
+        //     imported consts at small-width sites. lib.spy is untouched throughout, so LIMIT and
+        //     BIG come back through the serializer, not fresh analysis.
+        var warmLib = Write("constwarm", "lib.spy", ConstLibSource);
+        var warmMain = Write("constwarm", "main.spy", ConstMainInitialSource);
+        var warmConfig = Config("constwarm", warmLib, warmMain);
+
+        Build(warmConfig).Success.Should().BeTrue(
+            "the cache is only written by a build that succeeds — a failing first build leaves "
+            + "nothing to restore and this cell would measure the cold path twice");
+
+        File.WriteAllText(warmMain, ConstMainSmallWidthSource);
+        var warm = Build(warmConfig);
+
+        Skipped(warm).Should().BeEquivalentTo(new[] { "lib.spy" },
+            "lib.spy must be the file served from cache, or ConstantValue never makes the round "
+            + "trip this test is about");
+
+        warm.Success.Should().BeTrue(
+            "b: uint8 = LIMIT compiles only through the decoded symbol's ConstantValue — a "
+            + "serializer that dropped the fact surfaces here as SPY0220 on a build that reused "
+            + "a cache (#1460). Diagnostics:\n" + Diagnostics(warm));
+
+        // --- Cold arm: the SAME final sources, in a directory that has never been built.
+        var coldLib = Write("constcold", "lib.spy", ConstLibSource);
+        var coldMain = Write("constcold", "main.spy", ConstMainSmallWidthSource);
+        var cold = Build(Config("constcold", coldLib, coldMain));
+
+        Skipped(cold).Should().BeEmpty("the cold arm must have no cache to skip from");
+        cold.Success.Should().BeTrue(
+            "the cold reading of the same source must compile. Diagnostics:\n" + Diagnostics(cold));
+
+        Diagnostics(warm).Should().Be(Diagnostics(cold),
+            "a const's ConstantValue must read back exactly as it was recorded — warm ≡ cold "
+            + "for the new fact (#1460, the #1553 contract)");
+
+        // The two arms live in different directories, so the emitted #line directives differ by
+        // exactly the area name — normalize it away and the rest must match byte for byte.
+        var warmGenerated = Generated(warm).ToDictionary(
+            kv => kv.Key, kv => kv.Value.Replace("constwarm", "AREA"), StringComparer.Ordinal);
+        var coldGenerated = Generated(cold).ToDictionary(
+            kv => kv.Key, kv => kv.Value.Replace("constcold", "AREA"), StringComparer.Ordinal);
+        warmGenerated.Should().BeEquivalentTo(coldGenerated,
+            "the emitted C# — including the const/readonly decision the materialized "
+            + "IsCompileTimeConstant drives — must not depend on whether lib's symbols were "
+            + "compiled or restored (#1460)");
+
+        // Non-vacuity: the emission the comparison protects must actually be the C# const form —
+        // otherwise the cell could agree on a static-readonly regression in both arms.
+        string.Concat(warmGenerated.Values).Should().Contain("const int LIMIT = 200",
+            "the cached lib's LIMIT must still emit as a C# const, not static readonly (#1460)");
+    }
+
     /// <summary>
     /// Design Decision 10 (#1553): policy is configuration, not cache content. The cache stores
     /// the policy-free per-unit diagnostics; warnings-as-errors is applied by the project bag AT
