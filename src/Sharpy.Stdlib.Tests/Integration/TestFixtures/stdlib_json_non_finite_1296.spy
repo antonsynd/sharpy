@@ -8,20 +8,18 @@
 # Every expected line was produced by the equivalent CPython 3.12.13:
 #   python3 -c "import json; print(json.dumps(...))"
 #
-# The differential oracle excludes this fixture by name: Sharpy spells the constants math.Inf and
-# math.Nan where CPython spells them math.inf and math.nan, which takes the program out of the
-# shared subset (a naming divergence, not a semantic one). The expectations below are hand-verified
-# against CPython instead — that is what an excluded cell costs and why the exclusion is by name.
+# Since #1540 Sharpy spells these constants math.inf and math.nan, matching CPython. The
+# expectations below were originally hand-verified against CPython 3.12.13 and still hold.
 import json
 import math
 
 
 def main() -> None:
-    print(json.dumps(math.Inf))
-    print(json.dumps(-math.Inf))
-    print(json.dumps(math.Nan))
+    print(json.dumps(math.inf))
+    print(json.dumps(-math.inf))
+    print(json.dumps(math.nan))
 
-    xs: list[float] = [1.0, math.Inf, math.Nan]
+    xs: list[float] = [1.0, math.inf, math.nan]
     print(json.dumps(xs))
 
     # The parser accepts what the serializer writes, so the round trip is closed.
@@ -30,6 +28,6 @@ def main() -> None:
 
     # allow_nan=False keeps the strict branch, with CPython's message including the value.
     try:
-        print(json.dumps(math.Inf, allowNan=False))
+        print(json.dumps(math.inf, allowNan=False))
     except ValueError:
         print("refused")

@@ -174,18 +174,18 @@ def test_loads_underscore_integer():
 @test
 def test_loads_positive_infinity():
     result = toml.loads("val = inf")
-    assert operator.eq(result["val"], math.Inf)
+    assert operator.eq(result["val"], math.inf)
 
 @test
 def test_loads_negative_infinity():
     result = toml.loads("val = -inf")
-    assert operator.eq(result["val"], -math.Inf)
+    assert operator.eq(result["val"], -math.inf)
 
 @test
 def test_loads_nan():
     result = toml.loads("val = nan")
     # NaN != NaN, but Object.Equals(NaN, NaN) is true (operator.eq uses Equals).
-    assert operator.eq(result["val"], math.Nan)
+    assert operator.eq(result["val"], math.nan)
 
 # --- Loads - Edge Cases ---
 

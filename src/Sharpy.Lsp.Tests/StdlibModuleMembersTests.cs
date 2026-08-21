@@ -275,11 +275,9 @@ public class StdlibModuleMembersTests
         hoverOnMember.Should().Contain("floor").And.Contain("float64",
             "hover renders the member's signature, not just its name");
 
-        // The measured residual (#1540): `math.pi` type-checks but is absent from Exports, so no
-        // dot-completion can offer it. Asserted as the CURRENT truth so the day it changes, this
-        // fails and the pin above gets tightened rather than the gap being rediscovered.
-        labels.Should().NotContain("pi",
-            "module-level constants do not reach ModuleSymbol.Exports today (#1540) — when they "
-            + "do, flip this to Contain and drop the issue");
+        labels.Should().Contain("pi",
+            "module-level constants reach Exports with Sharpy spelling (#1540)");
+        labels.Should().NotContain("Pi",
+            "PascalCase 'Pi' must not appear in Exports after #1540 re-keying");
     }
 }

@@ -973,9 +973,6 @@ public class DifferentialExecutionTests : IntegrationTestBase
         {
             "Error",        // re.Error — CPython spells the module's exception re.error
             "pattern_str",  // re.Pattern.pattern_str — CPython spells it .pattern
-            "Inf",          // math.Inf — CPython spells it math.inf
-            "Nan",          // math.Nan — CPython spells it math.nan
-
             // Raw BCL members reached on a builtin receiver by reverse-mangling (#1291). These are
             // .NET's API, not Python's — CPython has len(s), s.upper(), s.strip() — so a fixture
             // exercising them is Sharpy-only by construction and has no CPython counterpart to

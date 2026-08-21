@@ -10,11 +10,11 @@ def test_sin_zero_returns_zero():
 
 @test
 def test_sin_pi_over_2_returns_one():
-    assert math.isclose(1.0, math.sin(math.Pi / 2.0), absTol=1e-15)
+    assert math.isclose(1.0, math.sin(math.pi / 2.0), absTol=1e-15)
 
 @test
 def test_sin_pi_is_approximately_zero():
-    assert math.isclose(0.0, math.sin(math.Pi), absTol=1e-14)
+    assert math.isclose(0.0, math.sin(math.pi), absTol=1e-14)
 
 @test
 def test_cos_zero_returns_one():
@@ -22,7 +22,7 @@ def test_cos_zero_returns_one():
 
 @test
 def test_cos_pi_returns_negative_one():
-    assert math.isclose(-1.0, math.cos(math.Pi), absTol=1e-15)
+    assert math.isclose(-1.0, math.cos(math.pi), absTol=1e-15)
 
 @test
 def test_tan_zero_returns_zero():
@@ -30,13 +30,13 @@ def test_tan_zero_returns_zero():
 
 @test
 def test_tan_pi_over_4_is_approximately_one():
-    assert math.isclose(1.0, math.tan(math.Pi / 4.0), relTol=1e-14)
+    assert math.isclose(1.0, math.tan(math.pi / 4.0), relTol=1e-14)
 
 # --- Inverse trigonometric functions ---
 
 @test
 def test_asin_one_returns_pi_over_2():
-    assert math.isclose(math.Pi / 2.0, math.asin(1.0), relTol=1e-14)
+    assert math.isclose(math.pi / 2.0, math.asin(1.0), relTol=1e-14)
 
 @test
 def test_asin_zero_returns_zero():
@@ -48,7 +48,7 @@ def test_acos_one_returns_zero():
 
 @test
 def test_acos_zero_returns_pi_over_2():
-    assert math.isclose(math.Pi / 2.0, math.acos(0.0), relTol=1e-14)
+    assert math.isclose(math.pi / 2.0, math.acos(0.0), relTol=1e-14)
 
 @test
 def test_atan_zero_returns_zero():
@@ -56,15 +56,15 @@ def test_atan_zero_returns_zero():
 
 @test
 def test_atan_one_returns_pi_over_4():
-    assert math.isclose(math.Pi / 4.0, math.atan(1.0), relTol=1e-14)
+    assert math.isclose(math.pi / 4.0, math.atan(1.0), relTol=1e-14)
 
 @test
 def test_atan2_one_one_returns_pi_over_4():
-    assert math.isclose(math.Pi / 4.0, math.atan2(1.0, 1.0), relTol=1e-14)
+    assert math.isclose(math.pi / 4.0, math.atan2(1.0, 1.0), relTol=1e-14)
 
 @test
 def test_atan2_negative_x_returns_pi():
-    assert math.isclose(math.Pi, math.atan2(0.0, -1.0), relTol=1e-14)
+    assert math.isclose(math.pi, math.atan2(0.0, -1.0), relTol=1e-14)
 
 # --- Hyperbolic functions ---
 
@@ -92,7 +92,7 @@ def test_exp_zero_returns_one():
 
 @test
 def test_exp_one_returns_e():
-    assert math.isclose(math.E, math.exp(1.0), relTol=1e-14)
+    assert math.isclose(math.e, math.exp(1.0), relTol=1e-14)
 
 # --- Logarithmic functions ---
 
@@ -102,7 +102,7 @@ def test_log_one_returns_zero():
 
 @test
 def test_log_e_returns_one():
-    assert math.isclose(1.0, math.log(math.E), relTol=1e-14)
+    assert math.isclose(1.0, math.log(math.e), relTol=1e-14)
 
 @test
 def test_log_with_base10_returns_correct_value():
@@ -200,7 +200,7 @@ def test_fabs_zero_returns_zero():
 
 @test
 def test_degrees_pi_returns_180():
-    assert math.isclose(180.0, math.degrees(math.Pi), relTol=1e-14)
+    assert math.isclose(180.0, math.degrees(math.pi), relTol=1e-14)
 
 @test
 def test_degrees_zero_returns_zero():
@@ -208,7 +208,7 @@ def test_degrees_zero_returns_zero():
 
 @test
 def test_radians_180_returns_pi():
-    assert math.isclose(math.Pi, math.radians(180.0), relTol=1e-14)
+    assert math.isclose(math.pi, math.radians(180.0), relTol=1e-14)
 
 @test
 def test_radians_zero_returns_zero():
@@ -222,19 +222,19 @@ def test_isfinite_normal_number_returns_true():
 
 @test
 def test_isfinite_positive_infinity_returns_false():
-    assert not math.isfinite(math.Inf)
+    assert not math.isfinite(math.inf)
 
 @test
 def test_isfinite_nan_returns_false():
-    assert not math.isfinite(math.Nan)
+    assert not math.isfinite(math.nan)
 
 @test
 def test_isinf_positive_infinity_returns_true():
-    assert math.isinf(math.Inf)
+    assert math.isinf(math.inf)
 
 @test
 def test_isinf_negative_infinity_returns_true():
-    assert math.isinf(-math.Inf)
+    assert math.isinf(-math.inf)
 
 @test
 def test_isinf_normal_number_returns_false():
@@ -242,7 +242,7 @@ def test_isinf_normal_number_returns_false():
 
 @test
 def test_isnan_nan_returns_true():
-    assert math.isnan(math.Nan)
+    assert math.isnan(math.nan)
 
 @test
 def test_isnan_normal_number_returns_false():
@@ -250,7 +250,7 @@ def test_isnan_normal_number_returns_false():
 
 @test
 def test_isnan_infinity_returns_false():
-    assert not math.isnan(math.Inf)
+    assert not math.isnan(math.inf)
 
 # --- Copysign ---
 
@@ -308,7 +308,7 @@ def test_factorial_too_large_throws_overflow_error():
 
 @test
 def test_log_zero_returns_negative_infinity():
-    assert math.log(0.0) == -math.Inf
+    assert math.log(0.0) == -math.inf
 
 # --- Fsum additional cases ---
 

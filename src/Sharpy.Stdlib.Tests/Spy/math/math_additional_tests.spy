@@ -59,14 +59,14 @@ def test_isclose_with_rel_tol():
 
 @test
 def test_isclose_infinity():
-    assert math.isclose(math.Inf, math.Inf)
-    assert not math.isclose(math.Inf, 1.0)
-    assert not math.isclose(1.0, -math.Inf)
+    assert math.isclose(math.inf, math.inf)
+    assert not math.isclose(math.inf, 1.0)
+    assert not math.isclose(1.0, -math.inf)
 
 @test
 def test_isclose_nan():
-    assert not math.isclose(math.Nan, math.Nan)
-    assert not math.isclose(math.Nan, 1.0)
+    assert not math.isclose(math.nan, math.nan)
+    assert not math.isclose(math.nan, 1.0)
 
 @test
 def test_isclose_negative_tolerance_throws():
@@ -205,7 +205,7 @@ def test_expm1_small_value():
 
 @test
 def test_expm1_larger_value():
-    assert math.isclose(math.E - 1.0, math.expm1(1.0), relTol=1e-9)
+    assert math.isclose(math.e - 1.0, math.expm1(1.0), relTol=1e-9)
 
 # --- Log1p ---
 
@@ -220,7 +220,7 @@ def test_log1p_small_value():
 
 @test
 def test_log1p_larger_value():
-    assert math.isclose(1.0, math.log1p(math.E - 1.0), relTol=1e-9)
+    assert math.isclose(1.0, math.log1p(math.e - 1.0), relTol=1e-9)
 
 @test
 def test_log1p_negative_one_throws():

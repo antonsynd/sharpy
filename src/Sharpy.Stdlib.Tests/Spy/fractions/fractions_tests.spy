@@ -56,12 +56,12 @@ def test_fraction_from_double_0_1_exact_binary_representation():
 @test
 def test_fraction_from_nan_throws():
     with assert_raises(ValueError):
-        fractions.Fraction(math.Nan)
+        fractions.Fraction(math.nan)
 
 @test
 def test_fraction_from_infinity_throws():
     with assert_raises(ValueError):
-        fractions.Fraction(math.Inf)
+        fractions.Fraction(math.inf)
 
 @test
 def test_fraction_copy_constructor():
