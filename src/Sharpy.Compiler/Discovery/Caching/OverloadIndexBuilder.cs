@@ -48,10 +48,32 @@ internal class OverloadIndexBuilder
                 a => a.AttributeType.FullName == "Sharpy.SharpyModuleAttribute"))
             .ToList();
 
+        // Pre-collect python type names per module so field discovery can detect type/field
+        // collisions (e.g. sqlite3.Row is both a type and a field; ModuleExports.cs:27-32).
+        // Types are discovered after fields, so this lookahead is needed.
+        var moduleTypeNames = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var type in assembly.GetTypes().Where(t => t.IsPublic || t.IsNestedPublic))
+        {
+            var attr = type.CustomAttributes.FirstOrDefault(
+                a => a.AttributeType.FullName == "Sharpy.SharpyModuleTypeAttribute");
+            if (attr == null) continue;
+            var args = attr.ConstructorArguments;
+            if (args.Count < 2) continue;
+            var modName = args[0].Value as string ?? string.Empty;
+            var pyName = args[1].Value as string ?? type.Name;
+            if (!moduleTypeNames.TryGetValue(modName, out var names))
+            {
+                names = new HashSet<string>(StringComparer.Ordinal);
+                moduleTypeNames[modName] = names;
+            }
+            names.Add(pyName);
+        }
+
         foreach (var exportType in exportTypes)
         {
             var moduleName = DeriveModuleName(exportType);
-            var moduleOverloads = DiscoverModuleFunctions(exportType);
+            moduleTypeNames.TryGetValue(moduleName, out var typeNamesForModule);
+            var moduleOverloads = DiscoverModuleFunctions(exportType, typeNamesForModule);
             moduleOverloads.CSharpNamespace = exportType.Namespace;
             moduleOverloads.CSharpClassName = exportType.Name;
 
@@ -493,7 +515,7 @@ internal class OverloadIndexBuilder
         return DeriveModuleNameFromNamespace(exportType.Namespace);
     }
 
-    private ModuleOverloads DiscoverModuleFunctions(Type exportType)
+    private ModuleOverloads DiscoverModuleFunctions(Type exportType, HashSet<string>? moduleTypePythonNames = null)
     {
         var moduleOverloads = new ModuleOverloads
         {
@@ -560,7 +582,13 @@ internal class OverloadIndexBuilder
         {
             try
             {
-                var sharpyName = NameMangler.ToSharpyName(field.Name, ReverseNameContext.Field);
+                // Preserve the CLR name when a type with the same python name exists in this
+                // module — the type/field collision is deliberate (e.g. sqlite3.Row is both a
+                // type and the value assigned to row_factory; documented in ModuleExports.cs:27-32).
+                var hasTypeCollision = moduleTypePythonNames?.Contains(field.Name) == true;
+                var sharpyName = hasTypeCollision
+                    ? field.Name
+                    : NameMangler.ToSharpyName(field.Name, ReverseNameContext.Field);
                 var fieldSignature = new FieldSignature
                 {
                     Name = sharpyName,
