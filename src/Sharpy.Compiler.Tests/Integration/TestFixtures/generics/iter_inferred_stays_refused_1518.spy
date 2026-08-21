@@ -1,0 +1,10 @@
+# Strictness control: inferred iter(generator) without explicit type argument stays
+# SPY0237 — out of scope, pinned as-is (#1518).
+def _gen(xs: list[int]) -> int:
+    for x in xs:
+        yield x
+
+
+def main() -> None:
+    it: Iterator[int] = iter(_gen([1, 2, 3]))
+    print(next(it))

@@ -1,0 +1,14 @@
+# Strictness control: a user-defined function with a list[T] formal has NO CLR provenance,
+# so passing a generator must stay refused even after the provenance gate opens (#1518).
+def _gen(xs: list[int]) -> int:
+    for x in xs:
+        yield x
+
+
+def take[T](xs: list[T]) -> list[T]:
+    return xs
+
+
+def main() -> None:
+    result: list[int] = take[int](_gen([1, 2, 3]))
+    print(result)

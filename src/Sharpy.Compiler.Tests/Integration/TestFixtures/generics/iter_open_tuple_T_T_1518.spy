@@ -1,0 +1,13 @@
+# iter[tuple[T, T]](generator) — tuple type argument with open T (#1518).
+def _gen_pairs[T](xs: list[tuple[T, T]]) -> tuple[T, T]:
+    for x in xs:
+        yield x
+
+
+def wrap[T](xs: list[tuple[T, T]]) -> Iterator[tuple[T, T]]:
+    return iter[tuple[T, T]](_gen_pairs[T](xs))
+
+
+def main() -> None:
+    for v in wrap[int]([(1, 2), (3, 4)]):
+        print(v)

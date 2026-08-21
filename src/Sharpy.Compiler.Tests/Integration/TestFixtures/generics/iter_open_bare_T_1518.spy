@@ -1,0 +1,14 @@
+# iter[T](generator) inside a generic def — the open type parameter T flows through
+# the provenance arm via SubstituteTypeParametersWithObject (#1518).
+def _gen[T](xs: list[T]) -> T:
+    for x in xs:
+        yield x
+
+
+def wrap[T](xs: list[T]) -> Iterator[T]:
+    return iter[T](_gen[T](xs))
+
+
+def main() -> None:
+    for v in wrap[int]([10, 20, 30]):
+        print(v)

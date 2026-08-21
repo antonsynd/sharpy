@@ -1,0 +1,13 @@
+# iter[list[T]](generator) — nested generic type argument with open T (#1518).
+def _gen_lists[T](xs: list[list[T]]) -> list[T]:
+    for x in xs:
+        yield x
+
+
+def wrap[T](xs: list[list[T]]) -> Iterator[list[T]]:
+    return iter[list[T]](_gen_lists[T](xs))
+
+
+def main() -> None:
+    for v in wrap[int]([[1, 2], [3]]):
+        print(v)

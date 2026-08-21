@@ -1,0 +1,15 @@
+# iter[tuple[K, list[V]]](generator) — compound nested type argument with two
+# open type parameters (#1518).
+def _gen_groups[K, V](xs: list[tuple[K, list[V]]]) -> tuple[K, list[V]]:
+    for x in xs:
+        yield x
+
+
+def wrap[K, V](xs: list[tuple[K, list[V]]]) -> Iterator[tuple[K, list[V]]]:
+    return iter[tuple[K, list[V]]](_gen_groups[K, V](xs))
+
+
+def main() -> None:
+    groups: list[tuple[str, list[int]]] = [("a", [1, 2]), ("b", [3])]
+    for v in wrap[str, int](groups):
+        print(v)
