@@ -186,12 +186,6 @@ public class JsonLoadsAgreementTests
     /// </summary>
     private static readonly System.Collections.Generic.Dictionary<string, string> ValueExemptions = new(StringComparer.Ordinal)
     {
-        // #1487: untyped yields a lone-surrogate string (matching CPython); the typed door refuses
-        // at T=string and, at JsonElement, accepts and then throws from GetString().
-        ["lone-high-surrogate"] = "#1487 — lone surrogates split the two readers",
-        ["lone-low-surrogate"] = "#1487 — lone surrogates split the two readers",
-        ["reversed-surrogates"] = "#1487 — lone surrogates split the two readers",
-
         // Not a defect: the quoting pass turns a BARE non-finite token into the quoted spelling
         // System.Text.Json accepts, so at JsonElement it is a string. At the numeric T the pass
         // exists for it reconstitutes as the double — which is asserted directly by
