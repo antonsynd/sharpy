@@ -410,13 +410,19 @@ namespace Sharpy
 
             if (value is string text)
             {
-                if (NeedsQuoting(text))
+                bool wouldResolve = !(ResolvePlainScalar(text) is string);
+                var decided = YamlScalarStyleAuthority.Choose(text, wouldResolve);
+                switch (decided)
                 {
-                    emitter.Emit(QuotedScalar(text));
-                }
-                else
-                {
-                    emitter.Emit(PlainScalar(text));
+                    case YamlScalarStyleAuthority.Style.DoubleQuoted:
+                        emitter.Emit(StyledScalar(text, ScalarStyle.DoubleQuoted));
+                        break;
+                    case YamlScalarStyleAuthority.Style.SingleQuoted:
+                        emitter.Emit(StyledScalar(text, ScalarStyle.SingleQuoted));
+                        break;
+                    default:
+                        emitter.Emit(PlainScalar(text));
+                        break;
                 }
                 return;
             }
@@ -467,110 +473,12 @@ namespace Sharpy
             return System.Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
         }
 
-        /// <summary>
-        /// Determines whether a string must be quoted to roundtrip as a string rather than
-        /// being reinterpreted as null/bool/number, or to remain a valid plain scalar.
-        /// </summary>
-        private static bool NeedsQuoting(string value)
-        {
-            if (value.Length == 0)
-            {
-                return true;
-            }
-
-            // Would a plain reload turn this into a non-string? Then it must be quoted.
-            if (!(ResolvePlainScalar(value) is string))
-            {
-                return true;
-            }
-
-            char first = value[0];
-            if (first == ' ' || value[value.Length - 1] == ' ')
-            {
-                return true;
-            }
-
-            // Indicator characters that are unsafe at the start of a plain scalar.
-            const string leadingIndicators = "-?:,[]{}#&*!|>'\"%@`";
-            if (leadingIndicators.IndexOf(first) >= 0)
-            {
-                return true;
-            }
-
-            foreach (char c in value)
-            {
-                if (c == '\n' || c == '\t' || c == '#' || c == ':')
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         private static Scalar PlainScalar(string value) =>
             new Scalar(AnchorName.Empty, TagName.Empty, value, ScalarStyle.Plain, true, false);
 
-        /// <summary>
-        /// Renders a scalar <see cref="NeedsQuoting"/> has claimed, in the weakest quoting that
-        /// does the job (#1472).
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// This used to hardcode <see cref="ScalarStyle.DoubleQuoted"/>, which made the two dump
-        /// surfaces emit different documents for the same value: <c>roundtrip_dump("true")</c>
-        /// gave <c>"true"</c> where <c>safe_dump</c> and both Python oracles give <c>'true'</c>.
-        /// The two already agreed on WHICH strings need quoting — both ask
-        /// <see cref="YamlScalarResolver"/> — so only the rendering diverged, which is the
-        /// subtler half of the same one-authority failure: a shared predicate with unshared
-        /// rendering still produces two answers.
-        /// </para>
-        /// <para>
-        /// Single quoting is preferred because it suppresses resolution without introducing
-        /// escape processing — the same reason <c>YamlStringStyleConverter</c> gives for
-        /// choosing it. Double quoting is reached for only when single quoting CANNOT carry the
-        /// text, and PyYAML 6.0.3's boundary for that was measured rather than guessed: a newline
-        /// is fine single-quoted (<c>'line1\n\n  line2'</c>), and so are leading and trailing
-        /// spaces and every indicator character. What forces double quotes is a character with no
-        /// single-quoted representation — a C0 control other than newline, or DEL.
-        /// </para>
-        /// </remarks>
-        private static Scalar QuotedScalar(string value) =>
-            new Scalar(
-                AnchorName.Empty,
-                TagName.Empty,
-                value,
-                RequiresEscaping(value) ? ScalarStyle.DoubleQuoted : ScalarStyle.SingleQuoted,
-                false,
-                true);
 
-        /// <summary>
-        /// Whether <paramref name="value"/> contains a character a single-quoted YAML scalar
-        /// cannot carry, so that only escape processing can represent it.
-        /// </summary>
-        /// <remarks>
-        /// Newline is excluded deliberately: YAML folds it inside single quotes, and PyYAML
-        /// single-quotes multi-line strings. Writing this as "anything non-printable" would have
-        /// moved every multi-line string to double quotes and diverged from the oracle in the act
-        /// of matching it.
-        /// </remarks>
-        private static bool RequiresEscaping(string value)
-        {
-            foreach (char c in value)
-            {
-                if (c == '\n')
-                {
-                    continue;
-                }
-
-                if (c < ' ' || c == '\u007F')
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
+        private static Scalar StyledScalar(string value, ScalarStyle style) =>
+            new Scalar(AnchorName.Empty, TagName.Empty, value, style, false, true);
 
         /// <summary>
         /// Random-access cursor over a buffered list of parsing events, providing the
