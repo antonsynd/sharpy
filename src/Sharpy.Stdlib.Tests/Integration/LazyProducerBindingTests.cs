@@ -188,4 +188,413 @@ def main() -> None:
         Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
         Assert.Equal("1\n", result.StandardOutput);
     }
+
+    // ---- Infinite producer binding cells (#1354 flip) ----
+
+    [Fact]
+    public void RepeatInfiniteBinding_TerminatesOnBreak()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.repeat(42)
+    n: int = 0
+    for v in lazy:
+        n = n + 1
+        if n >= 3:
+            break
+    print(n)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.NotNull(result.GeneratedCSharp);
+        Assert.Contains("var lazy = itertools.Repeat(", result.GeneratedCSharp);
+        Assert.DoesNotContain("new Sharpy.List<int>(itertools.Repeat", result.GeneratedCSharp);
+        Assert.Equal("3\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void CycleBinding_TerminatesOnBreak()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.cycle([10, 20])
+    n: int = 0
+    for v in lazy:
+        print(v)
+        n = n + 1
+        if n >= 5:
+            break
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.NotNull(result.GeneratedCSharp);
+        Assert.Contains("var lazy = itertools.Cycle(", result.GeneratedCSharp);
+        Assert.Equal("10\n20\n10\n20\n10\n", result.StandardOutput);
+    }
+
+    // ---- Finite bare-T producer binding + differential cells ----
+
+    [Fact]
+    public void RepeatFiniteBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.repeat(7, 3)
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("7\n7\n7\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void CompressBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.compress([1, 2, 3, 4], [True, False, True, False])
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.NotNull(result.GeneratedCSharp);
+        Assert.Contains("var lazy = itertools.Compress(", result.GeneratedCSharp);
+        Assert.Equal("1\n3\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void DropwhileBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def less_than_3(x: int) -> bool:
+    return x < 3
+
+def main() -> None:
+    lazy = itertools.dropwhile(less_than_3, [1, 2, 3, 4, 1])
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("3\n4\n1\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void TakewhileBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def less_than_3(x: int) -> bool:
+    return x < 3
+
+def main() -> None:
+    lazy = itertools.takewhile(less_than_3, [1, 2, 3, 4, 1])
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("1\n2\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void FilterfalseBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def is_odd(x: int) -> bool:
+    return x % 2 != 0
+
+def main() -> None:
+    lazy = itertools.filterfalse(is_odd, [1, 2, 3, 4, 5])
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("2\n4\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void IsliceBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.islice([0, 1, 2, 3, 4, 5], 3)
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("0\n1\n2\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void IsliceRangeBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.islice_range([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 2, 7, 2)
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("2\n4\n6\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void AccumulateFuncBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def multiply(a: int, b: int) -> int:
+    return a * b
+
+def main() -> None:
+    lazy = itertools.accumulate([1, 2, 3, 4], multiply)
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("1\n2\n6\n24\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void AccumulateFuncInitialBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def add(a: int, b: int) -> int:
+    return a + b
+
+def main() -> None:
+    lazy = itertools.accumulate([1, 2, 3], add, 10)
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("10\n11\n13\n16\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void ChainTwoBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.chain([1, 2], [3, 4])
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("1\n2\n3\n4\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void ChainThreeBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.chain([1], [2], [3])
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("1\n2\n3\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void ChainFromIterableBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.chain_from_iterable([[1, 2], [3, 4]])
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("1\n2\n3\n4\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void StarmapBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def add(x: int, y: int) -> int:
+    return x + y
+
+def main() -> None:
+    pairs: list[tuple[int, int]] = [(1, 2), (3, 4)]
+    lazy = itertools.starmap(add, pairs)
+    for v in lazy:
+        print(v)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("3\n7\n", result.StandardOutput);
+    }
+
+    // ---- Tuple-shaped producer binding + differential cells ----
+
+    [Fact]
+    public void PairwiseBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.pairwise([1, 2, 3, 4])
+    for a, b in lazy:
+        print(a)
+        print(b)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.NotNull(result.GeneratedCSharp);
+        Assert.Contains("var lazy = itertools.Pairwise(", result.GeneratedCSharp);
+        Assert.Equal("1\n2\n2\n3\n3\n4\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void ZipLongestBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.zip_longest([1, 2, 3], [4, 5], 0)
+    for a, b in lazy:
+        print(a)
+        print(b)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("1\n4\n2\n5\n3\n0\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void ProductTwoBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.product([1, 2], [3, 4])
+    for a, b in lazy:
+        print(a)
+        print(b)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("1\n3\n1\n4\n2\n3\n2\n4\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void ProductThreeBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.product([1], [2], [3])
+    for a, b, c in lazy:
+        print(a)
+        print(b)
+        print(c)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("1\n2\n3\n", result.StandardOutput);
+    }
+
+    // ---- List[T]-shaped producer binding + differential cells ----
+
+    [Fact]
+    public void CombinationsBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.combinations([1, 2, 3], 2)
+    n: int = 0
+    for combo in lazy:
+        n = n + 1
+    print(n)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.NotNull(result.GeneratedCSharp);
+        Assert.Contains("var lazy = itertools.Combinations(", result.GeneratedCSharp);
+        Assert.Equal("3\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void PermutationsBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.permutations([1, 2, 3], 2)
+    n: int = 0
+    for perm in lazy:
+        n = n + 1
+    print(n)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("6\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void CombinationsWithReplacementBinding_OutputMatchesCPython()
+    {
+        var result = CompileAndExecute(@"
+import itertools
+
+def main() -> None:
+    lazy = itertools.combinations_with_replacement([1, 2], 2)
+    n: int = 0
+    for combo in lazy:
+        n = n + 1
+    print(n)
+");
+
+        Assert.True(result.Success, string.Join("\n", result.CompilationErrors));
+        Assert.Equal("3\n", result.StandardOutput);
+    }
 }
