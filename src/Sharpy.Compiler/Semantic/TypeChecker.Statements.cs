@@ -2005,18 +2005,8 @@ internal partial class TypeChecker
     private static void TryFoldConstantValue(
         VariableSymbol symbol, SemanticType declaredType, Expression? initializer)
     {
-        if (initializer == null)
-            return;
-
-        var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(declaredType);
-        if (info == null)
-            return;
-
-        if (info.Kind is not (Registry.PrimitiveCatalog.NumericKind.SignedInteger
-                or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger))
-            return;
-
-        if (IntegerConstantEvaluator.TryGetConstantInteger(initializer, out var folded))
+        var folded = IntegerConstantEvaluator.TryFoldConstDeclaration(declaredType, initializer);
+        if (folded != null)
             symbol.ConstantValue = folded;
     }
 }

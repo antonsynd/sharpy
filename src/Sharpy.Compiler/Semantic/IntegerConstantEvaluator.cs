@@ -103,6 +103,29 @@ internal static class IntegerConstantEvaluator
         }
     }
 
+    /// <summary>
+    /// The #1460 declaration-time fold gate, shared by the two sites that populate
+    /// <see cref="VariableSymbol.ConstantValue"/> — the TypeChecker's const-declaration arms and
+    /// ModuleLoader's export extraction — so the foldability rule cannot silently diverge between
+    /// the own-module and imported-module views of the same fact: the declared type must be a
+    /// signed or unsigned integer primitive AND the initializer must fold. Returns null otherwise.
+    /// Deliberately resolver-less: a const initialized from another const's identifier does not
+    /// fold at declaration time yet (#1601 — threading a resolver here needs a cycle guard and
+    /// settled declaration-order semantics first).
+    /// </summary>
+    public static BigInteger? TryFoldConstDeclaration(SemanticType declaredType, Expression? initializer)
+    {
+        if (initializer == null)
+            return null;
+
+        var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(declaredType);
+        if (info?.Kind is not (Registry.PrimitiveCatalog.NumericKind.SignedInteger
+                or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger))
+            return null;
+
+        return TryGetConstantInteger(initializer, out var folded) ? folded : null;
+    }
+
     private static bool TryParseIntegerLiteral(string raw, out BigInteger value)
     {
         value = BigInteger.Zero;

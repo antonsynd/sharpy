@@ -45,6 +45,14 @@ public sealed record CodeGenInfo
     /// <see cref="VariableSymbol.ConstantValue"/> and const-eligible type (#1460). The emitter reads
     /// this in the module-level path instead of inspecting the AST via <c>IsCompileTimeLiteral</c>,
     /// so expressions like <c>100 + 100</c> emit as <c>const</c> — C# folds them.
+    /// <para>
+    /// SAME-FILE-ONLY, deliberately not serialized: CodeGenInfo that drives a symbol's own
+    /// declaration emission is always freshly computed by <c>CodeGenInfoComputer</c> for the file
+    /// being emitted — cached/deserialized CodeGenInfo serves only cross-file reference
+    /// resolution, which never emits the declaration. Same invariant as
+    /// <c>OverridesClrBaseMember</c>/<c>ForwardingConstructors</c>; classified same-file-only in
+    /// <c>SymbolFactMirrorConformanceTests</c>, which fails if the property is left unclassified.
+    /// </para>
     /// </summary>
     public bool IsCompileTimeConstant { get; init; }
 

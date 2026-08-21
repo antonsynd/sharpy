@@ -327,22 +327,15 @@ internal class ModuleLoader
 
             case VariableDeclaration varDecl:
                 var varAccessLevel = GetAccessLevel(varDecl.Name);
-                System.Numerics.BigInteger? varConstValue = null;
-                if (varDecl.IsConst && varDecl.InitialValue != null)
-                {
-                    var declType = ConvertTypeAnnotationToSemanticType(varDecl.Type);
-                    var primInfo = Registry.PrimitiveCatalog.GetPrimitiveInfo(declType);
-                    if (primInfo != null
-                        && primInfo.Kind is Registry.PrimitiveCatalog.NumericKind.SignedInteger
-                            or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger
-                        && IntegerConstantEvaluator.TryGetConstantInteger(varDecl.InitialValue, out var folded))
-                        varConstValue = folded;
-                }
+                var varType = ConvertTypeAnnotationToSemanticType(varDecl.Type);
+                var varConstValue = varDecl.IsConst
+                    ? IntegerConstantEvaluator.TryFoldConstDeclaration(varType, varDecl.InitialValue)
+                    : null;
                 var varSymbol = new VariableSymbol
                 {
                     Name = varDecl.Name,
                     Kind = SymbolKind.Variable,
-                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
+                    Type = varType,
                     IsConstant = varDecl.IsConst,
                     IsFinal = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Final),
                     HasDefaultValue = !varDecl.IsConst && varDecl.InitialValue != null,
