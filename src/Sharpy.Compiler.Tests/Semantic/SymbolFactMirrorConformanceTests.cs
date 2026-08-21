@@ -989,6 +989,7 @@ def main() -> None:
         ["ImplementsInterfaceMethod"] = "RoundTrips",
 
         // --- Same-file-only: read by the emitter for the file that declares the symbol ---
+        ["IsCompileTimeConstant"] = "same-file-only — read at RoslynEmitter.Statements.Assignments.cs module-level const path (#1460)",
         ["OverridesClrBaseMember"] = "same-file-only — read at RoslynEmitter.ClassMembers.Methods.cs:155",
         ["ForwardingConstructors"] = "same-file-only — read at RoslynEmitter.ClassMembers.Constructors.cs:391",
         ["SelfInterfaceBridges"] = "same-file-only — read at RoslynEmitter.TypeDeclarations.cs:840",

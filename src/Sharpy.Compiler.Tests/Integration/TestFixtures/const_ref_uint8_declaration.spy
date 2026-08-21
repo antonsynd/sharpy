@@ -1,0 +1,6 @@
+# #1460: const reference as constant expression in variable declaration
+const LIMIT: int = 200
+
+def main() -> None:
+    b: uint8 = LIMIT
+    print(b)

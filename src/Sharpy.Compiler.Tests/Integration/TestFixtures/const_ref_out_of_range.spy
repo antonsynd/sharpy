@@ -1,0 +1,6 @@
+# #1460: const reference out of range for target type
+const L: int = 300
+
+def main() -> None:
+    b: uint8 = L
+    print(b)

@@ -1091,12 +1091,15 @@ internal partial class RoslynEmitter
             .WithVariables(SingletonSeparatedList(declarator));
 
         // Module-level fields must be static
-        // For const variables, try to use C# const if the initializer is a compile-time literal
-        // AND the type is const-eligible (C# predefined types only)
-        // Otherwise fall back to public static readonly
+        // For const variables, use C# const when CodeGenInfo says the initializer is compile-time
+        // foldable (#1460 — covers expressions like `100 + 100`, not just bare literals).
+        // Otherwise fall back to public static readonly.
         // Regular variables become "public static"
         SyntaxTokenList modifiers;
-        if (varDecl.IsConst && IsCompileTimeLiteral(varDecl.InitialValue) && IsConstEligibleType(typeSyntax))
+        var codeGenInfo = symbol != null ? GetCodeGenInfo(symbol) : null;
+        if (varDecl.IsConst
+            && (codeGenInfo?.IsCompileTimeConstant == true
+                || (IsCompileTimeLiteral(varDecl.InitialValue) && IsConstEligibleType(typeSyntax))))
         {
             // Use const for compile-time literals with const-eligible types
             modifiers = TokenList(

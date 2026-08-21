@@ -1,0 +1,6 @@
+# #1460: const with expression initializer, then used at uint8 site (emitter alignment)
+const L: int = 100 + 100
+
+def main() -> None:
+    b: uint8 = L
+    print(b)

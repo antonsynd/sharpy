@@ -25,6 +25,16 @@ internal static class IntegerConstantEvaluator
     /// </para>
     /// </summary>
     public static bool TryGetConstantInteger(Expression expr, out BigInteger value)
+        => TryGetConstantInteger(expr, out value, resolver: null);
+
+    /// <summary>
+    /// Overload that accepts an optional <paramref name="resolver"/> for identifier-to-constant-value
+    /// lookup. When non-null, an <see cref="Identifier"/> node consults the resolver before giving up,
+    /// enabling <c>const LIMIT: int = 200</c> then <c>LIMIT + 1</c> to fold (#1460). The resolver is
+    /// threaded through recursive calls so compound expressions over constants fold transitively.
+    /// </summary>
+    public static bool TryGetConstantInteger(
+        Expression expr, out BigInteger value, Func<string, BigInteger?>? resolver)
     {
         value = BigInteger.Zero;
 
@@ -33,14 +43,23 @@ internal static class IntegerConstantEvaluator
             case IntegerLiteral intLit:
                 return TryParseIntegerLiteral(intLit.Value, out value);
 
+            case Identifier id when resolver != null:
+            {
+                var resolved = resolver(id.Name);
+                if (resolved == null)
+                    return false;
+                value = resolved.Value;
+                return true;
+            }
+
             case Parenthesized paren:
-                return TryGetConstantInteger(paren.Expression, out value);
+                return TryGetConstantInteger(paren.Expression, out value, resolver);
 
             case UnaryOp { Operator: UnaryOperator.Plus } plus:
-                return TryGetConstantInteger(plus.Operand, out value);
+                return TryGetConstantInteger(plus.Operand, out value, resolver);
 
             case UnaryOp { Operator: UnaryOperator.Minus } minus:
-                if (!TryGetConstantInteger(minus.Operand, out var magnitude))
+                if (!TryGetConstantInteger(minus.Operand, out var magnitude, resolver))
                     return false;
                 value = -magnitude;
                 return true;
@@ -50,8 +69,8 @@ internal static class IntegerConstantEvaluator
                 Operator: BinaryOperator.Add or BinaryOperator.Subtract or BinaryOperator.Multiply
                     or BinaryOperator.LeftShift or BinaryOperator.RightShift
             } binary:
-                if (!TryGetConstantInteger(binary.Left, out var left)
-                    || !TryGetConstantInteger(binary.Right, out var right))
+                if (!TryGetConstantInteger(binary.Left, out var left, resolver)
+                    || !TryGetConstantInteger(binary.Right, out var right, resolver))
                 {
                     return false;
                 }

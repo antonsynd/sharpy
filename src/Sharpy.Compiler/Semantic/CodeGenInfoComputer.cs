@@ -164,6 +164,9 @@ internal class CodeGenInfoComputer
         var symbol = _symbolTable.Lookup(constDecl.Name);
         if (symbol is VariableSymbol varSymbol)
         {
+            var isCompileTimeConstant = varSymbol.ConstantValue != null
+                && IsConstEligibleVariable(varSymbol);
+
             SetCodeGenInfo(varSymbol, new CodeGenInfo
             {
                 CSharpName = NameCasing.ResolveConstant(constDecl.Name, constDecl.IsNameBacktickEscaped),
@@ -171,9 +174,20 @@ internal class CodeGenInfoComputer
                 Version = 0,
                 IsModuleLevel = true,
                 IsConstant = true,
-                HasExecutionOrderIssues = false // Constants are always compile-time
+                IsCompileTimeConstant = isCompileTimeConstant,
+                HasExecutionOrderIssues = false
             });
         }
+    }
+
+    private bool IsConstEligibleVariable(VariableSymbol symbol)
+    {
+        var type = _semanticBinding.GetVariableType(symbol);
+        if (type is UnknownType)
+            type = symbol.Type;
+        var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(type);
+        return info != null && info.Kind is Registry.PrimitiveCatalog.NumericKind.SignedInteger
+            or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger;
     }
 
     private void ProcessImport(ImportStatement import)

@@ -1,0 +1,6 @@
+# #1460: non-const variable does NOT get constant conversion
+x: int = 200
+
+def main() -> None:
+    b: uint8 = x
+    print(b)

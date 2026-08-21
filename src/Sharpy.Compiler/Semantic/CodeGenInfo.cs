@@ -40,6 +40,15 @@ public sealed record CodeGenInfo
     public bool IsConstant { get; init; }
 
     /// <summary>
+    /// True when a const variable's initializer can be emitted as a C# <c>const</c> field rather
+    /// than <c>static readonly</c>. Set at <c>MaterializeCodeGenInfo</c> from
+    /// <see cref="VariableSymbol.ConstantValue"/> and const-eligible type (#1460). The emitter reads
+    /// this in the module-level path instead of inspecting the AST via <c>IsCompileTimeLiteral</c>,
+    /// so expressions like <c>100 + 100</c> emit as <c>const</c> — C# folds them.
+    /// </summary>
+    public bool IsCompileTimeConstant { get; init; }
+
+    /// <summary>
     /// If true, this variable should not become a module-level field due to execution order issues.
     /// Example: Variables that depend on runtime values in their initializers.
     /// </summary>

@@ -1,0 +1,8 @@
+# #1460: const reference as default parameter value
+const LIMIT: int = 200
+
+def g(b: uint8 = LIMIT) -> None:
+    print(b)
+
+def main() -> None:
+    g()

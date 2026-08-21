@@ -1,0 +1,8 @@
+# #1460: const reference as argument to uint8 parameter
+const LIMIT: int = 200
+
+def g(b: uint8) -> None:
+    print(b)
+
+def main() -> None:
+    g(LIMIT)

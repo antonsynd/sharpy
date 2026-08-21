@@ -586,15 +586,26 @@ internal partial class TypeChecker
     /// what the value IS and never whether it fits a type, leaving the range decision to callers.
     /// </para>
     /// <para>
-    /// A <c>const</c> binding is also a *constant_expression* in C#, so <c>const L: int = 200</c> /
-    /// <c>b: uint8 = L</c> is legal there and stays refused here — the evaluator reads the AST and a
-    /// bare name resolves to nothing, while <see cref="VariableSymbol"/> records <c>IsConstant</c>
-    /// but carries no value. Closing that needs symbol-level constant storage (TODO(#1460)).
+    /// A <c>const</c> reference is a constant expression: <c>const L: int = 200</c> then
+    /// <c>b: uint8 = L</c> folds via <see cref="VariableSymbol.ConstantValue"/>, which
+    /// <see cref="IntegerConstantEvaluator"/> consults through the resolver parameter (#1460).
+    /// Compound expressions over const references (<c>LIMIT + 55</c>) fold transitively.
     /// </para>
     /// </remarks>
     private bool IsImplicitConstantConversion(Expression? value, SemanticType source, SemanticType target)
     {
-        if (value == null || !IntegerConstantEvaluator.TryGetConstantInteger(value, out var constant))
+        if (value == null)
+            return false;
+
+        System.Numerics.BigInteger? ResolveConstant(string name)
+        {
+            var sym = _symbolTable.Lookup(name);
+            return sym is VariableSymbol { IsConstant: true, ConstantValue: not null } vs
+                ? vs.ConstantValue
+                : null;
+        }
+
+        if (!IntegerConstantEvaluator.TryGetConstantInteger(value, out var constant, ResolveConstant))
             return false;
 
         var sourceInfo = Registry.PrimitiveCatalog.GetPrimitiveInfo(source);

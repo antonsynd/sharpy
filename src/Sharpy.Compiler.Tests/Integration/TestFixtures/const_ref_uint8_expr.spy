@@ -1,0 +1,6 @@
+# #1460: const reference in expression, in-range (255)
+const LIMIT: int = 200
+
+def main() -> None:
+    b: uint8 = LIMIT + 55
+    print(b)
