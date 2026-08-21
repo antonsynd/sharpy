@@ -17,6 +17,7 @@ internal partial class ProjectCompiler
 {
     private readonly ICompilerLogger _logger;
     private readonly ModuleRegistry? _moduleRegistry;
+    private readonly BuiltinRegistry? _sharedBuiltinRegistry;
     private readonly ICodeEmitterFactory _emitterFactory;
     private readonly bool _warningsAsErrors;
     private readonly HashSet<string> _suppressedWarnings;
@@ -157,10 +158,12 @@ internal partial class ProjectCompiler
     /// warnings, max-errors, and feature flags (#1109).
     /// </summary>
     public ProjectCompiler(ICompilerLogger? logger, ModuleRegistry? moduleRegistry,
-        ProjectCompilerOptions options, ICodeEmitterFactory? emitterFactory = null)
+        ProjectCompilerOptions options, ICodeEmitterFactory? emitterFactory = null,
+        BuiltinRegistry? builtinRegistry = null)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = moduleRegistry;
+        _sharedBuiltinRegistry = builtinRegistry;
         _emitterFactory = emitterFactory ?? new RoslynEmitterFactory();
         _warningsAsErrors = options.WarningsAsErrors;
         _suppressedWarnings = options.SuppressedWarnings ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);

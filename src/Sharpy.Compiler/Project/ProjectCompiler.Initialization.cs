@@ -11,7 +11,7 @@ internal partial class ProjectCompiler
     /// </summary>
     private void InitializeSharedState()
     {
-        var builtinRegistry = new BuiltinRegistry(_logger);
+        var builtinRegistry = _sharedBuiltinRegistry ?? new BuiltinRegistry(_logger);
         _symbolTableBacking = new SymbolTable(builtinRegistry);
         _semanticInfoBacking = new SemanticInfo();
         _semanticInfoBacking.SetSymbolTable(_symbolTableBacking);

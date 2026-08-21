@@ -14,7 +14,7 @@ namespace Sharpy.Compiler.Semantic.Registry;
 /// Registry of builtin types and functions from Sharpy.Core
 /// Now uses cached reflection-based discovery for functions.
 /// </summary>
-[NotThreadSafe(Reason = "Uses non-concurrent Dictionary caches; create per-compilation instance")]
+[NotThreadSafe(Reason = "Constructor populates non-concurrent state; share only AFTER construction (#1140)")]
 internal class BuiltinRegistry
 {
     private readonly Dictionary<string, TypeSymbol> _types = new();
@@ -924,7 +924,7 @@ internal class BuiltinRegistry
 
     #region CLR Type Fallback
 
-    private readonly Dictionary<string, TypeSymbol?> _clrTypeCache = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, TypeSymbol?> _clrTypeCache = new();
 
     /// <summary>
     /// Attempts to resolve a type name as a .NET type from well-known namespaces.
@@ -933,32 +933,26 @@ internal class BuiltinRegistry
     /// </summary>
     public TypeSymbol? TryResolveClrType(string name)
     {
-        if (_clrTypeCache.TryGetValue(name, out var cached))
-            return cached;
-
-        var clrType = TryFindClrType(name);
-        if (clrType == null)
+        return _clrTypeCache.GetOrAdd(name, static n =>
         {
-            _clrTypeCache[name] = null;
-            return null;
-        }
+            var clrType = TryFindClrType(n);
+            if (clrType == null)
+                return null;
 
-        var kind = clrType.IsInterface ? TypeKind.Interface
-            : clrType.IsEnum ? TypeKind.Enum
-            : clrType.IsValueType ? TypeKind.Struct
-            : TypeKind.Class;
-        var typeSymbol = new TypeSymbol
-        {
-            Name = name,
-            Kind = SymbolKind.Type,
-            TypeKind = kind,
-            ClrType = clrType,
-            AccessLevel = AccessLevel.Public,
-            IsAbstract = clrType.IsAbstract && !clrType.IsInterface
-        };
-
-        _clrTypeCache[name] = typeSymbol;
-        return typeSymbol;
+            var kind = clrType.IsInterface ? TypeKind.Interface
+                : clrType.IsEnum ? TypeKind.Enum
+                : clrType.IsValueType ? TypeKind.Struct
+                : TypeKind.Class;
+            return new TypeSymbol
+            {
+                Name = n,
+                Kind = SymbolKind.Type,
+                TypeKind = kind,
+                ClrType = clrType,
+                AccessLevel = AccessLevel.Public,
+                IsAbstract = clrType.IsAbstract && !clrType.IsInterface
+            };
+        });
     }
 
     private static Type? TryFindClrType(string name)

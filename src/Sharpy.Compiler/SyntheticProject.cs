@@ -124,10 +124,12 @@ internal static class SyntheticProject
         ProjectConfig config, CompilerOptions options, ICompilerLogger logger,
         ModuleRegistry? moduleRegistry, ICodeEmitterFactory? emitterFactory,
         CancellationToken cancellationToken,
-        Diagnostics.CompilationMetrics? stageMetrics = null)
+        Diagnostics.CompilationMetrics? stageMetrics = null,
+        Semantic.Registry.BuiltinRegistry? builtinRegistry = null)
     {
         var projectCompiler = new ProjectCompiler(logger, moduleRegistry,
-            Services.ProjectOptionsMerge.Merge(options, incremental: false), emitterFactory);
+            Services.ProjectOptionsMerge.Merge(options, incremental: false), emitterFactory,
+            builtinRegistry);
 
         var analysis = projectCompiler.AnalyzeProject(config, cancellationToken, stageMetrics);
 
