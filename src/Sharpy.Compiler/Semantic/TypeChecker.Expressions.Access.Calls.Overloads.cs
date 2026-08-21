@@ -398,8 +398,10 @@ internal partial class TypeChecker
             var argType = context.ArgTypes[i];
             bool aMatchesExact = paramTypeA.Equals(argType);
             bool bMatchesExact = paramTypeB.Equals(argType);
-            if (aMatchesExact && !bMatchesExact) { hasStrictlyBetter = true; continue; }
-            if (bMatchesExact && !aMatchesExact) { return false; }
+            if (aMatchesExact && !bMatchesExact)
+            { hasStrictlyBetter = true; continue; }
+            if (bMatchesExact && !aMatchesExact)
+            { return false; }
 
             // Equal types contribute nothing to the comparison — unless the
             // underlying CLR types differ (e.g., ClrTypeBridge maps IEnumerable<T>

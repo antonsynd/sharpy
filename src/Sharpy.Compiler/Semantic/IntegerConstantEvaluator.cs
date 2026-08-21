@@ -44,13 +44,13 @@ internal static class IntegerConstantEvaluator
                 return TryParseIntegerLiteral(intLit.Value, out value);
 
             case Identifier id when resolver != null:
-            {
-                var resolved = resolver(id.Name);
-                if (resolved == null)
-                    return false;
-                value = resolved.Value;
-                return true;
-            }
+                {
+                    var resolved = resolver(id.Name);
+                    if (resolved == null)
+                        return false;
+                    value = resolved.Value;
+                    return true;
+                }
 
             case Parenthesized paren:
                 return TryGetConstantInteger(paren.Expression, out value, resolver);
