@@ -67,7 +67,7 @@ Symbol (abstract)         — DeclarationSpan, DeclaringFilePath (all symbols)
 PropertySymbol / EventSymbol / ParameterSymbol — standalone records (not Symbol subclasses)
 ```
 
-**Position fields**: `Symbol.DeclarationLine/Column` is the statement start (used for diagnostics and identity comparisons); `Symbol.NameDeclarationLine/Column` is the name-token position (used for text edits and highlight ranges); `Symbol.EffectiveNameLine/Column` is the preferred accessor (`NameDeclarationLine ?? DeclarationLine`) — **LSP handlers must use it for text edits and highlight ranges**.
+**Position fields**: `Symbol.DeclarationLine/Column` is the statement start (used for diagnostics and identity comparisons); `Symbol.NameDeclarationLine/Column` is the name-token position (used for text edits and highlight ranges); `Symbol.EffectiveNameLine/Column` is the preferred accessor (`NameDeclarationLine ?? DeclarationLine`), and `Symbol.EffectiveNameColumnEnd` is the exclusive end column of the name token — **LSP handlers must use these for text edits, highlight ranges, and name extents. Never reconstruct a name extent from `Name.Length`; use `SymbolExtents.NameExtentLength(symbol)` or the AST node's `NameColumnEnd - NameColumnStart` (#1454). `NameExtentReconstructionScanTests` enforces this**.
 
 ### SemanticType Hierarchy
 
