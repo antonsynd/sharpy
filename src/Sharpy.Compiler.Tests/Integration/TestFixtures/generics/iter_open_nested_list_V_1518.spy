@@ -1,0 +1,15 @@
+# iter[list[list[V]]](generator) — compound nested generic type argument with an
+# open type parameter, exercising recursive origin matching (#1518).
+def _gen_nested[V](xs: list[list[list[V]]]) -> list[list[V]]:
+    for x in xs:
+        yield x
+
+
+def wrap[V](xs: list[list[list[V]]]) -> Iterator[list[list[V]]]:
+    return iter[list[list[V]]](_gen_nested[V](xs))
+
+
+def main() -> None:
+    data: list[list[list[int]]] = [[[1, 2]], [[3]]]
+    for v in wrap[int](data):
+        print(v)

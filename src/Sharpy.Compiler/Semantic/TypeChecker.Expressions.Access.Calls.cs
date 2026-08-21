@@ -1508,15 +1508,32 @@ internal partial class TypeChecker
                 return true;
             }
 
-            // Different outer generic name: reject (preserves list[int] ↛ array[T], #954).
-            //
-            // NOTE (#1470): this rejection is NOT what refuses `iter[T](generator)`. Relaxing it to
-            // ordinary assignability was tried and measured — it changes no verdict, because
-            // `IsAssignable(IEnumerable[X], list[X])` is false for the CLOSED spelling too. The
-            // closed call is accepted by the iterable-position projection instead, which is where
-            // the open case's gap actually lives. Left strict rather than loosened speculatively.
-            if (arg is GenericType)
+            // Different outer name — if expected carries CLR provenance and the arg's name
+            // matches the origin's simple name, recurse on type arguments (#1518). The closed
+            // spelling reaches the provenance arm (ClrOriginIsSatisfiedBy) in IsAssignable;
+            // the open spelling could not, because TryGetClrType returns null for generator-
+            // wrapped IEnumerable[T] (no backing symbol). Matching the origin name structurally
+            // with recursive ArgMatchesGenericShape avoids the CLR round-trip entirely.
+            // Gated on ClrOriginTypeName so user-defined formals (no provenance) stay strict:
+            // a Sharpy-written list[T] has no origin, so take() stays SPY0354; array[T] has
+            // no origin, so #954 stays refused; same-name shapes never reach this arm.
+            if (arg is GenericType argGeneric)
+            {
+                if (expected is GenericType { ClrOriginTypeName: not null } expectedGeneric
+                    && argGeneric.TypeArguments.Count == expectedGeneric.TypeArguments.Count
+                    && OriginSimpleNameMatches(argGeneric.Name, expectedGeneric.ClrOriginTypeName))
+                {
+                    for (int i = 0; i < expectedGeneric.TypeArguments.Count; i++)
+                    {
+                        if (!ArgMatchesGenericShape(argGeneric.TypeArguments[i], expectedGeneric.TypeArguments[i]))
+                            return false;
+                    }
+
+                    return true;
+                }
+
                 return false;
+            }
 
             // Non-generic argument against an open generic shape: accept only if genuinely
             // assignable with type parameters treated as object — rejects float vs list[T]
@@ -1533,6 +1550,20 @@ internal partial class TypeChecker
         // FunctionType, GenericFunctionType, and other opaque shapes: preserve permissive
         // behavior — real checking happens during generic type inference.
         return true;
+    }
+
+    /// <summary>
+    /// True when <paramref name="argName"/> matches the simple (unqualified, arity-stripped)
+    /// name from a CLR origin type name. For example, <c>"IEnumerable"</c> matches
+    /// <c>"System.Collections.Generic.IEnumerable`1"</c>.
+    /// </summary>
+    private static bool OriginSimpleNameMatches(string argName, string clrOriginTypeName)
+    {
+        var simpleName = Shared.ClrNameHelper.StripArity(clrOriginTypeName);
+        var lastDot = simpleName.LastIndexOf('.');
+        if (lastDot >= 0)
+            simpleName = simpleName[(lastDot + 1)..];
+        return string.Equals(argName, simpleName, StringComparison.Ordinal);
     }
 
     /// <summary>
