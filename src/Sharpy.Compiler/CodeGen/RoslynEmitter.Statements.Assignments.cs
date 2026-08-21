@@ -1133,7 +1133,7 @@ internal partial class RoslynEmitter
         {
             fieldDeclaration = fieldDeclaration.AddAttributeLists(
                 AttributeList(SingletonSeparatedList(
-                    Attribute(ParseName("global::Sharpy.SharpyFieldName"))
+                    Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyFieldName"))
                         .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(
                             AttributeArgument(LiteralExpression(
                                 SyntaxKind.StringLiteralExpression,
