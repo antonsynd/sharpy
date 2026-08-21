@@ -1,0 +1,6 @@
+class Foo:
+    x: int = 1
+
+def main() -> None:
+    f: Foo = Foo()
+    print(f.)
