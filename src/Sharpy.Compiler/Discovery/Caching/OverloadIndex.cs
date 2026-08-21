@@ -41,6 +41,7 @@ internal class FieldSignature
     public string Name { get; set; } = string.Empty;
     public TypeSignature FieldType { get; set; } = new();
     public bool IsConst { get; set; }
+    public string? ClrName { get; set; }
 }
 
 /// <summary>

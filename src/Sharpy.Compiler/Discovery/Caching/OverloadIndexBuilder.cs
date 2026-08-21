@@ -560,14 +560,16 @@ internal class OverloadIndexBuilder
         {
             try
             {
+                var sharpyName = NameMangler.ToSharpyName(field.Name, ReverseNameContext.Field);
                 var fieldSignature = new FieldSignature
                 {
-                    Name = field.Name,
+                    Name = sharpyName,
                     FieldType = CreateTypeSignature(field.FieldType),
-                    IsConst = field.IsLiteral
+                    IsConst = field.IsLiteral,
+                    ClrName = field.Name
                 };
 
-                moduleOverloads.Fields[field.Name] = fieldSignature;
+                moduleOverloads.Fields[sharpyName] = fieldSignature;
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
             {
@@ -585,19 +587,21 @@ internal class OverloadIndexBuilder
 
         foreach (var property in staticProperties)
         {
-            if (moduleOverloads.Fields.ContainsKey(property.Name))
+            var sharpyPropertyName = NameMangler.ToSharpyName(property.Name, ReverseNameContext.Field);
+            if (moduleOverloads.Fields.ContainsKey(sharpyPropertyName))
                 continue;
 
             try
             {
                 var propertyFieldSignature = new FieldSignature
                 {
-                    Name = property.Name,
+                    Name = sharpyPropertyName,
                     FieldType = CreateTypeSignature(property.PropertyType),
-                    IsConst = false
+                    IsConst = false,
+                    ClrName = property.Name
                 };
 
-                moduleOverloads.Fields[property.Name] = propertyFieldSignature;
+                moduleOverloads.Fields[sharpyPropertyName] = propertyFieldSignature;
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
             {

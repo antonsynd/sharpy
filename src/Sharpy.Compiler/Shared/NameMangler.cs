@@ -496,6 +496,7 @@ internal static class NameMangler
         {
             ReverseNameContext.Type or ReverseNameContext.Interface => name,
             ReverseNameContext.EnumMember or ReverseNameContext.Constant => ToScreamingSnakeCase(name),
+            ReverseNameContext.Field => NameFormDetector.IsConstantCaseName(name) && name.Length > 1 ? name : ToSnakeCase(name),
             _ => ToSnakeCase(name)
         };
     }
@@ -534,7 +535,8 @@ public enum ReverseNameContext
     EnumMember,   // → SCREAMING_SNAKE_CASE
     Constant,     // → SCREAMING_SNAKE_CASE
     Type,         // → preserved as-is
-    Interface     // → preserved as-is
+    Interface,    // → preserved as-is
+    Field         // → identity when SCREAMING_SNAKE (length > 1), snake_case otherwise
 }
 
 /// <summary>
