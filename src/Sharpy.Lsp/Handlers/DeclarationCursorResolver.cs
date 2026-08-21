@@ -15,6 +15,8 @@ namespace Sharpy.Lsp.Handlers;
 /// <c>CallHierarchyPrepareHandler.cs:60-66</c> carry the same two-arm <c>Identifier</c>/<c>FunctionCall</c>
 /// switch — future consumers, out of #1539's stated scope.
 /// </remarks>
+// TODO(#1602): ReferencesHandler and DocumentHighlightHandler do not apply GetBindingChain,
+// so a cursor on a rebound local returns only the fragment at that binding level.
 internal static class DeclarationCursorResolver
 {
     /// <summary>
