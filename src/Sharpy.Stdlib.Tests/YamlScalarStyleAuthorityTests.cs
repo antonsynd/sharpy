@@ -137,4 +137,30 @@ public class YamlScalarStyleAuthorityTests
         // The resolver passes wouldResolve=false, so the authority says plain.
         Assert.Equal(Style.Plain, Choose("12:30", wouldResolve: false));
     }
+
+    // ------------------------------------------------------------------
+    // Flow-vs-block split: characters that are data in block context but
+    // indicators inside a flow collection.
+    //
+    // Oracle: PyYAML 6.0.3, python3 3.12.13, measured 2026-08-20:
+    //   python3 -c "import yaml; print(repr(yaml.safe_dump({'k': v}, default_flow_style=True)))"
+    //   'a,b' / 'a[b' / 'a]b' / 'a{b' / 'x? y' -> single-quoted in flow, plain in block;
+    //   'plain' -> plain in both.
+    // ------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("a,b")]
+    [InlineData("a[b")]
+    [InlineData("a]b")]
+    [InlineData("a{b")]
+    [InlineData("x? y")]
+    public void FlowIndicatorChars_SingleQuotedInFlow_PlainInBlock(string value)
+    {
+        Assert.Equal(Style.SingleQuoted, Choose(value, wouldResolve: false, flowContext: true));
+        Assert.Equal(Style.Plain, Choose(value, wouldResolve: false, flowContext: false));
+    }
+
+    [Fact]
+    public void PlainString_PlainInFlowToo()
+        => Assert.Equal(Style.Plain, Choose("plain", wouldResolve: false, flowContext: true));
 }

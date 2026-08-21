@@ -248,7 +248,9 @@ namespace Sharpy
 
             // Unconditional for the same reason: whether a string needs quotes is not a style
             // choice either — it is whether the text would read back as something else (#1417).
-            builder = builder.WithTypeConverter(new YamlStringStyleConverter());
+            // The flow flag rides along so flow-mode dumps use the authority's flow rules
+            // (a comma is data in block context but an indicator inside a flow collection).
+            builder = builder.WithTypeConverter(new YamlStringStyleConverter(defaultFlowStyle));
 
             if (defaultFlowStyle)
             {
@@ -590,6 +592,15 @@ namespace Sharpy
     /// </remarks>
     internal sealed class YamlStringStyleConverter : IYamlTypeConverter
     {
+        private readonly bool _flowContext;
+
+        /// <param name="flowContext">True when the dump emits collections in flow style
+        /// (<c>default_flow_style=True</c>), so the authority applies its flow rules.</param>
+        public YamlStringStyleConverter(bool flowContext = false)
+        {
+            _flowContext = flowContext;
+        }
+
         /// <inheritdoc />
         public bool Accepts(Type type) => type == typeof(string);
 
@@ -603,7 +614,7 @@ namespace Sharpy
         {
             string text = value as string ?? string.Empty;
             bool wouldResolve = !(YamlScalarResolver.Resolve(text) is string);
-            var decided = YamlScalarStyleAuthority.Choose(text, wouldResolve);
+            var decided = YamlScalarStyleAuthority.Choose(text, wouldResolve, _flowContext);
 
             ScalarStyle style = decided switch
             {

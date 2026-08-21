@@ -6,12 +6,13 @@ namespace Sharpy.Stdlib.Tests;
 /// The two dump surfaces agree on HOW to quote, not merely on WHICH strings need quoting (#1472).
 ///
 /// <para>
-/// They already shared the predicate — <c>YamlRoundtrip.NeedsQuoting</c> and
-/// <c>YamlAmbiguousStringTypeConverter</c> both ask <c>YamlScalarResolver</c> — and diverged only
-/// in rendering, because <c>QuotedScalar</c> hardcoded <c>DoubleQuoted</c> where <c>safe_dump</c>
-/// and both Python oracles emit single quotes. A shared predicate with unshared rendering still
-/// produces two different documents for one value, which is the defect class the one-authority
-/// design exists to prevent.
+/// History: the surfaces once shared only the resolver — the since-deleted
+/// <c>YamlRoundtrip.NeedsQuoting</c> and the converter now named <c>YamlStringStyleConverter</c>
+/// both asked <c>YamlScalarResolver</c> — and diverged in rendering, because the roundtrip
+/// renderer hardcoded double quotes where <c>safe_dump</c> and both Python oracles emit single
+/// quotes. A shared predicate with unshared rendering still produces two different documents for
+/// one value, which is the defect class the one-authority design exists to prevent. Since #1542
+/// both surfaces take the whole decision from <see cref="YamlScalarStyleAuthority"/>.
 /// </para>
 ///
 /// <para>
@@ -89,10 +90,10 @@ public class YamlRoundtripQuotingStyleTests
     /// would read as "always single-quote", which produces unparseable YAML for a tab.
     ///
     /// <para>
-    /// Asserted on <c>roundtrip_dump</c> alone rather than as cross-surface equality, because
-    /// <c>safe_dump</c> emits a tab PLAIN and raw — it diverges from PyYAML here, and
-    /// <c>roundtrip_dump</c> is now the surface that agrees with the oracle. Filed as #1542 and
-    /// pinned in <see cref="TheCrossSurfaceResidueOutside1472sCorpus_IsPinnedTo1542"/>.
+    /// Asserted on <c>roundtrip_dump</c> so the boundary is pinned against the oracle directly;
+    /// since #1542 <c>safe_dump</c> reaches the same answer through the shared authority, and the
+    /// cross-surface equality is asserted in
+    /// <see cref="FormerResidue_NowAgreement_BothSurfacesConsultOneAuthority"/>.
     /// </para>
     /// </summary>
     [Theory]
@@ -142,6 +143,52 @@ public class YamlRoundtripQuotingStyleTests
 
         // multi-line is single-quoted on BOTH surfaces (matching PyYAML).
         Assert.Equal(Yaml.SafeDump("line1\nline2"), Yaml.RoundtripDump("line1\nline2"));
+    }
+
+    /// <summary>
+    /// Flow-mode dumps use the authority's FLOW rules: a comma is data in block context but an
+    /// indicator inside a flow collection, so <c>safe_dump(..., default_flow_style=True)</c> must
+    /// quote it — the styling decision belongs to <see cref="YamlScalarStyleAuthority"/>, not to
+    /// YamlDotNet's internal emitter analysis.
+    ///
+    /// <para>
+    /// Oracle: PyYAML 6.0.3, python3 3.12.13, measured 2026-08-20:
+    /// <c>yaml.safe_dump({'k': 'a,b'}, default_flow_style=True)</c> → <c>"{k: 'a,b'}\n"</c>;
+    /// block mode → <c>"k: a,b\n"</c> (plain).
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void FlowModeDump_QuotesFlowIndicators_BlockModeDoesNot()
+    {
+        var data = new Dict<string, object?> { ["k"] = "a,b" };
+
+        Assert.Equal("{k: 'a,b'}\n", Yaml.SafeDump(data, defaultFlowStyle: true));
+        Assert.Equal("k: a,b\n", Yaml.SafeDump(data));
+    }
+
+    /// <summary>
+    /// KEY-position styling through <c>safe_dump</c>: the converter styles every string,
+    /// including mapping keys, so a forced style must survive YamlDotNet's key emission.
+    ///
+    /// <para>
+    /// Oracle: PyYAML 6.0.3, python3 3.12.13, measured 2026-08-20 with
+    /// <c>yaml.safe_dump({key: 1})</c>: tab key → <c>"tab\tkey": 1</c> (double-quoted);
+    /// colon-space key → <c>'a: b': 1</c> (single-quoted); multi-line key →
+    /// explicit-key form <c>? 'l1\n\n  l2'\n: 1</c>. The STYLE matches PyYAML at every
+    /// cell; the one deviation is the escape SPELLING inside the double-quoted scalar —
+    /// YamlDotNet emits the raw tab byte where PyYAML spells <c>\t</c> (#1598), key and
+    /// value position alike, so the tab assertions below carry a literal tab.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void KeyPositionStyling_MatchesPyYaml()
+    {
+        Assert.Equal("\"tab\tkey\": 1\n", Yaml.SafeDump(new Dict<string, object?> { ["tab\tkey"] = 1 }));
+        Assert.Equal("'a: b': 1\n", Yaml.SafeDump(new Dict<string, object?> { ["a: b"] = 1 }));
+        Assert.Equal("? 'l1\n\n  l2'\n: 1\n", Yaml.SafeDump(new Dict<string, object?> { ["l1\nl2"] = 1 }));
+
+        // Value position, exact bytes: same double-quoted style, same raw-tab spelling (#1598).
+        Assert.Equal("\"tab\tchar\"\n", Yaml.SafeDump("tab\tchar"));
     }
 
     /// <summary>
