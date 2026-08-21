@@ -243,7 +243,11 @@ def zip_longest[T](first: list[T], second: list[T], fillvalue: T) -> Iterator[tu
     """Make an iterator that aggregates elements from each iterable, filling missing values with fillvalue."""
     return iter[tuple[T, T]](_zip_longest_core(first, second, fillvalue))
 
-def _groupby_core[T, K: IEquatable[K]](iterable: list[T], key: (T) -> K) -> tuple[K, list[T]]:
+# TODO(#1600): groupby cannot be flipped — iter[tuple[K, list[T]]] is refused when K carries a
+# type constraint. The other 4 tuple-shaped producers (pairwise, zip_longest, product ×2) have
+# unconstrained parameters and flip successfully.
+def groupby[T, K: IEquatable[K]](iterable: list[T], key: (T) -> K) -> tuple[K, list[T]]:
+    """Make an iterator that returns consecutive keys and groups from the iterable."""
     items: list[T] = list(iterable)
     if len(items) == 0:
         return
@@ -260,10 +264,6 @@ def _groupby_core[T, K: IEquatable[K]](iterable: list[T], key: (T) -> K) -> tupl
             group = [items[i]]
         i = i + 1
     yield (current_key, group)
-
-def groupby[T, K: IEquatable[K]](iterable: list[T], key: (T) -> K) -> Iterator[tuple[K, list[T]]]:
-    """Make an iterator that returns consecutive keys and groups from the iterable."""
-    return iter[tuple[K, list[T]]](_groupby_core(iterable, key))
 
 def _product_core[T1, T2](first: list[T1], second: list[T2]) -> tuple[T1, T2]:
     for x in first:
