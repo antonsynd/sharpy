@@ -12,35 +12,35 @@ import itertools
 
 Make an iterator that returns evenly spaced values starting with number start.
 
-### `itertools.repeat(elem: T, n: int = -1) -> Iterable[T]`
+### `itertools.repeat(elem: T, n: int = -1) -> Iterator[T]`
 
 Make an iterator that returns object over and over again, optionally limited by n times.
 
-### `itertools.cycle(iterable: list[T]) -> Iterable[T]`
+### `itertools.cycle(iterable: list[T]) -> Iterator[T]`
 
 Make an iterator returning elements from the iterable and saving a copy of each.
 
-### `itertools.compress(data: list[T], selectors: list[bool]) -> Iterable[T]`
+### `itertools.compress(data: list[T], selectors: list[bool]) -> Iterator[T]`
 
 Make an iterator that filters elements from data returning only those that have a corresponding element in selectors that evaluates to True.
 
-### `itertools.dropwhile(predicate: (T) -> bool, iterable: list[T]) -> Iterable[T]`
+### `itertools.dropwhile(predicate: (T) -> bool, iterable: list[T]) -> Iterator[T]`
 
 Make an iterator that drops elements from the iterable as long as the predicate is True; afterwards, returns every element.
 
-### `itertools.takewhile(predicate: (T) -> bool, iterable: list[T]) -> Iterable[T]`
+### `itertools.takewhile(predicate: (T) -> bool, iterable: list[T]) -> Iterator[T]`
 
 Make an iterator that returns elements from the iterable as long as the predicate is True.
 
-### `itertools.filterfalse(predicate: (T) -> bool, iterable: list[T]) -> Iterable[T]`
+### `itertools.filterfalse(predicate: (T) -> bool, iterable: list[T]) -> Iterator[T]`
 
 Make an iterator that filters elements from iterable returning only those for which the predicate is False.
 
-### `itertools.islice(iterable: list[T], stop: int) -> Iterable[T]`
+### `itertools.islice(iterable: list[T], stop: int) -> Iterator[T]`
 
 Make an iterator that returns selected elements from the iterable.
 
-### `itertools.islice_range(iterable: list[T], start: int, stop: int, step: int = 1) -> Iterable[T]`
+### `itertools.islice_range(iterable: list[T], start: int, stop: int, step: int = 1) -> Iterator[T]`
 
 Make an iterator that returns selected elements from the iterable with start, stop, and step.
 
@@ -48,39 +48,39 @@ Make an iterator that returns selected elements from the iterable with start, st
 
 Make an iterator that returns accumulated sums.
 
-### `itertools.accumulate(iterable: list[T], func: (T, T) -> T) -> Iterable[T]`
+### `itertools.accumulate(iterable: list[T], func: (T, T) -> T) -> Iterator[T]`
 
 Make an iterator that returns accumulated results of a binary function.
 
-### `itertools.accumulate(iterable: list[T], func: (T, T) -> T, initial: T) -> Iterable[T]`
+### `itertools.accumulate(iterable: list[T], func: (T, T) -> T, initial: T) -> Iterator[T]`
 
 Make an iterator that returns accumulated results of a binary function, starting with an initial value.
 
-### `itertools.chain(first: list[T], second: list[T]) -> Iterable[T]`
+### `itertools.chain(first: list[T], second: list[T]) -> Iterator[T]`
 
 Make an iterator that returns elements from the first iterable until it is exhausted, then proceeds to the next iterable.
 
-### `itertools.chain(first: list[T], second: list[T], third: list[T]) -> Iterable[T]`
+### `itertools.chain(first: list[T], second: list[T], third: list[T]) -> Iterator[T]`
 
 Make an iterator that returns elements from each iterable in turn until all are exhausted.
 
-### `itertools.chain_from_iterable(iterables: list[list[T]]) -> Iterable[T]`
+### `itertools.chain_from_iterable(iterables: list[list[T]]) -> Iterator[T]`
 
 Make an iterator that chains all iterables from a single list of iterables.
 
-### `itertools.starmap(func: (T1, T2) -> R, iterable: list[tuple[T1, T2]]) -> Iterable[R]`
+### `itertools.starmap(func: (T1, T2) -> R, iterable: list[tuple[T1, T2]]) -> Iterator[R]`
 
 Make an iterator that computes the function using arguments obtained from the iterable.
 
-### `itertools.combinations(iterable: list[T], r: int) -> Iterable[list[T]]`
+### `itertools.combinations(iterable: list[T], r: int) -> Iterator[list[T]]`
 
 Return successive r-length combinations of elements in the iterable.
 
-### `itertools.permutations(iterable: list[T], r: int = -1) -> Iterable[list[T]]`
+### `itertools.permutations(iterable: list[T], r: int = -1) -> Iterator[list[T]]`
 
 Return successive r-length permutations of elements in the iterable. A negative r means full length.
 
-### `itertools.combinations_with_replacement(iterable: list[T], r: int) -> Iterable[list[T]]`
+### `itertools.combinations_with_replacement(iterable: list[T], r: int) -> Iterator[list[T]]`
 
 Return successive r-length combinations of elements in the iterable allowing individual elements to be repeated.
 
