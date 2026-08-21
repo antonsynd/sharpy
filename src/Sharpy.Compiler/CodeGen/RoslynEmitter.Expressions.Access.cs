@@ -1823,15 +1823,11 @@ internal partial class RoslynEmitter
             {
                 var memberPart = modulePath[i];
 
-                // For .NET module fields (e.g., string.digits), the CLR field name
-                // may differ from PascalCase convention (Sharpy.Core uses Python-style
-                // snake_case names for string module constants). Use the CLR name directly
-                // when the export is a VariableSymbol.
                 string mangledMemberName;
                 currentModule.Exports.TryGetValue(memberPart, out var exportSymbol);
-                if (currentModule.IsNetModule && exportSymbol is VariableSymbol)
+                if (currentModule.IsNetModule && exportSymbol is VariableSymbol vs)
                 {
-                    mangledMemberName = memberPart;
+                    mangledMemberName = vs.ClrFieldName ?? memberPart;
                 }
                 else if (NameFormDetector.IsConstantCaseName(memberPart))
                 {
