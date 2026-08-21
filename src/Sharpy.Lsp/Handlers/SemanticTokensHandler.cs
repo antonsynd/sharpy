@@ -216,13 +216,29 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 break;
 
             case EnumDef e:
+            {
                 PushNameToken(tokens, e.NameLineStart, e.NameColumnStart, e.NameColumnEnd - e.NameColumnStart, TEnum, ModDeclaration | ModDefinition | genMod);
+                // Backticked member names ARE legal (`for` = 1 compiles with only SPY0453), so
+                // each member's extent routes through its symbol's EffectiveNameColumnEnd — the
+                // single sanctioned reconstruction home (#1454). The member symbols live on the
+                // enum's module-scope TypeSymbol, matched here by recorded name position.
+                // EnumMember itself records no name extent or escape flag and the resolver
+                // copies neither (#1604), so today both routes still measure an escaped member
+                // two columns short — that fix lands in the compiler, and this site inherits it.
+                var enumSymbol = semanticQuery?.FindSymbolByDeclaration(e.Name, e.LineStart, e.ColumnStart)
+                    as Sharpy.Compiler.Semantic.TypeSymbol;
                 foreach (var member in e.Members)
                 {
-                    // EnumMember carries no NameColumnEnd; names cannot be backtick-escaped (#1454)
-                    PushNameToken(tokens, member.LineStart, member.ColumnStart, SymbolExtents.SourceNameLength(member.Name, isBacktickEscaped: false), TEnumMember, ModDeclaration | genMod);
+                    var memberSymbol = enumSymbol?.Fields.Find(f =>
+                        f.NameDeclarationLine == member.LineStart
+                        && f.NameDeclarationColumn == member.ColumnStart);
+                    var memberLength = memberSymbol != null
+                        ? SymbolExtents.NameExtentLength(memberSymbol)
+                        : SymbolExtents.SourceNameLength(member.Name, isBacktickEscaped: false);
+                    PushNameToken(tokens, member.LineStart, member.ColumnStart, memberLength, TEnumMember, ModDeclaration | genMod);
                 }
                 break;
+            }
 
             case VariableDeclaration v:
                 var varMods = ModDeclaration | genMod;
@@ -837,14 +853,37 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
     {
         foreach (var dec in decorators)
         {
-            var name = dec.Name;
-            if (name.Length > 0)
+            if (dec.QualifiedParts.Length == 0)
+                continue;
+
+            int length;
+            if (dec.Arguments.IsEmpty && dec.KeywordArguments.IsEmpty)
             {
-                // @[name regular: +2 for @ and [ (] is after args, not adjacent)
-                // @name regular decorators: +1 for @
-                var length = dec.IsBracketAttribute ? name.Length + 2 : name.Length + 1;
-                PushNameToken(tokens, dec.LineStart, dec.ColumnStart, length, TDecorator, 0);
+                // Recorded extent (#1454): with no argument list the decorator's last token is
+                // its name (regular) or the closing bracket (bracket attribute), so the node's
+                // ColumnEnd measures "@name" / "@[name]" exactly — including the backticks of an
+                // escaped spelling, which ARE legal here (@`static` resolves to the static
+                // decorator) and which no length arithmetic on the bare parts can see.
+                length = dec.ColumnEnd - dec.ColumnStart;
             }
+            else
+            {
+                // Extent reconstruction retained by rationale (#1454): with arguments present
+                // ColumnEnd spans the whole "@name(args...)" and Decorator records no name-token
+                // end, so the name's source length is rebuilt from QualifiedParts plus the
+                // recorded escape flags. Exact for bracket attributes; regular decorators lose
+                // their escape flags in the parser (#1604), so @`static`("...") measures two
+                // columns short per escaped part until the parser records them.
+                length = dec.QualifiedParts.Length - 1; // separating dots
+                for (var i = 0; i < dec.QualifiedParts.Length; i++)
+                {
+                    var escaped = i < dec.BacktickEscapedParts.Length && dec.BacktickEscapedParts[i];
+                    length += SymbolExtents.SourceNameLength(dec.QualifiedParts[i], escaped);
+                }
+                length += dec.IsBracketAttribute ? 2 : 1; // "@[" / "@" prefix
+            }
+
+            PushNameToken(tokens, dec.LineStart, dec.ColumnStart, length, TDecorator, 0);
         }
     }
 

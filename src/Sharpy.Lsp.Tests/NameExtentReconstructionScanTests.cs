@@ -10,9 +10,17 @@ namespace Sharpy.Lsp.Tests;
 /// route through <see cref="Handlers.SymbolExtents"/> (#1454, plan-80eee2 Design Decision 7).
 /// </summary>
 /// <remarks>
+/// <para>
 /// Each allowlist entry documents a verified non-extent use. If the production code changes,
 /// a stale entry fails the staleness check and must be removed. If a new <c>.Name.Length</c>
 /// appears, it fails the scan and must either be converted or added with a rationale.
+/// </para>
+/// <para>
+/// Known limitation: the scan sees only the literal <c>.Name.Length</c> spelling. Lowercase
+/// sites — a local (<c>name.Length</c>), a loop part (<c>part.Length</c>), or a record field
+/// lifted into a variable — are invisible to it and are handled by conversion or an explicit
+/// rationale comment in the handlers themselves (#1454); the guard cannot see them.
+/// </para>
 /// </remarks>
 public class NameExtentReconstructionScanTests
 {

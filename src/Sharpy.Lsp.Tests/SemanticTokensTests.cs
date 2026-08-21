@@ -384,6 +384,26 @@ def main():
     }
 
     [Fact]
+    public void BacktickedDecorator_TokenLengthCoversBackticks()
+    {
+        // @`static` is legal (the escaped spelling resolves to the static decorator, #1604).
+        // With no argument list the token takes the recorded ColumnStart..ColumnEnd extent,
+        // which spans "@`static`" — nine columns, backticks included (#1454).
+        var tokens = CollectTokensFrom(
+            "class Foo:\n    @`static`\n    def helper() -> int:\n        return 1\n" +
+            "def main():\n    print(Foo.helper())");
+        var plain = tokens.First(t => t.TokenType == TDecorator && t.Line == 1);
+        plain.Length.Should().Be(9, "\"@`static`\" spans nine source columns, backticks included");
+
+        // With arguments the extent is rebuilt from the recorded escape flags; bracket-attribute
+        // parts record them, so the token covers "@[`Obsolete`" — twelve columns (#1454).
+        var bracket = CollectTokensFrom(
+            "@[`Obsolete`(\"old\")]\ndef old_fn() -> None:\n    pass\ndef main():\n    old_fn()");
+        var attr = bracket.First(t => t.TokenType == TDecorator);
+        attr.Length.Should().Be(12, "\"@[`Obsolete`\" spans twelve source columns, backticks included");
+    }
+
+    [Fact]
     public void EmptyStatementList_ProducesNoTokens()
     {
         var tokens = new System.Collections.Generic.List<RawToken>();
