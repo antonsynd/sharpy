@@ -326,6 +326,28 @@ public class DeclarationCursorMatrixTests : IDisposable
         return await _renameHandler.Handle(request, CancellationToken.None);
     }
 
+    // ── Rename parity ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Parameter_Rename_EditsExactlyTheReferencesBindingSet()
+    {
+        // Rename and references resolve through the same DeclarationCursorResolver, so a
+        // declaration cursor must yield the same binding set in both handlers.
+        var source = "def greet(name: str) -> str:\n    return name\n";
+        OpenDocument(source);
+
+        var refs = await GetReferencesAsync("file:///test.spy", 0, 10);
+        var edit = await RenameAsync("file:///test.spy", 0, 10, "title");
+
+        refs.Should().NotBeNull("references resolves the parameter declaration cursor");
+        edit.Should().NotBeNull("rename resolves the same declaration cursor references does");
+
+        var editRanges = edit!.Changes!["file:///test.spy"].Select(e => e.Range).ToList();
+        var refRanges = refs!.Select(l => l.Range).ToList();
+        editRanges.Should().BeEquivalentTo(refRanges,
+            "rename must rewrite exactly the binding set the references handler reports");
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();
