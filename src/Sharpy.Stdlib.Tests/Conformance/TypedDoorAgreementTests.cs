@@ -77,6 +77,90 @@ public class TypedDoorAgreementTests
         }
     }
 
+    /// <summary>
+    /// Nested dataclass for the #1513 recursive walk rows.
+    /// <code>
+    /// @dataclass
+    /// class Inner:
+    ///     port: int
+    ///     host: str = "localhost"
+    /// </code>
+    /// </summary>
+    public class Inner
+    {
+        public int Port { get; set; }
+        public string Host { get; set; } = "localhost";
+
+        public Inner(int port, string host = "localhost")
+        {
+            Port = port;
+            Host = host;
+        }
+    }
+
+    /// <summary>
+    /// Outer dataclass referencing Inner, for the #1513 nested-missing-field rows.
+    /// <code>
+    /// @dataclass
+    /// class Outer:
+    ///     name: str
+    ///     inner: Inner
+    /// </code>
+    /// </summary>
+    public class Outer
+    {
+        public string Name { get; set; }
+        public Inner Inner { get; set; }
+
+        public Outer(string name, Inner inner)
+        {
+            Name = name;
+            Inner = inner;
+        }
+    }
+
+    /// <summary>
+    /// Outer with optional nested, for testing absent-optional-nested → Ok.
+    /// <code>
+    /// @dataclass
+    /// class OuterOptional:
+    ///     name: str
+    ///     inner: Inner? = None
+    /// </code>
+    /// </summary>
+    public class OuterOptional
+    {
+        public string Name { get; set; }
+        public Optional<Inner> Inner { get; set; } = Optional<Inner>.None;
+
+        public OuterOptional(string name, Optional<Inner> inner = default)
+        {
+            Name = name;
+            Inner = inner;
+        }
+    }
+
+    /// <summary>
+    /// Outer with a list of Inner, for testing items[i].field paths.
+    /// <code>
+    /// @dataclass
+    /// class OuterList:
+    ///     name: str
+    ///     items: list[Inner]
+    /// </code>
+    /// </summary>
+    public class OuterList
+    {
+        public string Name { get; set; }
+        public List<Inner> Items { get; set; }
+
+        public OuterList(string name, List<Inner> items)
+        {
+            Name = name;
+            Items = items;
+        }
+    }
+
     /// <summary>One document in both spellings, plus what the doors must jointly answer.</summary>
     public sealed record Row(string Name, string Json, string Yaml, string Expected);
 
@@ -244,4 +328,152 @@ public class TypedDoorAgreementTests
             new[] { "label", "max_connections", "name", "retry_count" },
             mentioned.OrderBy(f => f, System.StringComparer.Ordinal).ToArray());
     }
+
+    // ========================================================================
+    // Nested required-field rows (#1513)
+    // ========================================================================
+
+    public static TheoryData<Row> NestedCorpus()
+    {
+        var data = new TheoryData<Row>();
+        foreach (var row in NestedRows)
+            data.Add(row);
+        return data;
+    }
+
+    private static IReadOnlyList<Row> NestedRows { get; } = BuildNestedRows();
+
+    private static Row[] BuildNestedRows()
+    {
+        var data = new List<Row>();
+
+        // The #1513 repro: required field missing one level down.
+        data.Add(new Row(
+            "nested-missing-required",
+            /*json*/ "{\"name\": \"web\", \"inner\": {\"host\": \"example.com\"}}",
+            /*yaml*/ "name: web\ninner:\n  host: example.com\n",
+            "err: missing required field 'inner.port' for Outer"));
+
+        // Nested complete → Ok.
+        data.Add(new Row(
+            "nested-complete",
+            /*json*/ "{\"name\": \"web\", \"inner\": {\"port\": 8080}}",
+            /*yaml*/ "name: web\ninner:\n  port: 8080\n",
+            "ok: name=web inner.port=8080 inner.host=localhost"));
+
+        // Nested complete with all fields.
+        data.Add(new Row(
+            "nested-all-present",
+            /*json*/ "{\"name\": \"web\", \"inner\": {\"port\": 8080, \"host\": \"db.local\"}}",
+            /*yaml*/ "name: web\ninner:\n  port: 8080\n  host: db.local\n",
+            "ok: name=web inner.port=8080 inner.host=db.local"));
+
+        // Optional-typed nested object absent → Ok (absence is a value for T?).
+        data.Add(new Row(
+            "optional-nested-absent",
+            /*json*/ "{\"name\": \"web\"}",
+            /*yaml*/ "name: web\n",
+            "ok-optional: name=web inner=None"));
+
+        // Optional-typed nested object present but incomplete → Err.
+        data.Add(new Row(
+            "optional-nested-present-incomplete",
+            /*json*/ "{\"name\": \"web\", \"inner\": {\"host\": \"db.local\"}}",
+            /*yaml*/ "name: web\ninner:\n  host: db.local\n",
+            "err: missing required field 'inner.port' for OuterOptional"));
+
+        // Missing field inside a list element → items[index].field.
+        data.Add(new Row(
+            "list-element-missing-required",
+            /*json*/ "{\"name\": \"web\", \"items\": [{\"port\": 80}, {\"host\": \"db\"}]}",
+            /*yaml*/ "name: web\nitems:\n- port: 80\n- host: db\n",
+            "err: missing required field 'items[1].port' for OuterList"));
+
+        // List all complete → Ok.
+        data.Add(new Row(
+            "list-all-complete",
+            /*json*/ "{\"name\": \"web\", \"items\": [{\"port\": 80}, {\"port\": 443}]}",
+            /*yaml*/ "name: web\nitems:\n- port: 80\n- port: 443\n",
+            "ok-list: name=web items=[80, 443]"));
+
+        return data.ToArray();
+    }
+
+    [Theory]
+    [MemberData(nameof(NestedCorpus))]
+    public void JsonAndYamlTypedDoors_AgreeOnNestedFields(Row row)
+    {
+        string json, yaml;
+
+        if (row.Name.StartsWith("optional-nested"))
+        {
+            json = RenderJsonOptional(row.Json);
+            yaml = RenderYamlOptional(row.Yaml);
+        }
+        else if (row.Name.StartsWith("list"))
+        {
+            json = RenderJsonList(row.Json);
+            yaml = RenderYamlList(row.Yaml);
+        }
+        else
+        {
+            json = RenderJsonOuter(row.Json);
+            yaml = RenderYamlOuter(row.Yaml);
+        }
+
+        Assert.True(
+            json == yaml,
+            $"row '{row.Name}': the two typed doors disagree about a nested document (#1513).\n"
+            + $"  json  -> {json}\n"
+            + $"  yaml  -> {yaml}");
+
+        Assert.Equal(row.Expected, json);
+    }
+
+    private static string RenderJsonOuter(string document)
+    {
+        var result = Json.Loads<Outer>(document);
+        return result.IsOk ? RenderOk(result.Unwrap()) : "err: " + result.UnwrapErr().Msg;
+    }
+
+    private static string RenderYamlOuter(string document)
+    {
+        var result = Yaml.SafeLoadTyped<Outer>(document);
+        return result.IsOk ? RenderOk(result.Unwrap()) : "err: " + result.UnwrapErr().Message;
+    }
+
+    private static string RenderOk(Outer outer)
+        => $"ok: name={outer.Name} inner.port={outer.Inner.Port} inner.host={outer.Inner.Host}";
+
+    private static string RenderJsonOptional(string document)
+    {
+        var result = Json.Loads<OuterOptional>(document);
+        return result.IsOk ? RenderOk(result.Unwrap()) : "err: " + result.UnwrapErr().Msg;
+    }
+
+    private static string RenderYamlOptional(string document)
+    {
+        var result = Yaml.SafeLoadTyped<OuterOptional>(document);
+        return result.IsOk ? RenderOk(result.Unwrap()) : "err: " + result.UnwrapErr().Message;
+    }
+
+    private static string RenderOk(OuterOptional outer)
+        => outer.Inner.IsNone
+            ? $"ok-optional: name={outer.Name} inner=None"
+            : $"ok-optional: name={outer.Name} inner.port={outer.Inner.Unwrap().Port} inner.host={outer.Inner.Unwrap().Host}";
+
+    private static string RenderJsonList(string document)
+    {
+        var result = Json.Loads<OuterList>(document);
+        return result.IsOk ? RenderOk(result.Unwrap()) : "err: " + result.UnwrapErr().Msg;
+    }
+
+    private static string RenderYamlList(string document)
+    {
+        var result = Yaml.SafeLoadTyped<OuterList>(document);
+        return result.IsOk ? RenderOk(result.Unwrap()) : "err: " + result.UnwrapErr().Message;
+    }
+
+    private static string RenderOk(OuterList outer)
+        => $"ok-list: name={outer.Name} items=[{string.Join(", ", ((System.Collections.Generic.IEnumerable<Inner>)outer.Items).Select(i => i.Port.ToString()))}]";
 }
