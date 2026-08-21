@@ -1,0 +1,11 @@
+# Case 2: f(int8)/f(uint8) with f(100) — both constant-applicable; lattice-incomparable,
+# §12.6.4.7 signed-beats-unsigned selects int8. Measured C# verdict: sbyte.
+
+def f(sb: int8) -> None:
+    print("int8 arm")
+
+def f(b: uint8) -> None:
+    print("uint8 arm")
+
+def main() -> None:
+    f(100)

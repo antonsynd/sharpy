@@ -1,0 +1,13 @@
+# Const reference resolves the same as a bare literal: VariableSymbol.ConstantValue
+# folds at §10.2.11 sites, so `f(LIMIT)` and `f(200)` pick the same overload (#1460, #1464).
+
+const LIMIT: int = 200
+
+def f(b: uint8) -> None:
+    print("uint8 arm")
+
+def f(s: str) -> None:
+    print("str arm")
+
+def main() -> None:
+    f(LIMIT)

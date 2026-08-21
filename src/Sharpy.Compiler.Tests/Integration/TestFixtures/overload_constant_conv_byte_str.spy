@@ -1,0 +1,11 @@
+# Case 5: f(uint8)/f(str) with f(200) — only uint8 applicable (200 is not a str).
+# Measured C# verdict: byte.
+
+def f(b: uint8) -> None:
+    print("uint8 arm")
+
+def f(s: str) -> None:
+    print("str arm")
+
+def main() -> None:
+    f(200)

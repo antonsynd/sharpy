@@ -1,0 +1,11 @@
+# Case 1: f(uint8)/f(int16) with f(100) — both constant-applicable; better-conversion-target
+# lattice picks uint8 (uint8→int16 exists). Measured C# verdict: byte.
+
+def f(b: uint8) -> None:
+    print("uint8 arm")
+
+def f(s: int16) -> None:
+    print("int16 arm")
+
+def main() -> None:
+    f(100)

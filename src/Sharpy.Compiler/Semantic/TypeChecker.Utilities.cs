@@ -845,14 +845,11 @@ internal partial class TypeChecker
     /// checker and the emitter must agree on which arguments are coercible.
     /// </summary>
     /// <param name="allowConstantConversion">
-    /// Whether an in-range integer constant may satisfy a small-width parameter (#1355). True at the
-    /// argument-binding boundary; <b>false while RANKING overloads</b>. §10.2.11 conversions are
-    /// standard conversions and do participate in C# overload resolution, but C# also has
-    /// better-conversion rules to break the resulting ties, and this resolver does not. Admitting the
-    /// conversion during candidate filtering therefore widens applicability without widening the
-    /// tie-break: measured, `itertools.repeat` became "Ambiguous call to overloaded method 'repeat'"
-    /// because an int constant satisfied two width-differing overloads at once. Ranking is the open
-    /// decision that phase left unmade (#1464).
+    /// Whether an in-range integer constant may satisfy a small-width parameter (#1355). True at
+    /// the argument-binding boundary AND during overload applicability filtering. §10.2.11 constant
+    /// conversions participate in C# overload resolution; the resulting ties are broken by the
+    /// identity-match → better-conversion-target → signed-beats-unsigned chain in
+    /// <c>IsMoreSpecificOverload</c> (#1464).
     /// </param>
     private bool IsArgumentAssignable(
         SemanticType source,

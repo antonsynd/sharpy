@@ -288,9 +288,10 @@ internal partial class TypeChecker
                     continue;
                 }
 
-                // Constant conversions are excluded while RANKING: they widen applicability without a
-                // tie-break to match, which made `itertools.repeat` ambiguous (#1355, #1464).
-                if (!IsArgumentAssignable(context.ArgTypes[i], expectedType, argNode, allowConstantConversion: false))
+                // §10.2.11 constant conversions participate in applicability; the resulting ties
+                // are broken by identity-match → better-conversion-target → signed-beats-unsigned
+                // in IsMoreSpecificOverload (#1464).
+                if (!IsArgumentAssignable(context.ArgTypes[i], expectedType, argNode, allowConstantConversion: true))
                 {
                     if (IsSystemTypeParameter(expectedType)
                         && context.Call != null
@@ -389,6 +390,17 @@ internal partial class TypeChecker
                 paramTypeB = context.TypeSubstitution(paramTypeB);
             }
 
+            // §12.6.4.6: if the argument's natural type exactly matches one parameter
+            // type but not the other, the matching type is strictly better. This is
+            // what makes f(byte)/f(int) called with an int literal pick f(int) — the
+            // argument type IS int, so identity wins over the constant conversion to
+            // byte (#1464, measured C# verdict Case 4).
+            var argType = context.ArgTypes[i];
+            bool aMatchesExact = paramTypeA.Equals(argType);
+            bool bMatchesExact = paramTypeB.Equals(argType);
+            if (aMatchesExact && !bMatchesExact) { hasStrictlyBetter = true; continue; }
+            if (bMatchesExact && !aMatchesExact) { return false; }
+
             // Equal types contribute nothing to the comparison — unless the
             // underlying CLR types differ (e.g., ClrTypeBridge maps IEnumerable<T>
             // and Sharpy.List<T> both to list[T]).
@@ -431,10 +443,36 @@ internal partial class TypeChecker
             {
                 return false;
             }
+            // §12.6.4.7: when the lattice is neutral, signed beats unsigned (#1464,
+            // measured C# verdict Case 2).
+            else if (IsSignedBeatsUnsigned(paramTypeA, paramTypeB))
+            {
+                hasStrictlyBetter = true;
+            }
+            else if (IsSignedBeatsUnsigned(paramTypeB, paramTypeA))
+            {
+                return false;
+            }
             // Both assignable or neither, and structurally equal: no preference here.
         }
 
         return hasStrictlyBetter;
+    }
+
+    /// <summary>
+    /// C# §12.6.4.7: a signed integer type is a better conversion target than an unsigned
+    /// integer type of the same or smaller width. The pairs are: int8 beats uint8/uint16/uint32/uint64;
+    /// int16 beats uint16/uint32/uint64; int32 beats uint32/uint64; int64 beats uint64.
+    /// Only applies when the two types are otherwise lattice-incomparable (#1464).
+    /// </summary>
+    private static bool IsSignedBeatsUnsigned(SemanticType signed, SemanticType unsigned)
+    {
+        var signedInfo = Registry.PrimitiveCatalog.GetPrimitiveInfo(signed);
+        var unsignedInfo = Registry.PrimitiveCatalog.GetPrimitiveInfo(unsigned);
+        if (signedInfo == null || unsignedInfo == null)
+            return false;
+        return signedInfo.Kind == Registry.PrimitiveCatalog.NumericKind.SignedInteger
+            && unsignedInfo.Kind == Registry.PrimitiveCatalog.NumericKind.UnsignedInteger;
     }
 
     /// <summary>

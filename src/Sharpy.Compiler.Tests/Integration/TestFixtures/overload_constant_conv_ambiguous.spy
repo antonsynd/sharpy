@@ -1,0 +1,17 @@
+# Ambiguity control: uint16 and uint32 are both constant-applicable for 200, and neither
+# is signed, so signed-beats-unsigned does not break the tie. The lattice DOES order them
+# (uint16→uint32 exists), so uint16 should win — this is NOT ambiguous.
+# Instead test two lattice-incomparable constant-applicable unsigned types at the same width
+# where no rule breaks the tie. But uint8 and int8 are broken by signed-beats-unsigned,
+# and all integer sizes are lattice-ordered within same signedness...
+# The true ambiguity case for constants: f(float32)/f(decimal) with f(100) — both applicable
+# via int→float32 and int→decimal, but float32 and decimal are lattice-incomparable.
+
+def f(x: float32) -> None:
+    print("float32 arm")
+
+def f(x: decimal) -> None:
+    print("decimal arm")
+
+def main() -> None:
+    f(100)

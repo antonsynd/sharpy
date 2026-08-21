@@ -1,0 +1,11 @@
+# Case 4: f(uint8)/f(int) with f(200) — §12.6.4.6 identity match: argument type int matches
+# int identically. Measured C# verdict: int.
+
+def f(b: uint8) -> None:
+    print("uint8 arm")
+
+def f(i: int) -> None:
+    print("int arm")
+
+def main() -> None:
+    f(200)

@@ -63,6 +63,9 @@ overload purposes, is:
 - **Delegate compatibility** — a function type binds to a delegate parameter with a compatible
   signature.
 - **The documented primitive coercions** (below).
+- **Constant conversions** (C# §10.2.11) — an integer constant whose value fits in a narrower integer
+  type satisfies a parameter of that type, exactly as it would satisfy a variable annotation. Both
+  bare literals (`200`) and `const` references (`const LIMIT: int = 200`) participate.
 - **`list[T]` → `array[T]`** at the argument-binding boundary only (element types must match exactly;
   this coercion is deliberately *not* available in ordinary assignment).
 - A **bare type parameter** (`T`) as a parameter type acts as a wildcard — it accepts any argument, and
@@ -100,26 +103,36 @@ Among applicable candidates, one candidate is **better** than another when it is
 every argument position and strictly better at one. The tie-break criteria are applied in the following
 order; the first that yields a unique winner selects the target.
 
-1. **Exact match over conversion.** At a given argument position, a parameter whose type is *identical*
-   to the argument beats one that requires any implicit conversion.
+1. **Identity match (§12.6.4.6).** At a given argument position, a parameter whose type is *identical*
+   to the argument's natural type beats one that requires any conversion — including a constant
+   conversion. This is what makes `f(200)` with overloads `f(b: uint8)` / `f(i: int)` select `f(int)`:
+   the argument's type is `int`, which matches `int` identically.
 2. **Better implicit conversion.** When both parameters require a conversion, the one with the lower
    conversion cost wins, per the [conversion-cost ranking](#conversion-cost-ranking) below. This
    realizes C#'s "better conversion target" rule (§12.6.4.4): for two candidate target types to which
    the argument converts, the target that itself implicitly converts to the other is the better one
    (`int → long` is preferred over `int → double` because `long` implicitly converts to `double`).
+   Constant conversions participate in this comparison: when both candidates are reachable via a
+   constant conversion, the narrower type that implicitly converts to the wider one is preferred
+   (`uint8` beats `int16` because `uint8 → int16` exists).
 3. **More specific type.** When neither conversion dominates, the structurally more specific parameter
    wins: a parameter assignable to the other but not vice-versa (`list[int]` beats `IEnumerable[int]`),
    and a structured type beats a bare type parameter at the same position (`list[list[T]]` beats
    `list[T]` for a nested literal). This is C#'s §12.6.4.4 shape rule.
-4. **Fewer type parameters.** A less-generic overload beats a more-generic one
+4. **Signed beats unsigned (§12.6.4.7).** When the conversion lattice is neutral (neither parameter
+   type implicitly converts to the other), a signed integer parameter beats an unsigned integer
+   parameter. The pairs are: `int8` beats `uint8`; `int16` beats `uint16`; `int32` beats `uint32`;
+   `int64` beats `uint64`. More generally, any signed integer beats any unsigned integer when the
+   lattice cannot decide.
+5. **Fewer type parameters.** A less-generic overload beats a more-generic one
    (`Merge[T](a, b)` beats `Merge[T, TKey](iterables, key)` when both are exact-arity matches).
-5. **Non-variadic over variadic.** A fixed-arity parameter list beats one that binds the argument
+6. **Non-variadic over variadic.** A fixed-arity parameter list beats one that binds the argument
    through a `*args` parameter.
-6. **CLR-level specificity.** When two parameters have equal Sharpy types but different underlying CLR
+7. **CLR-level specificity.** When two parameters have equal Sharpy types but different underlying CLR
    types (e.g. `ClrTypeMapper` maps both `Sharpy.List<T>` and `IEnumerable<T>` to `list[T]`), the more
    derived CLR type wins.
 
-If, after all six criteria, no single candidate is strictly better than every other, the call is
+If, after all seven criteria, no single candidate is strictly better than every other, the call is
 **ambiguous** and `SPY0353` is reported. Disambiguate with an explicit `to` conversion at the call site.
 
 ### Conversion-cost ranking
@@ -185,6 +198,42 @@ def bad(x: float, y: int) -> None: ...
 bad(1, 2)   # SPY0353 ambiguous — neither candidate is better at both positions
 ```
 
+#### Constant-conversion tie-break examples
+
+When a constant conversion widens applicability, the three-level tie-break — identity match,
+better-conversion-target lattice, signed-beats-unsigned — resolves the resulting ties to match C#:
+
+```python
+# Lattice picks the narrower type (uint8→int16 exists):
+def f(b: uint8) -> None:
+    print("uint8 arm")
+def f(s: int16) -> None:
+    print("int16 arm")
+f(100)   # prints "uint8 arm" — criterion 2, uint8→int16 exists
+
+# Signed beats unsigned when the lattice is neutral:
+def g(sb: int8) -> None:
+    print("int8 arm")
+def g(b: uint8) -> None:
+    print("uint8 arm")
+g(100)   # prints "int8 arm" — criterion 4, int8 beats uint8
+
+# Identity match trumps constant conversion:
+def h(b: uint8) -> None:
+    print("uint8 arm")
+def h(i: int) -> None:
+    print("int arm")
+h(200)   # prints "int arm" — criterion 1, argument type int matches int identically
+
+# Const references resolve the same way:
+const LIMIT: int = 200
+def p(b: uint8) -> None:
+    print("uint8 arm")
+def p(s: str) -> None:
+    print("str arm")
+p(LIMIT)  # prints "uint8 arm" — only uint8 is applicable
+```
+
 ## The three resolution engines
 
 Sharpy resolves overloads at three structurally different call shapes. All three are specified to apply
@@ -198,10 +247,11 @@ two-pass applicability filter followed by the deterministic betterness chain abo
 walks the base-class chain and then implemented interfaces to gather candidates. Builtin functions
 (`len`, `min`, `max`, `sorted`, …) resolve through the same core.
 
-> **Current implementation status.** The shared core (`ResolveOverloadCore`) already implements
-> applicability plus the exact-arity → fewer-type-parameters → specificity → ambiguous tie-break chain,
-> and it approximates conversion betterness through assignability-directed specificity (an argument that
-> is assignable to a parameter but not vice-versa is treated as more specific). What is missing, pending
+> **Current implementation status.** The shared core (`ResolveOverloadCore`) implements applicability
+> (including §10.2.11 constant conversions) plus the identity-match → exact-arity → fewer-type-parameters
+> → specificity → signed-beats-unsigned → ambiguous tie-break chain, and it approximates conversion
+> betterness through assignability-directed specificity (an argument that is assignable to a parameter but
+> not vice-versa is treated as more specific). What is missing, pending
 > [#1043](https://github.com/antonsynd/sharpy/issues/1043), is the **explicit, declarative
 > conversion-cost table** (criterion 2). Separately, builtin resolution currently short-circuits on the
 > *first* applicable candidate in `BuiltinRegistry` registration order (the `ReturnFirstMatch` path),
