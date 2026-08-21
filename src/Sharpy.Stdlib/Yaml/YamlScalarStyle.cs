@@ -112,8 +112,10 @@ namespace Sharpy
                 // Whitespace tracking
                 if (ch == ' ')
                 {
-                    if (i == 0) leadingSpace = true;
-                    if (i == value.Length - 1) trailingSpace = true;
+                    if (i == 0)
+                        leadingSpace = true;
+                    if (i == value.Length - 1)
+                        trailingSpace = true;
                     previousSpace = true;
                 }
                 else if (ch == '\n')
