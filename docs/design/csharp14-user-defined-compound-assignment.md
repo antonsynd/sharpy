@@ -1,7 +1,10 @@
 # C# 14 user-defined compound assignment — feasibility for alias-mutating augmented assignment
 
-**Issue:** #1428 · **Status:** feasibility note only — no product code, no emitter work.
-**Gates:** an owner decision on semantics. This note stops there deliberately.
+**Issue:** #1428 · **Status:** option 2 chosen (2026-08-13 owner ruling) — experimental
+gate `inplace_augassign` landed as a behavioral flag (no SPY0331). Mechanism: emitter
+mutation call on every TFM (D4 of plan-55f329); the C# 14 instance operator remains open for
+direct C# consumers of Sharpy.Core. Gated-period questions tracked on the graduation issue.
+**Gates:** graduation tracker (see below).
 
 ## Why this exists
 
@@ -139,3 +142,10 @@ at `Default`, `CSharp14` and `CSharp9`, and reports error counts per version —
 `CSharp9` control asserted to fail.**
 
 Executed 2026-08-13 against .NET 10.0.400 SDK and Roslyn 5.6.0.
+
+## Graduation tracker
+
+Gated-period questions are tracked on #1614. The gate was landed at the
+`inplace_augassign` behavioral flag (no `GatedConstruct`, no SPY0331). Attribute/index
+targets, `list *=`, the C# 14 operator vs mutation-call mechanism, the `netstandard2.1`
+story, spec text, and #1394 hint retirement are all graduation-blocking.
