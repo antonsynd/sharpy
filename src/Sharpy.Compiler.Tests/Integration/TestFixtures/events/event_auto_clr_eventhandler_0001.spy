@@ -1,0 +1,21 @@
+# Auto event typed with the builtin CLR EventHandler (#1512, events.md "Auto-Events").
+# The bare spelling needs no import; EventArgs is imported for the invoke argument.
+from System import EventArgs
+
+
+class Button:
+    event on_click: EventHandler
+
+    def click(self):
+        self.on_click?.invoke(self, EventArgs.empty)
+
+
+def handler(sender: object, e: EventArgs) -> None:
+    print("clicked")
+
+
+def main():
+    b: Button = Button()
+    b.on_click += handler
+    b.click()
+    print("done")

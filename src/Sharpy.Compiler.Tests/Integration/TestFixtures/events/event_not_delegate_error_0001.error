@@ -1,1 +1,1 @@
-is not a delegate type
+Event 'on_change' type 'NotADelegate' is not a delegate type @6:5

@@ -225,9 +225,11 @@ def main() -> None:
         // The delegate-typed exception documented in the class remarks: a leak substitutes the
         // delegate into an int position, so it does not compile rather than printing 200 (measured
         // pre-fix: SPY0908 / CS0019 "Operator '*' cannot be applied to ClickHandler and int").
-        // The delegate is user-declared rather than the builtin EventHandler because a
-        // function-style event annotated EventHandler is refused outright by SPY0373 (#1512) —
-        // an unrelated defect that would have made this cell measure that instead.
+        // Re-measured 2026-08-22 after the #1512 fix: a function-style event annotated with the
+        // builtin EventHandler now compiles, so EventHandler would no longer hijack the cell.
+        // The user-declared delegate stays because the leak this cell measures persists and any
+        // delegate type exhibits it; switching would change the signature without changing the
+        // measurement.
         new("eventAddAccessor", "RoslynEmitter.ClassMembers.Events.cs", $@"
 delegate ClickHandler(sender: object) -> None
 

@@ -1043,7 +1043,7 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.Semantic.EventTypeNotDelegate, "Event type is not a delegate", "Semantic",
             "An event declaration specifies a type that is not a delegate. Events must be declared with a delegate type that specifies the handler signature.",
             "event on_click: int  # error: int is not a delegate type",
-            "Use a delegate type for the event:\ndelegate EventHandler(self) -> None\nevent on_click: EventHandler");
+            "Use a delegate type for the event — the builtin CLR EventHandler or a custom delegate:\nevent on_click: EventHandler  # builtin CLR delegate\n# or:\ndelegate ClickHandler(sender: object) -> None\nevent on_click: ClickHandler");
 
         Add(dict, DiagnosticCodes.Semantic.EventAccessorParamMismatch, "Event accessor parameter mismatch", "Semantic",
             "A function-style event accessor has parameters that don't match the event's delegate type. The handler parameter must be assignable to the delegate type.",

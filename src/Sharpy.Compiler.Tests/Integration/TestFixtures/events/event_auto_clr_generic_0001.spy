@@ -1,0 +1,22 @@
+# Auto event typed with the generic CLR EventHandler[T] (#1512, events.md "Generic
+# EventHandler[TEventArgs]"). T = EventArgs here; a user-defined EventArgs subclass as T
+# is #1613 (synthesized Invoke does not substitute the type argument).
+from System import EventArgs
+
+
+class Publisher:
+    event on_change: EventHandler[EventArgs]
+
+    def notify(self):
+        self.on_change?.invoke(self, EventArgs.empty)
+
+
+def handler(sender: object, e: EventArgs) -> None:
+    print("changed")
+
+
+def main():
+    p: Publisher = Publisher()
+    p.on_change += handler
+    p.notify()
+    print("done")

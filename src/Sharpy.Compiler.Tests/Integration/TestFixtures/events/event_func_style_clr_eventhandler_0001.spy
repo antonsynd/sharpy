@@ -1,0 +1,32 @@
+# Function-style event typed with the builtin CLR EventHandler — the #1512 repro and the
+# events.md "Function-Style Events" normative program (SecureButton). Refused by SPY0373
+# before the CLR-delegate fix.
+from System import EventArgs
+
+
+class SecureButton:
+    _handlers: list[EventHandler] = []
+
+    event add on_click(self, handler: EventHandler):
+        if handler not in self._handlers:
+            self._handlers.append(handler)
+
+    event remove on_click(self, handler: EventHandler):
+        self._handlers.remove(handler)
+
+    def fire(self):
+        for h in self._handlers:
+            h.invoke(self, EventArgs.empty)
+
+
+def handler(sender: object, e: EventArgs) -> None:
+    print("secure clicked")
+
+
+def main():
+    b: SecureButton = SecureButton()
+    b.on_click += handler
+    b.fire()
+    b.on_click -= handler
+    b.fire()
+    print("done")
