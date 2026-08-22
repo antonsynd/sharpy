@@ -499,6 +499,7 @@ internal partial class NameResolver
             typeSymbol.Fields.Add(new VariableSymbol
             {
                 Name = member.Name,
+                IsNameBacktickEscaped = member.IsNameBacktickEscaped,
                 Kind = SymbolKind.Variable,
                 IsStatic = true,
                 IsConstant = true,
@@ -506,7 +507,8 @@ internal partial class NameResolver
                 DeclarationLine = member.LineStart,
                 DeclarationColumn = member.ColumnStart,
                 NameDeclarationLine = member.LineStart,
-                NameDeclarationColumn = member.ColumnStart,
+                NameDeclarationColumn = member.NameColumnStart,
+                NameDeclarationColumnEnd = member.NameColumnEnd,
                 DeclarationSpan = member.Span
             });
         }

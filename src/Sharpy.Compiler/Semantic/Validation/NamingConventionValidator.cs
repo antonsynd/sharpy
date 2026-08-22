@@ -76,8 +76,8 @@ internal sealed class NamingConventionValidator : ValidatingAstWalker
 
         foreach (var member in node.Members)
         {
-            CheckName(member.Name, member.LineStart, member.ColumnStart, member.Span);
-            CheckConvention(member.Name, member.LineStart, member.ColumnStart, member.Span, IdentifierCategory.EnumValue);
+            CheckName(member.Name, member.LineStart, member.ColumnStart, member.Span, isBacktickEscaped: member.IsNameBacktickEscaped);
+            CheckConvention(member.Name, member.LineStart, member.ColumnStart, member.Span, IdentifierCategory.EnumValue, isBacktickEscaped: member.IsNameBacktickEscaped);
         }
 
         base.VisitEnumDef(node);
