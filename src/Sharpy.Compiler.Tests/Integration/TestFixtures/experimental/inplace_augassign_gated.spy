@@ -39,6 +39,13 @@ def main() -> None:
     d |= {"b": 2}
     print(sorted(t_d.keys()))
 
+    # arbitrary RHS — the operand is an expression (variable), not a literal
+    s5: set[int] = {1, 2}
+    t_s5: set[int] = s5
+    u: set[int] = {3, 4}
+    s5 |= u
+    print(sorted(t_s5))
+
     # frozenset |= control — still rebinds even under the gate
     f: frozenset[int] = frozenset({1, 2})
     t_f: frozenset[int] = f

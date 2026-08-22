@@ -22,6 +22,18 @@ def main() -> None:
     s2 -= {2}
     print(sorted(s2))
 
+    # set &=
+    s3: set[int] = {1, 2, 3}
+    t_s3: set[int] = s3
+    s3 &= {2, 3, 4}
+    print(sorted(s3))
+
+    # set ^=
+    s4: set[int] = {1, 2, 3}
+    t_s4: set[int] = s4
+    s4 ^= {2, 4}
+    print(sorted(s4))
+
     # dict |=
     d: dict[str, int] = {"a": 1}
     t_d: dict[str, int] = d

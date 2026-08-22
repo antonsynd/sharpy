@@ -1,1 +1,6 @@
-another binding in this function
+xs.extend(...)
+s1.update(...)
+s2.difference_update(...)
+s3.intersection_update(...)
+s4.symmetric_difference_update(...)
+d.update(...)
