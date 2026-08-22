@@ -1,5 +1,15 @@
 # `BuiltinType` singleton inventory (#1356)
 
+> **Status: LANDED.** The collapse this census prepared shipped 2026-08-22 on `dev`:
+> production at `f7f6c8671` (one singleton per CLR type, `Int`→`"int32"`, `Float = Double`
+> field alias, `RegisterAlias` writes `_bySharpyName` only, emitter identity reads moved to
+> `ClrType`) plus the `BuiltinRegistry` canonical-name fix at `d63fceedf`; sidecar and
+> display-assertion re-baselines in the surrounding `test:` commits. The end state is guarded by
+> `OneSingletonPerClrTypeTests` (one distinct instance per CLR type, reflection-enumerated) and
+> `BuiltinTypeNameComparisonScanTests` (the §6 name-comparison ban, allowlisted per this doc's
+> census); both mutation-tested. The sections below are the pre-collapse census, kept as the
+> rationale record — line numbers refer to `37baaff2a`.
+
 Measured at `37baaff2a`. This is the census the issue requires *before* the collapse: which
 producer emits which spelling, which readers compare by name, and what the display surface costs.
 Nothing here changes behaviour.
