@@ -374,15 +374,17 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
         var targetType = Context.SemanticInfo.GetExpressionType(node.Target)
             ?? Context.SemanticInfo.GetExpressionType(node.Value);
 
-        if (!AugmentedCollectionAssignment.IsAliasObservable(node, targetType, _enclosingBody))
+        var mutation = AugmentedCollectionAssignment.Classify(node, targetType);
+        if (mutation is null)
             return;
 
-        var mutator = targetType is GenericType { Name: "list" } ? "extend" : "update";
+        if (!AugmentedCollectionAssignment.IsAliasObservable(node, targetType, _enclosingBody))
+            return;
 
         AddHint(
             $"'{target.Name}' has another binding in this function, and augmented assignment on a "
                 + $"collection rebinds rather than mutating in place — the other binding keeps the "
-                + $"old value. CPython mutates through the alias here. Use '{target.Name}.{mutator}(...)' "
+                + $"old value. CPython mutates through the alias here. Use '{target.Name}.{mutation.PythonName}(...)' "
                 + "if the other binding should see the change.",
             node.LineStart, node.ColumnStart,
             code: DiagnosticCodes.Validation.AliasedCollectionAugmentedAssignmentHint,

@@ -3,23 +3,21 @@ using Sharpy.Compiler.Parser.Ast;
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// Classifies an augmented assignment whose target is a mutable collection that a second binding
-/// can observe (#1394).
+/// Classifies an augmented assignment whose target is a mutable collection (#1394, #1428).
 /// </summary>
 /// <remarks>
 /// <para>
 /// CPython's `s |= {3}` calls `__ior__` and mutates in place, so every name bound to that set sees
 /// the change. Sharpy compiles augmented assignment on a collection to a REBINDING of the target
-/// (spec: <c>assignment_operators.md</c>), so a second binding keeps the old value. The divergence
-/// is only observable when a second binding exists, which is why this is a query rather than a
-/// blanket rule — "a hint that fires constantly trains users to ignore the band".
+/// (spec: <c>assignment_operators.md</c>), so a second binding keeps the old value.
 /// </para>
 /// <para>
-/// Shared rather than validator-private on purpose: a #1428 lowering of augmented assignment to C#
-/// 14's user-defined compound assignment would key on this same classification, and one door means
-/// the hint and the lowering cannot drift apart about what "aliased" means. If that lowering ever
-/// materializes the answer node-keyed into <see cref="SemanticInfo"/>, the new dictionary must join
-/// <c>SemanticInfo.MergeFrom</c> or its entries vanish in the per-file→project merge.
+/// This is the ONE-DOOR classifier shared by both the SPY0478 transition hint (#1394) and the
+/// <c>inplace_augassign</c> experimental lowering (#1428). The hint asks "classification matches
+/// AND a second binding exists"; the lowering keys on the classification alone — mutation-vs-rebind
+/// semantics must not depend on whether an alias happens to exist. The hint's suggested mutator
+/// comes from the same table, which fixes the prior bug where <c>s -= t</c> was steered to
+/// <c>update</c> instead of <c>difference_update</c>.
 /// </para>
 /// <para>
 /// <b>Precision is deliberately relaxed.</b> The precise question is whether a second binding is
@@ -33,43 +31,66 @@ namespace Sharpy.Compiler.Semantic;
 internal static class AugmentedCollectionAssignment
 {
     /// <summary>
+    /// The mutation method a gated augmented assignment lowers to.
+    /// </summary>
+    /// <param name="PythonName">The Python spelling (e.g. <c>extend</c>) — used in the SPY0478 hint message.</param>
+    /// <param name="ClrName">The CLR method name on the Sharpy.Core collection (e.g. <c>Extend</c>) — used by the emitter.</param>
+    internal record AugmentedMutation(string PythonName, string ClrName);
+
+    /// <summary>
+    /// Classifies an augmented assignment as a mutation-in-place candidate. Returns the mutation
+    /// method names if the operator×type×target combination matches the CPython __iadd__-family
+    /// matrix, or <c>null</c> if this is not a mutating shape (plain assign, wrong operator,
+    /// non-collection type, or non-Identifier target).
+    /// </summary>
+    /// <remarks>
+    /// v1 scope: Identifier targets only; the five operators with a mutating CPython counterpart
+    /// on list/set/dict. <c>frozenset</c> is excluded: verified with python3, <c>f |= {3}</c>
+    /// rebinds there too, so Sharpy already agrees. <c>list *=</c> mutates in CPython but is
+    /// excluded from v1 — tracked on the graduation issue.
+    /// </remarks>
+    public static AugmentedMutation? Classify(Assignment node, SemanticType? targetType)
+    {
+        if (node.Operator == AssignmentOperator.Assign)
+            return null;
+
+        if (node.Target is not Identifier)
+            return null;
+
+        return (node.Operator, targetType) switch
+        {
+            (AssignmentOperator.PlusAssign, GenericType { Name: "list" })
+                => new AugmentedMutation("extend", "Extend"),
+            (AssignmentOperator.OrAssign, GenericType { Name: "set" })
+                => new AugmentedMutation("update", "Update"),
+            (AssignmentOperator.AndAssign, GenericType { Name: "set" })
+                => new AugmentedMutation("intersection_update", "IntersectionUpdate"),
+            (AssignmentOperator.MinusAssign, GenericType { Name: "set" })
+                => new AugmentedMutation("difference_update", "DifferenceUpdate"),
+            (AssignmentOperator.XorAssign, GenericType { Name: "set" })
+                => new AugmentedMutation("symmetric_difference_update", "SymmetricDifferenceUpdate"),
+            (AssignmentOperator.OrAssign, GenericType { Name: "dict" })
+                => new AugmentedMutation("update", "Update"),
+            _ => null,
+        };
+    }
+
+    /// <summary>
     /// Whether <paramref name="node"/> is an augmented assignment on a mutable collection with a
     /// second binding to the target visible in <paramref name="enclosingBody"/>.
     /// </summary>
-    /// <param name="node">The candidate assignment.</param>
-    /// <param name="targetType">The target's semantic type, as the caller resolved it.</param>
-    /// <param name="enclosingBody">The enclosing function body, or null at module level.</param>
     public static bool IsAliasObservable(
         Assignment node,
         SemanticType? targetType,
         IReadOnlyList<Statement>? enclosingBody)
     {
-        if (node.Operator == AssignmentOperator.Assign)
+        if (Classify(node, targetType) is null)
             return false;
 
-        // The operators that have a mutating CPython counterpart on these types. `frozenset` is
-        // excluded by MutatesInPlaceInPython: verified with python3, `f |= {3}` rebinds there too,
-        // so Sharpy already agrees and a hint would be a false positive.
-        if (node.Operator is not (AssignmentOperator.PlusAssign or AssignmentOperator.OrAssign
-            or AssignmentOperator.AndAssign or AssignmentOperator.MinusAssign
-            or AssignmentOperator.XorAssign))
-        {
-            return false;
-        }
-
-        if (node.Target is not Identifier target || !MutatesInPlaceInPython(targetType))
-            return false;
-
-        return enclosingBody != null && HasSecondBinding(enclosingBody, target.Name);
+        return node.Target is Identifier target
+            && enclosingBody != null
+            && HasSecondBinding(enclosingBody, target.Name);
     }
-
-    /// <summary>
-    /// The collection types whose augmented-assignment operators mutate in place in CPython.
-    /// Verified with python3: `set |=`, `list +=` and `dict |=` are all visible through an alias;
-    /// `frozenset |=` is not, because it rebinds there too.
-    /// </summary>
-    private static bool MutatesInPlaceInPython(SemanticType? type)
-        => type is GenericType { Name: "list" or "set" or "dict" };
 
     /// <summary>
     /// Whether some binding in the body puts this variable and a DIFFERENT name on one object —
