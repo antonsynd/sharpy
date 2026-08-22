@@ -160,12 +160,31 @@ internal partial class RoslynEmitter
             }
             else
             {
+                // #1428: if the TypeChecker materialized an in-place mutation for this assignment,
+                // emit a method call instead of the read-modify-write rebind.
+                var mutationMethod = _context.SemanticInfo?.GetAugmentedAssignMutation(assign);
+                if (mutationMethod != null)
+                {
+                    var varName = AccessorParamSlotName(name)
+                        ?? GetMangledVariableName(name.Name, isNewDeclaration: false, name.IsNameBacktickEscaped);
+                    var target = EscapedIdentifierName(varName);
+
+                    return ExpressionStatement(
+                        InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                target,
+                                IdentifierName(mutationMethod)))
+                        .WithArgumentList(
+                            ArgumentList(SingletonSeparatedList(Argument(value)))));
+                }
+
                 // Augmented assignment: x += value
                 // This references the current version and modifies it, except when the name IS the
                 // accessor's incoming value, which lives in the C# slot the rewrite names (#1500).
-                var varName = AccessorParamSlotName(name)
+                var varName2 = AccessorParamSlotName(name)
                     ?? GetMangledVariableName(name.Name, isNewDeclaration: false, name.IsNameBacktickEscaped);
-                var target = EscapedIdentifierName(varName);
+                var target2 = EscapedIdentifierName(varName2);
 
                 // For the read side of augmented assignment, apply the narrowed-read accessor the
                 // TypeChecker recorded for the target identifier so x += 1 with a narrowed
@@ -176,14 +195,14 @@ internal partial class RoslynEmitter
                 // the read and write forms are two spellings of the same name and evaluating
                 // both is free. The index and member paths below are where the double splice
                 // becomes a double evaluation.
-                var readExpr = ApplyNarrowedReadLowering(name, EscapedIdentifierName(varName));
+                var readExpr = ApplyNarrowedReadLowering(name, EscapedIdentifierName(varName2));
 
                 var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, assign.Target, assign.Value);
 
                 return ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
-                        target,
+                        target2,
                         augmentedValue));
             }
         }
