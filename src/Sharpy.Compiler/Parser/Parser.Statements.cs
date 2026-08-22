@@ -932,7 +932,9 @@ public partial class Parser
         var startToken = Current;
 
         Expect(TokenType.From);
+        var moduleColStart = Current.Column;
         var module = ParseModuleName();
+        var moduleColEnd = Previous.Column + Previous.Length;
         Expect(TokenType.Import);
 
         var names = new List<ImportAlias>();
@@ -990,6 +992,8 @@ public partial class Parser
         return new FromImportStatement
         {
             Module = module,
+            ModuleColumnStart = moduleColStart,
+            ModuleColumnEnd = moduleColEnd,
             Names = names.ToImmutableArray(),
             ImportAll = importAll,
             LineStart = startLine,

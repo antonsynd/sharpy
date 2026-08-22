@@ -1190,6 +1190,8 @@ public record ImportAlias
 public record FromImportStatement : Statement
 {
     public string Module { get; init; } = "";
+    public int ModuleColumnStart { get; init; }
+    public int ModuleColumnEnd { get; init; }
     public ImmutableArray<ImportAlias> Names { get; init; } = ImmutableArray<ImportAlias>.Empty;
     public bool ImportAll { get; init; }  // from module import *
 
