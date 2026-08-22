@@ -109,12 +109,16 @@ internal sealed class SharpyDocumentSymbolHandler : DocumentSymbolHandlerBase
                 PositionConverter.ToLsp(member.LineStart, member.ColumnStart),
                 PositionConverter.ToLsp(member.LineEnd, member.ColumnEnd)
             );
+            var nameRange = new LspRange(
+                PositionConverter.ToLsp(member.LineStart, member.NameColumnStart),
+                PositionConverter.ToLsp(member.LineStart, member.NameColumnEnd)
+            );
             children.Add(new DocumentSymbol
             {
                 Name = member.Name,
                 Kind = SymbolKind.EnumMember,
                 Range = memberRange,
-                SelectionRange = memberRange,
+                SelectionRange = nameRange,
             });
         }
 

@@ -95,17 +95,8 @@ internal sealed class SharpyDocumentLinkHandler : DocumentLinkHandlerBase
         if (filePath == null)
             return;
 
-        // Highlight the module portion that follows the leading "from " keyword.
-        // Extent reconstruction retained by rationale (#1454): FromImportStatement records no
-        // module-path extent, only the statement's own. The textual length is exact for plain
-        // dotted paths, but a module path CAN be backtick-escaped — one escaped token may hold
-        // the whole dotted path (#713; `from `math` import sqrt` compiles clean) — and for such
-        // spellings Module holds the bare name, so the link ends two columns short of the
-        // closing backtick: it under-covers the escaped spelling rather than over-reaching.
-        // Converting needs the parser to record the module-path extent (#1604).
-        const int FromKeywordLength = 5; // "from "
-        var startColumn = fromImport.ColumnStart + FromKeywordLength;
-        var endColumn = startColumn + fromImport.Module.Length;
+        var startColumn = fromImport.ModuleColumnStart;
+        var endColumn = fromImport.ModuleColumnEnd;
 
         var range = new LspRange(
             PositionConverter.ToLsp(fromImport.LineStart, startColumn),

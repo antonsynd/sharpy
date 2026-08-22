@@ -48,9 +48,9 @@ internal static class SymbolExtents
     /// rather than eating the following segments.
     /// </remarks>
     /// <summary>
-    /// Source-visible length of a name token that carries no recorded end column (EnumMember,
-    /// Identifier reference, TypeAnnotation). The backtick flag bridges the gap: an escaped
-    /// spelling's source length is the logical name length plus the backtick pair.
+    /// Source-visible length of a name token that carries no recorded end column (Identifier
+    /// reference, TypeAnnotation). The backtick flag bridges the gap: an escaped spelling's
+    /// source length is the logical name length plus the backtick pair.
     /// </summary>
     internal static int SourceNameLength(string name, bool isBacktickEscaped) =>
         name.Length + (isBacktickEscaped ? BacktickPairLength : 0);
