@@ -62,7 +62,7 @@ public class FeatureFlagsTests
         Assert.Equal(
             new[]
             {
-                "__test_feature", "defer", "matmul",
+                "__test_feature", "defer", "inplace_augassign", "matmul",
                 "opt_comprehension_fusion", "opt_const_fold", "opt_stack_collections",
                 "property_observers",
             },
