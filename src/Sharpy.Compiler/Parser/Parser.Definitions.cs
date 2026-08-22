@@ -927,6 +927,9 @@ public partial class Parser
                 members.Add(new EnumMember
                 {
                     Name = memberName,
+                    IsNameBacktickEscaped = memberStartToken.IsBacktickEscaped,
+                    NameColumnStart = memberStartToken.Column,
+                    NameColumnEnd = memberStartToken.Column + memberStartToken.Length,
                     Value = value,
                     LineStart = memberStartLine,
                     ColumnStart = memberStartColumn,
