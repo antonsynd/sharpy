@@ -42,7 +42,7 @@ internal class BuiltinRegistry
     /// </summary>
     private static readonly HashSet<string> RegisteredPrimitiveNames = new()
     {
-        "int", "long", "float", "double", "decimal", "bool", "str"
+        "int", "int32", "long", "int64", "float", "float64", "double", "decimal", "bool", "str"
     };
 
     /// <summary>
