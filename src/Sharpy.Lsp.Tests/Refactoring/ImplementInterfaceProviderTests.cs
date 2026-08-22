@@ -320,7 +320,7 @@ def main():
 
         var result = ImplementInterfaceProvider.FormatMethodStub(method, 1);
 
-        result.Should().Contain("def compute(self) -> float:");
+        result.Should().Contain("def compute(self) -> float64:");
     }
 
     [Fact]
