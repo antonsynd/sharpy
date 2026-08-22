@@ -915,6 +915,7 @@ public partial class Parser
                 throw ReportError("Expected decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
 
             var regularParts = new List<string> { Current.Value };
+            var regularBacktickParts = new List<bool> { Current.IsBacktickEscaped };
             Advance();
 
             // Parse dotted names: @system.serializable, @system.runtime.interop_services.dll_import
@@ -924,6 +925,7 @@ public partial class Parser
                 if (Current.Type != TokenType.Identifier)
                     throw ReportError("Expected identifier after '.' in decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
                 regularParts.Add(Current.Value);
+                regularBacktickParts.Add(Current.IsBacktickEscaped);
                 Advance();
             }
 
@@ -948,6 +950,7 @@ public partial class Parser
                     Arguments = arguments,
                     KeywordArguments = keywordArguments,
                     QualifiedParts = regularParts.ToImmutableArray(),
+                    BacktickEscapedParts = regularBacktickParts.ToImmutableArray(),
                     LineStart = decoratorStartLine,
                     ColumnStart = decoratorStartColumn,
                     LineEnd = decoratorEndLine,
