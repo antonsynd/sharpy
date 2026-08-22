@@ -1,0 +1,11 @@
+# Multi-file guard: the augmented assignment in helper.spy must survive MergeFrom.
+from helper import mutate_list, mutate_set
+
+def main() -> None:
+    xs: list[int] = [1, 2]
+    mutate_list(xs)
+    print(xs)
+
+    s: set[int] = {1, 2}
+    mutate_set(s)
+    print(sorted(s))

@@ -1,0 +1,5 @@
+def mutate_list(xs: list[int]) -> None:
+    xs += [3]
+
+def mutate_set(s: set[int]) -> None:
+    s |= {3}

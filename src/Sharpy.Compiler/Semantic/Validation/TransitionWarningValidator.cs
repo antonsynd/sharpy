@@ -378,6 +378,11 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
         if (mutation is null)
             return;
 
+        // #1428: when the mutation is already materialized (inplace_augassign enabled), the
+        // divergence is gone — the gated semantics match CPython, so the hint is suppressed.
+        if (Context.SemanticInfo.GetAugmentedAssignMutation(node) != null)
+            return;
+
         if (!AugmentedCollectionAssignment.IsAliasObservable(node, targetType, _enclosingBody))
             return;
 

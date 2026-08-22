@@ -1,0 +1,29 @@
+# Ungated augmented assignment on collections — pins that ungated code compiles with rebind
+# semantics and the SPY0478 hint fires. Only CPython-agreeing values are printed (D7 — the
+# alias-divergence is pinned in a programmatic test, not here, so the fixture stays
+# oracle-eligible if the subset filter admits it).
+
+def main() -> None:
+    # list +=
+    xs: list[int] = [1, 2]
+    t_xs: list[int] = xs
+    xs += [3]
+    print(xs)
+
+    # set |=
+    s1: set[int] = {1, 2}
+    t_s1: set[int] = s1
+    s1 |= {3}
+    print(sorted(s1))
+
+    # set -=
+    s2: set[int] = {1, 2, 3}
+    t_s2: set[int] = s2
+    s2 -= {2}
+    print(sorted(s2))
+
+    # dict |=
+    d: dict[str, int] = {"a": 1}
+    t_d: dict[str, int] = d
+    d |= {"b": 2}
+    print(sorted(d.keys()))

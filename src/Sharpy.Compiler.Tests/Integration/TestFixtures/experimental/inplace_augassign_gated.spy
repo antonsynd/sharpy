@@ -1,0 +1,47 @@
+# Gated in-place augmented assignment on collections (#1428). With inplace_augassign enabled,
+# the six operator×type cells mutate through aliases — CPython semantics. The frozenset control
+# still rebinds (CPython rebinds there too). Every value observed through the alias.
+
+def main() -> None:
+    # list +=
+    xs: list[int] = [1, 2]
+    t_xs: list[int] = xs
+    xs += [3]
+    print(t_xs)
+
+    # set |=
+    s1: set[int] = {1, 2}
+    t_s1: set[int] = s1
+    s1 |= {3}
+    print(sorted(t_s1))
+
+    # set &=
+    s2: set[int] = {1, 2, 3}
+    t_s2: set[int] = s2
+    s2 &= {2, 3, 4}
+    print(sorted(t_s2))
+
+    # set -=
+    s3: set[int] = {1, 2, 3}
+    t_s3: set[int] = s3
+    s3 -= {2}
+    print(sorted(t_s3))
+
+    # set ^=
+    s4: set[int] = {1, 2, 3}
+    t_s4: set[int] = s4
+    s4 ^= {2, 4}
+    print(sorted(t_s4))
+
+    # dict |=
+    d: dict[str, int] = {"a": 1}
+    t_d: dict[str, int] = d
+    d |= {"b": 2}
+    print(sorted(t_d.keys()))
+
+    # frozenset |= control — still rebinds even under the gate
+    f: frozenset[int] = frozenset({1, 2})
+    t_f: frozenset[int] = f
+    f |= frozenset({3})
+    print(sorted(f))
+    print(sorted(t_f))
