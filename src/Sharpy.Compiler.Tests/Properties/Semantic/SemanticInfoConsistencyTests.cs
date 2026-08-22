@@ -171,8 +171,8 @@ public class SemanticInfoConsistencyTests
 
                 var mismatch = expr switch
                 {
-                    IntegerLiteral when type is not BuiltinType { Name: "int" or "long" }
-                        => $"IntegerLiteral has type {type} (expected int or long)",
+                    IntegerLiteral when type is not BuiltinType { Name: "int32" or "int64" }
+                        => $"IntegerLiteral has type {type} (expected int32 or int64)",
                     StringLiteral when type is not BuiltinType { Name: "str" }
                         => $"StringLiteral has type {type} (expected str)",
                     BooleanLiteral when type is not BuiltinType { Name: "bool" }
