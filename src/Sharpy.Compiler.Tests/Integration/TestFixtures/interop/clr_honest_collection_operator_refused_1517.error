@@ -1,1 +1,1 @@
-Type 'HashSet[int]' does not support operator '|' with operand of type 'HashSet[int]' @7:9
+Type 'HashSet[int32]' does not support operator '|' with operand of type 'HashSet[int32]' @7:9

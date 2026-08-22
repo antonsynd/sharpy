@@ -1,5 +1,5 @@
 # Both spellings (annotated locals and direct call results) refuse `list * list` with SPY0222 (#1395).
-Type 'list[int]' does not support operator '*' with operand of type 'list[int]'
+Type 'list[int32]' does not support operator '*' with operand of type 'list[int32]'
 # The regression symptom was the mis-type: `list * list` accepted as list[int], then SPY0220 assigning
 # it to int. With the resolver agreeing with the fallback the operation is refused, so no SPY0220.
 !SPY0220

@@ -1,1 +1,1 @@
-Cannot spread non-tuple type 'list[int]' into tuple literal
+Cannot spread non-tuple type 'list[int32]' into tuple literal

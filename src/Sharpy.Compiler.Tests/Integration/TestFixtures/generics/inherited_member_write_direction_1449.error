@@ -1,6 +1,6 @@
 # The inherited field is int here: the TARGET reads "int", not the base's open T (inverted before).
-Cannot assign type 'str' to 'int' @36:5
+Cannot assign type 'str' to 'int32' @36:5
 # The inherited method parameter is int here: a str argument is rejected (open T accepted it).
-Cannot pass argument of type 'str' to parameter of type 'int' @39:11
+Cannot pass argument of type 'str' to parameter of type 'int32' @39:11
 # The pinned base field is str here: the TARGET reads "str".
-Cannot assign type 'int' to 'str' @43:5
+Cannot assign type 'int32' to 'str' @43:5

@@ -1,1 +1,1 @@
-Conditional expression condition must be boolean, got 'int'
+Conditional expression condition must be boolean, got 'int32'

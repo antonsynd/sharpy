@@ -1,1 +1,1 @@
-Type 'list[int]' has no member 'then_by'. 'then_by' is a .NET extension method on 'IOrderedEnumerable'; chain it onto an expression of that type @16:14
+Type 'list[int32]' has no member 'then_by'. 'then_by' is a .NET extension method on 'IOrderedEnumerable'; chain it onto an expression of that type @16:14

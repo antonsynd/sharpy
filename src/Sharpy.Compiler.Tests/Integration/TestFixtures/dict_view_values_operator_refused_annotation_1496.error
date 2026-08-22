@@ -1,1 +1,1 @@
-Type 'DictValuesView[str, int]' does not support operator '|' with operand of type 'DictValuesView[str, int]' @9:9
+Type 'DictValuesView[str, int32]' does not support operator '|' with operand of type 'DictValuesView[str, int32]' @9:9

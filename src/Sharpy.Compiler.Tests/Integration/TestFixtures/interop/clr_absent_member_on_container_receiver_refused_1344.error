@@ -1,3 +1,3 @@
-Type 'list[int]' has no member 'no_such_method' @13:11
-Type 'dict[str, int]' has no member 'no_such_method' @16:11
-Type 'set[int]' has no member 'no_such_method' @19:11
+Type 'list[int32]' has no member 'no_such_method' @13:11
+Type 'dict[str, int32]' has no member 'no_such_method' @16:11
+Type 'set[int32]' has no member 'no_such_method' @19:11

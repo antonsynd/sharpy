@@ -1,1 +1,1 @@
-Type 'bytes' does not support operator '+' with operand of type 'int' @6:9
+Type 'bytes' does not support operator '+' with operand of type 'int32' @6:9

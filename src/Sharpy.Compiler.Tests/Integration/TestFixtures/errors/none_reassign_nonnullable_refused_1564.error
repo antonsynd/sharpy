@@ -1,3 +1,3 @@
-Cannot assign 'None' to non-nullable type 'int' @7:13
-Cannot assign 'None' to non-nullable type 'float' @12:9
+Cannot assign 'None' to non-nullable type 'int32' @7:13
+Cannot assign 'None' to non-nullable type 'float64' @12:9
 Cannot assign 'None' to non-nullable type 'str' @14:9

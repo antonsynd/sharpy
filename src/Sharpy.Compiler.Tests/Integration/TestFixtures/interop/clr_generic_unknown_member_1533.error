@@ -1,1 +1,1 @@
-Type 'List[int]' has no member 'no_such_method' @10:5
+Type 'List[int32]' has no member 'no_such_method' @10:5

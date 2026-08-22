@@ -1,5 +1,5 @@
 @abstract method 'm' in non-abstract class 'Abs' — declare the class @abstract or remove the @abstract modifier @35:9
-Duplicate constructor signature in 'DupCtor': __init__(int) @43:9
+Duplicate constructor signature in 'DupCtor': __init__(int32) @43:9
 Property 'value' in 'PropField' conflicts with a field of the same name @51:9
 Struct 'Pt' constructor must initialize all fields. Missing initialization for: 'y' @59:9
 Cannot assign to @final field 'v' outside of 'Fin' constructor @69:13

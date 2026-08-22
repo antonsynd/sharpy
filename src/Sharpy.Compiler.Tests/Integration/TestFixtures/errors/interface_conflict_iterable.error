@@ -1,1 +1,1 @@
-would synthesize 'IEnumerator<int>' via '__next__', but ancestor 'StringIterator' already implements 'IEnumerator<str>'
+would synthesize 'IEnumerator<int32>' via '__next__', but ancestor 'StringIterator' already implements 'IEnumerator<str>'

@@ -1,1 +1,1 @@
-Cannot spread 'list[int]' into non-variadic function
+Cannot spread 'list[int32]' into non-variadic function

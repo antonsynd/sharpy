@@ -153,7 +153,7 @@ public class SharpySourceGeneratorTests
     public void FormatParameter_WithKnownType_IncludesTypeAnnotation()
     {
         var result = SharpySourceGenerator.FormatParameter("x", (BuiltinType)SemanticType.Int);
-        result.Should().Be("x: int");
+        result.Should().Be("x: int32");
     }
 
     [Fact]
