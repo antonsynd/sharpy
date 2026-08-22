@@ -375,6 +375,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
             Members = node.Members.Select(m => new EnumMember
             {
                 Name = m.Name,
+                IsNameBacktickEscaped = m.IsNameBacktickEscaped,
                 Value = m.Value != null ? (Expression)Visit(m.Value) : null
             }).ToImmutableArray()
         };

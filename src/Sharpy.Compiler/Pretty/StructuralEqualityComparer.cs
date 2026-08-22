@@ -360,7 +360,8 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             return false;
         for (int i = 0; i < a.Members.Length; i++)
         {
-            if (a.Members[i].Name != b.Members[i].Name)
+            if (a.Members[i].Name != b.Members[i].Name
+                || a.Members[i].IsNameBacktickEscaped != b.Members[i].IsNameBacktickEscaped)
                 return false;
             if (!NullableNodeEquals(a.Members[i].Value, b.Members[i].Value))
                 return false;

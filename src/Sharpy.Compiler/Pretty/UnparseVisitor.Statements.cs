@@ -425,7 +425,7 @@ internal sealed partial class UnparseVisitor
             _w.Indent();
             foreach (var member in node.Members)
             {
-                _w.Write(member.Name);
+                WriteName(member.Name, member.IsNameBacktickEscaped);
                 if (member.Value != null)
                 {
                     _w.Write(" = ");
