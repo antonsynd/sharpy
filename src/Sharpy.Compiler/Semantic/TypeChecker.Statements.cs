@@ -373,8 +373,16 @@ internal partial class TypeChecker
                     span: assignment.Span);
             }
 
+            // A Cast-narrowed target (isinstance narrowing) erases to the non-generic protocol
+            // interface (#912), which has none of the mutation methods — materializing would
+            // trade #1615's pre-existing rebind ICE for a new CS1061 face. Skip it: the shape
+            // falls back to the rebind path and is tracked by #1615 for both modes. Other
+            // narrowing kinds keep a usable receiver via the narrowed-read lowering the
+            // emitter applies.
             if (Features.IsEnabled("inplace_augassign")
-                && AugmentedCollectionAssignment.Classify(assignment, targetType) is { } mutation)
+                && AugmentedCollectionAssignment.Classify(assignment, targetType) is { } mutation
+                && _semanticInfo.GetNarrowedReadLowering(assignment.Target)
+                    is not { Kind: NarrowedReadKind.Cast })
             {
                 _semanticInfo.SetAugmentedAssignMutation(assignment, mutation.ClrName);
             }
