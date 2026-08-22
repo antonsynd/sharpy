@@ -958,29 +958,9 @@ internal class BuiltinRegistry
 
             if (isDelegate)
             {
-                var invokeMethod = clrType.GetMethod("Invoke");
-                if (invokeMethod != null)
-                {
-                    var bridge = new ClrTypeBridge();
-                    var parameters = invokeMethod.GetParameters().Select(p => new ParameterSymbol
-                    {
-                        Name = p.Name ?? $"arg{p.Position}",
-                        Type = bridge.MapClrParameterTypeToSemanticType(p.ParameterType),
-                        HasDefault = p.HasDefaultValue
-                    }).ToList();
-
-                    sym.Methods.Add(new FunctionSymbol
-                    {
-                        Name = "Invoke",
-                        Kind = SymbolKind.Function,
-                        ReturnType = invokeMethod.ReturnType == typeof(void)
-                            ? SemanticType.Void
-                            : bridge.MapClrTypeToSemanticType(invokeMethod.ReturnType),
-                        Parameters = parameters,
-                        AccessLevel = AccessLevel.Public,
-                        ClrMethod = invokeMethod
-                    });
-                }
+                var invoke = new ClrTypeBridge().SynthesizeDelegateInvoke(clrType);
+                if (invoke != null)
+                    sym.Methods.Add(invoke);
             }
 
             return sym;

@@ -467,29 +467,9 @@ internal class ModuleRegistry
 
         if (isDelegate)
         {
-            var invokeMethod = clrType.GetMethod("Invoke");
-            if (invokeMethod != null)
-            {
-                var bridge = new ClrTypeBridge();
-                var invokeParams = invokeMethod.GetParameters().Select(p => new ParameterSymbol
-                {
-                    Name = p.Name ?? $"arg{p.Position}",
-                    Type = bridge.MapClrParameterTypeToSemanticType(p.ParameterType),
-                    HasDefault = p.HasDefaultValue
-                }).ToList();
-
-                typeSymbol.Methods.Add(new FunctionSymbol
-                {
-                    Name = "Invoke",
-                    Kind = SymbolKind.Function,
-                    ReturnType = invokeMethod.ReturnType == typeof(void)
-                        ? SemanticType.Void
-                        : bridge.MapClrTypeToSemanticType(invokeMethod.ReturnType),
-                    Parameters = invokeParams,
-                    AccessLevel = AccessLevel.Public,
-                    ClrMethod = invokeMethod
-                });
-            }
+            var invoke = new ClrTypeBridge().SynthesizeDelegateInvoke(clrType);
+            if (invoke != null)
+                typeSymbol.Methods.Add(invoke);
         }
 
         return typeSymbol;

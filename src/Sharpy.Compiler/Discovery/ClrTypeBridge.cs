@@ -790,7 +790,13 @@ internal class ClrTypeBridge
            && clrType != typeof(Delegate)
            && clrType != typeof(MulticastDelegate);
 
-    private FunctionSymbol? SynthesizeDelegateInvoke(Type clrType)
+    /// <summary>
+    /// The single synthesis site for a CLR delegate's <c>Invoke</c> <see cref="FunctionSymbol"/>
+    /// (#1512). Every kind ladder that marks a symbol <see cref="TypeKind.Delegate"/> must obtain
+    /// its Invoke here — hand-rolled copies drift (parameter/return mapping fixes would need to
+    /// land in five places).
+    /// </summary>
+    internal FunctionSymbol? SynthesizeDelegateInvoke(Type clrType)
     {
         var invokeMethod = clrType.GetMethod("Invoke");
         if (invokeMethod == null)
@@ -926,29 +932,9 @@ internal class ClrTypeBridge
 
             if (isDelegate)
             {
-                var invokeMethod = def.GetMethod("Invoke");
-                if (invokeMethod != null)
-                {
-                    var bridge = new ClrTypeBridge();
-                    var invokeParams = invokeMethod.GetParameters().Select(p => new ParameterSymbol
-                    {
-                        Name = p.Name ?? $"arg{p.Position}",
-                        Type = bridge.MapClrParameterTypeToSemanticType(p.ParameterType),
-                        HasDefault = p.HasDefaultValue
-                    }).ToList();
-
-                    sym.Methods.Add(new FunctionSymbol
-                    {
-                        Name = "Invoke",
-                        Kind = SymbolKind.Function,
-                        ReturnType = invokeMethod.ReturnType == typeof(void)
-                            ? SemanticType.Void
-                            : bridge.MapClrTypeToSemanticType(invokeMethod.ReturnType),
-                        Parameters = invokeParams,
-                        AccessLevel = AccessLevel.Public,
-                        ClrMethod = invokeMethod
-                    });
-                }
+                var invoke = new ClrTypeBridge().SynthesizeDelegateInvoke(def);
+                if (invoke != null)
+                    sym.Methods.Add(invoke);
             }
 
             return sym;

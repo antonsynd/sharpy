@@ -303,29 +303,9 @@ internal class CachedModuleDiscovery
 
         if (typeKind == TypeKind.Delegate && clrType != null)
         {
-            var invokeMethod = clrType.GetMethod("Invoke");
-            if (invokeMethod != null)
-            {
-                var bridge = new ClrTypeBridge();
-                var invokeParams = invokeMethod.GetParameters().Select(p => new ParameterSymbol
-                {
-                    Name = p.Name ?? $"arg{p.Position}",
-                    Type = bridge.MapClrParameterTypeToSemanticType(p.ParameterType),
-                    HasDefault = p.HasDefaultValue
-                }).ToList();
-
-                sym.Methods.Add(new FunctionSymbol
-                {
-                    Name = "Invoke",
-                    Kind = SymbolKind.Function,
-                    ReturnType = invokeMethod.ReturnType == typeof(void)
-                        ? SemanticType.Void
-                        : bridge.MapClrTypeToSemanticType(invokeMethod.ReturnType),
-                    Parameters = invokeParams,
-                    AccessLevel = AccessLevel.Public,
-                    ClrMethod = invokeMethod
-                });
-            }
+            var invoke = new ClrTypeBridge().SynthesizeDelegateInvoke(clrType);
+            if (invoke != null)
+                sym.Methods.Add(invoke);
         }
 
         return sym;
@@ -353,6 +333,14 @@ internal class CachedModuleDiscovery
             {
                 if (isBuiltinException
                     && BuiltinExceptionSurface.IsRefusedMember(typeSymbol.ClrType!, sig.Name))
+                    continue;
+
+                // A delegate's Invoke was already synthesized onto the skeleton with
+                // bridge-mapped types and ClrMethod metadata (#1512). The overload index's
+                // reflection walk also collects Invoke (public, non-special-name), so
+                // converting the cached signature here would double-add it.
+                if (typeSymbol.TypeKind == TypeKind.Delegate
+                    && string.Equals(sig.Name, "Invoke", StringComparison.Ordinal))
                     continue;
 
                 var expanded = OverloadExpander.Expand(sig, expanderTypeName);
