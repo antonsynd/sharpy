@@ -304,7 +304,7 @@ def main():
 
         var result = ImplementInterfaceProvider.FormatMethodStub(method, 1);
 
-        result.Should().Contain("def get_count(self) -> int:");
+        result.Should().Contain("def get_count(self) -> int32:");
         result.Should().Contain("raise NotImplementedError()");
     }
 
@@ -331,7 +331,7 @@ def main():
             hasGetter: true, hasSetter: false, indentLevel: 1);
 
         result.Should().Contain("@property");
-        result.Should().Contain("def count(self) -> int:");
+        result.Should().Contain("def count(self) -> int32:");
         result.Should().Contain("raise NotImplementedError()");
         result.Should().NotContain("@count.setter");
     }

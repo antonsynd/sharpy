@@ -99,7 +99,7 @@ public class SymbolFormatterTests
 
         var result = SymbolFormatter.FormatSymbol(symbol!);
 
-        result.Should().Contain("def add(a: int, b: int) -> int");
+        result.Should().Contain("def add(a: int32, b: int32) -> int32");
         result.Should().StartWith("(function)");
     }
 

@@ -72,7 +72,7 @@ public class SharpySourceGeneratorTests
             }
         };
         var result = SharpySourceGenerator.FormatTypeAnnotation(listOfInt);
-        result.Should().Be("list[int]");
+        result.Should().Be("list[int32]");
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class SharpySourceGeneratorTests
             }
         };
         var result = SharpySourceGenerator.FormatTypeAnnotation(dictType);
-        result.Should().Be("dict[str, int]");
+        result.Should().Be("dict[str, int32]");
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class SharpySourceGeneratorTests
             }
         };
         var result = SharpySourceGenerator.FormatTypeAnnotation(tupleType);
-        result.Should().Be("tuple[int, str]");
+        result.Should().Be("tuple[int32, str]");
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public class SharpySourceGeneratorTests
             ReturnType = (BuiltinType)SemanticType.Bool
         };
         var result = SharpySourceGenerator.FormatTypeAnnotation(funcType);
-        result.Should().Be("Callable[[int, str], bool]");
+        result.Should().Be("Callable[[int32, str], bool]");
     }
 
     [Fact]
@@ -189,7 +189,7 @@ public class SharpySourceGeneratorTests
         };
         var result = SharpySourceGenerator.FormatFunctionDef("greet", parameters, null, 0);
 
-        result.Should().Contain("def greet(x: int, name: str):");
+        result.Should().Contain("def greet(x: int32, name: str):");
         result.Should().Contain("pass");
     }
 
@@ -200,7 +200,7 @@ public class SharpySourceGeneratorTests
         var result = SharpySourceGenerator.FormatFunctionDef(
             "get_value", parameters, (BuiltinType)SemanticType.Int, 0);
 
-        result.Should().Contain("def get_value() -> int:");
+        result.Should().Contain("def get_value() -> int32:");
         result.Should().Contain("pass");
     }
 
@@ -246,7 +246,7 @@ public class SharpySourceGeneratorTests
         };
         var result = SharpySourceGenerator.FormatFunctionDef("process", parameters, null, 0);
 
-        result.Should().Contain("def process(x, y: int):");
+        result.Should().Contain("def process(x, y: int32):");
     }
 
     [Fact]
@@ -270,7 +270,7 @@ public class SharpySourceGeneratorTests
             "value", (BuiltinType)SemanticType.Int, hasGetter: true, hasSetter: false, indentLevel: 1);
 
         result.Should().Contain("@property");
-        result.Should().Contain("def value(self) -> int:");
+        result.Should().Contain("def value(self) -> int32:");
         result.Should().Contain("raise NotImplementedError()");
         result.Should().NotContain("@value.setter");
     }
@@ -283,7 +283,7 @@ public class SharpySourceGeneratorTests
 
         result.Should().NotContain("@property");
         result.Should().Contain("@value.setter");
-        result.Should().Contain("def value(self, value: int):");
+        result.Should().Contain("def value(self, value: int32):");
     }
 
     [Fact]

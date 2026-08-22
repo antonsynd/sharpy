@@ -91,7 +91,7 @@ public class HoverTests : IDisposable
         symbol.Should().NotBeNull("a module property reference must resolve");
 
         SymbolFormatter.FormatSymbol(symbol!)
-            .Should().Be("(property, read-only) count: int");
+            .Should().Be("(property, read-only) count: int32");
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class HoverTests : IDisposable
         symbol.Should().NotBeNull();
 
         SymbolFormatter.FormatSymbol(symbol!)
-            .Should().Be("(property) level: int", "a property with a setter is not read-only");
+            .Should().Be("(property) level: int32", "a property with a setter is not read-only");
     }
 
     [Fact]
@@ -745,7 +745,7 @@ public class HoverTests : IDisposable
         // The outer type resolves to list[int]
         var outerType = analysis.SemanticQuery!.GetTypeAnnotation(param.Type!);
         outerType.Should().NotBeNull();
-        outerType!.GetDisplayName().Should().Be("list[int]");
+        outerType!.GetDisplayName().Should().Be("list[int32]");
     }
 
     [Fact]
