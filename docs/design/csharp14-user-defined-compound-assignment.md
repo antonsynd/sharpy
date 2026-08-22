@@ -1,7 +1,7 @@
 # C# 14 user-defined compound assignment — feasibility for alias-mutating augmented assignment
 
 **Issue:** #1428 · **Status:** option 2 chosen (2026-08-13 owner ruling) — experimental
-gate `inplace_augassign` landed as a behavioral flag (no SPY0331). Mechanism: emitter
+gate `inplace_augassign` landed at `4dcbec5ea` as a behavioral flag (no SPY0331). Mechanism: emitter
 mutation call on every TFM (D4 of plan-55f329); the C# 14 instance operator remains open for
 direct C# consumers of Sharpy.Core. Gated-period questions tracked on the graduation issue.
 **Gates:** graduation tracker (see below).

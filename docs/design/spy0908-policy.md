@@ -44,7 +44,7 @@ ICE with a diagnostic" from "restricts working code" (the round-8 Batch B lesson
 | EmitterCarrierOnlyConformanceTests | `src/Sharpy.Compiler.Tests/CodeGen/` | Rule 2 — decisions cannot be taken emitter-side (prevents un-lowerable shapes from being introduced) |
 | Ratchet policy | all allowlists | Drain-on-fix, entries cite issues, allowlists trend to empty |
 
-## Starting census (measured @ `3422ea9f3`)
+## Starting census (measured @ `8bacf3d34`)
 
 | Sweep | Allowlist entries |
 |-------|-------------------|
@@ -57,6 +57,7 @@ ICE with a diagnostic" from "restricts working code" (the round-8 Batch B lesson
 | qualified-bare | 5 |
 | differential-exec | 22 |
 | LSP frontend-parity | 32 |
+| EmitterCarrierOnly ratchet (per-file-per-type) | 0 |
 
 ## Precondition evidence
 
