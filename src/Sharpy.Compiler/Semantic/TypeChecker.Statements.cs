@@ -372,6 +372,13 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Semantic.TypeMismatch,
                     span: assignment.Span);
             }
+
+            if (Features.IsEnabled("inplace_augassign")
+                && AugmentedCollectionAssignment.Classify(assignment, targetType) is { } mutation)
+            {
+                _semanticInfo.SetAugmentedAssignMutation(assignment, mutation.ClrName);
+            }
+
             return;
         }
 

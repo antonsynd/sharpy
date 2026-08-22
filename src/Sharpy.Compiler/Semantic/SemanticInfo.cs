@@ -122,6 +122,13 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<MemberAccess, (TypeSymbol Owner, Symbol Member)> _memberAccessResolutions =
         new(ReferenceEqualityComparer.Instance);
 
+    // #1428: augmented assignment mutation lowering — when the inplace_augassign feature is
+    // enabled and the assignment matches the Classify table, the emitter emits a mutation call
+    // (e.g. xs.Extend(ys)) instead of the default rebind. Keyed on the Assignment node; value
+    // is the CLR method name on the Sharpy.Core collection.
+    private readonly ConcurrentDictionary<Assignment, string> _augmentedAssignMutations =
+        new(ReferenceEqualityComparer.Instance);
+
     // #1519: default-interface dispatch — when a call dispatches to a default method on an
     // interface the class doesn't override, the emitter must cast through that interface.
     // Keyed on the FunctionCall node; value is the interface name (C# spelling, post-mangling).
@@ -640,6 +647,25 @@ public class SemanticInfo : ISemanticQuery
     public TypeTestLowering? GetTypeTestLowering(Node typeOperand)
     {
         return _typeTestLowerings.TryGetValue(typeOperand, out var lowering) ? lowering : null;
+    }
+
+    /// <summary>
+    /// Records that this augmented assignment should lower to a mutation call instead of the default
+    /// rebind (#1428). Set by the TypeChecker when <c>inplace_augassign</c> is enabled and the
+    /// assignment matches <see cref="AugmentedCollectionAssignment.Classify"/>.
+    /// </summary>
+    public void SetAugmentedAssignMutation(Assignment node, string clrMethodName)
+    {
+        _augmentedAssignMutations[node] = clrMethodName;
+    }
+
+    /// <summary>
+    /// Gets the mutation method name for an augmented assignment, or <c>null</c> when the assignment
+    /// keeps the default rebind semantics (flag off, or not a classified shape).
+    /// </summary>
+    public string? GetAugmentedAssignMutation(Assignment node)
+    {
+        return _augmentedAssignMutations.TryGetValue(node, out var method) ? method : null;
     }
 
     /// <summary>
@@ -1283,6 +1309,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._callTargets)
             _callTargets.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._augmentedAssignMutations)
+            _augmentedAssignMutations.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._defaultInterfaceDispatches)
             _defaultInterfaceDispatches.TryAdd(kvp.Key, kvp.Value);
