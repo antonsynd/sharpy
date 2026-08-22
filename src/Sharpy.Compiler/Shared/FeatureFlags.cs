@@ -168,6 +168,19 @@ public sealed class FeatureFlags
                 "escape (v1: iterated directly by a for only; len()/constant-index positions are " +
                 "deferred to #1103) lower to raw arrays instead of Sharpy.List allocations.",
                 FeatureScope.CodeGen),
+            // #1428 in-place augmented assignment on collections — behavioral flag like the E3 opt_*
+            // flags: it gates how a valid program is compiled (mutation call vs rebind), not whether
+            // it parses, so there is no GatedConstruct entry and no SPY0331 rejection. Ungated code
+            // keeps rebind semantics plus the SPY0478 transition hint (#1394).
+            ["inplace_augassign"] = new FeatureInfo(
+                "inplace_augassign",
+                "Experimental alias-mutating augmented assignment on collections (#1428): " +
+                "`xs += ys` / `s |= t` / `d |= e` on list/set/dict mutate the receiver in place " +
+                "(CPython `__iadd__`-family semantics) instead of rebinding. v1 scope: identifier " +
+                "targets; the five operators with a mutating CPython counterpart; frozenset stays " +
+                "rebinding. Behavioral flag — ungated code keeps rebind semantics plus the SPY0478 " +
+                "transition hint.",
+                FeatureScope.Semantic),
         };
 
     /// <summary>The names of all enabled features, in ordinal order.</summary>
