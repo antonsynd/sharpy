@@ -348,6 +348,136 @@ public class DeclarationCursorMatrixTests : IDisposable
             "rename must rewrite exactly the binding set the references handler reports");
     }
 
+    // ── Rebound locals expand through the binding chain (#1602, the #1359 class) ─────
+    // A plain `x = ...` rebinding defines a fresh symbol chained to its predecessor. The
+    // emitter assigns to ONE C# local across the chain, so references/highlight reporting a
+    // fragment is silently wrong the same way fragment-rename was (#1359). The corpus below
+    // mirrors RenameHandlerTests' #1359 repro exactly: four cursors, one variable.
+
+    private const string ReboundLocalSource =
+        "def main() -> None:\n    count: int = 0\n    count = count + 1\n    print(count)\n";
+
+    private static readonly (int Line, int Col)[] ReboundLocalOccurrences =
+        { (1, 4), (2, 4), (2, 12), (3, 10) };
+
+    /// <summary>Every cursor in a rebound spelling reports the whole chain, identically.</summary>
+    [Theory]
+    [InlineData(1, 4)]   // the declaration
+    [InlineData(2, 4)]   // the rebinding's target
+    [InlineData(2, 12)]  // the read on the rebinding's right-hand side
+    [InlineData(3, 10)]  // a use after the rebinding
+    public async Task ReboundLocal_References_ReportEveryOccurrence_FromAnyCursor(int line, int col)
+    {
+        OpenDocument(ReboundLocalSource);
+
+        var refs = await GetReferencesAsync("file:///test.spy", line, col);
+
+        refs.Should().NotBeNull();
+        refs!.Select(l => (l.Range.Start.Line, l.Range.Start.Character))
+            .Should().BeEquivalentTo(ReboundLocalOccurrences,
+                "all four occurrences are the same variable — the emitter assigns to one C# local, "
+                + "so a fragment is a wrong answer (#1602)");
+    }
+
+    /// <summary>
+    /// Highlight walks the same chain: every occurrence lights up, each binding's declaration
+    /// as Write and the reads as Read.
+    /// </summary>
+    [Theory]
+    [InlineData(1, 4)]
+    [InlineData(2, 4)]
+    [InlineData(2, 12)]
+    [InlineData(3, 10)]
+    public async Task ReboundLocal_Highlight_ReportsEveryOccurrence_FromAnyCursor(int line, int col)
+    {
+        OpenDocument(ReboundLocalSource);
+
+        var highlights = await GetHighlightsAsync("file:///test.spy", line, col);
+
+        highlights.Should().NotBeNull();
+        highlights!.Select(h => (h.Range.Start.Line, h.Range.Start.Character))
+            .Should().BeEquivalentTo(ReboundLocalOccurrences,
+                "highlight must light the whole variable, not a binding fragment (#1602)");
+        highlights!.Where(h => h.Kind == DocumentHighlightKind.Write)
+            .Select(h => (h.Range.Start.Line, h.Range.Start.Character))
+            .Should().BeEquivalentTo(new[] { (1, 4), (2, 4) },
+                "both chain links' declarations are writes");
+    }
+
+    /// <summary>
+    /// Negative control: the same spelling bound in a DIFFERENT function is a different
+    /// variable and must not be dragged along (mirrors the #1359 rename control).
+    /// </summary>
+    [Fact]
+    public async Task ReboundLocal_References_LeaveTheSameSpellingInAnotherFunctionAlone()
+    {
+        var source =
+            "def first() -> None:\n"
+            + "    count: int = 0\n"
+            + "    count = count + 1\n"
+            + "\n"
+            + "\n"
+            + "def second() -> None:\n"
+            + "    count: int = 9\n"
+            + "    print(count)\n";
+        OpenDocument(source);
+
+        var refs = await GetReferencesAsync("file:///test.spy", 1, 4);
+
+        refs.Should().NotBeNull();
+        refs!.Select(l => l.Range.Start.Line).Should().OnlyContain(l => l == 1 || l == 2,
+            "second()'s 'count' is a different variable that happens to share a spelling");
+    }
+
+    /// <summary>
+    /// Negative control: a typed REDECLARATION is a different variable and must not chain —
+    /// the emitter versions those (<c>x</c>, <c>x_1</c>). The boundary that keeps the chain honest.
+    /// </summary>
+    [Fact]
+    public async Task Redeclaration_References_DoNotChainToTheOtherBinding()
+    {
+        var source =
+            "def main() -> None:\n"
+            + "    value: int = 1\n"
+            + "    print(value)\n"
+            + "    value: str = \"a\"\n"
+            + "    print(value)\n";
+        OpenDocument(source);
+
+        var refs = await GetReferencesAsync("file:///test.spy", 1, 4);
+
+        refs.Should().NotBeNull();
+        refs!.Select(l => l.Range.Start.Line).Should().NotContain(3,
+            "the second declaration binds a different variable");
+        refs!.Select(l => l.Range.Start.Line).Should().NotContain(4,
+            "reads of the second declaration belong to the other variable");
+    }
+
+    /// <summary>
+    /// The rebound-local parity guard: rename edits exactly the set references reports. Before
+    /// the #1602 fix references reported a one-binding fragment while rename walked the chain —
+    /// exactly the shape this fact refuses. Mutation-verified: bypassing BindingSet in
+    /// ReferencesHandler ALONE turns this red (one-handler drift); collapsing the shared
+    /// BindingSet degrades both handlers together, which the occurrence theories above catch
+    /// instead — the two guards are complementary, not redundant.
+    /// </summary>
+    [Fact]
+    public async Task ReboundLocal_Rename_EditsExactlyTheReferencesBindingSet()
+    {
+        OpenDocument(ReboundLocalSource);
+
+        var refs = await GetReferencesAsync("file:///test.spy", 1, 4);
+        var edit = await RenameAsync("file:///test.spy", 1, 4, "total");
+
+        refs.Should().NotBeNull("references resolves the rebound-local declaration cursor");
+        edit.Should().NotBeNull("rename resolves the same declaration cursor references does");
+
+        var editRanges = edit!.Changes!["file:///test.spy"].Select(e => e.Range).ToList();
+        var refRanges = refs!.Select(l => l.Range).ToList();
+        editRanges.Should().BeEquivalentTo(refRanges,
+            "rename must rewrite exactly the binding set the references handler reports (#1602)");
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();
