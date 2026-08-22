@@ -607,6 +607,25 @@ baz__qux: str = ""hello""
         Assert.Contains("enum values", warnings[0].Message);
     }
 
+    [Fact]
+    public void EnumValue_BacktickEscaped_NoWarning()
+    {
+        // A backtick-escaped member is a deliberate spelling, consistent with every other
+        // escaped position (#1604) — before the member arm passed the flag, `for` = 1 drew a
+        // spurious SPY0453.
+        ValidateCode("enum Color:\n    `for` = 1\n", out var warnings);
+        Assert.Empty(warnings);
+    }
+
+    [Fact]
+    public void EnumValue_UnescapedBadName_StillWarns_BesideAnEscapedSibling()
+    {
+        // Control: the escape suppression is per-member, not per-enum.
+        ValidateCode("enum Color:\n    `for` = 1\n    red = 2\n", out var warnings);
+        Assert.Single(warnings);
+        Assert.Contains("enum values", warnings[0].Message);
+    }
+
     #endregion
 
     #region Convention: Variable Tests

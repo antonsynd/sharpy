@@ -404,6 +404,30 @@ def main():
     }
 
     [Fact]
+    public void BacktickedRegularDecoratorWithArgs_TokenLengthCoversBackticks()
+    {
+        // The REGULAR arm with arguments: the extent is rebuilt from the per-part escape flags
+        // the parser records since #1604 — before that the regular arm dropped them and the
+        // token was two columns short per escaped part.
+        var tokens = CollectTokensFrom(
+            "@`deprecated`(\"old\")\ndef old_fn() -> None:\n    pass\ndef main():\n    old_fn()");
+        var deco = tokens.First(t => t.TokenType == TDecorator);
+        deco.Length.Should().Be(13, "\"@`deprecated`\" spans thirteen source columns, backticks included");
+    }
+
+    [Fact]
+    public void BacktickedEnumMember_TokenLengthCoversBackticks()
+    {
+        // The symbol-less fallback reads the EnumMember's recorded escape flag (#1604); the
+        // token spans "`class`" — seven columns, backticks included.
+        var tokens = CollectTokensFrom("enum E:\n    `class` = 1\n    RED = 2\n");
+        var members = tokens.Where(t => t.TokenType == TEnumMember).ToList();
+
+        members[0].Length.Should().Be(7, "\"`class`\" spans seven source columns, backticks included");
+        members[1].Length.Should().Be(3, "bare members keep the bare spelling length");
+    }
+
+    [Fact]
     public void EmptyStatementList_ProducesNoTokens()
     {
         var tokens = new System.Collections.Generic.List<RawToken>();

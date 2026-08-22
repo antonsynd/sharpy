@@ -93,4 +93,45 @@ def main():
         enums[0].Name.Should().Be("Color");
         enums[0].Members.Should().HaveCount(3);
     }
+
+    /// <summary>
+    /// The enum-member outline entry's SelectionRange is the recorded NAME extent, not the
+    /// whole <c>NAME = value</c> span, and it covers backticks on an escaped spelling (#1604).
+    /// </summary>
+    [Fact]
+    public async Task EnumMember_SelectionRange_IsTheRecordedNameExtent()
+    {
+        using var workspace = new Sharpy.Lsp.SharpyWorkspace(
+            _api, Microsoft.Extensions.Logging.Abstractions.NullLogger<Sharpy.Lsp.SharpyWorkspace>.Instance);
+        using var service = new Sharpy.Lsp.LanguageService(
+            workspace, _api, Microsoft.Extensions.Logging.Abstractions.NullLogger<Sharpy.Lsp.LanguageService>.Instance);
+        var handler = new Sharpy.Lsp.Handlers.SharpyDocumentSymbolHandler(service);
+
+        // L1 (0-based): "    `class` = 1"  name at chars 4-11, member span 4-15
+        // L2 (0-based): "    RED = 2"      name at chars 4-7
+        workspace.OpenDocument("file:///test.spy", "enum E:\n    `class` = 1\n    RED = 2\n", 1);
+        var result = await handler.Handle(
+            new OmniSharp.Extensions.LanguageServer.Protocol.Models.DocumentSymbolParams
+            {
+                TextDocument = new OmniSharp.Extensions.LanguageServer.Protocol.Models.TextDocumentIdentifier("file:///test.spy"),
+            },
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        var enumSymbol = result!
+            .Select(s => s.DocumentSymbol)
+            .First(s => s != null && s.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Enum)!;
+        var members = enumSymbol.Children!.ToList();
+
+        var escaped = members[0];
+        escaped.SelectionRange.Start.Character.Should().Be(4);
+        escaped.SelectionRange.End.Character.Should().Be(4 + "`class`".Length,
+            "the selection is the recorded name extent, backticks included (#1604)");
+        escaped.Range.End.Character.Should().BeGreaterThan(escaped.SelectionRange.End.Character,
+            "the member Range still spans the `= value` tail");
+
+        var bare = members[1];
+        bare.SelectionRange.Start.Character.Should().Be(4);
+        bare.SelectionRange.End.Character.Should().Be(4 + "RED".Length);
+    }
 }

@@ -754,8 +754,9 @@ internal class CodeGenInfoComputer
                 if (string.Equals(member.Name, existing.originalName, StringComparison.Ordinal))
                     continue;
 
-                // No backtick remedy here: EnumMember carries no escape flag, so renaming is the
-                // only fix available to the user.
+                // EnumMember records IsNameBacktickEscaped since #1604, but the emitter's
+                // member-mangling path deliberately does not consult it (out of #1604's scope),
+                // so renaming remains the only fix offered to the user.
                 _diagnostics.AddErrorWithRelatedLocations(
                     $"Name collision: enum members '{member.Name}' and '{existing.originalName}'" +
                     $"{FirstDeclarationProse(existing.position)} both compile to '{csharpName}'. Rename one.",

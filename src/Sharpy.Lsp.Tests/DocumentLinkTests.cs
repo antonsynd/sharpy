@@ -56,6 +56,30 @@ public class DocumentLinkTests : IDisposable
     }
 
     [Fact]
+    public async Task EscapedFromImport_LinkRangeSpansBackticks()
+    {
+        // The link range reads the RECORDED module-path extent (#1604) — the retired
+        // reconstruction (const FromKeywordLength + Module.Length) was two columns short here.
+        CreateProjectFiles(
+            ("main.spy", "from `helpers` import greet\ndef main():\n    print(greet())"),
+            ("helpers.spy", "def greet() -> str:\n    return \"hi\""));
+        var initResult = await _service.InitializeProjectAsync(_tempDir);
+        initResult.Should().BeTrue("project initialization must succeed for import resolution");
+
+        var links = await GetLinksAsync("main.spy");
+
+        links.Should().NotBeNull();
+        links.Should().ContainSingle();
+
+        var link = links!.Single();
+        link.Target!.GetFileSystemPath().Should().Be(IOPath.Combine(_tempDir, "helpers.spy"));
+        link.Range.Start.Line.Should().Be(0);
+        link.Range.Start.Character.Should().Be(5);
+        link.Range.End.Character.Should().Be(5 + "`helpers`".Length,
+            "the recorded extent spans both backticks (#1604)");
+    }
+
+    [Fact]
     public async Task PlainImport_ProducesLinkToModuleFile()
     {
         CreateProjectFiles(

@@ -47,6 +47,26 @@ public class UnparserTests
     }
 
     [Fact]
+    public void Roundtrip_EnumWithEscapedMember()
+    {
+        // `for` is a keyword, legal as a member only through the escape. Before the unparser
+        // consulted the member's recorded escape flag (#1604), the member was written BARE, so
+        // the unparsed text re-parsed `for` as a keyword — a silent round-trip break.
+        var source = "enum E:\n    `for` = 1\n    RED = 2\n";
+        var module = Parse(source);
+        var result = Unparser.Unparse(module);
+
+        result.Should().Be(source);
+
+        var reparsed = Parse(result);
+        var members = reparsed.Body[0].Should()
+            .BeOfType<Sharpy.Compiler.Parser.Ast.EnumDef>().Subject.Members;
+        members.Should().HaveCount(2);
+        members[0].Name.Should().Be("for");
+        members[0].IsNameBacktickEscaped.Should().BeTrue("the flag survives the round-trip");
+    }
+
+    [Fact]
     public void Roundtrip_IfElse()
     {
         var source = "if x:\n    y = 1\nelse:\n    y = 2\n";

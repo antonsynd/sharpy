@@ -1266,6 +1266,94 @@ def bar():
     }
 
     [Fact]
+    public void Position_EscapedEnumMemberWithValue_NameExtentSpansBackticks()
+    {
+        // The VALUED variant: the member's own ColumnEnd spans `= 1`, so only the recorded
+        // name extent can place the name — this is the cell the valueless pin above cannot
+        // cover (#1604).
+        const string source = "enum E:\n    `class` = 1\n";
+        var module = Parse(source);
+        var member = module.Body[0].Should().BeOfType<EnumDef>().Subject.Members[0];
+
+        member.NameColumnStart.Should().Be(5);
+        member.NameColumnEnd.Should().Be(5 + "`class`".Length, "the extent covers both backticks");
+        member.IsNameBacktickEscaped.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Position_BareEnumMember_NameExtentIsTheBareSpelling()
+    {
+        // Verify the instrument: a bare member's extent is exactly the spelling, flag unset.
+        const string source = "enum E:\n    RED = 1\n";
+        var module = Parse(source);
+        var member = module.Body[0].Should().BeOfType<EnumDef>().Subject.Members[0];
+
+        member.NameColumnStart.Should().Be(5);
+        member.NameColumnEnd.Should().Be(5 + "RED".Length);
+        member.IsNameBacktickEscaped.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Position_EscapedRegularDecoratorWithArgs_RecordsBacktickEscapedParts()
+    {
+        // The regular (non-bracket) arm discarded the per-part escape flags before #1604, which
+        // made every with-args reconstruction two columns short per escaped part.
+        const string source = "@`deco`(\"x\")\ndef f():\n    pass\n";
+        var module = Parse(source);
+        var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+
+        func.Decorators[0].BacktickEscapedParts.Should().Equal(new[] { true });
+    }
+
+    [Fact]
+    public void Position_BareRegularDecoratorWithArgs_RecordsUnescapedParts()
+    {
+        const string source = "@deco(\"x\")\ndef f():\n    pass\n";
+        var module = Parse(source);
+        var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+
+        func.Decorators[0].BacktickEscapedParts.Should().Equal(new[] { false });
+    }
+
+    [Fact]
+    public void Position_EscapedFromImportModulePath_ExtentSpansBackticks()
+    {
+        // The whole-dotted-path escape (backtick_dotted_import shape): the recorded extent spans
+        // the backticks, which reconstruction from Module.Length under-covered by 2 (#1604).
+        const string source = "from `System.Collections.Generic` import List";
+        var module = Parse(source);
+        var fromImport = module.Body[0].Should().BeOfType<FromImportStatement>().Subject;
+
+        fromImport.ModuleColumnStart.Should().Be(6);
+        fromImport.ModuleColumnEnd.Should().Be(6 + "`System.Collections.Generic`".Length);
+    }
+
+    [Fact]
+    public void Position_RelativeFromImport_ExtentIncludesLeadingDots()
+    {
+        // Leading relative dots are part of the written path but die in ParseModuleName's
+        // return value, so only the recorded extent can span them (#1604).
+        const string source = "from .helpers import util";
+        var module = Parse(source);
+        var fromImport = module.Body[0].Should().BeOfType<FromImportStatement>().Subject;
+
+        fromImport.ModuleColumnStart.Should().Be(6);
+        fromImport.ModuleColumnEnd.Should().Be(6 + ".helpers".Length);
+    }
+
+    [Fact]
+    public void Position_BareFromImport_ExtentIsTheDottedPath()
+    {
+        // Verify the instrument: the bare path's extent is exactly the spelling.
+        const string source = "from os import path";
+        var module = Parse(source);
+        var fromImport = module.Body[0].Should().BeOfType<FromImportStatement>().Subject;
+
+        fromImport.ModuleColumnStart.Should().Be(6);
+        fromImport.ModuleColumnEnd.Should().Be(6 + "os".Length);
+    }
+
+    [Fact]
     public void Position_EscapedMemberAccess_EndSpansClosingBacktick()
     {
         // The dotted-access site lives in Parser.Expressions.cs, not the Parser.Primaries.cs
