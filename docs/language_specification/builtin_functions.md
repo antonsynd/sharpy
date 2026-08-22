@@ -239,6 +239,56 @@ print(next(it, -1))      # -1 (iterator exhausted, returns default)
 next(it)                  # Raises StopIteration
 ```
 
+### Iterator-Returning Builtins
+
+The following builtins return `Iterator[T]` — a lazy, single-pass value:
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `map(f, iterable)` | `Iterator[U]` | Apply `f` to each element |
+| `filter(f, iterable)` | `Iterator[T]` | Keep elements where `f` returns `True` |
+| `zip(a, b)` | `Iterator[tuple[A, B]]` | Pair elements from two iterables |
+| `enumerate(iterable)` | `Iterator[tuple[int, T]]` | Index + value pairs |
+| `reversed(iterable)` | `Iterator[T]` | Elements in reverse order |
+| `iter(iterable)` | `Iterator[T]` | Explicit iterator from any iterable |
+
+`range` is **not** in this list — it returns `range`, its own sequence type that supports
+multiple iterations and length queries.
+
+**Laziness and single-pass semantics.** Iterator values are consumed exactly once. A second
+traversal yields nothing:
+
+```python
+it: Iterator[str] = map(str, [1, 2, 3])
+print("".join(it))   # 123
+print("".join(it))   # (empty — iterator exhausted)
+```
+
+**The `Iterator[T]` annotation.** Laziness is expressed in the type system via the
+`Iterator[T]` spelling. This is the annotation to use when a binding holds the return value of
+any iterator-returning builtin:
+
+```python
+r: Iterator[str] = reversed("abc")
+print("".join(r))   # cba
+```
+
+**Repr contract.** Iterator reprs are address-free: CPython embeds object addresses
+(`<map object at 0x...>`), but Sharpy prints the type tag alone. `range` has a deterministic
+CPython repr and matches it exactly. `iter()` prints the generic `<iterator object>` without
+naming its source container (see deviation `iterator-repr-no-address` in
+`docs/deviations.yaml`).
+
+| Expression | Sharpy repr | CPython repr |
+|-----------|-------------|--------------|
+| `map(f, xs)` | `<map object>` | `<map object at 0x...>` |
+| `filter(f, xs)` | `<filter object>` | `<filter object at 0x...>` |
+| `zip(xs, ys)` | `<zip object>` | `<zip object at 0x...>` |
+| `enumerate(xs)` | `<enumerate object>` | `<enumerate object at 0x...>` |
+| `reversed(xs)` | `<reversed object>` | `<list_reverseiterator object at 0x...>` |
+| `iter(xs)` | `<iterator object>` | `<list_iterator object at 0x...>` |
+| `range(0, 3)` | `range(0, 3)` | `range(0, 3)` |
+
 ## Collection Functions
 
 | Function | Purpose | C# Mapping |
