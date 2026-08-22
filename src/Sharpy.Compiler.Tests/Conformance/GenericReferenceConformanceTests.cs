@@ -187,6 +187,12 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
         var allowlist = LoadAllowlist();
         var failures = results.Where(r => FailingOutcomes.Contains(r.Outcome)).ToList();
         var offenders = failures.Where(f => !allowlist.Contains(f.Cell.Key)).ToList();
+        var failingKeys = new HashSet<string>(
+            failures.Select(f => f.Cell.Key), StringComparer.Ordinal);
+        var stale = allowlist.ExactKeys
+            .Where(k => !failingKeys.Contains(k))
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
 
         WriteReport(new
         {
@@ -207,6 +213,7 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
                 allowlistSize = allowlist.Count,
                 failures = failures.Count,
                 nonAllowlistedFailures = offenders.Count,
+                staleAllowlistEntries = stale.Count,
             },
             ratchetMode = AllowlistFileExists(),
             scopeNotes = new[]
@@ -219,6 +226,7 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
             },
             byOutcome,
             byCalleeKind,
+            staleAllowlistEntries = stale,
             cells = results
                 .OrderBy(r => r.Cell.Key, StringComparer.Ordinal)
                 .Select(r => r.ToReport(allowlist)),
@@ -228,7 +236,7 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
         Output.WriteLine($"Cells enumerated: {results.Count}");
         Output.WriteLine($"ok={byOutcome.GetValueOrDefault(OutcomeOk)} deliberate={byOutcome.GetValueOrDefault(OutcomeDeliberate)} notAttempted={byOutcome.GetValueOrDefault(OutcomeNotAttempted)}");
         Output.WriteLine($"ice={byOutcome.GetValueOrDefault(OutcomeIce)} subscriptMisfire={byOutcome.GetValueOrDefault(OutcomeSubscriptMisfire)} csLeak={byOutcome.GetValueOrDefault(OutcomeCsLeak)} wrongOutput={byOutcome.GetValueOrDefault(OutcomeWrongOutput)} crash={byOutcome.GetValueOrDefault(OutcomeCrash)}");
-        Output.WriteLine($"Allowlist size: {allowlist.Count}  Non-allowlisted failures: {offenders.Count}");
+        Output.WriteLine($"Allowlist size: {allowlist.Count}  Non-allowlisted failures: {offenders.Count}  Stale allowlist entries: {stale.Count}");
         foreach (var o in offenders.Take(50))
             Output.WriteLine($"  OFFENDER {o.Cell.Key} [{o.Outcome}] {o.Diagnostics.FirstOrDefault()}");
 
@@ -244,6 +252,13 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
                 "issue, or add a justified allowlist entry.\n" +
                 string.Join("\n", offenders.Take(50).Select(o => $"  {o.Cell.Key} [{o.Outcome}] {o.Diagnostics.FirstOrDefault()}")) +
                 "\nFull report: .claude/tmp/generic-reference-conformance-report.json");
+
+            Assert.True(stale.Count == 0,
+                $"{stale.Count} allowlist entr{(stale.Count == 1 ? "y" : "ies")} no longer " +
+                "fail — whatever fixed them must also delete the entries " +
+                "(docs/design/gap-discovery-contracts.md). Delete these lines from " +
+                "Conformance/generic-reference-allowlist.txt:\n  " +
+                string.Join("\n  ", stale));
         }
     }
 
@@ -894,6 +909,7 @@ public class GenericReferenceConformanceTests : IntegrationTestBase
         private readonly HashSet<string> _exact;
         public Allowlist(HashSet<string> exact) => _exact = exact;
         public int Count => _exact.Count;
+        public IReadOnlyCollection<string> ExactKeys => _exact;
         public bool Contains(string key) => _exact.Contains(key);
     }
 }

@@ -355,6 +355,12 @@ public class InteropConformanceTests
         var offenders = failures.Concat(crashes)
             .Where(f => !allowlist.Matches(f.Snippet.Key))
             .ToList();
+        var failingKeys = new HashSet<string>(
+            failures.Concat(crashes).Select(f => f.Snippet.Key), StringComparer.Ordinal);
+        var stale = allowlist.ExactKeys
+            .Where(k => !failingKeys.Contains(k))
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
 
         WriteReport(new
         {
@@ -372,6 +378,7 @@ public class InteropConformanceTests
                 skippedModules = skippedModules.Count,
                 allowlistSize = allowlist.Count,
                 nonAllowlistedFailures = offenders.Count,
+                staleAllowlistEntries = stale.Count,
             },
             ratchetMode = AllowlistFileExists(),
             byPosition = byPosition.ToDictionary(kv => kv.Key, kv => new { kv.Value.Generated, kv.Value.Pass, kv.Value.Fail, kv.Value.Crash, kv.Value.Refused, kv.Value.NotAttempted }),
@@ -393,6 +400,7 @@ public class InteropConformanceTests
             crashes = crashes.Take(100).Select(f => f.ToReport(allowlist)),
             failures = failures.Take(500).Select(f => f.ToReport(allowlist)),
             refusedByDesign = refusals.Take(500).Select(f => f.ToReport(allowlist)),
+            staleAllowlistEntries = stale,
             notAttempted = notAttempted.Take(200),
             skippedModules,
         });
@@ -403,7 +411,7 @@ public class InteropConformanceTests
         _output.WriteLine($"Members enumerated: {membersEnumerated}");
         _output.WriteLine($"Snippets generated: {snippets.Count}");
         _output.WriteLine($"Pass: {passCount}  Fail: {failures.Count}  Crash: {crashes.Count}  Refused-by-design: {refusals.Count}  NotAttempted: {notAttempted.Count}");
-        _output.WriteLine($"Allowlist size: {allowlist.Count}  Non-allowlisted failures: {offenders.Count}");
+        _output.WriteLine($"Allowlist size: {allowlist.Count}  Non-allowlisted failures: {offenders.Count}  Stale allowlist entries: {stale.Count}");
 
         // Enumeration sanity always holds (a bridge that discovers nothing is itself a bug).
         Assert.True(membersEnumerated > 0, "Interop sweep enumerated zero members — discovery is broken.");
@@ -418,6 +426,13 @@ public class InteropConformanceTests
                 "allowlist entry.\n" +
                 string.Join("\n", offenders.Take(50).Select(o => $"  {o.Snippet.Key} [{o.Stage}] {o.Diagnostics.FirstOrDefault()}")) +
                 $"\nFull list: .claude/tmp/interop-conformance-report.json");
+
+            Assert.True(stale.Count == 0,
+                $"{stale.Count} allowlist entr{(stale.Count == 1 ? "y" : "ies")} no longer " +
+                "fail — whatever fixed them must also delete the entries " +
+                "(docs/design/gap-discovery-contracts.md). Delete these lines from " +
+                "Conformance/interop-allowlist.txt:\n  " +
+                string.Join("\n  ", stale));
         }
     }
 
@@ -1171,6 +1186,8 @@ public class InteropConformanceTests
         }
 
         public int Count => _exact.Count + _wildcards.Count;
+
+        public IReadOnlyCollection<string> ExactKeys => _exact;
 
         public bool Matches(string key)
             => _exact.Contains(key) || _wildcards.Any(w => GlobMatch(key, w));
