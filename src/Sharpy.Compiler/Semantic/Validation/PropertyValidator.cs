@@ -517,7 +517,7 @@ internal class PropertyValidator : SemanticValidatorBase
             if (!derivedPropSymbol.Type.IsAssignableTo(baseProp.Type))
             {
                 AddError(_context,
-                    $"Property '{propDef.Name}' in '{typeName}' has type '{derivedPropSymbol.Type}' which is not compatible with base property type '{baseProp.Type}'",
+                    $"Property '{propDef.Name}' in '{typeName}' has type '{derivedPropSymbol.Type.GetDisplayName()}' which is not compatible with base property type '{baseProp.Type.GetDisplayName()}'",
                     propDef.LineStart, propDef.ColumnStart,
                     code: DiagnosticCodes.Validation.InvalidPropertyOverride,
                     span: propDef.Span);

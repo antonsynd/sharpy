@@ -131,6 +131,9 @@ internal class OverloadIndexBuilder
                 typeKind = "Struct";
             else if (type.IsInterface)
                 typeKind = "Interface";
+            else if (typeof(MulticastDelegate).IsAssignableFrom(type)
+                     && type != typeof(Delegate) && type != typeof(MulticastDelegate))
+                typeKind = "Delegate";
 
             // Skip static classes and [SharpyModule]-decorated classes (they are module containers, not constructible types)
             if ((type.IsAbstract && type.IsSealed && !type.IsInterface) ||
@@ -206,6 +209,9 @@ internal class OverloadIndexBuilder
                     typeKind = "Struct";
                 else if (nestedType.IsInterface)
                     typeKind = "Interface";
+                else if (typeof(MulticastDelegate).IsAssignableFrom(nestedType)
+                         && nestedType != typeof(Delegate) && nestedType != typeof(MulticastDelegate))
+                    typeKind = "Delegate";
 
                 if (nestedType.IsAbstract && nestedType.IsSealed && !nestedType.IsInterface)
                     continue;

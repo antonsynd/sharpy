@@ -138,7 +138,7 @@ internal partial class TypeChecker
                         if (constType != SemanticType.Unknown && !IsAssignable(scrutineeType, constType))
                         {
                             _diagnostics.AddError(
-                                $"Constant pattern type '{constType}' is not compatible with match subject type '{scrutineeType}'",
+                                $"Constant pattern type '{constType.GetDisplayName()}' is not compatible with match subject type '{scrutineeType.GetDisplayName()}'",
                                 binding,
                                 code: DiagnosticCodes.Semantic.TypeMismatch);
                         }

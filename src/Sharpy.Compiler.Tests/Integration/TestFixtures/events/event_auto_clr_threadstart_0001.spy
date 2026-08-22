@@ -1,0 +1,17 @@
+# CLR delegate type recognized as a delegate for auto events (#1512).
+# ThreadStart is a non-generic delegate from System.Threading.
+from System.Threading import ThreadStart
+
+class Worker:
+    event on_start: ThreadStart
+
+    def start(self) -> None:
+        self.on_start?.invoke()
+
+def do_work() -> None:
+    print("working")
+
+def main() -> None:
+    w = Worker()
+    w.on_start += do_work
+    w.start()

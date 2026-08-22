@@ -295,17 +295,27 @@ internal class ClrTypeBridge
             return SemanticType.Int;
         }
 
-        // Non-generic CLR class/struct: map to UserDefinedType with CLR type info
+        // Non-generic CLR class/struct/delegate: map to UserDefinedType with CLR type info
         if (clrType.IsClass || clrType.IsValueType)
         {
+            var isDelegate = IsClrDelegateType(clrType);
             var symbol = new TypeSymbol
             {
                 Name = clrType.Name,
                 Kind = SymbolKind.Type,
-                TypeKind = clrType.IsValueType ? TypeKind.Struct : TypeKind.Class,
+                TypeKind = isDelegate ? TypeKind.Delegate
+                    : clrType.IsValueType ? TypeKind.Struct
+                    : TypeKind.Class,
                 ClrType = clrType,
                 Interfaces = BuildInterfaceList(clrType)
             };
+
+            if (isDelegate)
+            {
+                var invoke = SynthesizeDelegateInvoke(clrType);
+                if (invoke != null)
+                    symbol.Methods.Add(invoke);
+            }
 
             return new UserDefinedType
             {
@@ -775,6 +785,41 @@ internal class ClrTypeBridge
     /// Builds the interface list for a CLR type with resolved type arguments (#827).
     /// All public CLR interfaces are enumerated; generic interfaces carry
     /// ResolvedTypeArguments. Non-generic duplicates of generic forms (IEnumerable vs
+    private static bool IsClrDelegateType(Type clrType)
+        => typeof(MulticastDelegate).IsAssignableFrom(clrType)
+           && clrType != typeof(Delegate)
+           && clrType != typeof(MulticastDelegate);
+
+    private FunctionSymbol? SynthesizeDelegateInvoke(Type clrType)
+    {
+        var invokeMethod = clrType.GetMethod("Invoke");
+        if (invokeMethod == null)
+            return null;
+
+        var parameters = new List<ParameterSymbol>();
+        foreach (var param in invokeMethod.GetParameters())
+        {
+            parameters.Add(new ParameterSymbol
+            {
+                Name = param.Name ?? $"arg{param.Position}",
+                Type = MapClrParameterTypeToSemanticType(param.ParameterType),
+                HasDefault = param.HasDefaultValue
+            });
+        }
+
+        return new FunctionSymbol
+        {
+            Name = "Invoke",
+            Kind = SymbolKind.Function,
+            ReturnType = invokeMethod.ReturnType == typeof(void)
+                ? SemanticType.Void
+                : MapClrTypeToSemanticType(invokeMethod.ReturnType),
+            Parameters = parameters,
+            AccessLevel = AccessLevel.Public,
+            ClrMethod = invokeMethod
+        };
+    }
+
     /// IEnumerable&lt;T&gt;) are filtered out.
     /// </summary>
     private List<InterfaceReference> BuildInterfaceList(Type clrType)
@@ -864,11 +909,13 @@ internal class ClrTypeBridge
                 .Select((arg, i) => new TypeParameterDef { Name = $"T{i}", Variance = GetClrVariance(arg) })
                 .ToList();
 
-            return new TypeSymbol
+            var isDelegate = IsClrDelegateType(def);
+            var sym = new TypeSymbol
             {
                 Name = ClrNameHelper.StripArity(def.Name),
                 Kind = SymbolKind.Type,
-                TypeKind = def.IsInterface ? TypeKind.Interface
+                TypeKind = isDelegate ? TypeKind.Delegate
+                    : def.IsInterface ? TypeKind.Interface
                     : def.IsEnum ? TypeKind.Enum
                     : def.IsValueType ? TypeKind.Struct
                     : TypeKind.Class,
@@ -876,6 +923,35 @@ internal class ClrTypeBridge
                 TypeParameters = typeParams,
                 AccessLevel = AccessLevel.Public
             };
+
+            if (isDelegate)
+            {
+                var invokeMethod = def.GetMethod("Invoke");
+                if (invokeMethod != null)
+                {
+                    var bridge = new ClrTypeBridge();
+                    var invokeParams = invokeMethod.GetParameters().Select(p => new ParameterSymbol
+                    {
+                        Name = p.Name ?? $"arg{p.Position}",
+                        Type = bridge.MapClrParameterTypeToSemanticType(p.ParameterType),
+                        HasDefault = p.HasDefaultValue
+                    }).ToList();
+
+                    sym.Methods.Add(new FunctionSymbol
+                    {
+                        Name = "Invoke",
+                        Kind = SymbolKind.Function,
+                        ReturnType = invokeMethod.ReturnType == typeof(void)
+                            ? SemanticType.Void
+                            : bridge.MapClrTypeToSemanticType(invokeMethod.ReturnType),
+                        Parameters = invokeParams,
+                        AccessLevel = AccessLevel.Public,
+                        ClrMethod = invokeMethod
+                    });
+                }
+            }
+
+            return sym;
         });
     }
 

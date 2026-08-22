@@ -1900,16 +1900,14 @@ internal partial class TypeChecker
                         }
                         else if (resolvedType is GenericType gt)
                         {
-                            // Check if the generic type is a known delegate (e.g., EventHandler[T], Action[T])
-                            var baseSymbol = _symbolTable.LookupType(gt.Name);
-                            if (baseSymbol?.TypeKind == TypeKind.Delegate)
+                            if (gt.GenericDefinition?.TypeKind == TypeKind.Delegate)
                             {
                                 typeSymbol.Events[i] = eventSymbol with { Type = resolvedType };
                             }
                             else
                             {
                                 AddError(
-                                    $"Event '{eventDef.Name}' type '{resolvedType}' is not a delegate type",
+                                    $"Event '{eventDef.Name}' type '{resolvedType.GetDisplayName()}' is not a delegate type",
                                     eventDef.LineStart, eventDef.ColumnStart,
                                     DiagnosticCodes.Semantic.EventTypeNotDelegate,
                                     eventDef.Span);
@@ -1918,7 +1916,7 @@ internal partial class TypeChecker
                         else
                         {
                             AddError(
-                                $"Event '{eventDef.Name}' type '{resolvedType}' is not a delegate type",
+                                $"Event '{eventDef.Name}' type '{resolvedType.GetDisplayName()}' is not a delegate type",
                                 eventDef.LineStart, eventDef.ColumnStart,
                                 DiagnosticCodes.Semantic.EventTypeNotDelegate,
                                 eventDef.Span);

@@ -939,11 +939,14 @@ internal class BuiltinRegistry
             if (clrType == null)
                 return null;
 
+            var isDelegate = typeof(MulticastDelegate).IsAssignableFrom(clrType)
+                && clrType != typeof(Delegate) && clrType != typeof(MulticastDelegate);
             var kind = clrType.IsInterface ? TypeKind.Interface
                 : clrType.IsEnum ? TypeKind.Enum
                 : clrType.IsValueType ? TypeKind.Struct
+                : isDelegate ? TypeKind.Delegate
                 : TypeKind.Class;
-            return new TypeSymbol
+            var sym = new TypeSymbol
             {
                 Name = n,
                 Kind = SymbolKind.Type,
@@ -952,6 +955,35 @@ internal class BuiltinRegistry
                 AccessLevel = AccessLevel.Public,
                 IsAbstract = clrType.IsAbstract && !clrType.IsInterface
             };
+
+            if (isDelegate)
+            {
+                var invokeMethod = clrType.GetMethod("Invoke");
+                if (invokeMethod != null)
+                {
+                    var bridge = new ClrTypeBridge();
+                    var parameters = invokeMethod.GetParameters().Select(p => new ParameterSymbol
+                    {
+                        Name = p.Name ?? $"arg{p.Position}",
+                        Type = bridge.MapClrParameterTypeToSemanticType(p.ParameterType),
+                        HasDefault = p.HasDefaultValue
+                    }).ToList();
+
+                    sym.Methods.Add(new FunctionSymbol
+                    {
+                        Name = "Invoke",
+                        Kind = SymbolKind.Function,
+                        ReturnType = invokeMethod.ReturnType == typeof(void)
+                            ? SemanticType.Void
+                            : bridge.MapClrTypeToSemanticType(invokeMethod.ReturnType),
+                        Parameters = parameters,
+                        AccessLevel = AccessLevel.Public,
+                        ClrMethod = invokeMethod
+                    });
+                }
+            }
+
+            return sym;
         });
     }
 

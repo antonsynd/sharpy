@@ -269,6 +269,7 @@ internal class CachedModuleDiscovery
             "Enum" => TypeKind.Enum,
             "Struct" => TypeKind.Struct,
             "Interface" => TypeKind.Interface,
+            "Delegate" => TypeKind.Delegate,
             _ => TypeKind.Class
         };
 
@@ -287,7 +288,7 @@ internal class CachedModuleDiscovery
             }
         }
 
-        return new TypeSymbol
+        var sym = new TypeSymbol
         {
             Name = typeInfo.Name,
             Kind = SymbolKind.Type,
@@ -299,6 +300,35 @@ internal class CachedModuleDiscovery
             Documentation = typeInfo.Documentation,
             DefiningModule = definingModule
         };
+
+        if (typeKind == TypeKind.Delegate && clrType != null)
+        {
+            var invokeMethod = clrType.GetMethod("Invoke");
+            if (invokeMethod != null)
+            {
+                var bridge = new ClrTypeBridge();
+                var invokeParams = invokeMethod.GetParameters().Select(p => new ParameterSymbol
+                {
+                    Name = p.Name ?? $"arg{p.Position}",
+                    Type = bridge.MapClrParameterTypeToSemanticType(p.ParameterType),
+                    HasDefault = p.HasDefaultValue
+                }).ToList();
+
+                sym.Methods.Add(new FunctionSymbol
+                {
+                    Name = "Invoke",
+                    Kind = SymbolKind.Function,
+                    ReturnType = invokeMethod.ReturnType == typeof(void)
+                        ? SemanticType.Void
+                        : bridge.MapClrTypeToSemanticType(invokeMethod.ReturnType),
+                    Parameters = invokeParams,
+                    AccessLevel = AccessLevel.Public,
+                    ClrMethod = invokeMethod
+                });
+            }
+        }
+
+        return sym;
     }
 
     /// <summary>
