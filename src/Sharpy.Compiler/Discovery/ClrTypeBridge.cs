@@ -227,13 +227,12 @@ internal class ClrTypeBridge
             // Return the appropriate SemanticType singleton or create BuiltinType
             return primitiveInfo.SharpyName switch
             {
-                BuiltinNames.Int => SemanticType.Int,
-                BuiltinNames.Long => SemanticType.Long,
-                BuiltinNames.Float => SemanticType.Float,       // float -> double (per spec)
-                BuiltinNames.Float32 => SemanticType.Float32,   // float32 -> C# float
-                BuiltinNames.Float64 or BuiltinNames.Double => SemanticType.Double,
+                BuiltinNames.Int32 => SemanticType.Int,
+                BuiltinNames.Int64 => SemanticType.Long,
+                BuiltinNames.Float32 => SemanticType.Float32,
+                BuiltinNames.Float64 => SemanticType.Double,
                 BuiltinNames.Bool => SemanticType.Bool,
-                BuiltinNames.Str or "string" => SemanticType.Str,
+                BuiltinNames.Str => SemanticType.Str,
                 BuiltinNames.Void or BuiltinNames.None => SemanticType.Void,
                 BuiltinNames.Object => SemanticType.Object,
                 _ => new BuiltinType { Name = primitiveInfo.SharpyName, ClrType = clrType }

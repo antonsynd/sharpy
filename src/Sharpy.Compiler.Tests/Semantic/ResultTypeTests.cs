@@ -12,7 +12,7 @@ public class ResultTypeTests
     public void ResultType_DisplayName_ShowsBangSyntax()
     {
         var result = new ResultType { OkType = SemanticType.Int, ErrorType = ValueError };
-        Assert.Equal("int !ValueError", result.GetDisplayName());
+        Assert.Equal("int32 !ValueError", result.GetDisplayName());
     }
 
     [Fact]
@@ -81,6 +81,6 @@ public class ResultTypeTests
             TypeArguments = new List<SemanticType> { SemanticType.Int }
         };
         var result = new ResultType { OkType = okType, ErrorType = ValueError };
-        Assert.Equal("list[int] !ValueError", result.GetDisplayName());
+        Assert.Equal("list[int32] !ValueError", result.GetDisplayName());
     }
 }

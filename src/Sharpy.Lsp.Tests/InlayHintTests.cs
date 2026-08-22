@@ -60,7 +60,7 @@ public class InlayHintTests : IDisposable
         var hints = await GetHintsAsync(source);
 
         var typeHints = TypeHints(hints);
-        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int");
+        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int32");
         // Immediately after the name `x` on line 1, so the hint reads `x: int = 42`.
         typeHints[0].Position.Should().Be(new Position(0, 1));
     }
@@ -99,7 +99,7 @@ public class InlayHintTests : IDisposable
         var typeHints = TypeHints(hints);
         typeHints.Should().HaveCount(2);
         typeHints.Should().ContainSingle(h => h.Position == new Position(0, 1))
-            .Which.Label.String.Should().Be(": int");
+            .Which.Label.String.Should().Be(": int32");
         typeHints.Should().ContainSingle(h => h.Position == new Position(2, 5))
             .Which.Label.String.Should().Be(": str");
     }
@@ -116,9 +116,9 @@ public class InlayHintTests : IDisposable
         var typeHints = TypeHints(hints);
         typeHints.Should().HaveCount(2);
         typeHints.Should().ContainSingle(h => h.Position == new Position(2, 9))
-            .Which.Label.String.Should().Be(": int");
+            .Which.Label.String.Should().Be(": int32");
         typeHints.Should().ContainSingle(h => h.Position == new Position(4, 9))
-            .Which.Label.String.Should().Be(": int");
+            .Which.Label.String.Should().Be(": int32");
     }
 
     [Fact]
@@ -245,7 +245,7 @@ public class InlayHintTests : IDisposable
         var hints = await GetHintsAsync(source);
 
         var typeHints = TypeHints(hints);
-        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int");
+        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int32");
         // After the name `LIMIT`, so the hint reads `const LIMIT: int = 42`.
         typeHints[0].Position.Should().Be(new Position(1, 15));
     }
@@ -263,7 +263,7 @@ public class InlayHintTests : IDisposable
         var hints = await GetHintsAsync(source);
 
         var typeHints = TypeHints(hints);
-        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int");
+        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int32");
         typeHints[0].Position.Should().Be(new Position(1, 15));
     }
 
@@ -281,7 +281,7 @@ public class InlayHintTests : IDisposable
         var hints = await GetHintsAsync(source);
 
         var typeHints = TypeHints(hints);
-        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int");
+        typeHints.Should().ContainSingle().Which.Label.String.Should().Be(": int32");
         typeHints[0].Position.Should().Be(new Position(0, 11));
     }
 
@@ -317,7 +317,7 @@ public class InlayHintTests : IDisposable
         var typeHints = TypeHints(hints);
         typeHints.Should().HaveCount(2);
         typeHints.Should().ContainSingle(h => h.Position == new Position(0, 11))
-            .Which.Label.String.Should().Be(": int");
+            .Which.Label.String.Should().Be(": int32");
         typeHints.Should().ContainSingle(h => h.Position == new Position(3, 15))
             .Which.Label.String.Should().Be(": str");
     }
@@ -547,7 +547,7 @@ public class InlayHintTests : IDisposable
         var enabledTypeHints = TypeHints(enabled);
         enabledTypeHints.Should().ContainSingle(
             "the disabled assertion below is only meaningful if this source produces a type hint")
-            .Which.Label.String.Should().Be(": int");
+            .Which.Label.String.Should().Be(": int32");
         // After the name `TOTAL`, not after the `const` keyword: `const TOTAL: int = 42`.
         enabledTypeHints[0].Position.Should().Be(new Position(0, 11));
 

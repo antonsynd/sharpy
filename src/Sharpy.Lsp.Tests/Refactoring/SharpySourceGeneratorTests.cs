@@ -13,7 +13,7 @@ public class SharpySourceGeneratorTests
     public void FormatTypeAnnotation_BuiltinInt_ReturnsInt()
     {
         var result = SharpySourceGenerator.FormatTypeAnnotation((BuiltinType)SemanticType.Int);
-        result.Should().Be("int");
+        result.Should().Be("int32");
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public class SharpySourceGeneratorTests
     public void FormatTypeAnnotation_BuiltinFloat_ReturnsFloat()
     {
         var result = SharpySourceGenerator.FormatTypeAnnotation((BuiltinType)SemanticType.Float);
-        result.Should().Be("float");
+        result.Should().Be("float64");
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class SharpySourceGeneratorTests
     {
         var optionalInt = new OptionalType { UnderlyingType = (BuiltinType)SemanticType.Int };
         var result = SharpySourceGenerator.FormatTypeAnnotation(optionalInt);
-        result.Should().Be("int?");
+        result.Should().Be("int32?");
     }
 
     [Fact]

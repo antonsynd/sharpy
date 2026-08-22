@@ -743,19 +743,15 @@ internal class CachedModuleDiscovery
             return new TypeParameterType { Name = signature.Name };
         }
 
-        // Handle primitive types
-        if (signature.Name == BuiltinNames.Int)
+        // Handle primitive types — canonical names first, then aliases (#1356)
+        if (signature.Name is BuiltinNames.Int32 or BuiltinNames.Int)
             return SemanticType.Int;
-        if (signature.Name == BuiltinNames.Long)
+        if (signature.Name is BuiltinNames.Int64 or BuiltinNames.Long)
             return SemanticType.Long;
-        if (signature.Name == BuiltinNames.Float)
-            return SemanticType.Float;       // float -> double (per spec)
-        if (signature.Name == BuiltinNames.Float32)
-            return SemanticType.Float32;   // float32 -> C# float
-        if (signature.Name == BuiltinNames.Float64)
-            return SemanticType.Double;    // float64 -> double
-        if (signature.Name == BuiltinNames.Double)
+        if (signature.Name is BuiltinNames.Float64 or BuiltinNames.Float or BuiltinNames.Double)
             return SemanticType.Double;
+        if (signature.Name == BuiltinNames.Float32)
+            return SemanticType.Float32;
         if (signature.Name == BuiltinNames.Bool)
             return SemanticType.Bool;
         if (signature.Name == BuiltinNames.Str)

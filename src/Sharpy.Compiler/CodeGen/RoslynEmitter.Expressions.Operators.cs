@@ -438,9 +438,7 @@ internal partial class RoslynEmitter
         if (kind is SyntaxKind.LeftShiftExpression or SyntaxKind.RightShiftExpression)
         {
             var rightType = _context.SemanticInfo?.GetExpressionType(binOp.Right);
-            // "int" is the singleton's name; with "int32" this guard was always true and every
-            // shift count — including int-typed ones — got a redundant cast (#1304).
-            if (rightType is BuiltinType { Name: not "int" })
+            if (rightType is BuiltinType { ClrType: var clr } && clr != typeof(int))
             {
                 right = CastExpression(
                     PredefinedType(Token(SyntaxKind.IntKeyword)),
@@ -578,13 +576,12 @@ internal partial class RoslynEmitter
                 try
                 {
                     var ulongMagnitude = ParseIntegerText(text);
-                    // "int" is the singleton's name; "int32" was dead code here (#1304).
-                    if (bt.Name == "int" && ulongMagnitude <= (ulong)int.MaxValue + 1)
+                    if (bt.ClrType == typeof(int) && ulongMagnitude <= (ulong)int.MaxValue + 1)
                     {
                         return LiteralExpression(SyntaxKind.NumericLiteralExpression,
                             Literal(-(int)(long)ulongMagnitude));
                     }
-                    if (bt.Name == "int64")
+                    if (bt.ClrType == typeof(long))
                     {
                         if (ulongMagnitude == (ulong)long.MaxValue + 1)
                             return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(long.MinValue));

@@ -83,18 +83,18 @@ public class TypeMappingConsistencyTests
     }
 
     [Theory]
-    [InlineData(typeof(int), "int")]
-    [InlineData(typeof(long), "long")]
-    [InlineData(typeof(float), "float32")]     // C# float -> Sharpy float32
-    [InlineData(typeof(double), "double")]     // C# double -> Sharpy double (last registered canonical name)
+    [InlineData(typeof(int), "int32")]
+    [InlineData(typeof(long), "int64")]
+    [InlineData(typeof(float), "float32")]
+    [InlineData(typeof(double), "float64")]
     [InlineData(typeof(bool), "bool")]
-    [InlineData(typeof(string), "string")]     // Note: "str" is alias, "string" is canonical by CLR type
-    [InlineData(typeof(sbyte), "sbyte")]
-    [InlineData(typeof(byte), "byte")]
-    [InlineData(typeof(short), "short")]
-    [InlineData(typeof(ushort), "ushort")]
-    [InlineData(typeof(uint), "uint")]
-    [InlineData(typeof(ulong), "ulong")]
+    [InlineData(typeof(string), "str")]
+    [InlineData(typeof(sbyte), "int8")]
+    [InlineData(typeof(byte), "uint8")]
+    [InlineData(typeof(short), "int16")]
+    [InlineData(typeof(ushort), "uint16")]
+    [InlineData(typeof(uint), "uint32")]
+    [InlineData(typeof(ulong), "uint64")]
     [InlineData(typeof(char), "char")]
     [InlineData(typeof(decimal), "decimal")]
     public void DiscoveryTypeMapper_MapsClrTypeCorrectly(Type clrType, string expectedSharpyName)

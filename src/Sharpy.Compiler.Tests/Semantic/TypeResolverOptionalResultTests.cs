@@ -293,7 +293,7 @@ public class TypeResolverOptionalResultTests
         var annotation = new TypeAnnotation { Name = "int", IsOptional = true };
         var type = resolver.ResolveTypeAnnotation(annotation);
 
-        type.GetDisplayName().Should().Be("int?");
+        type.GetDisplayName().Should().Be("int32?");
     }
 
     [Fact]
@@ -315,7 +315,7 @@ public class TypeResolverOptionalResultTests
         };
         var type = resolver.ResolveTypeAnnotation(annotation);
 
-        type.GetDisplayName().Should().Be("int !ValueError");
+        type.GetDisplayName().Should().Be("int32 !ValueError");
     }
 
     [Fact]

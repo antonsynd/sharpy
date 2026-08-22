@@ -65,6 +65,8 @@ value::plain::inSourceSet
 value::plain::outsideSourceSet
 
 # #1587 — a module-qualified type-alias CALL is never expanded: `lib.Handle("42")` emits
-# `Lib.Handle`, CS0117 behind SPY0908, where bare prints 42. The outsideSourceSet cell AGREES,
-# so only the in-source-set path is listed.
+# `Lib.Handle`, CS0117 behind SPY0908, where bare prints 42.
 call::alias::inSourceSet
+# #1612 — the outsideSourceSet cell diverges after the #1356 singleton collapse: bare
+# `from lib import Handle; Handle("42")` draws SPY0201 while `lib.Handle` resolves.
+call::alias::outsideSourceSet

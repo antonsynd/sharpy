@@ -56,6 +56,11 @@ public static class PrimitiveCatalog
         byClr[info.ClrType] = info;
     }
 
+    private static void RegisterAlias(Dictionary<string, PrimitiveInfo> byName, PrimitiveInfo info)
+    {
+        byName[info.SharpyName] = info;
+    }
+
     private static void RegisterAll(Dictionary<string, PrimitiveInfo> byName, Dictionary<Type, PrimitiveInfo> byClr)
     {
         // 1.2.1 Signed integer types (Sharpy-style names are primary per spec)
@@ -63,36 +68,37 @@ public static class PrimitiveCatalog
         Register(byName, byClr, new PrimitiveInfo("int16", "short", typeof(short), NumericKind.SignedInteger, 16, true));
         Register(byName, byClr, new PrimitiveInfo("int32", "int", typeof(int), NumericKind.SignedInteger, 32, true));
         Register(byName, byClr, new PrimitiveInfo("int64", "long", typeof(long), NumericKind.SignedInteger, 64, true));
-        // C#-style aliases
-        Register(byName, byClr, new PrimitiveInfo("sbyte", "sbyte", typeof(sbyte), NumericKind.SignedInteger, 8, true));
-        Register(byName, byClr, new PrimitiveInfo("short", "short", typeof(short), NumericKind.SignedInteger, 16, true));
-        Register(byName, byClr, new PrimitiveInfo("int", "int", typeof(int), NumericKind.SignedInteger, 32, true));
-        Register(byName, byClr, new PrimitiveInfo("long", "long", typeof(long), NumericKind.SignedInteger, 64, true));
+        // C#-style aliases — name map only, so _byClrType stays canonical (#1356)
+        RegisterAlias(byName, new PrimitiveInfo("sbyte", "sbyte", typeof(sbyte), NumericKind.SignedInteger, 8, true));
+        RegisterAlias(byName, new PrimitiveInfo("short", "short", typeof(short), NumericKind.SignedInteger, 16, true));
+        RegisterAlias(byName, new PrimitiveInfo("int", "int", typeof(int), NumericKind.SignedInteger, 32, true));
+        RegisterAlias(byName, new PrimitiveInfo("long", "long", typeof(long), NumericKind.SignedInteger, 64, true));
 
         // 1.2.2 Unsigned integer types (Sharpy-style names are primary per spec)
         Register(byName, byClr, new PrimitiveInfo("uint8", "byte", typeof(byte), NumericKind.UnsignedInteger, 8, false));
         Register(byName, byClr, new PrimitiveInfo("uint16", "ushort", typeof(ushort), NumericKind.UnsignedInteger, 16, false));
         Register(byName, byClr, new PrimitiveInfo("uint32", "uint", typeof(uint), NumericKind.UnsignedInteger, 32, false));
         Register(byName, byClr, new PrimitiveInfo("uint64", "ulong", typeof(ulong), NumericKind.UnsignedInteger, 64, false));
-        // C#-style aliases
-        Register(byName, byClr, new PrimitiveInfo("byte", "byte", typeof(byte), NumericKind.UnsignedInteger, 8, false));
-        Register(byName, byClr, new PrimitiveInfo("ushort", "ushort", typeof(ushort), NumericKind.UnsignedInteger, 16, false));
-        Register(byName, byClr, new PrimitiveInfo("uint", "uint", typeof(uint), NumericKind.UnsignedInteger, 32, false));
-        Register(byName, byClr, new PrimitiveInfo("ulong", "ulong", typeof(ulong), NumericKind.UnsignedInteger, 64, false));
+        // C#-style aliases — name map only (#1356)
+        RegisterAlias(byName, new PrimitiveInfo("byte", "byte", typeof(byte), NumericKind.UnsignedInteger, 8, false));
+        RegisterAlias(byName, new PrimitiveInfo("ushort", "ushort", typeof(ushort), NumericKind.UnsignedInteger, 16, false));
+        RegisterAlias(byName, new PrimitiveInfo("uint", "uint", typeof(uint), NumericKind.UnsignedInteger, 32, false));
+        RegisterAlias(byName, new PrimitiveInfo("ulong", "ulong", typeof(ulong), NumericKind.UnsignedInteger, 64, false));
 
         // 1.2.3 Floating-point types
-        // Per spec: float32 -> C# float, float/float64 -> C# double
+        // Per spec: float32 -> C# float, float64 -> C# double
         Register(byName, byClr, new PrimitiveInfo("float32", "float", typeof(float), NumericKind.FloatingPoint, 32, true));
-        Register(byName, byClr, new PrimitiveInfo("float", "double", typeof(double), NumericKind.FloatingPoint, 64, true));
         Register(byName, byClr, new PrimitiveInfo("float64", "double", typeof(double), NumericKind.FloatingPoint, 64, true));
-        Register(byName, byClr, new PrimitiveInfo("double", "double", typeof(double), NumericKind.FloatingPoint, 64, true));
+        // Aliases — name map only (#1356)
+        RegisterAlias(byName, new PrimitiveInfo("float", "double", typeof(double), NumericKind.FloatingPoint, 64, true));
+        RegisterAlias(byName, new PrimitiveInfo("double", "double", typeof(double), NumericKind.FloatingPoint, 64, true));
         Register(byName, byClr, new PrimitiveInfo("decimal", "decimal", typeof(decimal), NumericKind.Decimal, 128, true));
 
         // 1.2.4 Non-numeric primitives
         Register(byName, byClr, new PrimitiveInfo("bool", "bool", typeof(bool), NumericKind.None, 8, false));
         Register(byName, byClr, new PrimitiveInfo("char", "char", typeof(char), NumericKind.None, 16, false));
         Register(byName, byClr, new PrimitiveInfo("str", "string", typeof(string), NumericKind.None, 0, false));
-        Register(byName, byClr, new PrimitiveInfo("string", "string", typeof(string), NumericKind.None, 0, false)); // Alias
+        RegisterAlias(byName, new PrimitiveInfo("string", "string", typeof(string), NumericKind.None, 0, false));
         Register(byName, byClr, new PrimitiveInfo("object", "object", typeof(object), NumericKind.None, 0, false));
 
         // 1.2.5 Void/None - typeof(void) is a valid Type representing System.Void

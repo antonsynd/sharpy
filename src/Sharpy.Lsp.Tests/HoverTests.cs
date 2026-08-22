@@ -213,7 +213,7 @@ public class HoverTests : IDisposable
         effectiveType.Should().BeOfType<ResultType>();
         var resultType = (ResultType)effectiveType!;
         resultType.OkType.Should().BeOfType<BuiltinType>();
-        resultType.OkType.GetDisplayName().Should().Be("int");
+        resultType.OkType.GetDisplayName().Should().Be("int32");
         resultType.ErrorType.GetDisplayName().Should().Be("str");
     }
 
@@ -238,8 +238,8 @@ public class HoverTests : IDisposable
             "result.map_err() should resolve to a concrete type, not <?>");
         effectiveType.Should().BeOfType<ResultType>();
         var resultType = (ResultType)effectiveType!;
-        resultType.OkType.GetDisplayName().Should().Be("int");
-        resultType.ErrorType.GetDisplayName().Should().Be("int");
+        resultType.OkType.GetDisplayName().Should().Be("int32");
+        resultType.ErrorType.GetDisplayName().Should().Be("int32");
     }
 
     [Fact]
@@ -696,7 +696,7 @@ public class HoverTests : IDisposable
         // Verify the type argument resolves to int
         var argType = analysis.SemanticQuery!.GetTypeAnnotation(param.Type.TypeArguments[0]);
         argType.Should().NotBeNull();
-        argType!.GetDisplayName().Should().Be("int");
+        argType!.GetDisplayName().Should().Be("int32");
     }
 
     [Fact]
@@ -777,7 +777,7 @@ public class HoverTests : IDisposable
         // Verify the innermost int resolves correctly
         var innerType = analysis.SemanticQuery!.GetTypeAnnotation(listArg.TypeArguments[0]);
         innerType.Should().NotBeNull();
-        innerType!.GetDisplayName().Should().Be("int");
+        innerType!.GetDisplayName().Should().Be("int32");
     }
 
     [Fact]

@@ -2515,7 +2515,7 @@ property get version() -> str:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Diagnostics.GetErrors().Should().ContainSingle()
-            .Which.Message.Should().Contain("Cannot return type 'int'");
+            .Which.Message.Should().Contain("Cannot return type 'int32'");
     }
 
     [Fact]
@@ -2608,7 +2608,7 @@ def use() -> None:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Diagnostics.GetErrors().Should().ContainSingle()
-            .Which.Message.Should().Contain("Cannot assign type 'str' to variable of type 'int'");
+            .Which.Message.Should().Contain("Cannot assign type 'str' to variable of type 'int32'");
     }
 
     [Fact]

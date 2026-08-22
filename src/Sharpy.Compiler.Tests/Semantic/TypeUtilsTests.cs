@@ -353,7 +353,7 @@ public class TypeUtilsTests
     public void TaskType_GetDisplayName_WithResultType_ReturnsTaskOfT()
     {
         var taskType = new TaskType { ResultType = SemanticType.Int };
-        Assert.Equal("Task[int]", taskType.GetDisplayName());
+        Assert.Equal("Task[int32]", taskType.GetDisplayName());
     }
 
     [Fact]

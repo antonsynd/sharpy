@@ -59,7 +59,7 @@ public class EnumerateImplementedInterfacesTests
             .Select(Display)
             .ToList();
 
-        result.Should().ContainSingle().Which.Should().Be("IBuilder[int]");
+        result.Should().ContainSingle().Which.Should().Be("IBuilder[int32]");
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class EnumerateImplementedInterfacesTests
             .Select(Display)
             .ToList();
 
-        result.Should().Contain("IBuilder[int]");
+        result.Should().Contain("IBuilder[int32]");
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public class EnumerateImplementedInterfacesTests
             .Select(Display)
             .ToList();
 
-        result.Should().Contain("IBuilder[int]");
+        result.Should().Contain("IBuilder[int32]");
         result.Should().NotContain("IBuilder[T]");
     }
 
@@ -123,7 +123,7 @@ public class EnumerateImplementedInterfacesTests
             .Select(Display)
             .ToList();
 
-        result.Should().Contain("IBuilder[int]");
+        result.Should().Contain("IBuilder[int32]");
     }
 
     [Fact]

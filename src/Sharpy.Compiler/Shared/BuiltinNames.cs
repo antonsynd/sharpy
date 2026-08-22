@@ -65,6 +65,8 @@ internal static class BuiltinNames
     public const string IEnumerator = "IEnumerator";
 
     // ---- Additional type names ----
+    public const string Int32 = "int32";
+    public const string Int64 = "int64";
     public const string Long = "long";
     public const string Double = "double";
     public const string Float32 = "float32";

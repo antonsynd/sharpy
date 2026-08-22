@@ -9,7 +9,7 @@ public class OptionalTypeTests
     public void OptionalType_DisplayName_ShowsQuestionMark()
     {
         var opt = new OptionalType { UnderlyingType = SemanticType.Int };
-        Assert.Equal("int?", opt.GetDisplayName());
+        Assert.Equal("int32?", opt.GetDisplayName());
     }
 
     [Fact]
@@ -81,6 +81,6 @@ public class OptionalTypeTests
     {
         var inner = new OptionalType { UnderlyingType = SemanticType.Int };
         var outer = new OptionalType { UnderlyingType = inner };
-        Assert.Equal("int??", outer.GetDisplayName());
+        Assert.Equal("int32??", outer.GetDisplayName());
     }
 }

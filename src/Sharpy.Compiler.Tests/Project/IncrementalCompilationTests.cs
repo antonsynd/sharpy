@@ -297,7 +297,7 @@ def main():
         Assert.Equal(2, cached.Parameters!.Count);
         // CLR-backed builtins encode their origin as name@FullName (#1538); the decoder
         // resolves the singleton by name first, so the suffix never shadows reference identity.
-        Assert.Equal("builtin:int@System.Int32", cached.Parameters[0].TypeId);
+        Assert.Equal("builtin:int32@System.Int32", cached.Parameters[0].TypeId);
         Assert.Equal("builtin:str@System.String", cached.Parameters[1].TypeId);
         Assert.Equal("builtin:bool@System.Boolean", cached.ReturnTypeId);
     }

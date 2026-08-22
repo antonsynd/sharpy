@@ -57,17 +57,17 @@ public class PrimitiveCatalogTests
     }
 
     [Theory]
-    [InlineData(typeof(int), "int")]
-    [InlineData(typeof(long), "long")]
-    [InlineData(typeof(float), "float32")]      // C# float -> Sharpy 'float32'
-    [InlineData(typeof(double), "double")]      // C# double -> Sharpy 'double' (last registered canonical name)
+    [InlineData(typeof(int), "int32")]
+    [InlineData(typeof(long), "int64")]
+    [InlineData(typeof(float), "float32")]
+    [InlineData(typeof(double), "float64")]
     [InlineData(typeof(bool), "bool")]
-    [InlineData(typeof(sbyte), "sbyte")]
-    [InlineData(typeof(byte), "byte")]
-    [InlineData(typeof(short), "short")]
-    [InlineData(typeof(ushort), "ushort")]
-    [InlineData(typeof(uint), "uint")]
-    [InlineData(typeof(ulong), "ulong")]
+    [InlineData(typeof(sbyte), "int8")]
+    [InlineData(typeof(byte), "uint8")]
+    [InlineData(typeof(short), "int16")]
+    [InlineData(typeof(ushort), "uint16")]
+    [InlineData(typeof(uint), "uint32")]
+    [InlineData(typeof(ulong), "uint64")]
     [InlineData(typeof(char), "char")]
     [InlineData(typeof(decimal), "decimal")]
     public void GetByClrType_ReturnsCorrectSharpyName(Type clrType, string expectedName)
@@ -80,13 +80,11 @@ public class PrimitiveCatalogTests
     [Fact]
     public void GetByClrType_ReturnsInfoForString()
     {
-        // string has two aliases: "str" and "string"
-        // The first registered ("str") wins in the CLR type lookup
+        // "str" is canonical; "string" is an alias that lives in _bySharpyName only (#1356)
         var info = PrimitiveCatalog.GetByClrType(typeof(string));
         info.Should().NotBeNull();
         info!.ClrType.Should().Be(typeof(string));
-        // Both "str" and "string" are valid Sharpy names for string
-        info.SharpyName.Should().BeOneOf("str", "string");
+        info.SharpyName.Should().Be("str");
     }
 
     // ==================== 1.6.3 Test numeric classification ====================
@@ -458,7 +456,7 @@ public class PrimitiveCatalogTests
     {
         var info = PrimitiveCatalog.GetPrimitiveInfo(SemanticType.Int);
         info.Should().NotBeNull();
-        info!.SharpyName.Should().Be("int");
+        info!.SharpyName.Should().Be("int32");
         info.ClrType.Should().Be(typeof(int));
     }
 

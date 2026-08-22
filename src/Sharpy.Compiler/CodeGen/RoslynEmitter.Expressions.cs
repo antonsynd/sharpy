@@ -520,16 +520,15 @@ internal partial class RoslynEmitter
             try
             {
                 var ulongVal = ParseIntegerText(text);
-                // NB: the int singleton is named "int", not the catalog's "int32" — the other
-                // widths use the catalog spelling. "int32" here was dead code (#1304, #1356 class).
-                return bt.Name switch
-                {
-                    "int" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)ulongVal)),
-                    "int64" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((long)ulongVal)),
-                    "uint32" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((uint)ulongVal)),
-                    "uint64" => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(ulongVal)),
-                    _ => GenerateIntegerLiteralFallback(literal, text)
-                };
+                if (bt.ClrType == typeof(int))
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)ulongVal));
+                if (bt.ClrType == typeof(long))
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((long)ulongVal));
+                if (bt.ClrType == typeof(uint))
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((uint)ulongVal));
+                if (bt.ClrType == typeof(ulong))
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(ulongVal));
+                return GenerateIntegerLiteralFallback(literal, text);
             }
             catch (OverflowException)
             {

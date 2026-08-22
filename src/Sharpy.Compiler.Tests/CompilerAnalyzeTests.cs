@@ -647,7 +647,7 @@ def use() -> int:
         target!.Parameters.Should().ContainSingle();
         target.Parameters[0].Type.GetDisplayName().Should().Be("str",
             "pick(\"hello\") selects the str overload, not the first-declared int one");
-        target.ReturnType.GetDisplayName().Should().Be("int");
+        target.ReturnType.GetDisplayName().Should().Be("int32");
     }
 
     private static string FormatDiagnostics(SemanticResult result)
