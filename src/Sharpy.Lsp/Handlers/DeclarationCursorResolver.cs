@@ -15,10 +15,20 @@ namespace Sharpy.Lsp.Handlers;
 /// <c>CallHierarchyPrepareHandler.cs:60-66</c> carry the same two-arm <c>Identifier</c>/<c>FunctionCall</c>
 /// switch — future consumers, out of #1539's stated scope.
 /// </remarks>
-// TODO(#1602): ReferencesHandler and DocumentHighlightHandler do not apply GetBindingChain,
-// so a cursor on a rebound local returns only the fragment at that binding level.
 internal static class DeclarationCursorResolver
 {
+    /// <summary>
+    /// Returns the full binding chain for a symbol if it is a rebinding, or the symbol itself
+    /// in a single-element list. References/highlight/rename all operate on the whole set (#1602).
+    /// </summary>
+    public static IReadOnlyList<Symbol> BindingSet(Symbol symbol, ISemanticQuery query)
+    {
+        var chain = query.GetBindingChain(symbol);
+        return chain.Count > 0
+            ? chain.Cast<Symbol>().ToList()
+            : new System.Collections.Generic.List<Symbol> { symbol };
+    }
+
     /// <summary>
     /// Returns the symbol the cursor sits on, considering both reference nodes (Identifier,
     /// FunctionCall) and declaration nodes (VariableDeclaration, FunctionDef, ClassDef, etc.).

@@ -71,14 +71,7 @@ internal sealed class SharpyRenameHandler : RenameHandlerBase
         // is emitted twice — two overlapping edits an editor may apply twice (#1263).
         var seen = new RangeDedupe();
 
-        // A plainly-reassigned spelling is bound more than once, and each binding's references stop
-        // at the next rebinding. Renaming one binding's occurrences would edit a FRAGMENT of the
-        // variable and leave source that still compiles while meaning something else (#1359), so
-        // every binding in the chain is edited as one unit. A spelling bound once is a chain of one.
-        var chain = analysis.SemanticQuery.GetBindingChain(symbol);
-        var bindings = chain.Count > 0
-            ? chain.Cast<Symbol>().ToList()
-            : new System.Collections.Generic.List<Symbol> { symbol };
+        var bindings = DeclarationCursorResolver.BindingSet(symbol, analysis.SemanticQuery);
 
         foreach (var binding in bindings)
         {

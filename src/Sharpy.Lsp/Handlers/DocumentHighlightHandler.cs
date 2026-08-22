@@ -43,56 +43,55 @@ internal sealed class SharpyDocumentHighlightHandler : DocumentHighlightHandlerB
             return null;
 
         var results = new List<DocumentHighlight>();
-        // The declaration is usually recorded as a reference too. Deduping keeps the Write kind:
-        // the declaration is added first, so the Read duplicate is the one dropped (#1263).
         var seen = new RangeDedupe();
+        var bindings = DeclarationCursorResolver.BindingSet(symbol, analysis.SemanticQuery);
 
-        // Unified gate: previously DeclarationSpan (refs) vs DeclarationLine (highlight)
-        if (symbol.EffectiveNameLine != null)
+        foreach (var binding in bindings)
         {
-            var declLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
-            var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
-            var declEnd = declCol + SymbolExtents.NameExtentLength(symbol);
-
-            var declRange = new LspRange(
-                new Position(declLine, declCol),
-                new Position(declLine, declEnd));
-
-            if (seen.IsFirst(declRange))
+            if (binding.EffectiveNameLine != null)
             {
+                var declLine = System.Math.Max(0, (binding.EffectiveNameLine ?? 1) - 1);
+                var declCol = System.Math.Max(0, (binding.EffectiveNameColumn ?? 1) - 1);
+                var declEnd = declCol + SymbolExtents.NameExtentLength(binding);
+
+                var declRange = new LspRange(
+                    new Position(declLine, declCol),
+                    new Position(declLine, declEnd));
+
+                if (seen.IsFirst(declRange))
+                {
+                    results.Add(new DocumentHighlight
+                    {
+                        Range = declRange,
+                        Kind = DocumentHighlightKind.Write
+                    });
+                }
+            }
+
+            var references = analysis.SemanticQuery.GetReferences(binding);
+            foreach (var refLoc in references)
+            {
+                if (refLoc.FilePath != null && !refLoc.FilePath.Equals(uri, StringComparison.Ordinal)
+                    && !uri.EndsWith(refLoc.FilePath, StringComparison.Ordinal))
+                    continue;
+
+                var refLine = System.Math.Max(0, refLoc.Line - 1);
+                var refCol = System.Math.Max(0, refLoc.Column - 1);
+                var refEnd = refCol + SymbolExtents.ReferenceExtentLength(refLoc, binding.Name);
+
+                var refRange = new LspRange(
+                    new Position(refLine, refCol),
+                    new Position(refLine, refEnd));
+
+                if (!seen.IsFirst(refRange))
+                    continue;
+
                 results.Add(new DocumentHighlight
                 {
-                    Range = declRange,
-                    Kind = DocumentHighlightKind.Write
+                    Range = refRange,
+                    Kind = DocumentHighlightKind.Read
                 });
             }
-        }
-
-        // Add reference highlights (Read kind)
-        var references = analysis.SemanticQuery.GetReferences(symbol);
-        foreach (var refLoc in references)
-        {
-            // Only include references in the same document
-            if (refLoc.FilePath != null && !refLoc.FilePath.Equals(uri, StringComparison.Ordinal)
-                && !uri.EndsWith(refLoc.FilePath, StringComparison.Ordinal))
-                continue;
-
-            var refLine = System.Math.Max(0, refLoc.Line - 1);
-            var refCol = System.Math.Max(0, refLoc.Column - 1);
-            var refEnd = refCol + SymbolExtents.ReferenceExtentLength(refLoc, symbol.Name);
-
-            var refRange = new LspRange(
-                new Position(refLine, refCol),
-                new Position(refLine, refEnd));
-
-            if (!seen.IsFirst(refRange))
-                continue;
-
-            results.Add(new DocumentHighlight
-            {
-                Range = refRange,
-                Kind = DocumentHighlightKind.Read
-            });
         }
 
         return results.Any()

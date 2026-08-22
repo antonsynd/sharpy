@@ -44,35 +44,35 @@ internal sealed class SharpyReferencesHandler : ReferencesHandlerBase
             return null;
 
         var locations = new System.Collections.Generic.List<Location>();
-        // The declaration is usually recorded as a reference too, so it would otherwise be
-        // reported twice at the same range (#1263).
         var seen = new RangeDedupe();
+        var bindings = DeclarationCursorResolver.BindingSet(symbol, analysis.SemanticQuery);
 
-        // Unified gate: previously DeclarationSpan (refs) vs DeclarationLine (highlight)
-        if (request.Context.IncludeDeclaration && symbol.EffectiveNameLine != null)
+        foreach (var binding in bindings)
         {
-            var declLine = System.Math.Max(0, (symbol.EffectiveNameLine ?? 1) - 1);
-            var declCol = System.Math.Max(0, (symbol.EffectiveNameColumn ?? 1) - 1);
-            var declEnd = declCol + SymbolExtents.NameExtentLength(symbol);
-
-            var declFilePath = symbol.DeclaringFilePath ?? uri;
-            var declUri = declFilePath.StartsWith("file://", StringComparison.Ordinal)
-                ? DocumentUri.From(declFilePath)
-                : DocumentUri.FromFileSystemPath(declFilePath);
-
-            var declRange = new LspRange(
-                new Position(declLine, declCol),
-                new Position(declLine, declEnd));
-
-            if (seen.IsFirst(declUri, declRange))
+            if (request.Context.IncludeDeclaration && binding.EffectiveNameLine != null)
             {
-                locations.Add(new Location { Uri = declUri, Range = declRange });
-            }
-        }
+                var declLine = System.Math.Max(0, (binding.EffectiveNameLine ?? 1) - 1);
+                var declCol = System.Math.Max(0, (binding.EffectiveNameColumn ?? 1) - 1);
+                var declEnd = declCol + SymbolExtents.NameExtentLength(binding);
 
-        // Get references from current file
-        var references = analysis.SemanticQuery.GetReferences(symbol);
-        AddReferenceLocations(locations, seen, references, symbol.Name, uri);
+                var declFilePath = binding.DeclaringFilePath ?? uri;
+                var declUri = declFilePath.StartsWith("file://", StringComparison.Ordinal)
+                    ? DocumentUri.From(declFilePath)
+                    : DocumentUri.FromFileSystemPath(declFilePath);
+
+                var declRange = new LspRange(
+                    new Position(declLine, declCol),
+                    new Position(declLine, declEnd));
+
+                if (seen.IsFirst(declUri, declRange))
+                {
+                    locations.Add(new Location { Uri = declUri, Range = declRange });
+                }
+            }
+
+            var references = analysis.SemanticQuery.GetReferences(binding);
+            AddReferenceLocations(locations, seen, references, binding.Name, uri);
+        }
 
         // Collect references from other workspace files
         var allUris = _workspace.GetAllDocumentUris();
