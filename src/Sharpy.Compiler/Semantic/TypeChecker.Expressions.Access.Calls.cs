@@ -839,7 +839,9 @@ internal partial class TypeChecker
         //
         // No guard is written now on purpose: it would be unreachable code that no test can
         // exercise and no mutation can prove, which is worse than the coupling it documents
-        // (Batch E's measured rationale). #1412 stays open as the tripwire.
+        // (Batch E's measured rationale). #1412 is the tripwire — parked and closed by the
+        // 2026-08-13 ruling; any change that lets a Sharpy class declare an erasable-collection
+        // base re-opens it and adds the guard with the MyList[int] vs case list(): cell pinned.
         foreach (var supertype in GenericInstantiationWalker.EnumerateSupertypes(
             generic, _symbolTable, SemanticBinding, _typeResolver))
         {
