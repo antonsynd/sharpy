@@ -30,6 +30,12 @@ internal class UnusedImportValidator : ValidatingAstWalker
             switch (stmt.UnwrapDecorated())
             {
                 case FromImportStatement fromImport:
+                    // `from __future__ import <feature>` is a compiler directive: the imported
+                    // name is consumed by the import itself (it enables the feature for this
+                    // file), so it can never have an identifier reference and must not draw
+                    // SPY0452 (#1616).
+                    if (fromImport.Module == "__future__")
+                        break;
                     if (!fromImport.ImportAll)
                     {
                         foreach (var alias in fromImport.Names)
