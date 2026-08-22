@@ -123,7 +123,7 @@ def main():
         Assert.False(result.Success, "Expected compilation to fail: IList[T] is invariant in T");
         Assert.NotEmpty(result.CompilationErrors);
         var errorText = string.Join(" ", result.CompilationErrors);
-        Assert.Contains("Cannot pass argument of type 'list[int]' to parameter of type 'IList[object]'", errorText);
+        Assert.Contains("Cannot pass argument of type 'list[int32]' to parameter of type 'IList[object]'", errorText);
     }
 
     [Fact]
