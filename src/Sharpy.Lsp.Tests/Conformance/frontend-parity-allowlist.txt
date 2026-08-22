@@ -33,8 +33,8 @@
 # the asymmetry IS the designed behavior (plan-57177f DD6), not drift, and the
 # entries outlive #1360's close (cited for provenance, not as an open tracker).
 # If a key here ever stops mismatching, the design changed and the entry must go
-# with it — note the sweep has no stale-entry detection yet (#1605), so that
-# review is manual until #1605 lands.
+# with it — the sweep's stale-entry detection (#1605) enforces this automatically:
+# a key in this block going quiet fails the ratchet.
 compile::errors/nested_placeholder
 compile::errors/parser_recovery_try_errors
 compile::errors/parser_recovery_while_for_errors

@@ -182,14 +182,19 @@ public class FrontEndParityTests
 
         var allowlist = LoadAllowlist();
         var offenders = violations.Where(v => !allowlist.Matches(v.Key)).ToList();
+        var stale = comparisons
+            .Where(c => c.Match && allowlist.ExactKeys.Contains(c.Key))
+            .Select(c => c.Key)
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
 
         WriteReport(fixtures.Count, sampled.Count, comparisons, violations, crashes.ToList(),
-            skips.ToList(), allowlist, offenders.Count);
+            skips.ToList(), allowlist, offenders.Count, stale);
 
         _output.WriteLine($"Fixtures discovered: {fixtures.Count}  swept: {sampled.Count}  (stride {stride})");
         _output.WriteLine($"Comparisons: {comparisons.Count}  Matches: {matches}  Violations: {violations.Count}");
         _output.WriteLine($"Justified-normalized skips: {skips.Count}  Crashes: {crashes.Count}");
-        _output.WriteLine($"Allowlist size: {allowlist.Count}  Non-allowlisted violations: {offenders.Count}");
+        _output.WriteLine($"Allowlist size: {allowlist.Count}  Non-allowlisted violations: {offenders.Count}  Stale allowlist entries: {stale.Count}");
 
         Assert.True(comparisons.Count > 0, "Front-end parity sweep produced zero comparisons.");
 
@@ -210,6 +215,13 @@ public class FrontEndParityTests
                     $"  {o.Key}  baseline=[{string.Join(",", o.BaselineCodes)}] {o.EntryPoint}=[{string.Join(",", o.EntryCodes)}]" +
                     $" (+[{string.Join(",", o.Added)}] -[{string.Join(",", o.Removed)}])")) +
                 "\nFull list: .claude/tmp/frontend-parity-report.json");
+
+            Assert.True(stale.Count == 0,
+                $"{stale.Count} allowlist entr{(stale.Count == 1 ? "y" : "ies")} no longer " +
+                "diverge — whatever fixed them must also delete the entries " +
+                "(docs/design/gap-discovery-contracts.md). Delete these lines from " +
+                "Conformance/frontend-parity-allowlist.txt:\n  " +
+                string.Join("\n  ", stale));
         }
     }
 
@@ -582,7 +594,8 @@ public class FrontEndParityTests
     private void WriteReport(
         int discovered, int swept, IReadOnlyCollection<Comparison> comparisons,
         IReadOnlyCollection<Comparison> violations, IReadOnlyCollection<CrashRecord> crashes,
-        IReadOnlyCollection<SkipRecord> skips, Allowlist allowlist, int nonAllowlistedViolations)
+        IReadOnlyCollection<SkipRecord> skips, Allowlist allowlist, int nonAllowlistedViolations,
+        IReadOnlyList<string> staleAllowlistEntries)
     {
         var byEntryPoint = comparisons
             .GroupBy(c => c.EntryPoint)
@@ -634,6 +647,7 @@ public class FrontEndParityTests
                 crashes = crashes.Count,
                 allowlistSize = allowlist.Count,
                 nonAllowlistedViolations,
+                staleAllowlistEntries = staleAllowlistEntries.Count,
             },
             ratchetMode = AllowlistFileExists(),
             signatureCoverage,
@@ -661,6 +675,7 @@ public class FrontEndParityTests
                 added = v.Added,
                 removed = v.Removed,
             }),
+            staleAllowlistEntries,
             crashes = crashes.Take(100).Select(c => new { c.Fixture, c.EntryPoint, c.Exception }),
             skips = skips.Take(100).Select(s => new { s.Fixture, s.EntryPoint, s.Reason }),
         };
@@ -720,6 +735,8 @@ public class FrontEndParityTests
         }
 
         public int Count => _exact.Count + _wildcards.Count;
+
+        public IReadOnlyCollection<string> ExactKeys => _exact;
 
         public bool Matches(string key)
             => _exact.Contains(key) || _wildcards.Any(w => GlobMatch(key, w));
