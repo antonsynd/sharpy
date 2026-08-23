@@ -1,0 +1,31 @@
+# Auto event typed EventHandler[T] with a USER-DEFINED EventArgs subclass as T (#1613,
+# events.md "Generic EventHandler[TEventArgs]"). Proves the synthesized Invoke substitutes
+# the type argument: the handler receives ProgressEventArgs and reads its field — pre-fix
+# the bare name bound the arity-0 EventHandler, so Invoke stayed (object, EventArgs) and
+# this drew SPY0220/SPY0376.
+from System import EventArgs
+
+
+class ProgressEventArgs(EventArgs):
+    percent: int
+
+    def __init__(self, percent: int):
+        self.percent = percent
+
+
+class Downloader:
+    event on_progress: EventHandler[ProgressEventArgs]
+
+    def report(self, percent: int):
+        self.on_progress?.invoke(self, ProgressEventArgs(percent))
+
+
+def handler(sender: object, e: ProgressEventArgs) -> None:
+    print(e.percent)
+
+
+def main():
+    d: Downloader = Downloader()
+    d.on_progress += handler
+    d.report(42)
+    print("done")

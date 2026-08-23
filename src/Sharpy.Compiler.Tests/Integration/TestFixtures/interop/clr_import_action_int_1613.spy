@@ -1,0 +1,13 @@
+# Import-channel Action[int] (#1613 cell f): the written arity selects Action`1 from the
+# imported group {0..16} — pre-fix the import kept the max-arity member and drew SPY0224
+# "expects 16 but got 1".
+from system import Action
+
+
+def on_value(n: int) -> None:
+    print(n)
+
+
+def main():
+    cb: Action[int] = on_value
+    cb.invoke(7)

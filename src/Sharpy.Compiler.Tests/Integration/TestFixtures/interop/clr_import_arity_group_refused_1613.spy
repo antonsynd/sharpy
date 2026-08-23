@@ -1,0 +1,13 @@
+# A written arity the CLR name group lacks is refused naming the arities the group offers
+# (#1613): EventHandler is {0, 1, 2} on .NET 10, so three type arguments select nothing —
+# pre-fix the import channel kept one member and the message named ITS arity instead of the
+# user's actual choices.
+from System import EventHandler
+
+
+def use(h: EventHandler[int, str, bool]) -> None:
+    print("unreachable")
+
+
+def main():
+    print("unreachable")

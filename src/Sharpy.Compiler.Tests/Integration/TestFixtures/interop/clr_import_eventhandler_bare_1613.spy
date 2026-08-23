@@ -1,0 +1,22 @@
+# Import-channel bare EventHandler (#1613 cell e): the namespace export carries the whole
+# arity group {0, 1, 2}, and the bare spelling selects the arity-0 (non-generic) member —
+# pre-fix this channel kept one enumeration-order member and drew SPY0224 "expects 2".
+from System import EventHandler, EventArgs
+
+
+class Timer:
+    event on_tick: EventHandler
+
+    def tick(self):
+        self.on_tick?.invoke(self, EventArgs.empty)
+
+
+def handler(sender: object, e: EventArgs) -> None:
+    print("tick")
+
+
+def main():
+    t: Timer = Timer()
+    t.on_tick += handler
+    t.tick()
+    print("done")

@@ -1,0 +1,20 @@
+# Auto event typed with the bare CLR Action[int] (#1613, events.md "Auto-Events" promises
+# Action[T] on both event forms). The written arity selects Action`1 from the name group —
+# pre-fix the bare name bound the arity-0 System.Action, so ?.invoke(n) drew "expects 0
+# arguments but got 1" + SPY0376.
+class Ticker:
+    event on_tick: Action[int]
+
+    def tick(self, n: int):
+        self.on_tick?.invoke(n)
+
+
+def handler(n: int) -> None:
+    print(n)
+
+
+def main():
+    t: Ticker = Ticker()
+    t.on_tick += handler
+    t.tick(5)
+    print("done")

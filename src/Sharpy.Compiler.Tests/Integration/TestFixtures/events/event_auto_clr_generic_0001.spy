@@ -1,6 +1,7 @@
 # Auto event typed with the generic CLR EventHandler[T] (#1512, events.md "Generic
-# EventHandler[TEventArgs]"). T = EventArgs here; a user-defined EventArgs subclass as T
-# is #1613 (synthesized Invoke does not substitute the type argument).
+# EventHandler[TEventArgs]"). T = EventArgs here; the written arity selects EventHandler`1
+# from the CLR name group and the synthesized Invoke substitutes the type argument (#1613 —
+# event_auto_clr_generic_subclass_1613 proves substitution with a user-defined subclass).
 from System import EventArgs
 
 

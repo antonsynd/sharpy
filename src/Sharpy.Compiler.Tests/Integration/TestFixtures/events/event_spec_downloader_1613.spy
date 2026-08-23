@@ -1,0 +1,32 @@
+# The events.md:148-164 Downloader normative example, transcribed verbatim (+ a handler and
+# main() that fire the event) — the sharpest acceptance test for #1613: it needs the import
+# channel to carry the EventHandler arity group AND the synthesized Invoke to substitute a
+# user-defined EventArgs subclass.
+from system import EventHandler, EventArgs
+
+
+class ProgressEventArgs(EventArgs):
+    property percent: int
+    property message: str
+
+    def __init__(self, percent: int, message: str):
+        self.percent = percent
+        self.message = message
+
+
+class Downloader:
+    event on_progress: EventHandler[ProgressEventArgs]
+
+    def report_progress(self, percent: int, msg: str):
+        self.on_progress?.invoke(self, ProgressEventArgs(percent, msg))
+
+
+def on_progress_handler(sender: object, e: ProgressEventArgs) -> None:
+    print(f"{e.percent}% {e.message}")
+
+
+def main():
+    d: Downloader = Downloader()
+    d.on_progress += on_progress_handler
+    d.report_progress(50, "downloading")
+    d.report_progress(100, "complete")
