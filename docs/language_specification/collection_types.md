@@ -264,6 +264,137 @@ Unlike Python, Sharpy does not support negative tuple indices. This is because t
 *Implementation*
 - *🔄 Lowered - `tuple[i]` is lowered to `.Item{i+1}` (e.g., `tuple[0]` → `.Item1`, `tuple[1]` → `.Item2`).*
 
+## Slicing
+
+Slicing extracts a contiguous (or strided) subsequence from a collection using `start:stop` or
+`start:stop:step` syntax inside `[]`.
+
+### Sliceable Types
+
+| Type | Result Type | Notes |
+|------|-------------|-------|
+| `list[T]` | `list[T]` | New list; original unchanged |
+| `str` | `str` | UTF-16 code-unit slice |
+| `bytes` | `bytes` | Byte-level slice |
+| `array[T]` | `list[T]` | Materializes a list from the slice |
+| `ndarray` | per-axis | Multi-axis via `SliceSpec`; one spec per dimension |
+
+Types that are NOT sliceable produce a compile-time error:
+
+- `dict[K, V]` — CPython raises `KeyError` at runtime (slice object is a missing key); Sharpy
+  refuses at compile time.
+- `set[T]` / `frozenset[T]` — unordered; slicing is meaningless.
+- `tuple[T1, T2, ...]` — heterogeneous `ValueTuple` with no runtime slicing. Constant-bound
+  tuple slicing is a potential extension ([#1609](https://github.com/antonsynd/sharpy/issues/1609)).
+
+### Syntax
+
+```python
+xs[start:stop]       # elements from start up to (not including) stop
+xs[start:stop:step]  # every step-th element
+xs[:stop]            # from beginning
+xs[start:]           # to end
+xs[::step]           # every step-th from beginning to end
+xs[::-1]             # reverse
+```
+
+All three bounds — `start`, `stop`, `step` — are optional. An omitted bound is `None`
+(absence-of-bound), equivalent to writing `None` explicitly.
+
+### Bound Types
+
+Each slice bound must be assignable to `int?` (the loose nullable — `int` or `None`):
+
+| Accepted | Example |
+|----------|---------|
+| `int` literal | `xs[1:4]` |
+| `int` variable | `n: int = 2; xs[n:]` |
+| `None` (absent bound) | `xs[:3]`, `xs[None:3]` |
+| `int \| None` variable | `n: int \| None = 2; xs[n:]` |
+
+| Refused | Diagnostic |
+|---------|------------|
+| `bool` | `Slice bound must be 'int' or 'None', got 'bool'` |
+| `float` | `Slice bound must be 'int' or 'None', got 'float64'` |
+| `str` | `Slice bound must be 'int' or 'None', got 'str'` |
+| `bytes` | `Slice bound must be 'int' or 'None', got 'bytes'` |
+| `int?` (`Optional[int]` ADT) | `Slice bound must be 'int' or 'None', got 'int32?'` |
+
+The `Optional[int]` ADT is distinct from the loose nullable `int | None` — it does not
+implicitly cross into a slice bound. Narrow or unwrap the `Optional` first.
+
+```python
+def main():
+    xs: list[int] = [10, 20, 30, 40, 50]
+    print(xs[1:4])       # [20, 30, 40]
+    print(xs[:3])        # [10, 20, 30]
+    print(xs[2:])        # [30, 40, 50]
+    print(xs[None:3])    # [10, 20, 30]  — None is the absent bound
+    print(xs[-2:])       # [40, 50]      — negative indexing
+    print(xs[::2])       # [10, 30, 50]  — step
+    print(xs[::-1])      # [50, 40, 30, 20, 10] — reverse
+    print(xs[4:1:-1])    # [50, 40, 30]  — reverse with bounds
+
+    n: int | None = 2
+    print(xs[n:])        # [30, 40, 50]
+    print(xs[:n])        # [10, 20]
+    n = None
+    print(xs[n:])        # [10, 20, 30, 40, 50]
+```
+
+String and bytes slicing follows the same rules:
+
+```python
+def main():
+    s: str = "hello"
+    print(s[1:4])     # ell
+    print(s[:3])      # hel
+    print(s[::2])     # hlo
+    print(s[::-1])    # olleh
+
+    b: bytes = b"abcdef"
+    print(b[1:4])     # b'bcd'
+    print(b[::-1])    # b'fedcba'
+```
+
+### Index Type Rule
+
+Plain subscript access `x[i]` on int-indexed sequences (list, str, bytes, array) requires an
+`int` index. Types that Python allows via implicit conversion are refused:
+
+| Refused | Diagnostic | Python behavior |
+|---------|------------|-----------------|
+| `xs[True]` | `Index must be 'int', got 'bool'` | Treats as `xs[1]` (bool subclasses int) |
+| `xs["a"]` | `Index must be 'int', got 'str'` | TypeError at runtime |
+
+The bool refusal is a deliberate Type Safety deviation — Python permits `xs[True]` because
+`bool` is a subclass of `int`, but Sharpy keeps `bool` and `int` distinct. The explicit spelling
+is `xs[int(flag)]`.
+
+### User Protocol
+
+A user-defined class can support subscript access via `__getitem__`. Slice support via
+`__getitem__(self, s: slice)` requires the `slice` builtin type, which is not yet available
+([#1610](https://github.com/antonsynd/sharpy/issues/1610)). This is documented as a future
+extension.
+
+### `__index__` Protocol
+
+Sharpy does not adopt Python's `__index__` protocol. In CPython, `__index__` lets a value present
+itself as an integer losslessly (distinct from `__int__`, which may truncate). Positions that
+accept it: sequence indexing, slice bounds, `range()` arguments, and numeral formatters.
+
+The two practical beneficiaries in real Python code — numpy integer scalars and `bool` — do not
+create demand in Sharpy: numpy scalars already type as `int`, and `bool` in int positions is a
+deliberate Type Safety deviation. Adopting the protocol without a concrete beneficiary would be
+the "add X because Python has it" anti-pattern. Full rationale in
+[`docs/design/index-protocol-proposal.md`](../design/index-protocol-proposal.md)
+([#1611](https://github.com/antonsynd/sharpy/issues/1611)).
+
+*Implementation*
+- *🔄 Lowered — `x[start:stop:step]` lowers to `Sharpy.Slice.GetSlice(x, start, end, step)` for
+  list, str, bytes, and array. ndarray slicing lowers to `x.Slice(new SliceSpec(...))`.*
+
 ---
 
 *Implementation*
