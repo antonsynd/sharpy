@@ -27,6 +27,15 @@ internal static class NameMangler
         ["popitem"] = "PopItem",
     };
 
+    // #1571: Python collection verbs → exact-semantics CLR INSTANCE methods.
+    // Distinct from _collectionMethodMap (which is the #1069 casing table for
+    // Sharpy's OWN collections). This table maps verbs to CLR methods that have
+    // the same mutation semantics on ICollection<T>-implementing receivers.
+    private static readonly Dictionary<string, string> _clrCollectionVerbMap = new()
+    {
+        ["append"] = "Add",
+    };
+
     /// <summary>
     /// Preserve type names as-is. Only handles keyword escaping and special prefixes.
     /// </summary>
@@ -406,6 +415,23 @@ internal static class NameMangler
     {
         return _collectionMethodMap.TryGetValue(methodName, out var mapped) ? mapped : null;
     }
+
+    /// <summary>
+    /// Get the CLR INSTANCE method name for a Python collection verb on a CLR
+    /// ICollection&lt;T&gt;-implementing receiver (#1571). Returns null when the
+    /// verb has no exact-semantics CLR instance target (the caller should refuse
+    /// rather than map approximately).
+    /// </summary>
+    public static string? GetClrCollectionVerbMapping(string methodName)
+    {
+        return _clrCollectionVerbMap.TryGetValue(methodName, out var mapped) ? mapped : null;
+    }
+
+    /// <summary>
+    /// The set of Python collection verb names for which a CLR collection receiver
+    /// has an exact-semantics instance method mapping (#1571).
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> ClrCollectionVerbMap => _clrCollectionVerbMap;
 
     /// <summary>
     /// For snake_case: capitalize first char, preserve rest as-is.

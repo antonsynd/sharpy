@@ -1641,7 +1641,23 @@ internal partial class TypeChecker
         if (clrNames == null)
             return true; // reflection inconclusive — cannot rule an instance member out
 
-        return CodeGenMemberNameCandidates(memberName).Any(clrNames.Contains);
+        var candidates = CodeGenMemberNameCandidates(memberName);
+        // #1571: CLR collection verb mapping — when the receiver implements ICollection<T>,
+        // append→Add (and future verb rows) makes the instance member probe succeed,
+        // blocking the staged extension seam from claiming the verb.
+        if (NameMangler.GetClrCollectionVerbMapping(memberName) is { } verbMapped
+            && IsClrCollectionType(reflectionType))
+        {
+            candidates = candidates.Concat(new[] { verbMapped });
+        }
+        return candidates.Any(clrNames!.Contains);
+    }
+
+    private static bool IsClrCollectionType(Type? clrType)
+    {
+        if (clrType == null) return false;
+        return clrType.GetInterfaces().Any(i =>
+            i.IsGenericType && i.GetGenericTypeDefinition() == typeof(System.Collections.Generic.ICollection<>));
     }
 
     /// <summary>
@@ -1988,6 +2004,19 @@ internal partial class TypeChecker
         // Don't materialize CLR names for refused members on builtin exceptions (#1515).
         if (Discovery.BuiltinExceptionSurface.IsRefusedMember(clrType, memberAccess.Member))
             return;
+
+        // #1571: CLR collection verb mapping — resolve the mapped instance method name
+        // so append→Add, not the original LINQ Append.
+        if (NameMangler.GetClrCollectionVerbMapping(memberAccess.Member) is { } verbMapped
+            && IsClrCollectionType(clrType))
+        {
+            var mappedClrName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, verbMapped);
+            if (mappedClrName != null)
+            {
+                _semanticInfo.SetResolvedClrMemberName(memberAccess, mappedClrName);
+                return;
+            }
+        }
 
         var clrName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member)
             ?? Discovery.ClrTypeHelper.ResolveClrPropertyName(clrType, memberAccess.Member);

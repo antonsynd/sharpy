@@ -1,0 +1,8 @@
+from system.collections.generic import HashSet
+
+def main():
+    s: HashSet[str] = HashSet[str]()
+    s.add("hello")
+    s.add("world")
+    s.add("hello")
+    print(len(s))
