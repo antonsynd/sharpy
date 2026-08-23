@@ -226,7 +226,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var path = tmpPath + "/existing";
 #line (107, 5) - (107, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 os.Makedirs(path);
-#line (108, 5) - (108, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (108, 5) - (108, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 os.Makedirs(path, existOk: true);
 #line (109, 5) - (109, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 Xunit.Assert.True(Isdir(path));
@@ -246,7 +246,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 try
                 {
-#line (117, 9) - (117, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (117, 9) - (117, 42) 20 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                     os.Makedirs(path, existOk: false);
 #line hidden
                 }

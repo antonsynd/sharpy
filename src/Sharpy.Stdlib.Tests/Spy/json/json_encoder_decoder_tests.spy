@@ -36,7 +36,7 @@ def test_encoder_with_indent_pretty_prints():
 
 @test
 def test_encoder_with_sort_keys_sorts_keys():
-    encoder = json.JSONEncoder(sortKeys=True)
+    encoder = json.JSONEncoder(sort_keys=True)
     d: dict[str, object] = {}
     d["b"] = 2
     d["a"] = 1

@@ -258,7 +258,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var level1 = root + "/level1";
 #line (119, 5) - (119, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_additional_tests.spy"
                 var level2 = level1 + "/level2";
-#line (120, 5) - (120, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_additional_tests.spy"
+#line (120, 5) - (120, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_additional_tests.spy"
                 os.Makedirs(level2, existOk: true);
 #line (121, 5) - (123, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(level2 + "/deep.txt", "w"))

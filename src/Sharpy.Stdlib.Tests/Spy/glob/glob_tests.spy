@@ -15,7 +15,7 @@ import glob
 
 def build_tree(base: str):
     """Create the known directory structure used by the glob tests."""
-    os.makedirs(base + "/sub/deep", existOk=True)
+    os.makedirs(base + "/sub/deep", exist_ok=True)
     with open(base + "/a.txt", "w") as fa:
         fa.write("a")
     with open(base + "/b.txt", "w") as fb:

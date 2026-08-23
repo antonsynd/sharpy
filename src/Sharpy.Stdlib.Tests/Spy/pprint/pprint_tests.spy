@@ -60,7 +60,7 @@ def test_pformat_dict_sorts_keys_by_default():
 
 @test
 def test_pformat_dict_sort_dicts_false_preserves_insertion_order():
-    pp = pprint.PrettyPrinter(sortDicts=False)
+    pp = pprint.PrettyPrinter(sort_dicts=False)
     d: dict[str, int] = {}
     d["b"] = 2
     d["a"] = 1

@@ -77,7 +77,7 @@ def test_dumps_string_with_unicode_escapes_non_ascii():
 
 @test
 def test_dumps_string_with_unicode_ensure_ascii_false_preserves_unicode():
-    assert json.dumps("café", ensureAscii=False) == "\"café\""
+    assert json.dumps("café", ensure_ascii=False) == "\"café\""
 
 # --- Dumps - Collections ---
 
@@ -95,7 +95,7 @@ def test_dumps_dict_returns_object():
 @test
 def test_dumps_dict_string_int_uses_interface_dispatch():
     d: dict[str, int] = {"a": 1, "b": 2}
-    assert json.dumps(d, sortKeys=True) == "{\"a\": 1, \"b\": 2}"
+    assert json.dumps(d, sort_keys=True) == "{\"a\": 1, \"b\": 2}"
 
 @test
 def test_dumps_empty_list_returns_empty_array():
@@ -135,14 +135,14 @@ def test_dumps_with_sort_keys_sorts_keys():
     d["c"] = 3
     d["a"] = 1
     d["b"] = 2
-    assert json.dumps(d, sortKeys=True) == "{\"a\": 1, \"b\": 2, \"c\": 3}"
+    assert json.dumps(d, sort_keys=True) == "{\"a\": 1, \"b\": 2, \"c\": 3}"
 
 @test
 def test_dumps_indent_and_sort_keys_combined():
     d: dict[str, object] = {}
     d["z"] = 26
     d["a"] = 1
-    assert json.dumps(d, indent=4, sortKeys=True) == "{\n    \"a\": 1,\n    \"z\": 26\n}"
+    assert json.dumps(d, indent=4, sort_keys=True) == "{\n    \"a\": 1,\n    \"z\": 26\n}"
 
 @test
 def test_dumps_nested_indent_indents_correctly():
@@ -180,12 +180,12 @@ def test_dumps_non_finite_inside_a_list_emits_tokens():
 @test
 def test_dumps_infinity_with_allow_nan_false_throws_value_error():
     with assert_raises(ValueError):
-        json.dumps(math.inf, allowNan=False)  # TODO(#1591): migrate to allow_nan= + regen spy-test C#
+        json.dumps(math.inf, allow_nan=False)
 
 @test
 def test_dumps_nan_with_allow_nan_false_throws_value_error():
     with assert_raises(ValueError):
-        json.dumps(math.nan, allowNan=False)  # TODO(#1591): migrate to allow_nan= + regen spy-test C#
+        json.dumps(math.nan, allow_nan=False)
 
 @test
 def test_loads_accepts_the_three_extended_tokens():
@@ -629,7 +629,7 @@ def test_dumps_dict_string_key_with_sort_keys_sorts_keys():
     d["c"] = 3
     d["a"] = 1
     d["b"] = 2
-    assert json.dumps(d, sortKeys=True) == "{\"a\": 1, \"b\": 2, \"c\": 3}"
+    assert json.dumps(d, sort_keys=True) == "{\"a\": 1, \"b\": 2, \"c\": 3}"
 
 @test
 def test_dumps_dict_string_key_with_indent_pretty_prints():

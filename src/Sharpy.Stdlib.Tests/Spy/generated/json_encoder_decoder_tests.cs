@@ -98,7 +98,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestEncoderWithSortKeysSortsKeys()
             {
-#line (39, 5) - (39, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
+#line (39, 5) - (39, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 var encoder = new global::Sharpy.JSONEncoder(sortKeys: true);
 #line (40, 5) - (40, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 Sharpy.Dict<string, object> d = new Sharpy.Dict<string, object>()

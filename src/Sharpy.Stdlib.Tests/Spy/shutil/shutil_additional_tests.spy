@@ -53,7 +53,7 @@ def test_copy2_to_directory_copies_into_dir(tmp_path: str):
     with open(src, "w") as fa:
         fa.write("data")
     destdir = tmp_path + "/copy2dir"
-    os.makedirs(destdir, existOk=True)
+    os.makedirs(destdir, exist_ok=True)
     result = shutil.copy2(src, destdir)
     assert isfile(result)
     content = ""
@@ -75,7 +75,7 @@ def test_copytree_deeply_nested_copies_all_levels(tmp_path: str):
     src = tmp_path + "/deep_src"
     l1 = src + "/l1"
     l2 = l1 + "/l2"
-    os.makedirs(l2, existOk=True)
+    os.makedirs(l2, exist_ok=True)
     with open(src + "/root.txt", "w") as fa:
         fa.write("root")
     with open(l1 + "/mid.txt", "w") as fb:
@@ -98,7 +98,7 @@ def test_copytree_deeply_nested_copies_all_levels(tmp_path: str):
 @test
 def test_rmtree_empty_directory_removes(tmp_path: str):
     d = tmp_path + "/rmtree_empty"
-    os.makedirs(d, existOk=True)
+    os.makedirs(d, exist_ok=True)
     shutil.rmtree(d)
     assert not isdir(d)
 
@@ -107,7 +107,7 @@ def test_rmtree_empty_directory_removes(tmp_path: str):
 def test_rmtree_with_subdirectories_removes_all(tmp_path: str):
     d = tmp_path + "/rmtree_subs"
     sub = d + "/sub"
-    os.makedirs(sub, existOk=True)
+    os.makedirs(sub, exist_ok=True)
     with open(sub + "/f.txt", "w") as fa:
         fa.write("data")
     shutil.rmtree(d)
@@ -135,7 +135,7 @@ def test_move_file_into_directory_places_in_dir(tmp_path: str):
     with open(src, "w") as fa:
         fa.write("data")
     destdir = tmp_path + "/move_into_dir"
-    os.makedirs(destdir, existOk=True)
+    os.makedirs(destdir, exist_ok=True)
     result = shutil.move(src, destdir)
     # When the destination is a directory, the file is placed inside it.
     assert not exists(src)

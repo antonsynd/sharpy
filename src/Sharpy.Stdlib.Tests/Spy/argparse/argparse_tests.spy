@@ -31,7 +31,7 @@ def test_parse_args_positional_with_type_converted():
 
 @test
 def test_parse_args_missing_positional_throws_argument_error():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("filename")
     with assert_raises(ArgumentError):
         parser.parse_args([])
@@ -40,28 +40,28 @@ def test_parse_args_missing_positional_throws_argument_error():
 
 @test
 def test_parse_args_long_option_parsed():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_optional_argument("--name")
     ns: argparse.Namespace = parser.parse_args(["--name", "test"])
     assert operator.eq(ns["name"], "test")
 
 @test
 def test_parse_args_short_and_long_option_parsed():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
-    parser.add_optional_argument("--name", shortName="-n")
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
+    parser.add_optional_argument("--name", short_name="-n")
     ns: argparse.Namespace = parser.parse_args(["-n", "test"])
     assert operator.eq(ns["name"], "test")
 
 @test
 def test_parse_args_optional_with_default_uses_default():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
-    parser.add_optional_argument("--name", defaultValue="default")
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
+    parser.add_optional_argument("--name", default_value="default")
     ns: argparse.Namespace = parser.parse_args([])
     assert operator.eq(ns["name"], "default")
 
 @test
 def test_parse_args_optional_with_type_converted():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_optional_argument("--count", type="int")
     ns: argparse.Namespace = parser.parse_args(["--count", "5"])
     s: str = str(ns)
@@ -69,7 +69,7 @@ def test_parse_args_optional_with_type_converted():
 
 @test
 def test_parse_args_required_optional_missing_throws_error():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_optional_argument("--name", required=True)
     with assert_raises(ArgumentError):
         parser.parse_args([])
@@ -78,15 +78,15 @@ def test_parse_args_required_optional_missing_throws_error():
 
 @test
 def test_parse_args_store_true_sets_true():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
-    parser.add_optional_argument("--verbose", shortName="-v", action="store_true")
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
+    parser.add_optional_argument("--verbose", short_name="-v", action="store_true")
     ns: argparse.Namespace = parser.parse_args(["-v"])
     s: str = str(ns)
     assert "verbose=True" in s
 
 @test
 def test_parse_args_store_true_default_false():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_optional_argument("--verbose", action="store_true")
     ns: argparse.Namespace = parser.parse_args([])
     s: str = str(ns)
@@ -94,7 +94,7 @@ def test_parse_args_store_true_default_false():
 
 @test
 def test_parse_args_store_false_sets_false():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_optional_argument("--no-feature", action="store_false", dest="feature")
     ns: argparse.Namespace = parser.parse_args(["--no-feature"])
     s: str = str(ns)
@@ -102,15 +102,15 @@ def test_parse_args_store_false_sets_false():
 
 @test
 def test_parse_args_count_counts_occurrences():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
-    parser.add_optional_argument("--verbose", shortName="-v", action="count")
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
+    parser.add_optional_argument("--verbose", short_name="-v", action="count")
     ns: argparse.Namespace = parser.parse_args(["-v", "-v", "-v"])
     s: str = str(ns)
     assert "verbose=3" in s
 
 @test
 def test_parse_args_append_collects_values():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_optional_argument("--item", action="append")
     ns: argparse.Namespace = parser.parse_args(["--item", "a", "--item", "b"])
     assert ns.Contains("item")
@@ -120,7 +120,7 @@ def test_parse_args_append_collects_values():
 
 @test
 def test_parse_args_valid_choice_accepted():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     choices: list[str] = ["debug", "info", "warning"]
     parser.add_optional_argument("--level", choices=choices)
     ns: argparse.Namespace = parser.parse_args(["--level", "info"])
@@ -128,7 +128,7 @@ def test_parse_args_valid_choice_accepted():
 
 @test
 def test_parse_args_invalid_choice_throws_error():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     choices: list[str] = ["debug", "info"]
     parser.add_optional_argument("--level", choices=choices)
     with assert_raises(ArgumentError):
@@ -138,7 +138,7 @@ def test_parse_args_invalid_choice_throws_error():
 
 @test
 def test_parse_args_nargs_star_collects_zero_or_more():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("files", nargs="*")
     ns: argparse.Namespace = parser.parse_args(["a.txt", "b.txt"])
     assert ns.Contains("files")
@@ -146,7 +146,7 @@ def test_parse_args_nargs_star_collects_zero_or_more():
 
 @test
 def test_parse_args_nargs_star_empty_returns_empty_list():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("files", nargs="*")
     ns: argparse.Namespace = parser.parse_args([])
     assert ns.Contains("files")
@@ -154,15 +154,15 @@ def test_parse_args_nargs_star_empty_returns_empty_list():
 
 @test
 def test_parse_args_nargs_plus_requires_at_least_one():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("files", nargs="+")
     with assert_raises(ArgumentError):
         parser.parse_args([])
 
 @test
 def test_parse_args_nargs_question_optional_value():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
-    parser.add_optional_argument("--output", nargs="?", defaultValue="stdout")
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
+    parser.add_optional_argument("--output", nargs="?", default_value="stdout")
     ns: argparse.Namespace = parser.parse_args(["--output"])
     assert operator.eq(ns["output"], "stdout")
 
@@ -170,10 +170,10 @@ def test_parse_args_nargs_question_optional_value():
 
 @test
 def test_parse_args_mixed_positional_and_optional_parsed():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("filename")
-    parser.add_optional_argument("--verbose", shortName="-v", action="store_true")
-    parser.add_optional_argument("--count", type="int", defaultValue=1)
+    parser.add_optional_argument("--verbose", short_name="-v", action="store_true")
+    parser.add_optional_argument("--count", type="int", default_value=1)
     ns: argparse.Namespace = parser.parse_args(["test.txt", "-v", "--count", "5"])
     assert operator.eq(ns["filename"], "test.txt")
     s: str = str(ns)
@@ -182,7 +182,7 @@ def test_parse_args_mixed_positional_and_optional_parsed():
 
 @test
 def test_parse_args_unrecognized_argument_throws_error():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     with assert_raises(ArgumentError):
         parser.parse_args(["--unknown"])
 
@@ -198,7 +198,7 @@ def test_parse_args_help_throws_system_exit():
 def test_format_help_contains_description():
     parser: argparse.ArgumentParser = argparse.ArgumentParser(description="A test program", prog="myapp")
     parser.add_argument("input")
-    parser.add_optional_argument("--output", shortName="-o", help="output file")
+    parser.add_optional_argument("--output", short_name="-o", help="output file")
     help_text: str = parser.format_help()
     assert "A test program" in help_text
     assert "myapp" in help_text
@@ -216,38 +216,38 @@ def test_format_help_shows_help_option():
 
 @test
 def test_namespace_contains_works():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
-    parser.add_optional_argument("--name", defaultValue="test")
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
+    parser.add_optional_argument("--name", default_value="test")
     ns: argparse.Namespace = parser.parse_args([])
     assert ns.Contains("name")
     assert not ns.Contains("missing")
 
 @test
 def test_namespace_get_returns_typed():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
-    parser.add_optional_argument("--count", type="int", defaultValue=5)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
+    parser.add_optional_argument("--count", type="int", default_value=5)
     ns: argparse.Namespace = parser.parse_args([])
     s: str = str(ns)
     assert "count=5" in s
 
 @test
 def test_namespace_get_wrong_type_throws_type_error():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
-    parser.add_optional_argument("--name", defaultValue="test")
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
+    parser.add_optional_argument("--name", default_value="test")
     ns: argparse.Namespace = parser.parse_args([])
     assert operator.eq(ns["name"], "test")
 
 @test
 def test_namespace_missing_attribute_throws_attribute_error():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     ns: argparse.Namespace = parser.parse_args([])
     with assert_raises(AttributeError):
         _ = ns["missing"]
 
 @test
 def test_namespace_to_string_shows_values():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
-    parser.add_optional_argument("--name", defaultValue="test")
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
+    parser.add_optional_argument("--name", default_value="test")
     parser.add_optional_argument("--verbose", action="store_true")
     ns: argparse.Namespace = parser.parse_args(["--verbose"])
     s: str = str(ns)
@@ -259,7 +259,7 @@ def test_namespace_to_string_shows_values():
 
 @test
 def test_parse_args_dash_in_name_normalized_to_underscore():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_optional_argument("--my-flag", action="store_true")
     ns: argparse.Namespace = parser.parse_args(["--my-flag"])
     s: str = str(ns)
@@ -267,7 +267,7 @@ def test_parse_args_dash_in_name_normalized_to_underscore():
 
 @test
 def test_parse_args_custom_dest_uses_custom_dest():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_optional_argument("--output-file", dest="output")
     ns: argparse.Namespace = parser.parse_args(["--output-file", "out.txt"])
     assert operator.eq(ns["output"], "out.txt")
@@ -276,14 +276,14 @@ def test_parse_args_custom_dest_uses_custom_dest():
 
 @test
 def test_parse_args_invalid_int_throws_argument_error():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("count", type="int")
     with assert_raises(ArgumentError):
         parser.parse_args(["abc"])
 
 @test
 def test_parse_args_invalid_float_throws_argument_error():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("value", type="float")
     with assert_raises(ArgumentError):
         parser.parse_args(["abc"])
@@ -292,7 +292,7 @@ def test_parse_args_invalid_float_throws_argument_error():
 
 @test
 def test_add_subparsers_add_parser_parses_subcommand():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     subparsers: argparse.SubparsersAction = parser.add_subparsers(dest="command")
     sub: argparse.ArgumentParser = subparsers.add_parser("run", help="Run a program")
     sub.add_argument("filename")
@@ -302,7 +302,7 @@ def test_add_subparsers_add_parser_parses_subcommand():
 
 @test
 def test_add_subparsers_multiple_subcommands():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     subparsers: argparse.SubparsersAction = parser.add_subparsers(dest="cmd")
     build_parser: argparse.ArgumentParser = subparsers.add_parser("build")
     build_parser.add_optional_argument("--release", action="store_true")
@@ -318,7 +318,7 @@ def test_add_subparsers_multiple_subcommands():
 
 @test
 def test_add_subparsers_duplicate_throws_error():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     parser.add_subparsers()
     with assert_raises(ArgumentError):
         parser.add_subparsers()
@@ -327,10 +327,10 @@ def test_add_subparsers_duplicate_throws_error():
 
 @test
 def test_add_argument_group_arguments_parsed_normally():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     group: argparse.ArgumentGroup = parser.add_argument_group("Network options")
-    group.add_optional_argument("--host", defaultValue="localhost")
-    group.add_optional_argument("--port", type="int", defaultValue=8080)
+    group.add_optional_argument("--host", default_value="localhost")
+    group.add_optional_argument("--port", type="int", default_value=8080)
     ns: argparse.Namespace = parser.parse_args(["--host", "example.com", "--port", "9090"])
     assert operator.eq(ns["host"], "example.com")
     s: str = str(ns)
@@ -338,9 +338,9 @@ def test_add_argument_group_arguments_parsed_normally():
 
 @test
 def test_add_argument_group_defaults_work():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     group: argparse.ArgumentGroup = parser.add_argument_group("Options")
-    group.add_optional_argument("--name", defaultValue="default")
+    group.add_optional_argument("--name", default_value="default")
     ns: argparse.Namespace = parser.parse_args([])
     assert operator.eq(ns["name"], "default")
 
@@ -348,7 +348,7 @@ def test_add_argument_group_defaults_work():
 
 @test
 def test_mutually_exclusive_group_single_option_accepted():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     group: argparse.MutuallyExclusiveGroup = parser.add_mutually_exclusive_group()
     group.add_optional_argument("--verbose", action="store_true")
     group.add_optional_argument("--quiet", action="store_true")
@@ -359,7 +359,7 @@ def test_mutually_exclusive_group_single_option_accepted():
 
 @test
 def test_mutually_exclusive_group_both_options_throws_error():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     group: argparse.MutuallyExclusiveGroup = parser.add_mutually_exclusive_group()
     group.add_optional_argument("--verbose", action="store_true")
     group.add_optional_argument("--quiet", action="store_true")
@@ -368,7 +368,7 @@ def test_mutually_exclusive_group_both_options_throws_error():
 
 @test
 def test_mutually_exclusive_group_required_none_provided_throws_error():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(addHelp=False)
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(add_help=False)
     group: argparse.MutuallyExclusiveGroup = parser.add_mutually_exclusive_group(required=True)
     group.add_optional_argument("--verbose", action="store_true")
     group.add_optional_argument("--quiet", action="store_true")

@@ -7,7 +7,7 @@ class TestParser(HTMLParser):
     events: list[str]
 
     def __init__(self, convert_charrefs: bool = True):
-        super().__init__(convertCharrefs=convert_charrefs)
+        super().__init__(convert_charrefs=convert_charrefs)
         self.events = []
 
     @override
@@ -53,7 +53,7 @@ class DefaultHandlerParser(HTMLParser):
     events: list[str]
 
     def __init__(self, convert_charrefs: bool = True):
-        super().__init__(convertCharrefs=convert_charrefs)
+        super().__init__(convert_charrefs=convert_charrefs)
         self.events = []
 
     @override

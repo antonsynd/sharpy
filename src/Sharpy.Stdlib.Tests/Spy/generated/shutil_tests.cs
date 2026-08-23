@@ -86,7 +86,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
 #line (43, 5) - (43, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var destdir = tmpPath + "/destdir";
-#line (44, 5) - (44, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (44, 5) - (44, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 os.Makedirs(destdir, existOk: true);
 #line (45, 5) - (45, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var result = shutil.Copy(src, destdir);
@@ -151,7 +151,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (73, 5) - (73, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var srcDir = tmpPath + "/treesrc";
-#line (74, 5) - (74, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (74, 5) - (74, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 os.Makedirs(srcDir + "/sub", existOk: true);
 #line (75, 5) - (77, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(srcDir + "/a.txt", "w"))
@@ -225,7 +225,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (100, 5) - (100, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var d = tmpPath + "/rmdir";
-#line (101, 5) - (101, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (101, 5) - (101, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 os.Makedirs(d + "/sub", existOk: true);
 #line (102, 5) - (104, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(d + "/file.txt", "w"))
@@ -321,7 +321,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (136, 5) - (136, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var srcDir = tmpPath + "/movedirsrc";
-#line (137, 5) - (137, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (137, 5) - (137, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 os.Makedirs(srcDir, existOk: true);
 #line (138, 5) - (140, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(srcDir + "/f.txt", "w"))

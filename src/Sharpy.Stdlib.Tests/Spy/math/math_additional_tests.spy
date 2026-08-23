@@ -49,13 +49,13 @@ def test_isclose_not_close_values():
 
 @test
 def test_isclose_with_abs_tol():
-    assert math.isclose(0.0, 0.001, absTol=0.01)
-    assert not math.isclose(0.0, 0.001, absTol=0.0001)
+    assert math.isclose(0.0, 0.001, abs_tol=0.01)
+    assert not math.isclose(0.0, 0.001, abs_tol=0.0001)
 
 @test
 def test_isclose_with_rel_tol():
-    assert math.isclose(100.0, 100.1, relTol=0.01)
-    assert not math.isclose(100.0, 102.0, relTol=0.01)
+    assert math.isclose(100.0, 100.1, rel_tol=0.01)
+    assert not math.isclose(100.0, 102.0, rel_tol=0.01)
 
 @test
 def test_isclose_infinity():
@@ -71,9 +71,9 @@ def test_isclose_nan():
 @test
 def test_isclose_negative_tolerance_throws():
     with assert_raises(ValueError):
-        math.isclose(1.0, 1.0, relTol=-1.0)
+        math.isclose(1.0, 1.0, rel_tol=-1.0)
     with assert_raises(ValueError):
-        math.isclose(1.0, 1.0, absTol=-1.0)
+        math.isclose(1.0, 1.0, abs_tol=-1.0)
 
 # --- Comb ---
 
@@ -196,16 +196,16 @@ def test_hypot_negative_values():
 
 @test
 def test_expm1_zero():
-    assert math.isclose(0.0, math.expm1(0.0), absTol=1e-15)
+    assert math.isclose(0.0, math.expm1(0.0), abs_tol=1e-15)
 
 @test
 def test_expm1_small_value():
     result: float = math.expm1(1e-10)
-    assert math.isclose(1e-10, result, relTol=1e-6)
+    assert math.isclose(1e-10, result, rel_tol=1e-6)
 
 @test
 def test_expm1_larger_value():
-    assert math.isclose(math.e - 1.0, math.expm1(1.0), relTol=1e-9)
+    assert math.isclose(math.e - 1.0, math.expm1(1.0), rel_tol=1e-9)
 
 # --- Log1p ---
 
@@ -216,11 +216,11 @@ def test_log1p_zero():
 @test
 def test_log1p_small_value():
     result: float = math.log1p(1e-10)
-    assert math.isclose(1e-10, result, relTol=1e-6)
+    assert math.isclose(1e-10, result, rel_tol=1e-6)
 
 @test
 def test_log1p_larger_value():
-    assert math.isclose(1.0, math.log1p(math.e - 1.0), relTol=1e-9)
+    assert math.isclose(1.0, math.log1p(math.e - 1.0), rel_tol=1e-9)
 
 @test
 def test_log1p_negative_one_throws():

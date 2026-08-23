@@ -709,7 +709,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (357, 5) - (357, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 global::Sharpy.IPv4Network net = new global::Sharpy.IPv4Network("0.0.0.0/0");
-#line (358, 5) - (358, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
+#line (358, 5) - (358, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(net.Subnets(prefixlenDiff: 1)));
 #line hidden
             }

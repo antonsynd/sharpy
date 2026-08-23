@@ -189,7 +189,7 @@ def test_iterdir_nonexistent_dir_throws_file_not_found_error(tmp_path: str):
 @test
 def test_iterdir_empty_dir_yields_nothing(tmp_path: str):
     d = tmp_path + "/empty_iterdir"
-    os.makedirs(d, existOk=True)
+    os.makedirs(d, exist_ok=True)
     entries: list[str] = []
     for entry in pathlib.Path(d).iterdir():
         entries.append(entry.name)
@@ -201,7 +201,7 @@ def test_iterdir_empty_dir_yields_nothing(tmp_path: str):
 @test
 def test_glob_no_matches_yields_nothing(tmp_path: str):
     d = tmp_path + "/glob_empty"
-    os.makedirs(d, existOk=True)
+    os.makedirs(d, exist_ok=True)
     with open(d + "/file.txt", "w") as fa:
         fa.write("")
     matches: list[str] = []
@@ -244,7 +244,7 @@ def test_match_no_match_returns_false():
 @test
 def test_rglob_empty_dir_yields_nothing(tmp_path: str):
     d = tmp_path + "/rglob_empty"
-    os.makedirs(d, existOk=True)
+    os.makedirs(d, exist_ok=True)
     matches: list[str] = []
     for p in pathlib.Path(d).rglob("*.txt"):
         matches.append(p.name)

@@ -355,7 +355,7 @@ def test_ipv4_network_zero_prefix_broadcast_and_hostmask():
 @test
 def test_ipv4_network_zero_prefix_subnets_does_not_overflow():
     net: ipaddress.IPv4Network = ipaddress.IPv4Network("0.0.0.0/0")
-    assert len(net.Subnets(prefixlenDiff=1)) == 2
+    assert len(net.Subnets(prefixlen_diff=1)) == 2
 
 @test
 def test_ipv4_address_broadcast_is_reserved_not_global():

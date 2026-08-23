@@ -190,7 +190,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRunBasicCommandCaptureOutput()
             {
-#line (120, 5) - (120, 67) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (120, 5) - (120, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 var result = subprocess.Run(new Sharpy.List<string>() { "echo", "hello" }, captureOutput: true);
 #line (121, 5) - (121, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 Xunit.Assert.Equal(0, result.Returncode);
@@ -202,7 +202,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRunCaptureStderr()
             {
-#line (127, 5) - (127, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (127, 5) - (127, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 var result = subprocess.Run(new Sharpy.List<string>() { "sh", "-c", "echo err >&2" }, captureOutput: true);
 #line (128, 5) - (128, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 Xunit.Assert.Contains("err", result.Stderr);
@@ -246,7 +246,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRunInputPiping()
             {
-#line (145, 5) - (145, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (145, 5) - (145, 73) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 var result = subprocess.Run(new Sharpy.List<string>() { "cat" }, input: "hello", captureOutput: true);
 #line (146, 5) - (146, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 Xunit.Assert.Equal("hello", result.Stdout);
@@ -277,7 +277,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRunWorkingDirectory()
             {
-#line (157, 5) - (157, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (157, 5) - (157, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 var result = subprocess.Run(new Sharpy.List<string>() { "pwd" }, captureOutput: true, cwd: "/tmp");
 #line (158, 5) - (158, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 Xunit.Assert.Contains("tmp", result.Stdout.Strip());
@@ -296,7 +296,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                         "test_val"
                     }
                 };
-#line (164, 5) - (164, 87) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (164, 5) - (164, 88) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 var result = subprocess.Run(new Sharpy.List<string>() { "sh", "-c", "echo $MY_VAR" }, captureOutput: true, env: env);
 #line (165, 5) - (165, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 Xunit.Assert.Contains("test_val", result.Stdout);

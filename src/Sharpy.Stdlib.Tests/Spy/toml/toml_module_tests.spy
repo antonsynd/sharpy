@@ -276,7 +276,7 @@ def test_dumps_sort_keys_sorts_alphabetically():
     d: dict[str, object] = {}
     d["zebra"] = 1L
     d["alpha"] = 2L
-    result: str = toml.dumps(d, sortKeys=True)
+    result: str = toml.dumps(d, sort_keys=True)
     assert result.index("alpha") < result.index("zebra")
 
 @test

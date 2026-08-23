@@ -38,7 +38,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSinPiOver2ReturnsOne()
             {
-#line (13, 5) - (13, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (13, 5) - (13, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(1.0d, math.Sin(math.Pi / 2.0d), absTol: 1e-15d));
 #line hidden
             }
@@ -46,7 +46,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSinPiIsApproximatelyZero()
             {
-#line (17, 5) - (17, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (17, 5) - (17, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(0.0d, math.Sin(math.Pi), absTol: 1e-14d));
 #line hidden
             }
@@ -62,7 +62,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestCosPiReturnsNegativeOne()
             {
-#line (25, 5) - (25, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (25, 5) - (25, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(-1.0d, math.Cos(math.Pi), absTol: 1e-15d));
 #line hidden
             }
@@ -78,7 +78,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestTanPiOver4IsApproximatelyOne()
             {
-#line (33, 5) - (33, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (33, 5) - (33, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(1.0d, math.Tan(math.Pi / 4.0d), relTol: 1e-14d));
 #line hidden
             }
@@ -86,7 +86,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAsinOneReturnsPiOver2()
             {
-#line (39, 5) - (39, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (39, 5) - (39, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(math.Pi / 2.0d, math.Asin(1.0d), relTol: 1e-14d));
 #line hidden
             }
@@ -110,7 +110,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAcosZeroReturnsPiOver2()
             {
-#line (51, 5) - (51, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (51, 5) - (51, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(math.Pi / 2.0d, math.Acos(0.0d), relTol: 1e-14d));
 #line hidden
             }
@@ -126,7 +126,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAtanOneReturnsPiOver4()
             {
-#line (59, 5) - (59, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (59, 5) - (59, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(math.Pi / 4.0d, math.Atan(1.0d), relTol: 1e-14d));
 #line hidden
             }
@@ -134,7 +134,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAtan2OneOneReturnsPiOver4()
             {
-#line (63, 5) - (63, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (63, 5) - (63, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(math.Pi / 4.0d, math.Atan2(1.0d, 1.0d), relTol: 1e-14d));
 #line hidden
             }
@@ -142,7 +142,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAtan2NegativeXReturnsPi()
             {
-#line (67, 5) - (67, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (67, 5) - (67, 72) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(math.Pi, math.Atan2(0.0d, -1.0d), relTol: 1e-14d));
 #line hidden
             }
@@ -158,7 +158,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSinhOneMatchesKnownValue()
             {
-#line (77, 5) - (77, 75) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (77, 5) - (77, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(1.1752011936438014d, math.Sinh(1.0d), relTol: 1e-14d));
 #line hidden
             }
@@ -190,7 +190,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestExpOneReturnsE()
             {
-#line (95, 5) - (95, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (95, 5) - (95, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(math.E, math.Exp(1.0d), relTol: 1e-14d));
 #line hidden
             }
@@ -206,7 +206,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLogEReturnsOne()
             {
-#line (105, 5) - (105, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (105, 5) - (105, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(1.0d, math.Log(math.E), relTol: 1e-14d));
 #line hidden
             }
@@ -214,7 +214,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLogWithBase10ReturnsCorrectValue()
             {
-#line (109, 5) - (109, 67) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (109, 5) - (109, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(2.0d, math.Log(100.0d, 10.0d), relTol: 1e-14d));
 #line hidden
             }
@@ -222,7 +222,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLogWithBase1IsSpecialCase()
             {
-#line (113, 5) - (113, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (113, 5) - (113, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(0.0d, math.Log(1.0d, 10.0d), absTol: 1e-14d));
 #line hidden
             }
@@ -246,7 +246,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLog2EightReturnsThree()
             {
-#line (125, 5) - (125, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (125, 5) - (125, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(3.0d, math.Log2(8.0d), relTol: 1e-14d));
 #line hidden
             }
@@ -390,7 +390,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDegreesPiReturns180()
             {
-#line (203, 5) - (203, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (203, 5) - (203, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(180.0d, math.Degrees(math.Pi), relTol: 1e-14d));
 #line hidden
             }
@@ -406,7 +406,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRadians180ReturnsPi()
             {
-#line (211, 5) - (211, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (211, 5) - (211, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 Xunit.Assert.True(math.Isclose(math.Pi, math.Radians(180.0d), relTol: 1e-14d));
 #line hidden
             }

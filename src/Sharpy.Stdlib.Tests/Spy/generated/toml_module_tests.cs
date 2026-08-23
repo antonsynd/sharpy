@@ -605,7 +605,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 d["zebra"] = 1L;
 #line (278, 5) - (278, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 d["alpha"] = 2L;
-#line (279, 5) - (279, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (279, 5) - (279, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 string result = toml.Dumps(d, sortKeys: true);
 #line (280, 5) - (280, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.True(global::Sharpy.StringExtensions.Index(result, "alpha") < global::Sharpy.StringExtensions.Index(result, "zebra"));

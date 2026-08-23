@@ -19,7 +19,7 @@ import subprocess
 #   cp.CheckReturncode()                       -> cp.check_returncode()
 #   proc.Communicate(input) -> (out, err)      -> proc.communicate(input) unpacked tuple
 #   proc.Wait/Poll/Kill/Terminate/SendSignal   -> proc.wait/poll/kill/terminate/send_signal
-# Keyword args use the C# parameter spelling (camelCase): captureOutput=True.
+# Keyword args use the C# parameter spelling (camelCase): capture_output=True.
 # Single-word params (check, text, input, timeout, cwd, env, stdin/stdout/stderr)
 # pass as-is.
 #
@@ -117,14 +117,14 @@ def test_timeout_expired_message_format():
 
 @test
 def test_run_basic_command_capture_output():
-    result = subprocess.run(["echo", "hello"], captureOutput=True)
+    result = subprocess.run(["echo", "hello"], capture_output=True)
     assert result.Returncode == 0
     assert "hello" in result.Stdout
 
 
 @test
 def test_run_capture_stderr():
-    result = subprocess.run(["sh", "-c", "echo err >&2"], captureOutput=True)
+    result = subprocess.run(["sh", "-c", "echo err >&2"], capture_output=True)
     assert "err" in result.Stderr
 
 
@@ -142,7 +142,7 @@ def test_run_check_mode_failure():
 
 @test
 def test_run_input_piping():
-    result = subprocess.run(["cat"], input="hello", captureOutput=True)
+    result = subprocess.run(["cat"], input="hello", capture_output=True)
     assert result.Stdout == "hello"
 
 
@@ -154,14 +154,14 @@ def test_run_timeout_throws():
 
 @test
 def test_run_working_directory():
-    result = subprocess.run(["pwd"], captureOutput=True, cwd="/tmp")
+    result = subprocess.run(["pwd"], capture_output=True, cwd="/tmp")
     assert "tmp" in result.Stdout.strip()
 
 
 @test
 def test_run_environment_variables():
     env: dict[str, str] = {"MY_VAR": "test_val"}
-    result = subprocess.run(["sh", "-c", "echo $MY_VAR"], captureOutput=True, env=env)
+    result = subprocess.run(["sh", "-c", "echo $MY_VAR"], capture_output=True, env=env)
     assert "test_val" in result.Stdout
 
 

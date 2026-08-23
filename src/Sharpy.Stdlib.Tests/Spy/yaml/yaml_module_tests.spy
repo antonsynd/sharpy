@@ -460,7 +460,7 @@ def test_safe_dump_flow_style_produces_inline():
     data: dict[str, object] = {}
     data["a"] = 1
     data["b"] = 2
-    text: str = yaml.safe_dump(data, defaultFlowStyle=True)
+    text: str = yaml.safe_dump(data, default_flow_style=True)
     assert "{" in text
     assert "}" in text
 
@@ -479,7 +479,7 @@ def test_safe_dump_sort_keys_true_sorts_alphabetically():
     data["c"] = 3
     data["a"] = 1
     data["b"] = 2
-    text: str = yaml.safe_dump(data, sortKeys=True)
+    text: str = yaml.safe_dump(data, sort_keys=True)
     pos_a: int = text.find("a:")
     pos_b: int = text.find("b:")
     pos_c: int = text.find("c:")
@@ -492,7 +492,7 @@ def test_safe_dump_sort_keys_false_preserves_insertion_order():
     data["c"] = 3
     data["a"] = 1
     data["b"] = 2
-    text: str = yaml.safe_dump(data, sortKeys=False)
+    text: str = yaml.safe_dump(data, sort_keys=False)
     pos_c: int = text.find("c:")
     pos_a: int = text.find("a:")
     pos_b: int = text.find("b:")

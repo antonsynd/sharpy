@@ -471,7 +471,7 @@ def test_is_symlink_false_for_nonexistent(tmp_path: str):
 @test
 def test_rglob_finds_files_recursively(tmp_path: str):
     sub_dir = tmp_path + "/rglob_sub"
-    os.makedirs(sub_dir, existOk=True)
+    os.makedirs(sub_dir, exist_ok=True)
     with open(tmp_path + "/top.txt", "w") as fa:
         fa.write("")
     with open(sub_dir + "/nested.txt", "w") as fb:

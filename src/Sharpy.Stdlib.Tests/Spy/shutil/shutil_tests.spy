@@ -41,7 +41,7 @@ def test_copy_copies_to_directory(tmp_path: str):
     with open(src, "w") as fa:
         fa.write("hello")
     destdir = tmp_path + "/destdir"
-    os.makedirs(destdir, existOk=True)
+    os.makedirs(destdir, exist_ok=True)
     result = shutil.copy(src, destdir)
     expected = destdir + "/src.txt"
     assert isfile(expected)
@@ -71,7 +71,7 @@ def test_copy2_preserves_timestamps(tmp_path: str):
 @test
 def test_copytree_copies_recursively(tmp_path: str):
     src_dir = tmp_path + "/treesrc"
-    os.makedirs(src_dir + "/sub", existOk=True)
+    os.makedirs(src_dir + "/sub", exist_ok=True)
     with open(src_dir + "/a.txt", "w") as fa:
         fa.write("a")
     with open(src_dir + "/sub/b.txt", "w") as fb:
@@ -98,7 +98,7 @@ def test_copytree_throws_on_nonexistent_source(tmp_path: str):
 @test
 def test_rmtree_deletes_directory_tree(tmp_path: str):
     d = tmp_path + "/rmdir"
-    os.makedirs(d + "/sub", existOk=True)
+    os.makedirs(d + "/sub", exist_ok=True)
     with open(d + "/file.txt", "w") as fa:
         fa.write("data")
     with open(d + "/sub/inner.txt", "w") as fb:
@@ -134,7 +134,7 @@ def test_move_moves_file(tmp_path: str):
 @test
 def test_move_moves_directory(tmp_path: str):
     src_dir = tmp_path + "/movedirsrc"
-    os.makedirs(src_dir, existOk=True)
+    os.makedirs(src_dir, exist_ok=True)
     with open(src_dir + "/f.txt", "w") as fa:
         fa.write("f")
     dst_dir = tmp_path + "/movedirdst"

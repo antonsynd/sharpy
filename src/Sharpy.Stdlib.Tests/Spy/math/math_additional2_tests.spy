@@ -10,11 +10,11 @@ def test_sin_zero_returns_zero():
 
 @test
 def test_sin_pi_over_2_returns_one():
-    assert math.isclose(1.0, math.sin(math.pi / 2.0), absTol=1e-15)
+    assert math.isclose(1.0, math.sin(math.pi / 2.0), abs_tol=1e-15)
 
 @test
 def test_sin_pi_is_approximately_zero():
-    assert math.isclose(0.0, math.sin(math.pi), absTol=1e-14)
+    assert math.isclose(0.0, math.sin(math.pi), abs_tol=1e-14)
 
 @test
 def test_cos_zero_returns_one():
@@ -22,7 +22,7 @@ def test_cos_zero_returns_one():
 
 @test
 def test_cos_pi_returns_negative_one():
-    assert math.isclose(-1.0, math.cos(math.pi), absTol=1e-15)
+    assert math.isclose(-1.0, math.cos(math.pi), abs_tol=1e-15)
 
 @test
 def test_tan_zero_returns_zero():
@@ -30,13 +30,13 @@ def test_tan_zero_returns_zero():
 
 @test
 def test_tan_pi_over_4_is_approximately_one():
-    assert math.isclose(1.0, math.tan(math.pi / 4.0), relTol=1e-14)
+    assert math.isclose(1.0, math.tan(math.pi / 4.0), rel_tol=1e-14)
 
 # --- Inverse trigonometric functions ---
 
 @test
 def test_asin_one_returns_pi_over_2():
-    assert math.isclose(math.pi / 2.0, math.asin(1.0), relTol=1e-14)
+    assert math.isclose(math.pi / 2.0, math.asin(1.0), rel_tol=1e-14)
 
 @test
 def test_asin_zero_returns_zero():
@@ -48,7 +48,7 @@ def test_acos_one_returns_zero():
 
 @test
 def test_acos_zero_returns_pi_over_2():
-    assert math.isclose(math.pi / 2.0, math.acos(0.0), relTol=1e-14)
+    assert math.isclose(math.pi / 2.0, math.acos(0.0), rel_tol=1e-14)
 
 @test
 def test_atan_zero_returns_zero():
@@ -56,15 +56,15 @@ def test_atan_zero_returns_zero():
 
 @test
 def test_atan_one_returns_pi_over_4():
-    assert math.isclose(math.pi / 4.0, math.atan(1.0), relTol=1e-14)
+    assert math.isclose(math.pi / 4.0, math.atan(1.0), rel_tol=1e-14)
 
 @test
 def test_atan2_one_one_returns_pi_over_4():
-    assert math.isclose(math.pi / 4.0, math.atan2(1.0, 1.0), relTol=1e-14)
+    assert math.isclose(math.pi / 4.0, math.atan2(1.0, 1.0), rel_tol=1e-14)
 
 @test
 def test_atan2_negative_x_returns_pi():
-    assert math.isclose(math.pi, math.atan2(0.0, -1.0), relTol=1e-14)
+    assert math.isclose(math.pi, math.atan2(0.0, -1.0), rel_tol=1e-14)
 
 # --- Hyperbolic functions ---
 
@@ -74,7 +74,7 @@ def test_sinh_zero_returns_zero():
 
 @test
 def test_sinh_one_matches_known_value():
-    assert math.isclose(1.1752011936438014, math.sinh(1.0), relTol=1e-14)
+    assert math.isclose(1.1752011936438014, math.sinh(1.0), rel_tol=1e-14)
 
 @test
 def test_cosh_zero_returns_one():
@@ -92,7 +92,7 @@ def test_exp_zero_returns_one():
 
 @test
 def test_exp_one_returns_e():
-    assert math.isclose(math.e, math.exp(1.0), relTol=1e-14)
+    assert math.isclose(math.e, math.exp(1.0), rel_tol=1e-14)
 
 # --- Logarithmic functions ---
 
@@ -102,15 +102,15 @@ def test_log_one_returns_zero():
 
 @test
 def test_log_e_returns_one():
-    assert math.isclose(1.0, math.log(math.e), relTol=1e-14)
+    assert math.isclose(1.0, math.log(math.e), rel_tol=1e-14)
 
 @test
 def test_log_with_base10_returns_correct_value():
-    assert math.isclose(2.0, math.log(100.0, 10.0), relTol=1e-14)
+    assert math.isclose(2.0, math.log(100.0, 10.0), rel_tol=1e-14)
 
 @test
 def test_log_with_base1_is_special_case():
-    assert math.isclose(0.0, math.log(1.0, 10.0), absTol=1e-14)
+    assert math.isclose(0.0, math.log(1.0, 10.0), abs_tol=1e-14)
 
 @test
 def test_log10_hundred_returns_two():
@@ -122,7 +122,7 @@ def test_log10_one_returns_zero():
 
 @test
 def test_log2_eight_returns_three():
-    assert math.isclose(3.0, math.log2(8.0), relTol=1e-14)
+    assert math.isclose(3.0, math.log2(8.0), rel_tol=1e-14)
 
 @test
 def test_log2_one_returns_zero():
@@ -200,7 +200,7 @@ def test_fabs_zero_returns_zero():
 
 @test
 def test_degrees_pi_returns_180():
-    assert math.isclose(180.0, math.degrees(math.pi), relTol=1e-14)
+    assert math.isclose(180.0, math.degrees(math.pi), rel_tol=1e-14)
 
 @test
 def test_degrees_zero_returns_zero():
@@ -208,7 +208,7 @@ def test_degrees_zero_returns_zero():
 
 @test
 def test_radians_180_returns_pi():
-    assert math.isclose(math.pi, math.radians(180.0), relTol=1e-14)
+    assert math.isclose(math.pi, math.radians(180.0), rel_tol=1e-14)
 
 @test
 def test_radians_zero_returns_zero():

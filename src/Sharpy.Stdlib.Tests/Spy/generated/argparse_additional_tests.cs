@@ -44,7 +44,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFormatHelpWithPositionalShowsPositionalSection()
             {
-#line (17, 5) - (17, 91) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (17, 5) - (17, 92) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(prog: "tool", addHelp: false);
 #line (18, 5) - (18, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 parser.AddArgument("input", help: "the input file");
@@ -62,7 +62,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFormatHelpWithOptionalShowsOptionsSection()
             {
-#line (26, 5) - (26, 91) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (26, 5) - (26, 92) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(prog: "tool", addHelp: false);
 #line (27, 5) - (27, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 parser.AddOptionalArgument("--verbose", action: "store_true", help: "verbose output");
@@ -80,7 +80,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFormatHelpUsageLineContainsProg()
             {
-#line (35, 5) - (35, 96) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (35, 5) - (35, 97) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(prog: "myprogram", addHelp: false);
 #line (36, 5) - (36, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 string helpText = parser.FormatHelp();
@@ -116,7 +116,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestNamespaceToStringNoneValueShowsNone()
             {
-#line (57, 5) - (57, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (57, 5) - (57, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (58, 5) - (58, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 parser.AddOptionalArgument("--output");
@@ -134,9 +134,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestNamespaceToStringIntValueShowsNumber()
             {
-#line (66, 5) - (66, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (66, 5) - (66, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
-#line (67, 5) - (67, 73) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (67, 5) - (67, 74) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 parser.AddOptionalArgument("--count", type: "int", defaultValue: 42);
 #line (68, 5) - (68, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.Namespace ns = parser.ParseArgs(new Sharpy.List<string>() { });
@@ -150,7 +150,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestParseArgsFloatPositionalParsed()
             {
-#line (76, 5) - (76, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (76, 5) - (76, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (77, 5) - (77, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 parser.AddArgument("ratio", type: "float");
@@ -166,9 +166,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestParseArgsFloatOptionalParsed()
             {
-#line (84, 5) - (84, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (84, 5) - (84, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
-#line (85, 5) - (85, 80) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (85, 5) - (85, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 parser.AddOptionalArgument("--threshold", type: "float", defaultValue: 0.5d);
 #line (86, 5) - (86, 73) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.Namespace ns = parser.ParseArgs(new Sharpy.List<string>() { "--threshold", "0.75" });
@@ -182,7 +182,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestParseArgsOptionalMissingValueThrowsArgumentError()
             {
-#line (94, 5) - (94, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (94, 5) - (94, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (95, 5) - (95, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 parser.AddOptionalArgument("--name");
@@ -207,9 +207,9 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestParseArgsShortOptionMissingValueThrowsArgumentError()
             {
-#line (101, 5) - (101, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (101, 5) - (101, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
-#line (102, 5) - (102, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (102, 5) - (102, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 parser.AddOptionalArgument("--name", shortName: "-n");
 #line (103, 5) - (108, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 bool __raised_1 = false;
@@ -232,7 +232,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestParseArgsNargsPlusMultipleValuesCollectsAll()
             {
-#line (110, 5) - (110, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (110, 5) - (110, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (111, 5) - (111, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 parser.AddArgument("files", nargs: "+");
@@ -248,7 +248,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAddArgumentGroupWithPositionalParsesToNamespace()
             {
-#line (120, 5) - (120, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (120, 5) - (120, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (121, 5) - (121, 80) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentGroup group = parser.AddArgumentGroup("Input options");
@@ -264,15 +264,15 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAddArgumentGroupMultipleGroupsBothParsedCorrectly()
             {
-#line (128, 5) - (128, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (128, 5) - (128, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (129, 5) - (129, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentGroup g1 = parser.AddArgumentGroup("Network");
-#line (130, 5) - (130, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (130, 5) - (130, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 g1.AddOptionalArgument("--host", defaultValue: "localhost");
 #line (131, 5) - (131, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentGroup g2 = parser.AddArgumentGroup("Auth");
-#line (132, 5) - (132, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (132, 5) - (132, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 g2.AddOptionalArgument("--token", defaultValue: "none");
 #line (133, 5) - (133, 96) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.Namespace ns = parser.ParseArgs(new Sharpy.List<string>() { "--host", "example.com", "--token", "secret" });
@@ -286,7 +286,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestTwoMutuallyExclusiveGroupsEachEnforcedIndependently()
             {
-#line (141, 5) - (141, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (141, 5) - (141, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (142, 5) - (142, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.MutuallyExclusiveGroup g1 = parser.AddMutuallyExclusiveGroup();
@@ -329,7 +329,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAddSubparsersNoDestSubcommandParsed()
             {
-#line (161, 5) - (161, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (161, 5) - (161, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (162, 5) - (162, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.SubparsersAction subparsers = parser.AddSubparsers();
@@ -347,7 +347,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAddSubparsersWithTitleSubcommandParsed()
             {
-#line (170, 5) - (170, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (170, 5) - (170, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (171, 5) - (171, 97) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 global::Sharpy.SubparsersAction subparsers = parser.AddSubparsers(title: "commands", dest: "cmd");

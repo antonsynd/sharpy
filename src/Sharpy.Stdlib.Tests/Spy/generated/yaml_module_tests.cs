@@ -1012,7 +1012,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 data["a"] = 1;
 #line (462, 5) - (462, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 data["b"] = 2;
-#line (463, 5) - (463, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (463, 5) - (463, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 string text = yaml.SafeDump(data, defaultFlowStyle: true);
 #line (464, 5) - (464, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 Xunit.Assert.Contains("{", text);
@@ -1059,7 +1059,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 data["a"] = 1;
 #line (481, 5) - (481, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 data["b"] = 2;
-#line (482, 5) - (482, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (482, 5) - (482, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 string text = yaml.SafeDump(data, sortKeys: true);
 #line (483, 5) - (483, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 int posA = global::Sharpy.StringExtensions.Find(text, "a:");
@@ -1088,7 +1088,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 data["a"] = 1;
 #line (494, 5) - (494, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 data["b"] = 2;
-#line (495, 5) - (495, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (495, 5) - (495, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 string text = yaml.SafeDump(data, sortKeys: false);
 #line (496, 5) - (496, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 int posC = global::Sharpy.StringExtensions.Find(text, "c:");
