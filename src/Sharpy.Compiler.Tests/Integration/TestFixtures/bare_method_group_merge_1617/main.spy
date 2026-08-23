@@ -1,0 +1,10 @@
+# Test (#1617): the ElideMethodGroupStatement lowering survives the per-file -> project
+# SemanticInfo merge. The fact is node-keyed (_statementLowerings) and recorded while checking
+# mglib.spy into that file's local SemanticInfo; codegen reads the MERGED project-level instance.
+# A side-table missing from SemanticInfo.MergeFrom is dropped there SILENTLY — here that surfaces
+# loudly as the original CS8183 (untypable method-group discard) instead of as nothing.
+import mglib
+
+def main() -> None:
+    mglib.poke()
+    print(mglib.helper())

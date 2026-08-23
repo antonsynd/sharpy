@@ -1,0 +1,3 @@
+method reference 'upper' as a statement has no effect; did you mean to call it? 'upper()'
+method reference 'greet' as a statement has no effect; did you mean to call it? 'greet()'
+method reference 'bar' as a statement has no effect; did you mean to call it? 'bar()'

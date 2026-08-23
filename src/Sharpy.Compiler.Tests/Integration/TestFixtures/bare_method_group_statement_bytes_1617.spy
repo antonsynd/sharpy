@@ -1,0 +1,5 @@
+# Test (#1617): the original discovery shape — a bare bytes method reference as a statement.
+# CPython-faithful no-op: the method group is elided at codegen, execution continues.
+def main():
+    (b"data").count
+    print("ok")

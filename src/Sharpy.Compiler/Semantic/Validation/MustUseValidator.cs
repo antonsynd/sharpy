@@ -24,7 +24,7 @@ internal sealed class MustUseValidator : ValidatingAstWalker
 
     public override void VisitExpressionStatement(ExpressionStatement node)
     {
-        var message = DiscardMessage(node.Expression);
+        var message = DiscardMessage(node.Expression) ?? ElidedMethodGroupMessage(node);
         if (message != null)
         {
             AddWarning(
@@ -68,5 +68,31 @@ internal sealed class MustUseValidator : ValidatingAstWalker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Returns the SPY0480 message when the statement is a bare method-group reference the
+    /// TypeChecker elided to a no-op (#1617). The statement has no effect at all, so the
+    /// reference is almost certainly a missing call. Reads the recorded
+    /// <see cref="StatementLowering"/> fact rather than re-deriving the method-group class.
+    /// </summary>
+    private string? ElidedMethodGroupMessage(ExpressionStatement node)
+    {
+        if (Context.SemanticInfo.GetStatementLowering(node)
+            is not { Kind: StatementLoweringKind.ElideMethodGroupStatement })
+        {
+            return null;
+        }
+
+        var name = Shared.AstHelper.UnwrapParenthesized(node.Expression) switch
+        {
+            MemberAccess member => member.Member,
+            Identifier id => id.Name,
+            _ => null,
+        };
+
+        return name != null
+            ? $"method reference '{name}' as a statement has no effect; did you mean to call it? '{name}()'"
+            : "method reference as a statement has no effect; did you mean to call it? 'expr()'";
     }
 }

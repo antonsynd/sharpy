@@ -1,0 +1,8 @@
+# The elision facts are recorded while checking THIS file, into this file's local SemanticInfo.
+def helper() -> str:
+    return "helped"
+
+def poke() -> None:
+    "abc".upper
+    helper
+    print("poked")
