@@ -726,8 +726,21 @@ internal partial class TypeChecker
                 break;
 
             case ExpressionStatement exprStmt:
-                CheckExpression(exprStmt.Expression);
-                break;
+                {
+                    var exprType = CheckExpression(exprStmt.Expression);
+                    // #1617: a bare method-group reference as a statement is a CPython no-op.
+                    // The provable method-group class: (a) MemberAccess typing as FunctionType,
+                    // (b) Identifier resolving to a function symbol (not a variable/delegate).
+                    if (exprType is FunctionType
+                        && (exprStmt.Expression is MemberAccess
+                            || (exprStmt.Expression is Identifier id
+                                && _semanticInfo.GetIdentifierSymbol(id) is FunctionSymbol)))
+                    {
+                        _semanticInfo.SetStatementLowering(exprStmt,
+                            new StatementLowering(StatementLoweringKind.ElideMethodGroupStatement));
+                    }
+                    break;
+                }
 
             case DecoratedStatement decorated:
                 // @suppress wrapper (#1024): decorators are compile-time-only; check the inner statement.

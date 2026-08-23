@@ -1,0 +1,13 @@
+def greet() -> str:
+    return "hello"
+
+class Foo:
+    def bar(self) -> int:
+        return 42
+
+def main():
+    "abc".upper
+    greet
+    f: Foo = Foo()
+    f.bar
+    print("done")

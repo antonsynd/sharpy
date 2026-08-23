@@ -555,6 +555,13 @@ internal partial class RoslynEmitter
                     .WithArgumentList(ArgumentList()));
         }
 
+        // #1617: elided method-group statements emit no C# (CPython no-op)
+        if (_context.SemanticInfo?.GetStatementLowering(exprStmt)?.Kind
+            == StatementLoweringKind.ElideMethodGroupStatement)
+        {
+            return EmptyStatement();
+        }
+
         var generated = GenerateExpression(expr);
 
         // Check if the expression is valid as a C# statement
