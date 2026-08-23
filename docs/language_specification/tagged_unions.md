@@ -83,6 +83,90 @@ match state:
     case LoadState.Failed(err): show_error(err)
 ```
 
+**Bare Unit-Case Patterns:**
+
+When the scrutinee is union-typed, the union name can be omitted entirely — a bare name in a
+case pattern resolves as a unit variant of the scrutinee's union:
+
+```python
+union LoadState:
+    case NotStarted
+    case Loading
+    case Loaded(data: str)
+
+def describe(state: LoadState) -> str:
+    match state:
+        case NotStarted:        # bare spelling — resolves as LoadState.NotStarted
+            return "not started"
+        case Loading:
+            return "loading"
+        case Loaded(data):
+            return "loaded: " + data
+
+def main():
+    print(describe(LoadState.NotStarted()))
+    print(describe(LoadState.Loading()))
+    print(describe(LoadState.Loaded("users.csv")))
+# Output:
+# not started
+# loading
+# loaded: users.csv
+```
+
+*Resolution rule:* a bare name in a pattern over a union-typed scrutinee resolves as a variant
+of that union **before** constant lookup and **before** capture binding. If the name collides
+with a reachable constant, the pattern still resolves to the variant, and the compiler warns
+(SPY0485, `VariantPatternShadowsConstant`):
+
+```python
+union Status:
+    case Idle
+    case Active
+
+const Idle = 0  # collides with the variant name
+
+def check(s: Status) -> str:
+    match s:
+        case Idle:      # resolves as Status.Idle, NOT the constant — warns SPY0485
+            return "idle"
+        case Active:
+            return "active"
+```
+
+Use the qualified spelling (`case Status.Idle:`) or rename the constant to make the intent
+explicit. In practice collisions are rare because constants are conventionally
+`SCREAMING_SNAKE_CASE` while variants are `PascalCase` (a `PascalCase` constant additionally
+draws the SPY0453 naming-convention warning).
+
+*Synthetic-union carve-out:* the built-in `Optional[T]` and `Result[T, E]` primitives are
+excluded from bare unit-case resolution in v1 — bare `case Some:`, `case Ok:`, and `case Err:`
+do **not** resolve as variants over an Optional/Result scrutinee (a bare name there is an
+ordinary capture binding, which matches any value). The payload spellings (`case Some(x):`,
+`case Ok(v):`, `case Err(e):`) are unaffected, and `case None:` works because `None` is a
+keyword literal, not a bare name:
+
+```python
+def find(x: int) -> int?:
+    if x > 0:
+        return Some(x * 2)
+    return None()
+
+def main():
+    match find(5):
+        case Some(v):    # payload spelling — unaffected by the carve-out
+            print(v)
+        case None:       # keyword literal — no parens needed
+            print("none")
+    match find(-1):
+        case Some(v):
+            print(v)
+        case None:
+            print("none")
+# Output:
+# 10
+# none
+```
+
 ## Creating Values
 
 Tagged union cases are created using the union type name followed by the case name:
