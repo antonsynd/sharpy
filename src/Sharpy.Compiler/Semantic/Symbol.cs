@@ -332,6 +332,17 @@ public record TypeSymbol : Symbol
     public bool IsAbstract { get; init; }
 
     /// <summary>
+    /// For CLR name groups — types differing only in generic arity under one stripped name
+    /// (<c>EventHandler</c>/<c>EventHandler&lt;T&gt;</c>, <c>Action</c>/<c>Action&lt;T1..&gt;</c>,
+    /// <c>Func&lt;..&gt;</c>) — maps each available arity to its group member (#1613). Populated
+    /// only on the representative the namespace-import channel exports under the stripped name;
+    /// null for ordinary types. Annotation-site resolution selects the member matching the
+    /// written arity, mirroring C# type-group semantics. Carried through re-export
+    /// <c>with</c>-copies like every other init-only fact.
+    /// </summary>
+    public IReadOnlyDictionary<int, TypeSymbol>? ClrArityGroup { get; init; }
+
+    /// <summary>
     /// Whether this type extends SourceGenerator (detected during inheritance resolution).
     /// </summary>
     public bool IsSourceGenerator { get; internal set; }

@@ -336,6 +336,13 @@ internal class ModuleRegistry
         // Ensure runtime assemblies for this namespace are loaded (e.g., System.IO.FileSystem for System.IO)
         EnsureRuntimeAssembliesLoaded(netNamespace);
 
+        // #1613: a CLR namespace spells some names as a GROUP of types differing only in generic
+        // arity (EventHandler / EventHandler`1 / EventHandler`2, Action`0..16, Func`1..17).
+        // StripArity collapses the group onto one export key, and which member survived was
+        // enumeration-order last-wins — so collect every member per stripped name and export ONE
+        // representative carrying the whole group for annotation-site selection.
+        var byName = new Dictionary<string, SortedDictionary<int, TypeSymbol>>(StringComparer.Ordinal);
+
         // Search all loaded assemblies for types in this namespace
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
@@ -347,10 +354,15 @@ internal class ModuleRegistry
                 foreach (var clrType in namespaceTypes)
                 {
                     var typeSymbol = CreateTypeSymbolFromClrType(clrType);
-                    if (typeSymbol != null)
+                    if (typeSymbol == null)
+                        continue;
+
+                    if (!byName.TryGetValue(typeSymbol.Name, out var group))
                     {
-                        types.Add(typeSymbol);
+                        group = new SortedDictionary<int, TypeSymbol>();
+                        byName[typeSymbol.Name] = group;
                     }
+                    group[typeSymbol.TypeParameters.Count] = typeSymbol;
                 }
             }
             catch (ReflectionTypeLoadException ex)
@@ -358,6 +370,23 @@ internal class ModuleRegistry
                 // Skip assemblies that can't be fully loaded
                 _logger.LogDebug($"Skipping assembly '{assembly.GetName().Name}': {ex.Message}");
             }
+        }
+
+        foreach (var group in byName.Values)
+        {
+            if (group.Count == 1)
+            {
+                types.Add(group.Values.First());
+                continue;
+            }
+
+            // The representative mirrors C#'s reading of the unparameterized name: the arity-0
+            // member when the group has one, else the lowest arity. TypeResolver swaps in the
+            // member matching the written arity at the annotation site.
+            var representative = group.TryGetValue(0, out var nonGeneric)
+                ? nonGeneric
+                : group.Values.First();
+            types.Add(representative with { ClrArityGroup = group });
         }
 
         return types;
