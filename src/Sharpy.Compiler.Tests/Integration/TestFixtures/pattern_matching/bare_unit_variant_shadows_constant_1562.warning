@@ -1,0 +1,2 @@
+Pattern 'Idle' resolves as union variant of the scrutinee type, shadowing constant 'Idle'
+Identifier 'Idle' should use SCREAMING_SNAKE_CASE for constants

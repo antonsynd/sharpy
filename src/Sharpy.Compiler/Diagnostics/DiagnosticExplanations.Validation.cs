@@ -771,8 +771,8 @@ public static partial class DiagnosticExplanations
             "name, the variant wins (it is scrutinee-scoped, the most local scope), but this " +
             "warning alerts you to the shadowing. This matches how C# and Rust scope enum members " +
             "inside pattern matching.",
-            "union Status:\n    Idle\n    Busy(task: str)\n\nIDLE: int = 0  # a module constant\n\n" +
-            "def check(s: Status) -> None:\n    match s:\n        case Idle:   # resolves as Status.Idle, not the constant\n            pass",
+            "union Status:\n    case Idle\n    case Busy(task: str)\n\nconst Idle = 0  # collides with the variant name\n\n" +
+            "def check(s: Status) -> None:\n    match s:\n        case Idle:   # resolves as Status.Idle, not the constant\n            pass\n        case Busy(_):\n            pass",
             "Rename the constant to avoid ambiguity, or use the qualified spelling 'Status.Idle' " +
             "in the pattern to make the intent explicit.");
 

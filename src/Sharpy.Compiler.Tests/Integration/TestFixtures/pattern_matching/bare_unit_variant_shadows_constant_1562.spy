@@ -2,6 +2,8 @@ union Status:
     case Idle
     case Active
 
+const Idle = 0
+
 def check(s: Status) -> str:
     match s:
         case Idle:
