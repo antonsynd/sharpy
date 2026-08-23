@@ -18,3 +18,16 @@
 # #1515 note: SPY0215 refusals (builtin exceptions present Python's exception surface
 # only; see docs/deviations.yaml id: builtin-exception-python-surface) are a
 # refused-by-design verdict classified by the sweep itself — they never appear here.
+
+# #1625: Sharpy-own collection types — BuiltinRegistry.TryFindClrType returns SCG.List`1
+# when Sharpy.List`1 should win. Structural fix deferred; these are not CLR interop targets.
+builtins::property::List`1.length::property             # #1625
+builtins::property::List`1.is_read_only::property       # #1625
+builtins::method::List`1.delete_at::method              # #1625
+builtins::method::List`1.get_item_unchecked::method     # #1625
+builtins::method::List`1.get::method                    # #1625
+builtins::method::List`1.index::method                  # #1625
+builtins::method::List`1.count::method                  # #1625
+builtins::method::List`1.pop::method                    # #1625
+builtins::method::List`1.extend::method                 # #1625
+builtins::method::List`1.copy::method                   # #1625
