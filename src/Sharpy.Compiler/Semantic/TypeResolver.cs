@@ -263,20 +263,29 @@ internal class TypeResolver
                     typeSymbol = null;
             }
 
-            // #1613: a CLR name group (EventHandler / EventHandler[T], Action / Action[T1..]) is
-            // exported as one representative carrying every arity. A bare spelling selects the
-            // arity-0 member, the way C# reads the unparameterized name. A group with no arity-0
-            // member is refused with the arities it offers — except in type-operand positions,
-            // where a bare generic may fill from the subject and that position's own classifier
-            // owns the refusal (#1235).
+            // #1613: a CLR name group carried by the import representative must be resolved
+            // by written arity BEFORE the bare-generic dispatch — else the arity-0 representative
+            // (IComparable, non-generic) is treated as non-generic and the arity-1 member
+            // (IComparable<T>) is never selected, causing a false constraint-unsatisfied error.
             var refusedByArityGroup = false;
-            if (typeSymbol?.ClrArityGroup is { } arityGroup)
+            if (typeSymbol?.ClrArityGroup is { } importArityGroup && annotation.TypeArguments.Length > 0)
             {
-                if (arityGroup.TryGetValue(0, out var arityMember))
+                if (importArityGroup.TryGetValue(annotation.TypeArguments.Length, out var arityMember))
                     typeSymbol = arityMember;
-                else if (!bareGenericFillsFromContext)
+                else
                 {
-                    AddClrArityGroupError(annotation, arityGroup);
+                    AddClrArityGroupError(annotation, importArityGroup);
+                    refusedByArityGroup = true;
+                }
+            }
+            else if (typeSymbol?.ClrArityGroup is { } bareArityGroup && annotation.TypeArguments.Length == 0
+                && !bareGenericFillsFromContext)
+            {
+                if (bareArityGroup.TryGetValue(0, out var arityMember))
+                    typeSymbol = arityMember;
+                else
+                {
+                    AddClrArityGroupError(annotation, bareArityGroup);
                     refusedByArityGroup = true;
                 }
             }
@@ -287,19 +296,6 @@ internal class TypeResolver
             }
             else if (typeSymbol != null)
             {
-                // Bare reference to a generic: dispatch to the fill authority (#1331). It fills when
-                // every parameter has a default and otherwise draws the existing "expects N type
-                // arguments but got 0" diagnostic — the same answer a written-but-short argument
-                // list gets, because zero written arguments is just the shortest such list.
-                //
-                // Dispatching only for the all-defaulted case (as this first did) left the deficient
-                // half silently resolving to an arity-less UserDefinedType, which downstream either
-                // mis-reported as an assignability mismatch against its own instantiations
-                // (`h: Holder = Holder[int](...)` → SPY0220) or, for an interface, accepted and
-                // leaked to codegen as CS0305 behind SPY0908 — nothing had a mismatch to notice.
-                //
-                // The type-operand positions opt out: there a bare name is fillable from the
-                // subject, and their own classifier owns the refusal (#1235).
                 if (typeSymbol.IsGeneric
                     && typeSymbol.TypeParameters.Count > 0
                     && !bareGenericFillsFromContext)
@@ -698,19 +694,6 @@ internal class TypeResolver
         if (!escaped)
             typeSymbol ??= _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name, annotation.TypeArguments.Length);
 
-        // #1613: the written type-argument count selects the matching member of a CLR name
-        // group; an arity the group lacks is refused naming the arities it offers.
-        if (typeSymbol?.ClrArityGroup is { } arityGroup)
-        {
-            if (arityGroup.TryGetValue(annotation.TypeArguments.Length, out var arityMember))
-                typeSymbol = arityMember;
-            else
-            {
-                AddClrArityGroupError(annotation, arityGroup);
-                return SemanticType.Unknown;
-            }
-        }
-
         // #1134: A builtin collection that also ships a non-generic static factory companion
         // shadows its real generic type in the CLR fallback above. `Sharpy.Dict` (the
         // `dict.fromkeys` helper) is such a static class, so the CamelCase interop spelling
@@ -793,20 +776,6 @@ internal class TypeResolver
             TypeArguments = typeArgs,
             GenericDefinition = typeSymbol
         };
-    }
-
-    /// <summary>
-    /// SPY0224 for a written arity absent from a CLR name group (#1613). Names the arities the
-    /// group actually offers — "expects N" would name whichever member happened to be the
-    /// representative rather than the choice the user has.
-    /// </summary>
-    private void AddClrArityGroupError(TypeAnnotation annotation, IReadOnlyDictionary<int, TypeSymbol> arityGroup)
-    {
-        var available = string.Join(", ", arityGroup.Keys.OrderBy(a => a));
-        AddError(
-            $"Type '{annotation.Name}' does not take {annotation.TypeArguments.Length} type argument(s) (available: {available})",
-            annotation.LineStart, annotation.ColumnStart,
-            code: DiagnosticCodes.Semantic.WrongArgumentCount, span: annotation.Span);
     }
 
     private SemanticType ExpandTypeAlias(TypeAliasSymbol aliasSymbol, bool isOptional)
@@ -1038,6 +1007,15 @@ internal class TypeResolver
             ParameterTypes = paramTypes,
             ReturnType = returnType
         };
+    }
+
+    private void AddClrArityGroupError(TypeAnnotation annotation, IReadOnlyDictionary<int, TypeSymbol> arityGroup)
+    {
+        var available = string.Join(", ", arityGroup.Keys.OrderBy(a => a));
+        AddError(
+            $"Type '{annotation.Name}' does not take {annotation.TypeArguments.Length} type argument(s) (available: {available})",
+            annotation.LineStart, annotation.ColumnStart,
+            code: DiagnosticCodes.Semantic.WrongArgumentCount, span: annotation.Span);
     }
 
     private string? FindTypeSuggestion(string name)
