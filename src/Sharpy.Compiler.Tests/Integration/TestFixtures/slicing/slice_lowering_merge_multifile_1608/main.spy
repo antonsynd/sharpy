@@ -1,0 +1,13 @@
+# The cross-file half of #1608. ops.middle() slices a list of shapes.Point INSIDE the
+# non-main file — the SliceLowering fact is recorded while checking ops.spy and must survive
+# SemanticInfo.MergeFrom into the project-wide merge that code generation reads. Without the
+# SliceLowering stanza in MergeFrom the fact is dropped and the emitter's classify-or-throw
+# assert fires (descriptive ICE) instead of emitting Sharpy.Slice.GetSlice.
+import ops
+import shapes
+
+
+def main() -> None:
+    ps: list[shapes.Point] = [shapes.Point(1), shapes.Point(2), shapes.Point(3), shapes.Point(4)]
+    for p in ops.middle(ps):
+        print(p)

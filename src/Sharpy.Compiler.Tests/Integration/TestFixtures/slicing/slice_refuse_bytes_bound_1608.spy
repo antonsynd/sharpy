@@ -1,0 +1,4 @@
+# #1608: bytes slice bound refused — bounds must be assignable to int?.
+def main():
+    xs: list[int] = [10, 20, 30]
+    print(xs[b"a":3])

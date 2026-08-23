@@ -1,0 +1,7 @@
+# The slice lives HERE, in a non-entry file, over a type declared in a third file — the
+# per-file SemanticInfo carrying its SliceLowering fact must merge into the project result.
+import shapes
+
+
+def middle(ps: list[shapes.Point]) -> list[shapes.Point]:
+    return ps[1:3]

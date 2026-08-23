@@ -1,0 +1,6 @@
+# #1608: bool index refused with the int(flag) steer. CPython treats xs[True] as xs[1]
+# (bool subclasses int); the implicit conversion is a ruled Type-Safety deviation.
+def main():
+    xs: list[int] = [10, 20, 30]
+    flag: bool = True
+    print(xs[flag])

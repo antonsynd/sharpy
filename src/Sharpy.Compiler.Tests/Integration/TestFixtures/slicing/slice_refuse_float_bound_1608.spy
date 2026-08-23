@@ -1,0 +1,6 @@
+# #1608: slice bounds must be assignable to int? — float refused (CPython also raises
+# TypeError: slice indices must be integers or None).
+def main():
+    xs: list[int] = [10, 20, 30]
+    f: float = 1.5
+    print(xs[f:3])

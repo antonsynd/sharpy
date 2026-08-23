@@ -1,0 +1,11 @@
+# #1608 positives: array[T] slicing with various bounds. An array slice materializes a
+# list[T] (#1256). The variadic *args parameter is the canonical array[int] producer.
+def sliced(*args: int) -> None:
+    print(args[1:4])
+    print(args[:3])
+    print(args[None:3])
+    print(args[-2:])
+    print(args[::2])
+
+def main():
+    sliced(10, 20, 30, 40, 50)

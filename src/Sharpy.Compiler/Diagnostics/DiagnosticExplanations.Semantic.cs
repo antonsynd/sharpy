@@ -690,9 +690,11 @@ public static partial class DiagnosticExplanations
         // ── Semantic errors: Protocol and operator (SPY0320-SPY0339) ────
 
         Add(dict, DiagnosticCodes.Semantic.ProtocolMissingMethod, "Protocol method not implemented", "Semantic",
-            "A class claims to implement an interface (protocol) but is missing one or more required methods. All interface methods must be implemented.",
-            "interface Printable:\n    def display(self) -> str: ...\n\nclass Foo(Printable):  # missing display()\n    x: int",
-            "Implement all required methods:\nclass Foo(Printable):\n    x: int\n    def display(self) -> str:\n        return str(self.x)");
+            "Reported in two situations. (1) A class claims to implement an interface (protocol) but is missing one or more required methods — all interface methods must be implemented. "
+            + "(2) A protocol operation is applied to a type that does not support it: iterating a non-iterable (missing __iter__), indexing a type without __getitem__, "
+            + "or slicing a type that does not support slicing. Slicing is supported by list, str, bytes, array, and ndarray; tuple slicing is refused (tracked as #1609) and dict/set have no slice protocol.",
+            "interface Printable:\n    def display(self) -> str: ...\n\nclass Foo(Printable):  # missing display()\n    x: int\n\n# Protocol-operation face:\nd: dict[str, int] = {\"a\": 1}\nfirst = d[0:2]  # dict does not support slicing",
+            "Implement all required methods:\nclass Foo(Printable):\n    x: int\n    def display(self) -> str:\n        return str(self.x)\n\nFor a protocol operation, use a type that supports it — e.g. slice a list of the dict's items:\nfirst = list(d.items())[0:2]");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidOperatorSignature, "Invalid operator signature", "Semantic",
             "An operator overload method has an incorrect signature. Operator methods must follow specific parameter and return type conventions.",

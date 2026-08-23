@@ -1493,6 +1493,65 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// True when <paramref name="type"/> is numpy's <c>ndarray</c> (CLR <c>Sharpy.NdArray&lt;T&gt;</c>),
+    /// whichever path produced it — the expression path names it <c>NdArray</c> and the annotation
+    /// path <c>ndarray</c>, so the OPEN CLR definition is the discriminator, not the display name
+    /// (#1608; the identity itself lives in <see cref="Discovery.ClrTypeBridge.SpecialCases"/>).
+    /// </summary>
+    private static bool IsNdArrayType(SemanticType type)
+    {
+        var clr = type switch
+        {
+            GenericType { GenericDefinition.ClrType: { } definitionClr } => definitionClr,
+            UserDefinedType { Symbol.ClrType: { } symbolClr } => symbolClr,
+            _ => null,
+        };
+        if (clr == null)
+            return false;
+        var open = clr is { IsGenericType: true, IsGenericTypeDefinition: false }
+            ? clr.GetGenericTypeDefinition()
+            : clr;
+        return open.FullName == Discovery.ClrTypeBridge.SpecialCases.SharpyNdArrayFullName;
+    }
+
+    /// <summary>
+    /// #1608: the int-indexed builtin sequences — receivers whose subscript index must type as a
+    /// plain <c>int</c> (list, str, bytes, array). A nullable receiver exposes the underlying
+    /// type's protocols, matching <see cref="TypeInferenceService.InferIndexAccessType"/>.
+    /// </summary>
+    // TODO(#1620): dict/set subscript key types
+    private static bool IsIntIndexedSequence(SemanticType type)
+    {
+        if (type is NullableType nullable)
+            type = nullable.UnderlyingType;
+        return type == SemanticType.Str
+            || type is UserDefinedType { Name: BuiltinNames.Bytes }
+            || type is GenericType { Name: BuiltinNames.List or BuiltinNames.Array };
+    }
+
+    /// <summary>
+    /// #1608: the index of an int-indexed sequence must be a plain <c>int</c>. CPython accepts any
+    /// <c>__index__</c>-bearing value — notably bool, where <c>xs[True]</c> is <c>xs[1]</c> — but
+    /// the implicit bool→int is a ruled Type-Safety deviation: refuse and steer to an explicit
+    /// conversion. Shared by single-axis index access and multi-axis index dimensions.
+    /// </summary>
+    private void CheckIntIndex(Expression index, SemanticType indexType)
+    {
+        if (indexType is UnknownType || indexType == BuiltinType.Int)
+            return;
+        var message = $"Index must be 'int', got '{indexType.GetDisplayName()}'";
+        if (indexType == BuiltinType.Bool)
+        {
+            message += ". CPython treats True as 1, but Sharpy requires the conversion to be "
+                + "explicit — use xs[int(flag)]";
+        }
+        AddError(
+            message,
+            index.LineStart, index.ColumnStart,
+            code: DiagnosticCodes.Semantic.TypeMismatch, span: index.Span);
+    }
+
+    /// <summary>
     /// Extracts the Invoke method from a delegate type, substituting type parameters
     /// for generic delegates. Returns null if the type is not a delegate.
     /// </summary>

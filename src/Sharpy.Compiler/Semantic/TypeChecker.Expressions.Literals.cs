@@ -574,22 +574,9 @@ internal partial class TypeChecker
         var objType = CheckExpression(sliceAccess.Object);
 
         // #1608: validate bounds — each must be assignable to int?
-        foreach (var bound in new[] { sliceAccess.Start, sliceAccess.Stop, sliceAccess.Step })
-        {
-            if (bound == null) continue;
-            var boundType = CheckExpression(bound);
-            if (boundType is UnknownType || bound is NoneLiteral)
-                continue;
-            bool isIntCompatible = boundType == BuiltinType.Int
-                || (boundType is NullableType { UnderlyingType: BuiltinType nbt } && nbt == BuiltinType.Int);
-            if (!isIntCompatible)
-            {
-                AddError(
-                    $"Slice bound must be 'int' or 'None', got '{boundType.GetDisplayName()}'",
-                    bound.LineStart, bound.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch, span: bound.Span);
-            }
-        }
+        CheckSliceBound(sliceAccess.Start);
+        CheckSliceBound(sliceAccess.Stop);
+        CheckSliceBound(sliceAccess.Step);
 
         // Classify the receiver and record the lowering fact
         if (objType is GenericType gt && gt.Name == BuiltinNames.List)
@@ -617,6 +604,15 @@ internal partial class TypeChecker
                 TypeArguments = new List<SemanticType> { arrayType.TypeArguments[0] }
             };
         }
+        // #1608: ndarray — a slice is a sub-array VIEW of the same ndarray type (the rule
+        // CheckMultiAxisAccess's hasSlice arm applies). Lowered to NdArray.Slice(SliceSpec):
+        // Sharpy.Slice.GetSlice has no NdArray overload, which is what made a[1:4] fail as
+        // CS1503 behind SPY0908 before this arm existed.
+        if (IsNdArrayType(objType))
+        {
+            _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.NdArray));
+            return objType;
+        }
 
         // #1608: unclassified receiver → refuse with SPY0320
         if (objType is TupleType)
@@ -638,9 +634,37 @@ internal partial class TypeChecker
         return objType;
     }
 
+    /// <summary>
+    /// #1608: a slice bound (start/stop/step) must be assignable to <c>int?</c> — a plain
+    /// <c>int</c>, an <c>int | None</c> nullable, or the bare <c>None</c> literal (absent bound).
+    /// The Optional ADT does not implicitly cross; unwrap or narrow first. Shared between
+    /// single-axis slices and the slice dimensions of a multi-axis subscript.
+    /// </summary>
+    private void CheckSliceBound(Expression? bound)
+    {
+        if (bound == null)
+            return;
+        var boundType = CheckExpression(bound);
+        if (boundType is UnknownType || bound is NoneLiteral)
+            return;
+        bool isIntCompatible = boundType == BuiltinType.Int
+            || (boundType is NullableType { UnderlyingType: BuiltinType nbt } && nbt == BuiltinType.Int);
+        if (!isIntCompatible)
+        {
+            AddError(
+                $"Slice bound must be 'int' or 'None', got '{boundType.GetDisplayName()}'",
+                bound.LineStart, bound.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch, span: bound.Span);
+        }
+    }
+
     private SemanticType CheckMultiAxisAccess(MultiAxisAccess multiAxis)
     {
         var objType = CheckExpression(multiAxis.Object);
+
+        // #1608: on the int-indexed multi-axis receiver (ndarray), index dimensions must be
+        // plain 'int' and slice dimensions obey the same int? bound rule as single-axis slices.
+        var intIndexed = IsNdArrayType(objType);
 
         var hasSlice = false;
         foreach (var dim in multiAxis.Dimensions)
@@ -648,16 +672,15 @@ internal partial class TypeChecker
             if (dim.IsSlice)
             {
                 hasSlice = true;
-                if (dim.Start != null)
-                    CheckExpression(dim.Start);
-                if (dim.Stop != null)
-                    CheckExpression(dim.Stop);
-                if (dim.Step != null)
-                    CheckExpression(dim.Step);
+                CheckSliceBound(dim.Start);
+                CheckSliceBound(dim.Stop);
+                CheckSliceBound(dim.Step);
             }
             else
             {
-                CheckExpression(dim.Index!);
+                var indexType = CheckExpression(dim.Index!);
+                if (intIndexed)
+                    CheckIntIndex(dim.Index!, indexType);
             }
         }
 

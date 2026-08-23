@@ -1,0 +1,8 @@
+class Point:
+    x: int
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __str__(self) -> str:
+        return f"P{self.x}"

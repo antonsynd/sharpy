@@ -1,0 +1,12 @@
+# #1608 positives: bytes slicing with omitted, None, negative, and step bounds, plus a
+# loose-nullable (int | None) bound variable.
+def main():
+    b: bytes = b"abcdef"
+    print(b[1:4])
+    print(b[:3])
+    print(b[None:3])
+    print(b[-2:])
+    print(b[::2])
+    print(b[::-1])
+    n: int | None = 3
+    print(b[:n])

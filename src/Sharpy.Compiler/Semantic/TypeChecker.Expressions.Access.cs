@@ -1882,6 +1882,12 @@ internal partial class TypeChecker
         // tag alone (and never reflects over CLR indexers or re-inspects operand types).
         RecordIndexAccessLowering(indexAccess, objectType);
 
+        // #1608: int-indexed builtin sequences (list/str/bytes/array) take a plain 'int' index.
+        // Tuple indexing keeps its own constant-int rule below (SPY0327); dict/set key typing is
+        // TODO(#1620): dict/set subscript key types.
+        if (IsIntIndexedSequence(objectType))
+            CheckIntIndex(indexAccess.Index, indexType);
+
         // Tuple positional indexing: the index must be a compile-time constant because tuples
         // are heterogeneous (each position can have a different type, and a C# ValueTuple has no
         // runtime indexer — codegen lowers t[k] to .ItemN). Validate constant indices here and

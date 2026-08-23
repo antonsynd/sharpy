@@ -1985,9 +1985,39 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)
     {
-        var lowering = _context.SemanticInfo?.GetSliceLowering(sliceAccess);
+        var lowering = _context.SemanticInfo?.GetSliceLowering(sliceAccess)
+            ?? throw new InvalidOperationException(
+                "No SliceLowering recorded for slice access — semantic analysis must classify " +
+                "every receiver the emitter is asked to generate (#1608)");
 
         var obj = GenerateExpression(sliceAccess.Object);
+
+        var result = lowering.Kind switch
+        {
+            // NdArray slicing is per-axis: a[1:4] → a.Slice(new SliceSpec((int?)1, (int?)4)).
+            // Slice() requires one spec per dimension, so a single-axis slice of a higher-rank
+            // array throws IndexError at runtime (unlike numpy, which pads the trailing axes).
+            SliceLoweringKind.NdArray => InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        obj,
+                        IdentifierName("Slice")))
+                .AddArgumentListArguments(Argument(
+                    GenerateSliceSpec(sliceAccess.Start, sliceAccess.Stop, sliceAccess.Step))),
+
+            // List/Array/Str/Bytes → Sharpy.Slice.GetSlice(obj, start, end, step)
+            SliceLoweringKind.List or SliceLoweringKind.Array
+                or SliceLoweringKind.Str or SliceLoweringKind.Bytes =>
+                GenerateGetSliceCall(obj, sliceAccess),
+
+            _ => throw new InvalidOperationException(
+                $"Unhandled SliceLoweringKind '{lowering.Kind}' (#1608)"),
+        };
+
+        return ApplyNarrowedReadLowering(sliceAccess, result);
+    }
+
+    private ExpressionSyntax GenerateGetSliceCall(ExpressionSyntax obj, SliceAccess sliceAccess)
+    {
         var start = sliceAccess.Start != null
             ? GenerateExpression(sliceAccess.Start)
             : (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression);
@@ -1998,8 +2028,7 @@ internal partial class RoslynEmitter
             ? GenerateExpression(sliceAccess.Step)
             : (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression);
 
-        // List/Array/Str/Bytes → Sharpy.Slice.GetSlice(obj, start, end, step)
-        var result = InvocationExpression(
+        return InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                 MakeGlobalQualifiedName("Sharpy", "Slice"),
                 IdentifierName("GetSlice")))
@@ -2008,8 +2037,6 @@ internal partial class RoslynEmitter
                 Argument(start),
                 Argument(end),
                 Argument(step));
-
-        return ApplyNarrowedReadLowering(sliceAccess, result);
     }
 
     private ExpressionSyntax GenerateMultiAxisAccess(MultiAxisAccess multiAxis)
@@ -2071,8 +2098,16 @@ internal partial class RoslynEmitter
     }
 
     private ExpressionSyntax GenerateSliceSpec(SubscriptDimension dim)
+        => GenerateSliceSpec(dim.Start, dim.Stop, dim.Step);
+
+    /// <summary>
+    /// Builds the <c>Sharpy.SliceSpec</c> value for one axis: <c>SliceSpec.All</c> when every
+    /// bound is absent, otherwise <c>new SliceSpec((int?)start, (int?)stop[, (int?)step])</c>.
+    /// Shared by multi-axis dimensions and single-axis ndarray slices (#1608).
+    /// </summary>
+    private ExpressionSyntax GenerateSliceSpec(Expression? start, Expression? stop, Expression? step)
     {
-        if (dim.Start == null && dim.Stop == null && dim.Step == null)
+        if (start == null && stop == null && step == null)
         {
             return MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                 MakeGlobalQualifiedName("Sharpy", "SliceSpec"),
@@ -2081,21 +2116,21 @@ internal partial class RoslynEmitter
 
         var args = new List<ArgumentSyntax>();
 
-        args.Add(Argument(dim.Start != null
+        args.Add(Argument(start != null
             ? CastExpression(NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                GenerateExpression(dim.Start))
+                GenerateExpression(start))
             : LiteralExpression(SyntaxKind.NullLiteralExpression)));
 
-        args.Add(Argument(dim.Stop != null
+        args.Add(Argument(stop != null
             ? CastExpression(NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                GenerateExpression(dim.Stop))
+                GenerateExpression(stop))
             : LiteralExpression(SyntaxKind.NullLiteralExpression)));
 
-        if (dim.Step != null)
+        if (step != null)
         {
             args.Add(Argument(CastExpression(
                 NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                GenerateExpression(dim.Step))));
+                GenerateExpression(step))));
         }
 
         return ObjectCreationExpression(

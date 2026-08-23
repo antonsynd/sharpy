@@ -1,0 +1,19 @@
+# #1608 positives: list slicing with omitted, None, negative, and step bounds, plus a
+# loose-nullable (int | None) bound variable. Bare None means "absent bound".
+def main():
+    xs: list[int] = [10, 20, 30, 40, 50]
+    print(xs[1:4])
+    print(xs[:3])
+    print(xs[2:])
+    print(xs[None:3])
+    print(xs[1:None])
+    print(xs[-2:])
+    print(xs[:-1])
+    print(xs[::2])
+    print(xs[::-1])
+    print(xs[4:1:-1])
+    n: int | None = 2
+    print(xs[n:])
+    print(xs[:n])
+    n = None
+    print(xs[n:])

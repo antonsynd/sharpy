@@ -1,0 +1,6 @@
+# #1608: bool slice bound refused. CPython accepts it (True == 1); the implicit bool->int
+# is a ruled Type-Safety deviation — convert explicitly.
+def main():
+    xs: list[int] = [10, 20, 30]
+    b: bool = True
+    print(xs[b:3])

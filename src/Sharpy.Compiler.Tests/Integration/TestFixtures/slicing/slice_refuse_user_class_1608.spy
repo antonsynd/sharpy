@@ -1,0 +1,12 @@
+# #1608: a user-defined class without slice support is refused (sliceable set v1 is
+# list/str/bytes/array/ndarray).
+class Box:
+    v: int
+
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+
+def main():
+    b: Box = Box(3)
+    print(b[1:2])

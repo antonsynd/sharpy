@@ -1,0 +1,5 @@
+# #1608: dict is not sliceable — CPython raises KeyError at runtime (the slice object is
+# just a missing key); Sharpy refuses at compile time.
+def main():
+    d: dict[str, int] = {"a": 1, "b": 2}
+    print(d[0:2])
