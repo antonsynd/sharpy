@@ -83,7 +83,8 @@ internal partial class RoslynEmitter
         bool hasDefault = matchStmt.Cases.Any(c =>
             c.Guard == null && c.Pattern is WildcardPattern
             || (c.Guard == null && c.Pattern is BindingPattern bp
-                && _context.SemanticInfo?.GetPatternConstantSymbol(bp) == null));
+                && _context.SemanticInfo?.GetPatternConstantSymbol(bp) == null
+                && _context.SemanticInfo?.GetPatternUnionCase(bp) == null));
         if (!hasDefault && scrutineeType != null && _context.SemanticInfo != null
             && ExhaustivenessHelper.IsExhaustiveMatch(
                 scrutineeType,
@@ -174,6 +175,14 @@ internal partial class RoslynEmitter
                         var constName = constSymbol.CodeGenInfo?.CSharpName
                             ?? NameMangler.ToConstantCase(constSymbol.Name);
                         return ConstantPattern(IdentifierName(constName));
+                    }
+
+                    // #1562: union-resolved binding emits a variant type test
+                    var bindingUnionCase = _context.SemanticInfo?.GetPatternUnionCase(binding);
+                    if (bindingUnionCase != null)
+                    {
+                        var caseTypeSyntax = BuildUnionCaseTypeSyntax(bindingUnionCase, scrutineeType);
+                        return DeclarationPattern(caseTypeSyntax, DiscardDesignation());
                     }
 
                     var varName = GetMangledVariableName(binding.Name.Name, isNewDeclaration: true,

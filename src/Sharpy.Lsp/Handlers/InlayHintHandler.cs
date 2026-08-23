@@ -257,7 +257,7 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                         {
                             var caseScope = scope.Fork();
                             caseScopes.Add(caseScope);
-                            MarkPatternBound(matchCase.Pattern, caseScope);
+                            MarkPatternBound(matchCase.Pattern, caseScope, analysis.SemanticInfo);
                             CollectInlayHints(matchCase.Body, analysis, range, hints, typeAnnotations, caseScope);
                         }
                         foreach (var caseScope in caseScopes)
@@ -294,49 +294,51 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
     /// <c>case [head, *rest]:</c>, …). Like loop targets, captures produce no hint themselves,
     /// but a later assignment to a captured name is a rebinding.
     /// </summary>
-    private static void MarkPatternBound(Pattern pattern, BindingScope scope)
+    private static void MarkPatternBound(Pattern pattern, BindingScope scope,
+        Compiler.Semantic.SemanticInfo? semanticInfo = null)
     {
         switch (pattern)
         {
             case BindingPattern binding:
-                scope.MarkBound(binding.Name.Name);
+                if (semanticInfo?.GetPatternUnionCase(binding) == null)
+                    scope.MarkBound(binding.Name.Name);
                 break;
             case TypePattern { BindingName: { } bindingName }:
                 scope.MarkBound(bindingName.Name);
                 break;
             case StarPattern { Capture: { } capture }:
-                MarkPatternBound(capture, scope);
+                MarkPatternBound(capture, scope, semanticInfo);
                 break;
             case TuplePattern tuple:
                 foreach (var element in tuple.Elements)
-                    MarkPatternBound(element, scope);
+                    MarkPatternBound(element, scope, semanticInfo);
                 break;
             case ListPattern list:
                 foreach (var element in list.Elements)
-                    MarkPatternBound(element, scope);
+                    MarkPatternBound(element, scope, semanticInfo);
                 break;
             case PositionalPattern positional:
                 foreach (var element in positional.Elements)
-                    MarkPatternBound(element, scope);
+                    MarkPatternBound(element, scope, semanticInfo);
                 break;
             case PropertyPattern property:
                 foreach (var field in property.Fields)
-                    MarkPatternBound(field.Pattern, scope);
+                    MarkPatternBound(field.Pattern, scope, semanticInfo);
                 break;
             case UnionCasePattern unionCase:
                 foreach (var field in unionCase.FieldPatterns)
-                    MarkPatternBound(field, scope);
+                    MarkPatternBound(field, scope, semanticInfo);
                 break;
             case OrPattern orPattern:
                 foreach (var alternative in orPattern.Alternatives)
-                    MarkPatternBound(alternative, scope);
+                    MarkPatternBound(alternative, scope, semanticInfo);
                 break;
             case AndPattern andPattern:
-                MarkPatternBound(andPattern.Left, scope);
-                MarkPatternBound(andPattern.Right, scope);
+                MarkPatternBound(andPattern.Left, scope, semanticInfo);
+                MarkPatternBound(andPattern.Right, scope, semanticInfo);
                 break;
             case GuardPattern guard:
-                MarkPatternBound(guard.Inner, scope);
+                MarkPatternBound(guard.Inner, scope, semanticInfo);
                 break;
         }
     }

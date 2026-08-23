@@ -96,7 +96,7 @@ internal class ControlFlowValidator : ValidatingAstWalker
             return;
 
         // Build CFG (shared cache; pruning by exhaustive matches is this validator's concern only)
-        var cfg = Context.ControlFlowGraphs.GetOrBuildPruned(func, _exhaustiveMatches);
+        var cfg = Context.ControlFlowGraphs.GetOrBuildPruned(func, _exhaustiveMatches, Context.SemanticInfo);
 
         // 1. Check for unreachable code (warning, not error)
         var unreachable = ControlFlowAnalysis.FindUnreachableCode(cfg);

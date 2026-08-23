@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Analysis.ControlFlow;
@@ -21,17 +22,21 @@ internal class ControlFlowGraphBuilder
     // Optional set of match statements known to be exhaustive (precomputed by caller)
     private readonly HashSet<MatchStatement>? _exhaustiveMatches;
 
+    private readonly SemanticInfo? _semanticInfo;
+
     // Loop tracking for break/continue
     private readonly Stack<LoopContext> _loopStack = new();
 
     // Exception handler tracking for re-raise
     private readonly Stack<BasicBlock> _handlerStack = new();
 
-    public ControlFlowGraphBuilder() : this((HashSet<MatchStatement>?)null) { }
+    public ControlFlowGraphBuilder() : this(null, null) { }
 
-    public ControlFlowGraphBuilder(HashSet<MatchStatement>? exhaustiveMatches)
+    public ControlFlowGraphBuilder(HashSet<MatchStatement>? exhaustiveMatches,
+        SemanticInfo? semanticInfo = null)
     {
         _exhaustiveMatches = exhaustiveMatches;
+        _semanticInfo = semanticInfo;
     }
 
     /// <summary>
@@ -896,15 +901,15 @@ internal class ControlFlowGraphBuilder
     /// Checks whether a pattern unconditionally matches all values.
     /// Recurses into OrPattern alternatives.
     /// </summary>
-    private static bool IsUnconditionallyExhaustivePattern(Pattern pattern)
+    private bool IsUnconditionallyExhaustivePattern(Pattern pattern)
     {
         return pattern switch
         {
             WildcardPattern => true,
-            BindingPattern => true,
-            // If ANY alternative is exhaustive, the OrPattern as a whole can match everything
+            BindingPattern bp =>
+                (_semanticInfo?.GetPatternConstantSymbol(bp)) == null
+                && (_semanticInfo?.GetPatternUnionCase(bp)) == null,
             OrPattern orPat => orPat.Alternatives.Any(IsUnconditionallyExhaustivePattern),
-            // GuardPattern is forward-declared; guard conditions use MatchCase.Guard instead
             GuardPattern => false,
             _ => false
         };

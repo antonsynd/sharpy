@@ -725,7 +725,8 @@ public static class DiagnosticCodes
         // but the rebinding is still worth saying out loud in the file where it takes effect,
         // because SPY0483 fires in the DECLARING file, which the consumer may never open (#1324).
         public const string BuiltinRebornByExplicitImport = "SPY0484";  // Active (#1324)
-        // SPY0485-SPY0489: Reserved for future validation warnings
+        public const string VariantPatternShadowsConstant = "SPY0485"; // Active (#1562)
+        // SPY0486-SPY0489: Reserved for future validation warnings
 
         #endregion
 

@@ -78,6 +78,14 @@ internal static class ExhaustivenessHelper
                 }
                 break;
 
+            case BindingPattern binding:
+                var bindingUnionCase = semanticInfo.GetPatternUnionCase(binding);
+                if (bindingUnionCase != null)
+                {
+                    covered.Add(bindingUnionCase.Name);
+                }
+                break;
+
             case MemberAccessPattern memberAccess:
                 if (memberAccess.Parts.Length >= 2)
                 {

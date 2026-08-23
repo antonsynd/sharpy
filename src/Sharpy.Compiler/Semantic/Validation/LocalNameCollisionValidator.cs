@@ -140,9 +140,9 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
     public override void VisitBindingPattern(BindingPattern node)
     {
         // A bare name in a case label captures the scrutinee into a local — unless the TypeChecker
-        // resolved it to a module-level constant, in which case the arm compares against that
-        // constant and binds nothing (RFC 3535).
-        if (Context.SemanticInfo.GetPatternConstantSymbol(node) == null)
+        // resolved it to a module-level constant (RFC 3535) or a union variant (#1562).
+        if (Context.SemanticInfo.GetPatternConstantSymbol(node) == null
+            && Context.SemanticInfo.GetPatternUnionCase(node) == null)
         {
             Declare(node.Name.Name, node.Name.IsNameBacktickEscaped, node.Name.LineStart, node.Name.ColumnStart);
         }

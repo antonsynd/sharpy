@@ -121,6 +121,30 @@ internal partial class TypeChecker
 
             case BindingPattern binding:
                 {
+                    // #1562: bare name matches a union variant of the scrutinee before
+                    // it captures. Design Decision 5: synthetic unions (Optional/Result)
+                    // are excluded in v1.
+                    if (scrutineeType is not OptionalType and not ResultType)
+                    {
+                        var unionCaseSymbol = TryResolveUnionCaseFromPattern(
+                            binding.Name.Name, scrutineeType);
+                        if (unionCaseSymbol != null)
+                        {
+                            _semanticInfo.SetPatternUnionCase(binding, unionCaseSymbol);
+
+                            // Design Decision 4: variant wins, but warn if a constant is shadowed
+                            var shadowed = _symbolTable.Lookup(binding.Name.Name, searchParents: true) as VariableSymbol;
+                            if (shadowed is { IsConstant: true })
+                            {
+                                _diagnostics.AddWarning(
+                                    $"Pattern '{binding.Name.Name}' resolves as union variant of the scrutinee type, shadowing constant '{shadowed.Name}'",
+                                    binding,
+                                    code: DiagnosticCodes.Validation.VariantPatternShadowsConstant);
+                            }
+                            break;
+                        }
+                    }
+
                     // RFC 3535: Check if the identifier resolves to a module-level
                     // constant (Final-annotated or IsConstant) before treating as capture.
                     var existingSymbol = _symbolTable.Lookup(binding.Name.Name, searchParents: true) as VariableSymbol;
@@ -262,13 +286,23 @@ internal partial class TypeChecker
                     {
                         // GuardPattern wraps an inner pattern — check the inner pattern normally
                         var effectiveAlt = alt is GuardPattern gp ? gp.Inner : alt;
-                        if (effectiveAlt is BindingPattern)
+                        if (effectiveAlt is BindingPattern bindingInOr)
                         {
-                            AddError(
-                                "Binding patterns are not allowed inside or-patterns",
-                                effectiveAlt.LineStart, effectiveAlt.ColumnStart,
-                                code: DiagnosticCodes.Semantic.BindingInOrPattern,
-                                span: effectiveAlt.Span);
+                            // #1562: allow union-variant bindings in or-patterns
+                            bool isUnionVariant = scrutineeType is not OptionalType and not ResultType
+                                && TryResolveUnionCaseFromPattern(bindingInOr.Name.Name, scrutineeType) != null;
+                            if (!isUnionVariant)
+                            {
+                                AddError(
+                                    "Binding patterns are not allowed inside or-patterns",
+                                    effectiveAlt.LineStart, effectiveAlt.ColumnStart,
+                                    code: DiagnosticCodes.Semantic.BindingInOrPattern,
+                                    span: effectiveAlt.Span);
+                            }
+                            else
+                            {
+                                CheckPattern(alt, scrutineeType);
+                            }
                         }
                         else if (hasMemberAccess && effectiveAlt is not MemberAccessPattern && effectiveAlt is not LiteralPattern && effectiveAlt is not WildcardPattern)
                         {
@@ -478,6 +512,19 @@ internal partial class TypeChecker
     /// </summary>
     private void CheckTypePattern(TypePattern typePattern, SemanticType scrutineeType)
     {
+        // #1562: try union case probe FIRST, mirroring CheckPositionalPattern:841.
+        // This kills the spurious SPY0202 for `case Idle():` — the variant resolves
+        // before type annotation resolution can fail.
+        var earlyUnionCase = TryResolveUnionCaseFromPattern(
+            typePattern.Type.Name, scrutineeType);
+        if (earlyUnionCase != null)
+        {
+            _semanticInfo.SetPatternUnionCase(typePattern, earlyUnionCase);
+            var earlyResolved = new UserDefinedType { Name = earlyUnionCase.Name, Symbol = earlyUnionCase };
+            BindTypePatternCapture(typePattern, earlyResolved);
+            return;
+        }
+
         // A bare generic name here is fillable from the scrutinee, so it must come back as the bare
         // symbol for the rule below to apply; the arity diagnostic an annotation would draw (#1331)
         // would pre-empt SPY0345's better diagnosis (#1235).
@@ -626,22 +673,11 @@ internal partial class TypeChecker
 
         if (resolvedType is UnknownType)
         {
-            // Try to resolve as a union case (e.g., case Point(): when matching Shape)
-            var unionCaseSymbol = TryResolveUnionCaseFromPattern(
-                typePattern.Type.Name, scrutineeType);
-            if (unionCaseSymbol != null)
-            {
-                _semanticInfo.SetPatternUnionCase(typePattern, unionCaseSymbol);
-                resolvedType = new UserDefinedType { Name = unionCaseSymbol.Name, Symbol = unionCaseSymbol };
-            }
-            else
-            {
-                AddError(
-                    $"Unknown type '{typePattern.Type.Name}' in type pattern",
-                    typePattern.LineStart, typePattern.ColumnStart,
-                    code: DiagnosticCodes.Semantic.UndefinedType,
-                    span: typePattern.Span);
-            }
+            AddError(
+                $"Unknown type '{typePattern.Type.Name}' in type pattern",
+                typePattern.LineStart, typePattern.ColumnStart,
+                code: DiagnosticCodes.Semantic.UndefinedType,
+                span: typePattern.Span);
         }
         else if (scrutineeType is not UnknownType
             && !IsAssignable(resolvedType, scrutineeType)
@@ -775,6 +811,16 @@ internal partial class TypeChecker
         TypeSymbol? typeSymbol = null;
         if (propertyPattern.Type != null)
         {
+            // #1562: try union case probe FIRST, mirroring CheckPositionalPattern.
+            var earlyUnionCase = TryResolveUnionCaseFromPattern(
+                propertyPattern.Type.Name, scrutineeType);
+            if (earlyUnionCase != null)
+            {
+                typeSymbol = earlyUnionCase;
+                _semanticInfo.SetPatternUnionCase(propertyPattern, earlyUnionCase);
+            }
+            else
+            {
             var resolvedType = _typeResolver.ResolveTypeAnnotation(
                 propertyPattern.Type, bareGenericFillsFromContext: true);
             if (resolvedType is UnknownType)
@@ -800,6 +846,7 @@ internal partial class TypeChecker
                     GenericType { GenericDefinition: { } filledDefinition } => filledDefinition,
                     _ => null
                 };
+            }
             }
         }
 

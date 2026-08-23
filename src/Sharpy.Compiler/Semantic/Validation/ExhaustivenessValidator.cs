@@ -151,7 +151,9 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
         return pattern switch
         {
             WildcardPattern => true,
-            BindingPattern => true,
+            BindingPattern bp =>
+                _context.SemanticInfo.GetPatternConstantSymbol(bp) == null
+                && _context.SemanticInfo.GetPatternUnionCase(bp) == null,
             OrPattern or => or.Alternatives.Any(PatternCoversAll),
             _ => false
         };

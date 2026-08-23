@@ -763,6 +763,19 @@ public static partial class DiagnosticExplanations
             "list_len\n\nOr reach the builtin explicitly, which needs the module in scope:\n    " +
             "import builtins\n    print(builtins.len(xs))");
 
+        Add(dict, DiagnosticCodes.Validation.VariantPatternShadowsConstant,
+            "Union variant pattern shadows a constant of the same name",
+            "Validation",
+            "A bare name in a match pattern resolves as a union variant of the scrutinee type " +
+            "rather than as a capture or constant match. When a reachable constant shares the same " +
+            "name, the variant wins (it is scrutinee-scoped, the most local scope), but this " +
+            "warning alerts you to the shadowing. This matches how C# and Rust scope enum members " +
+            "inside pattern matching.",
+            "union Status:\n    Idle\n    Busy(task: str)\n\nIDLE: int = 0  # a module constant\n\n" +
+            "def check(s: Status) -> None:\n    match s:\n        case Idle:   # resolves as Status.Idle, not the constant\n            pass",
+            "Rename the constant to avoid ambiguity, or use the qualified spelling 'Status.Idle' " +
+            "in the pattern to make the intent explicit.");
+
         // ── Property observer validation (SPY0490-SPY0491, #416) ──────────
 
         Add(dict, DiagnosticCodes.Validation.PropertyObserverInvalidTarget,

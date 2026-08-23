@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Compiler.Analysis.ControlFlow;
 
@@ -74,7 +75,8 @@ internal sealed class ControlFlowGraphCache
     /// returned instead, so the build is amortized with the other validators. Only functions that
     /// actually contain a semantically-exhaustive match get a distinct, separately-cached pruned graph.
     /// </remarks>
-    public ControlFlowGraph GetOrBuildPruned(FunctionDef function, HashSet<MatchStatement>? exhaustiveMatches)
+    public ControlFlowGraph GetOrBuildPruned(FunctionDef function,
+        HashSet<MatchStatement>? exhaustiveMatches, SemanticInfo? semanticInfo = null)
     {
         // No semantic exhaustiveness in play for this function → the pruned graph is identical to the
         // pure one, so hand back the shared pure graph and keep the caches unified.
@@ -88,7 +90,7 @@ internal sealed class ControlFlowGraphCache
         if (_prunedFunctionGraphs.TryGetValue(function, out var cached))
             return cached;
 
-        var cfg = new ControlFlowGraphBuilder(exhaustiveMatches).Build(function);
+        var cfg = new ControlFlowGraphBuilder(exhaustiveMatches, semanticInfo).Build(function);
         _prunedFunctionGraphs[function] = cfg;
         return cfg;
     }
