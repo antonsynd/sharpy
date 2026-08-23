@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
@@ -141,11 +142,11 @@ internal partial class TypeChecker
 
     // #1571: Python collection verbs that Sharpy's builtin list/dict/set expose.
     // Broader than NameMangler.ClrCollectionVerbMap — unmapped entries refuse on CLR receivers.
-    private static readonly HashSet<string> KnownPythonCollectionVerbs = new(StringComparer.Ordinal)
+    private static readonly FrozenSet<string> KnownPythonCollectionVerbs = new HashSet<string>(StringComparer.Ordinal)
     {
         "append", "extend", "insert", "remove", "pop", "clear",
         "sort", "reverse", "copy", "count", "index",
-    };
+    }.ToFrozenSet(StringComparer.Ordinal);
 
     /// <summary>
     /// Single resolution step for a generic reference <c>callee[T, ...]</c>. Normalizes every callee
