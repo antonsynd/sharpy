@@ -95,6 +95,7 @@ fixture::basics/ellipsis_concrete_method
 # len/index/slice/iteration work at all.
 # deviations.yaml: variadic-args-is-array-not-tuple. Permanent.
 fixture::generics/variadic_args_slice_1292
+fixture::slicing/slice_array_bounds_1608
 fixture::generics/variadic_args_empty_1292
 
 # math.floor / math.ceil return float (double) where CPython returns int, so these print
