@@ -1,0 +1,22 @@
+# #1608: Python-style single-axis slicing on an ndarray. Previously a dead cell — the
+# compiler routed a[1:4] through Sharpy.Slice.GetSlice, which has no ndarray overload
+# (CS1503 behind SPY0908). It now lowers to NdArray.Slice(SliceSpec), a zero-copy view.
+import numpy as np
+
+
+def main():
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    print(a[1:4])
+    print(a[:3])
+    print(a[::2])
+    print(a[::-1])
+
+    # Views share the underlying buffer (numpy semantics).
+    v = a[1:4]
+    v[0] = 99.0
+    print(a)
+
+    # Slice() takes one spec per axis: a single-axis slice of a 2-D array does NOT pad the
+    # trailing axes (unlike numpy) — both axes must be spelled.
+    m = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).reshape(2, 3)
+    print(m[0:2, 1:3])
