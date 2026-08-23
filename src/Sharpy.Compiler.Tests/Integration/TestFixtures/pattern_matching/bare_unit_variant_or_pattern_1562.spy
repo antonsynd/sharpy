@@ -1,0 +1,16 @@
+union Light:
+    case Red
+    case Yellow
+    case Green
+
+def can_go(l: Light) -> bool:
+    match l:
+        case Red | Yellow:
+            return False
+        case Green:
+            return True
+
+def main():
+    print(can_go(Light.Red()))
+    print(can_go(Light.Yellow()))
+    print(can_go(Light.Green()))

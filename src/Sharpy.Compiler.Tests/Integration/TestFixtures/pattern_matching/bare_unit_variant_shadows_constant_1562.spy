@@ -1,0 +1,15 @@
+union Status:
+    case Idle
+    case Active
+
+IDLE: int = 0
+
+def check(s: Status) -> str:
+    match s:
+        case Idle:
+            return "idle"
+        case Active:
+            return "active"
+
+def main():
+    print(check(Status.Idle()))

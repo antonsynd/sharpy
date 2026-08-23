@@ -1,0 +1,14 @@
+union Color:
+    case Red
+    case Blue
+
+def name(c: Color) -> str:
+    match c:
+        case Red():
+            return "red"
+        case Blue():
+            return "blue"
+
+def main():
+    print(name(Color.Red()))
+    print(name(Color.Blue()))

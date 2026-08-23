@@ -1,0 +1,18 @@
+union Light:
+    case Red
+    case Yellow
+    case Green
+
+def describe(l: Light) -> str:
+    match l:
+        case Red:
+            return "stop"
+        case Yellow:
+            return "caution"
+        case Green:
+            return "go"
+
+def main():
+    print(describe(Light.Red()))
+    print(describe(Light.Yellow()))
+    print(describe(Light.Green()))

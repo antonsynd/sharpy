@@ -1,0 +1,14 @@
+union Command:
+    case Start(name: str)
+    case Stop
+
+def handle(c: Command) -> str:
+    match c:
+        case Start(n):
+            return "starting " + n
+        case Stop:
+            return "stopped"
+
+def main():
+    print(handle(Command.Start("server")))
+    print(handle(Command.Stop()))

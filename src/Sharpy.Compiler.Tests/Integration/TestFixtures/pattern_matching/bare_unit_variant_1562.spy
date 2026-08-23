@@ -1,0 +1,14 @@
+union Status:
+    case Idle
+    case Busy(task: str)
+
+def check(s: Status) -> str:
+    match s:
+        case Idle:
+            return "idle"
+        case Busy(t):
+            return t
+
+def main():
+    print(check(Status.Idle()))
+    print(check(Status.Busy("working")))
