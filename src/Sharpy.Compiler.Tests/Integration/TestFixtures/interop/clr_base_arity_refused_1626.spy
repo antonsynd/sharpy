@@ -1,0 +1,7 @@
+from system import IComparable
+
+class Foo(IComparable[int, str]):
+    pass
+
+def main():
+    pass

@@ -546,6 +546,13 @@ internal partial class NameResolver
             {
                 if (baseArityGroup.TryGetValue(baseAnnot.TypeArguments.Length, out var baseArityMember))
                     return baseArityMember;
+
+                var available = string.Join(", ", baseArityGroup.Keys.OrderBy(a => a));
+                AddError(
+                    $"Type '{baseAnnot.Name}' does not take {baseAnnot.TypeArguments.Length} type argument(s) (available: {available})",
+                    baseAnnot.LineStart, baseAnnot.ColumnStart,
+                    code: DiagnosticCodes.Semantic.WrongArgumentCount, span: baseAnnot.Span);
+                return null;
             }
             return ts;
         }

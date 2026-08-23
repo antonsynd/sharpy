@@ -1,0 +1,9 @@
+from system.collections.generic import List
+
+def main():
+    xs: List[int] = List[int]()
+    xs.add(10)
+    xs.add(20)
+    xs.add(30)
+    print(xs.index(20))
+    print(xs.index(10))

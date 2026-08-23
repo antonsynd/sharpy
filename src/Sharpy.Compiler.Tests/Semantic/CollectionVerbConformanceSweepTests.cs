@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using FluentAssertions;
+using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using Xunit;
 
@@ -22,11 +23,8 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class CollectionVerbConformanceSweepTests
 {
-    private static readonly string[] KnownPythonCollectionVerbs =
-    {
-        "append", "extend", "insert", "remove", "pop", "clear",
-        "sort", "reverse", "copy", "count", "index",
-    };
+    private static readonly IReadOnlyCollection<string> KnownPythonCollectionVerbs =
+        TypeChecker.KnownPythonCollectionVerbs;
 
     private static readonly HashSet<string> LinqExtensionNames = new(
         typeof(System.Linq.Enumerable)
@@ -60,11 +58,6 @@ public class CollectionVerbConformanceSweepTests
     // can bind. Each entry must explain why mapping is unnecessary.
     private static readonly HashSet<string> SafeUnmappedCollisions = new(StringComparer.Ordinal)
     {
-        // index → Enumerable.Index (.NET 10): Python's list.index(x) returns the position of x;
-        // LINQ's Index() returns (index, element) tuples. The PascalCase CLR method is IndexOf,
-        // not Index, so ToPascalCase("index") → "Index" does not reach the instance method.
-        // The #1571 unmapped-verb refusal prevents silent LINQ binding.
-        "index",
     };
 
     [Fact]

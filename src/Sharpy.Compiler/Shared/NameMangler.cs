@@ -34,6 +34,7 @@ internal static class NameMangler
     private static readonly Dictionary<string, string> _clrCollectionVerbMap = new()
     {
         ["append"] = "Add",
+        ["index"] = "IndexOf",
     };
 
     /// <summary>
