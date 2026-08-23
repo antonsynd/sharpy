@@ -1,0 +1,8 @@
+def compute(x: int, y: int, /, z: int = 0, *, scale: int = 1) -> int:
+    return (x + y + z) * scale
+
+def main():
+    print(compute(1, 2))
+    print(compute(1, 2, z=10))
+    print(compute(1, 2, scale=3))
+    print(compute(1, 2, z=10, scale=2))

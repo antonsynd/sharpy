@@ -1,0 +1,11 @@
+def greet(name: str, greeting: str = "Hello", loud: bool = False) -> str:
+    result: str = f"{greeting}, {name}!"
+    if loud:
+        return result.upper()
+    return result
+
+def main():
+    print(greet("Alice"))
+    print(greet("Bob", greeting="Hi"))
+    print(greet("Charlie", loud=True))
+    print(greet("Diana", greeting="Hey", loud=True))
