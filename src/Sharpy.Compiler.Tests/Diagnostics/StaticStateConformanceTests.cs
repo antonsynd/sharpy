@@ -121,6 +121,8 @@ public class StaticStateConformanceTests
                 "Dunder→C# operator/method map, initialized inline and read-only.",
             [("Sharpy.Compiler.Shared.NameMangler", "_collectionMethodMap")] =
                 "Builtin-collection method-name map, initialized inline and read-only.",
+            [("Sharpy.Compiler.Shared.NameMangler", "_clrCollectionVerbMap")] =
+                "CLR collection verb→instance method map (#1571), initialized inline and read-only.",
             [("Sharpy.Compiler.Shared.NameMangler", "_upperCaseAcronyms")] =
                 "Uppercase-acronym set for namespace casing, initialized inline and read-only.",
             [("Sharpy.Compiler.Shared.TypingEquivalences", "Messages")] =

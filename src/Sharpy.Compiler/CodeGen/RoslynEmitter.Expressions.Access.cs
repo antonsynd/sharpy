@@ -1985,10 +1985,7 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)
     {
-        var lowering = _context.SemanticInfo?.GetSliceLowering(sliceAccess)
-            ?? throw new InvalidOperationException(
-                "No SliceLowering recorded for slice access — semantic analysis must classify " +
-                "every receiver the emitter is asked to generate (#1608)");
+        var lowering = _context.SemanticInfo?.GetSliceLowering(sliceAccess);
 
         var obj = GenerateExpression(sliceAccess.Object);
         var start = sliceAccess.Start != null

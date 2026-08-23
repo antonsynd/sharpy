@@ -2,8 +2,6 @@ union Status:
     case Idle
     case Active
 
-IDLE: int = 0
-
 def check(s: Status) -> str:
     match s:
         case Idle:
@@ -13,3 +11,4 @@ def check(s: Status) -> str:
 
 def main():
     print(check(Status.Idle()))
+    print(check(Status.Active()))

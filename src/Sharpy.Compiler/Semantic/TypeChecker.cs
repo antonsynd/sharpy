@@ -729,11 +729,11 @@ internal partial class TypeChecker
                 {
                     var exprType = CheckExpression(exprStmt.Expression);
                     // #1617: a bare method-group reference as a statement is a CPython no-op.
-                    // The provable method-group class: (a) MemberAccess typing as FunctionType,
-                    // (b) Identifier resolving to a function symbol (not a variable/delegate).
+                    // Unwrap parentheses (the emitter does the same via AstHelper.UnwrapParenthesized).
+                    var unwrapped = Shared.AstHelper.UnwrapParenthesized(exprStmt.Expression);
                     if (exprType is FunctionType
-                        && (exprStmt.Expression is MemberAccess
-                            || (exprStmt.Expression is Identifier id
+                        && (unwrapped is MemberAccess
+                            || (unwrapped is Identifier id
                                 && _semanticInfo.GetIdentifierSymbol(id) is FunctionSymbol)))
                     {
                         _semanticInfo.SetStatementLowering(exprStmt,
