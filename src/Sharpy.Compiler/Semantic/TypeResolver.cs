@@ -297,7 +297,7 @@ internal class TypeResolver
             {
                 // Try CLR type fallback for .NET interop types (Exception, etc.) — a bare-name
                 // claim, so an escaped spelling never reaches it.
-                var clrTypeSymbol = escaped ? null : _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
+                var clrTypeSymbol = escaped ? null : _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name, annotation.TypeArguments.Length);
                 if (clrTypeSymbol != null)
                 {
                     result = new UserDefinedType
@@ -674,7 +674,7 @@ internal class TypeResolver
         }
 
         if (!escaped)
-            typeSymbol ??= _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name);
+            typeSymbol ??= _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name, annotation.TypeArguments.Length);
 
         // #1134: A builtin collection that also ships a non-generic static factory companion
         // shadows its real generic type in the CLR fallback above. `Sharpy.Dict` (the

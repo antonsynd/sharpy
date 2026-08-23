@@ -924,18 +924,20 @@ internal class BuiltinRegistry
 
     #region CLR Type Fallback
 
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, TypeSymbol?> _clrTypeCache = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<(string, int), TypeSymbol?> _clrTypeCache = new();
 
     /// <summary>
     /// Attempts to resolve a type name as a .NET type from well-known namespaces.
     /// Used as a fallback when a type is not found in the symbol table.
-    /// Results are cached for performance.
+    /// Results are cached for performance. The arity parameter selects the right
+    /// member from a multi-arity group (e.g. Action vs Action`1 vs Action`2).
     /// </summary>
-    public TypeSymbol? TryResolveClrType(string name)
+    public TypeSymbol? TryResolveClrType(string name, int arity = 0)
     {
-        return _clrTypeCache.GetOrAdd(name, static n =>
+        return _clrTypeCache.GetOrAdd((name, arity), static key =>
         {
-            var clrType = TryFindClrType(n);
+            var (n, a) = key;
+            var clrType = TryFindClrType(n, a);
             if (clrType == null)
                 return null;
 
@@ -956,6 +958,15 @@ internal class BuiltinRegistry
                 IsAbstract = clrType.IsAbstract && !clrType.IsInterface
             };
 
+            // #1613: populate TypeParameters so IsGeneric is true and the arity check fires
+            if (clrType.IsGenericTypeDefinition)
+            {
+                foreach (var tp in clrType.GetGenericArguments())
+                {
+                    sym.TypeParameters.Add(new Parser.Ast.TypeParameterDef { Name = tp.Name });
+                }
+            }
+
             if (isDelegate)
             {
                 var invoke = new ClrTypeBridge().SynthesizeDelegateInvoke(clrType);
@@ -967,9 +978,11 @@ internal class BuiltinRegistry
         });
     }
 
-    private static Type? TryFindClrType(string name)
+    private static Type? TryFindClrType(string name, int arity)
     {
-        // Search well-known namespaces (ordered by likelihood of use in Sharpy)
+        // #1613: for arity > 0, probe `Name`N (e.g. Action`1, Func`3)
+        var clrName = arity > 0 ? $"{name}`{arity}" : name;
+
         string[] namespaces =
         {
             "Sharpy",
@@ -992,18 +1005,17 @@ internal class BuiltinRegistry
 
         foreach (var ns in namespaces)
         {
-            var fullName = $"{ns}.{name}";
+            var fullName = $"{ns}.{clrName}";
             var type = Type.GetType(fullName);
             if (type != null)
                 return type;
         }
 
-        // Search loaded assemblies for types not in System.Private.CoreLib
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
             foreach (var ns in namespaces)
             {
-                var type = assembly.GetType($"{ns}.{name}");
+                var type = assembly.GetType($"{ns}.{clrName}");
                 if (type != null)
                     return type;
             }

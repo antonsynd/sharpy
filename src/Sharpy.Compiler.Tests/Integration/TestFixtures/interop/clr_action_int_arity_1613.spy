@@ -1,0 +1,6 @@
+def on_value(n: int) -> None:
+    print(n)
+
+def main():
+    cb: Action[int] = on_value
+    cb.invoke(42)
