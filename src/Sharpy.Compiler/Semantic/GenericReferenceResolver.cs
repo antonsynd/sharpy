@@ -672,6 +672,8 @@ internal partial class TypeChecker
 
         // 3b. #1571: a CLR collection verb with a mapped instance method must NOT stage
         // as an extension — the instance method has the correct mutation semantics.
+        // TODO(#1571): unmapped collection verbs should REFUSE here instead of silently
+        // staging as LINQ extensions (plan Task 2); add a reflective conformance sweep (Task 3).
         if (NameMangler.GetClrCollectionVerbMapping(memberAccess.Member) != null
             && IsClrCollectionType(receiverClrType))
             return null;

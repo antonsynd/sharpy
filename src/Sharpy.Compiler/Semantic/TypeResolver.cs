@@ -271,7 +271,7 @@ internal class TypeResolver
             if (typeSymbol?.ClrArityGroup is { } importArityGroup && annotation.TypeArguments.Length > 0)
             {
                 if (importArityGroup.TryGetValue(annotation.TypeArguments.Length, out var arityMember))
-                    typeSymbol = arityMember;
+                    typeSymbol = arityMember; // TODO(#1626): delegate Invoke still carries the representative's params
                 else
                 {
                     AddClrArityGroupError(annotation, importArityGroup);

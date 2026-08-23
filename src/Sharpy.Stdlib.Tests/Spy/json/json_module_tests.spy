@@ -180,12 +180,12 @@ def test_dumps_non_finite_inside_a_list_emits_tokens():
 @test
 def test_dumps_infinity_with_allow_nan_false_throws_value_error():
     with assert_raises(ValueError):
-        json.dumps(math.inf, allowNan=False)
+        json.dumps(math.inf, allowNan=False)  # TODO(#1591): migrate to allow_nan= + regen spy-test C#
 
 @test
 def test_dumps_nan_with_allow_nan_false_throws_value_error():
     with assert_raises(ValueError):
-        json.dumps(math.nan, allowNan=False)
+        json.dumps(math.nan, allowNan=False)  # TODO(#1591): migrate to allow_nan= + regen spy-test C#
 
 @test
 def test_loads_accepts_the_three_extended_tokens():
