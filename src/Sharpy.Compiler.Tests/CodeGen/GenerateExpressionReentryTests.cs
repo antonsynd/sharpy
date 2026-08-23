@@ -221,11 +221,16 @@ public class GenerateExpressionReentryTests
     /// Nothing about re-entry changed — the sweep still reports 0 re-entries — and the fixture is
     /// swept by the file-based harness, which does register the module.</para>
     ///
+    /// <para>Raised to <b>14</b> for the #1613 wave: <c>events/event_spec_downloader_1613</c>
+    /// (EventHandler Invoke substitution bug — fixture pins the error) and
+    /// <c>interop/clr_import_action_int_1613</c> (Action[int] annotation). Both fail at semantic
+    /// time, not re-entry.</para>
+    ///
     /// <para>Lower this whenever the real number drops; never raise it without saying why in the
     /// same commit. A rise means either a regression or a deliberate scope change, and both are
     /// things a reader must be told rather than left to infer from a silently larger skip list.</para>
     /// </summary>
-    private const int MaxUncompilableFixtures = 12;
+    private const int MaxUncompilableFixtures = 14;
 
     // ----------------------------------------------------------------------------------------- //
 
