@@ -1,0 +1,8 @@
+def format_name(first_name: str, last_name: str, upper_case: bool = False) -> str:
+    result: str = f"{first_name} {last_name}"
+    if upper_case:
+        return result.upper()
+    return result
+
+def main():
+    print(format_name("Alice", "Smith", upperCase=True))

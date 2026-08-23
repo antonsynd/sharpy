@@ -1,0 +1,5 @@
+def repeat(text: str, count: int = 1) -> str:
+    return text * count
+
+def main():
+    print(repeat("hi", count="two"))

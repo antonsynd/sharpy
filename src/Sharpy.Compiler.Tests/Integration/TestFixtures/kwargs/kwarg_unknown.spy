@@ -1,0 +1,7 @@
+def greet(name: str, loud: bool = False) -> str:
+    if loud:
+        return name.upper()
+    return name
+
+def main():
+    print(greet("Alice", lod=True))

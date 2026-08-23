@@ -1,0 +1,5 @@
+def compute(x: int, y: int, /, z: int = 0) -> int:
+    return x + y + z
+
+def main():
+    print(compute(x=1, y=2))

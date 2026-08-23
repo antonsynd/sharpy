@@ -1,0 +1,5 @@
+def echo[T](x: T, count: int = 1) -> T:
+    return x
+
+def main():
+    print(echo(42, unknown=True))
