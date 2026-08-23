@@ -26,6 +26,12 @@ def main():
     print(clr.count)
     print(clr.contains(3))
 
+    # --- CLR receiver: #1571 verb mapping ---
+    # append→Add mapping must bind to the mutating instance method, not LINQ Enumerable.Append
+    # (which returns a new sequence). After the call, the list grows by one element.
+    clr.append(7)
+    print(clr.count)
+
     # --- Sharpy receiver: gate 1 ---
     xs: list[int] = [1, 2]
     xs.append(9)

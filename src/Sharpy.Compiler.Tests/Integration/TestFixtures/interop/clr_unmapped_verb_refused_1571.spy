@@ -1,0 +1,7 @@
+from system.collections.generic import List
+
+def main():
+    xs: List[int] = List[int]()
+    xs.add(1)
+    xs.add(2)
+    xs.extend([3, 4])
