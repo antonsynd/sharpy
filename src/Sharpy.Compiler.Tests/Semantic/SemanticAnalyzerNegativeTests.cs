@@ -949,18 +949,18 @@ def foo():
     #region Miscellaneous Errors
 
     [Fact]
-    public void DocumentsInvalidSliceTypeBehavior()
+    public void RefusesNonIntIndexOnList()
     {
         var source = @"
 def foo():
     x: list[int] = [1, 2, 3]
-    y: int = x['invalid']  # slice/index must be int
+    y: int = x['invalid']  # index must be int (#1608)
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        // Slice type checking is not enforced
-        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().ContainSingle()
+            .Which.Message.Should().Contain("Index must be 'int'");
     }
 
     [Fact]

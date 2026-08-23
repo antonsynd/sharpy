@@ -542,6 +542,8 @@ def main() -> None:
         ["FunctionSymbol.ClrMethod"] = "CLR interop — see TypeSymbol.ClrType",
         ["FunctionSymbol.ClrMethodName"] = "CLR interop — see TypeSymbol.ClrType",
         ["VariableSymbol.ClrFieldName"] = "CLR interop — set by assembly discovery (#1540), never by .spy extraction",
+        ["TypeSymbol.ClrArityGroup"] = "CLR interop — set by GetNamespaceTypes (#1613) to carry the multi-arity "
+            + "name group (EventHandler / EventHandler`1 / EventHandler`2), never by .spy extraction",
 
         // Overload/dunder indexes: derived views over Methods, which is mirrored.
         ["TypeSymbol.OperatorMethods"] = "an index over Methods, rebuilt by "
