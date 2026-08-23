@@ -1051,7 +1051,9 @@ public class RoslynEmitterExpressionTests
     [Fact]
     public void GenerateExpression_SliceAccess_GeneratesRuntimeSliceCall()
     {
-        // Arrange
+        // Arrange. The emitter is a pure translator: it refuses to generate a slice whose
+        // receiver semantic analysis did not classify (#1608), so the lowering fact must be
+        // recorded the way the pipeline records it.
         var expr = new SliceAccess
         {
             Object = new Identifier { Name = "arr" },
@@ -1059,6 +1061,9 @@ public class RoslynEmitterExpressionTests
             Stop = new IntegerLiteral { Value = "5" },
             Step = null
         };
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetSliceLowering(expr, new SliceLowering(SliceLoweringKind.List));
+        _context.SemanticInfo = semanticInfo;
 
         // Act
         var result = InvokeGenerateExpression(expr);
@@ -1069,6 +1074,55 @@ public class RoslynEmitterExpressionTests
         code.Should().Contain("arr");
         code.Should().Contain("1");
         code.Should().Contain("5");
+    }
+
+    [Fact]
+    public void GenerateExpression_SliceAccess_NdArrayLowering_GeneratesSliceSpecCall()
+    {
+        // Arrange
+        var expr = new SliceAccess
+        {
+            Object = new Identifier { Name = "arr" },
+            Start = new IntegerLiteral { Value = "1" },
+            Stop = new IntegerLiteral { Value = "4" },
+            Step = null
+        };
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetSliceLowering(expr, new SliceLowering(SliceLoweringKind.NdArray));
+        _context.SemanticInfo = semanticInfo;
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert: arr.Slice(new Sharpy.SliceSpec((int?)1, (int?)4)) — the per-axis NdArray
+        // shape, not Sharpy.Slice.GetSlice (which has no NdArray overload).
+        var code = result.ToString();
+        code.Should().Contain("arr.Slice");
+        code.Should().Contain("SliceSpec");
+        code.Should().NotContain("GetSlice");
+    }
+
+    [Fact]
+    public void GenerateExpression_SliceAccess_WithoutRecordedLowering_Throws()
+    {
+        // Arrange: no SliceLowering fact recorded — the emitter must fail loudly rather than
+        // guess a lowering (#1608, Design Decision 1).
+        var expr = new SliceAccess
+        {
+            Object = new Identifier { Name = "arr" },
+            Start = new IntegerLiteral { Value = "1" },
+            Stop = new IntegerLiteral { Value = "5" },
+            Step = null
+        };
+        _context.SemanticInfo = new SemanticInfo();
+
+        // Act
+        var act = () => InvokeGenerateExpression(expr);
+
+        // Assert
+        act.Should().Throw<System.Reflection.TargetInvocationException>()
+            .WithInnerException<InvalidOperationException>()
+            .WithMessage("*No SliceLowering recorded*");
     }
 
     #endregion

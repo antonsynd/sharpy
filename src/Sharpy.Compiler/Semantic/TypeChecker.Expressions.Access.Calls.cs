@@ -5,6 +5,7 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
+using Sharpy.Compiler.Utilities;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -382,7 +383,7 @@ internal partial class TypeChecker
             // Try module function overloads (e.g., os.path.join with different arities)
             {
                 var moduleOverloadResult = ResolveModuleFunctionOverload(
-                    memberAccessCall, argTypes, totalArgCount, call,
+                    memberAccessCall, argTypes, kwargTypes, totalArgCount, call,
                     isNullConditionalCall, isOptionalNullConditional);
                 if (moduleOverloadResult != null)
                     return moduleOverloadResult;
@@ -419,7 +420,6 @@ internal partial class TypeChecker
                         // GetCallTarget were all blind (#1537). Dunders are excluded: __init__
                         // belongs to the constructor-delegation route (#1536), and recording it here
                         // would silently change that route's semantics.
-                        // TODO(#1591): kwarg names/types on single-method calls are unvalidated
                         if (!DunderDetector.IsDunderMethod(memberAccessCall.Member))
                         {
                             var (method, _) = TypeHierarchyService.FindMethod(
@@ -427,6 +427,24 @@ internal partial class TypeChecker
                             if (method != null)
                             {
                                 RecordResolvedCallTarget(call, method);
+
+                                // The resolved symbol's NAMED parameters are in hand here, and the
+                                // validation route below (CheckLambdaCall) sees only a FunctionType
+                                // — positional types with no names — so kwarg names/types validate
+                                // at this seam (#1591). Self is skipped by the same rule
+                                // FunctionType.FromParameters' skipLeading applied when the member
+                                // seam typed the callee. Guarded on funcSymbol: a call that resolves
+                                // a symbol below validates kwargs in ValidateFunctionSymbolCall, and
+                                // reporting here too would double it.
+                                if (funcSymbol == null && call.KeywordArguments.Length > 0)
+                                {
+                                    var selfOffset = method.Parameters.Count > 0
+                                        && method.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+                                    ValidateKeywordArguments(call,
+                                        method.Parameters.Skip(selfOffset).ToList(),
+                                        argTypes.Count, kwargTypes,
+                                        clrParameterNames: method.ClrMethodName != null);
+                                }
                             }
                         }
 
@@ -1035,7 +1053,8 @@ internal partial class TypeChecker
                     // where the mismatch surfaced as CS1503 behind SPY0908 naming C# types and
                     // argument positions rather than the user's own binding (#1243).
                     ValidateCallArguments(call, initParams, argTypes, kwargTypes, totalArgCount,
-                        WrittenTypeParameterBinding(genericTypeSymbol, typeArgs));
+                        WrittenTypeParameterBinding(genericTypeSymbol, typeArgs),
+                        clrParameterNames: initMethods[0].ClrMethodName != null);
 
                     CheckDeprecatedUsage(initMethods[0], call);
                 }
@@ -2215,7 +2234,8 @@ internal partial class TypeChecker
     /// Returns null if the object is not a module or has no overloads for the member.
     /// </summary>
     private SemanticType? ResolveModuleFunctionOverload(
-        MemberAccess memberAccess, List<SemanticType> argTypes, int totalArgCount, FunctionCall call,
+        MemberAccess memberAccess, List<SemanticType> argTypes,
+        Dictionary<string, SemanticType> kwargTypes, int totalArgCount, FunctionCall call,
         bool isNullConditionalCall, bool isOptionalNullConditional)
     {
         var objectType = _semanticInfo.GetExpressionType(memberAccess.Object);
@@ -2256,6 +2276,14 @@ internal partial class TypeChecker
 
         // Record the resolved call target for codegen (and check deprecation) — #1438
         RecordResolvedCallTarget(call, matchingOverload);
+
+        // Overload selection filters by keyword NAMES leniently — a fully unmatched set falls
+        // through to arity-only ranking — and nothing after it checked them, so
+        // `json.dumps(x, allowNan=False)` bound silently under a spelling CPython refuses
+        // (#1591). The selected overload's parameter list is the binding surface; validate the
+        // kwargs against it. Module functions carry no receiver parameter, so no self skip.
+        ValidateKeywordArguments(call, matchingOverload.Parameters, argTypes.Count, kwargTypes,
+            clrParameterNames: matchingOverload.ClrMethodName != null);
 
         var returnType = InferGenericReturnType(matchingOverload, argTypes, call);
 
@@ -2508,6 +2536,16 @@ internal partial class TypeChecker
                 // Store the inferred type arguments for codegen
                 _semanticInfo.SetInferredTypeArguments(call, inferenceResult.InferredTypes);
 
+                // This branch returns without reaching ValidateCallArguments below, so kwargs on a
+                // generic call went entirely unchecked (#1591). Validate them against the INFERRED
+                // binding, so a kwarg bound to a now-closed type parameter gets the same SPY0220 a
+                // non-generic parameter gets. The slot mapping kwargs use for inference
+                // (BuildInferenceArgumentTypes) matches names through the same
+                // FindKeywordParameter arms, so what steered inference is what validates here.
+                ValidateKeywordArguments(call, funcSymbol.Parameters, argTypes.Count, kwargTypes,
+                    InferredTypeParameterBinding(funcSymbol, inferenceResult.InferredTypes),
+                    clrParameterNames: funcSymbol.ClrMethodName != null);
+
                 // Wrap result in optional/nullable for null conditional calls
                 if (isNullConditionalCall && substitutedReturnType is not NullableType and not OptionalType)
                 {
@@ -2523,11 +2561,21 @@ internal partial class TypeChecker
                 AddError(inferenceResult.ErrorMessage ?? "Type arguments cannot be inferred",
                     call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferGenericType,
                     span: call.Span);
+
+                // The kwarg NAME rules need no binding at all, and a mistyped name is often the
+                // very reason inference failed (the slot mapping stops at the first unmatched
+                // parameter) — report it alongside, so the actionable diagnosis isn't hidden
+                // behind the inference failure (#1591). Open parameter types are skipped by
+                // SubstitutedParameterType with a null binding, so no type check runs against a
+                // still-open type parameter.
+                ValidateKeywordArguments(call, funcSymbol.Parameters, argTypes.Count, kwargTypes,
+                    clrParameterNames: funcSymbol.ClrMethodName != null);
                 return SemanticType.Unknown;
             }
         }
 
-        ValidateCallArguments(call, funcSymbol.Parameters, argTypes, kwargTypes, totalArgCount);
+        ValidateCallArguments(call, funcSymbol.Parameters, argTypes, kwargTypes, totalArgCount,
+            clrParameterNames: funcSymbol.ClrMethodName != null);
 
         var returnType = funcSymbol.ReturnType;
 
@@ -2588,13 +2636,37 @@ internal partial class TypeChecker
         {
             if (i < argTypes.Count)
                 ordered.Add(argTypes[i]);
-            else if (kwargTypes.TryGetValue(funcSymbol.Parameters[i].Name, out var kwargType))
+            else if (TryGetKeywordArgumentType(kwargTypes, funcSymbol.Parameters[i].Name, out var kwargType))
                 ordered.Add(kwargType);
             else
                 break;
         }
 
         return ordered;
+    }
+
+    /// <summary>
+    /// Looks a parameter's keyword argument up by name using the same two spelling arms as
+    /// <see cref="FindKeywordParameter"/>, in the same order — verbatim first, then the Python
+    /// snake_case spelling of a verbatim-stored CLR name — so the slot mapping that steers generic
+    /// inference and the validation that reports on it match the same kwargs (#909, #1591).
+    /// </summary>
+    private static bool TryGetKeywordArgumentType(
+        Dictionary<string, SemanticType> kwargTypes, string parameterName, out SemanticType kwargType)
+    {
+        if (kwargTypes.TryGetValue(parameterName, out kwargType!))
+            return true;
+
+        foreach (var (keywordName, type) in kwargTypes)
+        {
+            if (parameterName == NameMangler.ToCamelCase(keywordName))
+            {
+                kwargType = type;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -2822,7 +2894,8 @@ internal partial class TypeChecker
     private void ValidateCallArguments(
         FunctionCall call, IReadOnlyList<ParameterSymbol> parameters,
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
-        int totalArgCount, TypeParameterBinding? typeBinding = null)
+        int totalArgCount, TypeParameterBinding? typeBinding = null,
+        bool clrParameterNames = false)
     {
         var hasVariadicParam = parameters.Any(p => p.IsVariadic);
         var requiredParamCount = parameters.Count(p => !p.HasDefault && !p.IsVariadic);
@@ -2922,45 +2995,165 @@ internal partial class TypeChecker
                 }
             }
 
-            // Validate keyword arguments
-            foreach (var kwarg in call.KeywordArguments)
+            ValidateKeywordArguments(call, parameters, argTypes.Count, kwargTypes, typeBinding,
+                clrParameterNames);
+        }
+    }
+
+    /// <summary>
+    /// Validates a call's KEYWORD arguments against a (self-free) parameter list: unknown names
+    /// (SPY0234, with a did-you-mean), positional-only violations (SPY0370), arguments already
+    /// supplied positionally (SPY0235), and value types (SPY0220). Extracted from
+    /// <see cref="ValidateCallArguments"/> so every route that holds a resolved parameter list —
+    /// the #1537 single-method recording seam, the generic-inference branch of
+    /// <see cref="ValidateFunctionSymbolCall"/>, and the module-overload route — applies the ONE
+    /// implementation instead of growing a second (#1591).
+    ///
+    /// <para><paramref name="clrParameterNames"/> mirrors the emitter's
+    /// <c>GetCSharpParameterName</c> gate (<c>ClrMethodName != null</c>): CLR-discovered parameter
+    /// names are stored VERBATIM (camelCase — see <c>OverloadIndexBuilder.CreateParameterSignature</c>,
+    /// the #942 regression guard), so the Python snake_case spelling is matched by camel-casing the
+    /// written kwarg, and a hit whose written spelling is not the canonical Python form refuses with
+    /// a steer to it — <c>allowNan=</c> steers to <c>allow_nan=</c> exactly as <c>math.Pi</c> steers
+    /// to <c>pi</c> (#1540 one-spelling ruling, applied to kwargs by #1591). A Sharpy-declared
+    /// parameter's canonical spelling is its declared source name, so a respelling of it refuses
+    /// toward the declaration — which is CPython's own rule for a declared parameter name.</para>
+    /// </summary>
+    private void ValidateKeywordArguments(
+        FunctionCall call, IReadOnlyList<ParameterSymbol> parameters,
+        int positionalArgCount, Dictionary<string, SemanticType> kwargTypes,
+        TypeParameterBinding? typeBinding = null, bool clrParameterNames = false)
+    {
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            var param = FindKeywordParameter(parameters, kwarg.Name);
+            if (param == null)
             {
-                var param = parameters.FirstOrDefault(p => p.Name == kwarg.Name);
-                if (param == null)
+                var suggestion = EditDistance.FindClosestMatch(kwarg.Name,
+                    parameters.Select(p => CanonicalKeywordSpellingOf(p, clrParameterNames)));
+                var unknownMessage = $"Unknown keyword argument '{kwarg.Name}'";
+                if (suggestion != null)
+                    unknownMessage += $". Did you mean '{suggestion}'?";
+                AddError(unknownMessage,
+                    kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                    span: kwarg.Span ?? kwarg.Value.Span,
+                    data: SuggestionData(suggestion));
+            }
+            else if (CanonicalKeywordSpellingOf(param, clrParameterNames) is { } canonicalSpelling
+                && canonicalSpelling != kwarg.Name)
+            {
+                // The raw CLR spelling names the right parameter, but the canonical kwarg spelling
+                // in Sharpy source is the Python one (#1591): refuse with the exact steer. The
+                // snake→camel mapping to the CLR parameter is the compiler's job under the hood.
+                AddError($"Unknown keyword argument '{kwarg.Name}'. Did you mean '{canonicalSpelling}'?",
+                    kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                    span: kwarg.Span ?? kwarg.Value.Span,
+                    data: SuggestionData(canonicalSpelling));
+            }
+            else if (param.IsPositionalOnly)
+            {
+                AddError($"'{kwarg.Name}' is positional-only and cannot be passed as a keyword argument",
+                    kwarg.LineStart, kwarg.ColumnStart,
+                    code: DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword,
+                    span: kwarg.Span ?? kwarg.Value.Span);
+            }
+            else
+            {
+                var paramIndex = parameters.ToList().IndexOf(param);
+                var paramType = SubstitutedParameterType(param.Type, typeBinding);
+                if (!param.IsKeywordOnly && paramIndex < positionalArgCount)
                 {
-                    AddError($"Unknown keyword argument '{kwarg.Name}'",
-                        kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                    AddError($"Argument '{kwarg.Name}' was already provided positionally",
+                        kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
                         span: kwarg.Span ?? kwarg.Value.Span);
                 }
-                else if (param.IsPositionalOnly)
+                else if (paramType != null
+                    && !IsArgumentAssignable(kwargTypes[kwarg.Name], paramType)
+                    && !(IsSystemTypeParameter(paramType) && _semanticInfo.IsTypeReference(kwarg.Value)))
                 {
-                    AddError($"'{kwarg.Name}' is positional-only and cannot be passed as a keyword argument",
-                        kwarg.LineStart, kwarg.ColumnStart,
-                        code: DiagnosticCodes.Semantic.PositionalOnlyPassedByKeyword,
+                    AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{paramType.GetDisplayName()}'"
+                        + DescribeOptionalArgument(kwargTypes[kwarg.Name], paramType)
+                        + DescribeClrCollectionConversionSteer(kwargTypes[kwarg.Name], paramType)
+                        + DescribeTypeParameterBinding(param.Type, typeBinding),
+                        kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                         span: kwarg.Span ?? kwarg.Value.Span);
                 }
-                else
-                {
-                    var paramIndex = parameters.ToList().IndexOf(param);
-                    var paramType = SubstitutedParameterType(param.Type, typeBinding);
-                    if (!param.IsKeywordOnly && paramIndex < argTypes.Count)
-                    {
-                        AddError($"Argument '{kwarg.Name}' was already provided positionally",
-                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
-                            span: kwarg.Span ?? kwarg.Value.Span);
-                    }
-                    else if (paramType != null
-                        && !IsArgumentAssignable(kwargTypes[kwarg.Name], paramType)
-                        && !(IsSystemTypeParameter(paramType) && _semanticInfo.IsTypeReference(kwarg.Value)))
-                    {
-                        AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{paramType.GetDisplayName()}'"
-                            + DescribeOptionalArgument(kwargTypes[kwarg.Name], paramType)
-                            + DescribeClrCollectionConversionSteer(kwargTypes[kwarg.Name], paramType)
-                            + DescribeTypeParameterBinding(param.Type, typeBinding),
-                            kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                            span: kwarg.Span ?? kwarg.Value.Span);
-                    }
-                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Binds a written keyword name to a parameter: the verbatim spelling first (a Sharpy-declared
+    /// name, or a CLR name already in its Python form), then the camel-cased spelling (the Python
+    /// snake_case form of a verbatim-stored CLR parameter name) — the same two arms, in the same
+    /// order, as the emitter's <c>GetCSharpParameterName</c>, so the checker accepts exactly what
+    /// emission can bind.
+    /// </summary>
+    private static ParameterSymbol? FindKeywordParameter(
+        IReadOnlyList<ParameterSymbol> parameters, string keywordName)
+    {
+        return parameters.FirstOrDefault(p => p.Name == keywordName)
+            ?? parameters.FirstOrDefault(p => p.Name == NameMangler.ToCamelCase(keywordName));
+    }
+
+    /// <summary>
+    /// The ONE kwarg spelling that names <paramref name="param"/> in Sharpy source (#1591): the
+    /// declared name for a Sharpy-declared parameter; <see cref="CanonicalClrParameterSpelling"/>
+    /// for a verbatim-stored CLR name.
+    /// </summary>
+    private static string CanonicalKeywordSpellingOf(ParameterSymbol param, bool clrParameterNames)
+        => clrParameterNames ? CanonicalClrParameterSpelling(param.Name) : param.Name;
+
+    /// <summary>
+    /// The Python spelling of a verbatim-stored CLR parameter name — its snake_case form, but only
+    /// when that form round-trips back to the stored name (so the steer itself binds through
+    /// <see cref="FindKeywordParameter"/>'s camel arm and the emitter's matching arm). A CLR name
+    /// the round-trip cannot reach (e.g. a single capital <c>N</c>) keeps its verbatim spelling
+    /// rather than steering callers into a name no arm can bind.
+    /// </summary>
+    private static string CanonicalClrParameterSpelling(string parameterName)
+    {
+        var snake = NameMangler.ToSnakeCase(parameterName);
+        return parameterName == NameMangler.ToCamelCase(snake) ? snake : parameterName;
+    }
+
+    /// <summary>
+    /// Validates keyword-argument NAMES against a reflected CLR parameter-name surface, for the
+    /// seams that hold raw <see cref="System.Reflection.ParameterInfo"/> names rather than
+    /// <see cref="ParameterSymbol"/>s: the CLR instance-call seam and the staged-extension decline
+    /// (#1591). Names only — a name any candidate binds under the one-spelling rule passes, an
+    /// unknown name refuses with a did-you-mean, and a raw CLR spelling refuses with the exact
+    /// steer to its Python form. An empty surface checks nothing (stays permissive).
+    /// </summary>
+    private void ValidateClrKeywordArgumentNames(
+        FunctionCall call, IReadOnlyCollection<string> parameterNames)
+    {
+        if (parameterNames.Count == 0)
+            return;
+
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            var match = parameterNames.FirstOrDefault(name => name == kwarg.Name)
+                ?? parameterNames.FirstOrDefault(name => name == NameMangler.ToCamelCase(kwarg.Name));
+            if (match == null)
+            {
+                var suggestion = EditDistance.FindClosestMatch(kwarg.Name,
+                    parameterNames.Select(CanonicalClrParameterSpelling));
+                var unknownMessage = $"Unknown keyword argument '{kwarg.Name}'";
+                if (suggestion != null)
+                    unknownMessage += $". Did you mean '{suggestion}'?";
+                AddError(unknownMessage,
+                    kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                    span: kwarg.Span ?? kwarg.Value.Span,
+                    data: SuggestionData(suggestion));
+            }
+            else if (CanonicalClrParameterSpelling(match) is { } canonicalSpelling
+                && canonicalSpelling != kwarg.Name)
+            {
+                AddError($"Unknown keyword argument '{kwarg.Name}'. Did you mean '{canonicalSpelling}'?",
+                    kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.UnknownKeywordArgument,
+                    span: kwarg.Span ?? kwarg.Value.Span,
+                    data: SuggestionData(canonicalSpelling));
             }
         }
     }
@@ -3028,7 +3221,8 @@ internal partial class TypeChecker
         if (soleMatch == null)
             return null; // none fits: the count diagnostic belongs to overload resolution, not here
 
-        ValidateCallArguments(call, soleMatch, argTypes, kwargTypes, totalArgCount, typeBinding);
+        ValidateCallArguments(call, soleMatch, argTypes, kwargTypes, totalArgCount, typeBinding,
+            clrParameterNames: soleMatchSymbol!.ClrMethodName != null);
         return soleMatchSymbol;
     }
 
@@ -3068,6 +3262,28 @@ internal partial class TypeChecker
                 new Dictionary<string, SemanticType>(StringComparer.Ordinal),
                 new HashSet<string>(typeSymbol.TypeParameters.Select(tp => tp.Name), StringComparer.Ordinal),
                 Origin: null);
+
+    /// <summary>
+    /// The binding a generic FUNCTION call's successful inference produced, positionally paired
+    /// with the function's type parameters — the same vector
+    /// <see cref="SubstituteTypeParameters"/> closes the return type with. Lets the kwarg
+    /// validation in <see cref="ValidateFunctionSymbolCall"/>'s inference branch check a keyword
+    /// argument against the CLOSED parameter type (#1591). A parameter inference left unclosed
+    /// stays out of the substitution, so <see cref="SubstitutedParameterType"/> declines to check
+    /// it — the same stay-out-of-inference's-way rule the constructor bindings follow.
+    /// </summary>
+    private static TypeParameterBinding InferredTypeParameterBinding(
+        FunctionSymbol funcSymbol, IReadOnlyList<SemanticType> inferredTypes)
+    {
+        var substitution = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+        for (int i = 0; i < funcSymbol.TypeParameters.Count && i < inferredTypes.Count; i++)
+            substitution[funcSymbol.TypeParameters[i].Name] = inferredTypes[i];
+
+        return new TypeParameterBinding(
+            substitution,
+            new HashSet<string>(funcSymbol.TypeParameters.Select(tp => tp.Name), StringComparer.Ordinal),
+            Origin: null);
+    }
 
     /// <summary>
     /// The parameter type this call actually binds, or <c>null</c> when it is still open and only
@@ -3344,12 +3560,25 @@ internal partial class TypeChecker
         var kwargTypes = new Dictionary<string, SemanticType>();
         foreach (var kwarg in call.KeywordArguments)
         {
+            // Python refuses a repeated keyword outright (`f(x=1, x=2)` is "SyntaxError: keyword
+            // argument repeated"); the dictionary below would otherwise keep the LAST value and
+            // silently drop the rest (#1591). Runs here, on the collection pass every call takes,
+            // so a duplicate refuses regardless of which resolution route later validates the
+            // names. Identity is the written spelling — two spellings of one parameter are a
+            // spelling error at the binding seam, not a duplicate here.
+            if (kwargTypes.ContainsKey(kwarg.Name))
+            {
+                AddError($"Duplicate keyword argument '{kwarg.Name}'",
+                    kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
+                    span: kwarg.Span ?? kwarg.Value.Span);
+            }
+
             var previousExpectedType = _expectedType;
             var previousParameterTypedArgument = _parameterTypedArgument;
             _parameterTypedArgument = null;
             if (earlyFuncSymbol != null)
             {
-                var param = earlyFuncSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
+                var param = FindKeywordParameter(earlyFuncSymbol.Parameters, kwarg.Name);
                 if (param != null)
                 {
                     _expectedType = param.Type is UnknownType ? null : param.Type;
@@ -4462,10 +4691,16 @@ internal partial class TypeChecker
     /// resolution and this seam does not own it.</para>
     ///
     /// <para>Every other step defaults to silence too — an unreflectable or open-generic receiver, a
-    /// keyword or spread argument, a name an extension method could also answer, a <c>ref</c> or
+    /// spread argument, a name an extension method could also answer, a <c>ref</c> or
     /// delegate or <c>params</c> parameter, a bridge mapping that collapsed to <c>object</c>. A false
     /// refusal here rejects interop .NET binds happily, which is strictly worse than the ICE it would
     /// replace (#1260), so an undecidable step is left to Roslyn rather than guessed at.</para>
+    ///
+    /// <para>Keyword arguments used to ride the same silence as deliberate permissiveness. The #1591
+    /// ruling overturned that for their NAMES — one spelling, the Python one, validated below against
+    /// the reflected candidate parameter names — while their presence still keeps arity and types
+    /// unchecked, because a keyword argument binds by name and a positional count check would read
+    /// the call wrong. Binding is unchanged wherever the names are valid.</para>
     /// </summary>
     private void CheckClrInstanceMethodCall(
         FunctionCall call, MemberAccess memberAccess,
@@ -4473,11 +4708,15 @@ internal partial class TypeChecker
     {
         // A keyword argument binds by CLR parameter name, and a spread occupies one argument slot
         // while standing for however many the sequence holds — so neither the count nor the
-        // positions mean here what this check would read them as. Both leave the call exactly as
-        // permissive as it is today.
-        if (kwargTypes.Count > 0 || call.KeywordArguments.Length > 0
-            || call.Arguments.Length != argTypes.Count
-            || call.Arguments.Any(argument => argument is SpreadElement))
+        // positions mean here what the arity/type checks below would read them as. A spread (or a
+        // count the argument walk disagreed on) leaves the call exactly as permissive as it is
+        // today. Keyword arguments no longer share that bail wholesale: their NAMES are
+        // position-independent and validate against the reflected surface below (#1591); only the
+        // arity/type checks stay off in their presence.
+        var hasKeywordArguments = kwargTypes.Count > 0 || call.KeywordArguments.Length > 0;
+        if (!hasKeywordArguments
+            && (call.Arguments.Length != argTypes.Count
+                || call.Arguments.Any(argument => argument is SpreadElement)))
         {
             return;
         }
@@ -4515,9 +4754,27 @@ internal partial class TypeChecker
         // The permissive extension clause, for the same reason the absence proof has it: an extension
         // method binds when no instance overload is applicable, so `xs.contains(v, comparer)` is a
         // legal call to Enumerable.Contains that no instance candidate accounts for. Refusing on the
-        // instance surface alone would reject it.
+        // instance surface alone would reject it — and its parameter names could answer a keyword
+        // name the instance candidates cannot, so the name validation below stays behind this bail
+        // too.
         if (surface.ExtensionNameReachable)
             return;
+
+        // Keyword NAMES validate against the union of every candidate's parameters — permissive
+        // across overloads on purpose: which overload the call means is CLR overload resolution's
+        // answer, so only a name NO candidate can bind refuses (#1591). Arity and types stay
+        // unchecked in the kwargs' presence, exactly as before.
+        if (hasKeywordArguments)
+        {
+            ValidateClrKeywordArgumentNames(call,
+                surface.Candidates
+                    .SelectMany(candidate => candidate.GetParameters())
+                    .Select(parameter => parameter.Name)
+                    .OfType<string>()
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList());
+            return;
+        }
 
         var fitting = surface.Candidates
             .Where(candidate => ClrArityFits(candidate, argTypes.Count))

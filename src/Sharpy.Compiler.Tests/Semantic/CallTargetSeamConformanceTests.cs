@@ -48,9 +48,9 @@ public class CallTargetSeamConformanceTests : IntegrationTestBase
     public static readonly IReadOnlyList<(string Route, string Rationale)> ExemptRoutes = new[]
     {
         ("LambdaLiteral",
-         "a lambda has no Symbol — nothing to record and nothing decoratable; validation stays on CheckLambdaCall"),
+         "a lambda has no Symbol — nothing to record and nothing decoratable; positional validation stays on CheckLambdaCall, and with no named parameters kwargs stay honestly unvalidatable (#1591)"),
         ("BclSynthesizedFunctionType",
-         "delegate Invoke / BCL-derived / closed-extension FunctionTypes carry no Symbol (#1537's measured boundary); they stay on CheckLambdaCall"),
+         "delegate Invoke / BCL-derived / closed-extension FunctionTypes carry no Symbol (#1537's measured boundary); positional validation stays on CheckLambdaCall — single instance-method calls DO resolve a Symbol and kwarg-validate at the #1591 recording seam before falling through to it"),
         ("DelegateTypedInvocation",
          "the invoked variable's FunctionType has no Symbol, so the call cannot record; the reference site (f = add) is the deprecation surface and checks nothing today — #1593"),
         ("BuiltinsQualifiedSingle",

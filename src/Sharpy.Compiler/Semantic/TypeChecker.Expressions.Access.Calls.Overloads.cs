@@ -191,6 +191,10 @@ internal partial class TypeChecker
         //     after removing keyword-satisfied ones.
         // This disambiguates calls like merge(a, b, reverse=True) between a params
         // overload and one with a named 'reverse' parameter.
+        // Name matching uses the same two arms as FindKeywordParameter — verbatim, then the
+        // camel-cased spelling of a snake-written kwarg — so a Python-spelled kwarg selects
+        // among CLR overloads (verbatim camelCase names) the same way validation later reads
+        // the selected one (#1591).
         if (context.KeywordArgNames is { Count: > 0 })
         {
             var positionalArgCount = context.TotalArgCount - context.KeywordArgNames.Count;
@@ -199,16 +203,20 @@ internal partial class TypeChecker
                 var selfOffset = GetSelfOffset(o);
                 var paramsAfterSelf = o.Parameters.Skip(selfOffset).ToList();
                 var paramNames = paramsAfterSelf.Select(p => p.Name).ToHashSet();
+                bool HasParameterFor(string kw) =>
+                    paramNames.Contains(kw) || paramNames.Contains(NameMangler.ToCamelCase(kw));
 
                 // Every keyword arg must have a matching parameter name
-                if (!context.KeywordArgNames.All(kw => paramNames.Contains(kw)))
+                if (!context.KeywordArgNames.All(HasParameterFor))
                     return false;
 
                 // For non-variadic overloads, verify that positional args cover
                 // exactly the required parameters NOT supplied by keyword args.
                 if (!paramsAfterSelf.Any(p => p.IsVariadic))
                 {
-                    var kwSet = context.KeywordArgNames.ToHashSet();
+                    var kwSet = context.KeywordArgNames
+                        .SelectMany(kw => new[] { kw, NameMangler.ToCamelCase(kw) })
+                        .ToHashSet();
                     var nonKwRequired = paramsAfterSelf
                         .Where(p => !p.HasDefault && !kwSet.Contains(p.Name))
                         .Count();

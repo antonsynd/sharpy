@@ -297,6 +297,25 @@ internal static class ClrExtensionMethodResolver
         return all.Count == 1 ? all[0] : null;
     }
 
+    /// <summary>
+    /// The distinct non-receiver parameter names of every candidate answering to
+    /// <paramref name="memberName"/>, receiver-unchecked on purpose: the consumer is keyword-NAME
+    /// validation (#1591), where a union across overloads is the permissive reading — only a name
+    /// NO candidate could bind refuses. Empty when the name is off the surface.
+    /// </summary>
+    internal static IReadOnlyList<string> CandidateParameterNames(string memberName)
+    {
+        if (!_byName.Value.TryGetValue(memberName, out var candidates))
+            return Array.Empty<string>();
+
+        return candidates
+            .SelectMany(method => method.GetParameters().Skip(1))
+            .Select(parameter => parameter.Name)
+            .OfType<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
     internal static IReadOnlyList<PartialResolution> TryResolveAllFromReceiver(
         Type receiverType, string memberName, IReadOnlyList<ExtensionArgumentShape> argumentShapes)
     {

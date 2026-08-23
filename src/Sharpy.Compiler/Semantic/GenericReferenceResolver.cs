@@ -712,10 +712,18 @@ internal partial class TypeChecker
             return null;
         }
 
-        // Keyword arguments have no name correspondence to a CLR extension method's parameters, and a
-        // spread breaks the positional formal-to-actual alignment the staging relies on.
+        // Keyword arguments have no POSITIONAL correspondence to the staging below — the argument
+        // shapes are paired with formals by position — so a call carrying them still declines to
+        // stage, and a spread breaks the same alignment. Their NAMES are another matter: the #1591
+        // ruling overturned the blanket permissiveness this decline used to carry, so an unknown
+        // keyword name — or the raw CLR spelling where the Python one is meant — refuses with a
+        // steer before the decline. Binding is unchanged wherever the names are valid.
         if (call.KeywordArguments.Length > 0)
+        {
+            ValidateClrKeywordArgumentNames(call,
+                Discovery.ClrExtensionMethodResolver.CandidateParameterNames(memberAccess.Member));
             return null;
+        }
 
         var shapes = new Discovery.ClrExtensionMethodResolver.ExtensionArgumentShape[call.Arguments.Length];
         for (int i = 0; i < call.Arguments.Length; i++)
