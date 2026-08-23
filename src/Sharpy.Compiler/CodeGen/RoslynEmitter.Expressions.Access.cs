@@ -1992,6 +1992,17 @@ internal partial class RoslynEmitter
 
         var obj = GenerateExpression(sliceAccess.Object);
 
+        // GenerateExpression applies ApplyNarrowedReadLowering, which casts builtin collections
+        // to non-generic protocol interfaces (IList/IDict/ISet). GetSlice<T> needs the concrete
+        // generic type for T inference — re-cast to it when the narrowing erased generics (#1608).
+        var narrowedLowering = _context.SemanticInfo?.GetNarrowedReadLowering(sliceAccess.Object);
+        if (narrowedLowering is { Kind: NarrowedReadKind.Cast, CastTarget: GenericType narrowedGeneric }
+            && TryMapBuiltinCollectionToNonGenericInterface(narrowedGeneric.Name) is not null)
+        {
+            var concreteType = _typeMapper.MapSemanticType(narrowedGeneric);
+            obj = ParenthesizedExpression(CastExpression(concreteType, obj));
+        }
+
         var result = lowering.Kind switch
         {
             // NdArray slicing is per-axis: a[1:4] → a.Slice(new SliceSpec((int?)1, (int?)4)).
@@ -2013,7 +2024,7 @@ internal partial class RoslynEmitter
                 $"Unhandled SliceLoweringKind '{lowering.Kind}' (#1608)"),
         };
 
-        return ApplyNarrowedReadLowering(sliceAccess, result);
+        return result;
     }
 
     private ExpressionSyntax GenerateGetSliceCall(ExpressionSyntax obj, SliceAccess sliceAccess)
