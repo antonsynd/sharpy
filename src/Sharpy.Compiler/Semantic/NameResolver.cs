@@ -538,7 +538,17 @@ internal partial class NameResolver
         }
 
         if (rawSymbol is TypeSymbol ts)
+        {
+            // #1626: when the representative carries an arity group, select the member matching
+            // the written arity so InterfaceReference.Definition aligns with the GenericDefinition
+            // that TypeResolver.ResolveGenericType produces for the same annotation.
+            if (ts.ClrArityGroup is { } baseArityGroup && baseAnnot.TypeArguments.Length > 0)
+            {
+                if (baseArityGroup.TryGetValue(baseAnnot.TypeArguments.Length, out var baseArityMember))
+                    return baseArityMember;
+            }
             return ts;
+        }
 
         if (baseAnnot.IsNameBacktickEscaped)
             return null;

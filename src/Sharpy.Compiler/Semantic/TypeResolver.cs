@@ -271,7 +271,7 @@ internal class TypeResolver
             if (typeSymbol?.ClrArityGroup is { } importArityGroup && annotation.TypeArguments.Length > 0)
             {
                 if (importArityGroup.TryGetValue(annotation.TypeArguments.Length, out var arityMember))
-                    typeSymbol = arityMember; // TODO(#1626): delegate Invoke still carries the representative's params
+                    typeSymbol = arityMember;
                 else
                 {
                     AddClrArityGroupError(annotation, importArityGroup);
@@ -689,6 +689,20 @@ internal class TypeResolver
             typeSymbol = LookupModuleQualifiedType(annotation.Name);
             if (typeSymbol != null)
                 isModuleQualified = typeSymbol.ClrType == null;
+        }
+
+        // #1626: the representative from LookupType may be arity-0 (non-generic) while the
+        // written arity selects a different group member. Swap to the correct member so
+        // GenericDefinition carries the right TypeParameters and delegate Invoke signature.
+        if (typeSymbol?.ClrArityGroup is { } genericArityGroup)
+        {
+            if (genericArityGroup.TryGetValue(annotation.TypeArguments.Length, out var genericArityMember))
+                typeSymbol = genericArityMember;
+            else
+            {
+                AddClrArityGroupError(annotation, genericArityGroup);
+                return SemanticType.Unknown;
+            }
         }
 
         if (!escaped)
