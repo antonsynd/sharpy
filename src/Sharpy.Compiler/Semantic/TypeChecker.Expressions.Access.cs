@@ -337,6 +337,27 @@ internal partial class TypeChecker
                 // — so it fires only where codegen was certain to fail too.
                 if (ClrReflectionProvesMemberAbsent(memberLookupType, memberAccess.Member, out var clrSuggestion))
                 {
+                    // #1571: an unmapped Python collection verb on a CLR collection receiver
+                    // gets a specific steer toward the mapped verbs instead of the generic
+                    // "has no member" message.
+                    if (KnownPythonCollectionVerbs.Contains(memberAccess.Member)
+                        && !NameMangler.ClrCollectionVerbMap.ContainsKey(memberAccess.Member))
+                    {
+                        var clrType = TryGetClrType(memberLookupType);
+                        if (clrType != null && IsClrCollectionType(clrType))
+                        {
+                            var mapped = string.Join(", ", NameMangler.ClrCollectionVerbMap.Keys
+                                .OrderBy(k => k, StringComparer.Ordinal));
+                            AddError(
+                                $"'{memberAccess.Member}' is a Python collection method with no CLR equivalent "
+                                + $"on '{udt.Symbol.Name}'. Mapped verbs: {mapped}",
+                                memberAccess.LineStart, memberAccess.ColumnStart,
+                                code: DiagnosticCodes.Semantic.UndefinedMember,
+                                span: memberAccess.Span);
+                            return SemanticType.Unknown;
+                        }
+                    }
+
                     var absentMessage =
                         $"Type '{udt.Symbol.Name}' has no member '{memberAccess.Member}'";
                     if (clrSuggestion != null)
@@ -701,6 +722,25 @@ internal partial class TypeChecker
                 || IsConstructedClrGenericReceiver(memberLookupType))
             && ClrReflectionProvesMemberAbsent(memberLookupType, memberAccess.Member, out var builtinSuggestion))
         {
+            // #1571: unmapped Python collection verb on a CLR collection receiver.
+            if (KnownPythonCollectionVerbs.Contains(memberAccess.Member)
+                && !NameMangler.ClrCollectionVerbMap.ContainsKey(memberAccess.Member))
+            {
+                var clrType = TryGetClrType(memberLookupType);
+                if (clrType != null && IsClrCollectionType(clrType))
+                {
+                    var mapped = string.Join(", ", NameMangler.ClrCollectionVerbMap.Keys
+                        .OrderBy(k => k, StringComparer.Ordinal));
+                    AddError(
+                        $"'{memberAccess.Member}' is a Python collection method with no CLR equivalent "
+                        + $"on '{memberLookupType.GetDisplayName()}'. Mapped verbs: {mapped}",
+                        memberAccess.LineStart, memberAccess.ColumnStart,
+                        code: DiagnosticCodes.Semantic.UndefinedMember,
+                        span: memberAccess.Span);
+                    return SemanticType.Unknown;
+                }
+            }
+
             var absentOnBuiltin =
                 $"Type '{memberLookupType.GetDisplayName()}' has no member '{memberAccess.Member}'";
             if (builtinSuggestion != null)

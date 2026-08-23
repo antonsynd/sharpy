@@ -139,6 +139,14 @@ internal partial class TypeChecker
     /// </summary>
     private readonly Lazy<Discovery.ClrTypeBridge> _clrTypeBridge = new(() => new Discovery.ClrTypeBridge());
 
+    // #1571: Python collection verbs that Sharpy's builtin list/dict/set expose.
+    // Broader than NameMangler.ClrCollectionVerbMap — unmapped entries refuse on CLR receivers.
+    private static readonly HashSet<string> KnownPythonCollectionVerbs = new(StringComparer.Ordinal)
+    {
+        "append", "extend", "insert", "remove", "pop", "clear",
+        "sort", "reverse", "copy", "count", "index",
+    };
+
     /// <summary>
     /// Single resolution step for a generic reference <c>callee[T, ...]</c>. Normalizes every callee
     /// kind (array/type/function, bare or module- or instance-qualified) into one
@@ -672,8 +680,6 @@ internal partial class TypeChecker
 
         // 3b. #1571: a CLR collection verb with a mapped instance method must NOT stage
         // as an extension — the instance method has the correct mutation semantics.
-        // TODO(#1571): unmapped collection verbs should REFUSE here instead of silently
-        // staging as LINQ extensions (plan Task 2); add a reflective conformance sweep (Task 3).
         if (NameMangler.GetClrCollectionVerbMapping(memberAccess.Member) != null
             && IsClrCollectionType(receiverClrType))
             return null;
