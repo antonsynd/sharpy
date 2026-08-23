@@ -1985,29 +1985,34 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)
     {
-        // arr[start:stop:step]
-        // Translates to: global::Sharpy.Slice.GetSlice(obj, start, stop, step)
-        // where omitted bounds pass null (matching the nullable int? parameters)
+        var lowering = _context.SemanticInfo?.GetSliceLowering(sliceAccess)
+            ?? throw new InvalidOperationException(
+                "No SliceLowering recorded for slice access — semantic analysis must classify " +
+                "every receiver the emitter is asked to generate (#1608)");
+
         var obj = GenerateExpression(sliceAccess.Object);
         var start = sliceAccess.Start != null
             ? GenerateExpression(sliceAccess.Start)
             : (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression);
-        var stop = sliceAccess.Stop != null
+        var end = sliceAccess.Stop != null
             ? GenerateExpression(sliceAccess.Stop)
             : (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression);
         var step = sliceAccess.Step != null
             ? GenerateExpression(sliceAccess.Step)
             : (ExpressionSyntax)LiteralExpression(SyntaxKind.NullLiteralExpression);
 
-        return InvocationExpression(
+        // List/Array/Str/Bytes → Sharpy.Slice.GetSlice(obj, start, end, step)
+        var result = InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                 MakeGlobalQualifiedName("Sharpy", "Slice"),
                 IdentifierName("GetSlice")))
             .AddArgumentListArguments(
                 Argument(obj),
                 Argument(start),
-                Argument(stop),
+                Argument(end),
                 Argument(step));
+
+        return ApplyNarrowedReadLowering(sliceAccess, result);
     }
 
     private ExpressionSyntax GenerateMultiAxisAccess(MultiAxisAccess multiAxis)

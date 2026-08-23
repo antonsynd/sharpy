@@ -402,6 +402,9 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<ExpressionStatement, StatementLowering> _statementLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    private readonly ConcurrentDictionary<Expression, SliceLowering> _sliceLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map match scrutinee expressions to a typed-null cast when the scrutinee is a bare NoneLiteral.
     // Absent ⇒ normal scrutinee emission. Void-call scrutinees are REFUSED (SPY0275), not lowered.
     // Keyed by node identity (#1526, Critical Rule 2 pattern (b)).
@@ -936,6 +939,12 @@ public class SemanticInfo : ISemanticQuery
     public StatementLowering? GetStatementLowering(ExpressionStatement stmt) =>
         _statementLowerings.TryGetValue(stmt, out var lowering) ? lowering : null;
 
+    public void SetSliceLowering(Expression expr, SliceLowering lowering) =>
+        _sliceLowerings[expr] = lowering;
+
+    public SliceLowering? GetSliceLowering(Expression expr) =>
+        _sliceLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
+
     public LambdaBodyLowering? GetLambdaBodyLowering(Expression body) =>
         _lambdaBodyLowerings.TryGetValue(body, out var lowering) ? lowering : null;
 
@@ -1454,6 +1463,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._statementLowerings)
             _statementLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._sliceLowerings)
+            _sliceLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._matchScrutineeLowerings)
             _matchScrutineeLowerings.TryAdd(kvp.Key, kvp.Value);
@@ -1999,6 +2011,10 @@ public enum StatementLoweringKind
 }
 
 public sealed record StatementLowering(StatementLoweringKind Kind);
+
+public enum SliceLoweringKind { List, Array, Str, Bytes, NdArray }
+
+public sealed record SliceLowering(SliceLoweringKind Kind);
 
 public enum MatchScrutineeLoweringKind
 {

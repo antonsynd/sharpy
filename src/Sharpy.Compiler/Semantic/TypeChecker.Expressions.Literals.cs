@@ -572,29 +572,45 @@ internal partial class TypeChecker
     private SemanticType CheckSliceAccess(SliceAccess sliceAccess)
     {
         var objType = CheckExpression(sliceAccess.Object);
-        if (sliceAccess.Start != null)
-            CheckExpression(sliceAccess.Start);
-        if (sliceAccess.Stop != null)
-            CheckExpression(sliceAccess.Stop);
-        if (sliceAccess.Step != null)
-            CheckExpression(sliceAccess.Step);
 
-        // Slicing a list returns a list, slicing a str returns a str
+        // #1608: validate bounds — each must be assignable to int?
+        foreach (var bound in new[] { sliceAccess.Start, sliceAccess.Stop, sliceAccess.Step })
+        {
+            if (bound == null) continue;
+            var boundType = CheckExpression(bound);
+            if (boundType is UnknownType || bound is NoneLiteral)
+                continue;
+            bool isIntCompatible = boundType == BuiltinType.Int
+                || (boundType is NullableType { UnderlyingType: BuiltinType nbt } && nbt == BuiltinType.Int);
+            if (!isIntCompatible)
+            {
+                AddError(
+                    $"Slice bound must be 'int' or 'None', got '{boundType.GetDisplayName()}'",
+                    bound.LineStart, bound.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch, span: bound.Span);
+            }
+        }
+
+        // Classify the receiver and record the lowering fact
         if (objType is GenericType gt && gt.Name == BuiltinNames.List)
+        {
+            _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.List));
             return objType;
+        }
         if (objType == SemanticType.Str)
+        {
+            _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.Str));
             return SemanticType.Str;
-
-        // Slicing a CLR array returns a LIST, not an array (#1256). A slice is a new sequence, and
-        // Sharpy's word for a new growable sequence is `list` — the same answer `Slice.GetSlice`
-        // gives at runtime, so the static type and the emitted type agree. Keeping it `array[T]`
-        // was the "best effort" fallthrough below, and it produced two defects at once:
-        // `sys.argv[1:]` leaked CS1503 behind SPY0908 because no GetSlice overload took an array,
-        // and `xs: list[str] = sys.argv[1:]` drew SPY0220 for the annotation a user would naturally
-        // write. Plain INDEXING is untouched — `arr[0]` is still the element type.
+        }
+        if (objType is UserDefinedType { Name: "bytes" })
+        {
+            _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.Bytes));
+            return objType;
+        }
         if (objType is GenericType { Name: BuiltinNames.Array } arrayType
             && arrayType.TypeArguments.Count == 1)
         {
+            _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.Array));
             return new GenericType
             {
                 Name = BuiltinNames.List,
@@ -602,7 +618,23 @@ internal partial class TypeChecker
             };
         }
 
-        // For other types, return the same type (best effort)
+        // #1608: unclassified receiver → refuse with SPY0320
+        if (objType is TupleType)
+        {
+            AddError(
+                $"Type '{objType.GetDisplayName()}' does not support slicing. Tuples are heterogeneous " +
+                "ValueTuples with no runtime slicing; use constant-bound slicing (tracked as #1609) " +
+                "or convert to 'list'",
+                sliceAccess.LineStart, sliceAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.ProtocolMissingMethod, span: sliceAccess.Span);
+        }
+        else if (objType is not UnknownType)
+        {
+            AddError(
+                $"Type '{objType.GetDisplayName()}' does not support slicing",
+                sliceAccess.LineStart, sliceAccess.ColumnStart,
+                code: DiagnosticCodes.Semantic.ProtocolMissingMethod, span: sliceAccess.Span);
+        }
         return objType;
     }
 
