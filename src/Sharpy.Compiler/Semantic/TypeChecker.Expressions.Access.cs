@@ -1992,6 +1992,8 @@ internal partial class TypeChecker
                         InheritedClrTypeOf(receiver, Array.Empty<SemanticType>()),
                     GenericType { GenericDefinition: { ClrType: null } definition } gt =>
                         InheritedClrTypeOf(definition, gt.TypeArguments),
+                    GenericType { GenericDefinition: { ClrType: { } clrDef } } clrGeneric =>
+                        TryGetClrType(clrGeneric) ?? clrDef,
                     _ => null
                 };
 
@@ -2005,17 +2007,14 @@ internal partial class TypeChecker
         if (Discovery.BuiltinExceptionSurface.IsRefusedMember(clrType, memberAccess.Member))
             return;
 
-        // #1571: CLR collection verb mapping — resolve the mapped instance method name
-        // so append→Add, not the original LINQ Append.
+        // #1571: CLR collection verb mapping — record the mapped CLR instance method
+        // name directly (append→Add). The mapping table guarantees the CLR name; no
+        // reverse-mangling resolution needed.
         if (NameMangler.GetClrCollectionVerbMapping(memberAccess.Member) is { } verbMapped
             && IsClrCollectionType(clrType))
         {
-            var mappedClrName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, verbMapped);
-            if (mappedClrName != null)
-            {
-                _semanticInfo.SetResolvedClrMemberName(memberAccess, mappedClrName);
-                return;
-            }
+            _semanticInfo.SetResolvedClrMemberName(memberAccess, verbMapped);
+            return;
         }
 
         var clrName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member)

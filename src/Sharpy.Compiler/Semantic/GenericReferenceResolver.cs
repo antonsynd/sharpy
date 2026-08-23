@@ -670,6 +670,12 @@ internal partial class TypeChecker
         if (receiverClrType == null)
             return null;
 
+        // 3b. #1571: a CLR collection verb with a mapped instance method must NOT stage
+        // as an extension — the instance method has the correct mutation semantics.
+        if (NameMangler.GetClrCollectionVerbMapping(memberAccess.Member) != null
+            && IsClrCollectionType(receiverClrType))
+            return null;
+
         // 4. Instance members beat extension methods.
         if (!NoClrInstanceMemberCouldBind(receiverType, memberAccess.Member))
             return null;
