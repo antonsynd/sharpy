@@ -52,13 +52,13 @@ public class CallTargetSeamConformanceTests : IntegrationTestBase
         ("BclSynthesizedFunctionType",
          "delegate Invoke / BCL-derived / closed-extension FunctionTypes carry no Symbol (#1537's measured boundary); positional validation stays on CheckLambdaCall — single instance-method calls DO resolve a Symbol and kwarg-validate at the #1591 recording seam before falling through to it"),
         ("DelegateTypedInvocation",
-         "the invoked variable's FunctionType has no Symbol, so the call cannot record; the reference site (f = add) is the deprecation surface and checks nothing today — #1593"),
+         "the invoked variable's FunctionType has no Symbol, so the call cannot record; the reference site (f = add) fires CheckDeprecatedUsage at the identifier — #1593"),
         ("BuiltinsQualifiedSingle",
          "builtins aren't user-decoratable, so no positive @deprecated control exists; builtins.f resolves through the registry to the identical symbols as the bare spelling (#1381 agreement)"),
         ("SuperInitDelegation",
-         "super() receivers are excluded from the member-access arm (Object is not SuperExpression); the emitter's constructor fallback (RoslynEmitter Constructors.cs) never reads a recorded target for this shape — deprecation gap tracked by #1594"),
+         "super() receivers are excluded from the member-access arm (Object is not SuperExpression); ValidateInitAndEventCalls fires CheckDeprecatedUsage on the resolved base __init__ — #1594"),
         ("SelfInitDelegation",
-         "self.__init__ falls into the member-access arm but dunders are deliberately excluded from #1537's recording (recording __init__ would change the construction route #1536 owns) — deprecation gap tracked by #1594"),
+         "self.__init__ falls into the member-access arm but dunders are deliberately excluded from #1537's recording; ValidateInitAndEventCalls fires CheckDeprecatedUsage on the class's own __init__ — #1594"),
     };
 
     [Fact]
@@ -178,6 +178,39 @@ public class CallTargetSeamConformanceTests : IntegrationTestBase
         def main():
             w = Widget(5)
             print(w.value)
+        """)]
+    [InlineData("DelegateTypedReference", """
+        @deprecated("old")
+        def add(a: int, b: int) -> int:
+            return a + b
+        def main():
+            f: (int, int) -> int = add
+            print(f(1, 2))
+        """)]
+    [InlineData("SuperInitDelegation", """
+        class Base:
+            x: int
+            @deprecated("old")
+            def __init__(self, x: int):
+                self.x = x
+        class Child(Base):
+            def __init__(self, x: int):
+                super().__init__(x)
+        def main():
+            c = Child(5)
+            print(c.x)
+        """)]
+    [InlineData("SelfInitDelegation", """
+        class MyClass:
+            x: int
+            @deprecated("old")
+            def __init__(self, x: int):
+                self.x = x
+            def __init__(self):
+                self.__init__(10)
+        def main():
+            m = MyClass()
+            print(m.x)
         """)]
     [InlineData("PipeForwardWithCall", """
         @deprecated("old")

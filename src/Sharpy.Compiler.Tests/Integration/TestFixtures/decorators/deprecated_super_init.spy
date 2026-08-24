@@ -1,0 +1,13 @@
+class Base:
+    x: int
+    @deprecated("use new init")
+    def __init__(self, x: int):
+        self.x = x
+
+class Child(Base):
+    def __init__(self, x: int):
+        super().__init__(x)
+
+def main():
+    c = Child(5)
+    print(c.x)

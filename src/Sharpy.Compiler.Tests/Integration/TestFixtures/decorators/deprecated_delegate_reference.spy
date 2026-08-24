@@ -1,0 +1,7 @@
+@deprecated("use new_add")
+def old_add(a: int, b: int) -> int:
+    return a + b
+
+def main():
+    f: (int, int) -> int = old_add
+    print(f(1, 2))

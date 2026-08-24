@@ -1,0 +1,12 @@
+class MyClass:
+    x: int
+    @deprecated("use factory")
+    def __init__(self, x: int):
+        self.x = x
+
+    def __init__(self):
+        self.__init__(10)
+
+def main():
+    m = MyClass()
+    print(m.x)
