@@ -915,11 +915,11 @@ internal partial class RoslynEmitter
         // Phase 3: Variadic trailing args (remaining positional, unnamed)
         var variadicParam = paramList.FirstOrDefault(p => p.IsVariadic);
         var remainingArgs = call.Arguments.Skip(positionalIndex).ToList();
-        bool hasMixedSpread = variadicParam != null
+        bool needsCombinedArray = variadicParam != null
             && remainingArgs.Any(a => a is SpreadElement)
-            && remainingArgs.Any(a => a is not Parser.Ast.SpreadElement);
+            && remainingArgs.Count > 1;
 
-        if (hasMixedSpread)
+        if (needsCombinedArray)
         {
             // Mixed positional + spread targeting params T[]: combine into a single
             // array so C# sees one T[] argument instead of loose T + T[].
