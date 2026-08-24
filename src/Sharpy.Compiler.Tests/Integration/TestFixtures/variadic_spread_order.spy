@@ -1,0 +1,6 @@
+def show(*args: str) -> None:
+    for a in args:
+        print(a)
+
+def main():
+    show("a", *["b", "c"], "d")

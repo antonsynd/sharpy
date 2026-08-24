@@ -6,4 +6,5 @@ def main() -> None:
         raise ExceptionGroup("group", errors)
     except ExceptionGroup as eg:
         print(len(eg.exceptions))
-        print("iterable")
+        for e in eg.exceptions:
+            print(type(e).__name__)

@@ -31,7 +31,7 @@ namespace Sharpy
         /// <summary>The group message (without appended inner exception text).</summary>
         public override string Message => _message;
 
-        /// <summary>The contained exceptions (delegates to InnerExceptions).</summary>
+        /// <summary>The contained exceptions as a Sharpy list (copies from InnerExceptions).</summary>
         public List<Exception> Exceptions => new List<Exception>(InnerExceptions);
 
         /// <summary>Return a new ExceptionGroup containing only exceptions matching the predicate, or null if none match.</summary>
