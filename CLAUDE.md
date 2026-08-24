@@ -90,6 +90,8 @@ All diagnostics use the `SPY` prefix (`Diagnostics/DiagnosticCodes.cs`):
 | SPY0450–SPY0489 | Warning | Validation |
 | SPY0490–SPY0499 | Error | Validation overflow |
 | SPY0500–SPY0599 | Error | Code generation |
+| SPY0600–SPY0699 | Error | Semantic overflow |
+| SPY0700–SPY0799 | Error/Warning | Validation overflow |
 | SPY0900–SPY0999 | Error | Infrastructure |
 | SPY1000–SPY1099 | Info | Informational |
 

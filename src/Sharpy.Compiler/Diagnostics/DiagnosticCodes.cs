@@ -9,6 +9,8 @@ namespace Sharpy.Compiler.Diagnostics;
 ///   SPY0400-SPY0449: Validation errors
 ///   SPY0450-SPY0499: Validation warnings
 ///   SPY0500-SPY0599: Code generation errors
+///   SPY0600-SPY0699: Semantic errors (overflow)
+///   SPY0700-SPY0799: Validation errors (overflow)
 ///   SPY0900-SPY0999: Infrastructure errors
 ///   SPY1000-SPY1099: Informational notes
 ///
@@ -895,5 +897,25 @@ public static class DiagnosticCodes
         /// </summary>
         public const string ReferenceAcquisitionFailed = "SPY0910"; // Active
         // SPY0911-SPY0999: Reserved for future infrastructure diagnostics
+    }
+
+    /// <summary>
+    /// Semantic diagnostic overflow (SPY0600-SPY0699).
+    /// The primary semantic band SPY0200-SPY0399 is nearly full; new semantic
+    /// diagnostics that do not fit a gap in that band are allocated here.
+    /// </summary>
+    public static class SemanticOverflow
+    {
+        // SPY0600-SPY0699: Available for new semantic diagnostics
+    }
+
+    /// <summary>
+    /// Validation diagnostic overflow (SPY0700-SPY0799).
+    /// The primary validation bands SPY0400-SPY0499 are fully allocated; new
+    /// validation diagnostics are allocated here.
+    /// </summary>
+    public static class ValidationOverflow
+    {
+        // SPY0700-SPY0799: Available for new validation diagnostics
     }
 }
