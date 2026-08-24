@@ -1492,8 +1492,6 @@ internal partial class TypeChecker
     /// Computes the most specific common ancestor for a set of exception types used
     /// in a multi-exception try expression (try[A | B | C]). Falls back to the
     /// <c>Exception</c> base type when there is no shared ancestor lower in the chain.
-    /// Uses the CLR type chain when available because exception types discovered from
-    /// CLR metadata typically have <c>Symbol.BaseType</c> unset.
     /// </summary>
     private SemanticType FindCommonExceptionBase(IReadOnlyList<SemanticType> exceptionTypes, TypeSymbol? exceptionSymbol)
     {
@@ -1539,39 +1537,14 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Walks the ancestor chain for an exception SemanticType, preferring symbol-based
-    /// inheritance but falling back to the CLR <see cref="System.Type"/> chain for types
-    /// discovered from CLR metadata (where <c>Symbol.BaseType</c> is not set). The
-    /// returned chain is ordered from most specific (the type itself) to least specific.
+    /// Walks the ancestor chain for an exception SemanticType via
+    /// <see cref="TypeHierarchyService.GetAncestorChain"/>. BaseType is populated on
+    /// CLR-discovered exception symbols during discovery and BuiltinRegistry
+    /// initialization (#1596), so no CLR fallback is needed.
     /// </summary>
-    private IReadOnlyList<SemanticType> GetExceptionAncestorChain(SemanticType type)
+    private static IReadOnlyList<SemanticType> GetExceptionAncestorChain(SemanticType type)
     {
-        var chain = new List<SemanticType> { type };
-
-        if (type is UserDefinedType { Symbol: { } symbol })
-        {
-            // Prefer the symbol-based chain when BaseType is populated (user-defined types).
-            if (symbol.BaseType != null)
-            {
-                return TypeHierarchyService.GetAncestorChain(type);
-            }
-
-            // Otherwise walk the CLR base chain (handles CLR-discovered exception types
-            // like Sharpy.ValueError where Symbol.BaseType is not set).
-            var clrType = symbol.ClrType;
-            while (clrType?.BaseType != null)
-            {
-                clrType = clrType.BaseType;
-                var ancestorSymbol = _symbolTable.BuiltinRegistry.TryResolveClrType(clrType.Name);
-                chain.Add(new UserDefinedType
-                {
-                    Name = clrType.Name,
-                    Symbol = ancestorSymbol
-                });
-            }
-        }
-
-        return chain;
+        return TypeHierarchyService.GetAncestorChain(type);
     }
 
     /// <summary>
