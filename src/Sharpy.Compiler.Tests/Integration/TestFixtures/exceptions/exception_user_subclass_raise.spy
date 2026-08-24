@@ -1,0 +1,13 @@
+# Pin: user-defined exception subclass is caught by its own handler (#1596).
+# Exercises the BaseType chain populated on CLR-discovered exception symbols.
+class MyError(TypeError):
+    pass
+
+
+def main() -> None:
+    try:
+        raise MyError("custom error")
+    except MyError:
+        print("caught as MyError")
+    except TypeError:
+        print("caught as TypeError")

@@ -1,0 +1,9 @@
+# Pin: ExceptionGroup.exceptions returns list[Exception] (#1595).
+# Exercises len() and iteration on the exceptions property.
+def main() -> None:
+    errors: list[Exception] = [ValueError("v1"), TypeError("t1")]
+    try:
+        raise ExceptionGroup("group", errors)
+    except ExceptionGroup as eg:
+        print(len(eg.exceptions))
+        print("iterable")

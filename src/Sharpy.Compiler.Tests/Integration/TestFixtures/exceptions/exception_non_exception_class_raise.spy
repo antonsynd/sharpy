@@ -1,0 +1,7 @@
+# Pin: raising a non-exception class is SPY0242 (#1596).
+class NotAnException:
+    pass
+
+
+def main() -> None:
+    raise NotAnException()
