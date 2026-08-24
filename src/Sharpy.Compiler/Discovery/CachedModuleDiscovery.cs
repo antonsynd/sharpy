@@ -388,6 +388,25 @@ internal class CachedModuleDiscovery
         {
             typeSymbol.MethodOverloads[kvp.Key] = kvp.Value;
         }
+
+        // Wire up BaseType for exception types using registered module type symbols.
+        // Handles intermediate Sharpy-defined bases (e.g., ZeroDivisionError -> ArithmeticError,
+        // KeyError -> LookupError). Types whose CLR base is outside the discovery index
+        // (e.g., TypeError -> System.Exception) are wired later by BuiltinRegistry (#1596).
+        if (isBuiltinException && typeSymbol.ClrType?.BaseType != null && typeSymbol.BaseType == null)
+        {
+            var clrBase = typeSymbol.ClrType.BaseType;
+            while (clrBase != null)
+            {
+                var baseFullName = clrBase.FullName;
+                if (baseFullName != null && _moduleTypeSymbols.TryGetValue(baseFullName, out var baseSymbol))
+                {
+                    typeSymbol.BaseType = baseSymbol;
+                    break;
+                }
+                clrBase = clrBase.BaseType;
+            }
+        }
     }
 
     /// <summary>

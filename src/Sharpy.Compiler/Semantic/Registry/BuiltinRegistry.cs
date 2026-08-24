@@ -149,6 +149,12 @@ internal class BuiltinRegistry
             RegisterType("Exception", typeof(System.Exception), TypeKind.Class);
         }
 
+        // Wire up BaseType for discovered exception types whose CLR base is outside the
+        // discovery index (e.g., TypeError -> System.Exception, IOError -> IOException).
+        // Types with Sharpy-defined intermediate bases (ZeroDivisionError -> ArithmeticError)
+        // were already wired during discovery (#1596).
+        WireExceptionBaseTypes();
+
         // Populate CLR interface information on registered TypeSymbols. Deferred until all
         // types are registered so interface definitions resolve to registered symbols (#827).
         PopulateClrInterfaces();
@@ -181,6 +187,23 @@ internal class BuiltinRegistry
                 typeSymbol.Constructors.AddRange(Discovery.ClrConstructorSurface.Build(clrType));
 
             _types[typeSymbol.Name] = typeSymbol;
+        }
+    }
+
+    private void WireExceptionBaseTypes()
+    {
+        if (!_types.TryGetValue("Exception", out var exceptionSymbol))
+            return;
+
+        foreach (var typeSymbol in _types.Values)
+        {
+            if (typeSymbol.BaseType != null
+                || typeSymbol.ClrType == null
+                || typeSymbol.ClrType == typeof(System.Exception)
+                || !BuiltinExceptionSurface.IsBuiltinExceptionType(typeSymbol.ClrType))
+                continue;
+
+            typeSymbol.BaseType = exceptionSymbol;
         }
     }
 
