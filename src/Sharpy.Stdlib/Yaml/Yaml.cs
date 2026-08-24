@@ -296,9 +296,10 @@ namespace Sharpy
                 emitted = YamlDocumentStart.Suppress(writer.ToString(), converted);
             }
 
-            return emitDocumentEndMarker
+            string result = emitDocumentEndMarker
                 ? YamlDocumentEnd.Append(emitted, converted)
                 : emitted;
+            return YamlControlEscapes.EscapeRawControls(result);
         }
 
         private static object? SortKeys(object? value)
@@ -363,7 +364,8 @@ namespace Sharpy
         /// they cannot disagree about whether a given document carries <c>...</c>.</returns>
         public static string RoundtripDump(object? data, int indent = 2)
         {
-            return YamlRoundtrip.RoundtripDump(data, indent);
+            return YamlControlEscapes.EscapeRawControls(
+                YamlRoundtrip.RoundtripDump(data, indent));
         }
 
 #if NET10_0_OR_GREATER

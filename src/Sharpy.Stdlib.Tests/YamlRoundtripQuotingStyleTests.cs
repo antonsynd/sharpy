@@ -174,21 +174,18 @@ public class YamlRoundtripQuotingStyleTests
     /// Oracle: PyYAML 6.0.3, python3 3.12.13, measured 2026-08-20 with
     /// <c>yaml.safe_dump({key: 1})</c>: tab key → <c>"tab\tkey": 1</c> (double-quoted);
     /// colon-space key → <c>'a: b': 1</c> (single-quoted); multi-line key →
-    /// explicit-key form <c>? 'l1\n\n  l2'\n: 1</c>. The STYLE matches PyYAML at every
-    /// cell; the one deviation is the escape SPELLING inside the double-quoted scalar —
-    /// YamlDotNet emits the raw tab byte where PyYAML spells <c>\t</c> (#1598), key and
-    /// value position alike, so the tab assertions below carry a literal tab.
+    /// explicit-key form <c>? 'l1\n\n  l2'\n: 1</c>. Escape spelling now matches
+    /// PyYAML — <c>\t</c> rather than a raw tab byte (#1598).
     /// </para>
     /// </summary>
     [Fact]
     public void KeyPositionStyling_MatchesPyYaml()
     {
-        Assert.Equal("\"tab\tkey\": 1\n", Yaml.SafeDump(new Dict<string, object?> { ["tab\tkey"] = 1 }));
+        Assert.Equal("\"tab\\tkey\": 1\n", Yaml.SafeDump(new Dict<string, object?> { ["tab\tkey"] = 1 }));
         Assert.Equal("'a: b': 1\n", Yaml.SafeDump(new Dict<string, object?> { ["a: b"] = 1 }));
         Assert.Equal("? 'l1\n\n  l2'\n: 1\n", Yaml.SafeDump(new Dict<string, object?> { ["l1\nl2"] = 1 }));
 
-        // Value position, exact bytes: same double-quoted style, same raw-tab spelling (#1598).
-        Assert.Equal("\"tab\tchar\"\n", Yaml.SafeDump("tab\tchar"));
+        Assert.Equal("\"tab\\tchar\"\n", Yaml.SafeDump("tab\tchar"));
     }
 
     /// <summary>
