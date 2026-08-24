@@ -1661,7 +1661,8 @@ internal partial class TypeChecker
 
     private static bool IsClrCollectionType(Type? clrType)
     {
-        if (clrType == null) return false;
+        if (clrType == null)
+            return false;
         return clrType.GetInterfaces().Any(i =>
             i.IsGenericType && i.GetGenericTypeDefinition() == typeof(System.Collections.Generic.ICollection<>));
     }

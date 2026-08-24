@@ -821,32 +821,32 @@ internal partial class TypeChecker
             }
             else
             {
-            var resolvedType = _typeResolver.ResolveTypeAnnotation(
-                propertyPattern.Type, bareGenericFillsFromContext: true);
-            if (resolvedType is UnknownType)
-            {
-                AddError(
-                    $"Unknown type '{propertyPattern.Type.Name}' in property pattern",
-                    propertyPattern.LineStart, propertyPattern.ColumnStart,
-                    code: DiagnosticCodes.Semantic.UndefinedType,
-                    span: propertyPattern.Span);
-            }
-            else
-            {
-                // The bare-generic-name rule (#1235): fill from the scrutinee or refuse — same rule
-                // as the type-pattern arm, same recorded channel the emitter reads.
-                var applied = ApplyBareGenericPatternRule(
-                    propertyPattern, propertyPattern.Type, resolvedType, scrutineeType);
-                if (applied == null)
-                    return;
-
-                typeSymbol = applied switch
+                var resolvedType = _typeResolver.ResolveTypeAnnotation(
+                    propertyPattern.Type, bareGenericFillsFromContext: true);
+                if (resolvedType is UnknownType)
                 {
-                    UserDefinedType udt => udt.Symbol,
-                    GenericType { GenericDefinition: { } filledDefinition } => filledDefinition,
-                    _ => null
-                };
-            }
+                    AddError(
+                        $"Unknown type '{propertyPattern.Type.Name}' in property pattern",
+                        propertyPattern.LineStart, propertyPattern.ColumnStart,
+                        code: DiagnosticCodes.Semantic.UndefinedType,
+                        span: propertyPattern.Span);
+                }
+                else
+                {
+                    // The bare-generic-name rule (#1235): fill from the scrutinee or refuse — same rule
+                    // as the type-pattern arm, same recorded channel the emitter reads.
+                    var applied = ApplyBareGenericPatternRule(
+                        propertyPattern, propertyPattern.Type, resolvedType, scrutineeType);
+                    if (applied == null)
+                        return;
+
+                    typeSymbol = applied switch
+                    {
+                        UserDefinedType udt => udt.Symbol,
+                        GenericType { GenericDefinition: { } filledDefinition } => filledDefinition,
+                        _ => null
+                    };
+                }
             }
         }
 
