@@ -17,19 +17,60 @@ internal static class NuGetResolver
     /// </summary>
     public static List<string> ResolvePackage(PackageRef packageRef, string targetFramework, ICompilerLogger? logger = null)
     {
-        return ResolvePackage(packageRef, targetFramework, logger, nugetPackagesDir: null);
+        return ResolvePackage(packageRef, targetFramework, logger, resolvedVersions: null, nugetPackagesDir: null);
+    }
+
+    /// <summary>
+    /// Resolves a NuGet package using versions resolved by <see cref="NuGetRestorer"/>.
+    /// When <paramref name="resolvedVersions"/> contains an entry for this package,
+    /// the resolved version is used instead of the requested version (#1580).
+    /// </summary>
+    public static List<string> ResolvePackage(
+        PackageRef packageRef,
+        string targetFramework,
+        ICompilerLogger? logger,
+        IReadOnlyDictionary<string, string>? resolvedVersions)
+    {
+        return ResolvePackage(packageRef, targetFramework, logger, resolvedVersions, nugetPackagesDir: null);
     }
 
     /// <summary>
     /// Resolves a NuGet package to its assembly DLL paths, including transitive dependencies.
-    /// Overload that accepts a custom packages directory for testing.
+    /// Overload that accepts a custom packages directory and resolved versions for testing.
     /// </summary>
-    internal static List<string> ResolvePackage(PackageRef packageRef, string targetFramework, ICompilerLogger? logger, string? nugetPackagesDir)
+    internal static List<string> ResolvePackage(
+        PackageRef packageRef,
+        string targetFramework,
+        ICompilerLogger? logger,
+        IReadOnlyDictionary<string, string>? resolvedVersions,
+        string? nugetPackagesDir)
     {
+        var effectiveRef = ApplyResolvedVersion(packageRef, resolvedVersions, logger);
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var result = new List<string>();
-        ResolvePackageTransitive(packageRef, targetFramework, logger, nugetPackagesDir, visited, result);
+        ResolvePackageTransitive(effectiveRef, targetFramework, logger, nugetPackagesDir, visited, result);
         return result;
+    }
+
+    private static PackageRef ApplyResolvedVersion(
+        PackageRef packageRef,
+        IReadOnlyDictionary<string, string>? resolvedVersions,
+        ICompilerLogger? logger)
+    {
+        if (resolvedVersions == null)
+            return packageRef;
+
+        if (resolvedVersions.TryGetValue(packageRef.Name, out var resolvedVersion))
+        {
+            if (!string.Equals(resolvedVersion, packageRef.Version, StringComparison.OrdinalIgnoreCase))
+            {
+                logger?.LogDebug(
+                    $"NuGet resolved {packageRef.Name} {packageRef.Version} -> {resolvedVersion}");
+            }
+            return new PackageRef(packageRef.Name, resolvedVersion);
+        }
+
+        return packageRef;
     }
 
     /// <summary>
@@ -56,7 +97,7 @@ internal static class NuGetResolver
         var packageDir = Path.Combine(packagesDir, packageRef.Name.ToLowerInvariant(), packageRef.Version);
         if (!Directory.Exists(packageDir))
         {
-            logger?.LogWarning($"NuGet package not found in global cache: {packageRef.Name} {packageRef.Version}. Package restore may have failed — check the restore output above.", 0, 0);
+            logger?.LogDebug($"NuGet package not found in global cache: {packageRef.Name} {packageRef.Version}. Package restore may have failed — check the restore output above.");
             return;
         }
 

@@ -393,7 +393,8 @@ internal class AssemblyCompiler
         // Resolve NuGet package references to assembly paths
         foreach (var packageRef in projectConfig.PackageReferences)
         {
-            var packageAssemblies = Project.NuGetResolver.ResolvePackage(packageRef, projectConfig.TargetFramework, _logger);
+            var packageAssemblies = Project.NuGetResolver.ResolvePackage(
+                packageRef, projectConfig.TargetFramework, _logger, projectConfig.ResolvedVersions);
             foreach (var assemblyPath in packageAssemblies)
             {
                 if (addedPaths.Add(assemblyPath))

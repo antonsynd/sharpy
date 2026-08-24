@@ -1,8 +1,30 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Compiler.Project;
+
+internal sealed class RestoreResult
+{
+    public bool Success { get; }
+    public IReadOnlyDictionary<string, string> ResolvedVersions { get; }
+
+    private RestoreResult(bool success, IReadOnlyDictionary<string, string> resolvedVersions)
+    {
+        Success = success;
+        ResolvedVersions = resolvedVersions;
+    }
+
+    private static readonly IReadOnlyDictionary<string, string> EmptyVersions =
+        new Dictionary<string, string>();
+
+    public static RestoreResult Failed() => new(false, EmptyVersions);
+    public static RestoreResult Succeeded(IReadOnlyDictionary<string, string> resolvedVersions) =>
+        new(true, resolvedVersions);
+
+    public static implicit operator bool(RestoreResult result) => result.Success;
+}
 
 internal static class NuGetRestorer
 {
@@ -11,7 +33,7 @@ internal static class NuGetRestorer
     // interactive auth, or a dead connection).
     private const int RestoreTimeoutMs = 600_000;
 
-    public static bool RestorePackages(
+    public static RestoreResult RestorePackages(
         IReadOnlyList<PackageRef> packageReferences,
         string targetFramework,
         ICompilerLogger? logger)
@@ -19,14 +41,14 @@ internal static class NuGetRestorer
         return RestorePackages(packageReferences, targetFramework, logger, packagesDir: null);
     }
 
-    internal static bool RestorePackages(
+    internal static RestoreResult RestorePackages(
         IReadOnlyList<PackageRef> packageReferences,
         string targetFramework,
         ICompilerLogger? logger,
         string? packagesDir)
     {
         if (packageReferences.Count == 0)
-            return true;
+            return RestoreResult.Succeeded(new Dictionary<string, string>());
 
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         try
@@ -85,7 +107,7 @@ internal static class NuGetRestorer
                     { process.Kill(entireProcessTree: true); }
                     catch { }
                     logger?.LogError($"NuGet restore timed out after {RestoreTimeoutMs / 1000} seconds.", 0, 0);
-                    return false;
+                    return RestoreResult.Failed();
                 }
 
                 // Parameterless overload waits for the async output handlers to flush.
@@ -103,15 +125,17 @@ internal static class NuGetRestorer
                     logger?.LogError($"NuGet restore failed with exit code {process.ExitCode}.", 0, 0);
                     if (!string.IsNullOrWhiteSpace(stderrText))
                         logger?.LogError(stderrText.TrimEnd(), 0, 0);
-                    return false;
+                    return RestoreResult.Failed();
                 }
 
-                return true;
+                var resolvedVersions = ParseProjectAssetsJson(
+                    Path.Combine(tempDir, "obj", "project.assets.json"), logger);
+                return RestoreResult.Succeeded(resolvedVersions);
             }
             catch (System.ComponentModel.Win32Exception ex)
             {
                 logger?.LogError($"Could not start 'dotnet' for NuGet restore: {ex.Message}. Package restore requires the .NET SDK on PATH.", 0, 0);
-                return false;
+                return RestoreResult.Failed();
             }
         }
         finally
@@ -153,5 +177,42 @@ internal static class NuGetRestorer
             .Replace("<", "&lt;", StringComparison.Ordinal)
             .Replace(">", "&gt;", StringComparison.Ordinal)
             .Replace("\"", "&quot;", StringComparison.Ordinal);
+    }
+
+    internal static Dictionary<string, string> ParseProjectAssetsJson(
+        string assetsJsonPath, ICompilerLogger? logger)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (!File.Exists(assetsJsonPath))
+            {
+                logger?.LogDebug($"project.assets.json not found at {assetsJsonPath}");
+                return result;
+            }
+
+            var json = File.ReadAllText(assetsJsonPath);
+            using var doc = JsonDocument.Parse(json);
+
+            if (!doc.RootElement.TryGetProperty("libraries", out var libraries))
+                return result;
+
+            foreach (var lib in libraries.EnumerateObject())
+            {
+                var slashIndex = lib.Name.IndexOf('/', StringComparison.Ordinal);
+                if (slashIndex <= 0 || slashIndex >= lib.Name.Length - 1)
+                    continue;
+
+                var name = lib.Name[..slashIndex];
+                var version = lib.Name[(slashIndex + 1)..];
+                result[name] = version;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug($"Failed to parse project.assets.json: {ex.Message}");
+        }
+
+        return result;
     }
 }

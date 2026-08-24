@@ -92,5 +92,13 @@ public static partial class DiagnosticExplanations
             "Check that the .NET shared framework the compiler is running on is intact and readable — a partially " +
             "extracted or permission-restricted runtime directory is the usual cause. Re-running after the transient " +
             "condition clears is expected to succeed.");
+
+        Add(dict, DiagnosticCodes.Infrastructure.PackageNotResolved, "NuGet package not resolved", "Infrastructure",
+            "A <PackageReference> declared in the .spyproj file was not resolved by NuGet restore. " +
+            "This means the requested package name or version could not be found in any configured NuGet feed. " +
+            "The package is silently dropped from the compilation, which will cause missing-type errors downstream.",
+            "packages:\n  - name: NonExistent.Package\n    version: \"99.0.0\"",
+            "Verify the package name and version are correct. Check that the NuGet feed is reachable " +
+            "and that the package version exists. Run 'dotnet nuget list source' to see configured feeds.");
     }
 }

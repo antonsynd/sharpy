@@ -74,6 +74,12 @@ sharpyc emit csharp hello.spy
     program. `--args` is **deprecated** in favour of it; `--args a --args b` still works, but
     `--args a b c` does not.
 
+!!! note ".NET SDK required for NuGet packages"
+
+    `<PackageReference>` in `.spyproj` files requires the .NET SDK on `PATH` to run
+    `dotnet restore`. The `dotnet tool install` path always has it; self-contained
+    archive distributions do not.
+
 ## Features
 
 | Feature | Description |

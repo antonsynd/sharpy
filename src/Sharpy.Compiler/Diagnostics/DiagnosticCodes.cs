@@ -873,8 +873,8 @@ public static class DiagnosticCodes
     /// <summary>
     /// Infrastructure diagnostic codes (SPY0900-SPY0999).
     /// These cover compiler-level errors not tied to a specific language phase.
-    /// Active: SPY0900-SPY0910 (11 codes)
-    /// Reserved: SPY0911-SPY0999 (89 codes)
+    /// Active: SPY0900-SPY0911 (12 codes)
+    /// Reserved: SPY0912-SPY0999 (88 codes)
     /// </summary>
     public static class Infrastructure
     {
@@ -896,7 +896,8 @@ public static class DiagnosticCodes
         /// Sharpy compiler bug (#1482).
         /// </summary>
         public const string ReferenceAcquisitionFailed = "SPY0910"; // Active
-        // SPY0911-SPY0999: Reserved for future infrastructure diagnostics
+        public const string PackageNotResolved = "SPY0911";        // Active
+        // SPY0912-SPY0999: Reserved for future infrastructure diagnostics
     }
 
     /// <summary>

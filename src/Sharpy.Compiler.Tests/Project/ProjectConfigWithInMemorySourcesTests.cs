@@ -62,6 +62,16 @@ public class ProjectConfigWithInMemorySourcesTests
         if (type == typeof(bool))
             return !(current as bool? ?? false);
 
+        if (type.IsInterface && type.IsGenericType)
+        {
+            var genDef = type.GetGenericTypeDefinition();
+            if (genDef == typeof(IReadOnlyDictionary<,>))
+            {
+                var args = type.GetGenericArguments();
+                return Activator.CreateInstance(typeof(Dictionary<,>).MakeGenericType(args))!;
+            }
+        }
+
         if (type.IsClass && type.GetConstructor(Type.EmptyTypes) != null)
         {
             // Fresh collection/reference instance: differs by reference from both null and any

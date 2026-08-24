@@ -657,6 +657,12 @@ Test projects need xUnit packages in their `.spyproj`:
 
 The compiler resolves `<PackageReference>` elements from the NuGet global cache and generates a test runner scaffold for `dotnet test` discovery.
 
+!!! note "SDK requirement"
+
+    `<PackageReference>` support requires the .NET SDK on `PATH`. The `dotnet tool install`
+    path (`sharpyc`) always has it. Self-contained archive distributions do not include the
+    SDK and cannot restore NuGet packages.
+
 ## Axiom Alignment
 
 | Axiom | How Testing Aligns |

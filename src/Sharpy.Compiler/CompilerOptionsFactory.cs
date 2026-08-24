@@ -99,6 +99,10 @@ public static class CompilerOptionsFactory
                 + "consumers (Compiler, CompilerApi, AssemblyCompiler) — nothing rewrites "
                 + "References upstream, so there is no options-side value to thread.",
 
+            ["ResolvedVersions"] =
+                "Populated by the CLI after NuGet restore; threaded to NuGetResolver via "
+                + "the config at each resolution site. Not a compiler option (#1580).",
+
             ["Configuration"] =
                 "Read directly from config by ProjectCompiler for output path computation; "
                 + "ForProject's remarks note that project mode reads this from the config itself.",

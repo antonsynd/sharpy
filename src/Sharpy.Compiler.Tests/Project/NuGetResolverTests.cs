@@ -57,7 +57,7 @@ public class NuGetResolverTests : IDisposable
         CreateMockPackage("MyLib", "1.0.0", "net10.0", new[] { "MyLib.dll" });
 
         var result = NuGetResolver.ResolvePackage(
-            new PackageRef("MyLib", "1.0.0"), "net10.0", logger: null, nugetPackagesDir: _testDir);
+            new PackageRef("MyLib", "1.0.0"), "net10.0", logger: null, resolvedVersions: null, nugetPackagesDir: _testDir);
 
         Assert.Single(result);
         Assert.EndsWith("MyLib.dll", result[0]);
@@ -67,7 +67,7 @@ public class NuGetResolverTests : IDisposable
     public void ResolvePackage_PackageNotFound_ReturnsEmpty()
     {
         var result = NuGetResolver.ResolvePackage(
-            new PackageRef("NonExistent", "1.0.0"), "net10.0", logger: null, nugetPackagesDir: _testDir);
+            new PackageRef("NonExistent", "1.0.0"), "net10.0", logger: null, resolvedVersions: null, nugetPackagesDir: _testDir);
 
         Assert.Empty(result);
     }
@@ -80,7 +80,7 @@ public class NuGetResolverTests : IDisposable
         Directory.CreateDirectory(packageDir);
 
         var result = NuGetResolver.ResolvePackage(
-            new PackageRef("Empty", "1.0.0"), "net10.0", logger: null, nugetPackagesDir: _testDir);
+            new PackageRef("Empty", "1.0.0"), "net10.0", logger: null, resolvedVersions: null, nugetPackagesDir: _testDir);
 
         Assert.Empty(result);
     }
@@ -109,7 +109,7 @@ public class NuGetResolverTests : IDisposable
         CreateMockPackage("meta", "1.0.0", "net10.0", dllNames: null, nuspecContent: nuspec);
 
         var result = NuGetResolver.ResolvePackage(
-            new PackageRef("meta", "1.0.0"), "net10.0", logger: null, nugetPackagesDir: _testDir);
+            new PackageRef("meta", "1.0.0"), "net10.0", logger: null, resolvedVersions: null, nugetPackagesDir: _testDir);
 
         Assert.Single(result);
         Assert.EndsWith("Leaf.dll", result[0]);
@@ -146,7 +146,7 @@ public class NuGetResolverTests : IDisposable
         CreateMockPackage("pkga", "1.0.0", "net10.0", new[] { "A.dll" }, nuspecA);
 
         var result = NuGetResolver.ResolvePackage(
-            new PackageRef("pkga", "1.0.0"), "net10.0", logger: null, nugetPackagesDir: _testDir);
+            new PackageRef("pkga", "1.0.0"), "net10.0", logger: null, resolvedVersions: null, nugetPackagesDir: _testDir);
 
         Assert.Equal(3, result.Count);
         Assert.Contains(result, p => p.EndsWith("A.dll", StringComparison.Ordinal));
@@ -187,7 +187,7 @@ public class NuGetResolverTests : IDisposable
         CreateMockPackage("cycleb", "1.0.0", "net10.0", new[] { "B.dll" }, nuspecB);
 
         var result = NuGetResolver.ResolvePackage(
-            new PackageRef("cyclea", "1.0.0"), "net10.0", logger: null, nugetPackagesDir: _testDir);
+            new PackageRef("cyclea", "1.0.0"), "net10.0", logger: null, resolvedVersions: null, nugetPackagesDir: _testDir);
 
         // Should resolve both without infinite loop
         Assert.Equal(2, result.Count);
@@ -339,6 +339,42 @@ public class NuGetResolverTests : IDisposable
         var deps = NuGetResolver.ParseNuspecDependencies(nuspecPath, "net10.0", logger: null);
 
         Assert.Empty(deps);
+    }
+
+    #endregion
+
+    #region Resolved Version Override
+
+    [Fact]
+    public void ResolvePackage_WithResolvedVersion_UsesResolvedVersionPath()
+    {
+        CreateMockPackage("MyLib", "2.0.0", "net10.0", new[] { "MyLib.dll" });
+
+        var resolvedVersions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["MyLib"] = "2.0.0"
+        };
+
+        var result = NuGetResolver.ResolvePackage(
+            new PackageRef("MyLib", "1.0.0"), "net10.0", logger: null,
+            resolvedVersions: resolvedVersions, nugetPackagesDir: _testDir);
+
+        Assert.Single(result);
+        Assert.EndsWith("MyLib.dll", result[0]);
+        Assert.Contains("2.0.0", result[0]);
+    }
+
+    [Fact]
+    public void ResolvePackage_WithoutResolvedVersion_UsesRequestedVersion()
+    {
+        CreateMockPackage("MyLib", "1.0.0", "net10.0", new[] { "MyLib.dll" });
+
+        var result = NuGetResolver.ResolvePackage(
+            new PackageRef("MyLib", "1.0.0"), "net10.0", logger: null,
+            resolvedVersions: null, nugetPackagesDir: _testDir);
+
+        Assert.Single(result);
+        Assert.Contains("1.0.0", result[0]);
     }
 
     #endregion

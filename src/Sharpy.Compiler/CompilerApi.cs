@@ -575,7 +575,8 @@ public sealed class CompilerApi
 
         foreach (var packageRef in config.PackageReferences)
         {
-            var packageAssemblies = Project.NuGetResolver.ResolvePackage(packageRef, config.TargetFramework, _logger);
+            var packageAssemblies = Project.NuGetResolver.ResolvePackage(
+                packageRef, config.TargetFramework, _logger, config.ResolvedVersions);
             foreach (var assemblyPath in packageAssemblies)
                 registry.LoadReference(assemblyPath);
         }
@@ -642,7 +643,7 @@ public sealed class CompilerApi
         {
             parts.Add(($"nuget:{packageRef.Name}/{packageRef.Version}@{config.TargetFramework}", 0));
             foreach (var assemblyPath in Project.NuGetResolver.ResolvePackage(
-                packageRef, config.TargetFramework, logger: null))
+                packageRef, config.TargetFramework, logger: null, config.ResolvedVersions))
             {
                 parts.Add((assemblyPath, GetMtimeTicks(assemblyPath)));
             }

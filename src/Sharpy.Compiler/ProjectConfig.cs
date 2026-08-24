@@ -135,6 +135,14 @@ public class ProjectConfig
     public List<PackageRef> PackageReferences { get; init; } = new();
 
     /// <summary>
+    /// Maps lowercase package name to the version actually resolved by NuGet restore
+    /// (from project.assets.json). Populated by the CLI after a successful restore;
+    /// consumed by <see cref="Project.NuGetResolver"/> to find the correct cache path
+    /// when NuGet resolves a different version than what was requested (#1580).
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? ResolvedVersions { get; set; }
+
+    /// <summary>
     /// Build configuration (Debug or Release)
     /// </summary>
     public string Configuration { get; init; } = "Debug";
@@ -244,6 +252,7 @@ public class ProjectConfig
             References = References,
             ModulePaths = ModulePaths,
             PackageReferences = PackageReferences,
+            ResolvedVersions = ResolvedVersions,
             Configuration = Configuration,
             WarningsAsErrors = WarningsAsErrors,
             TestHost = TestHost,

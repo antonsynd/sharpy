@@ -100,14 +100,16 @@ internal static class ProjectCommand
             if (projectConfig.PackageReferences.Count > 0)
             {
                 Console.WriteLine($"Restoring {projectConfig.PackageReferences.Count} NuGet package(s)...");
-                if (!NuGetRestorer.RestorePackages(
+                var restoreResult = NuGetRestorer.RestorePackages(
                     projectConfig.PackageReferences,
                     projectConfig.TargetFramework,
-                    logger))
+                    logger);
+                if (!restoreResult)
                 {
                     Console.Error.WriteLine("Error: NuGet package restore failed.");
                     return 1;
                 }
+                projectConfig.ResolvedVersions = restoreResult.ResolvedVersions;
             }
 
             Console.WriteLine($"Project: {projectConfig.RootNamespace}");
@@ -216,15 +218,17 @@ internal static class ProjectCommand
             if (projectConfig.PackageReferences.Count > 0)
             {
                 Console.WriteLine($"Restoring {projectConfig.PackageReferences.Count} NuGet package(s)...");
-                if (!NuGetRestorer.RestorePackages(
+                var restoreResult = NuGetRestorer.RestorePackages(
                     projectConfig.PackageReferences,
                     projectConfig.TargetFramework,
-                    logger))
+                    logger);
+                if (!restoreResult)
                 {
                     Console.Error.WriteLine("Error: NuGet package restore failed.");
                     metrics = null;
                     return 1;
                 }
+                projectConfig.ResolvedVersions = restoreResult.ResolvedVersions;
             }
 
             Console.WriteLine($"Project: {projectConfig.RootNamespace}");

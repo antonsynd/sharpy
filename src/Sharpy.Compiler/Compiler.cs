@@ -120,7 +120,8 @@ public class Compiler
             var discoveryStopwatch = Stopwatch.StartNew();
             foreach (var packageRef in projectConfig.PackageReferences)
             {
-                var packageAssemblies = Project.NuGetResolver.ResolvePackage(packageRef, projectConfig.TargetFramework, _logger);
+                var packageAssemblies = Project.NuGetResolver.ResolvePackage(
+                    packageRef, projectConfig.TargetFramework, _logger, projectConfig.ResolvedVersions);
                 foreach (var assemblyPath in packageAssemblies)
                     _moduleRegistry.LoadReference(assemblyPath);
             }
