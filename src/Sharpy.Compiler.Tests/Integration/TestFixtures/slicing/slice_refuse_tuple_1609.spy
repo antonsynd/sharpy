@@ -1,4 +1,4 @@
-# #1608: tuple slicing is refused with a steer to #1609 (constant-bound tuple slicing).
+# #1609: constant-bound tuple slicing now works (was refused by #1608).
 def main():
     t: tuple[int, str, float] = (1, "a", 2.0)
     print(t[0:2])
