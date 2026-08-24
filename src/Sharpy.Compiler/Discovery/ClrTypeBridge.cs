@@ -500,9 +500,10 @@ internal class ClrTypeBridge
             };
         }
 
-        // IReadOnlyList<T> or IReadOnlyCollection<T>
+        // IReadOnlyList<T>, IReadOnlyCollection<T>, or ReadOnlyCollection<T>
         if (IsGenericTypeDefinition(genericDef, typeof(IReadOnlyList<>)) ||
-            IsGenericTypeDefinition(genericDef, typeof(IReadOnlyCollection<>)))
+            IsGenericTypeDefinition(genericDef, typeof(IReadOnlyCollection<>)) ||
+            IsGenericTypeDefinition(genericDef, typeof(System.Collections.ObjectModel.ReadOnlyCollection<>)))
         {
             return new GenericType
             {
