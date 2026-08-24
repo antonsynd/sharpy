@@ -309,28 +309,21 @@ public class JsonLoadsAgreementTests
     }
 
     /// <summary>
-    /// The raw lone-surrogate CHAR (not an escape) — a MEASURED divergence, pinned to #1597. The
-    /// #1487 pre-scan reads only <c>\uXXXX</c> escape text, so this document reaches both
-    /// parsers, and they answer differently: the untyped door accepts and preserves the char
-    /// (matching CPython 3.12, measured 2026-08-20), while the typed door refuses at
-    /// System.Text.Json's UTF-16→UTF-8 input transcode, surfaced as a <c>Result</c> Err through
-    /// the #1504 catch-all rather than an escaping exception. When #1597 aligns the doors, this
-    /// test fails and gets rewritten as the agreement it then guards.
+    /// Both doors refuse a raw lone-surrogate CHAR (#1597). The pre-scan catches raw UTF-16
+    /// surrogates in addition to <c>\uXXXX</c> escapes, so neither parser ever sees the document.
     /// </summary>
     [Fact]
-    public void RawLoneSurrogateChar_UntypedAcceptsWhileTypedRefuses()
+    public void RawLoneSurrogateChar_BothDoorsRefuse()
     {
         const string document = "\"\uD800\"";
+        const string expectedFragment = "Unpaired UTF-16 surrogate escape \\ud800";
 
-        var untypedValue = Assert.IsType<string>(Json.Loads(document));
-        Assert.Equal("\uD800", untypedValue);
+        var untypedEx = Assert.Throws<JSONDecodeError>(() => Json.Loads(document));
+        Assert.Contains(expectedFragment, untypedEx.Msg, StringComparison.Ordinal);
 
-        Result<JsonElement, JSONDecodeError> typed = default;
-        var escaped = Record.Exception(() => typed = Json.Loads<JsonElement>(document));
-        Assert.Null(escaped);
-        Assert.False(typed.IsOk, "typed door now accepts the raw lone surrogate — #1597 is fixed; "
-            + "rewrite this pin as the agreement it guards");
-        Assert.Contains("transcode", typed.UnwrapErr().Msg, StringComparison.OrdinalIgnoreCase);
+        var typed = Json.Loads<JsonElement>(document);
+        Assert.False(typed.IsOk);
+        Assert.Contains(expectedFragment, typed.UnwrapErr().Msg, StringComparison.Ordinal);
     }
 
     /// <summary>

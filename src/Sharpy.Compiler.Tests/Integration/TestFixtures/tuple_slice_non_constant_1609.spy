@@ -1,0 +1,4 @@
+def main():
+    t: tuple[int, str, float] = (1, "a", 3.14)
+    i: int = 1
+    x = t[i:]

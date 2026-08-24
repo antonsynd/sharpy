@@ -2026,6 +2026,9 @@ internal partial class RoslynEmitter
                 .AddArgumentListArguments(Argument(
                     GenerateNewSlice(sliceAccess.Start, sliceAccess.Stop, sliceAccess.Step))),
 
+            // #1609: tuple constant-bound slicing → ValueTuple.Create(t.Item1, t.Item2, ...)
+            SliceLoweringKind.Tuple => GenerateTupleSlice(obj, lowering),
+
             _ => throw new InvalidOperationException(
                 $"Unhandled SliceLoweringKind '{lowering.Kind}' (#1608)"),
         };
@@ -2057,6 +2060,35 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// <summary>
+    /// #1609: tuple constant-bound slicing — <c>t[1:3]</c> on <c>(int, str, float)</c> →
+    /// <c>System.ValueTuple.Create(t.Item2, t.Item3)</c>.
+    /// </summary>
+    private ExpressionSyntax GenerateTupleSlice(ExpressionSyntax obj, SliceLowering lowering)
+    {
+        var indices = lowering.TupleElementIndices
+            ?? throw new InvalidOperationException("Tuple slice lowering has no element indices");
+
+        if (indices.Length == 0)
+            return TupleExpression();
+
+        if (indices.Length == 1)
+        {
+            return MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                obj, IdentifierName($"Item{indices[0] + 1}"));
+        }
+
+        var args = indices.Select(i =>
+            Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                obj, IdentifierName($"Item{i + 1}")))).ToArray();
+
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("System", "ValueTuple"),
+                IdentifierName("Create")))
+            .AddArgumentListArguments(args);
+    }
+
     /// #1610: <c>new global::Sharpy.Slice(start, stop, step)</c> for user-protocol slicing.
     /// </summary>
     private ExpressionSyntax GenerateNewSlice(Expression? startExpr, Expression? stopExpr, Expression? stepExpr)

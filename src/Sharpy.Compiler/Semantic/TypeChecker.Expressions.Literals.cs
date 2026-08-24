@@ -649,15 +649,60 @@ internal partial class TypeChecker
             }
         }
 
-        // #1608: unclassified receiver → refuse with SPY0320
-        if (objType is TupleType)
+        // #1609: tuple constant-bound slicing — v1: positive constants only, step absent or 1
+        if (objType is TupleType tupleType)
         {
-            AddError(
-                $"Type '{objType.GetDisplayName()}' does not support slicing. Tuples are heterogeneous " +
-                "ValueTuples with no runtime slicing; use constant-bound slicing (tracked as #1609) " +
-                "or convert to 'list'",
-                sliceAccess.LineStart, sliceAccess.ColumnStart,
-                code: DiagnosticCodes.Semantic.ProtocolMissingMethod, span: sliceAccess.Span);
+            var arity = tupleType.ElementTypes.Count;
+
+            if (sliceAccess.Step != null
+                && !(TryGetConstantIntIndex(sliceAccess.Step, out var stepVal) && stepVal == 1))
+            {
+                AddError(
+                    "Tuple slicing does not support a step value; use positive constant bounds only",
+                    sliceAccess.LineStart, sliceAccess.ColumnStart,
+                    code: DiagnosticCodes.Semantic.ProtocolMissingMethod, span: sliceAccess.Span);
+                return objType;
+            }
+
+            int startIdx = 0;
+            int stopIdx = arity;
+
+            if (sliceAccess.Start != null)
+            {
+                if (!TryGetConstantIntIndex(sliceAccess.Start, out startIdx) || startIdx < 0)
+                {
+                    AddError(
+                        "Tuple slicing requires constant non-negative integer bounds (use positive indices)",
+                        sliceAccess.LineStart, sliceAccess.ColumnStart,
+                        code: DiagnosticCodes.Semantic.ProtocolMissingMethod, span: sliceAccess.Span);
+                    return objType;
+                }
+            }
+
+            if (sliceAccess.Stop != null)
+            {
+                if (!TryGetConstantIntIndex(sliceAccess.Stop, out stopIdx) || stopIdx < 0)
+                {
+                    AddError(
+                        "Tuple slicing requires constant non-negative integer bounds (use positive indices)",
+                        sliceAccess.LineStart, sliceAccess.ColumnStart,
+                        code: DiagnosticCodes.Semantic.ProtocolMissingMethod, span: sliceAccess.Span);
+                    return objType;
+                }
+            }
+
+            startIdx = Math.Min(startIdx, arity);
+            stopIdx = Math.Min(stopIdx, arity);
+            if (startIdx > stopIdx)
+                stopIdx = startIdx;
+
+            var indices = Enumerable.Range(startIdx, stopIdx - startIdx).ToArray();
+            var resultElements = indices.Select(i => tupleType.ElementTypes[i]).ToList();
+
+            _semanticInfo.SetSliceLowering(sliceAccess,
+                new SliceLowering(SliceLoweringKind.Tuple, TupleElementIndices: indices));
+
+            return new TupleType { ElementTypes = resultElements };
         }
         else if (objType is not UnknownType)
         {
