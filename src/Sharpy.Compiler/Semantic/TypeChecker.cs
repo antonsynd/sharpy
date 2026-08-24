@@ -498,6 +498,31 @@ internal partial class TypeChecker
             }
         }
 
+        // Pre-pass: fold constant values for module-level consts (#1601). Fixed-point
+        // iteration handles forward references and chains (BETA = ALPHA, ALPHA = 200):
+        // each pass folds consts whose dependencies were resolved on a prior pass.
+        bool foldedAny;
+        do
+        {
+            foldedAny = false;
+            foreach (var statement in module.Body)
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
+                if (statement is Parser.Ast.VariableDeclaration { IsConst: true } constDecl
+                    && constDecl.InitialValue != null)
+                {
+                    var sym = _symbolTable.Lookup(constDecl.Name) as VariableSymbol;
+                    if (sym is { IsConstant: true, ConstantValue: null })
+                    {
+                        var declaredType = _typeResolver.ResolveTypeAnnotation(constDecl.Type);
+                        TryFoldConstantValue(sym, declaredType, constDecl.InitialValue);
+                        if (sym.ConstantValue != null)
+                            foldedAny = true;
+                    }
+                }
+            }
+        } while (foldedAny);
+
         // Compute statement-level narrowing facts for the module body (#1042). Module-level code is
         // its own narrowing scope; nested functions/lambdas get their own flow when checked.
         var previousFlow = _narrowingFlow;

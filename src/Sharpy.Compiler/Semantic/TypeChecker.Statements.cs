@@ -2017,11 +2017,28 @@ internal partial class TypeChecker
             && !double.IsInfinity((double)(float)value);
     }
 
-    private static void TryFoldConstantValue(
+    private void TryFoldConstantValue(
         VariableSymbol symbol, SemanticType declaredType, Expression? initializer)
     {
-        var folded = IntegerConstantEvaluator.TryFoldConstDeclaration(declaredType, initializer);
-        if (folded != null)
+        if (initializer == null)
+            return;
+
+        var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(declaredType);
+        if (info?.Kind is not (Registry.PrimitiveCatalog.NumericKind.SignedInteger
+                or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger))
+            return;
+
+        System.Numerics.BigInteger? ResolveConstant(Identifier id)
+        {
+            var sym = _symbolTable.Lookup(id.Name);
+            if (sym != null && id.IsNameBacktickEscaped != sym.IsNameBacktickEscaped)
+                return null;
+            return sym is VariableSymbol { IsConstant: true, ConstantValue: not null } vs
+                ? vs.ConstantValue
+                : null;
+        }
+
+        if (IntegerConstantEvaluator.TryGetConstantInteger(initializer, out var folded, ResolveConstant))
             symbol.ConstantValue = folded;
     }
 }

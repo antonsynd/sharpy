@@ -1,0 +1,7 @@
+from constants import ALPHA
+
+const BETA: int = ALPHA
+
+def main() -> None:
+    x: uint8 = BETA
+    print(x)

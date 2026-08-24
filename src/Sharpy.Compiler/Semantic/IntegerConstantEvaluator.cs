@@ -109,9 +109,9 @@ internal static class IntegerConstantEvaluator
     /// ModuleLoader's export extraction — so the foldability rule cannot silently diverge between
     /// the own-module and imported-module views of the same fact: the declared type must be a
     /// signed or unsigned integer primitive AND the initializer must fold. Returns null otherwise.
-    /// Deliberately resolver-less: a const initialized from another const's identifier does not
-    /// fold at declaration time yet (#1601 — threading a resolver here needs a cycle guard and
-    /// settled declaration-order semantics first).
+    /// Deliberately resolver-less: TypeChecker.TryFoldConstantValue threads its own resolver for
+    /// chained const references (#1601). This static entry point is kept for ModuleLoader (which
+    /// lacks a symbol table) and any context that needs a resolver-free fold.
     /// </summary>
     public static BigInteger? TryFoldConstDeclaration(SemanticType declaredType, Expression? initializer)
     {

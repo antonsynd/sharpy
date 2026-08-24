@@ -1,0 +1,6 @@
+const BETA: int = ALPHA
+const ALPHA: int = 200
+
+def main() -> None:
+    x: uint8 = BETA
+    print(x)
