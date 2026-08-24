@@ -316,7 +316,8 @@ public static class DiagnosticCodes
         public const string VoidMatchScrutinee = "SPY0275";         // Active
         public const string NarrowedReceiverAugAssign = "SPY0276"; // Active (#1615)
         public const string DelegateErasedDefaults = "SPY0277";     // Active (#1563)
-        // SPY0278-SPY0279: Reserved for future control flow diagnostics
+        public const string CircularConstantReference = "SPY0278"; // Active (#1601)
+        // SPY0279: Reserved for future control flow diagnostics
 
         #endregion
 

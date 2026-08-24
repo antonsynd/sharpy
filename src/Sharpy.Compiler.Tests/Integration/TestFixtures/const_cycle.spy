@@ -1,0 +1,5 @@
+const A: int = B
+const B: int = A
+
+def main():
+    print(A)

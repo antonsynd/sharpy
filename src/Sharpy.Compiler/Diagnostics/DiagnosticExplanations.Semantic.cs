@@ -874,6 +874,16 @@ public static partial class DiagnosticExplanations
             "def add(a: int, b: int = 10) -> int:\n    return a + b\n\nf: (int, int) -> int = add\nprint(f(1))  # error: defaults lost",
             "Call directly or pass all arguments:\n    print(add(1))    # direct call, default applies\n    print(f(1, 10))  # explicit argument");
 
+        Add(dict, DiagnosticCodes.Semantic.CircularConstantReference,
+            "Circular constant reference",
+            "Semantic",
+            "Two or more const declarations reference each other, forming a cycle that cannot " +
+            "be evaluated. Unlike Python (which raises NameError at runtime), Sharpy requires " +
+            "const values to be statically resolvable. Break the cycle by computing one of the " +
+            "values independently.",
+            "const A: int = B\nconst B: int = A  # error: circular reference",
+            "Break the cycle:\n    const A: int = 42\n    const B: int = A");
+
         Add(dict, DiagnosticCodes.Semantic.UnknownFutureFeature,
             "Unknown or mis-scoped '__future__' feature",
             "Semantic",

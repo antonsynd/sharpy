@@ -523,6 +523,23 @@ internal partial class TypeChecker
             }
         } while (foldedAny);
 
+        foreach (var statement in module.Body)
+        {
+            if (statement is Parser.Ast.VariableDeclaration { IsConst: true } unfoldedDecl
+                && unfoldedDecl.InitialValue != null
+                && _symbolTable.Lookup(unfoldedDecl.Name) is VariableSymbol { IsConstant: true, ConstantValue: null } unfoldedSym)
+            {
+                if (ReferencesUnfoldedConst(unfoldedDecl.InitialValue))
+                {
+                    AddError(
+                        $"Circular constant reference: '{unfoldedDecl.Name}' depends on a constant that references it back",
+                        unfoldedDecl.LineStart, unfoldedDecl.ColumnStart,
+                        code: DiagnosticCodes.Semantic.CircularConstantReference,
+                        span: unfoldedDecl.Span);
+                }
+            }
+        }
+
         // Compute statement-level narrowing facts for the module body (#1042). Module-level code is
         // its own narrowing scope; nested functions/lambdas get their own flow when checked.
         var previousFlow = _narrowingFlow;
@@ -640,6 +657,23 @@ internal partial class TypeChecker
     /// via the original severity stamped into <see cref="DiagnosticBag.OriginalSeverityDataKey"/>).
     /// A genuine error is never suppressible.
     /// </summary>
+    private bool ReferencesUnfoldedConst(Expression expr)
+    {
+        switch (expr)
+        {
+            case Identifier id:
+                return _symbolTable.Lookup(id.Name) is VariableSymbol { IsConstant: true, ConstantValue: null };
+            case UnaryOp unary:
+                return ReferencesUnfoldedConst(unary.Operand);
+            case BinaryOp binary:
+                return ReferencesUnfoldedConst(binary.Left) || ReferencesUnfoldedConst(binary.Right);
+            case Parenthesized paren:
+                return ReferencesUnfoldedConst(paren.Expression);
+            default:
+                return false;
+        }
+    }
+
     private static bool IsSuppressibleSeverity(CompilerDiagnostic diagnostic)
     {
         if (!diagnostic.IsError)
