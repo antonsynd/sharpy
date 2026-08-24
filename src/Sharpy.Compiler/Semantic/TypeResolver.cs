@@ -268,26 +268,14 @@ internal class TypeResolver
             // (IComparable, non-generic) is treated as non-generic and the arity-1 member
             // (IComparable<T>) is never selected, causing a false constraint-unsatisfied error.
             var refusedByArityGroup = false;
-            if (typeSymbol?.ClrArityGroup is { } importArityGroup && annotation.TypeArguments.Length > 0)
+            if (typeSymbol?.ClrArityGroup is { } importArityGroup
+                && (annotation.TypeArguments.Length > 0
+                    || (annotation.TypeArguments.Length == 0 && !bareGenericFillsFromContext)))
             {
-                if (importArityGroup.TryGetValue(annotation.TypeArguments.Length, out var arityMember))
+                if (TryResolveClrArityGroup(importArityGroup, annotation.TypeArguments.Length, annotation, out var arityMember))
                     typeSymbol = arityMember;
                 else
-                {
-                    AddClrArityGroupError(annotation, importArityGroup);
                     refusedByArityGroup = true;
-                }
-            }
-            else if (typeSymbol?.ClrArityGroup is { } bareArityGroup && annotation.TypeArguments.Length == 0
-                && !bareGenericFillsFromContext)
-            {
-                if (bareArityGroup.TryGetValue(0, out var arityMember))
-                    typeSymbol = arityMember;
-                else
-                {
-                    AddClrArityGroupError(annotation, bareArityGroup);
-                    refusedByArityGroup = true;
-                }
             }
 
             if (refusedByArityGroup)
@@ -696,13 +684,9 @@ internal class TypeResolver
         // GenericDefinition carries the right TypeParameters and delegate Invoke signature.
         if (typeSymbol?.ClrArityGroup is { } genericArityGroup)
         {
-            if (genericArityGroup.TryGetValue(annotation.TypeArguments.Length, out var genericArityMember))
-                typeSymbol = genericArityMember;
-            else
-            {
-                AddClrArityGroupError(annotation, genericArityGroup);
+            if (!TryResolveClrArityGroup(genericArityGroup, annotation.TypeArguments.Length, annotation, out var genericArityMember))
                 return SemanticType.Unknown;
-            }
+            typeSymbol = genericArityMember;
         }
 
         if (!escaped)
@@ -1023,13 +1007,22 @@ internal class TypeResolver
         };
     }
 
-    private void AddClrArityGroupError(TypeAnnotation annotation, IReadOnlyDictionary<int, TypeSymbol> arityGroup)
+    private bool TryResolveClrArityGroup(
+        IReadOnlyDictionary<int, TypeSymbol> arityGroup,
+        int requestedArity,
+        TypeAnnotation annotation,
+        out TypeSymbol resolved)
     {
+        if (arityGroup.TryGetValue(requestedArity, out resolved!))
+            return true;
+
         var available = string.Join(", ", arityGroup.Keys.OrderBy(a => a));
         AddError(
-            $"Type '{annotation.Name}' does not take {annotation.TypeArguments.Length} type argument(s) (available: {available})",
+            $"Type '{annotation.Name}' does not take {requestedArity} type argument(s) (available: {available})",
             annotation.LineStart, annotation.ColumnStart,
             code: DiagnosticCodes.Semantic.WrongArgumentCount, span: annotation.Span);
+        resolved = null!;
+        return false;
     }
 
     private string? FindTypeSuggestion(string name)

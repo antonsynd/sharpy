@@ -339,6 +339,24 @@ internal partial class NameResolver
         // Any non-empty body is now valid -- either abstract (ellipsis/pass) or default implementation
     }
 
+    private bool TryResolveClrArityGroup(
+        IReadOnlyDictionary<int, TypeSymbol> arityGroup,
+        int requestedArity,
+        TypeAnnotation annotation,
+        out TypeSymbol resolved)
+    {
+        if (arityGroup.TryGetValue(requestedArity, out resolved!))
+            return true;
+
+        var available = string.Join(", ", arityGroup.Keys.OrderBy(a => a));
+        AddError(
+            $"Type '{annotation.Name}' does not take {requestedArity} type argument(s) (available: {available})",
+            annotation.LineStart, annotation.ColumnStart,
+            code: DiagnosticCodes.Semantic.WrongArgumentCount, span: annotation.Span);
+        resolved = null!;
+        return false;
+    }
+
     private void AddError(string message, int? line = null, int? column = null, string? code = null,
         Text.TextSpan? span = null)
     {
@@ -544,14 +562,8 @@ internal partial class NameResolver
             // that TypeResolver.ResolveGenericType produces for the same annotation.
             if (ts.ClrArityGroup is { } baseArityGroup && baseAnnot.TypeArguments.Length > 0)
             {
-                if (baseArityGroup.TryGetValue(baseAnnot.TypeArguments.Length, out var baseArityMember))
+                if (TryResolveClrArityGroup(baseArityGroup, baseAnnot.TypeArguments.Length, baseAnnot, out var baseArityMember))
                     return baseArityMember;
-
-                var available = string.Join(", ", baseArityGroup.Keys.OrderBy(a => a));
-                AddError(
-                    $"Type '{baseAnnot.Name}' does not take {baseAnnot.TypeArguments.Length} type argument(s) (available: {available})",
-                    baseAnnot.LineStart, baseAnnot.ColumnStart,
-                    code: DiagnosticCodes.Semantic.WrongArgumentCount, span: baseAnnot.Span);
                 return null;
             }
             return ts;
