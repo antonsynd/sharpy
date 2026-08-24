@@ -2044,5 +2044,178 @@
         "error": ""
       }
     ]
+  },
+  {
+    "date": "2026-08-24",
+    "results": [
+      {
+        "name": "fibonacci",
+        "language": "Python",
+        "compile_seconds": 0.0005132670000023154,
+        "execute_seconds": 0.20196723300000485,
+        "total_seconds": 0.20248050000000717,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "fibonacci",
+        "language": "Sharpy",
+        "compile_seconds": 2.046214111000012,
+        "execute_seconds": 0.04009250899999017,
+        "total_seconds": 2.086306620000002,
+        "success": true,
+        "error": "",
+        "cold_compile_seconds": 2.0644458950000057,
+        "warm_compile_seconds": 1.816525170999995,
+        "server_warm_compile_seconds": 0.20585829200000205
+      },
+      {
+        "name": "fibonacci",
+        "language": "C#",
+        "compile_seconds": 1.4925196500000766,
+        "execute_seconds": 0.04428541399988717,
+        "total_seconds": 1.5368050639999637,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Python",
+        "compile_seconds": 0.00043975899998827117,
+        "execute_seconds": 0.054030877999991844,
+        "total_seconds": 0.054470636999980115,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "Sharpy",
+        "compile_seconds": 2.142607188999989,
+        "execute_seconds": 0.051684238999996523,
+        "total_seconds": 2.1942914279999854,
+        "success": true,
+        "error": "",
+        "cold_compile_seconds": 2.1762069010000005,
+        "warm_compile_seconds": 1.9017933420000048,
+        "server_warm_compile_seconds": 0.21189810299998157
+      },
+      {
+        "name": "list_comprehensions",
+        "language": "C#",
+        "compile_seconds": 1.5287001469998813,
+        "execute_seconds": 0.09897623799997746,
+        "total_seconds": 1.6276763849998588,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Python",
+        "compile_seconds": 0.0006629599999996572,
+        "execute_seconds": 0.7435374350000075,
+        "total_seconds": 0.7442003950000071,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "Sharpy",
+        "compile_seconds": 2.244204253000021,
+        "execute_seconds": 0.14926766799999314,
+        "total_seconds": 2.393471921000014,
+        "success": true,
+        "error": "",
+        "cold_compile_seconds": 2.263372941,
+        "warm_compile_seconds": 1.9463616529999967,
+        "server_warm_compile_seconds": 0.21608389200000033
+      },
+      {
+        "name": "matrix_multiply",
+        "language": "C#",
+        "compile_seconds": 1.4382097079999312,
+        "execute_seconds": 0.050038919999906284,
+        "total_seconds": 1.4882486279998375,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "matrix_multiply_numpy",
+        "language": "Python",
+        "compile_seconds": 0.0005329759999881389,
+        "execute_seconds": 0.012466916999983368,
+        "total_seconds": 0.012999892999971507,
+        "success": false,
+        "error": "Traceback (most recent call last):\n  File \"/home/runner/work/sharpy/sharpy/benchmarks/cross-language/matrix_multiply_numpy/bench.py\", line 1, in <module>\n    import numpy as np\nModuleNotFoundError: No module named 'numpy'\n"
+      },
+      {
+        "name": "matrix_multiply_numpy",
+        "language": "C#",
+        "compile_seconds": 1.7922696279999855,
+        "execute_seconds": 1.4762757599999077,
+        "total_seconds": 3.268545387999893,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "Python",
+        "compile_seconds": 0.0005128379999916888,
+        "execute_seconds": 0.17582615099999543,
+        "total_seconds": 0.17633898899998712,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "sorting",
+        "language": "Sharpy",
+        "compile_seconds": 2.384092645999999,
+        "execute_seconds": 0.13913087299999916,
+        "total_seconds": 2.5232235189999983,
+        "success": true,
+        "error": "",
+        "cold_compile_seconds": 2.4153171379999776,
+        "warm_compile_seconds": 1.9830883120000067,
+        "server_warm_compile_seconds": 0.22962921199999187
+      },
+      {
+        "name": "sorting",
+        "language": "C#",
+        "compile_seconds": 1.4455190940000193,
+        "execute_seconds": 0.24755815999992592,
+        "total_seconds": 1.6930772539999452,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "Python",
+        "compile_seconds": 0.00040247900000167647,
+        "execute_seconds": 0.14560875800000872,
+        "total_seconds": 0.1460112370000104,
+        "success": true,
+        "error": ""
+      },
+      {
+        "name": "string_ops",
+        "language": "Sharpy",
+        "compile_seconds": 2.1214864740000223,
+        "execute_seconds": 0.17234328000000687,
+        "total_seconds": 2.293829754000029,
+        "success": true,
+        "error": "",
+        "cold_compile_seconds": 2.1639491720000024,
+        "warm_compile_seconds": 1.8647206330000188,
+        "server_warm_compile_seconds": 0.1969668840000054
+      },
+      {
+        "name": "string_ops",
+        "language": "C#",
+        "compile_seconds": 1.4662424589998864,
+        "execute_seconds": 0.17958761299996695,
+        "total_seconds": 1.6458300719998533,
+        "success": true,
+        "error": ""
+      }
+    ]
   }
 ]
