@@ -1,0 +1,4 @@
+def main() -> None:
+    items: list[int] = [1, 2, 3]
+    items += [4]
+    print(len(items))

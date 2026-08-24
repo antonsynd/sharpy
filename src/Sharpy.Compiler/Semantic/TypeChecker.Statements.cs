@@ -355,14 +355,26 @@ internal partial class TypeChecker
                 }
             }
 
+            if (AugmentedCollectionAssignment.Classify(assignment, targetType) is not null
+                && _semanticInfo.GetNarrowedReadLowering(assignment.Target)
+                    is { Kind: NarrowedReadKind.Cast })
+            {
+                var targetName = assignment.Target is Identifier id ? id.Name : assignment.Target.ToString();
+                AddError(
+                    $"Cannot use augmented assignment on isinstance-narrowed receiver '{targetName}' "
+                    + $"— rebind through a typed local: `items: list[int] = {targetName}; items += [4]`",
+                    assignment.LineStart, assignment.ColumnStart,
+                    code: DiagnosticCodes.Semantic.NarrowedReceiverAugAssign,
+                    span: assignment.Span);
+                return;
+            }
+
             // For augmented assignments, use TypeInferenceService (errors reported by validator in pipeline)
-            // Augmented assignment desugars to the regular binary operator (e.g., += uses __add__)
             var resultType = _typeInference.InferAugmentedAssignmentType(
                 assignment.Operator,
                 targetType,
                 valueType);
 
-            // Verify result type is assignable to target type (if inference succeeded)
             if (resultType != null && !resultType.IsAssignableTo(targetType))
             {
                 AddError(
@@ -373,16 +385,8 @@ internal partial class TypeChecker
                     span: assignment.Span);
             }
 
-            // A Cast-narrowed target (isinstance narrowing) erases to the non-generic protocol
-            // interface (#912), which has none of the mutation methods — materializing would
-            // trade #1615's pre-existing rebind ICE for a new CS1061 face. Skip it: the shape
-            // falls back to the rebind path and is tracked by #1615 for both modes. Other
-            // narrowing kinds keep a usable receiver via the narrowed-read lowering the
-            // emitter applies.
             if (Features.IsEnabled("inplace_augassign")
-                && AugmentedCollectionAssignment.Classify(assignment, targetType) is { } mutation
-                && _semanticInfo.GetNarrowedReadLowering(assignment.Target)
-                    is not { Kind: NarrowedReadKind.Cast })
+                && AugmentedCollectionAssignment.Classify(assignment, targetType) is { } mutation)
             {
                 _semanticInfo.SetAugmentedAssignMutation(assignment, mutation.ClrName);
             }

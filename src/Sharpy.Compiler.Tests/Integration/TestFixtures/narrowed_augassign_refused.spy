@@ -1,0 +1,6 @@
+def process(x: object) -> None:
+    if isinstance(x, list):
+        x += [4]
+
+def main() -> None:
+    process([1, 2, 3])

@@ -314,7 +314,8 @@ public static class DiagnosticCodes
         public const string AwaitOutsideAsync = "SPY0273";          // Active
         public const string InvalidAwaitOperand = "SPY0274";        // Active
         public const string VoidMatchScrutinee = "SPY0275";         // Active
-        // SPY0276-SPY0279: Reserved for future control flow diagnostics
+        public const string NarrowedReceiverAugAssign = "SPY0276"; // Active (#1615)
+        // SPY0277-SPY0279: Reserved for future control flow diagnostics
 
         #endregion
 

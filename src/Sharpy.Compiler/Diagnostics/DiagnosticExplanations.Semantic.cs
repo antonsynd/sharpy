@@ -855,6 +855,16 @@ public static partial class DiagnosticExplanations
             "def f() -> None:\n    print(\"side effect\")\n\ndef main() -> None:\n    match f():  # f() has no value\n        case _:\n            pass",
             "Call the function as a statement, then match on None explicitly:\n    f()\n    match None:\n        case None:\n            print(\"matched\")");
 
+        Add(dict, DiagnosticCodes.Semantic.NarrowedReceiverAugAssign,
+            "Cannot use augmented assignment on isinstance-narrowed receiver",
+            "Semantic",
+            "When a variable is narrowed via isinstance(), the narrowed type is a protocol interface " +
+            "that does not support mutation methods. Augmented assignment on such a receiver would " +
+            "produce invalid C# code. Rebind the value through a typed local variable to use " +
+            "augmented assignment.",
+            "def process(x: object):\n    if isinstance(x, list):\n        x += [4]  # error: x is narrowed, not a concrete list",
+            "Rebind through a typed local:\n    if isinstance(x, list):\n        items: list[int] = x\n        items += [4]");
+
         Add(dict, DiagnosticCodes.Semantic.UnknownFutureFeature,
             "Unknown or mis-scoped '__future__' feature",
             "Semantic",

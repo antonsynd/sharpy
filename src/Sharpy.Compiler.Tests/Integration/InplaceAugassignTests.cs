@@ -78,11 +78,9 @@ def main() -> None:
         result.GeneratedCSharp.Should().Contain(".Unwrap().Extend(");
     }
 
-    // An isinstance-narrowed receiver erases to the non-generic protocol interface (#912), which
-    // has no mutation methods — the TypeChecker must NOT materialize a mutation for it (#1615:
-    // the shape is a pre-existing rebind ICE in both modes; the gate must not add a second face).
+    // An isinstance-narrowed receiver now produces SPY0276 in both gate modes (#1615).
     [Fact]
-    public void GatedIsinstanceNarrowed_DoesNotMaterialize_EmitsSameCSharpAsUngated()
+    public void IsinstanceNarrowed_RefusedWithSPY0276_BothGateModes()
     {
         var source = @"
 def f(x: object) -> None:
@@ -96,16 +94,13 @@ def main() -> None:
 ";
         var ungated = CompileAndExecute(source);
         var gated = CompileAndExecute(source, features: WithGate);
-        gated.GeneratedCSharp.Should().NotBeNull(
-            "the generated C# must be captured even when assembly compilation fails");
-        gated.GeneratedCSharp.Should().NotContain(".Extend(");
-        // The emitted source embeds a per-compilation temp directory (sharpy_src_<guid>);
-        // normalize it so the comparison sees only real codegen differences.
-        NormalizeTempPaths(gated.GeneratedCSharp!).Should().Be(
-            NormalizeTempPaths(ungated.GeneratedCSharp!));
-    }
 
-    private static string NormalizeTempPaths(string generatedCSharp) =>
-        System.Text.RegularExpressions.Regex.Replace(
-            generatedCSharp, "sharpy_src_[0-9a-f]{32}", "sharpy_src_NORMALIZED");
+        ungated.Success.Should().BeFalse();
+        gated.Success.Should().BeFalse();
+
+        ungated.CompilationErrors.Should().Contain(e =>
+            e.Contains("SPY0276") || e.Contains("narrowed receiver"));
+        gated.CompilationErrors.Should().Contain(e =>
+            e.Contains("SPY0276") || e.Contains("narrowed receiver"));
+    }
 }
