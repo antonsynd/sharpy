@@ -37,7 +37,8 @@ echo "---" | tee -a "$MEMORY_LOG"
 
 cd "$REPO_ROOT"
 
-LOCK_DIR="${HOME}/.claude/locks/dotnet.lock"
+# shellcheck source=dotnet-lock-env.sh
+source "$(dirname "$0")/dotnet-lock-env.sh"
 
 # Recursive RSS sum for a process tree rooted at $1 (KB).
 tree_rss_kb() {
@@ -70,7 +71,7 @@ kill_tree() {
 WRAPPER_PID=$!
 
 # Handshake: wait until our wrapper owns the lock and the dotnet child PID is available.
-# While another holder owns it, $LOCK_DIR/child is the OTHER run's pid.
+# While another holder owns it, $LOCK_CHILD_FILE is the OTHER run's pid.
 echo "Waiting for dotnet lock..." | tee -a "$MEMORY_LOG"
 while true; do
     if ! kill -0 "$WRAPPER_PID" 2>/dev/null; then
@@ -78,10 +79,10 @@ while true; do
         echo "Wrapper exited before sampling started (exit $WRAPPER_EXIT)" | tee -a "$MEMORY_LOG"
         exit "$WRAPPER_EXIT"
     fi
-    lock_owner=$(cat "$LOCK_DIR/pid" 2>/dev/null || echo "")
+    lock_owner=$(cat "$LOCK_PID_FILE" 2>/dev/null || echo "")
     if [[ "$lock_owner" == "$WRAPPER_PID" ]]; then
-        if [[ -f "$LOCK_DIR/child" ]]; then
-            DOTNET_PID=$(cat "$LOCK_DIR/child")
+        if [[ -f "$LOCK_CHILD_FILE" ]]; then
+            DOTNET_PID=$(cat "$LOCK_CHILD_FILE")
             if [[ -n "$DOTNET_PID" ]]; then
                 echo "Lock acquired. Dotnet PID: $DOTNET_PID" | tee -a "$MEMORY_LOG"
                 break
@@ -124,6 +125,16 @@ while kill -0 "$WRAPPER_PID" 2>/dev/null; do
 
     sleep 1
 done
+
+# After a threshold kill, give the wrapper up to 5s to run its EXIT trap and release
+# the lock (#1567). Without this, the harness exits before cleanup() fires, and the
+# next queued wrapper finds a stale lock directory.
+if [[ "$KILLED" == "true" ]]; then
+    for _i in $(seq 1 10); do
+        kill -0 "$WRAPPER_PID" 2>/dev/null || break
+        sleep 0.5
+    done
+fi
 
 # Exit codes: 4 = threshold kill (matches dotnet-serialized's watchdog convention).
 # Forced rather than read from the child: dotnet test handles SIGTERM and exits 0 (measured

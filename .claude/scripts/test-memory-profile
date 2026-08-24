@@ -24,7 +24,8 @@ echo "Starting dotnet test..."
 
 cd "$REPO_ROOT"
 
-LOCK_DIR="${HOME}/.claude/locks/dotnet.lock"
+# shellcheck source=dotnet-lock-env.sh
+source "$(dirname "$0")/dotnet-lock-env.sh"
 TEST_LOG="$SCRIPT_DIR/../tmp/test-memory-profile.log"
 
 # Recursive RSS sum for a process tree rooted at $1 (KB).
@@ -55,10 +56,10 @@ while true; do
         echo "Wrapper exited before sampling started (exit $WRAPPER_EXIT)"
         exit "$WRAPPER_EXIT"
     fi
-    lock_owner=$(cat "$LOCK_DIR/pid" 2>/dev/null || echo "")
+    lock_owner=$(cat "$LOCK_PID_FILE" 2>/dev/null || echo "")
     if [[ "$lock_owner" == "$WRAPPER_PID" ]]; then
-        if [[ -f "$LOCK_DIR/child" ]]; then
-            DOTNET_PID=$(cat "$LOCK_DIR/child")
+        if [[ -f "$LOCK_CHILD_FILE" ]]; then
+            DOTNET_PID=$(cat "$LOCK_CHILD_FILE")
             if [[ -n "$DOTNET_PID" ]]; then
                 echo "Lock acquired. Dotnet PID: $DOTNET_PID"
                 break

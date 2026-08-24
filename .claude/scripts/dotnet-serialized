@@ -30,7 +30,8 @@
 # red can therefore be someone else's concurrency, and a solution-level green is only as trustworthy
 # as the line you happened to read.
 
-LOCK_DIR="${HOME}/.claude/locks/dotnet.lock"
+# shellcheck source=dotnet-lock-env.sh
+source "$(dirname "$0")/dotnet-lock-env.sh"
 # The full suite takes ~18 minutes, so a 15-minute lock timeout made any queued run
 # behind one complete suite a GUARANTEED exit 124 — a structural failure, not a hung
 # peer (#1273). 45 minutes accommodates queueing behind two full suites.
@@ -101,7 +102,7 @@ bump_generation() {
 # an unattributed "unmeasured", so the next reader knows a person decided this and why, instead
 # of assuming nobody looked.
 is_lock_stale() {
-    local child_file="$LOCK_DIR/child"
+    local child_file="$LOCK_CHILD_FILE"
     if [ -f "$child_file" ]; then
         local child_pid
         child_pid=$(cat "$child_file" 2>/dev/null)
@@ -110,7 +111,7 @@ is_lock_stale() {
         fi
     fi
 
-    local pid_file="$LOCK_DIR/pid"
+    local pid_file="$LOCK_PID_FILE"
     if [ ! -f "$pid_file" ]; then
         # A lock directory with no pid file is usually one taken MICROSECONDS ago, not an
         # abandoned one: mkdir is the atomic acquire and the owner writes its pid immediately
@@ -179,7 +180,7 @@ acquire_lock() {
         fi
         if [ "$waited" -ge "$TIMEOUT" ]; then
             echo "ERROR: Timed out waiting for dotnet lock after $((TIMEOUT/60)) minutes." >&2
-            echo "Lock owner PID: $(cat "$LOCK_DIR/pid" 2>/dev/null || echo unknown)" >&2
+            echo "Lock owner PID: $(cat "$LOCK_PID_FILE" 2>/dev/null || echo unknown)" >&2
             echo "Do NOT run 'pkill -f dotnet' -- it kills other agents' live test runs." >&2
             echo "A quiet run is not a hung run: a full suite spends its last minutes in" >&2
             echo "teardown at 0% CPU with no log growth. Judge by ELAPSED time against the" >&2
@@ -189,7 +190,7 @@ acquire_lock() {
         sleep 2
         waited=$((waited + 2))
     done
-    echo "$owner_pid" > "$LOCK_DIR/pid"
+    echo "$owner_pid" > "$LOCK_PID_FILE"
     bump_generation
     if [ "$owner_pid" = "$$" ]; then
         trap cleanup EXIT
@@ -240,7 +241,7 @@ watchdog() {
     local child_pid last now quiet
     while :; do
         sleep "$WATCHDOG_POLL"
-        child_pid=$(cat "$LOCK_DIR/child" 2>/dev/null)
+        child_pid=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
         case "$child_pid" in ''|*[!0-9]*) continue ;; esac
         # Child finished on its own: nothing left to watch, and staying alive would only risk
         # signalling a recycled pid.
@@ -319,7 +320,7 @@ case "${1:-}" in
         ;;
     --release-lock)
         holder="${2:-}"
-        current=$(cat "$LOCK_DIR/pid" 2>/dev/null)
+        current=$(cat "$LOCK_PID_FILE" 2>/dev/null)
         if [ -n "$current" ] && [ -n "$holder" ] && [ "$current" != "$holder" ]; then
             echo "ERROR: refusing to release a lock owned by $current (asked by $holder)." >&2
             exit 2
@@ -332,7 +333,7 @@ case "${1:-}" in
         # its child where is_lock_stale looks, or the hold is only as good as the holder's own
         # pid — and SIGKILL bench_ab mid-arm and the orphaned benchmark keeps its 5-10 GB while
         # the lock reads stale and a peer is admitted beside it (#1508). This verb rather than
-        # letting callers write $LOCK_DIR/child themselves: the lock-dir layout stays knowledge
+        # letting callers write $LOCK_CHILD_FILE themselves: the lock-dir layout stays knowledge
         # of this one file, and the ownership check below cannot then be skipped by a caller.
         holder="${2:-}"
         child="${3:-}"
@@ -340,7 +341,7 @@ case "${1:-}" in
             echo "ERROR: --record-child needs HOLDER_PID and CHILD_PID." >&2
             exit 2
         fi
-        current=$(cat "$LOCK_DIR/pid" 2>/dev/null)
+        current=$(cat "$LOCK_PID_FILE" 2>/dev/null)
         if [ -z "$current" ] || [ "$current" != "$holder" ]; then
             echo "ERROR: refusing to record a child against a lock owned by ${current:-nobody}" >&2
             echo "(asked by $holder). Only the holder may point the lock at its own child." >&2
@@ -352,7 +353,7 @@ case "${1:-}" in
             echo "the child FIRST, so a dead pointer can only ever read 'stale'." >&2
             exit 2
         fi
-        echo "$child" > "$LOCK_DIR/child"
+        echo "$child" > "$LOCK_CHILD_FILE"
         exit 0
         ;;
     --lock-generation)
@@ -378,7 +379,7 @@ ln -sf "dotnet-serialized-${SLOT}.log" "${LOG_DIR}/dotnet-serialized-latest.log"
 watchdog >/dev/null 2>&1 &
 WATCHDOG_PID=$!
 
-bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_DIR/child" "$@" 2>&1 | tee "$LOG_FILE"
+bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_CHILD_FILE" "$@" 2>&1 | tee "$LOG_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
 
 kill "$WATCHDOG_PID" 2>/dev/null
