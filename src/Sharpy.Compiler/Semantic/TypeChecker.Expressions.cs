@@ -132,6 +132,14 @@ internal partial class TypeChecker
         // (IsCurrentCallCallee compares through them).
         if (expr is Identifier or MemberAccess && !IsCurrentCallCallee(expr))
         {
+            // #1593: a function reference in value position (f = deprecated_add) is the deprecation
+            // surface — the call site (f(1, 2)) invokes a delegate with no Symbol. Fire SPY0466 here.
+            if (expr is Identifier refId
+                && _semanticInfo.GetIdentifierSymbol(refId) is FunctionSymbol refFunc)
+            {
+                CheckDeprecatedUsage(refFunc, expr);
+            }
+
             type = CheckValuePositionReference(expr, type);
         }
 
