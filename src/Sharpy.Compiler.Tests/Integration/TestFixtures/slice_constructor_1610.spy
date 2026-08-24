@@ -1,0 +1,15 @@
+def main():
+    s1: slice = slice(1, 5, 2)
+    print(s1.Start)
+    print(s1.Stop)
+    print(s1.Step)
+
+    s2: slice = slice(10)
+    print(s2.Start)
+    print(s2.Stop)
+    print(s2.Step)
+
+    s3: slice = slice(2, 8)
+    print(s3.Start)
+    print(s3.Stop)
+    print(s3.Step)

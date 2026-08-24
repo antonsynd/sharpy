@@ -94,6 +94,9 @@ internal class BuiltinRegistry
         // Bytes (non-generic) - immutable byte sequence
         RegisterType("bytes", typeof(SharpyRT::Sharpy.Bytes), TypeKind.Struct);
 
+        // Slice — the Python `slice` type used in `__getitem__(self, s: slice)` (#1610).
+        RegisterType("slice", typeof(SharpyRT::Sharpy.Slice), TypeKind.Struct);
+
         // complex: the Python spelling. `Complex` already resolved through the Sharpy-namespace
         // discovery rule — this is not a rename, it registers the lowercase name a Python reader
         // actually writes, and both spellings resolve afterwards (#1362). Every other builtin is

@@ -5,19 +5,29 @@ namespace Sharpy
     /// </summary>
     public readonly partial struct Slice
     {
-        /// <summary>The start index of the slice.</summary>
-        public readonly int start;
-        /// <summary>The end index of the slice (exclusive).</summary>
-        public readonly int end;
-        /// <summary>The step of the slice.</summary>
-        public readonly int step;
+        /// <summary>The concrete start index of the slice (defaults applied).</summary>
+        internal readonly int start;
+        /// <summary>The concrete end index of the slice (exclusive, defaults applied).</summary>
+        internal readonly int end;
+        /// <summary>The concrete step of the slice (defaults applied).</summary>
+        internal readonly int step;
+
+        /// <summary>Raw nullable start bound, matching Python's <c>slice.start</c>.</summary>
+        public int? Start { get; }
+        /// <summary>Raw nullable stop bound, matching Python's <c>slice.stop</c>.</summary>
+        public int? Stop { get; }
+        /// <summary>Raw nullable step bound, matching Python's <c>slice.step</c>.</summary>
+        public int? Step { get; }
 
         /// <summary>Create a slice with the given start, end, and step.</summary>
-        public Slice(int start, int end, int step = 1)
+        internal Slice(int start, int end, int step = 1)
         {
             this.start = start;
             this.end = end;
             this.step = step;
+            Start = start;
+            Stop = end;
+            Step = step;
         }
 
         /// <summary>
@@ -26,10 +36,19 @@ namespace Sharpy
         /// </summary>
         public Slice(int? start, int? end, int? step = null)
         {
+            Start = start;
+            Stop = end;
+            Step = step;
             this.step = step ?? 1;
             this.start = start ?? (this.step > 0 ? 0 : -1);
             this.end = end ?? (this.step > 0 ? int.MaxValue : int.MinValue);
         }
+
+        /// <summary>
+        /// Single-arg form matching Python's <c>slice(stop)</c>, where
+        /// <c>start</c> and <c>step</c> are <c>None</c>.
+        /// </summary>
+        public Slice(int? stop) : this(null, stop, null) { }
 
         /// <summary>Compute the number of elements in a slice range.</summary>
         public static int Len(int start, int end, int step)

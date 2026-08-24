@@ -614,6 +614,41 @@ internal partial class TypeChecker
             return objType;
         }
 
+        // #1610: user-defined __getitem__(self, s: slice) protocol
+        {
+            TypeSymbol? receiverSymbol = objType switch
+            {
+                UserDefinedType receiverUdt => receiverUdt.Symbol,
+                GenericType receiverGt => receiverGt.GenericDefinition,
+                _ => null
+            };
+            if (receiverSymbol != null)
+            {
+                List<FunctionSymbol>? getItemMethods = null;
+                receiverSymbol.OperatorMethods.TryGetValue(DunderNames.GetItem, out getItemMethods);
+                if (getItemMethods == null)
+                    receiverSymbol.ProtocolMethods.TryGetValue(DunderNames.GetItem, out getItemMethods);
+
+                if (getItemMethods != null)
+                {
+                    var sliceOverload = getItemMethods.FirstOrDefault(m =>
+                    {
+                        var nonSelfParams = m.Parameters.Where(p => p.Name != "self").ToList();
+                        return nonSelfParams.Count == 1
+                            && nonSelfParams[0].Type is UserDefinedType paramType
+                            && paramType.Name == "slice";
+                    });
+                    if (sliceOverload != null)
+                    {
+                        _semanticInfo.SetSliceLowering(sliceAccess,
+                            new SliceLowering(SliceLoweringKind.UserProtocol,
+                                ResultType: sliceOverload.ReturnType));
+                        return sliceOverload.ReturnType;
+                    }
+                }
+            }
+        }
+
         // #1608: unclassified receiver → refuse with SPY0320
         if (objType is TupleType)
         {

@@ -2012,9 +2012,12 @@ public enum StatementLoweringKind
 
 public sealed record StatementLowering(StatementLoweringKind Kind);
 
-public enum SliceLoweringKind { List, Array, Str, Bytes, NdArray }
+public enum SliceLoweringKind { List, Array, Str, Bytes, NdArray, UserProtocol, Tuple }
 
-public sealed record SliceLowering(SliceLoweringKind Kind);
+public sealed record SliceLowering(
+    SliceLoweringKind Kind,
+    SemanticType? ResultType = null,
+    int[]? TupleElementIndices = null);
 
 public enum MatchScrutineeLoweringKind
 {

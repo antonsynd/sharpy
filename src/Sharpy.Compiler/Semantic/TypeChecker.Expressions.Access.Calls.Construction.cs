@@ -79,6 +79,17 @@ internal partial class TypeChecker
             return tupleRejection;
         }
 
+        // #1610: slice() requires at least 1 argument — slice(stop) or slice(start, stop[, step]).
+        // C# structs always have a parameterless constructor that cannot be removed, so the CLR-level
+        // overload set admits 0 args. Refuse explicitly to match Python.
+        if (typeSymbol.Name == "slice" && totalArgCount == 0)
+        {
+            AddError("slice expected at least 1 argument, got 0",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.WrongArgumentCount, span: call.Span);
+            return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+        }
+
         // Keyword arguments to a builtin collection constructor are decided here, before generic
         // inference, because inference has no arm for them: they fall to the UnknownType fallback
         // below and the emitter turns `dict[?, ?]` into the static-class-as-value shape

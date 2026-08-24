@@ -1,0 +1,6 @@
+def get_stop(s: slice) -> object:
+    return s.Stop
+
+def main():
+    s: slice = slice(1, 10, 2)
+    print(get_stop(s))

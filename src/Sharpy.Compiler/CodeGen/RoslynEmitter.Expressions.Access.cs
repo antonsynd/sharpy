@@ -2020,6 +2020,12 @@ internal partial class RoslynEmitter
                 or SliceLoweringKind.Str or SliceLoweringKind.Bytes =>
                 GenerateGetSliceCall(obj, sliceAccess),
 
+            // #1610: user __getitem__(slice) → obj[new Slice(start, stop, step)]
+            SliceLoweringKind.UserProtocol =>
+                ElementAccessExpression(obj)
+                .AddArgumentListArguments(Argument(
+                    GenerateNewSlice(sliceAccess.Start, sliceAccess.Stop, sliceAccess.Step))),
+
             _ => throw new InvalidOperationException(
                 $"Unhandled SliceLoweringKind '{lowering.Kind}' (#1608)"),
         };
@@ -2048,6 +2054,26 @@ internal partial class RoslynEmitter
                 Argument(start),
                 Argument(end),
                 Argument(step));
+    }
+
+    /// <summary>
+    /// #1610: <c>new global::Sharpy.Slice(start, stop, step)</c> for user-protocol slicing.
+    /// </summary>
+    private ExpressionSyntax GenerateNewSlice(Expression? startExpr, Expression? stopExpr, Expression? stepExpr)
+    {
+        var nullableInt = NullableType(PredefinedType(Token(SyntaxKind.IntKeyword)));
+        var start = startExpr != null
+            ? (ExpressionSyntax)CastExpression(nullableInt, GenerateExpression(startExpr))
+            : LiteralExpression(SyntaxKind.NullLiteralExpression);
+        var stop = stopExpr != null
+            ? (ExpressionSyntax)CastExpression(nullableInt, GenerateExpression(stopExpr))
+            : LiteralExpression(SyntaxKind.NullLiteralExpression);
+        var step = stepExpr != null
+            ? (ExpressionSyntax)CastExpression(nullableInt, GenerateExpression(stepExpr))
+            : LiteralExpression(SyntaxKind.NullLiteralExpression);
+
+        return ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "Slice"))
+            .AddArgumentListArguments(Argument(start), Argument(stop), Argument(step));
     }
 
     private ExpressionSyntax GenerateMultiAxisAccess(MultiAxisAccess multiAxis)

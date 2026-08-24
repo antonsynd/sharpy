@@ -1,0 +1,12 @@
+class MySeq:
+    data: list[str]
+
+    def __init__(self):
+        self.data = ["a", "b", "c", "d", "e"]
+
+    def __getitem__(self, s: slice) -> str:
+        return "-".join(self.data[s.start:s.stop])
+
+def main():
+    seq: MySeq = MySeq()
+    print(seq[1:4])
