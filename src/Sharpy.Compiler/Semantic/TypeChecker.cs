@@ -527,8 +527,14 @@ internal partial class TypeChecker
         {
             if (statement is Parser.Ast.VariableDeclaration { IsConst: true } unfoldedDecl
                 && unfoldedDecl.InitialValue != null
-                && _symbolTable.Lookup(unfoldedDecl.Name) is VariableSymbol { IsConstant: true, ConstantValue: null } unfoldedSym)
+                && _symbolTable.Lookup(unfoldedDecl.Name) is VariableSymbol { IsConstant: true, ConstantValue: null })
             {
+                var unfoldedType = _typeResolver.ResolveTypeAnnotation(unfoldedDecl.Type);
+                if (Registry.PrimitiveCatalog.GetPrimitiveInfo(unfoldedType)?.Kind
+                    is not (Registry.PrimitiveCatalog.NumericKind.SignedInteger
+                        or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger))
+                    continue;
+
                 if (ReferencesUnfoldedConst(unfoldedDecl.InitialValue))
                 {
                     AddError(

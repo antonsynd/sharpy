@@ -1,0 +1,5 @@
+const GREETING: str = "hello"
+const MESSAGE: str = GREETING
+
+def main() -> None:
+    print(MESSAGE)
