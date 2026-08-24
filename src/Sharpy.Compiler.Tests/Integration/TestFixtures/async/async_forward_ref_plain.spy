@@ -1,0 +1,6 @@
+async def main():
+    result: int = await helper()
+    print(result)
+
+async def helper() -> int:
+    return 42

@@ -145,6 +145,14 @@ internal partial class TypeChecker
             };
             functionSymbol.IsGenerator = true;
         }
+        else if (functionDef.IsAsync
+            && functionDef.Name != DunderNames.Init
+            && !DunderDetector.IsDunderMethod(functionDef.Name)
+            && returnType is not (VoidType or UnknownType))
+        {
+            functionSymbol.ReturnType = new TaskType { ResultType = returnType };
+            functionSymbol.IsAsync = true;
+        }
 
         _symbolTable.ExitScope();
     }
