@@ -4144,7 +4144,18 @@ internal partial class TypeChecker
             // super()/no-parent context errors are already reported by ValidateSuperMemberAccess;
             // a null base yields no candidates, so this stays silent in those cases.
             if (_currentClass != null)
+            {
                 ValidateInitializerKeywordArguments(call, GetBaseType(_currentClass));
+
+                // #1594: fire SPY0466 on super().__init__() when the base __init__ is @deprecated.
+                var baseType = GetBaseType(_currentClass);
+                if (baseType != null)
+                {
+                    var baseInit = baseType.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
+                    if (baseInit != null)
+                        CheckDeprecatedUsage(baseInit, call);
+                }
+            }
         }
 
         // Validate self.__init__() is only called inside a constructor
@@ -4172,6 +4183,11 @@ internal partial class TypeChecker
                 // constructor overloads (#907). Skipped above to avoid double-reporting on calls
                 // already flagged as out-of-context or conflicting.
                 ValidateInitializerKeywordArguments(call, _currentClass);
+
+                // #1594: fire SPY0466 on self.__init__() when the class's own __init__ is @deprecated.
+                var selfInit = _currentClass.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
+                if (selfInit != null)
+                    CheckDeprecatedUsage(selfInit, call);
             }
         }
 
