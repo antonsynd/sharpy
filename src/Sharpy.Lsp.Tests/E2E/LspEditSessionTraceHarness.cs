@@ -166,6 +166,8 @@ public sealed class LspEditSessionTraceHarness : IAsyncLifetime
     /// <summary>Consumes any already-queued notifications of the given method.</summary>
     private async Task DrainAsync(string method)
     {
+        // Quiescence drain: consumes already-queued notifications between timed edits.
+        // The 50ms timeout means "nothing left", not "first one hasn't arrived" (#1606).
         while (true)
         {
             try
@@ -185,6 +187,8 @@ public sealed class LspEditSessionTraceHarness : IAsyncLifetime
     /// </summary>
     private async Task<SCG.List<double>> CollectServerLatenciesAsync()
     {
+        // Quiescence drain: collects server-side latency log messages after the edit
+        // session has completed. Empty result is expected and not an error (#1606).
         var latencies = new SCG.List<double>();
         while (true)
         {

@@ -281,7 +281,7 @@ public class MultiFileTests : IAsyncLifetime
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (sw.Elapsed < timeout)
         {
-            // Drain any pending diagnostics notifications (from background indexing)
+            // Drain between feature-request retries — the outer Stopwatch loop provides the generous first-wait timeout (#1606)
             try
             {
                 await _client.WaitForNotificationAsync(
@@ -331,6 +331,7 @@ public class MultiFileTests : IAsyncLifetime
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (sw.Elapsed < TimeSpan.FromSeconds(30))
         {
+            // Drain between feature-request retries — the outer Stopwatch loop provides the generous first-wait timeout (#1606)
             try
             {
                 await _client.WaitForNotificationAsync(
@@ -368,6 +369,7 @@ public class MultiFileTests : IAsyncLifetime
         sw.Restart();
         while (sw.Elapsed < TimeSpan.FromSeconds(30))
         {
+            // Drain between feature-request retries — the outer Stopwatch loop provides the generous first-wait timeout (#1606)
             try
             {
                 await _client.WaitForNotificationAsync(
@@ -446,6 +448,7 @@ public class MultiFileTests : IAsyncLifetime
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (sw.Elapsed < TimeSpan.FromSeconds(30))
         {
+            // Drain between feature-request retries — the outer Stopwatch loop provides the generous first-wait timeout (#1606)
             try
             {
                 await _client.WaitForNotificationAsync(
@@ -536,6 +539,7 @@ public class MultiFileTests : IAsyncLifetime
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (sw.Elapsed < TimeSpan.FromSeconds(30))
         {
+            // Drain between feature-request retries — the outer Stopwatch loop provides the generous first-wait timeout (#1606)
             try
             {
                 await _client.WaitForNotificationAsync(
