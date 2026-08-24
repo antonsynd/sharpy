@@ -913,25 +913,95 @@ internal partial class RoslynEmitter
         }
 
         // Phase 3: Variadic trailing args (remaining positional, unnamed)
-        while (positionalIndex < call.Arguments.Length)
+        var variadicParam = paramList.FirstOrDefault(p => p.IsVariadic);
+        var remainingArgs = call.Arguments.Skip(positionalIndex).ToList();
+        bool hasMixedSpread = variadicParam != null
+            && remainingArgs.Any(a => a is SpreadElement)
+            && remainingArgs.Any(a => a is not Parser.Ast.SpreadElement);
+
+        if (hasMixedSpread)
         {
-            var argExpr = call.Arguments[positionalIndex];
-            if (argExpr is SpreadElement)
+            // Mixed positional + spread targeting params T[]: combine into a single
+            // array so C# sees one T[] argument instead of loose T + T[].
+            // total(1, 2, *[3, 4]) → total(new int[] { 1, 2 }.Concat([3, 4]).ToArray())
+            orderedResult.Add(Argument(
+                BuildCombinedVariadicArray(remainingArgs, variadicParam!)));
+        }
+        else
+        {
+            foreach (var argExpr in remainingArgs)
             {
-                foreach (var spreadArg in GeneratePositionalArguments(
-                    System.Collections.Immutable.ImmutableArray.Create(argExpr)))
+                if (argExpr is SpreadElement)
                 {
-                    orderedResult.Add(spreadArg);
+                    foreach (var spreadArg in GeneratePositionalArguments(
+                        System.Collections.Immutable.ImmutableArray.Create(argExpr)))
+                    {
+                        orderedResult.Add(spreadArg);
+                    }
+                }
+                else
+                {
+                    orderedResult.Add(Argument(GenerateExpression(argExpr)));
                 }
             }
-            else
-            {
-                orderedResult.Add(Argument(GenerateExpression(argExpr)));
-            }
-            positionalIndex++;
         }
 
         return orderedResult.ToArray();
+    }
+
+    private ExpressionSyntax BuildCombinedVariadicArray(
+        List<Expression> args, ParameterSymbol variadicParam)
+    {
+        var elementType = _typeMapper.MapSemanticType(variadicParam.Type);
+        var positionalBuffer = new List<ExpressionSyntax>();
+        ExpressionSyntax? combined = null;
+
+        void FlushPositional()
+        {
+            if (positionalBuffer.Count == 0)
+                return;
+            var array = ArrayCreationExpression(
+                    ArrayType(elementType)
+                        .WithRankSpecifiers(SingletonList(
+                            ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(
+                                OmittedArraySizeExpression())))))
+                .WithInitializer(InitializerExpression(
+                    SyntaxKind.ArrayInitializerExpression,
+                    SeparatedList(positionalBuffer)));
+            combined = ConcatOnto(combined, array);
+            positionalBuffer.Clear();
+        }
+
+        foreach (var arg in args)
+        {
+            if (arg is SpreadElement spread)
+            {
+                FlushPositional();
+                combined = ConcatOnto(combined, GenerateExpression(spread.Value));
+            }
+            else
+            {
+                positionalBuffer.Add(GenerateExpression(arg));
+            }
+        }
+
+        FlushPositional();
+
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                combined!, IdentifierName("ToArray")))
+            .WithArgumentList(ArgumentList());
+    }
+
+    private static ExpressionSyntax ConcatOnto(
+        ExpressionSyntax? existing, ExpressionSyntax next)
+    {
+        if (existing == null)
+            return next;
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                existing, IdentifierName("Concat")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(next))));
     }
 
     /// <summary>

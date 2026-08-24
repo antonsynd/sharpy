@@ -1,0 +1,9 @@
+def total(*args: int) -> int:
+    result = 0
+    for n in args:
+        result += n
+    return result
+
+def main():
+    empty: list[int] = []
+    print(total(1, 2, *empty))
