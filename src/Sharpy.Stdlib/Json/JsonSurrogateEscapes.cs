@@ -1,22 +1,19 @@
 namespace Sharpy
 {
     /// <summary>
-    /// Single authority for detecting unpaired UTF-16 surrogate escapes in JSON text.
+    /// Single authority for detecting unpaired UTF-16 surrogates in JSON text.
     /// Both <c>json.loads</c> (untyped) and <c>json.loads[T]</c> (typed) consult this
     /// BEFORE parsing, so they refuse the same documents with the same message (#1487).
+    /// Scans both <c>\uXXXX</c> escape sequences and raw UTF-16 code units (#1597).
     /// </summary>
     internal static class JsonSurrogateEscapes
     {
         /// <summary>
-        /// Scans <paramref name="json"/> for the first unpaired <c>\uXXXX</c> surrogate escape.
+        /// Scans <paramref name="json"/> for the first unpaired surrogate — either a
+        /// <c>\uXXXX</c> escape or a raw UTF-16 code unit in U+D800–U+DFFF.
         /// Returns the escape text and its character position, or <c>null</c> when every
-        /// surrogate escape is properly paired.
+        /// surrogate is properly paired.
         /// </summary>
-        /// <remarks>
-        /// The scan is string-aware: a <c>\uXXXX</c> outside a JSON string literal is ignored
-        /// (the parser rejects it separately), and an escaped backslash (<c>\\</c>) does not
-        /// start an escape sequence. Hex digits are matched case-insensitively.
-        /// </remarks>
         internal static (string escapeText, int position)? FirstUnpaired(string json)
         {
             bool inString = false;
@@ -70,6 +67,23 @@ namespace Sharpy
                     if (c == '"')
                     {
                         inString = false;
+                        continue;
+                    }
+
+                    if (char.IsHighSurrogate(c))
+                    {
+                        if (i + 1 < json.Length && char.IsLowSurrogate(json[i + 1]))
+                        {
+                            i++;
+                            continue;
+                        }
+
+                        return (FormatRawSurrogate(c), i);
+                    }
+
+                    if (char.IsLowSurrogate(c))
+                    {
+                        return (FormatRawSurrogate(c), i);
                     }
 
                     continue;
@@ -115,6 +129,9 @@ namespace Sharpy
                 return c - 'A' + 10;
             return -1;
         }
+
+        private static string FormatRawSurrogate(char c)
+            => "\\u" + ((int)c).ToString("x4");
 
         private static bool IsHighSurrogate(int codeUnit)
         {
