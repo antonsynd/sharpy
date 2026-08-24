@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using SysList = System.Collections.Generic.List<System.Exception>;
@@ -33,7 +32,7 @@ namespace Sharpy
         public override string Message => _message;
 
         /// <summary>The contained exceptions (delegates to InnerExceptions).</summary>
-        public ReadOnlyCollection<Exception> Exceptions => InnerExceptions;
+        public List<Exception> Exceptions => new List<Exception>(InnerExceptions);
 
         /// <summary>Return a new ExceptionGroup containing only exceptions matching the predicate, or null if none match.</summary>
         public ExceptionGroup? Subgroup(Func<Exception, bool> predicate)
