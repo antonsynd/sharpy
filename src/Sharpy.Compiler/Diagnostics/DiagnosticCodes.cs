@@ -315,7 +315,8 @@ public static class DiagnosticCodes
         public const string InvalidAwaitOperand = "SPY0274";        // Active
         public const string VoidMatchScrutinee = "SPY0275";         // Active
         public const string NarrowedReceiverAugAssign = "SPY0276"; // Active (#1615)
-        // SPY0277-SPY0279: Reserved for future control flow diagnostics
+        public const string DelegateErasedDefaults = "SPY0277";     // Active (#1563)
+        // SPY0278-SPY0279: Reserved for future control flow diagnostics
 
         #endregion
 
@@ -727,7 +728,8 @@ public static class DiagnosticCodes
         // because SPY0483 fires in the DECLARING file, which the consumer may never open (#1324).
         public const string BuiltinRebornByExplicitImport = "SPY0484";  // Active (#1324)
         public const string VariantPatternShadowsConstant = "SPY0485"; // Active (#1562)
-        // SPY0486-SPY0489: Reserved for future validation warnings
+        public const string DefaultsErasedByConversion = "SPY0486"; // Active (#1563)
+        // SPY0487-SPY0489: Reserved for future validation warnings
 
         #endregion
 

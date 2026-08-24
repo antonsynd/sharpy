@@ -314,3 +314,16 @@ delegate Producer[out T]() -> T
 ```
 
 When in doubt, start with a function type. Promote to a `delegate` only when you need a feature that function types cannot provide. See [Delegates — When to use delegates](delegates.md#when-to-use-delegates) and [Type Aliases](type_aliases.md).
+
+### Default Parameter Erasure (Axiom 1 deviation)
+
+In Python, passing a function with defaults through a variable preserves the defaults. In Sharpy, converting a function or lambda with default parameters to a function type erases the defaults — .NET delegates (`Func<>`, `Action<>`) do not carry default values. The compiler emits SPY0486 (warning) at the conversion site and SPY0277 (error) if a caller omits arguments through the delegate:
+
+```python
+def add(a: int, b: int = 10) -> int:
+    return a + b
+
+f: (int, int) -> int = add   # SPY0486 warning: defaults erased
+print(f(1))                   # SPY0277 error: must pass all args
+print(add(1))                 # OK: direct call preserves defaults
+```

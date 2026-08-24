@@ -2800,7 +2800,16 @@ internal partial class TypeChecker
 
             if (tooFew || tooMany)
             {
-                if (hasVariadic)
+                if (tooFew && IsDelegateCallee(call.Function))
+                {
+                    AddError(
+                        "Defaults are not available through a function-typed value; " +
+                        "call the function directly or pass the argument",
+                        call.LineStart, call.ColumnStart,
+                        code: DiagnosticCodes.Semantic.DelegateErasedDefaults,
+                        span: call.Span);
+                }
+                else if (hasVariadic)
                 {
                     AddError($"Function expects at least {requiredCount} arguments but got {totalArgCount}",
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.WrongArgumentCount,
@@ -5316,6 +5325,16 @@ internal partial class TypeChecker
                 return true;
         }
 
+        return false;
+    }
+
+    private bool IsDelegateCallee(Expression callee)
+    {
+        if (callee is Identifier id)
+        {
+            var symbol = _symbolTable.Lookup(id.Name);
+            return symbol is VariableSymbol { Type: FunctionType };
+        }
         return false;
     }
 }

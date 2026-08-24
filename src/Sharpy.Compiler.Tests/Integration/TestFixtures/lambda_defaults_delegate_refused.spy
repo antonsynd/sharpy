@@ -1,0 +1,6 @@
+def make_fn() -> (int,) -> int:
+    return lambda n: int = 3: n + 1
+
+def main():
+    h: (int,) -> int = make_fn()
+    print(h())

@@ -776,6 +776,16 @@ public static partial class DiagnosticExplanations
             "Rename the constant to avoid ambiguity, or use the qualified spelling 'Status.Idle' " +
             "in the pattern to make the intent explicit.");
 
+        Add(dict, DiagnosticCodes.Validation.DefaultsErasedByConversion,
+            "Default parameters erased by function type conversion",
+            "Validation",
+            "When a function or lambda with default parameters is converted to a function type, " +
+            "the defaults are lost. .NET delegates do not carry default parameter values, so " +
+            "callers through the function-typed value must supply all arguments.",
+            "def add(a: int, b: int = 10) -> int:\n    return a + b\n\nf: (int, int) -> int = add  # warning: defaults erased",
+            "If defaults are needed, call the function directly rather than through the delegate, " +
+            "or ensure all callers pass every argument.");
+
         // ── Property observer validation (SPY0490-SPY0491, #416) ──────────
 
         Add(dict, DiagnosticCodes.Validation.PropertyObserverInvalidTarget,

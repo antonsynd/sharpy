@@ -616,6 +616,20 @@ internal partial class TypeChecker
                 }
             }
 
+            if (initType is FunctionType { OptionalParameterCount: > 0 } sourceFt
+                && declaredType is FunctionType targetFt
+                && targetFt.OptionalParameterCount < sourceFt.OptionalParameterCount)
+            {
+                _diagnostics.AddWarning(
+                    "Default parameters are erased when converting to a function type — " +
+                    "callers through this value must provide all arguments",
+                    varDecl.Span,
+                    varDecl.LineStart, varDecl.ColumnStart,
+                    _currentFilePath,
+                    DiagnosticCodes.Validation.DefaultsErasedByConversion,
+                    CompilerPhase.TypeChecking);
+            }
+
             RecordSequenceMaterialization(varDecl.InitialValue, initType, declaredType);
         }
         else if (declaredType is UnknownType)

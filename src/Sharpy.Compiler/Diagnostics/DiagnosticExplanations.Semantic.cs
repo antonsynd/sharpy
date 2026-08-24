@@ -865,6 +865,15 @@ public static partial class DiagnosticExplanations
             "def process(x: object):\n    if isinstance(x, list):\n        x += [4]  # error: x is narrowed, not a concrete list",
             "Rebind through a typed local:\n    if isinstance(x, list):\n        items: list[int] = x\n        items += [4]");
 
+        Add(dict, DiagnosticCodes.Semantic.DelegateErasedDefaults,
+            "Defaults not available through function-typed value",
+            "Semantic",
+            "When a function with default parameters is stored in a function-typed variable " +
+            "(delegate), the defaults are erased — .NET delegates do not carry default values. " +
+            "Call the function directly or pass all arguments explicitly.",
+            "def add(a: int, b: int = 10) -> int:\n    return a + b\n\nf: (int, int) -> int = add\nprint(f(1))  # error: defaults lost",
+            "Call directly or pass all arguments:\n    print(add(1))    # direct call, default applies\n    print(f(1, 10))  # explicit argument");
+
         Add(dict, DiagnosticCodes.Semantic.UnknownFutureFeature,
             "Unknown or mis-scoped '__future__' feature",
             "Semantic",
