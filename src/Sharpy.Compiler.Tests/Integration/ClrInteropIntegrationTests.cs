@@ -378,4 +378,36 @@ def main():
         Assert.Contains(".type", result.GeneratedCSharp);
         Assert.DoesNotContain(".Type", result.GeneratedCSharp);
     }
+
+    [Fact]
+    public void ClrKwargValidation_WrongSpelling_ReportsSPY0234WithSuggestion()
+    {
+        var source = @"
+import json
+
+def main():
+    data = {""a"": 1}
+    json.dumps(data, sortKeys=True)
+";
+        var result = CompileAndExecute(source);
+        Assert.False(result.Success);
+        Assert.Contains(result.CompilationErrors, e => e.Contains("Unknown keyword argument"));
+        Assert.Contains(result.CompilationErrors, e => e.Contains("sort_keys"));
+    }
+
+    [Fact]
+    public void ClrKwargValidation_CorrectSpelling_CompilesAndRuns()
+    {
+        var source = @"
+import json
+
+def main():
+    data = {""name"": ""test"", ""value"": 42}
+    result = json.dumps(data, sort_keys=True, indent=2)
+    print(result)
+";
+        var result = CompileAndExecute(source);
+        Assert.True(result.Success, $"Compilation failed: {string.Join("; ", result.CompilationErrors)}");
+        Assert.Contains("name", result.StandardOutput);
+    }
 }
