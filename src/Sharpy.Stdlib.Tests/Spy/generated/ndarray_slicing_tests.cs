@@ -33,7 +33,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (22, 5) - (22, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d });
 #line (23, 5) - (23, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
-                var v = a.Slice(new global::Sharpy.SliceSpec((int?)1, (int?)4));
+                var v = a.Slice(new global::Sharpy.SliceSpec((int? )1, (int? )4));
 #line (24, 5) - (24, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 Xunit.Assert.Equal(1, v.Ndim);
 #line (25, 5) - (25, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
@@ -49,7 +49,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (30, 5) - (30, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d });
 #line (31, 5) - (31, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
-                var v = a.Slice(new global::Sharpy.SliceSpec((int?)1, (int?)4));
+                var v = a.Slice(new global::Sharpy.SliceSpec((int? )1, (int? )4));
 #line (32, 5) - (32, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 v[0] = 99.0d;
 #line (33, 5) - (33, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
@@ -77,7 +77,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (44, 5) - (44, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d });
 #line (45, 5) - (45, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
-                var v = a.Slice(new global::Sharpy.SliceSpec(null, null, (int?)2));
+                var v = a.Slice(new global::Sharpy.SliceSpec(null, null, (int? )2));
 #line (46, 5) - (46, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.ArrayHelpers.GetItem(v.Shape, 0));
 #line (47, 5) - (47, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
@@ -91,7 +91,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (51, 5) - (51, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d });
 #line (52, 5) - (52, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
-                var v = a.Slice(new global::Sharpy.SliceSpec(null, null, (int?)-1));
+                var v = a.Slice(new global::Sharpy.SliceSpec(null, null, (int? )-1));
 #line (53, 5) - (53, 64) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 Xunit.Assert.True(np.Allclose(v, np.Array(new Sharpy.List<double>() { 5.0d, 4.0d, 3.0d, 2.0d, 1.0d })));
 #line hidden
@@ -103,7 +103,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (57, 5) - (57, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d });
 #line (58, 5) - (58, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
-                var v = a.Slice(new global::Sharpy.SliceSpec(null, null, (int?)2));
+                var v = a.Slice(new global::Sharpy.SliceSpec(null, null, (int? )2));
 #line (59, 5) - (59, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 Xunit.Assert.Equal(global::Sharpy.ArrayHelpers.GetItem(a.Strides, 0) * 2, global::Sharpy.ArrayHelpers.GetItem(v.Strides, 0));
 #line hidden
@@ -120,7 +120,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 try
                 {
 #line (65, 9) - (65, 15) 20 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
-                    _ = m.Slice(new global::Sharpy.SliceSpec((int?)0, (int?)2));
+                    _ = m.Slice(new global::Sharpy.SliceSpec((int? )0, (int? )2));
 #line hidden
                 }
                 catch (IndexError)
@@ -138,7 +138,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (69, 5) - (69, 78) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var m = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d, 7.0d, 8.0d, 9.0d }).Reshape(3, 3);
 #line (70, 5) - (70, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
-                var sub = m.Slice(new global::Sharpy.SliceSpec((int?)0, (int?)2), new global::Sharpy.SliceSpec((int?)1, (int?)3));
+                var sub = m.Slice(new global::Sharpy.SliceSpec((int? )0, (int? )2), new global::Sharpy.SliceSpec((int? )1, (int? )3));
 #line (71, 5) - (71, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.ArrayHelpers.GetItem(sub.Shape, 0));
 #line (72, 5) - (72, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
