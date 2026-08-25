@@ -868,11 +868,12 @@ internal partial class TypeChecker
         }
 
         // A user-module-qualified type reference (`lib.Circle`) resolves through the same
-        // tiers as bare `Circle` (#1586). The module-export switch has already set the expression
-        // type to UserDefinedType and marked it as a type reference.
+        // tiers as bare `Circle` (#1586). The module-export switch has already marked it as a
+        // type reference; the resolved UserDefinedType arrives as the `type` parameter (not yet
+        // cached in SemanticInfo at this point in the CheckExpression flow).
         if (reference is MemberAccess userQualified
             && _semanticInfo.IsTypeReference(reference)
-            && _semanticInfo.GetExpressionType(reference) is UserDefinedType { Symbol: TypeSymbol userTypeSym })
+            && type is UserDefinedType { Symbol: TypeSymbol userTypeSym })
         {
             return ClassifyResolvedConstructorReference(
                 userTypeSym, userTypeSym.Name, DescribeMemberPath(userQualified), isBuiltin: false);

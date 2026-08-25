@@ -373,8 +373,15 @@ internal partial class TypeChecker
             if (builtinsQualified != null)
                 return builtinsQualified;
 
-            if (TryResolveTypeSymbolFromMemberAccess(memberAccessCall) is { } moduleTypeSymbol)
+            if (TryResolveTypeSymbolFromMemberAccess(memberAccessCall, out var resolvedAlias) is { } moduleTypeSymbol)
             {
+                if (resolvedAlias != null
+                    && _symbolTable.BuiltinRegistry.IsBuiltinSymbol(moduleTypeSymbol))
+                {
+                    _semanticInfo.SetCalleeRouting(call, CalleeRouting.Builtin);
+                    _semanticInfo.SetCalleeAliasTargetName(call,
+                        resolvedAlias.TypeAnnotation?.Name ?? moduleTypeSymbol.Name);
+                }
                 return CheckConstructorCall(call, moduleTypeSymbol, argTypes, kwargTypes, totalArgCount);
             }
 
@@ -2166,7 +2173,12 @@ internal partial class TypeChecker
     /// and emitted <c>new Outer.Inner(5)</c> — CS0305 (#1193).</para>
     /// </summary>
     private TypeSymbol? TryResolveTypeSymbolFromMemberAccess(MemberAccess memberAccess)
+        => TryResolveTypeSymbolFromMemberAccess(memberAccess, out _);
+
+    private TypeSymbol? TryResolveTypeSymbolFromMemberAccess(
+        MemberAccess memberAccess, out TypeAliasSymbol? resolvedAlias)
     {
+        resolvedAlias = null;
         // The object is usually already checked (CheckCall runs CheckExpression on the callee
         // before routing here); fall back to checking it for paths that reach this helper
         // first (e.g., generic index-access resolution). Nested module access (email.message)
@@ -2217,12 +2229,18 @@ internal partial class TypeChecker
             {
                 var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
                 if (expanded is UserDefinedType { Symbol: TypeSymbol targetType })
+                {
+                    resolvedAlias = aliasSymbol;
                     return targetType;
+                }
                 if (expanded is BuiltinType bt)
                 {
                     var registryType = _symbolTable.BuiltinRegistry.GetType(bt.Name);
                     if (registryType != null)
+                    {
+                        resolvedAlias = aliasSymbol;
                         return registryType;
+                    }
                 }
             }
         }

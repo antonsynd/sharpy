@@ -375,6 +375,9 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<FunctionCall, CalleeRouting> _calleeRoutings =
         new(ReferenceEqualityComparer.Instance);
 
+    private readonly ConcurrentDictionary<FunctionCall, string> _calleeAliasTargetNames =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map declarations to their source generator bindings (bracket attributes that resolve to SourceGenerator subclasses)
     private readonly ConcurrentDictionary<Statement, List<GeneratorBinding>> _generatorBindings =
         new(ReferenceEqualityComparer.Instance);
@@ -525,6 +528,16 @@ public class SemanticInfo : ISemanticQuery
     public CalleeRouting? GetCalleeRouting(FunctionCall call)
     {
         return _calleeRoutings.TryGetValue(call, out var routing) ? routing : null;
+    }
+
+    public void SetCalleeAliasTargetName(FunctionCall call, string targetName)
+    {
+        _calleeAliasTargetNames[call] = targetName;
+    }
+
+    public string? GetCalleeAliasTargetName(FunctionCall call)
+    {
+        return _calleeAliasTargetNames.TryGetValue(call, out var name) ? name : null;
     }
 
     public void SetTypeAnnotation(TypeAnnotation annotation, SemanticType type)
@@ -1482,6 +1495,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._calleeRoutings)
             _calleeRoutings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._calleeAliasTargetNames)
+            _calleeAliasTargetNames.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._returnLowerings)
             _returnLowerings.TryAdd(kvp.Key, kvp.Value);

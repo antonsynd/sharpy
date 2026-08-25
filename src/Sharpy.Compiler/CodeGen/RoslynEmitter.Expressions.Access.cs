@@ -65,9 +65,11 @@ internal partial class RoslynEmitter
             && _context.SemanticInfo?.GetCalleeRouting(call) == CalleeRouting.Builtin;
         if (isBuiltinsQualified && callee is MemberAccess builtinsQualified)
         {
+            var resolvedName = _context.SemanticInfo?.GetCalleeAliasTargetName(call)
+                ?? builtinsQualified.Member;
             callee = new Identifier
             {
-                Name = builtinsQualified.Member,
+                Name = resolvedName,
                 LineStart = builtinsQualified.LineStart,
                 ColumnStart = builtinsQualified.ColumnStart,
                 LineEnd = builtinsQualified.LineEnd,
@@ -75,10 +77,11 @@ internal partial class RoslynEmitter
                 Span = builtinsQualified.Span
             };
         }
-        // Type alias transparency (#1527): an alias callee routed to Builtin needs its
-        // name rewritten to the TARGET's name so the emitter's name-keyed paths find it.
-        if (!isBuiltinsQualified
-            && _context.SemanticInfo?.GetCalleeRouting(call) == CalleeRouting.Builtin
+        // Type alias transparency (#1527, #1587): an alias callee routed to Builtin needs
+        // its name rewritten to the TARGET's name so the emitter's name-keyed paths find it.
+        // Also applies after the builtins-qualified rewrite above: `lib.Handle("42")` where
+        // Handle aliases int becomes Identifier("Handle") which then needs rewriting to "int".
+        if (_context.SemanticInfo?.GetCalleeRouting(call) == CalleeRouting.Builtin
             && callee is Identifier aliasId)
         {
             var aliasSymbol = _context.LookupSymbol(aliasId.Name) as TypeAliasSymbol;
