@@ -1,0 +1,4 @@
+class Registry:
+    enum Level:
+        LOW = 1
+        HIGH = 2

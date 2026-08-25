@@ -24,6 +24,5 @@ def main() -> None:
     q_slot: lib.Registry.Slot = lib.Registry.Slot(8)
     print(q_slot.index)
 
-    # The four-segment qualified enum VALUE (lib.Registry.Level.LOW) is NOT here: the
-    # member-access value path never hands off into NestedTypes, so it fails with
-    # "Type 'Registry' has no member 'Level'" while the bare spelling above works — #1590.
+    q_level: lib.Registry.Level = lib.Registry.Level.HIGH
+    print(q_level == lib.Registry.Level.HIGH)

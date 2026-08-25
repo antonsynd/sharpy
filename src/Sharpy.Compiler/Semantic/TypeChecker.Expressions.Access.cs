@@ -107,7 +107,9 @@ internal partial class TypeChecker
             var qualifiedTypeSym = qualifiedTypeUdt.Symbol ?? _symbolTable.LookupType(qualifiedTypeUdt.Name);
             if (qualifiedTypeSym != null)
             {
-                var resolved = TryResolveTypeMemberAccess(memberAccess, qualifiedTypeSym.Name, qualifiedTypeSym);
+                var resolved = TryResolveTypeMemberAccess(
+                    memberAccess, qualifiedTypeSym.Name, qualifiedTypeSym,
+                    ignoreQualifierGuard: true);
                 if (resolved != null)
                     return resolved;
             }
@@ -1784,7 +1786,8 @@ internal partial class TypeChecker
     /// static fields/methods). Returns null if no member was found.
     /// </summary>
     private SemanticType? TryResolveTypeMemberAccess(
-        MemberAccess memberAccess, string typeName, TypeSymbol typeSym)
+        MemberAccess memberAccess, string typeName, TypeSymbol typeSym,
+        bool ignoreQualifierGuard = false)
     {
         if (typeSym.TypeKind == TypeKind.Enum)
         {
@@ -1854,7 +1857,7 @@ internal partial class TypeChecker
             // type argument filling and inference.
             var nestedType = typeSym.NestedTypes.FirstOrDefault(n => n.Name == memberAccess.Member);
             if (nestedType != null && !nestedType.IsGeneric
-                && !ReferenceEquals(memberAccess, _currentMemberAccessQualifier))
+                && (ignoreQualifierGuard || !ReferenceEquals(memberAccess, _currentMemberAccessQualifier)))
             {
                 var nestedUdt = new UserDefinedType { Name = nestedType.Name, Symbol = nestedType };
                 _semanticInfo.SetExpressionType(memberAccess, nestedUdt);

@@ -641,6 +641,19 @@ internal partial class TypeChecker
             return argumentShape;
         }
 
+        // A type alias in call-argument position (map(bint, xs)) classifies through its target
+        // but the codegen fallback for bare TypeSymbol names does not resolve TypeAliasSymbol,
+        // so the lowering must be materialized here (#1588).
+        if (!isValueUse && constructorReference.Family != ConstructorReferenceFamily.UserType
+            && reference is Identifier aliasRef
+            && LookupBySpelling(aliasRef).Symbol is TypeAliasSymbol)
+        {
+            _semanticInfo.SetConstructorReferenceLowering(reference,
+                new ConstructorReferenceLowering(
+                    constructorReference.Family, constructorReference.Name,
+                    SemanticType.Unknown, 0));
+        }
+
         if (RefuseConstructorReferenceInNonCallableArgument(reference, constructorReference) is { } notCallable)
             return notCallable;
 

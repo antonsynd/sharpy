@@ -1,0 +1,5 @@
+type bint = int
+
+def main() -> None:
+    for x in map(bint, ["1", "2"]):
+        print(x)
