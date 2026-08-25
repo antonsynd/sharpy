@@ -867,6 +867,17 @@ internal partial class TypeChecker
                 qualifiedSymbol, qualified.Member, DescribeMemberPath(qualified), isBuiltin: true);
         }
 
+        // A user-module-qualified type reference (`lib.Circle`) resolves through the same
+        // tiers as bare `Circle` (#1586). The module-export switch has already set the expression
+        // type to UserDefinedType and marked it as a type reference.
+        if (reference is MemberAccess userQualified
+            && _semanticInfo.IsTypeReference(reference)
+            && _semanticInfo.GetExpressionType(reference) is UserDefinedType { Symbol: TypeSymbol userTypeSym })
+        {
+            return ClassifyResolvedConstructorReference(
+                userTypeSym, userTypeSym.Name, DescribeMemberPath(userQualified), isBuiltin: false);
+        }
+
         if (reference is not Identifier id
             || LookupBySpelling(id).Symbol is not TypeSymbol typeSymbol)
             return default;
