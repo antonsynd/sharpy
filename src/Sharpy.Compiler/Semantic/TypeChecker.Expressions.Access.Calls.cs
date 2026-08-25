@@ -171,6 +171,26 @@ internal partial class TypeChecker
         if (stagedExtensionCall != null)
             CompleteStagedExtensionCall(stagedExtensionCall, argTypes);
 
+        // Resolve any pending overload selections that were deferred because the expected type
+        // contained unsolved type parameters (#1589). Runs here — after all arguments are checked
+        // and before any dispatch path — so builtin functions (map, sorted, etc.) whose return
+        // type is inferred from the first argument's function type see the selected overload's
+        // concrete signature rather than the still-open expected type.
+        if (_pendingOverloadSelections.Count > 0)
+        {
+            if (earlyFuncSymbol != null)
+            {
+                ResolvePendingOverloadSelectionsFromArgTypes(earlyFuncSymbol, earlyParamOffset, argTypes);
+            }
+            else if (calleeFunctionType != null && ContainsTypeParameter(calleeFunctionType))
+            {
+                // Generic builtins like map have no earlyFuncSymbol (they're generic), but the
+                // callee's function type carries the parameter types with type parameters. Build
+                // a synthetic FunctionSymbol from the callee type to drive the resolution.
+                ResolvePendingOverloadSelectionsFromCalleeType(calleeFunctionType, argTypes);
+            }
+        }
+
         var totalArgCount = argTypes.Count + kwargTypes.Count;
 
         // Decide what an `isinstance` TYPE OPERAND denotes, once, here. Runs after argument checking
@@ -2566,6 +2586,25 @@ internal partial class TypeChecker
             var inferenceResult = _genericInference.InferTypeArguments(funcSymbol, inferenceArgTypes);
             if (inferenceResult.Success && inferenceResult.InferredTypes != null)
             {
+                // Resolve any pending overload selections that were deferred because the expected
+                // type contained unsolved type parameters (#1589). The inference result now has
+                // (at least partial) bindings, so re-enter overload selection with the concrete
+                // expected type. Any additional bindings (e.g. U = bytes from a selected
+                // bytes(str) -> bytes overload) are folded back into the inferred types.
+                var additionalBindings = ResolvePendingOverloadSelections(
+                    funcSymbol.TypeParameters, inferenceResult.InferredTypes);
+                if (additionalBindings != null)
+                {
+                    for (int tpi = 0; tpi < funcSymbol.TypeParameters.Count && tpi < inferenceResult.InferredTypes.Count; tpi++)
+                    {
+                        if (inferenceResult.InferredTypes[tpi] is TypeParameterType unbound
+                            && additionalBindings.TryGetValue(unbound.Name, out var bound))
+                        {
+                            inferenceResult.InferredTypes[tpi] = bound;
+                        }
+                    }
+                }
+
                 // Inference succeeded - substitute type parameters and return the result
                 var substitutedReturnType = SubstituteTypeParameters(
                     funcSymbol.ReturnType,
@@ -2596,6 +2635,10 @@ internal partial class TypeChecker
             }
             else
             {
+                // Inference failed — clear any pending overload selections that were recorded
+                // during argument checking; they cannot be resolved without inference (#1589).
+                _pendingOverloadSelections.Clear();
+
                 // Inference failed - report error
                 AddError(inferenceResult.ErrorMessage ?? "Type arguments cannot be inferred",
                     call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.CannotInferGenericType,

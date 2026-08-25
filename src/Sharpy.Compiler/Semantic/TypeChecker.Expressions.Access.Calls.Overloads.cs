@@ -1982,6 +1982,35 @@ internal partial class TypeChecker
         // it at every one of those positions.
         if (_expectedType is FunctionType target)
         {
+            // When the expected type still contains unsolved type parameters (e.g. `(T) -> U` from
+            // a generic function's parameter), the target cannot select among arity-divergent
+            // overloads yet. Defer the selection: record the candidates and return the expected type
+            // so generic inference can proceed with the other arguments. After inference substitutes
+            // the type variables, ResolvePendingOverloadSelections re-enters this logic with the
+            // now-concrete target (#1589).
+            if (ContainsTypeParameter(target))
+            {
+                // Probe for a constructor-reference classification so the lowering can be recorded
+                // at resolution time (the emitter needs it to emit a method group instead of a
+                // bare type name).
+                ConstructorReferenceFamily? ctorFamily = null;
+                string? ctorName = null;
+                if (reference is Identifier ctorId)
+                {
+                    var ctorTypeSymbol = _symbolTable.BuiltinRegistry.GetType(ctorId.Name);
+                    if (ctorTypeSymbol != null)
+                    {
+                        ctorFamily = ConstructorReferenceFamilyOf(ctorTypeSymbol);
+                        ctorName = ctorId.Name;
+                    }
+                }
+
+                _pendingOverloadSelections.Add(new PendingOverloadSelection(
+                    reference, candidates, target, ArgumentIndex: -1,
+                    ConstructorFamily: ctorFamily, ConstructorName: ctorName));
+                return target;
+            }
+
             var matching = candidates.Where(c => SignatureSatisfiesTarget(c.Signature, target)).ToList();
             if (matching.Count == 1)
                 return matching[0].Signature;
@@ -2031,6 +2060,38 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Whether a candidate signature satisfies a partially-concrete target — like
+    /// <see cref="SignatureSatisfiesTarget"/> but treats <see cref="TypeParameterType"/> positions in
+    /// the target as wildcards (#1589). Used by the deferred overload resolution where the target
+    /// still has unsolved type parameters (e.g. <c>(int32) -&gt; TOut</c>): the return-type position
+    /// carries <c>TOut</c>, and any concrete candidate return should match.
+    /// </summary>
+    private static bool SignatureSatisfiesPartialTarget(FunctionType candidate, FunctionType target)
+    {
+        var required = candidate.ParameterTypes.Count - candidate.OptionalParameterCount;
+        if (target.ParameterTypes.Count < required || target.ParameterTypes.Count > candidate.ParameterTypes.Count)
+            return false;
+
+        for (var i = 0; i < target.ParameterTypes.Count; i++)
+        {
+            // Unsolved type parameters in the target are wildcards.
+            if (target.ParameterTypes[i] is TypeParameterType)
+                continue;
+            if (!target.ParameterTypes[i].IsAssignableTo(candidate.ParameterTypes[i]))
+                return false;
+        }
+
+        // Return type: a type parameter is a wildcard, anything else checks covariance.
+        if (target.ReturnType is TypeParameterType or UnknownType)
+            return true;
+        if (candidate.ReturnType.IsAssignableTo(target.ReturnType))
+            return true;
+        if (candidate.ReturnType.ClrType != null && candidate.ReturnType.ClrType == target.ReturnType.ClrType)
+            return true;
+        return false;
+    }
+
+    /// <summary>
     /// Whether a candidate signature can be bound to a target function type: same arity (counting the
     /// target's parameters against the candidate's required ones), every target parameter assignable
     /// to the candidate's corresponding parameter (contravariant), and the candidate's return type
@@ -2067,4 +2128,315 @@ internal partial class TypeChecker
         MemberAccess memberAccess => memberAccess.Member,
         _ => "reference"
     };
+
+    /// <summary>
+    /// Re-enters overload selection for callable references that were deferred because the expected
+    /// type contained unsolved type parameters (#1589). Called after generic inference substitutes
+    /// the type variables, so the expected type is now (at least partially) concrete.
+    ///
+    /// <para>For each pending selection, the inferred substitutions are applied to the expected type
+    /// and <see cref="SignatureSatisfiesTarget"/> is re-checked against the candidate set. A unique
+    /// match updates the expression's recorded type; an unresolvable set emits SPY0336.</para>
+    ///
+    /// <para>Returns the additional type-parameter bindings discovered by resolving the deferred
+    /// overloads (e.g. the return type of a selected <c>bytes(str) -&gt; bytes</c> binding U), so
+    /// the caller can fold them into the inference result.</para>
+    /// </summary>
+    private Dictionary<string, SemanticType>? ResolvePendingOverloadSelections(
+        List<TypeParameterDef> typeParams, List<SemanticType> inferredTypes)
+    {
+        if (_pendingOverloadSelections.Count == 0)
+            return null;
+
+        Dictionary<string, SemanticType>? additionalBindings = null;
+
+        // Build the substitution map from the inference result.
+        var substitutions = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+        for (int i = 0; i < typeParams.Count && i < inferredTypes.Count; i++)
+            substitutions[typeParams[i].Name] = inferredTypes[i];
+
+        foreach (var pending in _pendingOverloadSelections)
+        {
+            // Apply the inference substitutions to the expected type.
+            var concreteTarget = (FunctionType)TypeSubstitution.Apply(pending.ExpectedType, substitutions);
+
+            // Use partial target matching: remaining unsolved type parameters (e.g. TOut in
+            // (int32) -> TOut) are treated as wildcards so the return type doesn't block selection.
+            var matching = pending.Candidates
+                .Where(c => SignatureSatisfiesPartialTarget(c.Signature, concreteTarget))
+                .ToList();
+
+            if (matching.Count == 1)
+            {
+                // Selection succeeded — update the expression's recorded type.
+                _semanticInfo.SetExpressionType(pending.Reference, matching[0].Signature);
+
+                // Record the constructor-reference lowering so the emitter knows to emit a method
+                // group (e.g. Builtins.Bytes) instead of a bare type name (e.g. Sharpy.Bytes).
+                // This mirrors what TryPinConstructorReference does on the non-deferred path.
+                if (pending.ConstructorFamily is { } family && pending.ConstructorName is { } ctorName)
+                {
+                    _semanticInfo.SetConstructorReferenceLowering(pending.Reference,
+                        new ConstructorReferenceLowering(
+                            family, ctorName,
+                            matching[0].Signature.ReturnType,
+                            matching[0].Signature.ParameterTypes.Count));
+                }
+
+                // Extract any new type-parameter bindings the selected overload's signature reveals.
+                // For example, if the target was (str) -> U and the selected overload is
+                // (str) -> bytes, then U = bytes.
+                var selectedReturn = matching[0].Signature.ReturnType;
+                if (concreteTarget.ReturnType is TypeParameterType returnParam
+                    && selectedReturn is not TypeParameterType and not UnknownType)
+                {
+                    additionalBindings ??= new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+                    additionalBindings[returnParam.Name] = selectedReturn;
+                }
+
+                // Also check parameter-level bindings.
+                for (int p = 0; p < concreteTarget.ParameterTypes.Count && p < matching[0].Signature.ParameterTypes.Count; p++)
+                {
+                    if (concreteTarget.ParameterTypes[p] is TypeParameterType paramTypeParam
+                        && matching[0].Signature.ParameterTypes[p] is not TypeParameterType and not UnknownType)
+                    {
+                        additionalBindings ??= new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+                        additionalBindings[paramTypeParam.Name] = matching[0].Signature.ParameterTypes[p];
+                    }
+                }
+            }
+            else
+            {
+                // Still unresolvable after inference — emit SPY0336.
+                var signatures = string.Join("\n  ",
+                    pending.Candidates.Select(c => $"{c.Symbol.Name}{c.Signature.GetDisplayName()}"));
+                AddError(
+                    $"'{DescribeReference(pending.Reference)}' has {pending.Candidates.Count} overloads taking "
+                    + "different numbers of arguments, so it cannot be used as a value without a target type "
+                    + "to select one. Candidates:\n  " + signatures,
+                    pending.Reference.LineStart, pending.Reference.ColumnStart,
+                    code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
+                    span: pending.Reference.Span);
+                _semanticInfo.SetExpressionType(pending.Reference, SemanticType.Unknown);
+            }
+        }
+
+        _pendingOverloadSelections.Clear();
+        return additionalBindings;
+    }
+
+    /// <summary>
+    /// Resolves pending overload selections using the early function symbol and actual argument types
+    /// (#1589). Called right after <c>CheckCallArguments</c>, before any dispatch path, so builtin
+    /// functions like <c>map</c> whose return type is inferred from the first argument's function type
+    /// see the selected overload's concrete signature rather than the still-open expected type.
+    ///
+    /// <para>The method infers type parameter substitutions from the formal-to-actual argument type
+    /// pairs (e.g. <c>Iterable[T]</c> vs <c>list[int]</c> gives <c>T = int</c>), then applies them
+    /// to each pending expected type and re-enters overload selection. Updates <paramref name="argTypes"/>
+    /// in place for the selected overload's position so the downstream return-type inference reads the
+    /// concrete type.</para>
+    /// </summary>
+    private void ResolvePendingOverloadSelectionsFromArgTypes(
+        FunctionSymbol earlyFuncSymbol, int earlyParamOffset, List<SemanticType> argTypes)
+    {
+        if (_pendingOverloadSelections.Count == 0 || !earlyFuncSymbol.IsGeneric)
+            return;
+
+        // Collect formal/actual pairs from the NON-pending arguments to infer type parameters.
+        var formals = new List<SemanticType>();
+        var actuals = new List<SemanticType>();
+        var pendingIndices = new HashSet<int>(
+            _pendingOverloadSelections.Select((_, i) => i));
+
+        for (int argIdx = 0; argIdx < argTypes.Count; argIdx++)
+        {
+            var paramIdx = argIdx + earlyParamOffset;
+            if (paramIdx >= earlyFuncSymbol.Parameters.Count)
+                break;
+
+            var formalType = earlyFuncSymbol.Parameters[paramIdx].Type;
+
+            // Skip this argument if its type is the pending expected type (it's a pending overload).
+            if (argTypes[argIdx] is FunctionType argFt && ContainsTypeParameter(argFt))
+                continue;
+
+            formals.Add(formalType);
+            actuals.Add(argTypes[argIdx]);
+        }
+
+        // Infer type parameters from the non-pending arguments. Structural unification may return
+        // null when outer names differ (IEnumerable[T] vs list[int]) — the iterable enrichment
+        // below handles that case.
+        var substitutions = _genericInference.UnifyTypes(formals, actuals)
+            ?? new Dictionary<string, SemanticType>();
+
+        // Also infer element types from iterables — the same enrichment TryCheckDeferredLambdaArguments
+        // applies, so `map(bytes, items)` where items: list[int] binds T = int even when the
+        // structural unification didn't fully resolve it.
+        for (int i = 0; i < formals.Count; i++)
+        {
+            if (formals[i] is GenericType { TypeArguments.Count: 1 } iterableFormal
+                && iterableFormal.TypeArguments[0] is TypeParameterType elementParam
+                && _typeInference.InferIterableElementType(actuals[i]) is { } elementType
+                && elementType is not UnknownType)
+            {
+                substitutions[elementParam.Name] = elementType;
+            }
+        }
+
+        if (substitutions.Count == 0)
+            return;
+
+        // Resolve each pending overload with the now-known substitutions.
+        foreach (var pending in _pendingOverloadSelections)
+        {
+            var concreteTarget = (FunctionType)TypeSubstitution.Apply(pending.ExpectedType, substitutions);
+
+            var matching = pending.Candidates
+                .Where(c => SignatureSatisfiesPartialTarget(c.Signature, concreteTarget))
+                .ToList();
+
+            if (matching.Count == 1)
+            {
+                _semanticInfo.SetExpressionType(pending.Reference, matching[0].Signature);
+
+                // Record constructor-reference lowering for the emitter.
+                if (pending.ConstructorFamily is { } family && pending.ConstructorName is { } ctorName)
+                {
+                    _semanticInfo.SetConstructorReferenceLowering(pending.Reference,
+                        new ConstructorReferenceLowering(
+                            family, ctorName,
+                            matching[0].Signature.ReturnType,
+                            matching[0].Signature.ParameterTypes.Count));
+                }
+
+                // Update the argument type in place so downstream inference reads the concrete type.
+                for (int argIdx = 0; argIdx < argTypes.Count; argIdx++)
+                {
+                    if (ReferenceEquals(argTypes[argIdx], pending.ExpectedType))
+                    {
+                        argTypes[argIdx] = matching[0].Signature;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                var signatures = string.Join("\n  ",
+                    pending.Candidates.Select(c => $"{c.Symbol.Name}{c.Signature.GetDisplayName()}"));
+                AddError(
+                    $"'{DescribeReference(pending.Reference)}' has {pending.Candidates.Count} overloads taking "
+                    + "different numbers of arguments, so it cannot be used as a value without a target type "
+                    + "to select one. Candidates:\n  " + signatures,
+                    pending.Reference.LineStart, pending.Reference.ColumnStart,
+                    code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
+                    span: pending.Reference.Span);
+                _semanticInfo.SetExpressionType(pending.Reference, SemanticType.Unknown);
+            }
+        }
+
+        _pendingOverloadSelections.Clear();
+    }
+
+    /// <summary>
+    /// Resolves pending overload selections using the callee's function type to infer type parameter
+    /// substitutions (#1589). Handles generic builtins like <c>map</c> whose
+    /// <see cref="ResolveEarlyFunctionSymbol"/> returns null because they are generic. The callee's
+    /// function type carries the parameter types with type parameters (e.g. <c>(T) -&gt; U</c> and
+    /// <c>Iterable[T]</c>), so the non-pending argument types can bind them.
+    /// </summary>
+    private void ResolvePendingOverloadSelectionsFromCalleeType(
+        FunctionType calleeFunctionType, List<SemanticType> argTypes)
+    {
+        if (_pendingOverloadSelections.Count == 0)
+            return;
+
+        // Collect formal/actual pairs from the non-pending arguments.
+        var formals = new List<SemanticType>();
+        var actuals = new List<SemanticType>();
+
+        for (int argIdx = 0; argIdx < argTypes.Count && argIdx < calleeFunctionType.ParameterTypes.Count; argIdx++)
+        {
+            var formalType = calleeFunctionType.ParameterTypes[argIdx];
+
+            // Skip this argument if it's a pending overload (its type is the unsolved expected type).
+            if (argTypes[argIdx] is FunctionType argFt && ContainsTypeParameter(argFt))
+                continue;
+
+            formals.Add(formalType);
+            actuals.Add(argTypes[argIdx]);
+        }
+
+        // Structural unification may fail when formal and actual have different outer names
+        // (e.g. IEnumerable[T] vs list[int]) — the iterable enrichment below handles that.
+        var substitutions = _genericInference.UnifyTypes(formals, actuals)
+            ?? new Dictionary<string, SemanticType>();
+
+        // Enrich with element-type inference from iterables — the structural unification above
+        // cannot resolve IEnumerable[T] against list[int] because the outer names differ, but
+        // InferIterableElementType knows list[int]'s element is int.
+        for (int i = 0; i < formals.Count; i++)
+        {
+            if (formals[i] is GenericType { TypeArguments.Count: 1 } iterableFormal
+                && iterableFormal.TypeArguments[0] is TypeParameterType elementParam
+                && _typeInference.InferIterableElementType(actuals[i]) is { } elementType
+                && elementType is not UnknownType)
+            {
+                substitutions[elementParam.Name] = elementType;
+            }
+        }
+
+        if (substitutions.Count == 0)
+            return;
+
+        // Resolve each pending overload.
+        foreach (var pending in _pendingOverloadSelections)
+        {
+            var concreteTarget = (FunctionType)TypeSubstitution.Apply(pending.ExpectedType, substitutions);
+
+            var matching = pending.Candidates
+                .Where(c => SignatureSatisfiesPartialTarget(c.Signature, concreteTarget))
+                .ToList();
+
+            if (matching.Count == 1)
+            {
+                _semanticInfo.SetExpressionType(pending.Reference, matching[0].Signature);
+
+                if (pending.ConstructorFamily is { } family && pending.ConstructorName is { } ctorName)
+                {
+                    _semanticInfo.SetConstructorReferenceLowering(pending.Reference,
+                        new ConstructorReferenceLowering(
+                            family, ctorName,
+                            matching[0].Signature.ReturnType,
+                            matching[0].Signature.ParameterTypes.Count));
+                }
+
+                // Update argTypes in place so downstream return-type inference reads the concrete type.
+                for (int argIdx = 0; argIdx < argTypes.Count; argIdx++)
+                {
+                    if (ReferenceEquals(argTypes[argIdx], pending.ExpectedType))
+                    {
+                        argTypes[argIdx] = matching[0].Signature;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                var signatures = string.Join("\n  ",
+                    pending.Candidates.Select(c => $"{c.Symbol.Name}{c.Signature.GetDisplayName()}"));
+                AddError(
+                    $"'{DescribeReference(pending.Reference)}' has {pending.Candidates.Count} overloads taking "
+                    + "different numbers of arguments, so it cannot be used as a value without a target type "
+                    + "to select one. Candidates:\n  " + signatures,
+                    pending.Reference.LineStart, pending.Reference.ColumnStart,
+                    code: DiagnosticCodes.Semantic.AmbiguousCallableReference,
+                    span: pending.Reference.Span);
+                _semanticInfo.SetExpressionType(pending.Reference, SemanticType.Unknown);
+            }
+        }
+
+        _pendingOverloadSelections.Clear();
+    }
 }

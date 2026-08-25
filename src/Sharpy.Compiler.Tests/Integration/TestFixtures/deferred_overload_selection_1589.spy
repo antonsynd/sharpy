@@ -1,0 +1,13 @@
+# #1589: Two-pass deferred selection for arity-divergent overloads.
+# When bytes (with overloads [0, 1(int32), 1(IEnumerable<int>)]) is passed as
+# a callable argument to a generic function like map, the expected type from
+# map's parameter is (TIn) -> TOut, where TIn and TOut are unsolved when bytes
+# is checked (arg 0, before the iterable binds TIn). The deferred selection
+# mechanism holds off on SPY0336, infers TIn from the iterable's element type,
+# and resolves the correct overload after inference.
+
+def main() -> None:
+    sizes: list[int32] = [5, 3, 7]
+    result: list[bytes] = list(map(bytes, sizes))
+    for b in result:
+        print(len(b))

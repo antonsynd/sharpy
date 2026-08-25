@@ -220,6 +220,12 @@ internal partial class TypeChecker
     // equality (Symbol overrides it).
     private readonly Dictionary<Symbol, ListBackingKind> _listBackingKinds = new();
 
+    // Pending overload selections for callable references whose arity-divergent overloads cannot be
+    // resolved because the expected type still contains unsolved type parameters (#1589). Populated
+    // during argument checking and consumed after generic inference substitutes the type variables.
+    // Keyed by reference identity so the same expression is not recorded twice.
+    private readonly List<PendingOverloadSelection> _pendingOverloadSelections = new();
+
     // Cancellation token for long-running analysis
     private CancellationToken _cancellationToken = default;
 
