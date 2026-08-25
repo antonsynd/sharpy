@@ -1,0 +1,10 @@
+# #1589: positive control — an annotated pin selects the overload without
+# deferral. The explicit type annotation (int32) -> bytes resolves bytes
+# to the 1-arg int32 overload immediately.
+
+def main() -> None:
+    mk: (int32) -> bytes = bytes
+    sizes: list[int32] = [5, 3, 7]
+    result: list[bytes] = list(map(mk, sizes))
+    for b in result:
+        print(len(b))
