@@ -995,7 +995,16 @@ internal partial class TypeChecker
     /// </summary>
     private bool IsConstructedClrGenericReceiver(SemanticType type)
     {
-        if (type is not GenericType { GenericDefinition.ClrType: { } defClr })
+        if (type is not GenericType generic)
+            return false;
+
+        // #1568: GenericDefinition is per-analysis state that does not survive the
+        // symbol cache. Warm-restored generics have it null, so fall back to
+        // ClrOriginTypeName → ResolveOriginDefinition (the same pattern as
+        // ClrTypeHelper.cs:398).
+        var defClr = generic.GenericDefinition?.ClrType
+            ?? Discovery.ClrTypeHelper.ResolveOriginDefinition(generic);
+        if (defClr == null)
             return false;
 
         return defClr.IsGenericTypeDefinition

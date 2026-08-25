@@ -424,7 +424,7 @@ internal static class ClrTypeHelper
     /// longer resolves. Arity is checked here so a name that resolves to a differently-shaped
     /// definition is rejected rather than blowing up inside <c>MakeGenericType</c>.
     /// </summary>
-    private static Type? ResolveOriginDefinition(GenericType generic)
+    internal static Type? ResolveOriginDefinition(GenericType generic)
     {
         if (generic.ClrOriginTypeName is not { Length: > 0 } originName)
             return null;
