@@ -292,7 +292,7 @@ namespace Sharpy
             while (b != 0)
             {
                 long temp = b;
-                b = a % b;
+                b = global::Sharpy.Builtins.FloorMod(a, b);
                 a = temp;
             }
 

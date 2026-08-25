@@ -5062,6 +5062,19 @@ internal partial class TypeChecker
                     argumentCompatible = nonParams;
             }
 
+            // Prefer candidates whose total parameter count matches the arg count
+            // exactly — Dump(Object, TextFile) wins over Dump(Object, TextFile,
+            // Boolean=default) when called with 2 args (standard C# preference for
+            // the overload that doesn't skip optional parameters).
+            if (argumentCompatible.Count > 1)
+            {
+                var exactArity = argumentCompatible
+                    .Where(c => c.GetParameters().Length == argTypes.Count)
+                    .ToList();
+                if (exactArity.Count > 0)
+                    argumentCompatible = exactArity;
+            }
+
             // Best conversion target: when one candidate's parameters are all at
             // least as specific as another's, eliminate the less specific one. This
             // handles Console.WriteLine(String) vs WriteLine(Object) — String is
