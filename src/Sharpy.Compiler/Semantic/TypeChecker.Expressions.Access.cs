@@ -371,6 +371,11 @@ internal partial class TypeChecker
                     return SemanticType.Unknown;
                 }
 
+                // Before falling through to the permissive channel, check whether the
+                // member is only accessible through an explicitly-implemented interface.
+                // If so, record the interface-cast lowering for codegen (#1572).
+                TryRecordInterfaceCastLowering(memberAccess, memberLookupType);
+
                 // Member not found on CLR type — fall back to codegen rather than
                 // emitting an error, since the TypeSymbol may be a CLR shadow of a
                 // user-defined type with different members.
@@ -744,6 +749,10 @@ internal partial class TypeChecker
                 data: SuggestionData(builtinSuggestion));
             return SemanticType.Unknown;
         }
+
+        // Before falling through to the permissive channel, check whether the member
+        // is only accessible through an explicitly-implemented interface (#1572).
+        TryRecordInterfaceCastLowering(memberAccess, memberLookupType);
 
         // GenericType (list[T].append), BuiltinType (str.upper), TupleType, etc.
         // are resolved by the codegen layer through CLR member discovery, not the
@@ -1684,6 +1693,47 @@ internal partial class TypeChecker
             candidates = candidates.Concat(new[] { verbMapped });
         }
         return candidates.Any(clrNames!.Contains);
+    }
+
+    private void TryRecordInterfaceCastLowering(MemberAccess memberAccess, SemanticType ownerType)
+    {
+        var ownerSymbol = ResolveInstanceMemberOwnerSymbol(ownerType);
+        if (ownerSymbol?.ClrType == null)
+            return;
+
+        var clrType = TryGetClrType(ownerType) ?? ownerSymbol.ClrType;
+
+        if (clrType.IsInterface)
+            return;
+
+        var candidates = CodeGenMemberNameCandidates(memberAccess.Member).ToList();
+
+        foreach (var candidate in candidates)
+        {
+            var directMembers = clrType.GetMember(candidate,
+                BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+            if (directMembers.Length > 0)
+                return;
+        }
+
+        foreach (var iface in clrType.GetInterfaces())
+        {
+            foreach (var candidate in candidates)
+            {
+                var ifaceMembers = iface.GetMember(candidate,
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (ifaceMembers.Length > 0)
+                {
+                    var interfaceFqn = iface.IsGenericType
+                        ? iface.GetGenericTypeDefinition().FullName ?? iface.Name
+                        : iface.FullName ?? iface.Name;
+
+                    _semanticInfo.SetInterfaceCastLowering(memberAccess,
+                        new InterfaceCastLowering(interfaceFqn));
+                    return;
+                }
+            }
+        }
     }
 
     private static bool IsClrCollectionType(Type? clrType)

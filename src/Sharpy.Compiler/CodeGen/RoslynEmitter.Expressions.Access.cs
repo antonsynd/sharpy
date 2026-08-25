@@ -1655,7 +1655,17 @@ internal partial class RoslynEmitter
         }
         else
         {
-            // obj.member
+            // When the member is only accessible through an explicitly-implemented interface
+            // (e.g. IList.IsFixedSize on List<T>), the TypeChecker recorded an InterfaceCastLowering.
+            // Wrap the receiver in a cast so codegen emits ((InterfaceType)obj).Member (#1572).
+            var interfaceCast = _context.SemanticInfo?.GetInterfaceCastLowering(memberAccess);
+            if (interfaceCast != null)
+            {
+                var interfaceType = MakeGlobalQualifiedName(interfaceCast.InterfaceTypeName.Split('.'));
+                obj = ParenthesizedExpression(CastExpression(interfaceType, obj));
+            }
+
+            // obj.member (or ((InterfaceType)obj).member when interface-cast lowering is active)
             result = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 obj,

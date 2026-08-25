@@ -1,0 +1,11 @@
+# Access an explicitly-implemented interface member on a CLR collection type (#1572).
+#
+# List<T> explicitly implements IList.IsFixedSize — the property is not directly accessible
+# as a public member but is reachable through the interface.  The TypeChecker detects this
+# and records an InterfaceCastLowering so the emitter wraps the receiver in an interface cast:
+#   ((System.Collections.IList)xs).IsFixedSize
+# Without the cast the emitted C# fails with CS1061 behind SPY0908.
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(xs.is_fixed_size)

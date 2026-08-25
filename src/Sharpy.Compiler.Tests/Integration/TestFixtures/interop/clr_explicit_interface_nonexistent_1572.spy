@@ -1,0 +1,8 @@
+# A member that does not exist even through interfaces produces SPY0203 (#1572).
+#
+# This verifies that the absence proof still fires for genuinely missing members on CLR
+# receivers, even when the interface-cast lowering path is active.
+
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(xs.no_such_interface_member_xyz)
