@@ -2207,10 +2207,24 @@ internal partial class TypeChecker
                 memberName = pascalName;
         }
 
-        if (moduleSymbol.Exports.TryGetValue(memberName, out var exportedSymbol)
-            && exportedSymbol is TypeSymbol typeSymbol)
+        if (moduleSymbol.Exports.TryGetValue(memberName, out var exportedSymbol))
         {
-            return typeSymbol;
+            if (exportedSymbol is TypeSymbol typeSymbol)
+                return typeSymbol;
+
+            if (exportedSymbol is TypeAliasSymbol aliasSymbol
+                && aliasSymbol.TypeAnnotation != null)
+            {
+                var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+                if (expanded is UserDefinedType { Symbol: TypeSymbol targetType })
+                    return targetType;
+                if (expanded is BuiltinType bt)
+                {
+                    var registryType = _symbolTable.BuiltinRegistry.GetType(bt.Name);
+                    if (registryType != null)
+                        return registryType;
+                }
+            }
         }
 
         return null;

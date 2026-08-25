@@ -878,12 +878,29 @@ internal partial class TypeChecker
                 userTypeSym, userTypeSym.Name, DescribeMemberPath(userQualified), isBuiltin: false);
         }
 
-        if (reference is not Identifier id
-            || LookupBySpelling(id).Symbol is not TypeSymbol typeSymbol)
+        if (reference is not Identifier id)
+            return default;
+
+        var lookedUp = LookupBySpelling(id).Symbol;
+        TypeSymbol? typeSymbol = lookedUp as TypeSymbol;
+
+        if (typeSymbol == null && lookedUp is TypeAliasSymbol aliasSymbol
+            && aliasSymbol.TypeAnnotation != null)
+        {
+            var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+            typeSymbol = expanded switch
+            {
+                UserDefinedType { Symbol: TypeSymbol ts } => ts,
+                BuiltinType bt => _symbolTable.BuiltinRegistry.GetType(bt.Name),
+                _ => null
+            };
+        }
+
+        if (typeSymbol == null)
             return default;
 
         var isBuiltin = ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(id.Name));
-        return ClassifyResolvedConstructorReference(typeSymbol, id.Name, writtenName: null, isBuiltin);
+        return ClassifyResolvedConstructorReference(typeSymbol, typeSymbol.Name, writtenName: null, isBuiltin);
     }
 
     /// <summary>

@@ -594,6 +594,31 @@ internal partial class TypeChecker
         return SemanticType.Unknown;
     }
 
+    private SemanticType ResolveModuleExportedAlias(TypeAliasSymbol aliasSymbol)
+    {
+        if (aliasSymbol.TypeAnnotation == null)
+            return SemanticType.Unknown;
+
+        var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+        if (expanded is BuiltinType bt)
+        {
+            var registryType = _symbolTable.BuiltinRegistry.GetType(bt.Name);
+            if (registryType != null && PrimitiveCatalog.IsPrimitive(registryType.Name))
+                return SynthesizePrimitiveFunctionType(registryType);
+            return new UserDefinedType { Name = bt.Name, Symbol = registryType };
+        }
+
+        if (expanded is UserDefinedType udt)
+        {
+            if (udt.Symbol is TypeSymbol ts && PrimitiveCatalog.IsPrimitive(ts.Name)
+                && ReferenceEquals(ts, _symbolTable.BuiltinRegistry.GetType(ts.Name)))
+                return SynthesizePrimitiveFunctionType(ts);
+            return udt;
+        }
+
+        return SemanticType.Unknown;
+    }
+
     private SemanticType SynthesizePrimitiveFunctionType(TypeSymbol ts)
     {
         var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(ts.Name);

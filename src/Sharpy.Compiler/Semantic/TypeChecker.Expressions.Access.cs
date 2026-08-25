@@ -249,20 +249,19 @@ internal partial class TypeChecker
                     FunctionSymbol funcSymbol => FunctionType.FromParameters(funcSymbol.Parameters, funcSymbol.ReturnType),
                     TypeSymbol typeSymbol => new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol },
                     ModuleSymbol nestedModule => new ModuleType { Symbol = nestedModule },
+                    TypeAliasSymbol aliasSymbol => ResolveModuleExportedAlias(aliasSymbol),
                     _ => SemanticType.Unknown
                 };
-                // Mark error recovery for unhandled symbol types in module exports
-                // (e.g., TypeAliasSymbol) — these are resolved elsewhere, not a compiler bug.
                 if (exportedType is UnknownType)
                 {
                     MarkExpressionAsErrorRecovery(memberAccess,
                         ErrorRecoveryReason.DeliberatelyPermissive(
-                            "a module export of an unhandled symbol kind (type alias) is resolved elsewhere"));
+                            "a module export of an unhandled symbol kind is resolved elsewhere"));
                 }
-                // A module-qualified reference to an exported type denotes the type itself,
-                // not a value. Record this so argument validation can accept it for
-                // parameters backed by CLR System.Type (e.g., assert_raises(mod.SomeError)).
-                else if (exportedSymbol is TypeSymbol)
+                // A module-qualified reference to an exported type (or a type alias resolving
+                // to a UDT) denotes the type itself.
+                else if (exportedSymbol is TypeSymbol
+                    || (exportedSymbol is TypeAliasSymbol && exportedType is UserDefinedType))
                     _semanticInfo.MarkTypeReference(memberAccess);
                 return exportedType;
             }
