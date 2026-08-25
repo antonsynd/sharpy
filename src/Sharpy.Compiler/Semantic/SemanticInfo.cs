@@ -300,6 +300,14 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, IndexAccessLowering> _indexAccessLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // #1572: Map a member-access expression to an interface cast the emitter must wrap the receiver
+    // in before accessing the member. Only present when the member is reachable exclusively through
+    // an explicitly-implemented interface (e.g. IList.IsFixedSize on List<T>). The TypeChecker
+    // discovers this via CLR reflection; the emitter reads the fact and emits
+    // ((InterfaceType)receiver).MemberName (Critical Rule 2 pattern (b)).
+    private readonly ConcurrentDictionary<Expression, InterfaceCastLowering> _interfaceCastLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map a generic-reference index access (callee[T, ...]) to the normalized GenericReference fact the
     // GenericReferenceResolver produced: the callee kind, its target symbol / receiver type, the
     // resolved type arguments, and (for arity-selected builtins) the selected overload. This is the
@@ -1280,6 +1288,23 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records that the member access requires an interface cast on the receiver.
+    /// Only set when the member is exclusively available through an explicitly-implemented interface.
+    /// </summary>
+    public void SetInterfaceCastLowering(Expression memberAccess, InterfaceCastLowering lowering)
+    {
+        _interfaceCastLowerings[memberAccess] = lowering;
+    }
+
+    /// <summary>
+    /// Gets the interface cast lowering for a member access, or <c>null</c> when no cast is needed.
+    /// </summary>
+    public InterfaceCastLowering? GetInterfaceCastLowering(Expression memberAccess)
+    {
+        return _interfaceCastLowerings.TryGetValue(memberAccess, out var lowering) ? lowering : null;
+    }
+
+    /// <summary>
     /// Records the normalized <see cref="GenericReference"/> fact for a generic-reference index access
     /// (<c>callee[T, ...]</c>), produced by the GenericReferenceResolver. The emitter reads this to
     /// lower the reference by <see cref="GenericReference.Kind"/> without re-deriving the callee shape
@@ -1513,6 +1538,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._matchScrutineeLowerings)
             _matchScrutineeLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._interfaceCastLowerings)
+            _interfaceCastLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var (symbol, refs) in other._symbolReferences)
         {
@@ -2118,3 +2146,9 @@ public enum TruthinessLowering
     /// <summary><c>NoneType</c>: always false (emit <c>false</c>).</summary>
     AlwaysFalse
 }
+
+/// <summary>
+/// Records that a member access requires casting the receiver to a CLR interface
+/// before accessing the member (explicitly-implemented interface members, #1572).
+/// </summary>
+public sealed record InterfaceCastLowering(string InterfaceTypeName);
