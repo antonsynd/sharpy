@@ -577,6 +577,8 @@ public sealed class CompilerApi
         {
             var packageAssemblies = Project.NuGetResolver.ResolvePackage(
                 packageRef, config.TargetFramework, _logger, config.ResolvedVersions);
+            if (packageAssemblies.Count == 0)
+                _logger?.LogWarning($"Package '{packageRef.Name}' version '{packageRef.Version}' was not resolved by NuGet restore", 0, 0);
             foreach (var assemblyPath in packageAssemblies)
                 registry.LoadReference(assemblyPath);
         }

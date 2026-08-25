@@ -1,0 +1,5 @@
+def main():
+    const N: int = 1
+    t: tuple[int, str, float] = (1, "a", 3.14)
+    result: tuple[str, float] = t[N:]
+    print(result)

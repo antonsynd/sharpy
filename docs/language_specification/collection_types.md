@@ -264,6 +264,35 @@ Unlike Python, Sharpy does not support negative tuple indices. This is because t
 *Implementation*
 - *🔄 Lowered - `tuple[i]` is lowered to `.Item{i+1}` (e.g., `tuple[0]` → `.Item1`, `tuple[1]` → `.Item2`).*
 
+## Tuple Slicing
+
+Tuples support slicing with **constant non-negative integer bounds** only. The result type is a
+narrower tuple containing the selected element types:
+
+```python
+t: tuple[int, str, float, bool] = (1, "hello", 3.14, True)
+a: tuple[str, float, bool] = t[1:]     # ('hello', 3.14, True)
+b: tuple[int, str] = t[:2]             # (1, 'hello')
+c: tuple[str, float] = t[1:3]          # ('hello', 3.14)
+```
+
+Constant references (`const N: int = 1; t[N:]`) are resolved at compile time via constant folding.
+
+### Restrictions
+
+| Restriction | Reason |
+|-------------|--------|
+| Bounds must be constant non-negative integers | Tuple element types vary by position; runtime slicing cannot determine the result type |
+| No negative indices | Same as tuple positional access — negative normalization needs runtime arity |
+| No step (except `1`) | Reverse/strided tuple slicing is not supported in v1 |
+
+Non-constant or negative bounds produce a compile-time error with a diagnostic steering to the
+constant-bound requirement.
+([#1609](https://github.com/antonsynd/sharpy/issues/1609))
+
+*Implementation*
+- *🔄 Lowered — `t[1:3]` on `tuple[int, str, float]` lowers to `ValueTuple.Create(t.Item2, t.Item3)`.*
+
 ## Slicing
 
 Slicing extracts a contiguous (or strided) subsequence from a collection using `start:stop` or
@@ -284,8 +313,7 @@ Types that are NOT sliceable produce a compile-time error:
 - `dict[K, V]` — CPython raises `KeyError` at runtime (slice object is a missing key); Sharpy
   refuses at compile time.
 - `set[T]` / `frozenset[T]` — unordered; slicing is meaningless.
-- `tuple[T1, T2, ...]` — heterogeneous `ValueTuple` with no runtime slicing. Constant-bound
-  tuple slicing is a potential extension ([#1609](https://github.com/antonsynd/sharpy/issues/1609)).
+- `tuple[T1, T2, ...]` — constant-bound slicing only (see [Tuple Slicing](#tuple-slicing) below).
 
 ### Syntax
 
@@ -373,10 +401,22 @@ is `xs[int(flag)]`.
 
 ### User Protocol
 
-A user-defined class can support subscript access via `__getitem__`. Slice support via
-`__getitem__(self, s: slice)` requires the `slice` builtin type, which is not yet available
-([#1610](https://github.com/antonsynd/sharpy/issues/1610)). This is documented as a future
-extension.
+A user-defined class can support subscript access via `__getitem__`. Slice support requires
+a `__getitem__` overload that takes a `slice` parameter:
+
+```python
+class MySeq:
+    def __getitem__(self, s: slice) -> str:
+        return f"{s.start}-{s.stop}-{s.step}"
+
+seq: MySeq = MySeq()
+print(seq[1:5:2])  # "1-5-2"
+```
+
+The `slice` type is a builtin with nullable `start`, `stop`, and `step` properties (each `int?`).
+A `slice()` constructor is available with the same signatures as Python: `slice(stop)` and
+`slice(start, stop[, step])`.
+([#1610](https://github.com/antonsynd/sharpy/issues/1610))
 
 ### `__index__` Protocol
 

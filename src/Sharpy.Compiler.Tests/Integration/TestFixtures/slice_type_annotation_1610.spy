@@ -1,5 +1,5 @@
 def get_stop(s: slice) -> object:
-    return s.Stop
+    return s.stop
 
 def main():
     s: slice = slice(1, 10, 2)

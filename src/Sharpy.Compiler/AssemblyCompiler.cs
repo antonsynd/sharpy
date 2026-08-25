@@ -97,8 +97,26 @@ internal class AssemblyCompiler
 
             // Gather metadata references
             metrics.StartPhase(CompilerPhaseNames.ReferenceResolution);
-            var references = GetMetadataReferences(projectConfig, out var tpaCensus);
+            var references = GetMetadataReferences(
+                projectConfig, out var tpaCensus, out var unresolvedPackages);
             metrics.EndPhase();
+
+            // Surface any unresolved packages as real diagnostics (#1580)
+            if (unresolvedPackages.Count > 0)
+            {
+                var pkgDiagnostics = new DiagnosticBag();
+                foreach (var d in unresolvedPackages)
+                {
+                    pkgDiagnostics.Add(d);
+                    _logger.LogError(d.Message, 0, 0);
+                }
+                return new AssemblyCompilationResult
+                {
+                    Success = false,
+                    Diagnostics = pkgDiagnostics,
+                    Metrics = metrics
+                };
+            }
 
             // Post-condition: a reference set with no corlib cannot compile anything, and letting
             // it through produces a wall of CS0518 that the SPY0908 net misattributes to a compiler
@@ -272,17 +290,20 @@ internal class AssemblyCompiler
     }
 
     private List<MetadataReference> GetMetadataReferences(ProjectConfig projectConfig)
-        => GetMetadataReferences(projectConfig, out _);
+        => GetMetadataReferences(projectConfig, out _, out _);
 
     /// <param name="tpaCensus">
     /// What the trusted-platform-assembly walk saw: entry count, skip count, and the first few skip
     /// reasons. Carried out so <see cref="ValidateReferenceSet"/> can report it if the resulting set
     /// turns out to be unusable (#1482).
     /// </param>
-    private List<MetadataReference> GetMetadataReferences(ProjectConfig projectConfig, out TpaCensus tpaCensus)
+    private List<MetadataReference> GetMetadataReferences(
+        ProjectConfig projectConfig, out TpaCensus tpaCensus,
+        out List<CompilerDiagnostic> unresolvedPackageDiagnostics)
     {
         var references = new List<MetadataReference>();
         var addedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        unresolvedPackageDiagnostics = new List<CompilerDiagnostic>();
         var tpaSeen = 0;
         var tpaSkipped = 0;
         var skipReasons = new List<string>();
@@ -395,6 +416,15 @@ internal class AssemblyCompiler
         {
             var packageAssemblies = Project.NuGetResolver.ResolvePackage(
                 packageRef, projectConfig.TargetFramework, _logger, projectConfig.ResolvedVersions);
+            if (packageAssemblies.Count == 0)
+            {
+                unresolvedPackageDiagnostics.Add(new CompilerDiagnostic(
+                    $"Package '{packageRef.Name}' version '{packageRef.Version}' was not resolved by NuGet restore. "
+                    + "The package may not exist, the version may be unavailable, or restore may have failed silently.",
+                    CompilerDiagnosticSeverity.Error,
+                    Code: DiagnosticCodes.Infrastructure.PackageNotResolved,
+                    Phase: CompilerPhase.Assembly));
+            }
             foreach (var assemblyPath in packageAssemblies)
             {
                 if (addedPaths.Add(assemblyPath))

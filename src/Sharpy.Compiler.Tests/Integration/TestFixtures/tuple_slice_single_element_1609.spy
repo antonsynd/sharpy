@@ -1,0 +1,4 @@
+def main():
+    t: tuple[int, str, float, bool] = (1, "hello", 3.14, True)
+    single: tuple[str] = t[1:2]
+    print(single)

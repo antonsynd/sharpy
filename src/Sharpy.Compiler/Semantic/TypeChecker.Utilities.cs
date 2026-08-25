@@ -2243,6 +2243,32 @@ internal partial class TypeChecker
     private static bool TryGetConstantIntIndex(Expression expr, out int value)
         => AstHelper.TryGetConstantIntIndex(expr, out value);
 
+    private bool TryResolveConstantIntBound(Expression expr, out int value)
+    {
+        if (TryGetConstantIntIndex(expr, out value))
+            return true;
+
+        System.Numerics.BigInteger? ResolveConst(Identifier id)
+        {
+            var sym = _symbolTable.Lookup(id.Name);
+            if (sym != null && id.IsNameBacktickEscaped != sym.IsNameBacktickEscaped)
+                return null;
+            return sym is VariableSymbol { IsConstant: true, ConstantValue: not null } vs
+                ? vs.ConstantValue
+                : null;
+        }
+
+        if (IntegerConstantEvaluator.TryGetConstantInteger(expr, out var big, ResolveConst)
+            && big >= int.MinValue && big <= int.MaxValue)
+        {
+            value = (int)big;
+            return true;
+        }
+
+        value = 0;
+        return false;
+    }
+
     /// <summary>
     /// Walks the type hierarchy to find an event with the given name.
     /// </summary>

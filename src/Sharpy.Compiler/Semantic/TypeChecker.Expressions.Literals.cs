@@ -655,7 +655,7 @@ internal partial class TypeChecker
             var arity = tupleType.ElementTypes.Count;
 
             if (sliceAccess.Step != null
-                && !(TryGetConstantIntIndex(sliceAccess.Step, out var stepVal) && stepVal == 1))
+                && !(TryResolveConstantIntBound(sliceAccess.Step, out var stepVal) && stepVal == 1))
             {
                 AddError(
                     "Tuple slicing does not support a step value; use positive constant bounds only",
@@ -669,7 +669,7 @@ internal partial class TypeChecker
 
             if (sliceAccess.Start != null)
             {
-                if (!TryGetConstantIntIndex(sliceAccess.Start, out startIdx) || startIdx < 0)
+                if (!TryResolveConstantIntBound(sliceAccess.Start, out startIdx) || startIdx < 0)
                 {
                     AddError(
                         "Tuple slicing requires constant non-negative integer bounds (use positive indices)",
@@ -681,7 +681,7 @@ internal partial class TypeChecker
 
             if (sliceAccess.Stop != null)
             {
-                if (!TryGetConstantIntIndex(sliceAccess.Stop, out stopIdx) || stopIdx < 0)
+                if (!TryResolveConstantIntBound(sliceAccess.Stop, out stopIdx) || stopIdx < 0)
                 {
                     AddError(
                         "Tuple slicing requires constant non-negative integer bounds (use positive indices)",

@@ -122,6 +122,8 @@ public class Compiler
             {
                 var packageAssemblies = Project.NuGetResolver.ResolvePackage(
                     packageRef, projectConfig.TargetFramework, _logger, projectConfig.ResolvedVersions);
+                if (packageAssemblies.Count == 0)
+                    _logger.LogWarning($"Package '{packageRef.Name}' version '{packageRef.Version}' was not resolved by NuGet restore", 0, 0);
                 foreach (var assemblyPath in packageAssemblies)
                     _moduleRegistry.LoadReference(assemblyPath);
             }
