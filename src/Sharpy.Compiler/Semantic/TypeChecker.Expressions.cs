@@ -600,12 +600,13 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
 
         var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
-        if (expanded is BuiltinType bt)
+        if (expanded is BuiltinType)
         {
-            var registryType = _symbolTable.BuiltinRegistry.GetType(bt.Name);
+            var lookupName = aliasSymbol.TypeAnnotation.Name;
+            var registryType = _symbolTable.BuiltinRegistry.GetType(lookupName);
             if (registryType != null && PrimitiveCatalog.IsPrimitive(registryType.Name))
                 return SynthesizePrimitiveFunctionType(registryType);
-            return new UserDefinedType { Name = bt.Name, Symbol = registryType };
+            return new UserDefinedType { Name = lookupName, Symbol = registryType };
         }
 
         if (expanded is UserDefinedType udt)

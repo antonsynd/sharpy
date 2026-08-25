@@ -2233,9 +2233,9 @@ internal partial class TypeChecker
                     resolvedAlias = aliasSymbol;
                     return targetType;
                 }
-                if (expanded is BuiltinType bt)
+                if (expanded is BuiltinType)
                 {
-                    var registryType = _symbolTable.BuiltinRegistry.GetType(bt.Name);
+                    var registryType = _symbolTable.BuiltinRegistry.GetType(aliasSymbol.TypeAnnotation.Name);
                     if (registryType != null)
                     {
                         resolvedAlias = aliasSymbol;
