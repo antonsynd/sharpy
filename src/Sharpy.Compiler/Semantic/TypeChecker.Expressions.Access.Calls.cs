@@ -4976,26 +4976,34 @@ internal partial class TypeChecker
                 return true;
             }).ToList();
 
-            // #1573: round-trip verification kills lossy-mapping false selection.
-            // A candidate that survived the mapped-type filter may have won from a
-            // lossy bridge arm (e.g. enum→int). Verify the surviving candidate's CLR
-            // parameters actually accept the emitted argument types via reflection.
-            if (argumentCompatible.Count == 1)
+            // #1573: round-trip verification via CLR reflection. The mapped-type
+            // filter can produce false positives from lossy bridge arms (enum→int,
+            // MemberInfo→object). Verify each candidate's CLR parameters actually
+            // accept the emitted argument types. When at least one arg has a resolvable
+            // CLR type, the round-trip is authoritative and the result replaces the
+            // mapped-type set; otherwise fall through with the mapped set intact.
+            if (argumentCompatible.Count >= 1)
             {
-                var survivor = argumentCompatible[0];
-                var survivorParams = survivor.GetParameters();
-                for (int i = 0; i < argTypes.Count && i < survivorParams.Length; i++)
+                var anyArgHasClrType = argTypes.Any(a => TryGetClrType(a) != null);
+                if (anyArgHasClrType)
                 {
-                    if (IsClrParamsArray(survivorParams[i]))
-                        break;
-                    var argClrType = TryGetClrType(argTypes[i]);
-                    if (argClrType == null)
-                        continue;
-                    if (!survivorParams[i].ParameterType.IsAssignableFrom(argClrType))
+                    var roundTripped = argumentCompatible.Where(c =>
                     {
-                        argumentCompatible.Clear();
-                        break;
-                    }
+                        var ps = c.GetParameters();
+                        for (int i = 0; i < argTypes.Count && i < ps.Length; i++)
+                        {
+                            if (IsClrParamsArray(ps[i]))
+                                break;
+                            var argClrType = TryGetClrType(argTypes[i]);
+                            if (argClrType == null)
+                                continue;
+                            if (!ps[i].ParameterType.IsAssignableFrom(argClrType))
+                                return false;
+                        }
+                        return true;
+                    }).ToList();
+                    if (roundTripped.Count > 0)
+                        argumentCompatible = roundTripped;
                 }
             }
 
@@ -5011,11 +5019,49 @@ internal partial class TypeChecker
                     argumentCompatible = nonParams;
             }
 
+            // Best conversion target: when one candidate's parameters are all at
+            // least as specific as another's, eliminate the less specific one. This
+            // handles Console.WriteLine(String) vs WriteLine(Object) — String is
+            // more specific, so it wins (standard C# better-conversion-target rule).
+            if (argumentCompatible.Count > 1)
+            {
+                argumentCompatible = argumentCompatible.Where(candidate =>
+                {
+                    var ps = candidate.GetParameters();
+                    return !argumentCompatible.Any(other =>
+                    {
+                        if (ReferenceEquals(other, candidate))
+                            return false;
+                        var ops = other.GetParameters();
+                        if (ops.Length != ps.Length)
+                            return false;
+                        var otherIsStricter = false;
+                        for (int i = 0; i < ps.Length; i++)
+                        {
+                            if (ps[i].ParameterType == ops[i].ParameterType)
+                                continue;
+                            if (ps[i].ParameterType.IsAssignableFrom(ops[i].ParameterType))
+                            {
+                                otherIsStricter = true;
+                                continue;
+                            }
+                            return false;
+                        }
+                        return otherIsStricter;
+                    });
+                }).ToList();
+            }
+
             if (argumentCompatible.Count != 1)
             {
-                // #1569: refuse still-ambiguous CLR overloads with a principled diagnostic
-                // listing the candidate set and a disambiguation steer. Supersedes the
-                // destination-compatibility fallback that leaked CS0121 at Roslyn.
+                // #1569: emit SPY0601 only when we can confirm the ambiguity via CLR
+                // reflection (at least one arg has a resolvable CLR type) or when ALL
+                // args had CLR types and multiple candidates survived. When the checker
+                // can't determine CLR types, fall back silently and let Roslyn resolve.
+                var anyArgHasClrType = argTypes.Any(a => TryGetClrType(a) != null);
+                if (!anyArgHasClrType)
+                    return null;
+
                 var survivingCandidates = argumentCompatible.Count > 0 ? argumentCompatible : candidates;
                 var candidateDescriptions = string.Join(", ",
                     survivingCandidates.Select(c =>
