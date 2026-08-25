@@ -4999,6 +4999,18 @@ internal partial class TypeChecker
                 }
             }
 
+            // Prefer non-params candidates over params candidates — matches C#'s
+            // preference for the more specific overload (e.g. CreateInstance(Type) over
+            // CreateInstance(Type, params Object[])).
+            if (argumentCompatible.Count > 1)
+            {
+                var nonParams = argumentCompatible
+                    .Where(c => !c.GetParameters().Any(p => IsClrParamsArray(p)))
+                    .ToList();
+                if (nonParams.Count > 0)
+                    argumentCompatible = nonParams;
+            }
+
             if (argumentCompatible.Count != 1)
             {
                 // #1569: refuse still-ambiguous CLR overloads with a principled diagnostic
