@@ -91,9 +91,26 @@ internal partial class TypeChecker
         if (memberAccess.Object is Identifier typeId
             && _semanticInfo.GetIdentifierSymbol(typeId) is TypeSymbol typeSym)
         {
-            var resolved = TryResolveTypeMemberAccess(memberAccess, typeId, typeSym);
+            var resolved = TryResolveTypeMemberAccess(memberAccess, typeId.Name, typeSym);
             if (resolved != null)
                 return resolved;
+        }
+
+        // When the qualifier is not an Identifier but resolved to a UserDefinedType marked as
+        // a type reference (e.g. `lib.Color` from a module export, or `lib.Registry.Level` from
+        // a nested-type chain), route through the type-member path so enum fields, static members,
+        // and nested types resolve identically to the bare spelling (#1585, #1590).
+        if (memberAccess.Object is not Identifier
+            && objectType is UserDefinedType qualifiedTypeUdt
+            && _semanticInfo.IsTypeReference(memberAccess.Object))
+        {
+            var qualifiedTypeSym = qualifiedTypeUdt.Symbol ?? _symbolTable.LookupType(qualifiedTypeUdt.Name);
+            if (qualifiedTypeSym != null)
+            {
+                var resolved = TryResolveTypeMemberAccess(memberAccess, qualifiedTypeSym.Name, qualifiedTypeSym);
+                if (resolved != null)
+                    return resolved;
+            }
         }
 
         // When the qualifier resolved to a UserDefinedType (e.g. from a nested-type arm above),
@@ -1768,7 +1785,7 @@ internal partial class TypeChecker
     /// static fields/methods). Returns null if no member was found.
     /// </summary>
     private SemanticType? TryResolveTypeMemberAccess(
-        MemberAccess memberAccess, Identifier typeId, TypeSymbol typeSym)
+        MemberAccess memberAccess, string typeName, TypeSymbol typeSym)
     {
         if (typeSym.TypeKind == TypeKind.Enum)
         {
@@ -1814,7 +1831,7 @@ internal partial class TypeChecker
             if (field != null)
             {
                 AddError(
-                    $"Cannot access instance field '{memberAccess.Member}' via type name '{typeId.Name}'. " +
+                    $"Cannot access instance field '{memberAccess.Member}' via type name '{typeName}'. " +
                     "Mark it as @static or use an instance.",
                     memberAccess.LineStart, memberAccess.ColumnStart,
                     code: DiagnosticCodes.Semantic.InstanceFieldViaTypeName,
