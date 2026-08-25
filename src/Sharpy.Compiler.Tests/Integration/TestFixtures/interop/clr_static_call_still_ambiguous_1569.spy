@@ -1,0 +1,7 @@
+# #1569: still-ambiguous CLR static call emits SPY0601 with candidate list.
+from system import Math
+
+
+def main() -> None:
+    x = Math.floor(1)
+    print(x)

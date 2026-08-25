@@ -1,0 +1,9 @@
+# #1573: positive control — round-trip verification does not over-refuse
+# when the mapped type faithfully represents the CLR parameter.
+# Math.sqrt has a single overload (Double → Double), no ambiguity.
+from system import Math
+
+
+def main() -> None:
+    x: float = Math.sqrt(4.0)
+    print(x)

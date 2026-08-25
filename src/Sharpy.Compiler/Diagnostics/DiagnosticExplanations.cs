@@ -236,6 +236,16 @@ public static partial class DiagnosticExplanations
             "from builtins import int as bint  # previously refused, now allowed",
             "No action needed — this diagnostic is no longer emitted.");
 
+        // ── Semantic overflow (SPY0600-SPY0699) ───────────────────
+
+        Add(dict, DiagnosticCodes.SemanticOverflow.AmbiguousClrOverload,
+            "ambiguous CLR overload", "Semantic",
+            "A call to a CLR method matched multiple overloads and the arguments do not " +
+            "disambiguate. The compiler cannot choose between the candidates, so the call is refused " +
+            "at compile time rather than leaking a C# ambiguity error.",
+            "from system import Math\nx: float = Math.floor(1)  # int matches both double and decimal overloads",
+            "Cast the ambiguous argument to the intended type, e.g. Math.floor(float(1)).");
+
         return dict;
     }
 

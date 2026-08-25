@@ -909,7 +909,8 @@ public static class DiagnosticCodes
     public static class SemanticOverflow
     {
         public const string UseBeforeAssignment = "SPY0600"; // Active (#1559)
-        // SPY0601-SPY0699: Available for new semantic diagnostics
+        public const string AmbiguousClrOverload = "SPY0601"; // Active (#1569)
+        // SPY0602-SPY0699: Available for new semantic diagnostics
     }
 
     /// <summary>

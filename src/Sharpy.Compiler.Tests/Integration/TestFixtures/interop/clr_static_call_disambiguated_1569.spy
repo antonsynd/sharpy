@@ -1,0 +1,7 @@
+# #1569: positive control — casting the argument disambiguates the call.
+from system import Math
+
+
+def main() -> None:
+    x: float = Math.floor(float(1))
+    print(x)

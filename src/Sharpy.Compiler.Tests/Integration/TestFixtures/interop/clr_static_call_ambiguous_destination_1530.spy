@@ -1,15 +1,9 @@
-# #1530: destination-vs-candidate-set refusal for still-ambiguous CLR static calls.
-# Math.floor(1): int converts implicitly to both double and decimal → still ambiguous.
-# The result is Unknown, but the candidate return types {float, decimal} are recorded.
-# A destination compatible with NONE of them is refused.
+# #1530/#1569: still-ambiguous CLR static call now refused with SPY0601.
+# Math.floor(1): int converts implicitly to both double and decimal → ambiguous.
+# Previously leaked CS0121 at Roslyn; now caught at semantic time.
 from system import Math
 
 
 def main() -> None:
-    # Positive control: float destination is compatible (at least one candidate returns float).
-    f: float = Math.floor(1)
-    print(f)
-
-    # Refused: str destination is incompatible with all candidate return types.
-    s: str = Math.floor(1)
-    print(s)
+    x: float = Math.floor(1)
+    print(x)

@@ -1517,6 +1517,13 @@ internal partial class TypeChecker
         if (expected is TypeParameterType)
             return true;
 
+        // #1600: a constrained type parameter satisfies any expected shape that
+        // contains type parameters — the constraint is an additional guarantee,
+        // not a conflict. Without this, groupby's K: IEquatable[K] fails shape
+        // matching against unconstrained formals.
+        if (arg is TypeParameterType)
+            return expected is TypeParameterType || ContainsTypeParameter(expected);
+
         if (!ContainsTypeParameter(expected))
             return IsAssignable(arg, expected);
 
@@ -4969,19 +4976,49 @@ internal partial class TypeChecker
                 return true;
             }).ToList();
 
+            // #1573: round-trip verification kills lossy-mapping false selection.
+            // A candidate that survived the mapped-type filter may have won from a
+            // lossy bridge arm (e.g. enum→int). Verify the surviving candidate's CLR
+            // parameters actually accept the emitted argument types via reflection.
+            if (argumentCompatible.Count == 1)
+            {
+                var survivor = argumentCompatible[0];
+                var survivorParams = survivor.GetParameters();
+                for (int i = 0; i < argTypes.Count && i < survivorParams.Length; i++)
+                {
+                    if (IsClrParamsArray(survivorParams[i]))
+                        break;
+                    var argClrType = TryGetClrType(argTypes[i]);
+                    if (argClrType == null)
+                        continue;
+                    if (!survivorParams[i].ParameterType.IsAssignableFrom(argClrType))
+                    {
+                        argumentCompatible.Clear();
+                        break;
+                    }
+                }
+            }
+
             if (argumentCompatible.Count != 1)
             {
-                // Still ambiguous — record the surviving candidates' mapped return types so the
-                // assignment check can refuse impossible destinations (Design Decision 5).
+                // #1569: refuse still-ambiguous CLR overloads with a principled diagnostic
+                // listing the candidate set and a disambiguation steer. Supersedes the
+                // destination-compatibility fallback that leaked CS0121 at Roslyn.
                 var survivingCandidates = argumentCompatible.Count > 0 ? argumentCompatible : candidates;
-                var returnTypes = survivingCandidates
-                    .Select(c => _bclGenericMethodBridge.MapClrTypeToSemanticType(c.ReturnType))
-                    .Where(t => t is not UnknownType and not UnmappedClrType)
-                    .Distinct()
-                    .ToList();
-                if (returnTypes.Count > 0)
-                    _ambiguousStaticCallReturnTypes[call] = returnTypes;
-                return null;
+                var candidateDescriptions = string.Join(", ",
+                    survivingCandidates.Select(c =>
+                    {
+                        var ps = c.GetParameters();
+                        var paramDisplay = string.Join(", ", ps.Select(p => p.ParameterType.Name));
+                        return $"{c.Name}({paramDisplay})";
+                    }));
+                AddError(
+                    $"Call to '{memberDisplay}' is ambiguous between {survivingCandidates.Count} overloads: " +
+                    $"{candidateDescriptions}. Disambiguate by casting the argument to the intended type",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.SemanticOverflow.AmbiguousClrOverload,
+                    span: call.Span);
+                return SemanticType.Unknown;
             }
 
             candidates = argumentCompatible;
@@ -5048,11 +5085,6 @@ internal partial class TypeChecker
     // TYPE NAME rather than of a constructed receiver. Keyed on the CLR type and the resolved method
     // name, which together decide the candidate set.
     private readonly Dictionary<(Type, string), System.Reflection.MethodInfo[]> _clrStaticCallMemo = new();
-
-    // #1530: for ambiguous-arity static calls whose argument-driven narrowing leaves >1 candidate,
-    // record the candidates' mapped return types so the assignment check can refuse impossible
-    // destinations. Checker-internal (Design Decision 5) — not in SemanticInfo.
-    private readonly Dictionary<FunctionCall, List<SemanticType>> _ambiguousStaticCallReturnTypes = new();
 
     /// <summary>The public static overloads of <paramref name="methodName"/>, memoized.</summary>
     private System.Reflection.MethodInfo[] ClrStaticCallSurfaceOf(Type clrType, string methodName)
