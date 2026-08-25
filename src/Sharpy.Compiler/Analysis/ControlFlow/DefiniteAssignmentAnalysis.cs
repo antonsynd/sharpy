@@ -47,6 +47,11 @@ internal static class DefiniteAssignmentAnalysis
                 CollectReads(stmt, blockReads, i);
             }
 
+            if (block.Terminator is ConditionalBranchTerminator cbt)
+            {
+                CollectReadsFromExpr(cbt.Condition, blockReads, block.Statements.Count);
+            }
+
             assignedInBlock[block] = blockAssigned;
             readsInBlock[block] = blockReads;
         }
@@ -136,6 +141,14 @@ internal static class DefiniteAssignmentAnalysis
                 if (stmt is Assignment { Operator: AssignmentOperator.Assign } assignment)
                 {
                     CollectAssignedNames(assignment.Target, localAssigned);
+                }
+            }
+
+            foreach (var (name, node, stmtIdx) in readsInBlock[block])
+            {
+                if (stmtIdx == block.Statements.Count && bareDecls.ContainsKey(name) && !localAssigned.Contains(name))
+                {
+                    violations.Add(new Violation(bareDecls[name], node));
                 }
             }
         }

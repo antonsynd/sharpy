@@ -135,6 +135,52 @@ def main() -> None:
     }
 
     [Fact]
+    public void ConditionRead_UseBeforeAssign_ProducesSPY0600()
+    {
+        var source = @"
+def main() -> None:
+    x: int
+    if x:
+        print(""truthy"")
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'x'"),
+            "bare-declared variable used as if/while condition must be caught by definite-assignment");
+    }
+
+    [Fact]
+    public void WhileConditionRead_UseBeforeAssign_ProducesSPY0600()
+    {
+        var source = @"
+def main() -> None:
+    x: bool
+    while x:
+        break
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'x'"),
+            "bare-declared variable used as while condition must be caught by definite-assignment");
+    }
+
+    [Fact]
+    public void LoopBodyAssignment_ConservativeAnalysis()
+    {
+        var source = @"
+def main() -> None:
+    x: int
+    for i in range(3):
+        x = i
+    print(x)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse(
+            "loop body assignment is not definitely assigned after loop (loop may not execute)");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0600" && d.Message.Contains("'x'"));
+    }
+
+    [Fact]
     public void AssignedThenUsed_InSameBlock_Accepted()
     {
         var source = @"

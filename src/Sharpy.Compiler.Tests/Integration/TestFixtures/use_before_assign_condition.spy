@@ -1,0 +1,7 @@
+# Bare-declared variable used directly in if/while condition must produce SPY0600,
+# not leak as CS0165/SPY0908 (#1559).
+
+def main() -> None:
+    x: int
+    if x:
+        print("truthy")

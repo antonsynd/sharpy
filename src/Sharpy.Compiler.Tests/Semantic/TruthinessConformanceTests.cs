@@ -281,6 +281,46 @@ def main() -> None:
             $"'not' refusal of {typeName} should produce SPY0220");
     }
 
+    // --- match guard position ---
+
+    [Theory]
+    [MemberData(nameof(TruthTestableTypes))]
+    public void MatchGuard_AcceptsTruthTestableType(string typeName, string decl)
+    {
+        var source = Preamble + $@"
+def main() -> None:
+    {decl}
+    val: int = 1
+    match val:
+        case v if x:
+            print(""guarded"")
+        case _:
+            print(""fallback"")
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue($"match guard should accept truth-testable type {typeName}: {string.Join(", ", result.CompilationErrors)}");
+    }
+
+    [Theory]
+    [MemberData(nameof(NonTruthTestableTypes))]
+    public void MatchGuard_RefusesNonTruthTestableType(string typeName, string decl)
+    {
+        var source = Preamble + $@"
+def main() -> None:
+    {decl}
+    val: int = 1
+    match val:
+        case v if x:
+            print(""fail"")
+        case _:
+            print(""fallback"")
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse($"match guard should refuse non-truth-testable type {typeName}");
+        result.RawDiagnostics.Should().Contain(d => d.Code == "SPY0220" || d.Code == "SPY0241",
+            $"match guard refusal of {typeName} should produce SPY0220 or SPY0241");
+    }
+
     // --- comprehension filter position ---
 
     [Theory]

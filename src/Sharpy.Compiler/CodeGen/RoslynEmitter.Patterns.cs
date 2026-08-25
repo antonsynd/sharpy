@@ -805,7 +805,7 @@ internal partial class RoslynEmitter
 
         if (userGuardExpr != null)
         {
-            var userGuard = GenerateExpression(userGuardExpr);
+            var userGuard = WrapTruthinessIfNeeded(GenerateExpression(userGuardExpr), userGuardExpr);
             combined = combined == null
                 ? userGuard
                 : BinaryExpression(SyntaxKind.LogicalAndExpression, combined, userGuard);
