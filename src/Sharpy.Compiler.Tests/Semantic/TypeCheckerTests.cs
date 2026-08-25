@@ -169,17 +169,21 @@ def main():
     }
 
     [Fact]
-    public void DetectsNonBooleanIfCondition()
+    public void DetectsNonTruthTestableIfCondition()
     {
         var source = @"
-if 42:
-    x: int = 1
+def f() -> int:
+    return 1
+
+def main() -> None:
+    if f:
+        x: int = 1
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: false);
+        typeChecker.CheckModule(module, isEntryPoint: true);
 
         typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("boolean");
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("boolean"));
     }
 
     [Fact]

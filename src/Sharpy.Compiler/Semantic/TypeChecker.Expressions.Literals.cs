@@ -493,13 +493,17 @@ internal partial class TypeChecker
     /// </summary>
     private void CheckComprehensionIfClause(IfClause ifClause)
     {
-        // Check condition is boolean
         var condType = CheckExpression(ifClause.Condition);
-        if (!condType.IsAssignableTo(SemanticType.Bool))
+        var (compTruthTestable, compTruthLowering) = ClassifyTruthiness(condType);
+        if (!compTruthTestable)
         {
-            AddError($"Comprehension filter must be bool, got '{condType.GetDisplayName()}'",
+            AddError($"Comprehension filter must be truth-testable, got '{condType.GetDisplayName()}'",
                 ifClause.LineStart, ifClause.ColumnStart, code: DiagnosticCodes.Semantic.ConditionNotBoolean,
                 span: ifClause.Condition.Span);
+        }
+        else
+        {
+            _semanticInfo.SetTruthinessLowering(ifClause.Condition, compTruthLowering);
         }
     }
 

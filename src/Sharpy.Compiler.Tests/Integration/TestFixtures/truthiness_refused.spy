@@ -1,0 +1,7 @@
+def greet() -> str:
+    return "hello"
+
+def main() -> None:
+    # Functions have no falsy case — should be refused
+    if greet:
+        print("should not compile")

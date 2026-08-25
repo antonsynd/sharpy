@@ -397,13 +397,25 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        var (leftTruthTestable, leftTruthLowering) = ClassifyTruthiness(leftType);
+        if (!leftTruthTestable)
+        {
+            AddError(
+                $"Operand of 'and' must be truth-testable, got '{leftType.GetDisplayName()}'",
+                andOp.Left.LineStart, andOp.Left.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: andOp.Left.Span);
+        }
+        else
+        {
+            _semanticInfo.SetTruthinessLowering(andOp.Left, leftTruthLowering);
+        }
+
         var leftNarrowed = ExtractNarrowedTypes(andOp.Left, true);
 
         SemanticType rightType;
         using (_narrowingContext.EnterScope())
         {
-            // Apply the lowering-bearing entries so RHS reads of the narrowed variables record the
-            // accessor codegen must emit (e.g. `x.Unwrap()`, `(Dog)a`) — #1081.
             _narrowingContext.ApplyNarrowings(leftNarrowed);
             rightType = CheckExpression(andOp.Right);
         }
@@ -411,19 +423,21 @@ internal partial class TypeChecker
         if (rightType is UnknownType)
             return SemanticType.Unknown;
 
-        var resultType = _typeInference.InferBinaryOpType(BinaryOperator.And, leftType, rightType);
-        if (resultType == null)
+        var (rightTruthTestable, rightTruthLowering) = ClassifyTruthiness(rightType);
+        if (!rightTruthTestable)
         {
             AddError(
-                $"Type '{leftType.GetDisplayName()}' does not support operator 'and' with operand of type '{rightType.GetDisplayName()}'",
-                andOp.LineStart,
-                andOp.ColumnStart,
-                code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
-                span: andOp.Span);
-            return SemanticType.Unknown;
+                $"Operand of 'and' must be truth-testable, got '{rightType.GetDisplayName()}'",
+                andOp.Right.LineStart, andOp.Right.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: andOp.Right.Span);
+        }
+        else
+        {
+            _semanticInfo.SetTruthinessLowering(andOp.Right, rightTruthLowering);
         }
 
-        return resultType;
+        return SemanticType.Bool;
     }
 
     private SemanticType CheckBooleanOrOp(BinaryOp orOp)
@@ -434,6 +448,20 @@ internal partial class TypeChecker
         {
             CheckExpression(orOp.Right);
             return SemanticType.Unknown;
+        }
+
+        var (leftTruthTestable, leftTruthLowering) = ClassifyTruthiness(leftType);
+        if (!leftTruthTestable)
+        {
+            AddError(
+                $"Operand of 'or' must be truth-testable, got '{leftType.GetDisplayName()}'",
+                orOp.Left.LineStart, orOp.Left.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: orOp.Left.Span);
+        }
+        else
+        {
+            _semanticInfo.SetTruthinessLowering(orOp.Left, leftTruthLowering);
         }
 
         // Expression-level narrowing (#1080): the right operand is evaluated only when the left is
@@ -451,19 +479,21 @@ internal partial class TypeChecker
         if (rightType is UnknownType)
             return SemanticType.Unknown;
 
-        var resultType = _typeInference.InferBinaryOpType(BinaryOperator.Or, leftType, rightType);
-        if (resultType == null)
+        var (rightTruthTestable, rightTruthLowering) = ClassifyTruthiness(rightType);
+        if (!rightTruthTestable)
         {
             AddError(
-                $"Type '{leftType.GetDisplayName()}' does not support operator 'or' with operand of type '{rightType.GetDisplayName()}'",
-                orOp.LineStart,
-                orOp.ColumnStart,
-                code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
-                span: orOp.Span);
-            return SemanticType.Unknown;
+                $"Operand of 'or' must be truth-testable, got '{rightType.GetDisplayName()}'",
+                orOp.Right.LineStart, orOp.Right.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypeMismatch,
+                span: orOp.Right.Span);
+        }
+        else
+        {
+            _semanticInfo.SetTruthinessLowering(orOp.Right, rightTruthLowering);
         }
 
-        return resultType;
+        return SemanticType.Bool;
     }
 
     /// <summary>
@@ -820,6 +850,23 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // `not` operands go through truthiness, not generic operator inference (#1558, #1570)
+        if (unOp.Operator == UnaryOperator.Not)
+        {
+            var (notTruthTestable, notTruthLowering) = ClassifyTruthiness(operandType);
+            if (!notTruthTestable)
+            {
+                AddError(
+                    $"Operand of 'not' must be truth-testable, got '{operandType.GetDisplayName()}'",
+                    unOp.Operand.LineStart, unOp.Operand.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: unOp.Operand.Span);
+                return SemanticType.Unknown;
+            }
+            _semanticInfo.SetTruthinessLowering(unOp.Operand, notTruthLowering);
+            return SemanticType.Bool;
+        }
+
         // Use TypeInferenceService for type inference
         var resultType = _typeInference.InferUnaryOpType(unOp.Operator, operandType);
 
@@ -898,11 +945,16 @@ internal partial class TypeChecker
 
         // The ternary's condition is a truthiness position like if/while/assert (#1603):
         // without this check a non-bool condition reaches Roslyn as `5 ? … : …`.
-        if (!IsTruthTestable(testType))
+        var (ternaryTruthTestable, ternaryTruthLowering) = ClassifyTruthiness(testType);
+        if (!ternaryTruthTestable)
         {
             AddError($"Conditional expression condition must be boolean, got '{testType.GetDisplayName()}'",
                 cond.LineStart, cond.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                 span: cond.Test.Span);
+        }
+        else
+        {
+            _semanticInfo.SetTruthinessLowering(cond.Test, ternaryTruthLowering);
         }
 
         // Expression-level narrowing (#1080): the true arm is evaluated only when the condition holds,

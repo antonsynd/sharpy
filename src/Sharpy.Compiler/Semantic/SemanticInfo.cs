@@ -280,6 +280,13 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, BinaryOpLowering> _binaryOpLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map expressions in truthiness contexts (if, while, and/or/not, assert, ternary,
+    // comprehension filter, match guard) to the lowering shape codegen must apply (#1558).
+    // Keyed on the condition/operand expression; absent means no truthiness wrapping needed
+    // (backward compat for positions not yet wired).
+    private readonly ConcurrentDictionary<Expression, TruthinessLowering> _truthinessLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map index-access expressions to the strategy codegen must use to emit them. Only present when
     // the strategy differs from the default native element access (e.g. string/array helper calls,
     // params-indexer spreads, tuple .ItemN access). Keyed by node identity.
@@ -1216,6 +1223,24 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// Records how an expression in a truthiness context should be lowered by codegen (#1558).
+    /// Called by the TypeChecker at every truth position (if, while, and/or/not, assert, ternary,
+    /// comprehension filter, match guard) so the emitter reads the tag and never re-derives it.
+    /// </summary>
+    public void SetTruthinessLowering(Expression expr, TruthinessLowering lowering)
+    {
+        _truthinessLowerings[expr] = lowering;
+    }
+
+    /// <summary>
+    /// Gets the truthiness lowering for an expression, or <c>null</c> if none was recorded.
+    /// </summary>
+    public TruthinessLowering? GetTruthinessLowering(Expression expr)
+    {
+        return _truthinessLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
+    }
+
+    /// <summary>
     /// Records how an index access (<c>obj[index]</c>) should be lowered by codegen.
     /// Only set when the strategy is not the default <see cref="IndexAccessLowering.Native"/>;
     /// the absence of an entry means codegen should emit a native C# element access.
@@ -1417,6 +1442,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._binaryOpLowerings)
             _binaryOpLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._truthinessLowerings)
+            _truthinessLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._indexAccessLowerings)
             _indexAccessLowerings.TryAdd(kvp.Key, kvp.Value);
@@ -2029,3 +2057,48 @@ public sealed record MatchScrutineeLowering(MatchScrutineeLoweringKind Kind);
 
 // FunctoolsPartialSpec (#1520) lives in FunctoolsPartialSpec.cs, sibling to
 // SelfInterfaceBridgeSpec — the same fully-resolved-spec pattern, node-keyed.
+
+/// <summary>
+/// How codegen should lower an expression used in a truthiness context (<c>if</c>, <c>while</c>,
+/// <c>and</c>/<c>or</c>/<c>not</c>, <c>assert</c>, ternary, comprehension filter, match guard).
+/// The TypeChecker records this during checking so the emitter switches on the tag alone and
+/// never re-inspects the operand type to pick a conversion (Critical Rule 2 pattern (b), #1558).
+/// </summary>
+public enum TruthinessLowering
+{
+    /// <summary>Expression is already <c>bool</c> — no conversion needed.</summary>
+    NativeBool,
+
+    /// <summary><c>int</c>: emit <c>x != 0</c>.</summary>
+    IntNotZero,
+
+    /// <summary><c>float</c> (double): emit <c>x != 0.0d</c>.</summary>
+    FloatNotZero,
+
+    /// <summary><c>long</c>: emit <c>x != 0L</c>.</summary>
+    LongNotZero,
+
+    /// <summary><c>str</c>: emit <c>x.Length &gt; 0</c>.</summary>
+    StringNotEmpty,
+
+    /// <summary><c>bytes</c>: emit <c>x.Count &gt; 0</c>.</summary>
+    BytesNotEmpty,
+
+    /// <summary>Collection implementing <c>ISized</c>: emit <c>x.Count &gt; 0</c>.</summary>
+    CollectionNotEmpty,
+
+    /// <summary><c>Optional&lt;T&gt;</c>: emit <c>x.IsSome</c>.</summary>
+    OptionalIsSome,
+
+    /// <summary>Nullable <c>T?</c>: emit <c>x != null</c>.</summary>
+    NullableNotNull,
+
+    /// <summary>UDT implementing <c>IBoolConvertible</c> (has <c>__bool__</c>): emit <c>x.IsTrue</c>.</summary>
+    BoolConvertible,
+
+    /// <summary>UDT implementing <c>ISized</c> (has <c>__len__</c> but not <c>__bool__</c>): emit <c>x.Count &gt; 0</c>.</summary>
+    SizedNotEmpty,
+
+    /// <summary><c>NoneType</c>: always false (emit <c>false</c>).</summary>
+    AlwaysFalse
+}

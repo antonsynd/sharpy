@@ -47,7 +47,7 @@ public static partial class DunderBool
 #line (13, 5) - (13, 18) 8 "dunder_bool.spy"
         var f = new Truthy(0);
 #line (14, 5) - (16, 1) 8 "dunder_bool.spy"
-        if (t)
+        if (t.IsTrue)
 #line hidden
         {
 #line (15, 9) - (15, 24) 12 "dunder_bool.spy"
@@ -56,7 +56,7 @@ public static partial class DunderBool
         }
 
 #line (16, 5) - (20, 1) 8 "dunder_bool.spy"
-        if (f)
+        if (f.IsTrue)
 #line hidden
         {
 #line (17, 9) - (17, 34) 12 "dunder_bool.spy"

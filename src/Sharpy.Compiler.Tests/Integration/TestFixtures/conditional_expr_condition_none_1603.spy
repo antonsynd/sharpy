@@ -1,5 +1,5 @@
-# A None literal in ternary condition position must be refused like if/while/assert (#1603);
-# before the fix it reached Roslyn as `null ? … : …`.
+# None in ternary condition position: None is always falsy (#1558 truthiness unification),
+# so the else branch is always taken.
 def main() -> None:
     x: int = 1 if None else 2
     print(x)

@@ -255,7 +255,8 @@ internal partial class RoslynEmitter
                 case IfClause ifClause:
                     // #1000: hoist condition sub-statements before the if, in the enclosing scope.
                     ExpressionSyntax condition = null!;
-                    var condHoisted = CaptureHoisted(() => condition = GenerateExpression(ifClause.Condition));
+                    var condHoisted = CaptureHoisted(() => condition = WrapTruthinessIfNeeded(
+                        GenerateExpression(ifClause.Condition), ifClause.Condition));
                     currentBody = new List<StatementSyntax>(condHoisted) { IfStatement(condition, Block(currentBody)) };
                     break;
 
@@ -465,7 +466,8 @@ internal partial class RoslynEmitter
                     // #1000: hoist condition sub-statements (e.g. a nested async comprehension in the
                     // filter) before the if, in the enclosing scope where the condition is evaluated.
                     ExpressionSyntax condition = null!;
-                    condHoists[i] = CaptureHoisted(() => condition = GenerateExpression(ifClause.Condition));
+                    condHoists[i] = CaptureHoisted(() => condition = WrapTruthinessIfNeeded(
+                        GenerateExpression(ifClause.Condition), ifClause.Condition));
                     condExprs[i] = condition;
                     break;
             }

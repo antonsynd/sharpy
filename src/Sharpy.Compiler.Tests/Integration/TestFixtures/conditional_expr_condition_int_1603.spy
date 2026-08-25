@@ -1,5 +1,4 @@
-# An int in ternary condition position must be refused (#1603): Python truthiness
-# (`1 if 5 else 2` → 1) is not borrowed — Sharpy requires bool, as if/while do.
+# Int in ternary condition: 5 is truthy (#1558 truthiness unification), takes then branch.
 def main() -> None:
     x: int = 1 if 5 else 2
     print(x)

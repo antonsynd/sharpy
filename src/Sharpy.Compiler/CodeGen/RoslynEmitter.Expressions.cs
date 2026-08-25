@@ -876,23 +876,44 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Wraps an expression used in a boolean context with truthiness conversion if needed.
-    /// For strings: emits <c>s.Length > 0</c> (empty string is falsy).
-    /// Other types pass through unchanged (bool is already valid, UDTs use operator true).
+    /// Wraps an expression used in a truthiness context with the conversion the semantic checker
+    /// recorded (#1558). Reads the <see cref="TruthinessLowering"/> tag — never re-derives from type.
     /// </summary>
     private ExpressionSyntax WrapTruthinessIfNeeded(ExpressionSyntax expr, Parser.Ast.Expression astExpr)
     {
-        var type = GetExpressionSemanticType(astExpr);
-        if (type == SemanticType.Str)
+        var lowering = _context.SemanticInfo?.GetTruthinessLowering(astExpr);
+        if (lowering == null)
+            return expr;
+
+        return lowering.Value switch
         {
-            // s.Length > 0
-            return BinaryExpression(SyntaxKind.GreaterThanExpression,
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    expr,
-                    IdentifierName("Length")),
-                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
-        }
-        return expr;
+            TruthinessLowering.NativeBool => expr,
+            TruthinessLowering.IntNotZero => BinaryExpression(SyntaxKind.NotEqualsExpression,
+                expr, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))),
+            TruthinessLowering.FloatNotZero => BinaryExpression(SyntaxKind.NotEqualsExpression,
+                expr, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0.0))),
+            TruthinessLowering.LongNotZero => BinaryExpression(SyntaxKind.NotEqualsExpression,
+                expr, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0L))),
+            TruthinessLowering.StringNotEmpty => BinaryExpression(SyntaxKind.GreaterThanExpression,
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, expr, IdentifierName("Length")),
+                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))),
+            TruthinessLowering.BytesNotEmpty or TruthinessLowering.CollectionNotEmpty
+                or TruthinessLowering.SizedNotEmpty =>
+                BinaryExpression(SyntaxKind.GreaterThanExpression,
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        ParenthesizedExpression(CastExpression(
+                            MakeGlobalQualifiedName("Sharpy", "ISized"), expr)),
+                        IdentifierName("Count")),
+                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))),
+            TruthinessLowering.OptionalIsSome => MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression, expr, IdentifierName("IsSome")),
+            TruthinessLowering.NullableNotNull => BinaryExpression(SyntaxKind.NotEqualsExpression,
+                expr, LiteralExpression(SyntaxKind.NullLiteralExpression)),
+            TruthinessLowering.BoolConvertible => MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression, expr, IdentifierName("IsTrue")),
+            TruthinessLowering.AlwaysFalse => LiteralExpression(SyntaxKind.FalseLiteralExpression),
+            _ => expr
+        };
     }
 
     /// <summary>

@@ -1,0 +1,8 @@
+int truthy
+int falsy
+str truthy
+str falsy
+float truthy
+float falsy
+list truthy
+list falsy

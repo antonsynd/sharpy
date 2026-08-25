@@ -1,0 +1,41 @@
+def main() -> None:
+    # if with non-bool conditions (expanded truthiness)
+    x: int = 42
+    if x:
+        print("int truthy")
+
+    y: int = 0
+    if y:
+        print("should not print")
+    else:
+        print("int falsy")
+
+    s: str = "hello"
+    if s:
+        print("str truthy")
+
+    empty: str = ""
+    if empty:
+        print("should not print")
+    else:
+        print("str falsy")
+
+    f: float = 3.14
+    if f:
+        print("float truthy")
+
+    z: float = 0.0
+    if z:
+        print("should not print")
+    else:
+        print("float falsy")
+
+    xs: list[int] = [1, 2, 3]
+    if xs:
+        print("list truthy")
+
+    empty_list: list[int] = []
+    if empty_list:
+        print("should not print")
+    else:
+        print("list falsy")

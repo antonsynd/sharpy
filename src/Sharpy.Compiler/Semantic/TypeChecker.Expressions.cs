@@ -691,13 +691,18 @@ internal partial class TypeChecker
                 if (arm.Guard != null)
                 {
                     var guardType = CheckExpression(arm.Guard);
-                    if (!IsTruthTestable(guardType))
+                    var (guardTruthTestable, guardTruthLowering) = ClassifyTruthiness(guardType);
+                    if (!guardTruthTestable)
                     {
                         AddError(
                             "Guard condition must be a boolean expression",
                             arm.Guard.LineStart, arm.Guard.ColumnStart,
                             code: DiagnosticCodes.Semantic.ConditionNotBoolean,
                             span: arm.Guard.Span);
+                    }
+                    else
+                    {
+                        _semanticInfo.SetTruthinessLowering(arm.Guard, guardTruthLowering);
                     }
                 }
 

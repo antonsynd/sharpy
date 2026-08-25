@@ -1,3 +1,5 @@
-def main():
-    items: list[int] = [1, 2, 3, 4, 5]
+# Comprehension filter with int truthiness (#1558): filters out falsy values (0).
+def main() -> None:
+    items: list[int] = [0, 1, 2, 0, 3]
     result: list[int] = [x for x in items if x]
+    print(result)

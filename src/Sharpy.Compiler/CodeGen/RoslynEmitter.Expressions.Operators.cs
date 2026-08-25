@@ -264,6 +264,17 @@ internal partial class RoslynEmitter
 
         }
 
+        // and/or: wrap both operands through truthiness before emitting && / || (#1558)
+        if (binOp.Operator is BinaryOperator.And or BinaryOperator.Or)
+        {
+            var wrappedLeft = WrapTruthinessIfNeeded(left, binOp.Left);
+            var wrappedRight = WrapTruthinessIfNeeded(right, binOp.Right);
+            var logicalKind = binOp.Operator == BinaryOperator.And
+                ? SyntaxKind.LogicalAndExpression
+                : SyntaxKind.LogicalOrExpression;
+            return BinaryExpression(logicalKind, wrappedLeft, wrappedRight);
+        }
+
         // Standard binary operators
         var kind = binOp.Operator switch
         {
@@ -280,10 +291,6 @@ internal partial class RoslynEmitter
             BinaryOperator.LessThanOrEqual => SyntaxKind.LessThanOrEqualExpression,
             BinaryOperator.GreaterThan => SyntaxKind.GreaterThanExpression,
             BinaryOperator.GreaterThanOrEqual => SyntaxKind.GreaterThanOrEqualExpression,
-
-            // Logical (with short-circuit)
-            BinaryOperator.And => SyntaxKind.LogicalAndExpression,
-            BinaryOperator.Or => SyntaxKind.LogicalOrExpression,
 
             // Bitwise
             BinaryOperator.BitwiseAnd => SyntaxKind.BitwiseAndExpression,
@@ -598,11 +605,19 @@ internal partial class RoslynEmitter
 
         var operand = GenerateExpression(unaryOp.Operand);
 
+        // `not` wraps the operand through truthiness before negating (#1558, #1570)
+        if (unaryOp.Operator == UnaryOperator.Not)
+        {
+            var wrapped = WrapTruthinessIfNeeded(operand, unaryOp.Operand);
+            if (wrapped is BinaryExpressionSyntax)
+                wrapped = ParenthesizedExpression(wrapped);
+            return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, wrapped);
+        }
+
         var kind = unaryOp.Operator switch
         {
             UnaryOperator.Plus => SyntaxKind.UnaryPlusExpression,
             UnaryOperator.Minus => SyntaxKind.UnaryMinusExpression,
-            UnaryOperator.Not => SyntaxKind.LogicalNotExpression,
             UnaryOperator.BitwiseNot => SyntaxKind.BitwiseNotExpression,
             _ => SyntaxKind.None
         };
@@ -612,13 +627,6 @@ internal partial class RoslynEmitter
             return EmitNotImplementedExpression(
                 $"Unsupported operator in code generation: unary operator '{unaryOp.Operator}'",
                 DiagnosticCodes.CodeGen.UnsupportedOperator, unaryOp.LineStart, unaryOp.ColumnStart);
-        }
-
-        // Wrap binary expressions in parentheses when negated to avoid precedence issues.
-        // e.g., `not isinstance(x, T)` → `!(x is T)` not `!x is T`
-        if (kind == SyntaxKind.LogicalNotExpression && operand is BinaryExpressionSyntax)
-        {
-            operand = ParenthesizedExpression(operand);
         }
 
         return PrefixUnaryExpression(kind, operand);

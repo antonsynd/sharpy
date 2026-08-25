@@ -1233,5 +1233,17 @@ public static partial class DiagnosticExplanations
             "result = try[ValueError | NotAnException] foo()",
             "Use exception types in the union, or remove the non-exception entries:\nresult = try[ValueError | KeyError] foo()");
 
+        // ── Semantic overflow (SPY0600+) ─────────────────────────────────────
+
+        Add(dict, DiagnosticCodes.SemanticOverflow.UseBeforeAssignment,
+            "Variable used before being assigned",
+            "Semantic",
+            "A variable declared without an initializer ('x: int') is read before any assignment " +
+            "reaches it on all control-flow paths. Sharpy performs definite-assignment analysis to " +
+            "catch this at compile time rather than leaking a C# CS0165 error.",
+            "def main() -> None:\n    x: int\n    print(x)  # SPY0600 — x has no value yet",
+            "Assign a value before using the variable:\n    x: int = 0\n    print(x)\n\n" +
+            "Or assign on all branches:\n    x: int\n    if condition:\n        x = 1\n    else:\n        x = 2\n    print(x)");
+
     }
 }

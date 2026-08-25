@@ -1,12 +1,5 @@
-# #1485: `assert` was the one condition position in the language without the truth-testable rule
-# that `if` and `while` enforce (SPY0220). Codegen — a pure translator — then emitted
-# `if (!(<non-bool>))`, and Roslyn reported CS0023 "Operator '!' cannot be applied to operand of
-# type 'Bytes'": a C# error naming a C# type, for a Sharpy-level mistake.
-#
-# Not a request for implicit truthiness. Python's bool(b"data") is True, but Axiom 3 already won
-# this argument for if/while; assert agrees with its siblings rather than opening a second answer.
-#
-# Found by ILCompilesPropertyTests once #1432 stopped it passing on zero emitted programs.
+# #1485 + #1558: All types with a falsy case are truth-testable in assert, matching
+# the unified truthiness rule. bytes, int, str, and __bool__ types all pass.
 def bytes_operand() -> None:
     assert b"data", "foo"
 
@@ -16,9 +9,6 @@ def int_operand() -> None:
     assert x
 
 
-# The boundary, in the same file so it cannot drift: `str` and types with `__bool__` ARE
-# truth-testable, exactly as in an `if`. `str` lowers to a `.Length > 0` check, so these lines must
-# produce no diagnostic at all.
 class Flagged:
     def __bool__(self) -> bool:
         return True
@@ -32,4 +22,7 @@ def truth_testable_operands_are_accepted() -> None:
 
 
 def main() -> None:
-    print("unreachable")
+    bytes_operand()
+    int_operand()
+    truth_testable_operands_are_accepted()
+    print("all assertions passed")

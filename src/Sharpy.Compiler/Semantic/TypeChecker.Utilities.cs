@@ -33,26 +33,69 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Returns true if the type can be used in a boolean context (if, while conditions).
-    /// A type is truth-testable if it is bool, UnknownType, or a user-defined type with __bool__.
+    /// Returns whether the type can be used in a truthiness context and, when true, the lowering
+    /// tag codegen must apply (#1558). A type is truth-testable when it has a falsy case — types
+    /// with no falsy case (objects, functions, delegates) are refused.
     /// </summary>
-    private bool IsTruthTestable(SemanticType type)
+    private (bool isTruthTestable, TruthinessLowering lowering) ClassifyTruthiness(SemanticType type)
     {
-        if (type == SemanticType.Bool || type is UnknownType)
-            return true;
+        if (type == SemanticType.Bool)
+            return (true, TruthinessLowering.NativeBool);
 
-        // Strings are truth-testable: empty string is falsy, non-empty is truthy
+        if (type is UnknownType)
+            return (true, TruthinessLowering.NativeBool);
+
         if (type == SemanticType.Str)
-            return true;
+            return (true, TruthinessLowering.StringNotEmpty);
 
-        // User-defined types with __bool__ can be used in boolean contexts
+        if (type == SemanticType.Int)
+            return (true, TruthinessLowering.IntNotZero);
+
+        if (type == SemanticType.Float || type == SemanticType.Double)
+            return (true, TruthinessLowering.FloatNotZero);
+
+        if (type == SemanticType.Long)
+            return (true, TruthinessLowering.LongNotZero);
+
+        if (type is VoidType)
+            return (true, TruthinessLowering.AlwaysFalse);
+
+        if (type is OptionalType)
+            return (true, TruthinessLowering.OptionalIsSome);
+
+        if (type is NullableType)
+            return (true, TruthinessLowering.NullableNotNull);
+
         if (type is UserDefinedType udt && udt.Symbol != null)
         {
-            return udt.Symbol.Methods.Any(m => m.Name == DunderNames.Bool);
+            if (udt.Symbol.Methods.Any(m => m.Name == DunderNames.Bool))
+                return (true, TruthinessLowering.BoolConvertible);
+
+            if (udt.Symbol.Methods.Any(m => m.Name == DunderNames.Len))
+                return (true, TruthinessLowering.SizedNotEmpty);
+
+            if (udt.Name == BuiltinNames.Bytes)
+                return (true, TruthinessLowering.BytesNotEmpty);
+
+            return (false, default);
         }
 
-        return false;
+        if (type is GenericType gt)
+        {
+            return gt.Name switch
+            {
+                BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set
+                    or BuiltinNames.Tuple or BuiltinNames.FrozenSet or BuiltinNames.FrozenDict
+                    or BuiltinNames.DefaultDict => (true, TruthinessLowering.CollectionNotEmpty),
+                BuiltinNames.Bytes => (true, TruthinessLowering.BytesNotEmpty),
+                _ => (false, default)
+            };
+        }
+
+        return (false, default);
     }
+
+    private bool IsTruthTestable(SemanticType type) => ClassifyTruthiness(type).isTruthTestable;
 
     /// <summary>
     /// Interprets a condition into the per-key type narrowings it implies for the given branch polarity,

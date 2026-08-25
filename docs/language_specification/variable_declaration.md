@@ -65,26 +65,29 @@ def main():
     x: auto = [1, 2, 3]    # Shadowing: new variable, type inferred as list[int]
 ```
 
-## No Declaration Without Assignment
+## Bare Declarations (Declare-Then-Assign)
 
-Unlike some languages, Sharpy does not allow variable declarations without initialization:
+Sharpy allows variable declarations without initialization. The variable must be assigned on all control-flow paths before it is read — use-before-assign is a compile-time error (SPY0600):
 
-```python
-def main():
-    # ❌ Invalid - no declaration without assignment
-    x: int                 # ERROR: variable declaration requires initializer
-    name: str              # ERROR: variable declaration requires initializer
+```spy
+def main() -> None:
+    x: int
+    if condition:
+        x = 1
+    else:
+        x = 2
+    print(x)  # OK — x is assigned on all paths
 
-    # ✅ Valid - always provide initializer
-    x: int = 0
-    name: str = ""
-    items: list[int] = []
-    user: User | None = None
+    y: int
+    print(y)  # ERROR SPY0600 — y is used before being assigned
+
+    z: int
+    if condition:
+        z = 1
+    print(z)  # ERROR SPY0600 — z is not assigned on the else path
 ```
 
-**Exception: Class Instance Fields**
-
-Class and struct fields can be declared without initialization if they are assigned in `__init__`.
+**Class and struct fields** can also be declared without initialization if they are assigned in `__init__`.
 
 ## Module-Level vs Function-Level Variables
 

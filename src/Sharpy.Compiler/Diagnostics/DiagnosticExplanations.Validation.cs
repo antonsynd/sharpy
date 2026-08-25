@@ -786,6 +786,17 @@ public static partial class DiagnosticExplanations
             "If defaults are needed, call the function directly rather than through the delegate, " +
             "or ensure all callers pass every argument.");
 
+        Add(dict, DiagnosticCodes.Validation.ImplicitTruthinessConversion,
+            "Implicit truthiness conversion on a non-bool operand",
+            "Validation",
+            "A non-bool expression is used in a truthiness context (if, while, and, or, not, " +
+            "assert, ternary, comprehension filter, match guard). The value is implicitly converted " +
+            "to bool via its truthiness rule (e.g. empty string → false, non-empty → true). " +
+            "This opt-in lint fires when the operand is not already bool, for codebases that prefer " +
+            "explicit conditions like 'len(xs) > 0' over 'if xs:'.",
+            "xs: list[int] = [1, 2, 3]\nif xs:  # SPY0487 — implicit truthiness on list\n    print(\"not empty\")",
+            "Use an explicit boolean expression:\n    if len(xs) > 0:\n        print(\"not empty\")");
+
         // ── Property observer validation (SPY0490-SPY0491, #416) ──────────
 
         Add(dict, DiagnosticCodes.Validation.PropertyObserverInvalidTarget,

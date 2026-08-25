@@ -850,11 +850,16 @@ internal partial class TypeChecker
         _currentFacts = _narrowingFlow?.FactsBeforeBranch(ifStmt.Test) ?? _currentFacts;
 
         var condType = CheckExpression(ifStmt.Test);
-        if (!IsTruthTestable(condType))
+        var (truthTestable, truthLowering) = ClassifyTruthiness(condType);
+        if (!truthTestable)
         {
             AddError($"If condition must be boolean, got '{condType.GetDisplayName()}'",
                 ifStmt.LineStart, ifStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                 span: ifStmt.Test.Span);
+        }
+        else
+        {
+            _semanticInfo.SetTruthinessLowering(ifStmt.Test, truthLowering);
         }
 
         // Check then branch. Narrowing inside the body is driven by the CFG facts each statement
@@ -872,11 +877,16 @@ internal partial class TypeChecker
             _currentFacts = _narrowingFlow?.FactsBeforeBranch(elif.Test) ?? _currentFacts;
 
             var elifCondType = CheckExpression(elif.Test);
-            if (!IsTruthTestable(elifCondType))
+            var (elifTruthTestable, elifTruthLowering) = ClassifyTruthiness(elifCondType);
+            if (!elifTruthTestable)
             {
                 AddError($"Elif condition must be boolean, got '{elifCondType.GetDisplayName()}'",
                     elif.LineStart, elif.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                     span: elif.Test.Span);
+            }
+            else
+            {
+                _semanticInfo.SetTruthinessLowering(elif.Test, elifTruthLowering);
             }
 
             _symbolTable.EnterScope("elif");
@@ -908,11 +918,16 @@ internal partial class TypeChecker
         _currentFacts = _narrowingFlow?.FactsBeforeBranch(whileStmt.Test) ?? _currentFacts;
 
         var condType = CheckExpression(whileStmt.Test);
-        if (!IsTruthTestable(condType))
+        var (whileTruthTestable, whileTruthLowering) = ClassifyTruthiness(condType);
+        if (!whileTruthTestable)
         {
             AddError($"While condition must be boolean, got '{condType.GetDisplayName()}'",
                 whileStmt.LineStart, whileStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                 span: whileStmt.Test.Span);
+        }
+        else
+        {
+            _semanticInfo.SetTruthinessLowering(whileStmt.Test, whileTruthLowering);
         }
 
         // Body narrowing is applied via CFG facts (#1042); read sites materialize the accessor (#1081).
@@ -1839,11 +1854,19 @@ internal partial class TypeChecker
         // Sharpy-level mistake (#1485, the #1035 class). Skipped inside a @test function, where the
         // emitter rewrites the whole assert into a framework assertion and the test expression is
         // deliberately not lowered as an ordinary boolean expression.
-        if (!_inTestFunction && !IsTruthTestable(testType))
+        if (!_inTestFunction)
         {
-            AddError($"Assert condition must be boolean, got '{testType.GetDisplayName()}'",
-                assertStmt.LineStart, assertStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                span: assertStmt.Test.Span);
+            var (assertTruthTestable, assertTruthLowering) = ClassifyTruthiness(testType);
+            if (!assertTruthTestable)
+            {
+                AddError($"Assert condition must be boolean, got '{testType.GetDisplayName()}'",
+                    assertStmt.LineStart, assertStmt.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: assertStmt.Test.Span);
+            }
+            else
+            {
+                _semanticInfo.SetTruthinessLowering(assertStmt.Test, assertTruthLowering);
+            }
         }
 
         if (assertStmt.Message != null)

@@ -127,7 +127,7 @@ public class DiagnosticSpanTests
     [Fact]
     public void NonBoolCondition_DiagnosticHasSpan()
     {
-        var source = "def main():\n    if 42:\n        pass\n";
+        var source = "def f() -> int:\n    return 1\n\ndef main():\n    if f:\n        pass\n";
         var typeChecker = CompileToTypeChecker(source);
         var errors = typeChecker.Diagnostics.GetErrors();
 
@@ -135,10 +135,9 @@ public class DiagnosticSpanTests
 
         error.Span.Should().NotBeNull("condition type mismatch should carry span from the test expression");
         var span = error.Span!.Value;
-        // Span should point to the condition expression "42"
-        var expectedStart = source.IndexOf("42");
-        span.Start.Should().Be(expectedStart, "span should start at the condition '42'");
-        span.Length.Should().Be(2, "span should cover '42'");
+        var expectedStart = source.IndexOf("if f:") + 3;
+        span.Start.Should().Be(expectedStart, "span should start at the condition 'f'");
+        span.Length.Should().Be(1, "span should cover 'f'");
     }
 
     [Fact]

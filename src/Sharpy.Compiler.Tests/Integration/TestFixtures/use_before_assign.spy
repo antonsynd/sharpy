@@ -1,0 +1,3 @@
+def main() -> None:
+    x: int
+    print(x)

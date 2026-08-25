@@ -1,0 +1,16 @@
+def main() -> None:
+    # and/or return bool in Sharpy (DD2), not the operand as in Python
+    # String truthiness
+    print("" or "Anonymous")   # "" is falsy, "Anonymous" is truthy → True
+    print("hello" and "world") # both truthy → True
+
+    # Integer truthiness
+    print(0 or 42)    # 0 is falsy, 42 is truthy → True
+    print(1 and 2)    # both truthy → True
+    print(0 and 42)   # 0 is falsy → False
+
+    # List truthiness
+    xs: list[int] = []
+    ys: list[int] = [1, 2, 3]
+    print(xs or ys)   # empty is falsy, non-empty is truthy → True
+    print(ys and xs)  # ys is truthy, xs is falsy → False

@@ -124,25 +124,23 @@ def main():
     result = compute()  # ✅ OK - inferred from return type
 ```
 
-## No Declaration Without Assignment
+## Bare Declarations
 
-Unlike some languages, Sharpy does not allow variable declarations without initialization:
+Sharpy allows variable declarations without initialization (bare declarations). The variable must be assigned on all control-flow paths before it is read — use-before-assign is a compile-time error (SPY0600). See `variable_declaration.md` for details.
 
-```python
-# ❌ Invalid - no declaration without assignment
-x: int                 # ERROR: variable declaration requires initializer
-name: str              # ERROR: variable declaration requires initializer
+```spy
+x: int
+if condition:
+    x = 1
+else:
+    x = 2
+print(x)  # OK — assigned on all paths
 
-# ✅ Valid - always provide initializer
-x: int = 0
-name: str = ""
-items: list[int] = []
-user: User | None = None
+y: int
+print(y)  # ERROR SPY0600 — used before being assigned
 ```
 
-**Exception: Class Instance Fields**
-
-Class and struct fields can be declared without initialization if they are assigned in `__init__`:
+**Class and struct fields** can also be declared without initialization if they are assigned in `__init__`:
 
 ```python
 class Person:

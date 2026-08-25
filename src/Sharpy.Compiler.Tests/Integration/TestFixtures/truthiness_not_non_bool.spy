@@ -1,0 +1,13 @@
+def main() -> None:
+    # not wraps operand through truthiness (#1558, #1570)
+    print(not 671.8)   # float is truthy → False
+    print(not 0.0)     # 0.0 is falsy → True
+    print(not 0)       # int 0 is falsy → True
+    print(not 42)      # int 42 is truthy → False
+    print(not "")      # empty string is falsy → True
+    print(not "hello") # non-empty string is truthy → False
+
+    xs: list[int] = []
+    ys: list[int] = [1]
+    print(not xs)      # empty list is falsy → True
+    print(not ys)      # non-empty list is truthy → False

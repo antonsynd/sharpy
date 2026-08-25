@@ -142,4 +142,10 @@ fixture::transition/transition_isinstance_tuple_builtins
 # collapses the parens and reads plain int — both branches flip. Same ruling, same entry class.
 fixture::isinstance_tuple_single_element_1532
 
+# `and`/`or` return `bool` (True/False) in Sharpy per DD2 (null_coalescing_operator.md §27),
+# where CPython returns the deciding operand value (short-circuit evaluation yields the
+# operand, not a boolean). `"" or "Anonymous"` → True in Sharpy, "Anonymous" in Python.
+# deviations.yaml: and-or-return-bool. Permanent.
+fixture::truthiness_and_or_non_bool
+
 # --- Real defects (issues to be filed; delete each entry when its issue is fixed) ---
