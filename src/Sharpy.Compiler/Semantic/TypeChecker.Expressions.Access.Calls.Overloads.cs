@@ -892,7 +892,7 @@ internal partial class TypeChecker
             typeSymbol = expanded switch
             {
                 UserDefinedType { Symbol: TypeSymbol ts } => ts,
-                BuiltinType bt => _symbolTable.BuiltinRegistry.GetType(bt.Name),
+                BuiltinType => _symbolTable.BuiltinRegistry.GetType(aliasSymbol.TypeAnnotation.Name),
                 _ => null
             };
         }
@@ -900,7 +900,7 @@ internal partial class TypeChecker
         if (typeSymbol == null)
             return default;
 
-        var isBuiltin = ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(id.Name));
+        var isBuiltin = ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(typeSymbol.Name));
         return ClassifyResolvedConstructorReference(typeSymbol, typeSymbol.Name, writtenName: null, isBuiltin);
     }
 

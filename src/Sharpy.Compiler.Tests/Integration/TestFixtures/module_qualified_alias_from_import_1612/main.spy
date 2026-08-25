@@ -1,0 +1,5 @@
+from lib import Handle
+
+def main() -> None:
+    v = Handle("42")
+    print(v)

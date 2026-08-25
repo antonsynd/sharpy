@@ -1,0 +1,5 @@
+type bint = int
+
+def main() -> None:
+    conv: (str) -> int = bint
+    print(conv("99"))

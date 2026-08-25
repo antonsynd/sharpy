@@ -1,0 +1,6 @@
+import lib
+
+def main() -> None:
+    mk: () -> lib.Circle = lib.Circle
+    c = mk()
+    print(c.sides)

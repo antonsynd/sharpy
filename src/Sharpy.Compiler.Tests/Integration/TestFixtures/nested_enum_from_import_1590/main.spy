@@ -1,0 +1,5 @@
+from lib import Registry
+
+def main() -> None:
+    print(Registry.Level.LOW)
+    print(Registry.Level.HIGH)

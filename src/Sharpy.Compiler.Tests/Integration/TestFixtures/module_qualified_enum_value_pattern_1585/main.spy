@@ -1,0 +1,11 @@
+import lib
+
+def main() -> None:
+    color: lib.Color = lib.Color.RED
+    match color:
+        case lib.Color.RED:
+            print("red")
+        case lib.Color.GREEN:
+            print("green")
+        case _:
+            print("other")
