@@ -660,6 +660,13 @@ internal partial class RoslynEmitter
                     .WithArgumentList(ArgumentList(SeparatedList(staticArgs)));
             }
 
+            // A member reachable only through an explicitly-implemented interface takes the same
+            // receiver cast on a CALL that the property-style access takes below (#1572): the fact is
+            // keyed on the member-access node, whichever expression consumes it.
+            var callInterfaceCast = _context.SemanticInfo?.GetInterfaceCastLowering(memberAccess);
+            if (callInterfaceCast != null)
+                obj = ParenthesizedExpression(CastExpression(MakeInterfaceCastTypeName(callInterfaceCast), obj));
+
             // Generate: obj.Method(args)
             var methodAccess = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,

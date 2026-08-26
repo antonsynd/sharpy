@@ -5156,12 +5156,14 @@ internal partial class TypeChecker
 
             if (argumentCompatible.Count != 1)
             {
-                // #1569: refuse only when the checker could actually adjudicate — at least one
-                // argument has a resolvable CLR type. When it could not (every argument is a
-                // lambda, a `None`, an unresolved type), Roslyn still has the delegate/target
-                // information this seam lacks, so the call falls through as before.
-                var anyArgHasClrType = argTypes.Any(a => TryGetClrType(a) != null);
-                if (!anyArgHasClrType)
+                // #1569: refuse only when the checker could actually adjudicate. An argument whose
+                // type is still being inferred (an unresolved lambda) or is an error recovery
+                // (Unknown) carries no fact to adjudicate on, and Roslyn still has the delegate
+                // information this seam lacks, so such a call falls through as before. Every other
+                // argument — a `None`, a Sharpy value, a CLR value — was judged above.
+                var cannotAdjudicate = argTypes.Any(a =>
+                    a is UnknownType || (a is FunctionType argFn && argFn.HasUnresolvedTypes()));
+                if (cannotAdjudicate)
                     return null;
 
                 var survivingCandidates = argumentCompatible.Count > 0 ? argumentCompatible : candidates;
@@ -5189,7 +5191,7 @@ internal partial class TypeChecker
 
                 AddError(
                     $"Call to '{memberDisplay}' is ambiguous between {survivingCandidates.Count} overloads: " +
-                    $"{candidateDescriptions}. Disambiguate by casting the argument to the intended type",
+                    $"{candidateDescriptions}. {DescribeDisambiguatingCast(survivingCandidates, argTypes.Count)}",
                     call.LineStart, call.ColumnStart,
                     code: DiagnosticCodes.SemanticOverflow.AmbiguousClrOverload,
                     span: call.Span);
@@ -5416,6 +5418,31 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The SPY0601 steer: the first argument position at which the surviving candidates disagree,
+    /// and the Sharpy spellings of each candidate's parameter there — the types the user can cast the
+    /// argument to (<c>Math.floor(float(x))</c>). A parameter the bridge cannot spell is named by its
+    /// CLR type. Falls back to the generic steer when the candidates differ only in arity.
+    /// </summary>
+    private string DescribeDisambiguatingCast(
+        IReadOnlyList<System.Reflection.MethodInfo> candidates, int argCount)
+    {
+        for (int position = 0; position < argCount; position++)
+        {
+            var spellings = candidates
+                .Select(c => c.GetParameters())
+                .Where(ps => position < ps.Length)
+                .Select(ps => MapClrParameterType(ps[position])?.GetDisplayName()
+                              ?? Shared.ClrNameHelper.StripArity(ps[position].ParameterType.Name))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            if (spellings.Count > 1)
+                return $"Disambiguate by casting argument {position + 1} to one of: {string.Join(", ", spellings)}";
+        }
+
+        return "Disambiguate by casting the argument to the intended type";
+    }
+
+    /// <summary>
     /// Whether the bridge's Sharpy spelling of <paramref name="parameterType"/> names a CLR type .NET
     /// would NOT accept for the parameter. The enum arm is the standing case: every enum maps to
     /// <c>int</c>, so a Sharpy <c>int</c> satisfies the spelling while the emitted C# needs the enum
@@ -5444,6 +5471,17 @@ internal partial class TypeChecker
     private bool ClrParameterAccepts(
         System.Reflection.ParameterInfo parameter, SemanticType argType, Expression? argumentNode)
     {
+        // A bare `None` is C#'s null literal: applicable to every reference-type and Nullable<T>
+        // parameter and to nothing else. Mirroring that keeps the candidate set exactly as ambiguous
+        // as Roslyn will find it — `Console.write_line(None)` is ambiguous between the char[], string
+        // and object overloads in C# too — so the refusal is SPY0601 rather than CS0121 behind
+        // SPY0908 (#1569).
+        if (argumentNode != null && UnwrapParenthesized(argumentNode) is NoneLiteral)
+        {
+            var parameterType = parameter.ParameterType;
+            return !parameterType.IsValueType || Nullable.GetUnderlyingType(parameterType) != null;
+        }
+
         var mapped = MapClrParameterType(parameter);
         if (mapped == null)
             return true;

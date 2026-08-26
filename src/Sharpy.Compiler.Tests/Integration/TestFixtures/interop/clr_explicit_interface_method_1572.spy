@@ -1,0 +1,7 @@
+# #1572: an explicitly-implemented interface member reached through a CALL takes the same
+# receiver cast a property-style access takes. List<T>.RemoveAt is explicit-only on
+# IList<T> / IList; without the cast the emitted C# was CS1061 behind SPY0908.
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    xs.remove_at(0)
+    print(xs)

@@ -1,0 +1,8 @@
+# #1569: a bare None is C#'s null literal — applicable to every reference-type overload —
+# so Console.write_line(None) is ambiguous in C# too (CS0121 between char[] and string).
+# The checker mirrors that applicability and refuses SPY0601 instead of leaking the CS0121.
+from system import Console
+
+
+def main() -> None:
+    Console.write_line(None)

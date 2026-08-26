@@ -1,1 +1,1 @@
-ambiguous between @6:9
+Call to 'Math.floor' is ambiguous between 2 overloads: Floor(Double), Floor(Decimal). Disambiguate by casting argument 1 to one of: float64, decimal @6:9
