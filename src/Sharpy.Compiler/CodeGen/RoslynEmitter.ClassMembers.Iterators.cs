@@ -42,7 +42,6 @@ internal partial class RoslynEmitter
         // 2. Private NextImpl() method containing the user's __next__ body
         {
             ResetMethodScope();
-            CollectSourceVariableNames(funcDef.Body);
 
             // Track parameters (skip self)
             foreach (var param in funcDef.Parameters)
@@ -50,9 +49,7 @@ internal partial class RoslynEmitter
                 if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                     continue;
                 var paramName = ParameterCSharpName(param);
-                _declaredVariables.Add(paramName);
                 var baseName = ParameterCSharpName(param);
-                RegisterLocalSlot(baseName, param.Name);
             }
 
             var body = GenerateSuiteBlock(funcDef.Body);
@@ -143,7 +140,6 @@ internal partial class RoslynEmitter
 
         // Set up method scope — same pattern as GenerateClassMethod
         ResetMethodScope();
-        CollectSourceVariableNames(funcDef.Body);
 
         // Track parameters (skip self) — same as GenerateClassMethod
         foreach (var param in funcDef.Parameters)
@@ -151,9 +147,7 @@ internal partial class RoslynEmitter
             if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                 continue;
             var paramName = ParameterCSharpName(param);
-            _declaredVariables.Add(paramName);
             var baseName = ParameterCSharpName(param);
-            RegisterLocalSlot(baseName, param.Name);
         }
 
         // Generate body from user's __reversed__ implementation
@@ -196,7 +190,6 @@ internal partial class RoslynEmitter
 
         // Set up method scope
         ResetMethodScope();
-        CollectSourceVariableNames(funcDef.Body);
 
         // Track parameters (skip self)
         foreach (var param in funcDef.Parameters)
@@ -204,9 +197,7 @@ internal partial class RoslynEmitter
             if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                 continue;
             var paramName = ParameterCSharpName(param);
-            _declaredVariables.Add(paramName);
             var baseName = ParameterCSharpName(param);
-            RegisterLocalSlot(baseName, param.Name);
         }
 
         // Set generator and async flags so yield statements and bare returns emit correctly

@@ -164,10 +164,6 @@ internal partial class RoslynEmitter
             if (stmt is FunctionDef fixtureFunc && IsTestFixtureFunction(fixtureFunc))
             {
                 _pendingFixtures.Add(fixtureFunc);
-                _declaredVariables.Clear();
-                _variableVersions.Clear();
-                _slotSpellings.Clear();
-                _constVariables.Clear();
                 continue;
             }
 
@@ -185,10 +181,6 @@ internal partial class RoslynEmitter
                 && testFunc.Decorators.Any(IsTestDecorator))
             {
                 _pendingTestFunctions.Add(testFunc);
-                _declaredVariables.Clear();
-                _variableVersions.Clear();
-                _slotSpellings.Clear();
-                _constVariables.Clear();
                 continue;
             }
 
@@ -198,10 +190,6 @@ internal partial class RoslynEmitter
             if (stmt is FunctionDef cachedFunc && IsLruCacheDecorated(cachedFunc))
             {
                 moduleDeclarations.AddRange(GenerateLruCacheWrappedFunction(cachedFunc, isModuleLevel: true));
-                _declaredVariables.Clear();
-                _variableVersions.Clear();
-                _slotSpellings.Clear();
-                _constVariables.Clear();
                 continue;
             }
 
@@ -218,10 +206,6 @@ internal partial class RoslynEmitter
                 {
                     moduleDeclarations.AddRange(GenerateModuleLevelProperty(propGroup));
                 }
-                _declaredVariables.Clear();
-                _variableVersions.Clear();
-                _slotSpellings.Clear();
-                _constVariables.Clear();
                 continue;
             }
 
@@ -231,10 +215,6 @@ internal partial class RoslynEmitter
             // so that parameter names from their methods don't leak into module-level code
             if (stmt is ClassDef or StructDef or FunctionDef or InterfaceDef or EnumDef or UnionDef or DelegateDef or EventDef)
             {
-                _declaredVariables.Clear();
-                _variableVersions.Clear();
-                _slotSpellings.Clear();
-                _constVariables.Clear();
             }
 
             if (member is MemberDeclarationSyntax memberDecl)
@@ -855,7 +835,6 @@ internal partial class RoslynEmitter
             _isInTestFunction = true;
 
             ResetMethodScope(func);
-            CollectSourceVariableNames(func.Body);
 
             using var _gen = SetGeneratorScope(_context.Ir?.IsGenerator(func) == true);
             using var _async = SetAsyncScope(func.IsAsync);
@@ -904,23 +883,17 @@ internal partial class RoslynEmitter
                 var paramName = ParameterCSharpName(param);
                 if (param.IsLateBound)
                 {
-                    _declaredVariables.Add(paramName + LateBoundSuffix);
-                    _declaredVariables.Add(paramName);
                 }
                 else
                 {
-                    _declaredVariables.Add(paramName);
                 }
                 var baseName = ParameterCSharpName(param);
-                RegisterLocalSlot(baseName, param.Name);
             }
 
             // Track fixture-injected names as declared variables to avoid versioning collisions.
             foreach (var (parameter, _) in consumedForFunc)
             {
                 var localName = ParameterCSharpName(parameter);
-                _declaredVariables.Add(localName);
-                RegisterLocalSlot(localName, parameter.Name);
             }
 
             var preamble = GenerateLateBoundPreamble(paramsExcludingFixtures);
@@ -966,10 +939,6 @@ internal partial class RoslynEmitter
 
             members.Add(method);
 
-            _declaredVariables.Clear();
-            _variableVersions.Clear();
-            _slotSpellings.Clear();
-            _constVariables.Clear();
         }
 
         _isInTestFunction = savedIsInTestFunction;

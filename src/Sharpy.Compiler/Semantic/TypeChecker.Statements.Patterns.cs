@@ -1345,7 +1345,8 @@ internal partial class TypeChecker
 
             if (targetElem is Identifier tupleTargetId)
             {
-                var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: false);
+                var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: false)
+                    ?? _symbolTable.Lookup(tupleTargetId.Name, searchParents: true);
 
                 // Check if trying to reassign a constant
                 if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
@@ -1374,8 +1375,15 @@ internal partial class TypeChecker
                 SemanticBinding.SetVariableType(newSymbol, valueElemType);
                 _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
 
-                var tupleBindingKind = existingSymbol != null ? TargetBindingKind.Rebinds : TargetBindingKind.Declares;
-                _semanticInfo.SetTargetBinding(tupleTargetId, new TargetBinding(tupleBindingKind));
+                if (existingSymbol is VariableSymbol predecessor)
+                {
+                    _semanticInfo.SetRebindingPredecessor(newSymbol, predecessor);
+                    _semanticInfo.SetTargetBinding(tupleTargetId, new TargetBinding(TargetBindingKind.Rebinds));
+                }
+                else
+                {
+                    _semanticInfo.SetTargetBinding(tupleTargetId, new TargetBinding(TargetBindingKind.Declares));
+                }
 
                 _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
                 if (valueElemType is UnknownType)

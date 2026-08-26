@@ -739,7 +739,7 @@ public class RoslynEmitterStatementTests
         Assert.Contains("try", result);
         Assert.Contains("var x = 1;", result);
         Assert.Contains("finally", result);
-        Assert.Contains("Cleanup();", result);
+        Assert.Contains("cleanup();", result);
     }
 
     [Fact]
@@ -786,7 +786,7 @@ public class RoslynEmitterStatementTests
         Assert.Contains("var x = 1;", result);
         Assert.Contains("catch (Exception)", result);
         Assert.Contains("finally", result);
-        Assert.Contains("Cleanup();", result);
+        Assert.Contains("cleanup();", result);
     }
 
     [Fact]
@@ -881,7 +881,7 @@ public class RoslynEmitterStatementTests
         Assert.Contains("catch (Exception)", result);
         // Check for else execution: if (__trySucceeded_N) { Success(); }
         Assert.Contains("if (__trySucceeded_", result);
-        Assert.Contains("Success();", result);
+        Assert.Contains("success();", result);
     }
 
     [Fact]
@@ -941,10 +941,10 @@ public class RoslynEmitterStatementTests
         Assert.Contains("try", result);
         Assert.Contains("catch (Exception)", result);
         Assert.Contains("finally", result);
-        Assert.Contains("Cleanup();", result);
+        Assert.Contains("cleanup();", result);
         // Check for else execution after try-catch-finally
         Assert.Contains("if (__trySucceeded_", result);
-        Assert.Contains("Success();", result);
+        Assert.Contains("success();", result);
     }
 
     #endregion

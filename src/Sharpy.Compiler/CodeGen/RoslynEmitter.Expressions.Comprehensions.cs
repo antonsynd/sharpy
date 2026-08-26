@@ -203,7 +203,6 @@ internal partial class RoslynEmitter
         // The comprehension's own scope opens here — after the temp declaration, which belongs to
         // the enclosing scope, and before anything that reads or registers a loop target. Same
         // placement as GenerateImperativeComprehension's (#1498).
-        var scopeSnapshot = SaveScope();
 
         // Loop targets are bound BEFORE the spread expression is generated, in source order, because
         // the spread READS them: `{**d for d in dicts}` emits `d`, and if the binding has not yet
@@ -284,7 +283,6 @@ internal partial class RoslynEmitter
 
         // Comprehension variables were scoped to the comprehension; drop them from the enclosing
         // scope. Mirrors GenerateImperativeComprehension's own restore.
-        RestoreScope(scopeSnapshot);
 
         _hoistedStatements.Add(tempDecl);
         _hoistedStatements.AddRange(currentBody);
@@ -412,7 +410,6 @@ internal partial class RoslynEmitter
         // with nor leak into the enclosing scope (Python semantics). Snapshot the variable-version
         // state now and restore it once the loops are built, so a loop var reusing an enclosing name
         // is bound to a fresh C# name (x_1) while the enclosing binding is left untouched.
-        var scopeSnapshot = SaveScope();
 
         // A comprehension target re-binds its name for the comprehension's extent, so an accessor
         // value-parameter rewrite in force outside must not reach inside it (#1500 — measured
@@ -547,7 +544,6 @@ internal partial class RoslynEmitter
         }
 
         // Comprehension variables were scoped to the comprehension; drop them from the enclosing scope.
-        RestoreScope(scopeSnapshot);
 
         // Hoist: presized source temp (single-for) + temp declaration + outermost loop
         if (sourceDecl != null)
@@ -613,7 +609,7 @@ internal partial class RoslynEmitter
         {
             case Identifier id:
                 statements.Add(DeclareComprehensionVar(
-                    GetMangledVariableName(id.Name, isNewDeclaration: true, id.IsNameBacktickEscaped),
+                    GetMangledVariableName(id, isNewDeclaration: true),
                     IdentifierName(sourceVar)));
                 break;
 
@@ -622,9 +618,7 @@ internal partial class RoslynEmitter
                 var designations = new List<VariableDesignationSyntax>();
                 foreach (var elemId in tuple.Elements.Cast<Identifier>())
                 {
-                    var name = GetMangledVariableName(elemId.Name, isNewDeclaration: true,
-                        elemId.IsNameBacktickEscaped);
-                    _declaredVariables.Add(name);
+                    var name = GetMangledVariableName(elemId, isNewDeclaration: true);
                     designations.Add(SingleVariableDesignation(EscapedIdentifier(name)));
                 }
 
@@ -649,8 +643,7 @@ internal partial class RoslynEmitter
                     if (tuple.Elements[i] is Identifier elemId)
                     {
                         statements.Add(DeclareComprehensionVar(
-                            GetMangledVariableName(elemId.Name, isNewDeclaration: true,
-                                elemId.IsNameBacktickEscaped),
+                            GetMangledVariableName(elemId, isNewDeclaration: true),
                             itemAccess));
                     }
                     else if (tuple.Elements[i] is TupleLiteral nested)
@@ -667,7 +660,6 @@ internal partial class RoslynEmitter
     /// <summary>Builds <c>var {name} = {initializer};</c> and marks <paramref name="name"/> declared.</summary>
     private StatementSyntax DeclareComprehensionVar(string name, ExpressionSyntax initializer)
     {
-        _declaredVariables.Add(name);
         return LocalDeclarationStatement(
             VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(

@@ -29,7 +29,6 @@ internal partial class RoslynEmitter
         // Pre-scan the constructor body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
         // with user-declared variables.
-        CollectSourceVariableNames(func.Body);
 
         // Process decorators to determine modifiers
         var modifiers = GenerateMethodModifiers(func.Name, func.Decorators);
@@ -56,10 +55,8 @@ internal partial class RoslynEmitter
             if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                 continue;
             var paramName = ParameterCSharpName(param);
-            _declaredVariables.Add(paramName);
             // Also track in version map so assignments to parameters work correctly
             var baseName = ParameterCSharpName(param);
-            RegisterLocalSlot(baseName, param.Name);
         }
 
         // Find super().__init__() or self.__init__() anywhere in the body and convert to

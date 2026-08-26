@@ -157,7 +157,8 @@ internal partial class RoslynEmitter
                 && !_context.SymbolTable.BuiltinRegistry.IsBuiltinSymbol(symbol))
                 isBuiltinFunc = false;
             if (!isBuiltinsQualified && isBuiltinFunc && !funcName.IsNameBacktickEscaped
-                && _localFunctionNames.ContainsKey(funcName.Name))
+                && symbol is FunctionSymbol fs2
+                && GetCodeGenInfo(fs2) is { } cgi && !cgi.IsModuleLevel)
                 isBuiltinFunc = false;
 
             // Handle direct calls to asyncio functions (from asyncio import gather, sleep)
@@ -344,28 +345,38 @@ internal partial class RoslynEmitter
             // GetMangledVariableName requires: the slot key collapses case, so a call to the module
             // function `Zed` found the slot of a local or parameter `zed` and emitted `zed()` on an
             // int — CS0149, surfacing as SPY0908 (#1276).
-            var codeGenInfo = symbol != null ? GetCodeGenInfo(symbol) : null;
-            string funcCSharpName;
-            if (IsLocalSlotInScope(funcName.Name, funcName.IsNameBacktickEscaped))
+            // Try the scope-resolved symbol first, then the node-keyed identifier symbol
+            // from SemanticInfo (which sees local variables that LookupSymbol cannot after
+            // scopes are collapsed).
+            var resolvedCalleeSymbol = symbol
+                ?? _context.SemanticInfo?.GetIdentifierSymbol(funcName);
+            var codeGenInfo = resolvedCalleeSymbol != null ? GetCodeGenInfo(resolvedCalleeSymbol) : null;
+            string? funcCSharpName;
+            if (codeGenInfo is { IsModuleLevel: false } && resolvedCalleeSymbol is VariableSymbol)
             {
-                funcCSharpName = GetMangledVariableName(funcName.Name, isNewDeclaration: false, funcName.IsNameBacktickEscaped);
+                funcCSharpName = codeGenInfo.GetVersionedCSharpName();
             }
             else if (codeGenInfo?.CSharpName != null)
             {
                 funcCSharpName = codeGenInfo.CSharpName;
             }
-            else
+            else if (resolvedCalleeSymbol is FunctionSymbol)
             {
                 funcCSharpName = NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped, GetClrMethodName(symbol));
             }
+            else
+            {
+                // No scope-visible symbol and no CodeGenInfo — the callee is a local variable
+                // (parameter, lambda, partial) whose scope was collapsed. Route through
+                // GenerateExpression so the node-keyed identifier symbol resolves correctly.
+                funcCSharpName = null;
+            }
 
             // If the callee is a narrowed Optional delegate (e.g., `if cb is not None: cb(x)`),
-            // generate through GenerateExpression so the recorded accessor (.Unwrap()/!) is applied
-            // before invocation. A lowering on the callee node is exactly this narrowed-read signal.
-            // The narrowing fact is recorded on the inner node (CheckExpression recurses through
-            // Parenthesized), so look it up via the unwrapped `callee`, not the wrapped call.Function.
+            // or no symbol was found (local variable/parameter in a collapsed scope), generate
+            // through GenerateExpression so the node-keyed symbol resolves correctly.
             ExpressionSyntax calleeExpr;
-            if (_context.SemanticInfo?.GetNarrowedReadLowering(callee) != null)
+            if (funcCSharpName == null || _context.SemanticInfo?.GetNarrowedReadLowering(callee) != null)
                 calleeExpr = GenerateExpression(callee);
             else
                 calleeExpr = ParseQualifiedName(funcCSharpName);

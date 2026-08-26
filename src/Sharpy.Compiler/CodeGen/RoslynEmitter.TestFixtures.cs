@@ -94,7 +94,6 @@ internal partial class RoslynEmitter
 
         // Set up emission scope as if we were generating a function body.
         ResetMethodScope(func);
-        CollectSourceVariableNames(func.Body);
 
         int yieldIndex = FindFirstYield(func.Body);
 

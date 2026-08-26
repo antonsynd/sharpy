@@ -275,39 +275,16 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generates a C# local function statement from a nested FunctionDef.
-    /// Saves and restores the enclosing method's scope state so that the nested
-    /// function's variable tracking does not clobber the outer scope.
+    /// Since #1560, all local names are pre-computed in CodeGenInfo — no scope
+    /// save/restore needed.
     /// </summary>
     private LocalFunctionStatementSyntax GenerateLocalFunction(FunctionDef func)
     {
-        // Save all enclosing scope state
-        var savedDeclaredVars = new HashSet<string>(_declaredVariables);
-        var savedVersions = new Dictionary<string, int>(_variableVersions);
-        var savedSlotSpellings = new Dictionary<string, string>(_slotSpellings, StringComparer.Ordinal);
-        var savedConsts = new HashSet<string>(_constVariables);
-        var savedSourceNames = new HashSet<string>(_sourceVariableNames);
-        var savedLocalFuncs = new Dictionary<string, string>(_localFunctionNames);
-
-        // Clear scope for the local function
-        _declaredVariables.Clear();
-        _variableVersions.Clear();
-        _slotSpellings.Clear();
-        _constVariables.Clear();
-        _sourceVariableNames.Clear();
-
-        // Pre-scan the local function body for source variable names
-        CollectSourceVariableNames(func.Body);
-
         // Set generator and async scope (disposable — auto-restores)
         using var _ = SetGeneratorScope(_context.Ir?.IsGenerator(func) == true);
         using var _async = SetAsyncScope(func.IsAsync);
 
         // Mangle name: snake_case → PascalCase, unless the name was backtick-escaped.
-        // Must agree with the call site, which resolves a nested def through
-        // NameCasing.ResolveMethod (RoslynEmitter.Expressions.Access.cs:306) because a nested
-        // FunctionSymbol has no CodeGenInfo. Mangling here escape-blind declared `Zed` while the
-        // call emitted `zed` — CS0103 behind SPY0908 (#1379). For unescaped names this is a no-op:
-        // NameContext.Method and ResolveMethod's unescaped arm are both ToPascalCase.
         var mangledName = NameCasing.ResolveMethod(func.Name, func.IsNameBacktickEscaped);
 
         // Determine return type
@@ -323,8 +300,6 @@ internal partial class RoslynEmitter
         }
         else if (isAsync)
         {
-            // An explicit `-> None` annotation maps to `void`, which must become bare
-            // `Task` (not `Task<void>` — that is invalid C#).
             if (func.ReturnType != null && !IsVoidType(returnType))
             {
                 returnType = WrapInTask(returnType);
@@ -341,25 +316,6 @@ internal partial class RoslynEmitter
             .Select(GenerateParameter)
             .ToArray();
 
-        // Track parameters as declared variables in the local function scope
-        foreach (var param in func.Parameters)
-        {
-            var paramName = ParameterCSharpName(param);
-            _declaredVariables.Add(paramName);
-            var baseName = ParameterCSharpName(param);
-            RegisterLocalSlot(baseName, param.Name);
-        }
-
-        // Carry forward captured outer variables/parameters so delegate invocations
-        // inside the nested function resolve to the original (camelCase) name. The claiming
-        // spelling travels with the version: a carried slot with no owner answers nothing once
-        // the lookup fails closed (#1386).
-        foreach (var (k, v) in savedVersions)
-        {
-            CarryForwardOuterSlot(k, v, savedSlotSpellings.TryGetValue(k, out var owner) ? owner : null);
-            _declaredVariables.Add(k);
-        }
-
         // Generate body (recursive — supports nested-nested functions). A nested def's parameters
         // re-bind their names, so an accessor-parameter rewrite in force outside must not reach
         // inside (#1500 — the same hole as the shadowing lambda, on the sibling binder).
@@ -370,12 +326,6 @@ internal partial class RoslynEmitter
                 GenerateSuiteBlock(func.Body), func.LineStart);
         }
 
-        // EscapedIdentifier, not Identifier: a declaration position holding a possibly-@-escaped
-        // name needs the Text/ValueText split Roslyn's parser produces (#1095), or the declaration
-        // binds as "@class" while every reference — built through EscapedIdentifierName — binds as
-        // "class". That mismatch is invisible in printed C# and only appears under direct tree
-        // handoff. Reachable only since nested defs started honouring the escape (#1379): before
-        // that the name was always PascalCased and never carried an @.
         var localFunc = LocalFunctionStatement(returnType, EscapedIdentifier(mangledName))
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
@@ -396,22 +346,6 @@ internal partial class RoslynEmitter
         {
             localFunc = localFunc.AddModifiers(Token(SyntaxKind.AsyncKeyword));
         }
-
-        // Restore enclosing scope state
-        _declaredVariables.Clear();
-        _declaredVariables.UnionWith(savedDeclaredVars);
-        RestoreSlotTable(savedVersions, savedSlotSpellings);
-        _constVariables.Clear();
-        _constVariables.UnionWith(savedConsts);
-        _sourceVariableNames.Clear();
-        _sourceVariableNames.UnionWith(savedSourceNames);
-        _localFunctionNames.Clear();
-        foreach (var (k, v) in savedLocalFuncs)
-            _localFunctionNames[k] = v;
-
-        // Register the local function name in the enclosing scope so that
-        // subsequent references (e.g., passing as a delegate) resolve to PascalCase
-        _localFunctionNames[func.Name] = mangledName;
 
         return localFunc;
     }

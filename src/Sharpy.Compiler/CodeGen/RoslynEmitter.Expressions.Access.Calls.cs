@@ -432,8 +432,7 @@ internal partial class RoslynEmitter
 
         return expr switch
         {
-            Identifier id => _context.LookupSymbol(id.Name) is FunctionSymbol
-                || _localFunctionNames.ContainsKey(id.Name),
+            Identifier id => _context.LookupSymbol(id.Name) is FunctionSymbol,
             MemberAccess ma =>
                 _context.SemanticInfo?.GetMemberAccessResolution(ma)?.Member is FunctionSymbol,
             _ => false,

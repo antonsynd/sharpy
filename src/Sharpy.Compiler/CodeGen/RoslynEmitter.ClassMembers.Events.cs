@@ -174,7 +174,6 @@ internal partial class RoslynEmitter
         {
             // Clear method scope tracking for each accessor
             ResetMethodScope();
-            CollectSourceVariableNames(eventDef.Body);
 
             // Identify the handler parameter name (to rewrite to 'value')
             string? handlerParamName = null;

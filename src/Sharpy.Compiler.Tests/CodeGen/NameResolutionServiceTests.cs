@@ -123,137 +123,10 @@ public class NameResolutionServiceTests
 
     #endregion
 
-    #region Local Variable Versioning Tests
+    // Note: Local Variable Versioning Tests and Collision Avoidance Tests were deleted —
+    // ResolveLocalName and ComputeNextVersion were deleted when the LocalNameAllocator
+    // took over all local name computation (#1560, #1647).
 
-    [Fact]
-    public void ResolveLocalName_FirstDeclaration_ReturnsBaseName()
-    {
-        // Arrange
-        var variableVersions = new Dictionary<string, int> { { "x", 0 } };
-        var sourceNames = new HashSet<string>();
-
-        // Act
-        var result = _service.ResolveLocalName("x", isNewDeclaration: false, variableVersions, sourceNames);
-
-        // Assert
-        result.Should().Be("x");
-    }
-
-    [Fact]
-    public void ResolveLocalName_Redeclaration_ReturnsVersionedName()
-    {
-        // Arrange
-        var variableVersions = new Dictionary<string, int> { { "x", 0 } };
-        var sourceNames = new HashSet<string>();
-
-        // Act
-        var result = _service.ResolveLocalName("x", isNewDeclaration: true, variableVersions, sourceNames);
-
-        // Assert
-        result.Should().Be("x_1");
-    }
-
-    [Fact]
-    public void ResolveLocalName_Reference_ReturnsCurrentVersion()
-    {
-        // Arrange
-        var variableVersions = new Dictionary<string, int> { { "x", 2 } };
-        var sourceNames = new HashSet<string>();
-
-        // Act
-        var result = _service.ResolveLocalName("x", isNewDeclaration: false, variableVersions, sourceNames);
-
-        // Assert
-        result.Should().Be("x_2");
-    }
-
-    [Fact]
-    public void ResolveLocalName_SnakeCaseName_ConvertsToCamelCase()
-    {
-        // Arrange
-        var variableVersions = new Dictionary<string, int> { { "myVar", 0 } };
-        var sourceNames = new HashSet<string>();
-
-        // Act
-        var result = _service.ResolveLocalName("my_var", isNewDeclaration: false, variableVersions, sourceNames);
-
-        // Assert
-        result.Should().Be("myVar");
-    }
-
-    [Fact]
-    public void ResolveLocalName_UnknownVariable_ReturnsNull()
-    {
-        // Arrange
-        var variableVersions = new Dictionary<string, int>();
-        var sourceNames = new HashSet<string>();
-
-        // Act
-        var result = _service.ResolveLocalName("unknown", isNewDeclaration: false, variableVersions, sourceNames);
-
-        // Assert
-        result.Should().BeNull();
-    }
-
-    #endregion
-
-    #region Collision Avoidance Tests
-
-    [Fact]
-    public void ResolveLocalName_CollisionWithSourceName_SkipsToNextVersion()
-    {
-        // Arrange
-        var variableVersions = new Dictionary<string, int> { { "x", 0 } };
-        var sourceNames = new HashSet<string> { "x_1" }; // User declared x_1
-
-        // Act
-        var result = _service.ResolveLocalName("x", isNewDeclaration: true, variableVersions, sourceNames);
-
-        // Assert - should skip x_1 and use x_2
-        result.Should().Be("x_2");
-    }
-
-    [Fact]
-    public void ResolveLocalName_MultipleCollisions_SkipsAllCollisions()
-    {
-        // Arrange
-        var variableVersions = new Dictionary<string, int> { { "x", 0 } };
-        var sourceNames = new HashSet<string> { "x_1", "x_2", "x_3" };
-
-        // Act
-        var result = _service.ResolveLocalName("x", isNewDeclaration: true, variableVersions, sourceNames);
-
-        // Assert - should skip x_1, x_2, x_3 and use x_4
-        result.Should().Be("x_4");
-    }
-
-    [Fact]
-    public void ComputeNextVersion_NoCollision_ReturnsNextVersion()
-    {
-        // Arrange
-        var sourceNames = new HashSet<string>();
-
-        // Act
-        var result = _service.ComputeNextVersion("x", currentVersion: 0, sourceNames);
-
-        // Assert
-        result.Should().Be(1);
-    }
-
-    [Fact]
-    public void ComputeNextVersion_WithCollision_SkipsCollisions()
-    {
-        // Arrange
-        var sourceNames = new HashSet<string> { "x_1", "x_2" };
-
-        // Act
-        var result = _service.ComputeNextVersion("x", currentVersion: 0, sourceNames);
-
-        // Assert
-        result.Should().Be(3);
-    }
-
-    #endregion
 
     #region NameMangler Fallback Tests
 
@@ -388,39 +261,14 @@ public class NameResolutionServiceTests
             OriginalName = "x",
             IsModuleLevel = true
         };
-        var variableVersions = new Dictionary<string, int> { { "x", 3 } };
-        var sourceNames = new HashSet<string>();
-
         // Act
         var result = _service.ResolveName(
             symbol,
             codeGenInfo,
-            isNewDeclaration: false,
-            variableVersions,
-            sourceNames);
+            isNewDeclaration: false);
 
-        // Assert - CodeGenInfo takes priority over local versioning
+        // Assert - CodeGenInfo takes priority
         result.Should().Be("moduleX");
-    }
-
-    [Fact]
-    public void ResolveName_LocalDeclarationWithVersioning_WorksCorrectly()
-    {
-        // Arrange - local variable with existing version
-        var symbol = new VariableSymbol { Name = "counter", Kind = SymbolKind.Variable };
-        var variableVersions = new Dictionary<string, int> { { "counter", 1 } };
-        var sourceNames = new HashSet<string>();
-
-        // Act - redeclare the variable
-        var result = _service.ResolveName(
-            symbol,
-            codeGenInfo: null,
-            isNewDeclaration: true,
-            variableVersions,
-            sourceNames);
-
-        // Assert - should get next version
-        result.Should().Be("counter_2");
     }
 
     [Fact]
@@ -463,9 +311,9 @@ public class NameResolutionServiceTests
     }
 
     [Fact]
-    public void TryResolveFromCodeGenInfo_LocalRedeclaration_ReturnsNull()
+    public void TryResolveFromCodeGenInfo_LocalRedeclaration_ReturnsName()
     {
-        // Arrange - local variable being redeclared should return null to let local versioning handle it
+        // Since #1560, all locals have pre-computed CodeGenInfo — redeclarations resolve here too
         var symbol = new VariableSymbol { Name = "x", Kind = SymbolKind.Variable };
         var codeGenInfo = new CodeGenInfo
         {
@@ -478,7 +326,7 @@ public class NameResolutionServiceTests
         var result = _service.TryResolveFromCodeGenInfo(symbol, codeGenInfo, isNewDeclaration: true);
 
         // Assert
-        result.Should().BeNull();
+        result.Should().Be("x");
     }
 
     [Fact]

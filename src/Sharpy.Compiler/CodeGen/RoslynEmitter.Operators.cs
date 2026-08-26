@@ -203,7 +203,6 @@ internal partial class RoslynEmitter
         var prev = (_selfReplacementIdentifier, _parameterNameOverrides);
 
         ResetMethodScope();
-        CollectSourceVariableNames(funcDef.Body);
 
         _selfReplacementIdentifier = selfReplacement;
         _parameterNameOverrides = paramOverrides;
@@ -674,9 +673,7 @@ internal partial class RoslynEmitter
         var paramName = ParameterCSharpName(sourceParam);
         var param = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
 
-        RegisterLocalSlot(paramName, sourceParam.Name);
         var body = GenerateSuiteBlock(funcDef.Body);
-        ReleaseLocalSlot(paramName);
 
         var conversionOp = ConversionOperatorDeclaration(keyword, returnType)
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))

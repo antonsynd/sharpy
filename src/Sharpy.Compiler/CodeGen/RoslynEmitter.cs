@@ -14,10 +14,11 @@ namespace Sharpy.Compiler.CodeGen;
 /// Generates C# code using Roslyn syntax trees.
 ///
 /// Name Resolution:
-/// - Module-level symbols (variables, constants, functions, types, imports):
-///   Use Symbol.CodeGenInfo which is computed during semantic analysis
-/// - Local variables: Use runtime tracking (_declaredVariables, _variableVersions)
-///   because local variable redeclarations happen during emission
+/// All names resolve through Symbol.CodeGenInfo, which is computed during semantic
+/// analysis. Module-level symbols, local variables (including redeclarations), constants,
+/// functions, types, and imports all have CodeGenInfo with pre-computed CSharpName and
+/// Version. TargetBinding (node-keyed in SemanticInfo) tells binding sites whether to
+/// emit a declaration or an assignment.
 /// - Type detection (class/struct instantiation): Use SymbolTable lookup
 /// - String enum detection: Use CodeGenInfo.IsStringEnum
 /// </summary>
@@ -28,81 +29,10 @@ internal partial class RoslynEmitter : ICodeEmitter
     private readonly TypeSyntaxMapper _typeMapper;
     private readonly NameResolutionService _nameResolutionService;
     private readonly CancellationToken _cancellationToken;
-    private readonly HashSet<string> _declaredVariables = new();
-
-    // ============================================================
-    // LOCAL SCOPE TRACKING FIELDS
-    //
-    // These fields track mutable state during emission for LOCAL variables.
-    // They are needed because local variable redeclarations happen during
-    // emission, not during semantic analysis (so CodeGenInfo can't pre-compute them).
-    //
-    // For module-level symbols (variables, functions, types, imports),
-    // use Symbol.CodeGenInfo which is computed during semantic analysis.
-    // ============================================================
-
-    /// <summary>
-    /// Tracks variable version numbers for handling local variable redeclarations.
-    /// E.g., x = 1; x = "hello" produces x then x_1.
-    /// </summary>
-    private readonly Dictionary<string, int> _variableVersions = new();
-
-    /// <summary>
-    /// Slot base name → the SOURCE spelling that claimed it. TOTAL: every key in
-    /// <see cref="_variableVersions"/> has an entry here (#1276, #1386).
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <see cref="_variableVersions"/> is keyed on the mangled base, which collapses case: a local
-    /// <c>zed</c> and a class <c>Zed</c> both key on <c>zed</c>, so the REFERENCE <c>Zed.make()</c>
-    /// found the local's slot and emitted member access on an <c>int</c> (CS1061 → SPY0908). That
-    /// pairing is legal in both Python and C#; the defect is the lossy lookup, not the program.
-    /// </para>
-    /// <para>
-    /// A slot answers only the spelling that claimed it; a reference spelled differently falls
-    /// through to type and module resolution. This is only sound because the map is total — while
-    /// a third of the seeding paths wrote <see cref="_variableVersions"/> directly and recorded no
-    /// spelling, <see cref="SlotAnswersSpelling"/> had to fail OPEN for them, and those slots kept
-    /// answering any case-variant (#1386). Totality is what lets the lookup fail closed, and it is
-    /// held by construction: the only writers are <see cref="RegisterLocalSlot"/>,
-    /// <see cref="SetSlotVersion"/> and <see cref="RestoreSlotTable"/>, which is enforced by
-    /// <c>LocalSlotRegistrationConformanceTests</c>.
-    /// </para>
-    /// <para>
-    /// Two DISTINCT local spellings can no longer share a slot — SPY0522 refuses that
-    /// (LocalNameCollisionValidator) — so a mismatch here always means the reference is not a
-    /// local.
-    /// </para>
-    /// </remarks>
-    private readonly Dictionary<string, string> _slotSpellings = new(StringComparer.Ordinal);
-
-    /// <summary>
-    /// Tracks all source variable names (C# camelCase) declared in the current function scope.
-    /// Used to avoid generating versioned names (x_1, x_2) that collide with user-declared variables.
-    /// Pre-populated by scanning the function body before emission.
-    /// </summary>
-    private readonly HashSet<string> _sourceVariableNames = new();
-
-    /// <summary>
-    /// Tracks const variable names (original Sharpy names) within local scopes.
-    /// Needed for local const declarations within functions.
-    /// </summary>
-    private readonly HashSet<string> _constVariables = new();
-
-    /// <summary>
-    /// Maps local function source names to their PascalCase C# names within the
-    /// current scope. Populated after GenerateLocalFunction so that subsequent
-    /// references (e.g., passing as a delegate argument) resolve correctly.
-    /// </summary>
-    private readonly Dictionary<string, string> _localFunctionNames = new();
-
-    /// <summary>
-    /// Maps local variable base names (C# camelCase) to their declared semantic type
-    /// within the current function scope. Used so that reassignments such as
-    /// <c>x = None</c> can target <c>Optional&lt;T&gt;.None</c> when <c>x</c> is Optional
-    /// (the assignment LHS node is not always annotated in SemanticInfo).
-    /// </summary>
-    private readonly Dictionary<string, SemanticType> _localVariableTypes = new();
+    // Note: Local scope tracking fields (_declaredVariables, _variableVersions,
+    // _slotSpellings, _sourceVariableNames, _constVariables, _localFunctionNames,
+    // _localVariableTypes) were deleted when all locals gained pre-computed
+    // CodeGenInfo and TargetBinding (#1560, #1647).
 
     /// <summary>
     /// Tracks module-level field names (C# names) to prevent duplicate field declarations.
@@ -117,10 +47,6 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// function, because in that case the user is responsible for execution order.
     /// </summary>
     private bool _forceModuleLevelFields;
-
-    // ============================================================
-    // END LOCAL SCOPE TRACKING FIELDS
-    // ============================================================
 
     // Note: _classNames, _structNames, and _stringEnumNames tracking sets were removed.
     // Type detection is now done via SymbolTable lookup (for classes/structs) and
@@ -324,42 +250,11 @@ internal partial class RoslynEmitter : ICodeEmitter
     }
 
     /// <summary>
-    /// Snapshot of local scope tracking state, used for block-scoped constructs (for loops).
-    /// </summary>
-    private record ScopeSnapshot(
-        HashSet<string> DeclaredVariables,
-        Dictionary<string, int> VariableVersions,
-        HashSet<string> ConstVariables,
-        Dictionary<string, string> SlotSpellings);
-
-    /// <summary>
-    /// Saves a snapshot of the current local scope state.
-    /// Used before entering a for-loop body so that loop variables
-    /// and body-declared variables are removed from scope after the loop.
-    /// </summary>
-    private ScopeSnapshot SaveScope()
-    {
-        return new ScopeSnapshot(
-            new HashSet<string>(_declaredVariables),
-            new Dictionary<string, int>(_variableVersions),
-            new HashSet<string>(_constVariables),
-            new Dictionary<string, string>(_slotSpellings, StringComparer.Ordinal));
-    }
-
-    /// <summary>
-    /// Clears all local scope tracking fields for a new method/function scope.
+    /// Resets per-method state for a new method/function scope.
     /// Call at the start of each method, function, property accessor, or operator body.
     /// </summary>
     private void ResetMethodScope(FunctionDef? funcDef = null)
     {
-        _declaredVariables.Clear();
-        _variableVersions.Clear();
-        _slotSpellings.Clear();
-        _constVariables.Clear();
-        _sourceVariableNames.Clear();
-        _localFunctionNames.Clear();
-        _localVariableTypes.Clear();
-
         // Resolve the current return type so `return None` can target Optional<T>.None.
         _currentReturnType = funcDef?.ReturnType != null
             ? _context.SemanticInfo?.GetTypeAnnotation(funcDef.ReturnType)
@@ -492,19 +387,6 @@ internal partial class RoslynEmitter : ICodeEmitter
     {
         return type is PredefinedTypeSyntax predefined
             && predefined.Keyword.IsKind(SyntaxKind.VoidKeyword);
-    }
-
-    /// <summary>
-    /// Restores the local scope state from a snapshot.
-    /// Variables declared inside the block are removed from scope.
-    /// </summary>
-    private void RestoreScope(ScopeSnapshot snapshot)
-    {
-        _declaredVariables.Clear();
-        _declaredVariables.UnionWith(snapshot.DeclaredVariables);
-        RestoreSlotTable(snapshot.VariableVersions, snapshot.SlotSpellings);
-        _constVariables.Clear();
-        _constVariables.UnionWith(snapshot.ConstVariables);
     }
 
     // Maps original parameter base names (camelCase) to C# replacement names.
@@ -642,16 +524,9 @@ internal partial class RoslynEmitter : ICodeEmitter
         IdentifierName(TypeParameterIdentifier(name));
 
     /// <summary>
-    /// Resolve the C# name for a variable using CodeGenInfo.
-    /// Returns null if CodeGenInfo is not available or if this is a local redeclaration.
+    /// Resolve the C# name for a variable using CodeGenInfo. Returns null only when the symbol
+    /// has no CodeGenInfo at all (unresolved references). Since #1560, all locals have CodeGenInfo.
     /// </summary>
-    /// <remarks>
-    /// This method delegates to NameResolutionService for the core resolution logic.
-    /// The service handles CodeGenInfo-based resolution, including:
-    /// - Module-level vs local variable detection
-    /// - Force module-level fields override
-    /// - C# keyword escaping for module symbols
-    /// </remarks>
     private string? TryGetCSharpNameFromCodeGenInfo(string sharpyName, bool isNewDeclaration)
     {
         var symbol = _context.LookupSymbol(sharpyName);
@@ -663,7 +538,6 @@ internal partial class RoslynEmitter : ICodeEmitter
             return null;
 
         // Delegate to NameResolutionService for CodeGenInfo-based resolution
-        // The service returns null if this should fall through to local variable handling
         return _nameResolutionService.TryResolveFromCodeGenInfo(
             symbol,
             info,
@@ -672,35 +546,40 @@ internal partial class RoslynEmitter : ICodeEmitter
     }
 
     /// <summary>
-    /// Get the mangled variable name with version suffix if this is a redefinition.
+    /// Get the mangled variable name for a Sharpy name. After #1560 all local variables have
+    /// pre-computed CodeGenInfo, so this method no longer tracks slot state. The resolution
+    /// order is: parameter overrides, TypeSymbol/ModuleSymbol lookup, CodeGenInfo.
     /// </summary>
     /// <param name="name">The original Sharpy variable name</param>
-    /// <param name="isNewDeclaration">True if this is a new declaration/redefinition, false if this is a reference</param>
+    /// <param name="isNewDeclaration">Ignored for locals (TargetBinding decides); kept for module-level CodeGenInfo.</param>
     /// <param name="isBacktickEscaped">
     /// True when the source spelled this name backtick-escaped. Purely a syntactic property of the
     /// token — the same one already read at the call and member sites — not a resolution decision
     /// made here.
     /// </param>
-    /// <returns>The C# variable name with version suffix (e.g., "x", "x_1", "x_2")</returns>
-    /// <remarks>
-    /// This method delegates to NameResolutionService for name computation while
-    /// maintaining local state (_variableVersions, _sourceVariableNames, _constVariables)
-    /// in the emitter.
-    ///
-    /// Resolution order:
-    /// 1. Local variables (tracked in _variableVersions) - highest precedence
-    /// 2. Local const variables (tracked in _constVariables)
-    /// 3. Type/module symbols (via SymbolTable lookup and NameResolutionService)
-    /// 4. CodeGenInfo-based resolution (module-level symbols, imports)
-    /// 5. New local variable registration
-    ///
-    /// <para>Step 3 is why the escape flag has to reach this far. The lookup is by NAME, so a local
-    /// spelled <c>`int`</c> finds the BUILTIN <c>int</c> TypeSymbol and was PascalCased to <c>Int</c>
-    /// — the mangling the backtick exists to suppress (#1241). A backtick-escaped spelling denotes
-    /// the user's symbol by definition, so it must not be answered by a registry type it merely
-    /// shares a name with. <c>`len`</c> came out correct only because builtin functions are not
-    /// TypeSymbols and missed the arm; that asymmetry was the tell.</para>
-    /// </remarks>
+    /// <returns>The C# variable name (possibly versioned, e.g. "x", "x_1", "x_2")</returns>
+    private string GetMangledVariableName(Identifier id, bool isNewDeclaration)
+        => ResolveViaNodeKeyedSymbol(_context.SemanticInfo?.GetIdentifierSymbol(id), isNewDeclaration)
+           ?? GetMangledVariableName(id.Name, isNewDeclaration, id.IsNameBacktickEscaped);
+
+    private string GetMangledVariableName(VariableDeclaration varDecl, bool isNewDeclaration)
+        => ResolveViaNodeKeyedSymbol(_context.SemanticInfo?.GetDeclarationSymbol(varDecl), isNewDeclaration)
+           ?? GetMangledVariableName(varDecl.Name, isNewDeclaration, varDecl.IsNameBacktickEscaped);
+
+    private string? ResolveViaNodeKeyedSymbol(Symbol? symbol, bool isNewDeclaration)
+    {
+        if (symbol == null) return null;
+        var info = GetCodeGenInfo(symbol);
+        if (info == null) return null;
+        var resolved = _nameResolutionService.TryResolveFromCodeGenInfo(
+            symbol, info, isNewDeclaration, _forceModuleLevelFields)
+            ?? info.GetVersionedCSharpName();
+        if (!isNewDeclaration && _parameterNameOverrides != null
+            && _parameterNameOverrides.TryGetValue(resolved, out var overrideName))
+            return overrideName;
+        return resolved;
+    }
+
     private string GetMangledVariableName(string name, bool isNewDeclaration, bool isBacktickEscaped = false)
     {
         var baseName = _nameResolutionService.GetBaseName(name, isBacktickEscaped);
@@ -713,68 +592,10 @@ internal partial class RoslynEmitter : ICodeEmitter
             return overrideName;
         }
 
-        // Check if this is a reference to a local function (nested def)
-        if (!isNewDeclaration && _localFunctionNames.TryGetValue(name, out var localFuncMangledName))
-            return localFuncMangledName;
-
-        // FIRST: Check if this is a local variable (including parameters)
-        // Local variables take precedence over module-level variables and CodeGenInfo
-        // This handles parameter shadowing correctly (parameter x shadows global x).
-        if (TryFindLocalSlot(name, isBacktickEscaped, out var slotEscape))
-        {
-            var slotKey = _nameResolutionService.GetBaseName(name, slotEscape);
-
-            // There's a local variable with this name - use local resolution via service
-            var resolvedName = _nameResolutionService.ResolveLocalName(
-                name,
-                isNewDeclaration,
-                _variableVersions,
-                _sourceVariableNames,
-                slotEscape);
-
-            if (resolvedName != null)
-            {
-                // For redeclarations, update state after service computes the new version
-                if (isNewDeclaration)
-                {
-                    var newVersion = _nameResolutionService.ComputeNextVersion(
-                        name,
-                        _variableVersions[slotKey],
-                        _sourceVariableNames,
-                        slotEscape);
-                    // A bump, not a fresh claim: the slot keeps its history and its owner (the
-                    // check above already established that this spelling owns it).
-                    SetSlotVersion(slotKey, newVersion, name);
-                }
-                return resolvedName;
-            }
-        }
-
-        // Check if this is a reference to a local const variable - use constant case
-        // (still needed for local scope tracking during emission).
-        // Must agree with the declaration in GenerateVariableDeclaration, which resolves the same
-        // name through NameCasing.ResolveConstant with the same flag.
-        if (_constVariables.Contains(name))
-        {
-            return NameCasing.ResolveConstant(name, isBacktickEscaped);
-        }
-
         // Look up the symbol to check its kind
         var symbol = _context.LookupSymbol(name);
 
         // Check if this is a REFERENCE to a class or struct name - preserve PascalCase.
-        // Uses symbol table lookup instead of legacy tracking sets.
-        // The lookup is by name, so it answers `int` with the builtin int TypeSymbol; a
-        // backtick-escaped spelling denotes the user's own symbol, so it only takes this arm when
-        // the type it found was itself declared escaped (#1241).
-        // <para>`isNewDeclaration` excludes it outright: a new declaration is a LOCAL BINDING being
-        // created, and a binding is named by its own spelling — never by a type that merely shares
-        // it. Without the guard a bare `str: int = 6` found the builtin str TypeSymbol and emitted
-        // `int Str = 6`, which (a) violates the local-variable casing rule, (b) collides with a user
-        // type named Str (CS1061 → SPY0908), and (c) silently merged with a sibling local declared
-        // as `Str` — two distinct Sharpy locals, one C# slot, last write wins. Invisible while bare
-        // shadowing was about to be refused; a shipping defect once value position became legal
-        // (#1241).</para>
         if (symbol is TypeSymbol typeSymbol &&
             !isNewDeclaration &&
             (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
@@ -787,199 +608,32 @@ internal partial class RoslynEmitter : ICodeEmitter
         // Check if this is a module symbol - use service for name resolution
         if (symbol is ModuleSymbol moduleSymbol)
         {
-            // For .NET namespace modules, use the actual namespace name
-            // (e.g., "system" -> "System")
             if (moduleSymbol.NetNamespaceName != null)
                 return moduleSymbol.NetNamespaceName;
             return NameResolutionService.EscapeCSharpKeyword(name.Replace(".", "_", StringComparison.Ordinal));
         }
 
-        // Try CodeGenInfo-based resolution for module-level symbols and from-imports
-        // CodeGenInfo handles: module-level variables, constants, from-imports (with aliases)
-        // This comes after local variable checks to ensure parameters shadow globals correctly
+        // Try CodeGenInfo-based resolution (handles all locals, module-level vars, imports)
         var codeGenName = TryGetCSharpNameFromCodeGenInfo(name, isNewDeclaration);
         if (codeGenName != null)
             return codeGenName;
 
-        // If we reach here, this is a new local variable that doesn't shadow any module-level var
-        if (isNewDeclaration)
-        {
-            // First declaration of this local variable
-            RegisterLocalSlot(baseName, name);
-            return baseName;
-        }
-        else
-        {
-            // Reference to a variable not yet declared (shouldn't happen in valid code)
-            // Fall back to just returning the base name
-            return baseName;
-        }
+        // Nested functions (local defs) that have no CodeGenInfo AND no VariableSymbol
+        // resolve via NameCasing. Only fires when the symbol table has a FunctionSymbol
+        // and nothing else — a lambda assigned to a variable has a VariableSymbol whose
+        // CodeGenInfo was already tried above.
+        if (!isNewDeclaration && symbol is FunctionSymbol
+            && GetCodeGenInfo(symbol) == null)
+            return NameCasing.ResolveMethod(name, isBacktickEscaped);
+
+        // Fallback for names with no symbol and no CodeGenInfo (e.g., unresolved references)
+        return baseName;
     }
 
-    /// <summary>
-    /// Claims a FRESH local slot for <paramref name="sourceSpelling"/> (version 0), recording the
-    /// spelling that claimed it (#1276) so a reference spelled differently is not answered by it.
-    /// Every fresh claim goes through here; see <see cref="_slotSpellings"/> for why totality
-    /// matters.
-    /// </summary>
-    private void RegisterLocalSlot(string baseName, string sourceSpelling)
-    {
-        _variableVersions[baseName] = 0;
-        _slotSpellings[baseName] = sourceSpelling;
-    }
-
-    /// <summary>
-    /// Moves an EXISTING slot to <paramref name="version"/> under <paramref name="sourceSpelling"/>.
-    /// </summary>
-    /// <remarks>
-    /// Distinct from <see cref="RegisterLocalSlot"/> on purpose: the version-bump and scoped
-    /// save/restore paths (a redeclaration, a nested catch variable) must not reset the slot to 0,
-    /// and the owning spelling can change with the bump — <c>except A as e:</c> nested inside
-    /// <c>except B as E:</c> hands the same base name to a differently-spelled binding, and the
-    /// body's references have to be answered by the INNER one.
-    /// </remarks>
-    private void SetSlotVersion(string baseName, int version, string sourceSpelling)
-    {
-        _variableVersions[baseName] = version;
-        _slotSpellings[baseName] = sourceSpelling;
-    }
-
-    /// <summary>
-    /// Releases a slot, dropping the version and the spelling together.
-    /// </summary>
-    /// <remarks>
-    /// Dropping only the version leaves a dead owner behind. That was harmless while the lookup
-    /// failed open (the missing version made <c>ContainsKey</c> fail first), but with a total map
-    /// and a fail-closed lookup, the next claim on the same base name would be REFUSED by the
-    /// corpse of the old one (#1386).
-    /// </remarks>
-    private void ReleaseLocalSlot(string baseName)
-    {
-        _variableVersions.Remove(baseName);
-        _slotSpellings.Remove(baseName);
-    }
-
-    /// <summary>
-    /// Replaces the whole slot table from a snapshot (scope exit, nested-function restore).
-    /// Versions and spellings are restored together — they are one map stored in two, and
-    /// restoring only the versions resurrects slots with no owner.
-    /// </summary>
-    private void RestoreSlotTable(
-        IReadOnlyDictionary<string, int> versions,
-        IReadOnlyDictionary<string, string> spellings)
-    {
-        _variableVersions.Clear();
-        foreach (var (k, v) in versions)
-            _variableVersions[k] = v;
-        _slotSpellings.Clear();
-        foreach (var (k, v) in spellings)
-            _slotSpellings[k] = v;
-    }
-
-    /// <summary>
-    /// Carries one enclosing-scope slot into a nested function's fresh table, so a captured outer
-    /// variable still resolves to the name the enclosing scope emitted. The spelling travels with
-    /// the version: a carried slot with no owner is refused outright once the lookup fails closed,
-    /// which would break every reference to a captured variable (#1386).
-    /// </summary>
-    private void CarryForwardOuterSlot(string baseName, int version, string? sourceSpelling)
-    {
-        // Already claimed by the nested function's own parameter/local: that binding shadows the
-        // captured one, exactly as TryAdd's no-op did.
-        if (_variableVersions.ContainsKey(baseName) || sourceSpelling == null)
-            return;
-
-        SetSlotVersion(baseName, version, sourceSpelling);
-    }
-
-    /// <summary>The state of one local slot, captured so a scoped rebinding can be undone exactly.</summary>
-    private readonly record struct SlotState(bool Existed, int Version, string? Spelling);
-
-    /// <summary>Captures the current state of a slot (or the absence of one).</summary>
-    private SlotState CaptureSlot(string baseName)
-        => _variableVersions.TryGetValue(baseName, out var version)
-            ? new SlotState(true, version, _slotSpellings.TryGetValue(baseName, out var owner) ? owner : null)
-            : default;
-
-    /// <summary>
-    /// Undoes a scoped rebinding, putting back both the version and the owning spelling that
-    /// <see cref="CaptureSlot"/> saw — or releasing the slot outright if there was none.
-    /// </summary>
-    private void RestoreSlot(string baseName, SlotState saved)
-    {
-        if (saved is { Existed: true, Spelling: not null })
-            SetSlotVersion(baseName, saved.Version, saved.Spelling);
-        else
-            ReleaseLocalSlot(baseName);
-    }
-
-    /// <summary>
-    /// Whether the slot named <paramref name="baseName"/> belongs to <paramref name="spelling"/>.
-    /// </summary>
-    /// <remarks>
-    /// Fails CLOSED: a slot with no recorded owner answers nothing. The fail-open form this
-    /// replaced (<c>!TryGetValue(...) || equal</c>) let every unfunneled seeding path keep the
-    /// pre-#1276 case-collapsing behavior, which is what kept the two measured ICE shapes alive
-    /// (#1386). <see cref="_slotSpellings"/> is total, so a missing owner is a bug in a seeding
-    /// path, not a legitimate state — and answering nothing degrades to type/module resolution
-    /// rather than to the wrong local.
-    /// </remarks>
-    private bool SlotAnswersSpelling(string baseName, string spelling)
-        => _slotSpellings.TryGetValue(baseName, out var owner)
-            && string.Equals(owner, spelling, StringComparison.Ordinal);
-
-    /// <summary>
-    /// Finds the local slot claimed by the exact source spelling <paramref name="name"/>, reporting
-    /// through <paramref name="slotEscape"/> whether that slot is filed under the verbatim or the
-    /// camelCased form of the name. Returns false when no local answers this spelling.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// A local's slot is keyed on the name it is EMITTED under (<see cref="NameResolutionService.GetBaseName"/>),
-    /// which is escape-aware since #1357 — <c>zed</c> files under <c>zed</c> and <c>`Zed`</c> under
-    /// <c>Zed</c>. The escape is a property of the OCCURRENCE, not of the symbol, so a reference may
-    /// spell it either way; both candidate keys are therefore probed, the reference's own spelling
-    /// first so a name bound both ways resolves to the binding written the same way. Only a slot
-    /// whose recorded owner is this exact spelling is accepted (#1276), which is what keeps a local
-    /// <c>zed</c> from answering a reference to a class <c>Zed</c>.
-    /// </para>
-    /// <para>
-    /// For an unescaped name with no escaped twin in scope this is the pre-#1357 lookup verbatim:
-    /// the first probe is the camelCase key and the second finds nothing.
-    /// </para>
-    /// </remarks>
-    private bool TryFindLocalSlot(string name, bool isBacktickEscaped, out bool slotEscape)
-    {
-        if (ProbeLocalSlot(name, isBacktickEscaped))
-        {
-            slotEscape = isBacktickEscaped;
-            return true;
-        }
-
-        if (ProbeLocalSlot(name, !isBacktickEscaped))
-        {
-            slotEscape = !isBacktickEscaped;
-            return true;
-        }
-
-        slotEscape = isBacktickEscaped;
-        return false;
-    }
-
-    private bool ProbeLocalSlot(string name, bool escapeCandidate)
-    {
-        var key = _nameResolutionService.GetBaseName(name, escapeCandidate);
-        return _variableVersions.ContainsKey(key) && SlotAnswersSpelling(key, name);
-    }
-
-    /// <summary>
-    /// Whether a local slot claimed by this exact spelling is in scope. The declaration paths use
-    /// this to tell a new binding from an assignment to an existing one; it has to agree with
-    /// <see cref="TryFindLocalSlot"/> or an escaped local whose camelCase base is taken by a
-    /// different local would be emitted as an assignment to a variable that was never declared.
-    /// </summary>
-    private bool IsLocalSlotInScope(string name, bool isBacktickEscaped)
-        => TryFindLocalSlot(name, isBacktickEscaped, out _);
+    // Note: RegisterLocalSlot, SetSlotVersion, ReleaseLocalSlot, RestoreSlotTable,
+    // CarryForwardOuterSlot, SlotState, CaptureSlot, RestoreSlot, SlotAnswersSpelling,
+    // TryFindLocalSlot, ProbeLocalSlot, IsLocalSlotInScope were all deleted when
+    // locals gained pre-computed CodeGenInfo (#1560, #1647).
 
     /// <summary>
     /// The C# name a local binding is emitted under, and the key its slot is filed under. Shorthand
@@ -1013,237 +667,9 @@ internal partial class RoslynEmitter : ICodeEmitter
     private static string ParameterCSharpName(ParameterSymbol param)
         => NameCasing.ResolveVariable(param.Name, param.IsNameBacktickEscaped);
 
-    /// <summary>
-    /// Pre-scans statements to collect all variable names that will be declared.
-    /// This is used to avoid generating versioned names (x_1, x_2) that collide
-    /// with user-declared variables.
-    /// </summary>
-    private void CollectSourceVariableNames(IEnumerable<Statement> statements)
-    {
-        foreach (var stmt in statements)
-        {
-            CollectSourceVariableNamesFromStatement(stmt);
-        }
-    }
-
-    /// <summary>
-    /// Recursively collects variable names from a single statement and its nested statements.
-    /// </summary>
-    private void CollectSourceVariableNamesFromStatement(Statement stmt)
-    {
-        switch (stmt)
-        {
-            case Assignment assign:
-                CollectVariableNamesFromExpression(assign.Target);
-                break;
-
-            case VariableDeclaration varDecl:
-                var mangledName = LocalBaseName(varDecl.Name, varDecl.IsNameBacktickEscaped);
-                _sourceVariableNames.Add(mangledName);
-                break;
-
-            case ForStatement forStmt:
-                CollectVariableNamesFromExpression(forStmt.Target);
-                CollectSourceVariableNames(forStmt.Body);
-                CollectSourceVariableNames(forStmt.ElseBody);
-                break;
-
-            case IfStatement ifStmt:
-                CollectVariableNamesFromExpression(ifStmt.Test);
-                CollectSourceVariableNames(ifStmt.ThenBody);
-                CollectSourceVariableNames(ifStmt.ElseBody);
-                foreach (var elif in ifStmt.ElifClauses)
-                {
-                    CollectVariableNamesFromExpression(elif.Test);
-                    CollectSourceVariableNames(elif.Body);
-                }
-                break;
-
-            case WhileStatement whileStmt:
-                CollectVariableNamesFromExpression(whileStmt.Test);
-                CollectSourceVariableNames(whileStmt.Body);
-                CollectSourceVariableNames(whileStmt.ElseBody);
-                break;
-
-            case ExpressionStatement exprStmt:
-                CollectVariableNamesFromExpression(exprStmt.Expression);
-                break;
-
-            case TryStatement tryStmt:
-                CollectSourceVariableNames(tryStmt.Body);
-                foreach (var handler in tryStmt.Handlers)
-                {
-                    if (handler.Name != null)
-                    {
-                        var handlerMangledName = LocalBaseName(handler.Name, handler.IsNameBacktickEscaped);
-                        _sourceVariableNames.Add(handlerMangledName);
-                    }
-                    CollectSourceVariableNames(handler.Body);
-                }
-                CollectSourceVariableNames(tryStmt.ElseBody);
-                CollectSourceVariableNames(tryStmt.FinallyBody);
-                break;
-
-            case MatchStatement matchStmt:
-                foreach (var caseClause in matchStmt.Cases)
-                {
-                    CollectVariableNamesFromPattern(caseClause.Pattern);
-                    CollectSourceVariableNames(caseClause.Body);
-                }
-                break;
-
-            case DecoratedStatement decorated:
-                // @suppress wrapper (#1024): decorators are compile-time-only; variable
-                // names declared by the inner statement must still be pre-registered so
-                // synthetic names cannot collide with them.
-                CollectSourceVariableNamesFromStatement(decorated.Statement);
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Collects variable names from an expression (used for assignment targets and
-    /// walrus operator targets). Recursively walks composite expressions to find
-    /// nested walrus expressions whose target variables need pre-registration.
-    /// </summary>
-    private void CollectVariableNamesFromExpression(Expression expr)
-    {
-        switch (expr)
-        {
-            case Identifier id:
-                var mangledName = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
-                _sourceVariableNames.Add(mangledName);
-                break;
-
-            case TupleLiteral tuple:
-                foreach (var elem in tuple.Elements)
-                {
-                    CollectVariableNamesFromExpression(elem);
-                }
-                break;
-
-            case WalrusExpression walrus:
-                var walrusMangledName = LocalBaseName(walrus.Target, walrus.IsNameBacktickEscaped);
-                _sourceVariableNames.Add(walrusMangledName);
-                CollectVariableNamesFromExpression(walrus.Value);
-                break;
-
-            case BinaryOp binOp:
-                CollectVariableNamesFromExpression(binOp.Left);
-                CollectVariableNamesFromExpression(binOp.Right);
-                break;
-
-            case UnaryOp unaryOp:
-                CollectVariableNamesFromExpression(unaryOp.Operand);
-                break;
-
-            case ComparisonChain chain:
-                foreach (var operand in chain.Operands)
-                    CollectVariableNamesFromExpression(operand);
-                break;
-
-            case FunctionCall call:
-                CollectVariableNamesFromExpression(call.Function);
-                foreach (var arg in call.Arguments)
-                    CollectVariableNamesFromExpression(arg);
-                break;
-
-            case ListLiteral listLit:
-                foreach (var elem in listLit.Elements)
-                    CollectVariableNamesFromExpression(elem);
-                break;
-
-            case Parenthesized paren:
-                CollectVariableNamesFromExpression(paren.Expression);
-                break;
-
-            case ConditionalExpression cond:
-                CollectVariableNamesFromExpression(cond.Test);
-                CollectVariableNamesFromExpression(cond.ThenValue);
-                CollectVariableNamesFromExpression(cond.ElseValue);
-                break;
-
-            case FStringLiteral fstring:
-                foreach (var part in fstring.Parts)
-                {
-                    if (part.Expression != null)
-                        CollectVariableNamesFromExpression(part.Expression);
-                }
-                break;
-
-            case TStringLiteral tstring:
-                foreach (var part in tstring.Parts)
-                {
-                    if (part.Expression != null)
-                        CollectVariableNamesFromExpression(part.Expression);
-                }
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Collects variable names from match patterns.
-    /// </summary>
-    private void CollectVariableNamesFromPattern(Pattern pattern)
-    {
-        switch (pattern)
-        {
-            case BindingPattern binding:
-                var mangledName = LocalBaseName(binding.Name.Name, binding.Name.IsNameBacktickEscaped);
-                _sourceVariableNames.Add(mangledName);
-                break;
-
-            case TuplePattern tuplePattern:
-                foreach (var elem in tuplePattern.Elements)
-                {
-                    CollectVariableNamesFromPattern(elem);
-                }
-                break;
-
-            case UnionCasePattern unionCase:
-                foreach (var fieldPattern in unionCase.FieldPatterns)
-                {
-                    CollectVariableNamesFromPattern(fieldPattern);
-                }
-                break;
-
-            case ListPattern listPattern:
-                foreach (var elem in listPattern.Elements)
-                {
-                    CollectVariableNamesFromPattern(elem);
-                }
-                break;
-
-            case StarPattern starPattern:
-                if (starPattern.Capture != null)
-                {
-                    CollectVariableNamesFromPattern(starPattern.Capture);
-                }
-                break;
-
-            case TypePattern typePattern when typePattern.BindingName != null:
-                var typeBindingName = LocalBaseName(
-                    typePattern.BindingName.Name, typePattern.BindingName.IsNameBacktickEscaped);
-                _sourceVariableNames.Add(typeBindingName);
-                break;
-
-            case OrPattern orPattern:
-                foreach (var alt in orPattern.Alternatives)
-                {
-                    CollectVariableNamesFromPattern(alt);
-                }
-                break;
-
-            case AndPattern andPattern:
-                CollectVariableNamesFromPattern(andPattern.Left);
-                CollectVariableNamesFromPattern(andPattern.Right);
-                break;
-
-            case GuardPattern guardPattern:
-                CollectVariableNamesFromPattern(guardPattern.Inner);
-                break;
-        }
-    }
+    // Note: CollectSourceVariableNames, CollectSourceVariableNamesFromStatement,
+    // CollectVariableNamesFromExpression, CollectVariableNamesFromPattern were all
+    // deleted — the LocalNameAllocator pre-scans during semantic analysis (#1560, #1647).
 
     // ============================================================
     // CodeGenInfo helper methods
@@ -1290,27 +716,35 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// Get the C# name for a symbol using CodeGenInfo.
     /// </summary>
     /// <remarks>
-    /// This method first tries CodeGenInfo resolution. If that fails,
-    /// it delegates to NameResolutionService for fallback logic,
-    /// except for Variables which need stateful local variable tracking.
+    /// Since #1560, every local variable has CodeGenInfo assigned by LocalNameAllocator.
+    /// A VariableSymbol without CodeGenInfo is an allocator bug.
     /// </remarks>
     private string GetCSharpNameForSymbol(Symbol symbol, bool isNewDeclaration = false)
     {
         var info = GetCodeGenInfo(symbol);
         if (info != null)
         {
+            // Route through TryResolveFromCodeGenInfo to honour _forceModuleLevelFields
+            // (module-level vars with execution-order issues use PascalCase when forced).
+            var resolved = _nameResolutionService.TryResolveFromCodeGenInfo(
+                symbol, info, isNewDeclaration, _forceModuleLevelFields);
+            if (resolved != null)
+                return resolved;
             return info.GetVersionedCSharpName();
         }
 
-        // CodeGenInfo not available - use fallback logic
-        // Variables need special handling due to local state tracking
-        if (symbol.Kind == Semantic.SymbolKind.Variable)
+        // For non-variable symbols, delegate to NameResolutionService
+        if (symbol.Kind != Semantic.SymbolKind.Variable)
         {
-            return GetMangledVariableName(symbol.Name, isNewDeclaration, symbol.IsNameBacktickEscaped);
+            return _nameResolutionService.ResolveName(symbol, codeGenInfo: null);
         }
 
-        // For non-variable symbols, delegate to NameResolutionService
-        return _nameResolutionService.ResolveName(symbol, codeGenInfo: null);
+        // Variables must have CodeGenInfo — fall back to NameCasing for resilience.
+        // Must NOT delegate to GetMangledVariableName(string) which does LookupSymbol(name) and
+        // can find a different symbol kind (e.g., TypeSymbol "double" when the local shadows it).
+        if (symbol is VariableSymbol vs && vs.IsConstant)
+            return NameCasing.ResolveConstant(symbol.Name, symbol.IsNameBacktickEscaped);
+        return NameCasing.ResolveVariable(symbol.Name, symbol.IsNameBacktickEscaped);
     }
 
     /// <summary>

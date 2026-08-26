@@ -38,7 +38,19 @@ internal class LocalNameAllocator
                 continue;
 
             if (varSym.IsParameter)
+            {
+                var paramSpelling = NameCasing.ResolveVariable(varSym.Name, varSym.IsNameBacktickEscaped);
+                claimed.Add(paramSpelling);
+                _binding.SetCodeGenInfo(varSym, new CodeGenInfo
+                {
+                    CSharpName = paramSpelling,
+                    Version = 0,
+                    OriginalName = varSym.Name,
+                    IsConstant = false,
+                    IsModuleLevel = false
+                });
                 continue;
+            }
 
             var chain = _semanticInfo.GetBindingChain(varSym);
             var root = chain[0];

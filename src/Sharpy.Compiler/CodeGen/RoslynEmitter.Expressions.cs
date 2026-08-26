@@ -389,7 +389,20 @@ internal partial class RoslynEmitter
             }
         }
 
-        var mangledName = GetMangledVariableName(name.Name, isNewDeclaration: false, name.IsNameBacktickEscaped);
+        // Prefer the node-keyed symbol when it has CodeGenInfo (locals/parameters after #1560,
+        // plus module-level symbols). The node-keyed path sees locals that LookupSymbol cannot
+        // after scope collapse. Fall back to GetMangledVariableName for symbols whose CodeGenInfo
+        // is keyed on a different instance (e.g., module-level vars where the TypeChecker recorded
+        // a distinct VariableSymbol for the reference).
+        // Use GetCSharpNameForSymbol which handles _forceModuleLevelFields and all resolution
+        // overrides. Prefer the node-keyed resolved symbol (survives scope collapse for locals),
+        // fall back to name-based GetMangledVariableName for unresolved identifiers.
+        var mangledName = resolvedSymbol != null
+            ? GetCSharpNameForSymbol(resolvedSymbol)
+            : GetMangledVariableName(name.Name, isNewDeclaration: false, name.IsNameBacktickEscaped);
+        if (_parameterNameOverrides != null
+            && _parameterNameOverrides.TryGetValue(mangledName, out var overrideName))
+            mangledName = overrideName;
         ExpressionSyntax expr = EscapedIdentifierName(mangledName);
 
         // Apply the narrowed-read accessor the TypeChecker recorded for this identifier node, if any

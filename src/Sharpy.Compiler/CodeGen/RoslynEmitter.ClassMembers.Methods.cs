@@ -39,7 +39,6 @@ internal partial class RoslynEmitter
         // Pre-scan the method body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
         // with user-declared variables.
-        CollectSourceVariableNames(func.Body);
 
         // For class methods, use DunderMapping for dunders, NameCasing for regular names
         var mangledName = DunderMapping.ResolveCSharpName(func.Name)
@@ -222,16 +221,12 @@ internal partial class RoslynEmitter
             if (param.IsLateBound)
             {
                 // The C# parameter is named `y__lb`; the preamble local is named `y`
-                _declaredVariables.Add(paramName + LateBoundSuffix);
-                _declaredVariables.Add(paramName);
             }
             else
             {
-                _declaredVariables.Add(paramName);
             }
             // Also track in version map so assignments to parameters work correctly
             var baseName = ParameterCSharpName(param);
-            RegisterLocalSlot(baseName, param.Name);
         }
 
         var methodSymbolByName = methodSymbol
@@ -366,7 +361,6 @@ internal partial class RoslynEmitter
     private PropertyDeclarationSyntax GenerateBoolProperty(FunctionDef func)
     {
         ResetMethodScope();
-        CollectSourceVariableNames(func.Body);
 
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
@@ -419,7 +413,6 @@ internal partial class RoslynEmitter
         // Clear declared variables for new scope
         ResetMethodScope();
 
-        CollectSourceVariableNames(func.Body);
 
         var returnType = PredefinedType(Token(SyntaxKind.IntKeyword));
 
@@ -594,7 +587,6 @@ internal partial class RoslynEmitter
         {
             // Default interface method: emit the full body
             ResetMethodScope();
-            CollectSourceVariableNames(func.Body);
 
             // Track parameters as declared variables (skip self)
             foreach (var param in func.Parameters)
@@ -602,9 +594,7 @@ internal partial class RoslynEmitter
                 if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                     continue;
                 var paramName = ParameterCSharpName(param);
-                _declaredVariables.Add(paramName);
                 var baseName = ParameterCSharpName(param);
-                RegisterLocalSlot(baseName, param.Name);
             }
 
             var bodyStatements = GenerateSuite(func.Body);

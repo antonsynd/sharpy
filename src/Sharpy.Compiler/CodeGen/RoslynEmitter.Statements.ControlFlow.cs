@@ -349,26 +349,8 @@ internal partial class RoslynEmitter
         // (#1081); the emitter no longer re-derives which variables a branch condition narrows.
         var condition = WrapTruthinessIfNeeded(GenerateExpression(ifStmt.Test), ifStmt.Test);
 
-        // Save scope before the if statement so each branch (then/elif/else)
-        // gets an independent copy. This prevents variable declarations in one
-        // branch from leaking into sibling branches (fixes #363).
-        var preIfScope = SaveScope();
-
+        // Since #1560 all local names are pre-computed — no scope save/restore needed.
         var thenBlock = GenerateSuiteBlock(ifStmt.ThenBody);
-
-        // Save scope after then-block so we can restore it after all branches.
-        // Post-if code needs to see then-block's variable declarations for correct
-        // C# redeclaration handling (e.g., versioning same-named variables).
-        //
-        // DESIGN NOTE (#363): This is deliberately asymmetric — only the then-branch's
-        // scope is preserved for post-if code. Variable declarations in elif/else
-        // branches are discarded. This is correct for C# variable versioning because
-        // the emitter needs a single consistent variable version after the if-statement.
-        // The then-branch is chosen as the "winner" because it is the first branch
-        // encountered and thus the most natural continuation of the variable version
-        // sequence. SaveScope()/RestoreScope() snapshot and restore the _variableVersions
-        // and _scopeVariables dictionaries, enabling branch-isolated code generation.
-        var postThenScope = SaveScope();
 
         ElseClauseSyntax? elseClause = null;
 
@@ -380,17 +362,12 @@ internal partial class RoslynEmitter
             // Start with the final else block if it exists
             if (ifStmt.ElseBody.Length > 0)
             {
-                // Restore to pre-if scope so else doesn't see then-block variables (#363)
-                RestoreScope(preIfScope);
                 currentElse = GenerateSuiteBlock(ifStmt.ElseBody);
             }
 
             // Process elif clauses in reverse order
             for (int i = ifStmt.ElifClauses.Length - 1; i >= 0; i--)
             {
-                // Restore to pre-if scope so elif doesn't see then-block or other elif variables (#363)
-                RestoreScope(preIfScope);
-
                 var elif = ifStmt.ElifClauses[i];
                 var elifCondition = WrapTruthinessIfNeeded(GenerateExpression(elif.Test), elif.Test);
                 var elifBody = GenerateSuiteBlock(elif.Body);
@@ -406,12 +383,6 @@ internal partial class RoslynEmitter
                 elseClause = ElseClause(currentElse);
             }
         }
-
-        // Restore to post-then scope so code after the if sees then-block's
-        // variable declarations for correct C# redeclaration handling.
-        // See DESIGN NOTE at postThenScope declaration above for why only the
-        // then-branch scope is restored (deliberate asymmetry for variable versioning).
-        RestoreScope(postThenScope);
 
         return IfStatement(condition, thenBlock, elseClause);
     }
@@ -541,37 +512,23 @@ internal partial class RoslynEmitter
     /// </summary>
     private StatementSyntax GenerateForEachCore(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements, SemanticType? iteratorType = null, bool isAsync = false)
     {
-        // Save scope so that loop variables and body-declared variables are
-        // removed from scope after the loop (Sharpy: loop vars are block-scoped).
-        var scopeSnapshot = SaveScope();
-
-        try
-        {
-            return GenerateForEachCoreInner(target, iterator, bodyStatements, iteratorType, isAsync);
-        }
-        finally
-        {
-            RestoreScope(scopeSnapshot);
-        }
+        // Since #1560 all local names are pre-computed — no scope save/restore needed.
+        return GenerateForEachCoreInner(target, iterator, bodyStatements, iteratorType, isAsync);
     }
 
     private StatementSyntax GenerateForEachCoreInner(Expression target, ExpressionSyntax iterator, IReadOnlyList<Statement> bodyStatements, SemanticType? iteratorType = null, bool isAsync = false)
     {
         if (target is Identifier varName)
         {
-            var loopVar = LocalBaseName(varName.Name, varName.IsNameBacktickEscaped);
+            var loopVarSymbol = _context.SemanticInfo?.GetIdentifierSymbol(varName);
+            var loopVar = loopVarSymbol != null
+                ? GetCSharpNameForSymbol(loopVarSymbol)
+                : LocalBaseName(varName.Name, varName.IsNameBacktickEscaped);
             var tempLoopVar = GenerateTempVarName("loopVar");
 
-            // Check if the variable is already declared in an enclosing scope
-            bool varExistsInOuterScope = _declaredVariables.Contains(loopVar) || _variableVersions.ContainsKey(loopVar);
-
-            // Register the loop variable BEFORE generating the body
-            // so that assignments to it are treated as updates
-            if (!varExistsInOuterScope)
-            {
-                _declaredVariables.Add(loopVar);
-            }
-            RegisterLocalSlot(loopVar, varName.Name);
+            // Use TargetBinding to decide whether this is a new declaration or a rebinding
+            var binding = _context.SemanticInfo?.GetTargetBinding(varName);
+            bool varExistsInOuterScope = binding?.Kind == TargetBindingKind.Rebinds;
 
             // Generate the body - assignments to loopVar will be updates, not declarations
             var body = GenerateSuiteBlock(bodyStatements);
@@ -624,25 +581,17 @@ internal partial class RoslynEmitter
             {
                 var identifiers = tuple.Elements.Cast<Identifier>().ToList();
 
-                // Register all tuple element variables BEFORE generating body.
-                // For-loop variables are always new declarations in the loop scope —
-                // no need to check _variableVersions existence unlike the assignment
-                // tuple unpacking path which must distinguish new vs existing variables.
-                foreach (var id in identifiers)
-                {
-                    var name = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
-                    _declaredVariables.Add(name);
-                    RegisterLocalSlot(name, id.Name);
-                }
-
-                // Now generate the body
+                // Generate the body
                 var body = GenerateSuiteBlock(bodyStatements);
 
                 // Generate: foreach (var (x, y) in items)
                 var variables = identifiers
                     .Select(id =>
                     {
-                        var name = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
+                        var sym = _context.SemanticInfo?.GetIdentifierSymbol(id);
+                        var name = sym != null
+                            ? GetCSharpNameForSymbol(sym)
+                            : LocalBaseName(id.Name, id.IsNameBacktickEscaped);
                         return SingleVariableDesignation(EscapedIdentifier(name));
                     })
                     .ToList();
@@ -857,12 +806,20 @@ internal partial class RoslynEmitter
         if (call.Arguments.Length == 0)
             return false;
 
+        var captureItem = withStmt.Items[0];
+        string? resolvedCaptureName = null;
+        if (captureItem.Name != null)
+        {
+            var capSymbol = _context.SemanticInfo?.GetWithItemSymbol(captureItem);
+            resolvedCaptureName = capSymbol != null
+                ? GetCSharpNameForSymbol(capSymbol, isNewDeclaration: true)
+                : GetMangledVariableName(captureItem.Name, isNewDeclaration: true, isBacktickEscaped: captureItem.IsNameBacktickEscaped);
+        }
         statements = GenerateAssertThrowsStatements(
             call.Arguments[0],
             withStmt.Body,
-            withStmt.Items[0].Name,
-            GetAssertRaisesMatchArgument(call),
-            withStmt.Items[0].IsNameBacktickEscaped);
+            resolvedCaptureName,
+            GetAssertRaisesMatchArgument(call));
         return true;
     }
 
@@ -901,8 +858,7 @@ internal partial class RoslynEmitter
         Expression exceptionTypeExpr,
         IReadOnlyList<Statement> body,
         string? captureName,
-        Expression? matchExpr,
-        bool captureIsEscaped = false)
+        Expression? matchExpr)
     {
         TypeSyntax exceptionType = exceptionTypeExpr switch
         {
@@ -934,8 +890,7 @@ internal partial class RoslynEmitter
         string? localName = null;
         if (captureName != null)
         {
-            localName = GetMangledVariableName(captureName, isNewDeclaration: true, captureIsEscaped);
-            _declaredVariables.Add(localName);
+            localName = captureName;
         }
         else if (matchExpr != null)
         {
@@ -1061,8 +1016,10 @@ internal partial class RoslynEmitter
         {
             // with expr as name: -> using (var name = expr) { ... }
             // async with expr as name: -> await using (var name = expr) { ... }
-            var varName = GetMangledVariableName(item.Name, isNewDeclaration: true, item.IsNameBacktickEscaped);
-            _declaredVariables.Add(varName);
+            var withSymbol = _context.SemanticInfo?.GetWithItemSymbol(item);
+            var varName = withSymbol != null
+                ? GetCSharpNameForSymbol(withSymbol, isNewDeclaration: true)
+                : GetMangledVariableName(item.Name, isNewDeclaration: true, isBacktickEscaped: item.IsNameBacktickEscaped);
 
             var declaration = VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
@@ -1139,8 +1096,10 @@ internal partial class RoslynEmitter
         if (item.Name != null)
         {
             // var asVar = __ctx_N.Enter();  (or await __ctx_N.AenterAsync())
-            var varName = GetMangledVariableName(item.Name, isNewDeclaration: true, item.IsNameBacktickEscaped);
-            _declaredVariables.Add(varName);
+            var withDunderSymbol = _context.SemanticInfo?.GetWithItemSymbol(item);
+            var varName = withDunderSymbol != null
+                ? GetCSharpNameForSymbol(withDunderSymbol, isNewDeclaration: true)
+                : GetMangledVariableName(item.Name, isNewDeclaration: true, isBacktickEscaped: item.IsNameBacktickEscaped);
             statements.Add(LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
                     .WithVariables(SingletonSeparatedList(
@@ -1499,22 +1458,13 @@ internal partial class RoslynEmitter
 
                 if (handler.Name != null)
                 {
-                    var baseName = LocalBaseName(handler.Name, handler.IsNameBacktickEscaped);
-
-                    // Track exception variable in the slot table so nested catch clauses with the
-                    // same name get versioned (e, e_1, ...) to avoid CS0136 in generated C#. The
-                    // binding is scoped to the handler body, so the previous slot state is captured
-                    // and put back verbatim afterwards — spelling included (#1386).
-                    var saved = CaptureSlot(baseName);
-                    var version = saved.Existed ? saved.Version + 1 : 0;
-                    SetSlotVersion(baseName, version, handler.Name);
-
-                    var exceptionVar = saved.Existed ? $"{baseName}_{version}" : baseName;
+                    var handlerSymbol = _context.SemanticInfo?.GetExceptHandlerSymbol(handler);
+                    var exceptionVar = handlerSymbol != null
+                        ? GetCSharpNameForSymbol(handlerSymbol)
+                        : GetMangledVariableName(handler.Name, isNewDeclaration: false, isBacktickEscaped: handler.IsNameBacktickEscaped);
 
                     var catchBlock = GenerateSuiteBlock(handler.Body);
                     var declaration = CatchDeclaration(exceptionType, Identifier(exceptionVar));
-
-                    RestoreSlot(baseName, saved);
 
                     result.Add(CatchClause(declaration, filterClause, catchBlock));
                 }
@@ -1567,18 +1517,12 @@ internal partial class RoslynEmitter
         IReadOnlyList<SemanticType> alternatives,
         CatchFilterClauseSyntax? userFilter)
     {
-        var baseName = LocalBaseName(handler.Name!, handler.IsNameBacktickEscaped);
-
-        // Same versioning as the single-type bound handler below: nested catch clauses binding the
-        // same name would otherwise collide (CS0136).
-        var saved = CaptureSlot(baseName);
-        var version = saved.Existed ? saved.Version + 1 : 0;
-        SetSlotVersion(baseName, version, handler.Name!);
-        var exceptionVar = saved.Existed ? $"{baseName}_{version}" : baseName;
+        var handlerSymbol = _context.SemanticInfo?.GetExceptHandlerSymbol(handler);
+        var exceptionVar = handlerSymbol != null
+            ? GetCSharpNameForSymbol(handlerSymbol)
+            : GetMangledVariableName(handler.Name!, isNewDeclaration: false, isBacktickEscaped: handler.IsNameBacktickEscaped);
 
         var catchBlock = GenerateSuiteBlock(handler.Body);
-
-        RestoreSlot(baseName, saved);
 
         var alternationTest = alternatives
             .Select(alternative => (ExpressionSyntax)BinaryExpression(
@@ -1698,13 +1642,10 @@ internal partial class RoslynEmitter
             // If there's an 'as' variable, create the ExceptionGroup wrapper
             if (handler.Name != null)
             {
-                var baseName = LocalBaseName(handler.Name, handler.IsNameBacktickEscaped);
-
-                var saved = CaptureSlot(baseName);
-                var version = saved.Existed ? saved.Version + 1 : 0;
-                SetSlotVersion(baseName, version, handler.Name);
-
-                var asVar = saved.Existed ? $"{baseName}_{version}" : baseName;
+                var asHandlerSymbol = _context.SemanticInfo?.GetExceptHandlerSymbol(handler);
+                var asVar = asHandlerSymbol != null
+                    ? GetCSharpNameForSymbol(asHandlerSymbol)
+                    : GetMangledVariableName(handler.Name, isNewDeclaration: false, isBacktickEscaped: handler.IsNameBacktickEscaped);
 
                 // var eg = new Sharpy.ExceptionGroup("", __matched_N.Cast<System.Exception>().ToList());
                 var castCall = InvocationExpression(
@@ -1734,9 +1675,6 @@ internal partial class RoslynEmitter
 
                 // Generate handler body statements
                 handlerBodyStatements.AddRange(GenerateSuite(handler.Body));
-
-                // Restore version state
-                RestoreSlot(baseName, saved);
             }
             else
             {

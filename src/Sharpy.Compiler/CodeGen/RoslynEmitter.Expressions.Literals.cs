@@ -1151,7 +1151,6 @@ internal partial class RoslynEmitter
                     VariableDeclaration(typeSyntax)
                         .WithVariables(SingletonSeparatedList(
                             VariableDeclarator(EscapedIdentifier(varName))))));
-            _declaredVariables.Add(varName);
 
             // Return: (varName = value)
             return ParenthesizedExpression(
@@ -1168,7 +1167,6 @@ internal partial class RoslynEmitter
                     .WithVariables(SingletonSeparatedList(
                         VariableDeclarator(EscapedIdentifier(varName))
                             .WithInitializer(EqualsValueClause(value))))));
-        _declaredVariables.Add(varName);
 
         // The walrus expression evaluates to the variable itself
         return EscapedIdentifierName(varName);

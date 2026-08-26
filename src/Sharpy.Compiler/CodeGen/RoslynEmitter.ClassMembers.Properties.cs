@@ -123,7 +123,6 @@ internal partial class RoslynEmitter
         var primaryFunc = getItemFunc ?? setItemFunc!;
 
         ResetMethodScope();
-        CollectSourceVariableNames(primaryFunc.Body);
 
         // Determine modifiers from the primary function's decorators
         var modifiers = GenerateMethodModifiers(primaryFunc.Name, primaryFunc.Decorators);
@@ -179,15 +178,12 @@ internal partial class RoslynEmitter
         if (getItemFunc != null)
         {
             ResetMethodScope();
-            CollectSourceVariableNames(getItemFunc.Body);
 
             // Track the index parameter as a declared variable
             if (indexParam != null)
             {
                 var paramName = ParameterCSharpName(indexParam);
-                _declaredVariables.Add(paramName);
                 var baseName = ParameterCSharpName(indexParam);
-                RegisterLocalSlot(baseName, indexParam.Name);
             }
 
             if (isAbstract)
@@ -206,7 +202,6 @@ internal partial class RoslynEmitter
         if (setItemFunc != null)
         {
             ResetMethodScope();
-            CollectSourceVariableNames(setItemFunc.Body);
 
             // A C# indexer's set accessor takes its written value through the implicit `value`, so
             // `__setitem__`'s LAST parameter is mapped onto that name and never declared — exactly
@@ -223,13 +218,9 @@ internal partial class RoslynEmitter
                     string.Equals(param.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase))
                     continue;
                 var paramName = ParameterCSharpName(param);
-                _declaredVariables.Add(paramName);
                 var baseName = ParameterCSharpName(param);
-                RegisterLocalSlot(baseName, param.Name);
             }
 
-            _declaredVariables.Add("value");
-            RegisterLocalSlot("value", "value");
 
             if (isAbstract)
             {
@@ -408,16 +399,13 @@ internal partial class RoslynEmitter
         if (customGetter != null)
         {
             ResetMethodScope();
-            CollectSourceVariableNames(customGetter.Body);
 
             foreach (var param in customGetter.Parameters)
             {
                 if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                     continue;
                 var paramName = ParameterCSharpName(param);
-                _declaredVariables.Add(paramName);
                 var baseName = ParameterCSharpName(param);
-                RegisterLocalSlot(baseName, param.Name);
             }
 
             var bodyStatements = GenerateSuite(customGetter.Body);
@@ -436,11 +424,8 @@ internal partial class RoslynEmitter
         if (customSetter != null)
         {
             ResetMethodScope();
-            CollectSourceVariableNames(customSetter.Body);
 
             // C# setter uses implicit 'value' parameter, so track it
-            _declaredVariables.Add("value");
-            RegisterLocalSlot("value", "value");
 
             // The setter's declared parameter is MAPPED onto that implicit `value`, never declared
             // (#1405). Registering it as a local was the defect: it made the slot lookup answer the
@@ -537,7 +522,6 @@ internal partial class RoslynEmitter
         {
             // Clear method scope tracking for each accessor
             ResetMethodScope();
-            CollectSourceVariableNames(prop.Body);
 
             SyntaxKind accessorKind;
             bool writesValue;
@@ -559,8 +543,6 @@ internal partial class RoslynEmitter
 
             if (writesValue)
             {
-                _declaredVariables.Add("value");
-                RegisterLocalSlot("value", "value");
             }
             else
             {
@@ -571,8 +553,6 @@ internal partial class RoslynEmitter
                 {
                     if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                         continue;
-                    _declaredVariables.Add(ParameterCSharpName(param));
-                    RegisterLocalSlot(ParameterCSharpName(param), param.Name);
                 }
             }
 
@@ -898,7 +878,6 @@ internal partial class RoslynEmitter
     private BlockSyntax GenerateObserverBody(PropertyObserver observer, string targetName)
     {
         ResetMethodScope();
-        CollectSourceVariableNames(observer.Body);
 
         using var rewrite = AccessorParamRewrite(observer.ParamName, targetName);
         return GenerateSuiteBlock(observer.Body);
@@ -966,7 +945,6 @@ internal partial class RoslynEmitter
 
         // Clear method scope tracking
         ResetMethodScope();
-        CollectSourceVariableNames(propDef.Body);
 
         bool writesValue = propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init;
 
@@ -977,8 +955,6 @@ internal partial class RoslynEmitter
             {
                 if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                     continue;
-                _declaredVariables.Add(ParameterCSharpName(param));
-                RegisterLocalSlot(ParameterCSharpName(param), param.Name);
             }
         }
 
@@ -1033,8 +1009,6 @@ internal partial class RoslynEmitter
             // For setter, track the 'value' parameter
             if (writesValue)
             {
-                _declaredVariables.Add("value");
-                RegisterLocalSlot("value", "value");
             }
 
             // The setter's declared parameter maps onto that implicit `value` (#1405).
@@ -1116,15 +1090,12 @@ internal partial class RoslynEmitter
             {
                 // Default interface property implementation
                 ResetMethodScope();
-                CollectSourceVariableNames(propDef.Body);
 
                 bool writesValue = propDef.Accessor is PropertyAccessor.Set or PropertyAccessor.Init;
                 if (writesValue)
                 {
                     // This arm registered no `value` at all before #1405 — it is the one accessor
                     // shape where neither the Sharpy name nor the C# one was ever introduced.
-                    _declaredVariables.Add("value");
-                    RegisterLocalSlot("value", "value");
                 }
                 else
                 {
@@ -1132,8 +1103,6 @@ internal partial class RoslynEmitter
                     {
                         if (string.Equals(param.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
                             continue;
-                        _declaredVariables.Add(ParameterCSharpName(param));
-                        RegisterLocalSlot(ParameterCSharpName(param), param.Name);
                     }
                 }
 

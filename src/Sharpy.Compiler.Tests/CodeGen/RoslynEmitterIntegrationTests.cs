@@ -360,7 +360,6 @@ public class RoslynEmitterIntegrationTests
     {
         // Arrange - Const declared and referenced in the same scope (Main)
         // This tests that const name mangling is consistent between declaration and reference
-        var emitter = CreateEmitter();
         var module = new Module
         {
             Body = new List<Statement>
@@ -388,7 +387,8 @@ public class RoslynEmitterIntegrationTests
             }.ToImmutableArray()
         };
 
-        // Act
+        // Act — requires semantic analysis so the allocator assigns CodeGenInfo
+        var emitter = CreateEmitterWithSemanticAnalysis(module);
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
         var compiles = CompileCode(code, out var errors);

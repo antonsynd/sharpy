@@ -37,7 +37,6 @@ internal partial class RoslynEmitter
         // Pre-scan the function body to collect all variable names that will be declared.
         // This enables us to avoid generating versioned names (x_1, x_2) that collide
         // with user-declared variables.
-        CollectSourceVariableNames(func.Body);
 
         // Transform name using NameCasing, which honours the backtick escape — the reference side
         // already did, so resolving the declaration without the flag made `def `str`` declare `Str`
@@ -105,16 +104,12 @@ internal partial class RoslynEmitter
             if (param.IsLateBound)
             {
                 // The C# parameter is named `y__lb`; the preamble local is named `y`
-                _declaredVariables.Add(paramName + LateBoundSuffix);
-                _declaredVariables.Add(paramName);
             }
             else
             {
-                _declaredVariables.Add(paramName);
             }
             // Also track in version map so assignments to parameters work correctly
             var baseName = ParameterCSharpName(param);
-            RegisterLocalSlot(baseName, param.Name);
         }
 
         // Generate method body, prepending late-bound default locals

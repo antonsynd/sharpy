@@ -34,22 +34,17 @@ internal sealed class NameResolutionService
     ///
     /// Resolution order:
     /// 1. CodeGenInfo.CSharpName (precomputed during semantic analysis)
-    /// 2. Local variable versioning (for redeclared locals: x, x_1, x_2)
-    /// 3. NameMangler fallback (snake_case → PascalCase/camelCase)
+    /// 2. NameMangler fallback (snake_case → PascalCase/camelCase)
     /// </summary>
     /// <param name="symbol">The symbol to resolve.</param>
     /// <param name="codeGenInfo">The CodeGenInfo for the symbol, if available.</param>
     /// <param name="isNewDeclaration">True if this is a new declaration/redefinition.</param>
-    /// <param name="variableVersions">Current variable versions for local scope tracking.</param>
-    /// <param name="sourceVariableNames">Set of source variable names (C# camelCase) in current scope.</param>
     /// <param name="forceModuleLevelFields">When true, force module-level treatment for execution order issues.</param>
     /// <returns>The C# identifier name to use.</returns>
     public string ResolveName(
         Symbol symbol,
         CodeGenInfo? codeGenInfo,
         bool isNewDeclaration = false,
-        IReadOnlyDictionary<string, int>? variableVersions = null,
-        IReadOnlySet<string>? sourceVariableNames = null,
         bool forceModuleLevelFields = false)
     {
         LogTrace($"ResolveName: symbol='{symbol.Name}', kind={symbol.Kind}, isNewDeclaration={isNewDeclaration}");
@@ -67,111 +62,14 @@ internal sealed class NameResolutionService
             return codeGenResult;
         }
 
-        // Step 2: Try local variable versioning
-        if (variableVersions != null && sourceVariableNames != null)
-        {
-            var localResult = ResolveLocalName(
-                symbol.Name,
-                isNewDeclaration,
-                variableVersions,
-                sourceVariableNames,
-                symbol.IsNameBacktickEscaped);
-
-            if (localResult != null)
-            {
-                LogTrace($"ResolveName: resolved via local versioning → '{localResult}'");
-                return localResult;
-            }
-        }
-
-        // Step 3: Fallback to NameMangler based on symbol kind
+        // Step 2: Fallback to NameMangler based on symbol kind
         var fallbackResult = ResolveBySymbolKind(symbol);
         LogTrace($"ResolveName: resolved via fallback → '{fallbackResult}'");
         return fallbackResult;
     }
 
-    /// <summary>
-    /// Resolves a local variable name with versioning support.
-    /// Handles redeclared variables (x → x, x_1, x_2) and avoids collisions
-    /// with user-declared variable names.
-    /// </summary>
-    /// <param name="originalName">The original Sharpy variable name.</param>
-    /// <param name="isNewDeclaration">True if this is a new declaration/redefinition.</param>
-    /// <param name="variableVersions">Mutable dictionary tracking version numbers per variable.</param>
-    /// <param name="sourceVariableNames">Set of source variable names to avoid collisions.</param>
-    /// <param name="isBacktickEscaped">
-    /// True when the binding this name resolves to was declared backtick-escaped, which makes its
-    /// slot key the verbatim spelling rather than the camelCased one (#1357).
-    /// </param>
-    /// <returns>The C# variable name with version suffix, or null if not a local variable.</returns>
-    public string? ResolveLocalName(
-        string originalName,
-        bool isNewDeclaration,
-        IReadOnlyDictionary<string, int> variableVersions,
-        IReadOnlySet<string> sourceVariableNames,
-        bool isBacktickEscaped = false)
-    {
-        var baseName = GetBaseName(originalName, isBacktickEscaped);
-
-        // Check if this is a known local variable
-        if (!variableVersions.ContainsKey(baseName))
-        {
-            return null; // Not a local variable
-        }
-
-        if (isNewDeclaration)
-        {
-            // This is a redefinition - find next available version
-            var currentVersion = variableVersions[baseName];
-            var newVersion = currentVersion + 1;
-            var candidateName = $"{baseName}_{newVersion}";
-
-            // Skip versions that collide with user-declared names
-            while (sourceVariableNames.Contains(candidateName))
-            {
-                newVersion++;
-                candidateName = $"{baseName}_{newVersion}";
-            }
-
-            // Note: The caller is responsible for updating variableVersions
-            // This method is read-only for thread safety
-            return candidateName;
-        }
-        else
-        {
-            // This is a reference - return current version
-            var currentVersion = variableVersions[baseName];
-            return currentVersion == 0 ? baseName : $"{baseName}_{currentVersion}";
-        }
-    }
-
-    /// <summary>
-    /// Computes what the next version number would be for a local variable redeclaration.
-    /// Used to update the variableVersions dictionary after ResolveLocalName returns a new version.
-    /// </summary>
-    /// <param name="originalName">The original Sharpy variable name.</param>
-    /// <param name="currentVersion">The current version number.</param>
-    /// <param name="sourceVariableNames">Set of source variable names to avoid collisions.</param>
-    /// <param name="isBacktickEscaped">See <see cref="ResolveLocalName"/>.</param>
-    /// <returns>The next version number to use.</returns>
-    public int ComputeNextVersion(
-        string originalName,
-        int currentVersion,
-        IReadOnlySet<string> sourceVariableNames,
-        bool isBacktickEscaped = false)
-    {
-        var baseName = GetBaseName(originalName, isBacktickEscaped);
-        var newVersion = currentVersion + 1;
-        var candidateName = $"{baseName}_{newVersion}";
-
-        while (sourceVariableNames.Contains(candidateName))
-        {
-            newVersion++;
-            candidateName = $"{baseName}_{newVersion}";
-        }
-
-        return newVersion;
-    }
+    // Note: ResolveLocalName and ComputeNextVersion were deleted — the
+    // LocalNameAllocator now pre-computes all local names (#1560, #1647).
 
     /// <summary>
     /// Gets the base C# name for a local variable — the name it is emitted under, and the key its
@@ -225,6 +123,8 @@ internal sealed class NameResolutionService
 
     /// <summary>
     /// Internal implementation of CodeGenInfo resolution.
+    /// Since #1560 all locals have CodeGenInfo, so this no longer returns null for local new
+    /// declarations.
     /// </summary>
     private string? TryResolveFromCodeGenInfoInternal(
         Symbol symbol,
@@ -234,16 +134,6 @@ internal sealed class NameResolutionService
     {
         if (info == null)
             return null;
-
-        // For new declarations, check if this is a local redeclaration
-        // Local variable redeclarations still need runtime tracking via variableVersions
-        // because they happen during emission, not semantic analysis
-        // Exception: when forceModuleLevelFields is true, variables with execution order issues
-        // are still generated as static fields
-        if (isNewDeclaration && !info.IsModuleLevel && !forceModuleLevelFields)
-        {
-            return null; // Let local variable resolution handle it
-        }
 
         // When forceModuleLevelFields is true and this symbol has execution order issues,
         // the CodeGenInfo name was computed as camelCase (for a local) but we need PascalCase
