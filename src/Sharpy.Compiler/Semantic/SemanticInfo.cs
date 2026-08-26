@@ -2021,7 +2021,13 @@ public enum BinaryOpLowering
     /// on reference-semantics types — this bypasses any overloaded <c>op_Equality</c> and matches Python's
     /// identity fallback (a live object <c>== None</c> is <c>False</c>). Operand order is irrelevant (#901).
     /// </summary>
-    NoneCheck
+    NoneCheck,
+
+    /// <summary>
+    /// Lower to <c>EqualityComparer&lt;T&gt;.Default.Equals(left, right)</c>. Used for type-parameter
+    /// operands where C# does not allow native <c>==</c> on unconstrained generic types.
+    /// </summary>
+    EqualityComparerDefault
 }
 
 /// <summary>

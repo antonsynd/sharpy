@@ -306,17 +306,22 @@ internal partial class RoslynEmitter
             return IsPatternExpression(operand, nullPattern);
         }
 
-        // For == and != on generic type parameters, use EqualityComparer<T>.Default.Equals()
-        // because C# does not allow == on unconstrained generic types
-        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression)
+        // Honor the semantic-recorded Equals-call lowering (#886): tuples and CLR types that
+        // implement Equals/IEquatable but define no op_Equality. A native C# == would either be
+        // reference equality (wrong) or fail to compile (struct without op_Equality). The
+        // instance-vs-static choice was materialized by the TypeChecker; the emitter switches on
+        // the tag alone (value types -> left.Equals(right); reference types -> object.Equals(...)).
+        var equalsLowering = GetIrBinaryOpLowering(binOp);
+        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
+            && equalsLowering is not BinaryOpLowering.NativeOperator and not BinaryOpLowering.NoneCheck)
         {
-            var leftType = GetExpressionSemanticType(binOp.Left);
-            var rightType = GetExpressionSemanticType(binOp.Right);
-            if (leftType is Semantic.TypeParameterType || rightType is Semantic.TypeParameterType)
+            ExpressionSyntax equalsInvocation;
+            if (equalsLowering == BinaryOpLowering.EqualityComparerDefault)
             {
-                // EqualityComparer<T>.Default.Equals(left, right)
+                var leftType = GetExpressionSemanticType(binOp.Left);
+                var rightType = GetExpressionSemanticType(binOp.Right);
                 var typeParamType = (leftType as Semantic.TypeParameterType ?? rightType as Semantic.TypeParameterType)!;
-                var equalsCall = InvocationExpression(
+                equalsInvocation = InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             GenericName("EqualityComparer")
@@ -325,33 +330,23 @@ internal partial class RoslynEmitter
                             IdentifierName("Default")),
                         IdentifierName("Equals")))
                     .AddArgumentListArguments(Argument(left), Argument(right));
-
-                return kind == SyntaxKind.NotEqualsExpression
-                    ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(equalsCall))
-                    : (ExpressionSyntax)equalsCall;
             }
-        }
-
-        // Honor the semantic-recorded Equals-call lowering (#886): tuples and CLR types that
-        // implement Equals/IEquatable but define no op_Equality. A native C# == would either be
-        // reference equality (wrong) or fail to compile (struct without op_Equality). The
-        // instance-vs-static choice was materialized by the TypeChecker; the emitter switches on
-        // the tag alone (value types -> left.Equals(right); reference types -> object.Equals(...)).
-        var equalsLowering = GetIrBinaryOpLowering(binOp);
-        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
-            && equalsLowering is BinaryOpLowering.EqualsCallInstance or BinaryOpLowering.EqualsCallStatic)
-        {
-            ExpressionSyntax equalsInvocation = equalsLowering == BinaryOpLowering.EqualsCallInstance
-                ? InvocationExpression(
+            else if (equalsLowering == BinaryOpLowering.EqualsCallInstance)
+            {
+                equalsInvocation = InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             left,
                             IdentifierName("Equals")))
-                    .AddArgumentListArguments(Argument(right))
-                : InvocationExpression(
+                    .AddArgumentListArguments(Argument(right));
+            }
+            else
+            {
+                equalsInvocation = InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             PredefinedType(Token(SyntaxKind.ObjectKeyword)),
                             IdentifierName("Equals")))
                     .AddArgumentListArguments(Argument(left), Argument(right));
+            }
 
             return kind == SyntaxKind.NotEqualsExpression
                 ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(equalsInvocation))
