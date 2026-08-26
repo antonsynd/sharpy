@@ -48,7 +48,7 @@ internal partial class RoslynEmitter
 
         // lambda x, y: x + y → (x, y) => x + y
         var parameters = lambda.Parameters
-            .Select(p => Parameter(EscapedIdentifier(NameMangler.ToCamelCase(p.Name))))
+            .Select(p => Parameter(EscapedIdentifier(ParameterCSharpName(p))))
             .ToArray();
 
         if (_context.SemanticInfo?.GetLambdaBodyLowering(lambda.Body) != null)
@@ -96,7 +96,7 @@ internal partial class RoslynEmitter
         for (int i = 0; i < lambda.Parameters.Length; i++)
         {
             var param = lambda.Parameters[i];
-            var paramName = NameMangler.ToCamelCase(param.Name);
+            var paramName = ParameterCSharpName(param);
             var paramType = ResolveParameterTypeSyntax(lambda, lambdaType, i);
 
             parameters.Add(Parameter(EscapedIdentifier(paramName)).WithType(paramType));
@@ -169,7 +169,7 @@ internal partial class RoslynEmitter
         for (int i = 0; i < lambda.Parameters.Length; i++)
         {
             var param = lambda.Parameters[i];
-            var paramName = NameMangler.ToCamelCase(param.Name);
+            var paramName = ParameterCSharpName(param);
             var paramType = ResolveParameterTypeSyntax(lambda, lambdaType, i);
 
             var paramSyntax = Parameter(EscapedIdentifier(paramName)).WithType(paramType);

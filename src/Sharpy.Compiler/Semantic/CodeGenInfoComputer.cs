@@ -78,6 +78,21 @@ internal class CodeGenInfoComputer
 
         // Third pass: Detect module-level name collisions
         DetectModuleLevelCollisions(module);
+
+        // Fourth pass: name every local of every function-like scope. Runs last so that a chain
+        // whose head is a module-level variable (write-through from a function) inherits the
+        // module-level CodeGenInfo set above, and fields/methods are already named and skipped.
+        // One call for the whole table — methods, constructors, accessors, lambdas and nested
+        // defs alike — so no owner kind can be left unallocated (#1560 C1).
+        AllocateLocalNames();
+    }
+
+    private void AllocateLocalNames()
+    {
+        if (_semanticInfo == null)
+            return;
+
+        new LocalNameAllocator(_semanticBinding, _semanticInfo).AllocateAll(_symbolTable);
     }
 
     private void ProcessModuleLevelDeclarations(Module module)
@@ -378,15 +393,6 @@ internal class CodeGenInfoComputer
                 StripsOverrideKeyword = ShouldStripOverrideKeyword(typeSymbol, funcDef.Name),
                 ImplementsInterfaceMethod = ImplementsInterfaceMethod(typeSymbol, funcDef.Name)
             });
-
-            AllocateLocals(methodSymbol);
-        }
-        else
-        {
-            var ctorSymbol = typeSymbol.Constructors
-                .FirstOrDefault(c => c.DeclarationLine == funcDef.LineStart);
-            if (ctorSymbol != null)
-                AllocateLocals(ctorSymbol);
         }
     }
 
@@ -487,26 +493,7 @@ internal class CodeGenInfoComputer
                 OriginalName = funcDef.Name,
                 IsModuleLevel = isModuleLevel
             });
-
-            AllocateLocals(funcSymbol);
         }
-    }
-
-    private void AllocateLocals(FunctionSymbol funcSymbol)
-    {
-        if (_semanticInfo == null)
-            return;
-
-        var scopeId = _symbolTable.GetFunctionScopeId(funcSymbol);
-        if (scopeId == null)
-            return;
-
-        var ledger = _symbolTable.GetLedger(scopeId.Value);
-        if (ledger == null)
-            return;
-
-        var allocator = new LocalNameAllocator(_semanticBinding, _semanticInfo);
-        allocator.AllocateForFunction(ledger);
     }
 
     /// <summary>

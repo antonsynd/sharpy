@@ -621,6 +621,14 @@ public partial class RoslynEmitterDefinitionTests
             Type = new UserDefinedType { Symbol = enumTypeSymbol, Name = "Color" }
         };
         symbolTable.Define(favoriteSymbol);
+        // A hand-registered variable must carry the fact the allocator would have recorded: since
+        // #1560 the emitter refuses to improvise a spelling for a variable with no CodeGenInfo.
+        context.SemanticBinding.SetCodeGenInfo(favoriteSymbol, new CodeGenInfo
+        {
+            CSharpName = "favorite",
+            OriginalName = "favorite",
+            IsModuleLevel = false
+        });
 
         var assignment1 = new Assignment
         {

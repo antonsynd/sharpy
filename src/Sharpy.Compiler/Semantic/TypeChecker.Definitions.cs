@@ -208,8 +208,6 @@ internal partial class TypeChecker
 
         // Enter function scope FIRST so we can register type parameters before resolving types
         _symbolTable.EnterScope($"function:{functionDef.Name}");
-        if (functionSymbol != null)
-            _symbolTable.RegisterFunctionScope(functionSymbol);
 
         // Enter an isolated narrowing scope for this function.
         // Type narrowings from the enclosing scope should NOT be visible inside this function,
@@ -2007,6 +2005,7 @@ internal partial class TypeChecker
                 NameDeclarationColumnEnd = param.NameColumnEnd
             };
             _symbolTable.Define(paramSymbol);
+            _semanticInfo.SetParameterSymbol(param, paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, paramType);
         }
 
@@ -2171,6 +2170,7 @@ internal partial class TypeChecker
                 NameDeclarationColumnEnd = param.NameColumnEnd
             };
             _symbolTable.Define(paramSymbol);
+            _semanticInfo.SetParameterSymbol(param, paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, paramType);
         }
 
@@ -2318,6 +2318,7 @@ internal partial class TypeChecker
                 NameDeclarationColumnEnd = param.NameColumnEnd
             };
             _symbolTable.Define(paramSymbol);
+            _semanticInfo.SetParameterSymbol(param, paramSymbol);
             SemanticBinding.SetVariableType(paramSymbol, paramType);
         }
 
