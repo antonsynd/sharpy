@@ -59,20 +59,22 @@ All agents follow this priority order when axioms conflict:
 
 ## Teammate Compatibility
 
-Editing domain experts (`parser-expert`, `semantic-expert`, `codegen-expert`, `test-expert`, `core-library-expert`, `lsp-expert`, `stdlib-expert`), `implementer`, and `dogfood-analyst` include team-collaboration tools (`SendMessage`, `TaskUpdate`, `TaskList`, `TaskGet`) and can be spawned as teammates in `/implement-plan` teams. They can message the lead/peers and update the shared task board.
+Editing domain experts (`parser-expert`, `semantic-expert`, `codegen-expert`, `test-expert`, `core-library-expert`, `lsp-expert`, `stdlib-expert`), `implementer`, and `dogfood-analyst` declare `SendMessage` and can message the lead and peers. Team/task-board tools (`TeamCreate`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`) exist only in harnesses that expose them — a skill that wants them **checks the session's tool list first** and otherwise coordinates with `Agent` + `SendMessage` and a checklist kept in the plan file. The agent frontmatter names those tools so they are granted where available; their absence is not an error.
 
-**Read-only agents are NOT teammate-compatible:** `code-reviewer`, `verification-expert`, `net-axiom-guardian`, and `hallucination-defense` lack `SendMessage` and task tools by design. When used in teams, the team lead must pull their results from transcript JSONL or idle notifications — they cannot update the task board or respond to shutdown requests. Use them as standalone subagents (via `Agent` tool), not as teammates.
+**Read-only agents are NOT teammate-compatible:** `code-reviewer`, `verification-expert`, `net-axiom-guardian`, and `hallucination-defense` lack `SendMessage` and task tools by design. They cannot update a task board or respond to shutdown requests. Spawn them as standalone subagents from the lead (via the `Agent` tool) and read their final report — never as teammates. `/implement-plan`'s final verification pass runs `verification-expert` this way.
+
+**Adversarial roles need an adversarial model.** `verification-expert` and `net-axiom-guardian` default to `haiku`, which is fine for "run this filter and report counts". A refutation brief (regression control run, sibling-cell probing, inert-fix checks) passes `model` explicitly at spawn time; the verify skills say which roles.
 
 ## MCP Tools for All Agents
 
-Two MCP servers are available for codebase navigation. Prefer them over Grep/Read for structural queries:
+Same rule as CLAUDE.md › MCP Navigation: filename patterns → Glob; text/regex → Grep. For structural queries prefer the MCP servers when connected, falling back down this list otherwise:
 
-| Server | Strength | Use For |
-|--------|----------|---------|
-| **Serena** | Live LSP, symbol-level ops | `find_symbol`, `find_referencing_symbols`, `get_symbols_overview`, `replace_symbol_body`, `rename_symbol` |
-| **CodeGraphContext** | Pre-indexed graph | `find_callers`, `find_dead_code`, `find_most_complex_functions`, `analyze_code_relationships` |
+| Server | Configured in | Use For |
+|--------|---------------|---------|
+| **code-review-graph** | `.mcp.json` (shared) | Risk-scored review context, impact radius, call chains, architecture overviews |
+| **CodeGraphContext** | User-configured | Complexity triage (`find_most_complex_functions`), dead-code queries (`find_dead_code`), `find_callers`, `analyze_code_relationships` |
 
-**Rule of thumb:** If you're searching for a *symbol* (function, class, method), use Serena. If you need *relationships* (who calls X, what depends on Y), use CodeGraphContext. Use Grep only for text/regex patterns (comments, strings, non-symbol content).
+Neither server is guaranteed to be connected in a given session; a skill or agent that names one must state the Grep/Read fallback it uses when the server is absent.
 
 ## Key Rules for All Agents
 
@@ -81,20 +83,27 @@ Two MCP servers are available for codebase navigation. Prefer them over Grep/Rea
 3. **Verify Python behavior** — `python3 -c "..."` before implementing
 4. **Language spec is authoritative** — check `docs/language_specification/` before implementing
 5. **Follow existing patterns** — search codebase for similar code
-6. Run tests before/after changes
-7. **C# targets**: `Sharpy.Core` uses C# 9.0 (`netstandard2.0;netstandard2.1`); other projects use `net10.0` with `LangVersion latest`
+6. **Run tests before/after changes** — via `.claude/scripts/dotnet-serialized` only (a PreToolUse hook blocks raw `dotnet`; needs `dangerouslyDisableSandbox: true`); the commit gate is the whole solution, a filtered run is the edit loop
+7. **C# targets**: `Sharpy.Core` and `Sharpy.Stdlib` multi-target `net10.0;netstandard2.1` (C# 9.0 on `netstandard2.1`, `LangVersion 14` on `net10.0`); `Sharpy.Compiler`/`Sharpy.Cli` target `net10.0` with `LangVersion latest`
 8. **TODO/BUG/FIXME → create GitHub issues** — when leaving a `TODO`, `BUG`, or `FIXME` comment, first create a GitHub issue (`gh issue create`) and reference it (e.g., `// TODO(#123): ...`)
+9. **Fix the class, not the cell** — name the violated contract and the cell matrix; an issue's repro list is a symptom report, not a test plan; when you find a sibling cell, file it and add it to the plan's Defect Class table rather than spot-fixing it silently ([verification-contract.md](../docs/design/verification-contract.md) §1)
+10. **Guards are falsifiable** — every new test/guard/harness is mutation-tested (broken → red, restored → green, both in the commit body); the exemption is never the subject; absence assertions need a positive control; refusals are verified by direction with `run`, not `emit` ([verification-contract.md](../docs/design/verification-contract.md) §2–§3)
+11. **Shared working tree** — never `git checkout`/`restore`/`clean`/`stash`/`reset`/`rm` on repo paths; REPORT `git status`; stage with explicit per-file pathspecs and check `git diff --cached --stat`; never `git add -A`/`.` ([verification-contract.md](../docs/design/verification-contract.md) §9)
 
 ## Commands
 
 ```bash
-dotnet build sharpy.sln && dotnet test               # Build + test all
-dotnet format whitespace                             # Format before commit
-dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
-dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser
-dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Debug lexer
-python3 -c "..."                                     # Verify Python behavior
+.claude/scripts/dotnet-serialized build sharpy.sln                          # Build all
+.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"       # Whole-solution gate (~22 min; read .claude/tmp/dotnet-serialized-*.log)
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Parser" # Edit loop (one component)
+dotnet format whitespace                                                    # Format before commit
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- run file.spy          # Behavior (SPY0908 surfaces only here)
+python3 -c "..."                                                            # Verify Python behavior
 ```
+
+Prefer the skills (`/build`, `/run-tests`, `/spy-emit`, `/spy-run`, `/quick-check`) — they handle the wrapper, logging, and truncation.
 
 ## Feature Implementation Flow
 
@@ -105,11 +114,12 @@ parser-expert → semantic-expert → codegen-expert → lsp-expert → test-exp
 ```
 
 1. **Lexer** — Add tokens if needed (`Token.cs`, `Lexer.cs`)
-2. **Parser** — Add AST records (`Ast/*.cs`), parsing rules in `Parser*.cs` (6 partial files)
-3. **Semantic** — Add type rules (`TypeChecker*.cs` — 10 partial files), validators if needed
-4. **CodeGen** — Emit C# via SyntaxFactory (`RoslynEmitter*.cs` — 16 partial files)
-5. **LSP** — Update handlers if new AST nodes/semantic types affect IDE features (hover, completion, semantic tokens, etc.)
-6. **Tests** — Unit tests per component + `.spy`/`.expected` file-based tests + LSP handler tests
+2. **Parser** — Add AST records (`Ast/*.cs`), parsing rules in `Parser*.cs`
+3. **Semantic** — Add type rules (`TypeChecker*.cs`), validators if needed; materialize every fact codegen will read (`Symbol.CodeGenInfo` or a node-keyed `SemanticInfo` dictionary added to `MergeFrom`)
+4. **Lowering** — only when the change needs a new IR shape or an IR→IR pass (`Lowering/`, see [copilot-instructions.md › Architecture](copilot-instructions.md#architecture--pipeline))
+5. **CodeGen** — Emit C# via SyntaxFactory (`RoslynEmitter*.cs`); no type or lowering decisions here
+6. **LSP** — Update handlers if new AST nodes/semantic types affect IDE features (hover, completion, semantic tokens, etc.)
+7. **Tests** — Unit tests per component + `.spy`/`.expected` file-based tests + LSP handler tests; every new guard mutation-tested (Key Rule 10)
 
 ## Semantic Analysis Pipeline (Critical Knowledge)
 
