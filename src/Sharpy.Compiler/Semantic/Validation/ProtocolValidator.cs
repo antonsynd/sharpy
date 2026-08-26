@@ -75,10 +75,23 @@ internal class ProtocolValidator : ValidatingAstWalker
 
     public override void VisitAssignment(Assignment node)
     {
+        // The store-position protocol rule ranges over every position an index access can be
+        // written through: a simple target, an augmented target (which READS it too — `b[k] += v`
+        // needs both __getitem__ and __setitem__), and an unpacking element (`b[k], y = …`).
         if (node.Target is IndexAccess indexAccess)
         {
             _assignmentTargets.Add(indexAccess);
             ValidateIndexAssignment(indexAccess);
+            if (node.Operator != AssignmentOperator.Assign)
+                ValidateIndexAccess(indexAccess);
+        }
+        else if (node.Target is TupleLiteral unpacking)
+        {
+            foreach (var element in unpacking.Elements.OfType<IndexAccess>())
+            {
+                _assignmentTargets.Add(element);
+                ValidateIndexAssignment(element);
+            }
         }
         base.VisitAssignment(node);
     }

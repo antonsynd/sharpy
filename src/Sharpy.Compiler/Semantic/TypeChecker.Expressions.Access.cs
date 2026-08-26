@@ -2104,20 +2104,85 @@ internal partial class TypeChecker
             }
         }
 
+        // #1620 subscript key rule, user-protocol arm. The rule is positional: a READ validates
+        // the key against the receiver's typed __getitem__ overloads; a STORE (this node is the
+        // assignment target — see _indexStoreTarget) validates it against __setitem__ and types the
+        // target as the selected overload's VALUE parameter, so the stored value is checked by the
+        // ordinary assignment path; an AUGMENTED store (b[k] += v) is both. Presence is not this
+        // seam's question: a receiver with no typed overload of the relevant dunder yields Unknown
+        // here without a diagnostic and the ProtocolValidator reports the missing protocol
+        // (SPY0320) — the two never double-fire, and a __setitem__-only class stores fine (R6).
+        var storeTarget = ReferenceEquals(indexAccess, _indexStoreTarget?.Target) ? _indexStoreTarget : null;
+        if (storeTarget != null && indexType is not UnknownType
+            && _typeInference.TypedIndexerOverloads(objectType, DunderNames.SetItem, minParameterCount: 3)
+                is { } setItemOverloads)
+        {
+            var setter = _typeInference.SelectSetItemOverloadByKey(setItemOverloads, indexType, objectType);
+            if (setter == null)
+            {
+                ReportIndexerKeyMismatch(indexAccess, DunderNames.SetItem, objectType, indexType, setItemOverloads);
+                return SemanticType.Unknown;
+            }
+
+            if (!storeTarget.IsAugmented)
+                return _typeInference.IndexerValueParameterType(setter, objectType);
+        }
+
         var resultType = _typeInference.InferIndexAccessType(objectType, indexType);
         if (resultType == null)
         {
-            if (indexType is not UnknownType && objectType is not UnknownType)
+            // A plain store never reads: on a receiver with typed __getitem__ but no typed
+            // __setitem__, the key mismatch against the GETTER is not the store's defect — the
+            // missing setter is, and the ProtocolValidator reports it.
+            var isRead = storeTarget == null || storeTarget.IsAugmented;
+            if (isRead && indexType is not UnknownType && objectType is not UnknownType
+                && _typeInference.TypedIndexerOverloads(objectType, DunderNames.GetItem, minParameterCount: 2)
+                    is { } getItemOverloads)
             {
-                AddError(
-                    $"Type '{objectType.GetDisplayName()}' does not support subscript with key of type '{indexType.GetDisplayName()}'",
-                    indexAccess.Index.LineStart, indexAccess.Index.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch,
-                    span: indexAccess.Index.Span);
+                ReportIndexerKeyMismatch(indexAccess, DunderNames.GetItem, objectType, indexType, getItemOverloads);
+            }
+            else
+            {
+                MarkExpressionAsErrorRecovery(indexAccess,
+                    ErrorRecoveryReason.AlreadyReported(
+                        "the ProtocolValidator's missing-__getitem__ check (SPY0320), or the operand is Unknown"));
             }
             return SemanticType.Unknown;
         }
         return resultType;
+    }
+
+    /// <summary>
+    /// The assignment target currently being type-checked, when it is an index access: set by the
+    /// assignment seams (simple/augmented assignment, unpacking element) around their
+    /// <c>CheckExpression(target)</c> call so <see cref="CheckIndexAccessCore"/> can apply the
+    /// store-position half of the subscript key rule (#1620). Compared by reference — nested
+    /// index accesses inside the target (<c>b[c[0]] = v</c>) are reads.
+    /// </summary>
+    private IndexStoreTarget? _indexStoreTarget;
+
+    /// <summary>An index-access assignment target and whether the assignment also reads it.</summary>
+    private sealed record IndexStoreTarget(IndexAccess Target, bool IsAugmented)
+    {
+        public static IndexStoreTarget? Of(Assignment assignment)
+            => assignment.Target is IndexAccess target
+                ? new IndexStoreTarget(target, assignment.Operator != AssignmentOperator.Assign)
+                : null;
+
+        public static IndexStoreTarget? Of(Expression unpackingElement)
+            => unpackingElement is IndexAccess target ? new IndexStoreTarget(target, IsAugmented: false) : null;
+    }
+
+    private void ReportIndexerKeyMismatch(
+        IndexAccess indexAccess, string dunderName, SemanticType receiverType, SemanticType keyType,
+        IReadOnlyList<FunctionSymbol> overloads)
+    {
+        AddError(
+            $"{dunderName} of '{receiverType.GetDisplayName()}' does not accept a key of type "
+            + $"'{keyType.GetDisplayName()}' (overloads: {TypeInferenceService.DescribeIndexerOverloads(overloads)})",
+            indexAccess.Index.LineStart, indexAccess.Index.ColumnStart,
+            code: DiagnosticCodes.Semantic.TypeMismatch,
+            span: indexAccess.Index.Span);
     }
 
     /// <summary>

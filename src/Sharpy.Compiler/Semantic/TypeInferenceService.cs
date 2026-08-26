@@ -1424,6 +1424,87 @@ internal class TypeInferenceService
     }
 
     /// <summary>
+    /// The user-declared, parameter-typed overloads of an indexing dunder (<c>__getitem__</c> /
+    /// <c>__setitem__</c>) on <paramref name="container"/>, or null when the type declares none.
+    /// Discovery-backed builtins register typeless protocol STUBS (<c>MakeDunderDict</c>: no
+    /// parameters) for the same dunder names; those are not overloads a key can be matched
+    /// against and are excluded, so a null answer means "no typed overload exists" for both a
+    /// dict and an <c>int</c>, and the presence refusal stays with the ProtocolValidator (SPY0320).
+    /// </summary>
+    /// <param name="minParameterCount">
+    /// The arity (self included) an overload needs to carry a key: 2 for <c>__getitem__</c>,
+    /// 3 for <c>__setitem__</c>.
+    /// </param>
+    public IReadOnlyList<FunctionSymbol>? TypedIndexerOverloads(
+        SemanticType container, string dunderName, int minParameterCount)
+    {
+        container = UnwrapNullable(container);
+        TypeSymbol? typeSymbol = container switch
+        {
+            UserDefinedType udt => udt.Symbol,
+            GenericType gt => gt.GenericDefinition,
+            _ => null
+        };
+        if (typeSymbol == null)
+            return null;
+
+        if (!typeSymbol.OperatorMethods.TryGetValue(dunderName, out var overloads)
+            && !typeSymbol.ProtocolMethods.TryGetValue(dunderName, out overloads))
+        {
+            return null;
+        }
+
+        var typed = overloads.Where(o => o.Parameters.Count >= minParameterCount).ToList();
+        return typed.Count == 0 ? null : typed;
+    }
+
+    /// <summary>
+    /// Selects the <c>__setitem__</c> overload whose KEY parameter (<c>Parameters[^2]</c> —
+    /// <c>self, key, value</c>) accepts <paramref name="key"/> on <paramref name="container"/>, or
+    /// null when none does. The store side is validated by the key alone at the target check
+    /// (the stored value is type-checked afterwards against the selected overload's value
+    /// parameter, see <see cref="IndexerValueParameterType"/>), which is why this is not
+    /// <see cref="FindBestOverload"/>: that resolver matches the LAST parameter, which for a
+    /// setter is the value. Betterness is exact-type first, then the unique accepting overload,
+    /// then declaration order — deterministic, and the same <see cref="OperandAccepts"/> relation
+    /// the getter side uses after <see cref="CloseOverReceiver"/> substitution.
+    /// </summary>
+    public FunctionSymbol? SelectSetItemOverloadByKey(
+        IReadOnlyList<FunctionSymbol> overloads, SemanticType key, SemanticType container)
+    {
+        container = UnwrapNullable(container);
+        FunctionSymbol? accepting = null;
+        foreach (var candidate in overloads)
+        {
+            if (candidate.Parameters.Count < 3)
+                continue;
+            var keyType = CloseOverReceiver(candidate.Parameters[^2].Type, container);
+            if (keyType.Equals(key))
+                return candidate;
+            if (accepting == null && OperandAccepts(keyType, key))
+                accepting = candidate;
+        }
+        return accepting;
+    }
+
+    /// <summary>
+    /// The value parameter type of a selected <c>__setitem__</c> overload, closed over the
+    /// receiver's type arguments (a generic <c>Grid[T]</c> storing <c>v: T</c> on a
+    /// <c>Grid[int]</c> stores <c>int</c>).
+    /// </summary>
+    public SemanticType IndexerValueParameterType(FunctionSymbol setItemOverload, SemanticType container)
+        => CloseOverReceiver(setItemOverload.Parameters[^1].Type, UnwrapNullable(container));
+
+    /// <summary>
+    /// Renders the non-self parameter lists of indexing-dunder overloads for a diagnostic, e.g.
+    /// <c>(k: int32), (k: str)</c>.
+    /// </summary>
+    public static string DescribeIndexerOverloads(IReadOnlyList<FunctionSymbol> overloads)
+        => string.Join(", ", overloads.Select(o =>
+            "(" + string.Join(", ", o.Parameters.Skip(1)
+                .Select(p => $"{p.Name}: {p.Type.GetDisplayName()}")) + ")"));
+
+    /// <summary>
     /// Infers the element/value type produced by a CLR type's parameterized indexer
     /// (<c>this[...]</c> getter) on a <em>closed</em> CLR type. Used for discovery-backed
     /// types whose indexer return type differs from the standard list/dict shape — e.g.

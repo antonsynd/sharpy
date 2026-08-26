@@ -312,8 +312,10 @@ internal partial class TypeChecker
             }
         }
 
-        // Check target and value types
-        var targetType = CheckExpression(assignment.Target);
+        // Check target and value types. An index-access target is checked in STORE position (#1620).
+        SemanticType targetType;
+        using (ScopedValue.Push(ref _indexStoreTarget, IndexStoreTarget.Of(assignment)))
+            targetType = CheckExpression(assignment.Target);
         // For assignments to self.field, use the DECLARED field type rather than the
         // narrowed type. When a field like `x: int?` is narrowed to `int` inside
         // `if x is not None:`, we still need `Some(v)` to resolve as `int?` and the

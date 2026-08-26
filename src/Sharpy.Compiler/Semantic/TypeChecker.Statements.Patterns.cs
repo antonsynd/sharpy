@@ -1416,8 +1416,11 @@ internal partial class TypeChecker
             }
             else
             {
-                // For more complex targets (like attributes), just check type compatibility
-                var targetElemType = CheckExpression(targetElem);
+                // For more complex targets (like attributes), just check type compatibility.
+                // An index-access element (`b[k], y = …`) is checked in STORE position (#1620).
+                SemanticType targetElemType;
+                using (ScopedValue.Push(ref _indexStoreTarget, IndexStoreTarget.Of(targetElem)))
+                    targetElemType = CheckExpression(targetElem);
                 if (!IsAssignable(valueElemType, targetElemType))
                 {
                     AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
