@@ -920,6 +920,7 @@ public static class DiagnosticCodes
     /// </summary>
     public static class ValidationOverflow
     {
-        // SPY0700-SPY0799: Available for new validation diagnostics
+        public const string IrrefutablePatternNotLast = "SPY0700"; // Active (#1624)
+        // SPY0701-SPY0799: Available for new validation diagnostics
     }
 }

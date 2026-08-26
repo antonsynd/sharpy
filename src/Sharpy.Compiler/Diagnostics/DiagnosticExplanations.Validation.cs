@@ -964,5 +964,14 @@ public static partial class DiagnosticExplanations
             + "    ...",
             "For an any-of check, write separate isinstance calls joined with `or`:\n"
             + "  if isinstance(a, int) or isinstance(a, str): ...");
+
+        // ── Validation overflow (SPY0700-SPY0799) ────────────────────────
+
+        Add(dict, DiagnosticCodes.ValidationOverflow.IrrefutablePatternNotLast,
+            "Irrefutable pattern is not the last case", "Validation",
+            "An unguarded name capture or wildcard pattern matches all values, making any " +
+            "following arms unreachable. Move it to the last position or add a guard condition.",
+            "match x:\n    case y:        # SPY0700 — captures everything\n        print(y)\n    case 42:\n        print(\"specific\")",
+            "Move the irrefutable arm last, or add a guard: `case y if y != 42:`.");
     }
 }

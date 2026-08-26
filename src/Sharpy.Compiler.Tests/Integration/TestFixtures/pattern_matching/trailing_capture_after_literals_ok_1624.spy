@@ -1,0 +1,9 @@
+def main():
+    x: int = 99
+    match x:
+        case 1:
+            print("one")
+        case 2:
+            print("two")
+        case other:
+            print(other)

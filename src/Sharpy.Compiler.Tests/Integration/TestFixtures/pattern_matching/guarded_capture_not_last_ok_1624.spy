@@ -1,0 +1,9 @@
+def main():
+    x: int = 42
+    match x:
+        case y if y > 10:
+            print("big")
+        case 42:
+            print("specific")
+        case _:
+            print("other")

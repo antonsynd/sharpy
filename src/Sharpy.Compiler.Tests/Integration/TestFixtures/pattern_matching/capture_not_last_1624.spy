@@ -1,0 +1,7 @@
+def main():
+    x: int = 42
+    match x:
+        case y:
+            print(y)
+        case 42:
+            print("specific")
