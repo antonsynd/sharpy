@@ -1,0 +1,16 @@
+# #1620 / R6: an augmented store `c[k] += v` is a READ (validated against __getitem__) and a
+# STORE (validated against __setitem__) — a class with both dunders takes it on a correct key.
+class Counter:
+    stored: int = 0
+
+    def __getitem__(self, k: int) -> int:
+        return self.stored
+
+    def __setitem__(self, k: int, v: int) -> None:
+        self.stored = v
+
+def main() -> None:
+    c: Counter = Counter()
+    c[1] += 5
+    c[1] += 2
+    print(c[0])

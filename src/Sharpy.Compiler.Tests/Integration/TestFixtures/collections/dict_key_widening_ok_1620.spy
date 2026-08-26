@@ -1,6 +1,19 @@
+# #1620: the dict key rule is ASSIGNABILITY, not equality — a key that widens to the declared key
+# type is accepted in read, store and augmented-store position. (A `dict[long, str]` literal
+# cannot be spelled `{1: "a"}` — that literal is a dict[int, str] — so the dicts start empty.)
 def main():
-    # Normal str key on dict[str, int] — positive control
-    d: dict[str, int] = {"a": 1, "b": 2}
-    print(d["a"])
-    d["c"] = 3
-    print(d["c"])
+    # int key on dict[long, V] — widening
+    d: dict[long, str] = {}
+    d[1] = "a"
+    print(d[1])
+    d[2] = "b"
+    d[2] += "!"
+    print(d[2])
+
+    # any key on dict[object, V]
+    o: dict[object, int] = {}
+    o["k"] = 1
+    o[2] = 2
+    o["k"] += 10
+    print(o["k"])
+    print(o[2])

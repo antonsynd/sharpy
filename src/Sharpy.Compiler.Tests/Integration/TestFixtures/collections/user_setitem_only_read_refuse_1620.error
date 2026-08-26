@@ -1,0 +1,1 @@
+Type 'Box' does not support indexing (missing '__getitem__' method). @9:11

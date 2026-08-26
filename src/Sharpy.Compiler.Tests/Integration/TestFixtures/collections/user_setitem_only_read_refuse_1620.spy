@@ -1,0 +1,9 @@
+# #1620 / R6: a READ of a __setitem__-only class is refused ONCE — the missing __getitem__ is the
+# ProtocolValidator's SPY0320; the key check must not add a second SPY0220 (it did at 97e60e2b4).
+class Box:
+    def __setitem__(self, k: int, v: str) -> None:
+        print(v)
+
+def main() -> None:
+    b: Box = Box()
+    print(b[1])

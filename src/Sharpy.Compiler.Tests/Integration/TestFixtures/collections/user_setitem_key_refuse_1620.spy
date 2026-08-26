@@ -1,0 +1,13 @@
+# #1620 / R6: a store validates its key against __setitem__'s overloads and names the setter.
+# The getter/setter pair here disagrees on the key type; before the store arm this compiled with
+# the setter's key silently retyped to the getter's (#1654).
+class Grid:
+    def __getitem__(self, k: int) -> str:
+        return "r"
+
+    def __setitem__(self, k: str, v: str) -> None:
+        print(v)
+
+def main() -> None:
+    g: Grid = Grid()
+    g[1] = "x"

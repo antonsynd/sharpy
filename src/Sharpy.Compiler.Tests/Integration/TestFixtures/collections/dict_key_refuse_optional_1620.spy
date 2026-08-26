@@ -1,0 +1,5 @@
+# #1620: an Optional[K] key is not a K key — the strict Optional must be unwrapped first.
+def main():
+    d: dict[int, str] = {1: "a"}
+    k: int? = Some(1)
+    print(d[k])

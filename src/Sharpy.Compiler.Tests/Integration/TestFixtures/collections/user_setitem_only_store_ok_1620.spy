@@ -1,0 +1,14 @@
+# #1620 / R6: a store validates its key against __setitem__ — a class with ONLY __setitem__ stores
+# on a correct key (the read half of the rule does not apply to a write). Regressed at 97e60e2b4
+# (SPY0220 "Type 'Box' does not support subscript") — the store path re-entered the read inference.
+class Box:
+    def __setitem__(self, k: int, v: str) -> None:
+        print(v)
+
+#
+# The unpacking form `b[2], y = ("z", 5)` is deliberately NOT in this fixture: it type-checks in
+# store position too, but the emitter drops non-identifier unpacking elements (#1655).
+def main() -> None:
+    b: Box = Box()
+    b[1] = "x"
+    b[2] = "z"

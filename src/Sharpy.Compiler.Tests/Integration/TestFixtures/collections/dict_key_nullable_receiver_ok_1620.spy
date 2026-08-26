@@ -1,0 +1,9 @@
+# #1620: the key rule unwraps a `T | None` receiver — a narrowed nullable dict is keyed like the
+# dict it holds, in read and store position.
+def main():
+    d: dict[str, int] | None = {"a": 1}
+    if d is not None:
+        print(d["a"])
+        d["b"] = 2
+        d["b"] += 1
+        print(d["b"])

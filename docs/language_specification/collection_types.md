@@ -403,19 +403,53 @@ is `xs[int(flag)]`.
 
 ### Dict Key Type Rule
 
-Dict subscript access `d[k]` and store `d[k] = v` validate the key against the dict's
-key type parameter using assignability (not strict equality). This means `dict[long, V]`
-accepts an `int` key (widening), and `dict[object, V]` accepts any key.
+Dict subscript access `d[k]`, store `d[k] = v` and augmented store `d[k] += v` validate the key
+against the dict's key type parameter using assignability (not strict equality). This means
+`dict[long, V]` accepts an `int` key (widening), and `dict[object, V]` accepts any key. A
+`T | None` receiver is keyed like the dict it holds once narrowed; an `Optional[K]` key is not a
+`K` key and must be unwrapped first.
 
 | Expression | Key type | Outcome |
 |------------|----------|---------|
 | `d: dict[str, int]; d[1]` | `int` vs `str` | SPY0220 — `Dict key must be 'str', got 'int32'` |
-| `d: dict[str, int]; d[True]` | `bool` vs `str` | SPY0220 + bool steer |
+| `d: dict[str, int]; d[True]` | `bool` vs `str` | SPY0220 + bool steer (`d[int(flag)]`) |
+| `d: dict[int, str]; k: int? = Some(1); d[k]` | `int?` vs `int` | SPY0220 + `Unwrap the Optional key first` |
 | `d: dict[long, str]; d[1]` | `int` vs `long` | Accepted (int assignable to long) |
-| `d: dict[str, int]; d["a"]` | `str` vs `str` | Accepted |
+| `o: dict[object, int]; o["k"]; o[2]` | any vs `object` | Accepted |
 
-User-defined `__getitem__` with multiple overloads resolves through `FindBestOverload`;
-a key matching no overload is refused with SPY0220.
+```python
+def main():
+    d: dict[long, str] = {}    # a `{1: "a"}` literal is a dict[int, str] — start empty
+    d[1] = "a"                 # int key widens to long
+    d[1] += "!"
+    print(d[1])                # a!
+
+    o: dict[object, int] = {}
+    o["k"] = 1
+    o[2] = 2
+    print(o["k"] + o[2])       # 3
+```
+
+**User protocols follow the same rule, per position.** A read `x[k]` validates `k` against the
+class's `__getitem__` overloads; a store `x[k] = v` validates `k` against its `__setitem__`
+overloads and then checks `v` against the selected overload's value parameter; an augmented
+store `x[k] op= v` is both. A key matching no overload is refused with SPY0220 naming the dunder
+it was checked against and listing the overloads; a class that lacks the dunder the position
+needs is refused once, by the protocol check (SPY0320), so a `__setitem__`-only class stores
+freely and is refused only when read.
+
+```python
+class Box:
+    def __setitem__(self, k: int, v: str) -> None:
+        print(v)
+
+def main():
+    b: Box = Box()
+    b[1] = "x"        # x — __setitem__ accepts (int, str)
+    # b["a"] = "x"    # SPY0220: __setitem__ of 'Box' does not accept a key of type 'str' (overloads: (k: int32, v: str))
+    # b[1] = 5        # SPY0220: Cannot assign type 'int32' to 'str'
+    # print(b[1])     # SPY0320: Type 'Box' does not support indexing (missing '__getitem__' method).
+```
 
 ### User Protocol
 
