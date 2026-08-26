@@ -90,7 +90,7 @@ internal partial class RoslynEmitter
                     // `x ** f()` had different overflow behaviour from `x ** y` — a spelling
                     // difference changing semantics. Both spellings now raise OverflowError.
                     return GeneratePowerValue(
-                        left, right, binOp.Left, binOp.Right, GetExpressionSemanticType(binOp));
+                        left, right, binOp.Left, binOp.Right, GetExpressionSemanticType(binOp), binOp);
                 }
 
             case BinaryOperator.Divide:

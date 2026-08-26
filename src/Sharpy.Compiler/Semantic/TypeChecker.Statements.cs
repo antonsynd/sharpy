@@ -429,6 +429,32 @@ internal partial class TypeChecker
                     new OperatorLowering(OperatorLoweringKind.StringRepeat));
             }
 
+            if (assignment.Operator == AssignmentOperator.PowerAssign
+                && targetType is not UserDefinedType and not GenericType
+                && valueType is not UserDefinedType and not GenericType)
+            {
+                if (PrimitiveCatalog.IsDecimal(targetType) || PrimitiveCatalog.IsDecimal(valueType))
+                {
+                    _semanticInfo.SetOperatorLowering(assignment,
+                        new OperatorLowering(OperatorLoweringKind.DecimalPow));
+                }
+                else if (PrimitiveCatalog.IsFloatingPoint(targetType) || PrimitiveCatalog.IsFloatingPoint(valueType))
+                {
+                    _semanticInfo.SetOperatorLowering(assignment,
+                        new OperatorLowering(OperatorLoweringKind.FloatPow));
+                }
+                else if (resultType == SemanticType.Long)
+                {
+                    _semanticInfo.SetOperatorLowering(assignment,
+                        new OperatorLowering(OperatorLoweringKind.IntegerPowLong));
+                }
+                else if (TypeUtils.IsInteger(targetType) && TypeUtils.IsInteger(valueType))
+                {
+                    _semanticInfo.SetOperatorLowering(assignment,
+                        new OperatorLowering(OperatorLoweringKind.IntegerPowInt));
+                }
+            }
+
             if (Features.IsEnabled("inplace_augassign")
                 && AugmentedCollectionAssignment.Classify(assignment, targetType) is { } mutation)
             {

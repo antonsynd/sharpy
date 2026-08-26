@@ -759,7 +759,7 @@ internal partial class RoslynEmitter
             // 'int'/'long'"). The target's own type selects the integer width.
             AssignmentOperator.PowerAssign =>
                 GeneratePowerValue(left, right, targetAst, valueAst,
-                    targetAst != null ? GetExpressionSemanticType(targetAst) : null),
+                    targetAst != null ? GetExpressionSemanticType(targetAst) : null, assignNode),
 
             // x /= y → true division with Python semantics (always returns float64)
             // Cast left to double if both operands are integers

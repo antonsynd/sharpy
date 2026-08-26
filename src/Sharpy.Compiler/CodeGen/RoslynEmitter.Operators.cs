@@ -1184,15 +1184,41 @@ internal partial class RoslynEmitter
         ExpressionSyntax right,
         Expression? leftAst,
         Expression? rightAst,
-        SemanticType? resultType)
+        SemanticType? resultType,
+        Node? operatorNode = null)
     {
-        // Decimal is matched POSITIVELY, as in GenerateFloorDivideValue and GenerateModuloValue
-        // (#1174), rather than being left to fall out of "not float". IsFloatExpression is false
-        // for decimal, so without this arm a decimal operand lands in the integer path below and
-        // emits CheckedIntPow((int)(d), ...): `2.5m ** 2` compiled and printed 4 where CPython
-        // gives 6.25. The TypeChecker already types `decimal ** int` as float64 (it refuses
-        // `d **= 2` with SPY0220 on exactly that ground), so the double path is what the rest of
-        // the compiler already believes this expression is.
+        var powKind = operatorNode != null
+            ? _context.SemanticInfo?.GetOperatorLowering(operatorNode)?.Kind
+            : null;
+
+        if (powKind == OperatorLoweringKind.DecimalPow)
+        {
+            return GenerateDoublePow(
+                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
+                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(right)));
+        }
+
+        if (powKind == OperatorLoweringKind.FloatPow)
+        {
+            return GenerateDoublePow(left, right);
+        }
+
+        if (powKind == OperatorLoweringKind.IntegerPowInt || powKind == OperatorLoweringKind.IntegerPowLong)
+        {
+            var castKind = powKind == OperatorLoweringKind.IntegerPowLong
+                ? SyntaxKind.LongKeyword
+                : SyntaxKind.IntKeyword;
+
+            return InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                    IdentifierName("CheckedIntPow")))
+                .AddArgumentListArguments(
+                    Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(left))),
+                    Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(right))));
+        }
+
+        // Fallback for UDT/generic or when no tag is recorded: use the old type-dispatch path.
         if (IsDecimalOperand(leftAst) || IsDecimalOperand(rightAst))
         {
             return GenerateDoublePow(
@@ -1206,10 +1232,7 @@ internal partial class RoslynEmitter
             return GenerateDoublePow(left, right);
         }
 
-        // Both operands integral: stay integral. CheckedIntPow keeps results exact across the
-        // full long range and raises OverflowError instead of saturating, and — because the
-        // helper owns the negative-exponent dispatch — each operand is spliced exactly once.
-        var castKind = resultType == SemanticType.Long
+        var fallbackCastKind = resultType == SemanticType.Long
             ? SyntaxKind.LongKeyword
             : SyntaxKind.IntKeyword;
 
@@ -1218,8 +1241,8 @@ internal partial class RoslynEmitter
                 MakeGlobalQualifiedName("Sharpy", "Builtins"),
                 IdentifierName("CheckedIntPow")))
             .AddArgumentListArguments(
-                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(left))),
-                Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(right))));
+                Argument(CastExpression(PredefinedType(Token(fallbackCastKind)), ParenthesizedExpression(left))),
+                Argument(CastExpression(PredefinedType(Token(fallbackCastKind)), ParenthesizedExpression(right))));
     }
 
     /// <summary>

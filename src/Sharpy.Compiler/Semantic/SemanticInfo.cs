@@ -2157,6 +2157,10 @@ public enum OperatorLoweringKind
     StringRepeat,
     StringOrdinalCompare,
     TypeParameterCompareTo,
+    DecimalPow,
+    FloatPow,
+    IntegerPowInt,
+    IntegerPowLong,
 }
 
 public sealed record OperatorLowering(OperatorLoweringKind Kind);

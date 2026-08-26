@@ -234,6 +234,32 @@ internal partial class TypeChecker
             }
         }
 
+        if (binOp.Operator == BinaryOperator.Power
+            && leftType is not UserDefinedType and not GenericType
+            && rightType is not UserDefinedType and not GenericType)
+        {
+            if (PrimitiveCatalog.IsDecimal(leftType) || PrimitiveCatalog.IsDecimal(rightType))
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.DecimalPow));
+            }
+            else if (PrimitiveCatalog.IsFloatingPoint(leftType) || PrimitiveCatalog.IsFloatingPoint(rightType))
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.FloatPow));
+            }
+            else if (resultType == SemanticType.Long)
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.IntegerPowLong));
+            }
+            else if (TypeUtils.IsInteger(leftType) && TypeUtils.IsInteger(rightType))
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.IntegerPowInt));
+            }
+        }
+
         // Warn when is/is not is used with value types — identity comparison is
         // meaningless because value types are boxed, so the result is always False.
         if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)
