@@ -444,6 +444,7 @@ internal partial class TypeChecker
             };
             _symbolTable.Define(loopVarSymbol);
             _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+            _semanticInfo.SetTargetBinding(id, new TargetBinding(TargetBindingKind.Declares));
             _semanticInfo.SetExpressionType(forClause.Target, elemType);
             if (elemType is UnknownType)
             {

@@ -234,17 +234,15 @@ internal partial class TypeChecker
             };
             _symbolTable.Define(newSymbol);
 
-            // Link the rebinding to the binding it just replaced. This is the same variable — the
-            // emitter assigns to the same C# local, versioning only on redeclaration — so anything
-            // that edits occurrences (rename) must treat the chain as one unit or it silently edits
-            // a fragment (#1359). Recorded here because this is the one place both symbols are in
-            // hand with the scope alive; deriving it later would mean re-deriving compiler scope
-            // information outside the compiler.
-            if (existingSymbol is VariableSymbol replacedBinding
-                && !ReferenceEquals(replacedBinding, newSymbol))
+            // Link the rebinding — same scope or cross-scope write-through (owner ruling option 1).
+            var predecessor = (existingSymbol ?? parentSymbol) as VariableSymbol;
+            if (predecessor != null && !predecessor.IsConstant && !ReferenceEquals(predecessor, newSymbol))
             {
-                _semanticInfo.SetRebindingPredecessor(newSymbol, replacedBinding);
+                _semanticInfo.SetRebindingPredecessor(newSymbol, predecessor);
             }
+
+            var bindingKind = predecessor != null ? TargetBindingKind.Rebinds : TargetBindingKind.Declares;
+            _semanticInfo.SetTargetBinding(targetId, new TargetBinding(bindingKind));
 
             SemanticBinding.SetVariableType(newSymbol, inferredType);
             _semanticInfo.SetIdentifierSymbol(targetId, newSymbol);
@@ -679,6 +677,7 @@ internal partial class TypeChecker
             _symbolTable.Define(constSymbol);
             SemanticBinding.SetVariableType(constSymbol, declaredType);
             _semanticInfo.SetDeclarationSymbol(varDecl, constSymbol);
+            _semanticInfo.SetTargetBinding(varDecl, new TargetBinding(TargetBindingKind.Declares));
             TryFoldConstantValue(constSymbol, declaredType, varDecl.InitialValue);
             return;
         }
@@ -718,6 +717,7 @@ internal partial class TypeChecker
         _symbolTable.Define(newSymbol);
         SemanticBinding.SetVariableType(newSymbol, declaredType);
         _semanticInfo.SetDeclarationSymbol(varDecl, newSymbol);
+        _semanticInfo.SetTargetBinding(varDecl, new TargetBinding(TargetBindingKind.Declares));
 
         // A local declared with an explicit list[T] annotation emits as a concrete Sharpy.List<T>
         // (the annotation forces that C# type), so it is eligible for the non-negative index fast
@@ -1031,6 +1031,7 @@ internal partial class TypeChecker
             _symbolTable.Define(loopVarSymbol);
             SemanticBinding.SetVariableType(loopVarSymbol, elementType);
             _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+            _semanticInfo.SetTargetBinding(id, new TargetBinding(TargetBindingKind.Declares));
 
             if (RangeYieldsNonNegativeInts(forStmt.Iterator)
                 && !IsNameReassignedIn(id.Name, forStmt.Body))
@@ -1974,6 +1975,7 @@ internal partial class TypeChecker
                 _symbolTable.Define(loopVarSymbol);
                 SemanticBinding.SetVariableType(loopVarSymbol, elemType);
                 _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+                _semanticInfo.SetTargetBinding(id, new TargetBinding(TargetBindingKind.Declares));
 
                 _semanticInfo.SetExpressionType(targetElem, elemType);
                 if (elemType is UnknownType)

@@ -308,6 +308,9 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, InterfaceCastLowering> _interfaceCastLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    private readonly ConcurrentDictionary<Node, TargetBinding> _targetBindings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map a generic-reference index access (callee[T, ...]) to the normalized GenericReference fact the
     // GenericReferenceResolver produced: the callee kind, its target symbol / receiver type, the
     // resolved type arguments, and (for arity-selected builtins) the selected overload. This is the
@@ -1202,6 +1205,12 @@ public class SemanticInfo : ISemanticQuery
         return chain;
     }
 
+    public void SetTargetBinding(Node node, TargetBinding binding)
+        => _targetBindings[node] = binding;
+
+    public TargetBinding? GetTargetBinding(Node node)
+        => _targetBindings.GetValueOrDefault(node);
+
     /// <summary>
     /// Records the symbol a function definition declares. Called where the checker resolves it, so
     /// a nested definition nothing calls is still reachable from its declaration node.
@@ -1541,6 +1550,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._interfaceCastLowerings)
             _interfaceCastLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._targetBindings)
+            _targetBindings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var (symbol, refs) in other._symbolReferences)
         {
@@ -2160,3 +2172,7 @@ public enum TruthinessLowering
 /// emitter can render them without reflection; empty for a non-generic interface.
 /// </param>
 public sealed record InterfaceCastLowering(string InterfaceTypeName, IReadOnlyList<SemanticType> TypeArguments);
+
+public enum TargetBindingKind { Declares, Rebinds }
+
+public sealed record TargetBinding(TargetBindingKind Kind);

@@ -659,6 +659,7 @@ internal partial class TypeChecker
         {
             // Variable already exists — update its type (redeclaration)
             SemanticBinding.SetVariableType(existingVar, valueType);
+            _semanticInfo.SetTargetBinding(walrus, new TargetBinding(TargetBindingKind.Rebinds));
         }
         else
         {
@@ -677,6 +678,7 @@ internal partial class TypeChecker
             };
             _symbolTable.Define(newSymbol);
             SemanticBinding.SetVariableType(newSymbol, valueType);
+            _semanticInfo.SetTargetBinding(walrus, new TargetBinding(TargetBindingKind.Declares));
         }
 
         // The walrus expression both assigns and returns the value

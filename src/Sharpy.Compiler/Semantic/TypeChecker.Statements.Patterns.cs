@@ -190,6 +190,7 @@ internal partial class TypeChecker
                     _symbolTable.Define(newSymbol);
                     SemanticBinding.SetVariableType(newSymbol, scrutineeType);
                     _semanticInfo.SetIdentifierSymbol(binding.Name, newSymbol);
+                    _semanticInfo.SetTargetBinding(binding, new TargetBinding(TargetBindingKind.Declares));
                     break;
                 }
 
@@ -1372,6 +1373,10 @@ internal partial class TypeChecker
                 _symbolTable.Define(newSymbol);
                 SemanticBinding.SetVariableType(newSymbol, valueElemType);
                 _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
+
+                var tupleBindingKind = existingSymbol != null ? TargetBindingKind.Rebinds : TargetBindingKind.Declares;
+                _semanticInfo.SetTargetBinding(tupleTargetId, new TargetBinding(tupleBindingKind));
+
                 _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
                 if (valueElemType is UnknownType)
                 {
@@ -1500,6 +1505,7 @@ internal partial class TypeChecker
                 _symbolTable.Define(starSymbol);
                 SemanticBinding.SetVariableType(starSymbol, listTypeForStar);
                 _semanticInfo.SetIdentifierSymbol(starId, starSymbol);
+                _semanticInfo.SetTargetBinding(starId, new TargetBinding(TargetBindingKind.Declares));
                 _semanticInfo.SetExpressionType(starId, listTypeForStar);
                 _semanticInfo.SetExpressionType(starExpr, listTypeForStar);
             }
@@ -1520,6 +1526,7 @@ internal partial class TypeChecker
                 _symbolTable.Define(symbol);
                 SemanticBinding.SetVariableType(symbol, elementType);
                 _semanticInfo.SetIdentifierSymbol(id, symbol);
+                _semanticInfo.SetTargetBinding(id, new TargetBinding(TargetBindingKind.Declares));
                 _semanticInfo.SetExpressionType(id, elementType);
             }
         }
