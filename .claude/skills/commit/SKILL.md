@@ -23,7 +23,8 @@ Run these in parallel:
 ### 2. Stage files
 
 If there are unstaged or untracked changes:
-- Stage specific files by name — **never** use `git add -A` or `git add .`
+- Stage specific files by explicit per-file pathspec — **never** use `git add -A` or `git add .`
+- The working tree may be shared with other agents: `git add <file>` also stages a peer's uncommitted hunks in that file. Check `git diff --cached --stat` before committing; if a file mixes your work with a peer's, ask before staging it. Never `git checkout`/`restore`/`stash`/`reset`/`clean` to tidy the tree.
 - Do **not** stage files that likely contain secrets (`.env`, `credentials.json`, etc.) — warn the user if such files are present
 - If only some files are relevant (e.g., mix of unrelated changes), ask the user which to include
 
@@ -43,10 +44,12 @@ If `$ARGUMENTS` is empty, analyze the staged diff and generate a message:
 git commit -m "$(cat <<'EOF'
 <generated or provided message>
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+<trailer lines supplied by the harness for this session>
 EOF
 )"
 ```
+
+End the message with the commit trailer(s) the harness provides for this session (currently a `Co-Authored-By:` line naming the active model and a `Claude-Session:` URL). Never hard-code a model name — it drifts across sessions.
 
 ### 5. Verify
 
