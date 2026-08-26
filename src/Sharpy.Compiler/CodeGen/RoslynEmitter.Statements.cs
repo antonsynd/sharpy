@@ -473,15 +473,8 @@ internal partial class RoslynEmitter
                 return rewritten;
         }
 
-        // None as a statement is a no-op (like Python's None expression)
-        // We generate an empty statement since `_ = null;` requires type annotation in C#
-        if (expr is NoneLiteral)
-        {
-            return EmptyStatement();
-        }
-
-        // Ellipsis as a statement in a concrete method body generates a throw statement
-        // Note: For abstract methods/interface methods, ellipsis is handled at the method level
+        // Ellipsis as a statement in a concrete method body generates a throw statement.
+        // This is a code generation pattern (not a semantic decision) so it stays above the switch.
         if (expr is EllipsisLiteral)
         {
             return ThrowStatement(
@@ -489,27 +482,26 @@ internal partial class RoslynEmitter
                     .WithArgumentList(ArgumentList()));
         }
 
-        // #1617: elided method-group statements emit no C# (CPython no-op)
-        if (_context.SemanticInfo?.GetStatementLowering(exprStmt)?.Kind
-            == StatementLoweringKind.ElideMethodGroupStatement)
-        {
-            return EmptyStatement();
-        }
-
         var generated = GenerateExpression(expr);
 
-        // Check if the expression is valid as a C# statement
-        if (IsValidCSharpStatementExpression(expr))
+        // Switch on the recorded StatementLowering (#1622). The TypeChecker classifies every
+        // ExpressionStatement; the null fallback handles code paths without semantic analysis
+        // (direct AST construction in programmatic tests).
+        return _context.SemanticInfo?.GetStatementLowering(exprStmt)?.Kind switch
         {
-            return ExpressionStatement(generated);
-        }
-
-        // Otherwise, wrap in a discard: _ = expr;
-        return ExpressionStatement(
-            AssignmentExpression(
-                SyntaxKind.SimpleAssignmentExpression,
-                DiscardIdentifierName(),
-                generated));
+            StatementLoweringKind.PlainStatement => ExpressionStatement(generated),
+            StatementLoweringKind.Discard => ExpressionStatement(
+                AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                    DiscardIdentifierName(), generated)),
+            StatementLoweringKind.ElideNoneLiteral => EmptyStatement(),
+            StatementLoweringKind.ElideMethodGroupStatement => EmptyStatement(),
+            null => expr is FunctionCall or Parser.Ast.AwaitExpression
+                ? ExpressionStatement(generated)
+                : ExpressionStatement(AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression, DiscardIdentifierName(), generated)),
+            _ => throw new InvalidOperationException(
+                $"Unknown StatementLoweringKind: {_context.SemanticInfo?.GetStatementLowering(exprStmt)?.Kind}")
+        };
     }
 
     /// <summary>
@@ -800,21 +792,6 @@ internal partial class RoslynEmitter
     /// - Increment/decrement expressions (++/--)
     /// - Await expressions
     /// </summary>
-    private bool IsValidCSharpStatementExpression(Expression expr)
-    {
-        return expr switch
-        {
-            // Method calls are valid statements
-            FunctionCall => true,
-
-            // Await expressions are valid C# statement expressions
-            Parser.Ast.AwaitExpression => true,
-
-            // All other expressions need a discard
-            _ => false
-        };
-    }
-
     private StatementSyntax GenerateReturn(ReturnStatement ret)
     {
         // In generator methods, bare return → yield break
