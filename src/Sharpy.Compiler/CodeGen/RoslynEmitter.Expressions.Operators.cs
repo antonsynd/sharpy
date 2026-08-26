@@ -311,7 +311,7 @@ internal partial class RoslynEmitter
         // reference equality (wrong) or fail to compile (struct without op_Equality). The
         // instance-vs-static choice was materialized by the TypeChecker; the emitter switches on
         // the tag alone (value types -> left.Equals(right); reference types -> object.Equals(...)).
-        var equalsLowering = GetIrBinaryOpLowering(binOp);
+        var equalsLowering = GetIrBinaryOpLowering(binOp) ?? BinaryOpLowering.NativeOperator;
         if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
             && equalsLowering is not BinaryOpLowering.NativeOperator and not BinaryOpLowering.NoneCheck)
         {
@@ -879,22 +879,4 @@ internal partial class RoslynEmitter
             ? MapTypeTestTarget(lowering)
             : _typeMapper.MapType(annotation);
 
-    /// <summary>
-    /// Returns true if the type parameter has an IComparable constraint.
-    /// Matches IComparable, IComparable[T], System.IComparable, etc.
-    /// </summary>
-    private static bool HasComparableConstraint(Semantic.TypeParameterType typeParam)
-    {
-        foreach (var constraint in typeParam.Constraints)
-        {
-            if (constraint is TypeConstraint tc
-                && (tc.Type.Name == "IComparable" || tc.Type.Name == "System.IComparable"
-                    || tc.Type.Name.StartsWith("IComparable<", System.StringComparison.Ordinal)
-                    || tc.Type.Name.StartsWith("System.IComparable<", System.StringComparison.Ordinal)))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
 }

@@ -34,6 +34,7 @@ public class EmitterLocalStateScanTests
         "CaptureSlot",
         "CarryForwardOuterSlot",
         "CollectSourceVariableNames",
+        "HasComparableConstraint",
     };
 
     [Fact]
