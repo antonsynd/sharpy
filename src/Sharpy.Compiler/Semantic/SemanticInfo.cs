@@ -2091,6 +2091,9 @@ public sealed record LambdaBodyLowering(LambdaBodyLoweringKind Kind);
 
 public enum StatementLoweringKind
 {
+    PlainStatement,
+    Discard,
+    ElideNoneLiteral,
     ElideMethodGroupStatement
 }
 

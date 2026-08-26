@@ -806,16 +806,32 @@ internal partial class TypeChecker
             case ExpressionStatement exprStmt:
                 {
                     var exprType = CheckExpression(exprStmt.Expression);
-                    // #1617: a bare method-group reference as a statement is a CPython no-op.
-                    // Unwrap parentheses (the emitter does the same via AstHelper.UnwrapParenthesized).
                     var unwrapped = Shared.AstHelper.UnwrapParenthesized(exprStmt.Expression);
-                    if (exprType is FunctionType
+
+                    // Classify every expression statement so the emitter never pattern-matches
+                    // AST shape to pick plain/discard/elide (#1622).
+                    if (unwrapped is NoneLiteral)
+                    {
+                        _semanticInfo.SetStatementLowering(exprStmt,
+                            new StatementLowering(StatementLoweringKind.ElideNoneLiteral));
+                    }
+                    else if (exprType is FunctionType
                         && (unwrapped is MemberAccess
                             || (unwrapped is Identifier id
                                 && _semanticInfo.GetIdentifierSymbol(id) is FunctionSymbol)))
                     {
                         _semanticInfo.SetStatementLowering(exprStmt,
                             new StatementLowering(StatementLoweringKind.ElideMethodGroupStatement));
+                    }
+                    else if (unwrapped is FunctionCall or Parser.Ast.AwaitExpression)
+                    {
+                        _semanticInfo.SetStatementLowering(exprStmt,
+                            new StatementLowering(StatementLoweringKind.PlainStatement));
+                    }
+                    else
+                    {
+                        _semanticInfo.SetStatementLowering(exprStmt,
+                            new StatementLowering(StatementLoweringKind.Discard));
                     }
                     break;
                 }
