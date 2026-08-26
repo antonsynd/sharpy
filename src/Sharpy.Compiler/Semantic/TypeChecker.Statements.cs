@@ -1028,18 +1028,15 @@ internal partial class TypeChecker
                 DeclaringFilePath = _currentFilePath
             };
 
-            if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
-            {
-                _symbolTable.Define(loopVarSymbol);
-                SemanticBinding.SetVariableType(loopVarSymbol, elementType);
-                _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+            _symbolTable.Define(loopVarSymbol);
+            SemanticBinding.SetVariableType(loopVarSymbol, elementType);
+            _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
 
-                if (RangeYieldsNonNegativeInts(forStmt.Iterator)
-                    && !IsNameReassignedIn(id.Name, forStmt.Body))
-                {
-                    _nonNegativeInductionVars.Add(loopVarSymbol);
-                    inductionVarToUnmark = loopVarSymbol;
-                }
+            if (RangeYieldsNonNegativeInts(forStmt.Iterator)
+                && !IsNameReassignedIn(id.Name, forStmt.Body))
+            {
+                _nonNegativeInductionVars.Add(loopVarSymbol);
+                inductionVarToUnmark = loopVarSymbol;
             }
 
             _semanticInfo.SetExpressionType(forStmt.Target, elementType);
@@ -1974,12 +1971,9 @@ internal partial class TypeChecker
                     DeclaringFilePath = _currentFilePath
                 };
 
-                if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
-                {
-                    _symbolTable.Define(loopVarSymbol);
-                    SemanticBinding.SetVariableType(loopVarSymbol, elemType);
-                    _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
-                }
+                _symbolTable.Define(loopVarSymbol);
+                SemanticBinding.SetVariableType(loopVarSymbol, elemType);
+                _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
 
                 _semanticInfo.SetExpressionType(targetElem, elemType);
                 if (elemType is UnknownType)

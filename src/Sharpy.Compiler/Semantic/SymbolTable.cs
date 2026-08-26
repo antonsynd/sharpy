@@ -16,6 +16,9 @@ public class SymbolTable : IGlobalSymbolTable
     private readonly Scope _globalScope;
     private readonly BuiltinRegistry _builtins;
     private readonly Dictionary<string, Scope> _moduleScopes = new();
+    private int _nextScopeId;
+    private readonly Dictionary<int, LocalBindingLedger> _functionLedgers = new();
+    private int _currentFunctionScopeId = -1;
 
     /// <summary>
     /// Names bound by a <c>from M import *</c> that displace a builtin, mapped to the module they
@@ -47,7 +50,7 @@ public class SymbolTable : IGlobalSymbolTable
     internal SymbolTable(BuiltinRegistry builtins)
     {
         _builtins = builtins;
-        _globalScope = new Scope("global");
+        _globalScope = new Scope("global", null, _nextScopeId++);
         _scopeStack.Push(_globalScope);
 
         // Populate global scope with builtins
@@ -82,17 +85,20 @@ public class SymbolTable : IGlobalSymbolTable
 
     public void EnterScope(string name)
     {
-        // Exited-variable tracking is only meaningful within the same function body.
-        // When entering a new function-like scope (function/lambda/pre-pass), clear
-        // any prior entries so block-scoped variables from one function aren't
-        // surfaced as hints inside a sibling or nested function.
         if (IsFunctionLikeScope(name))
         {
             _exitedVariables.Clear();
         }
 
-        var newScope = new Scope(name, CurrentScope);
+        var scopeId = _nextScopeId++;
+        var newScope = new Scope(name, CurrentScope, scopeId);
         _scopeStack.Push(newScope);
+
+        if (IsFunctionLikeScope(name))
+        {
+            _functionLedgers[scopeId] = new LocalBindingLedger();
+            _currentFunctionScopeId = scopeId;
+        }
     }
 
     /// <summary>
@@ -111,7 +117,7 @@ public class SymbolTable : IGlobalSymbolTable
 
         if (!_moduleScopes.TryGetValue(moduleName, out var moduleScope))
         {
-            moduleScope = new Scope($"module:{moduleName}", _globalScope);
+            moduleScope = new Scope($"module:{moduleName}", _globalScope, _nextScopeId++);
             _moduleScopes[moduleName] = moduleScope;
         }
 
@@ -221,12 +227,21 @@ public class SymbolTable : IGlobalSymbolTable
     {
         return scopeName == "lambda"
             || scopeName.StartsWith("function:", StringComparison.Ordinal)
-            || scopeName.StartsWith("pre-pass:", StringComparison.Ordinal);
+            || scopeName.StartsWith("pre-pass:", StringComparison.Ordinal)
+            || scopeName.StartsWith("property:", StringComparison.Ordinal)
+            || scopeName.StartsWith("event:", StringComparison.Ordinal)
+            || scopeName.StartsWith("observer:", StringComparison.Ordinal);
     }
 
     public void Define(Symbol symbol)
     {
         CurrentScope.Define(symbol);
+
+        if (_currentFunctionScopeId >= 0
+            && _functionLedgers.TryGetValue(_currentFunctionScopeId, out var ledger))
+        {
+            ledger.Append(symbol, CurrentScope.Id);
+        }
     }
 
     /// <summary>
@@ -394,6 +409,11 @@ public class SymbolTable : IGlobalSymbolTable
     {
         return CurrentScope.Remove(name);
     }
+
+    internal LocalBindingLedger? GetLedger(int functionScopeId)
+        => _functionLedgers.GetValueOrDefault(functionScopeId);
+
+    internal IReadOnlyDictionary<int, LocalBindingLedger> AllLedgers => _functionLedgers;
 
     /// <summary>
     /// Merges per-file symbol tables into a single unified table.

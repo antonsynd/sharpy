@@ -10,11 +10,15 @@ public class Scope
     private readonly Scope? _parent;
     public string Name { get; }
     public Scope? Parent => _parent;
+    public int Id { get; }
+    public int ParentId { get; }
 
-    public Scope(string name, Scope? parent = null)
+    public Scope(string name, Scope? parent = null, int id = -1)
     {
         Name = name;
         _parent = parent;
+        Id = id;
+        ParentId = parent?.Id ?? -1;
     }
 
     public void Define(Symbol symbol)
