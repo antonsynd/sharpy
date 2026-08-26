@@ -222,9 +222,16 @@ internal partial class TypeChecker
 
     // Pending overload selections for callable references whose arity-divergent overloads cannot be
     // resolved because the expected type still contains unsolved type parameters (#1589). Populated
-    // during argument checking and consumed after generic inference substitutes the type variables.
-    // Keyed by reference identity so the same expression is not recorded twice.
+    // during argument checking and drained — resolved or refused — before the recording call's check
+    // returns. One list serves every call in flight: the entries at or past `_pendingOverloadWatermark`
+    // belong to the call currently being checked, the ones below it to enclosing calls (a nested call
+    // pushes its own watermark and must not drain its parent's entries with its own substitutions).
     private readonly List<PendingOverloadSelection> _pendingOverloadSelections = new();
+
+    // Index into `_pendingOverloadSelections` where the current call's entries start, or -1 when no
+    // call is being checked. Deferral is only offered inside a call's argument scope: elsewhere there
+    // is no inference to come back with a concrete target, so the reference is refused on the spot.
+    private int _pendingOverloadWatermark = -1;
 
     // Cancellation token for long-running analysis
     private CancellationToken _cancellationToken = default;

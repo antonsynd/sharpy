@@ -16,6 +16,22 @@ internal partial class TypeChecker
 {
     private SemanticType CheckFunctionCall(FunctionCall call)
     {
+        // Deferred callable-reference selections (#1589) are scoped to this call: the entries its
+        // arguments record sit at or past the watermark pushed here, a nested call pushes its own, and
+        // whatever this call's dispatch did not resolve is refused before the scope closes — nothing
+        // leaks into the next call's inference.
+        SemanticType result;
+        using (ScopedValue.Push(ref _pendingOverloadWatermark, _pendingOverloadSelections.Count))
+        {
+            result = CheckFunctionCallCore(call);
+            RefusePendingOverloadSelections();
+        }
+
+        return result;
+    }
+
+    private SemanticType CheckFunctionCallCore(FunctionCall call)
+    {
         // The canonical callee (#1170). Redundant parentheses around a callee never change what a
         // call denotes, so every shape dispatch in this method — construction detection, special
         // forms, overload resolution, generic-reference resolution, argument binding — reads this
@@ -171,23 +187,39 @@ internal partial class TypeChecker
         if (stagedExtensionCall != null)
             CompleteStagedExtensionCall(stagedExtensionCall, argTypes);
 
-        // Resolve any pending overload selections that were deferred because the expected type
-        // contained unsolved type parameters (#1589). Runs here — after all arguments are checked
-        // and before any dispatch path — so builtin functions (map, sorted, etc.) whose return
-        // type is inferred from the first argument's function type see the selected overload's
-        // concrete signature rather than the still-open expected type.
-        if (_pendingOverloadSelections.Count > 0)
+        // Resolve the deferred callable-reference selections this call's arguments recorded (#1589),
+        // here — after every argument is checked and before any dispatch path — so a builtin whose
+        // return type is read off its callable argument (map, sorted) sees the selected signature
+        // rather than the still-open expected type. The substitutions come from the NON-deferred
+        // arguments against the callee's formals: the early symbol's when there is one (only a
+        // generic one has anything to bind), else the callee's own function type when it is open —
+        // the shape a generic builtin like `map` has, which ResolveEarlyFunctionSymbol leaves null.
+        // Entries this site cannot bind stay for the inference dispatch below; whatever that leaves
+        // is refused when the call's scope closes.
+        if (HasPendingOverloadSelections)
         {
+            Func<int, SemanticType?>? formalAt = null;
             if (earlyFuncSymbol != null)
             {
-                ResolvePendingOverloadSelectionsFromArgTypes(earlyFuncSymbol, earlyParamOffset, argTypes);
+                if (earlyFuncSymbol.IsGeneric)
+                {
+                    formalAt = i => i + earlyParamOffset < earlyFuncSymbol.Parameters.Count
+                        ? earlyFuncSymbol.Parameters[i + earlyParamOffset].Type
+                        : null;
+                }
             }
             else if (calleeFunctionType != null && ContainsTypeParameter(calleeFunctionType))
             {
-                // Generic builtins like map have no earlyFuncSymbol (they're generic), but the
-                // callee's function type carries the parameter types with type parameters. Build
-                // a synthetic FunctionSymbol from the callee type to drive the resolution.
-                ResolvePendingOverloadSelectionsFromCalleeType(calleeFunctionType, argTypes);
+                formalAt = i => i < calleeFunctionType.ParameterTypes.Count
+                    ? calleeFunctionType.ParameterTypes[i]
+                    : null;
+            }
+
+            if (formalAt != null)
+            {
+                var substitutions = InferSubstitutionsFromArguments(formalAt, argTypes);
+                if (substitutions.Count > 0)
+                    ResolvePendingOverloadSelections(substitutions, argTypes);
             }
         }
 
@@ -1537,13 +1569,6 @@ internal partial class TypeChecker
         if (expected is TypeParameterType)
             return true;
 
-        // #1600: a constrained type parameter satisfies any expected shape that
-        // contains type parameters — the constraint is an additional guarantee,
-        // not a conflict. Without this, groupby's K: IEquatable[K] fails shape
-        // matching against unconstrained formals.
-        if (arg is TypeParameterType)
-            return expected is TypeParameterType || ContainsTypeParameter(expected);
-
         if (!ContainsTypeParameter(expected))
             return IsAssignable(arg, expected);
 
@@ -1596,9 +1621,27 @@ internal partial class TypeChecker
             return IsAssignable(arg, SubstituteTypeParametersWithObject(expected));
         }
 
-        // NullableType<T>, OptionalType<T>, TupleType<T,...>: substitute type parameters
-        // with object and check assignability — rejects structurally incompatible args
-        // (e.g., list[int] ↛ T?) while still accepting compatible ones (#966).
+        // Same-arity tuple against a tuple shape: recurse element-wise, exactly as the same-name
+        // generic arm does, so an open generic INSIDE a tuple element keeps its wildcard positions.
+        // Substituting object here made `tuple[K, list[T]]` compare `list[T]` against `list[object]`,
+        // which invariance rejects — the shape `iter[tuple[K, list[T]]]` was refused SPY0354 whether
+        // or not K carried a constraint, while `tuple[K, T]` (no nested generic) passed (#1600).
+        if (expected is TupleType expectedTuple && arg is TupleType argTuple)
+        {
+            if (argTuple.ElementTypes.Count != expectedTuple.ElementTypes.Count)
+                return false;
+            for (int i = 0; i < expectedTuple.ElementTypes.Count; i++)
+            {
+                if (!ArgMatchesGenericShape(argTuple.ElementTypes[i], expectedTuple.ElementTypes[i]))
+                    return false;
+            }
+
+            return true;
+        }
+
+        // NullableType<T>, OptionalType<T>, TupleType<T,...> (against a non-tuple arg): substitute
+        // type parameters with object and check assignability — rejects structurally incompatible
+        // args (e.g., list[int] ↛ T?) while still accepting compatible ones (#966).
         if (expected is NullableType or OptionalType or TupleType)
             return IsAssignable(arg, SubstituteTypeParametersWithObject(expected));
 
@@ -2591,8 +2634,10 @@ internal partial class TypeChecker
                 // (at least partial) bindings, so re-enter overload selection with the concrete
                 // expected type. Any additional bindings (e.g. U = bytes from a selected
                 // bytes(str) -> bytes overload) are folded back into the inferred types.
-                var additionalBindings = ResolvePendingOverloadSelections(
-                    funcSymbol.TypeParameters, inferenceResult.InferredTypes);
+                var inferredBindings = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+                for (int tpi = 0; tpi < funcSymbol.TypeParameters.Count && tpi < inferenceResult.InferredTypes.Count; tpi++)
+                    inferredBindings[funcSymbol.TypeParameters[tpi].Name] = inferenceResult.InferredTypes[tpi];
+                var additionalBindings = ResolvePendingOverloadSelections(inferredBindings, argTypes: null);
                 if (additionalBindings != null)
                 {
                     for (int tpi = 0; tpi < funcSymbol.TypeParameters.Count && tpi < inferenceResult.InferredTypes.Count; tpi++)
@@ -2635,9 +2680,9 @@ internal partial class TypeChecker
             }
             else
             {
-                // Inference failed — clear any pending overload selections that were recorded
-                // during argument checking; they cannot be resolved without inference (#1589).
-                _pendingOverloadSelections.Clear();
+                // Inference failed — drop the deferred selections this call's arguments recorded;
+                // without inference there is no target for them, and the call already has its error (#1589).
+                DiscardPendingOverloadSelections();
 
                 // Inference failed - report error
                 AddError(inferenceResult.ErrorMessage ?? "Type arguments cannot be inferred",
@@ -5001,8 +5046,12 @@ internal partial class TypeChecker
             // parameter adjudicates. This is deliberately narrower than the plan's
             // ClrParameterIsUndecidable rule — that predicate calls `decimal` undecidable (it
             // declares op_Implicit), which would leave Math.floor(1.5) ambiguous and contradict
-            // the plan's own acceptance example. The residue: a LOSSY mapping (enum→int) can
-            // manufacture false uniqueness and leak CS1503 behind SPY0908 — TODO(#1573).
+            // the plan's own acceptance example. A mapped parameter is judged the same way the
+            // unique-candidate seam (CheckClrCallArgumentTypes) judges it: the Sharpy-vocabulary
+            // acceptance, refuted when the mapping is lossy and .NET rejects the argument's own
+            // CLR type (enum→int manufactured false uniqueness, #1573), and rescued by .NET when
+            // the mapping lost a relation .NET has (a real enum value against the enum's `int`
+            // spelling, which the mapped check alone refused).
             var argumentCompatible = candidates.Where(c =>
             {
                 var ps = c.GetParameters();
@@ -5010,10 +5059,7 @@ internal partial class TypeChecker
                 {
                     if (IsClrParamsArray(ps[i]))
                         break;
-                    var mapped = MapClrParameterType(ps[i]);
-                    if (mapped == null)
-                        continue;
-                    if (!IsArgumentAssignable(argTypes[i], mapped, ArgumentNodeAt(call, i)))
+                    if (!ClrParameterAccepts(ps[i], argTypes[i], ArgumentNodeAt(call, i)))
                         return false;
                 }
                 return true;
@@ -5110,10 +5156,10 @@ internal partial class TypeChecker
 
             if (argumentCompatible.Count != 1)
             {
-                // #1569: emit SPY0601 only when we can confirm the ambiguity via CLR
-                // reflection (at least one arg has a resolvable CLR type) or when ALL
-                // args had CLR types and multiple candidates survived. When the checker
-                // can't determine CLR types, fall back silently and let Roslyn resolve.
+                // #1569: refuse only when the checker could actually adjudicate — at least one
+                // argument has a resolvable CLR type. When it could not (every argument is a
+                // lambda, a `None`, an unresolved type), Roslyn still has the delegate/target
+                // information this seam lacks, so the call falls through as before.
                 var anyArgHasClrType = argTypes.Any(a => TryGetClrType(a) != null);
                 if (!anyArgHasClrType)
                     return null;
@@ -5123,9 +5169,24 @@ internal partial class TypeChecker
                     survivingCandidates.Select(c =>
                     {
                         var ps = c.GetParameters();
-                        var paramDisplay = string.Join(", ", ps.Select(p => p.ParameterType.Name));
+                        var paramDisplay = string.Join(", ", ps.Select(p => Shared.ClrNameHelper.StripArity(p.ParameterType.Name)));
                         return $"{c.Name}({paramDisplay})";
                     }));
+
+                if (argumentCompatible.Count == 0)
+                {
+                    // Nothing survived: the arguments fit no overload, which is a no-match, not an
+                    // ambiguity — the two are different user actions (change the argument vs pick
+                    // between overloads), so they get the existing SPY0354 and its wording.
+                    AddError(
+                        $"No matching overload for '{memberDisplay}' with the given argument types. "
+                        + $"Candidates: {candidateDescriptions}",
+                        call.LineStart, call.ColumnStart,
+                        code: DiagnosticCodes.Semantic.NoMatchingOverload,
+                        span: call.Span);
+                    return SemanticType.Unknown;
+                }
+
                 AddError(
                     $"Call to '{memberDisplay}' is ambiguous between {survivingCandidates.Count} overloads: " +
                     $"{candidateDescriptions}. Disambiguate by casting the argument to the intended type",
@@ -5284,17 +5345,14 @@ internal partial class TypeChecker
                 // is the rule (#1251, #1260) that must be stated at every binding site, not an effect.
                 RecordSequenceMaterialization(argumentNode, argTypes[i], expected);
 
-                if (IsArgumentAssignable(argTypes[i], expected, argumentNode))
+                if (ClrParameterAccepts(parameter, argTypes[i], argumentNode))
                     continue;
 
-                // Second chance against the parameter's real CLR type: the mapping is a
-                // Sharpy-vocabulary description and can lose an inheritance relation .NET has (a
-                // derived CLR class bound to a base-class parameter both bridge to UserDefinedType,
-                // whose names differ).
-                if (argumentClrType != null && parameter.ParameterType.IsAssignableFrom(argumentClrType))
-                    continue;
-
-                expectedDisplay = expected.GetDisplayName();
+                // A lossy mapping refused by .NET is reported in .NET's words: the user wrote an
+                // `int` where the formal is an enum, and "expects 'int'" would send them in circles.
+                expectedDisplay = IsLossyClrMapping(parameter.ParameterType, expected)
+                    ? Shared.ClrNameHelper.StripArity(parameter.ParameterType.Name)
+                    : expected.GetDisplayName();
             }
             else
             {
@@ -5325,19 +5383,22 @@ internal partial class TypeChecker
     /// Whether nothing this seam knows can decide an argument against <paramref name="parameter"/>,
     /// whichever description of the formal is used. A <c>ref</c>/<c>out</c> or pointer parameter is
     /// unwritable from Sharpy and a different diagnosis; one still naming a type parameter has no
-    /// concrete formal at all; an enum reaches the call as the bridge's <c>int</c>; a delegate is
-    /// bound from a lambda by a C# conversion rather than an assignability rule;
-    /// <see cref="System.Type"/> is satisfied by a type reference, as
+    /// concrete formal at all; a delegate is bound from a lambda by a C# conversion rather than an
+    /// assignability rule; <see cref="System.Type"/> is satisfied by a type reference, as
     /// <see cref="IsSystemTypeParameter"/> already allows; <c>object</c> accepts everything; and a
     /// ref-struct (<c>Span</c>, <c>ReadOnlySpan</c>) or a type carrying <c>op_Implicit</c> is reached
     /// by conversions reflection cannot enumerate.
+    ///
+    /// <para>An enum is NOT undecidable: it reaches the call as the bridge's <c>int</c>, which is a
+    /// lossy spelling, and .NET decides it exactly through the argument's own CLR type — see
+    /// <see cref="ClrParameterAccepts"/> (#1573).</para>
     /// </summary>
     private static bool ClrParameterIsUndecidable(System.Reflection.ParameterInfo parameter)
     {
         var parameterClrType = parameter.ParameterType;
 
         return parameterClrType.IsByRef || parameterClrType.IsPointer
-            || parameterClrType.ContainsGenericParameters || parameterClrType.IsEnum
+            || parameterClrType.ContainsGenericParameters
             || parameterClrType.IsByRefLike
             || parameterClrType == typeof(Type) || parameterClrType == typeof(object)
             || typeof(Delegate).IsAssignableFrom(parameterClrType)
@@ -5352,6 +5413,48 @@ internal partial class TypeChecker
     {
         var mapped = _bclGenericMethodBridge.MapClrTypeToSemanticType(parameter.ParameterType);
         return mapped is UnknownType || IsObjectType(mapped) ? null : mapped;
+    }
+
+    /// <summary>
+    /// Whether the bridge's Sharpy spelling of <paramref name="parameterType"/> names a CLR type .NET
+    /// would NOT accept for the parameter. The enum arm is the standing case: every enum maps to
+    /// <c>int</c>, so a Sharpy <c>int</c> satisfies the spelling while the emitted C# needs the enum
+    /// itself (CS1503 behind SPY0908, #1573). Faithful arms (<c>double</c>→<c>float</c>,
+    /// <c>String</c>→<c>str</c>, a generic collection through its CLR origin) round-trip to a type the
+    /// parameter accepts. A spelling whose CLR type is unknown is not called lossy — there is nothing
+    /// to refute it with, and the mapped acceptance stands.
+    /// </summary>
+    private bool IsLossyClrMapping(Type parameterType, SemanticType mapped)
+        => TryGetClrType(mapped) is { } mappedClrType && !parameterType.IsAssignableFrom(mappedClrType);
+
+    /// <summary>
+    /// Whether a MAPPED CLR parameter accepts an argument — the one answer both the candidate filter
+    /// and the unique-candidate seam (<c>CheckClrCallArgumentTypes</c>) give. A parameter the bridge
+    /// cannot express (<see cref="MapClrParameterType"/> returns null) counts as accepting here; the
+    /// unique-candidate seam asks .NET about that one directly.
+    /// <list type="number">
+    /// <item>The Sharpy-vocabulary acceptance, exactly as an annotation would decide it — unless the
+    /// mapping is <see cref="IsLossyClrMapping">lossy</see> and the argument has a CLR type .NET
+    /// rejects for the parameter, in which case the acceptance proved nothing (#1573).</item>
+    /// <item>Otherwise .NET's own answer on the argument's CLR type: the mapping is a description and
+    /// can lose a relation .NET has (a derived CLR class against a base-class parameter, or a real
+    /// enum value against the enum's <c>int</c> spelling).</item>
+    /// </list>
+    /// </summary>
+    private bool ClrParameterAccepts(
+        System.Reflection.ParameterInfo parameter, SemanticType argType, Expression? argumentNode)
+    {
+        var mapped = MapClrParameterType(parameter);
+        if (mapped == null)
+            return true;
+
+        var argumentClrType = TryGetClrType(argType);
+        var clrAccepts = argumentClrType != null && parameter.ParameterType.IsAssignableFrom(argumentClrType);
+
+        if (IsArgumentAssignable(argType, mapped, argumentNode))
+            return clrAccepts || argumentClrType == null || !IsLossyClrMapping(parameter.ParameterType, mapped);
+
+        return clrAccepts;
     }
 
     /// <summary>

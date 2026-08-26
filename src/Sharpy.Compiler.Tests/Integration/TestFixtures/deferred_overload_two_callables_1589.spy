@@ -1,0 +1,18 @@
+# #1589: TWO deferred callable references in one call, in non-leading positions, both
+# resolved from the one binding the iterable argument supplies (T = int32).
+def apply_both[T, U, V](f: (T) -> U, g: (T) -> V, xs: list[T]) -> tuple[list[U], list[V]]:
+    us: list[U] = []
+    vs: list[V] = []
+    for x in xs:
+        us.append(f(x))
+        vs.append(g(x))
+    return (us, vs)
+
+
+def main() -> None:
+    sizes: list[int32] = [2, 3]
+    bs, rs = apply_both(bytes, range, sizes)
+    for b in bs:
+        print(len(b))
+    for r in rs:
+        print(len(r))

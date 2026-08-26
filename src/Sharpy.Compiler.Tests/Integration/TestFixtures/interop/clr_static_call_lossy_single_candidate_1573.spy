@@ -1,0 +1,9 @@
+# #1573: the lossy enum→int arm on a UNIQUE arity candidate. GetFolderPath has one
+# 1-argument overload (SpecialFolder); an `int` satisfied its `int` spelling and the
+# call reached Roslyn as CS1503 behind SPY0908. The enum is decided by .NET instead.
+from system import Environment
+
+
+def main() -> None:
+    p: str = Environment.get_folder_path(1)
+    print(p)

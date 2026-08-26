@@ -1,0 +1,8 @@
+# #1589: a deferred selection that no overload satisfies once the target is inferred.
+# bytes has bytes(), bytes(int32) and bytes(list[int32]); with T = str from the iterable
+# nothing accepts (str) -> U, so the reference is refused SPY0336 — at the reference,
+# with the inferred target named — not leaked to Roslyn.
+def main() -> None:
+    words: list[str] = ["a", "bb"]
+    result: list[bytes] = list(map(bytes, words))
+    print(len(result))

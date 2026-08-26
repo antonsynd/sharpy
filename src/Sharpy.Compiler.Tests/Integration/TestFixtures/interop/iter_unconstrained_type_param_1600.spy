@@ -1,0 +1,30 @@
+# #1600 positive control: the same iter[tuple[K, list[T]]] shape with K UNCONSTRAINED.
+# The refusal was never about the constraint — it was the open generic nested inside
+# the tuple element — so this cell was refused SPY0354 too and passes with the same fix.
+def _groupby_core[T, K](iterable: list[T], key: (T) -> K) -> tuple[K, list[T]]:
+    items: list[T] = list(iterable)
+    if len(items) == 0:
+        return
+    current_key: K = key(items[0])
+    group: list[T] = [items[0]]
+    i: int = 1
+    while i < len(items):
+        item_key: K = key(items[i])
+        if item_key == current_key:
+            group.append(items[i])
+        else:
+            yield (current_key, group)
+            current_key = item_key
+            group = [items[i]]
+        i = i + 1
+    yield (current_key, group)
+
+
+def groupby[T, K](iterable: list[T], key: (T) -> K) -> Iterator[tuple[K, list[T]]]:
+    return iter[tuple[K, list[T]]](_groupby_core(iterable, key))
+
+
+def main() -> None:
+    words: list[str] = ["apple", "avocado", "banana", "blueberry", "cherry"]
+    for k, g in groupby(words, lambda w: w[0]):
+        print(k, len(g))

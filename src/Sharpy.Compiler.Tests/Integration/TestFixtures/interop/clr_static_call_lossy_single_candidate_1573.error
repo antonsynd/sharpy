@@ -1,0 +1,1 @@
+Argument 1 of 'Environment.get_folder_path' expects 'SpecialFolder' but got 'int32' @8:42

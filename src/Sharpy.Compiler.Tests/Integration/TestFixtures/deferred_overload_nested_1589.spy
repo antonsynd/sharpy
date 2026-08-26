@@ -1,0 +1,14 @@
+# #1589: deferred selections in NESTED generic calls. The outer `range` reference is
+# recorded before the inner calls are checked; each call resolves only the entries its
+# own arguments recorded, with its own inferred bindings — the inner map(bytes, sizes)
+# binds bytes(int32) from list[int32]; the outer map(range, ...) binds range(int) from
+# the int elements size() yields, not from the inner call's int32.
+def size(b: bytes) -> int:
+    return len(b)
+
+
+def main() -> None:
+    sizes: list[int32] = [2, 3]
+    ranges = list(map(range, map(size, map(bytes, sizes))))
+    for r in ranges:
+        print(len(r))

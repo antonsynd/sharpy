@@ -1,0 +1,34 @@
+# #1600: iter[tuple[K, list[T]]] with a CONSTRAINED K — the itertools.groupby shape.
+# The tuple element list[T] is an open generic nested inside a tuple; the shape match
+# must recurse into tuple elements (substituting object for T made list[T] fail
+# against list[object] by invariance, refusing the call SPY0354).
+from system import IEquatable
+
+
+def _groupby_core[T, K: IEquatable[K]](iterable: list[T], key: (T) -> K) -> tuple[K, list[T]]:
+    items: list[T] = list(iterable)
+    if len(items) == 0:
+        return
+    current_key: K = key(items[0])
+    group: list[T] = [items[0]]
+    i: int = 1
+    while i < len(items):
+        item_key: K = key(items[i])
+        if item_key.equals(current_key):
+            group.append(items[i])
+        else:
+            yield (current_key, group)
+            current_key = item_key
+            group = [items[i]]
+        i = i + 1
+    yield (current_key, group)
+
+
+def groupby[T, K: IEquatable[K]](iterable: list[T], key: (T) -> K) -> Iterator[tuple[K, list[T]]]:
+    return iter[tuple[K, list[T]]](_groupby_core(iterable, key))
+
+
+def main() -> None:
+    words: list[str] = ["apple", "avocado", "banana", "blueberry", "cherry"]
+    for k, g in groupby(words, lambda w: w[0]):
+        print(k, len(g))

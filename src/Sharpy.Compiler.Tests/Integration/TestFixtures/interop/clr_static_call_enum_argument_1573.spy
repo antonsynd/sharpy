@@ -1,0 +1,10 @@
+# #1573 positive control: a real CLR enum value selects the enum overload.
+# The bridge spells StringComparison as `int`, so the mapped check alone refuses the
+# enum value and Compare(String, String, Boolean) refuses it too — .NET's own
+# assignability on the argument's CLR type is what rescues the enum candidate.
+from system import String, StringComparison
+
+
+def main() -> None:
+    print(String.compare("a", "b", StringComparison.Ordinal))
+    print(String.compare("b", "a", StringComparison.OrdinalIgnoreCase))

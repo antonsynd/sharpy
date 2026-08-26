@@ -1,0 +1,10 @@
+# #1573: enum→int false uniqueness beside a class-typed sibling. EnumerateFiles(String,
+# String, SearchOption) accepted `1` through the enum's `int` spelling and became the
+# unique candidate over EnumerateFiles(String, String, EnumerationOptions); the emitted
+# C# was CS1503 behind SPY0908. Neither overload takes an int: no-match.
+from System.IO import Directory
+
+
+def main() -> None:
+    for f in Directory.enumerate_files(".", "*", 1):
+        print(f)

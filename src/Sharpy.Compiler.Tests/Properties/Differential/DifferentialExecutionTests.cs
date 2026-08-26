@@ -996,6 +996,11 @@ public class DifferentialExecutionTests : IntegrationTestBase
             // one fixture that needs them is already out of the subset on this name, and listing
             // them would cost the oracle eight other fixtures.
             "get_hash_code",// System.Object.GetHashCode — no CPython counterpart
+
+            // Explicitly-implemented interface members reached on a builtin collection receiver
+            // through the interface-cast lowering (#1572). CPython's list has no `is_fixed_size`
+            // (AttributeError); the fixture pins the cast, not a shared runtime semantic.
+            "is_fixed_size",// System.Collections.IList.IsFixedSize — no CPython counterpart
         };
 
         // Deliberately NOT listed: `first` and `contains`, which #1291's fixtures also use. Both are

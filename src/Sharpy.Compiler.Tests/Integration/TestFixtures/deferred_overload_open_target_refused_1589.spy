@@ -1,0 +1,25 @@
+# #1589: a deferred selection whose target never closes. Inside a generic class body the
+# expected type (T) -> bytes stays open — the callee `use` is not generic, so no inference
+# will ever bind T — and the reference is refused SPY0336 when the call's scope closes,
+# instead of leaking into the next generic call's inference.
+class Box[T]:
+    item: T
+
+    def __init__(self, item: T) -> None:
+        self.item = item
+
+    def use(self, f: (T) -> bytes) -> None:
+        print(len(f(self.item)))
+
+    def go(self) -> None:
+        self.use(bytes)
+
+
+def main() -> None:
+    sizes: list[int32] = [4]
+    lens: list[int] = list(map(size, map(bytes, sizes)))
+    print(lens)
+
+
+def size(b: bytes) -> int:
+    return len(b)

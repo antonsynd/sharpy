@@ -1,0 +1,9 @@
+# #1600 regression pin: a bare type parameter does NOT satisfy an open generic formal.
+# `T` is not an Iterable[T2]; treating every TypeParameterType argument as a wildcard
+# against any open shape accepted this call and leaked CS1503 behind SPY0908.
+def sort_it[T](x: T) -> list[T]:
+    return sorted(x)
+
+
+def main() -> None:
+    print(sort_it([3, 1, 2]))

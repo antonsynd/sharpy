@@ -1,0 +1,14 @@
+# #1589: deferred selection through a USER-DEFINED generic callee — the early-symbol
+# path (ResolveEarlyFunctionSymbol finds `apply`, so its formals drive the inference).
+def apply[T, U](f: (T) -> U, xs: list[T]) -> list[U]:
+    out: list[U] = []
+    for x in xs:
+        out.append(f(x))
+    return out
+
+
+def main() -> None:
+    sizes: list[int32] = [5, 3, 7]
+    result: list[bytes] = apply(bytes, sizes)
+    for b in result:
+        print(len(b))
