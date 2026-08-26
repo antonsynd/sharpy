@@ -1892,11 +1892,13 @@ public partial class Parser
         Expect(TokenType.LeftParen);
 
         var elements = new List<Pattern>();
+        var sawComma = false;
         if (Current.Type != TokenType.RightParen)
         {
             elements.Add(ParsePattern());
             while (Current.Type == TokenType.Comma)
             {
+                sawComma = true;
                 Advance();
                 if (Current.Type == TokenType.RightParen)
                     break;
@@ -1926,6 +1928,13 @@ public partial class Parser
 
         var tupleEndToken = Current;
         Expect(TokenType.RightParen);
+
+        // CPython group pattern (PEP 634): `(pattern)` with no comma IS the inner pattern — only a
+        // trailing comma (`(x,)`) or two or more elements make a sequence pattern. Returning the
+        // inner node keeps `case (y):` a capture (so the irrefutable-arm ordering rule sees it,
+        // #1624) instead of a one-element tuple pattern refused on a non-tuple scrutinee.
+        if (elements.Count == 1 && !sawComma)
+            return elements[0];
 
         return new TuplePattern
         {
