@@ -231,7 +231,7 @@ Lexer → Parser → Semantic → Validation → CodeGen → LSP → Tests
 | `src/*.Tests/` | Unit + integration tests |
 | `docs/language_specification/` | **Authoritative** spec |
 | `build_tools/` | Python-based build automation and dogfooding tools (own CLAUDE.md) |
-| `.github/agents/` | Domain-specific AI agents |
+| `.claude/agents/` | Claude Code agent definitions (registry: [agents.md](agents.md)) |
 | `.github/instructions/` | Per-component contribution guides |
 
 ## CI/CD

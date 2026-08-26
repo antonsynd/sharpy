@@ -143,7 +143,7 @@ class Config(BaseConfig):
 
     @property
     def agents_dir(self) -> Path:
-        return self.project_root / ".github/agents"
+        return self.project_root / ".claude/agents"
 
     # Note: src_dir and build_tools_dir inherited from BaseConfig
 

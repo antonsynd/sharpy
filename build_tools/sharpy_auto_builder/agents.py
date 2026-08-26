@@ -1,7 +1,7 @@
 """
 Agent definitions for Sharpy Auto Builder.
 
-Maps to the agents defined in .github/agents/ and provides prompts
+Maps to the agents defined in .claude/agents/ and provides prompts
 for different types of tasks.
 """
 
@@ -13,7 +13,7 @@ import json
 
 
 class AgentRole(str, Enum):
-    """Types of agent roles matching .github/agents/."""
+    """Types of agent roles matching .claude/agents/."""
 
     # Core agents
     IMPLEMENTER = "implementer"
@@ -69,7 +69,7 @@ class AgentConfig:
         }
 
 
-# Agent configurations based on .github/agents/
+# Agent configurations based on .claude/agents/
 AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
     AgentRole.IMPLEMENTER: AgentConfig(
         role=AgentRole.IMPLEMENTER,
@@ -594,7 +594,7 @@ def get_specialist_for_task(task_id: str, files: list[str]) -> AgentRole:
 
 def load_agent_md(agents_dir: Path, role: AgentRole) -> Optional[str]:
     """Load the agent markdown file content."""
-    md_file = agents_dir / f"{role.value}.agent.md"
+    md_file = agents_dir / f"{role.value}.md"
     if md_file.exists():
         return md_file.read_text()
     return None

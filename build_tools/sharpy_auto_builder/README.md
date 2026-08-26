@@ -535,7 +535,7 @@ Or use the CLI:
 
 ## Validation Agents
 
-The system uses three validation agents (matching `.github/agents/`):
+The system uses three validation agents (matching `.claude/agents/`):
 
 ### Spec Adherence Agent
 
@@ -724,7 +724,7 @@ When validation agents need to run tests (e.g., `dotnet test`), they may require
 
 ## Integration with Agents
 
-The auto builder uses the same agent definitions as `.github/agents/`:
+The auto builder uses the same agent definitions as `.claude/agents/`:
 
 | Role | Purpose |
 |------|---------|
