@@ -2156,20 +2156,38 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateMultiAxisAccess(MultiAxisAccess multiAxis)
     {
-        var obj = GenerateExpression(multiAxis.Object);
-        var lowering = _context.SemanticInfo?.GetMultiAxisAccessLowering(multiAxis);
-
-        var isSliceCall = lowering?.Kind == MultiAxisAccessKind.SliceCall;
-
-        if (!isSliceCall)
+        // The emitter reads the recorded per-dimension kinds and the access kind, never the AST's
+        // IsSlice flags: semantic analysis classified the receiver (or refused it, in which case no
+        // fact exists and codegen must not be reached). Absent fact → fail loud (#1621, D6).
+        var lowering = _context.SemanticInfo?.GetMultiAxisAccessLowering(multiAxis)
+            ?? throw new InvalidOperationException(
+                "No MultiAxisAccessLowering recorded for multi-axis subscript — semantic analysis " +
+                "must classify every receiver the emitter is asked to generate (#1621)");
+        if (lowering.Dimensions.Length != multiAxis.Dimensions.Length)
         {
-            // All indices: a[1, 2] → a[1, 2] (spread into params int[])
-            var args = new List<ArgumentSyntax>();
-            foreach (var dim in multiAxis.Dimensions)
-                args.Add(Argument(GenerateExpression(dim.Index!)));
-            return ApplyNarrowedReadLowering(multiAxis,
-                ElementAccessExpression(obj)
-                    .AddArgumentListArguments(args.ToArray()));
+            throw new InvalidOperationException(
+                $"MultiAxisAccessLowering records {lowering.Dimensions.Length} dimension kind(s) for a " +
+                $"subscript with {multiAxis.Dimensions.Length} dimensions (#1621)");
+        }
+
+        var obj = GenerateExpression(multiAxis.Object);
+
+        switch (lowering.Kind)
+        {
+            case MultiAxisAccessKind.IndexSpread:
+                {
+                    // All indices: a[1, 2] → a[1, 2] (spread into params int[])
+                    var args = new List<ArgumentSyntax>();
+                    foreach (var dim in multiAxis.Dimensions)
+                        args.Add(Argument(GenerateExpression(dim.Index!)));
+                    return ApplyNarrowedReadLowering(multiAxis,
+                        ElementAccessExpression(obj)
+                            .AddArgumentListArguments(args.ToArray()));
+                }
+            case MultiAxisAccessKind.SliceCall:
+                break;
+            default:
+                throw new InvalidOperationException($"Unknown MultiAxisAccessKind: {lowering.Kind}");
         }
 
         // Any slice: a[1:3, :] → a.Slice(new SliceSpec(1, 3), SliceSpec.All)
@@ -2177,11 +2195,8 @@ internal partial class RoslynEmitter
         for (int i = 0; i < multiAxis.Dimensions.Length; i++)
         {
             var dim = multiAxis.Dimensions[i];
-            var dimKind = lowering!.Dimensions.Length > i
-                ? lowering.Dimensions[i]
-                : (dim.IsSlice ? MultiAxisDimensionKind.Slice : MultiAxisDimensionKind.Index);
 
-            if (dimKind == MultiAxisDimensionKind.Slice)
+            if (lowering.Dimensions[i] == MultiAxisDimensionKind.Slice)
             {
                 sliceArgs.Add(Argument(GenerateSliceSpec(dim)));
             }
