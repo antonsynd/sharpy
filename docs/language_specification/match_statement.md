@@ -392,6 +392,10 @@ fall-through arm **must be the last arm** (SPY0700). This matches CPython's rule
 `SyntaxError: name capture 'x' makes remaining patterns unreachable`.
 
 A guarded irrefutable pattern (`case x if cond:`) is refutable and may appear anywhere.
+Parentheses do not change a pattern's meaning: `case (x):` is a *group* pattern — the same
+capture as `case x:` — and is ordered the same way; only a trailing comma (`case (x,):`) or two
+or more elements make a tuple pattern. A capture nested inside a refutable pattern (`case [x]:`,
+`case int() as n:`) does not make the arm irrefutable.
 
 ```python
 # OK — trailing capture

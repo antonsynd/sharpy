@@ -1,0 +1,14 @@
+# #1624 positive control: an or-pattern with a wildcard alternative is fine as the LAST arm.
+def main():
+    x: int = 42
+    match x:
+        case 42:
+            print("specific")
+        case 1 | _:
+            print("or")
+    y: int = 7
+    match y:
+        case 42:
+            print("specific")
+        case 1 | _:
+            print("or")

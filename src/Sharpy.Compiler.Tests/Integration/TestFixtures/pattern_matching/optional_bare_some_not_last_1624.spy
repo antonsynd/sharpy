@@ -1,0 +1,10 @@
+# #1624 (the issue's shape): over an Optional scrutinee a bare `Some` is a name CAPTURE (the v1
+# synthetic-union carve-out), so it matches everything and the `None` arm after it is unreachable.
+# CPython: "name capture 'Some' makes remaining patterns unreachable".
+def main() -> None:
+    opt: Optional[int] = Some(5)
+    match opt:
+        case Some:
+            print("some")
+        case None:
+            print("none")

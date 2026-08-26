@@ -1,0 +1,15 @@
+# #1624 positive control: a capture NESTED in a refutable pattern (`[x]` matches only one-element
+# lists) does not make the arm irrefutable — it may precede other arms.
+def main():
+    xs: list[int] = [1]
+    match xs:
+        case [x]:
+            print(x)
+        case _:
+            print("other")
+    ys: list[int] = [1, 2]
+    match ys:
+        case [x]:
+            print(x)
+        case _:
+            print("other")

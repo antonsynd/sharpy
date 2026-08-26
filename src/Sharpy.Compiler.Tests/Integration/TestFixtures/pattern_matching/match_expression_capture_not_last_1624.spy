@@ -1,0 +1,9 @@
+# #1624: the arm-ordering rule covers the match EXPRESSION form too — a non-trailing capture arm
+# is refused with the same SPY0700 as in the statement form.
+def main():
+    x: int = 2
+    label: str = match x:
+        case y: "cap"
+        case 2: "two"
+        case _: "other"
+    print(label)

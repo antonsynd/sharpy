@@ -1,0 +1,9 @@
+# #1624: an or-pattern with a wildcard alternative is irrefutable — not last, it is refused
+# (CPython: "wildcard makes remaining patterns unreachable").
+def main():
+    x: int = 42
+    match x:
+        case 1 | _:
+            print("or")
+        case 42:
+            print("specific")

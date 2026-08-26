@@ -1,0 +1,16 @@
+# #1624 positive control: a class pattern with an `as` capture is REFUTABLE (it tests the type),
+# so `case int() as n:` may precede other arms. The scrutinee is `object` — a class pattern that
+# is total for the scrutinee's static type is a separate class (C# CS8120), filed by the lead.
+def main():
+    v: object = 5
+    match v:
+        case int() as n:
+            print(n + 1)
+        case _:
+            print("other")
+    w: object = "s"
+    match w:
+        case int() as n:
+            print(n + 1)
+        case _:
+            print("other")

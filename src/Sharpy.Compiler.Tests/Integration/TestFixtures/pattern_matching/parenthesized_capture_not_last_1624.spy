@@ -1,0 +1,9 @@
+# #1624: `(y)` is a GROUP pattern (PEP 634) — the inner capture, not a one-element tuple — so a
+# non-trailing `case (y):` is the same irrefutable arm as `case y:` and is refused the same way.
+def main():
+    x: int = 42
+    match x:
+        case (y):
+            print(y)
+        case 42:
+            print("specific")
