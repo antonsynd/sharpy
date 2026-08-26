@@ -42,6 +42,7 @@ ICE with a diagnostic" from "restricts working code" (the round-8 Batch B lesson
 | ILCompiles property tests | `src/Sharpy.Compiler.Tests/Properties/CodeGen/` | Random-seed property tests asserting emitted C# compiles |
 | CsClean property tests | `src/Sharpy.Compiler.Tests/Properties/CodeGen/` | Random-seed property tests asserting no raw CSxxxx leaks |
 | EmitterCarrierOnlyConformanceTests | `src/Sharpy.Compiler.Tests/CodeGen/` | Rule 2 — decisions cannot be taken emitter-side (prevents un-lowerable shapes from being introduced) |
+| EmitterLocalStateScanTests | `src/Sharpy.Compiler.Tests/CodeGen/` | Scans CodeGen sources for deleted slot-tracking members (`_declaredVariables`, `_variableVersions`, etc.) — prevents re-introduction of emitter-side local state (#1560) |
 | Ratchet policy | all allowlists | Drain-on-fix, entries cite issues, allowlists trend to empty |
 
 ## Starting census (measured @ `8bacf3d34`)

@@ -140,7 +140,7 @@ The `RoslynEmitter` is split into partial files by area — entry/name resolutio
 
 **Name resolution strategy**:
 - Module-level symbols → `Symbol.CodeGenInfo` (precomputed during semantic analysis)
-- Local variables → runtime tracking via `_variableVersions` (handles redeclarations: x, x_1, x_2)
+- Local variables → `Symbol.CodeGenInfo` (precomputed by `LocalNameAllocator` at `ComputeForModule`; monotonic versioning: x, x_1, x_2; rebinding chains share the root's spelling)
 - Types → SymbolTable lookup
 
 **Type mappings** (`CodeGen/TypeSyntaxMapper.cs`): `int` → `int`, `long` → `long`, `str` → `string`, `float` → `double`, `list[T]` → `Sharpy.List<T>`, `dict[K,V]` → `Sharpy.Dict<K,V>`, `set[T]` → `Sharpy.Set<T>` (Sharpy.Core wrappers delegate to .NET types internally). Collection type name constants live in `Shared/CSharpTypeNames.cs`. A separate `Discovery/ClrTypeMapper.cs` maps CLR types back to Sharpy `SemanticType` instances.

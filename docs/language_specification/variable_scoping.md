@@ -10,7 +10,7 @@ global x       # ERROR: unexpected 'global'
 nonlocal y     # ERROR: unexpected 'nonlocal'
 ```
 
-To modify outer scope variables, use explicit assignment to a mutable container or return values from functions.
+Assignment to a name bound in an enclosing scope — including an enclosing function's local — writes through to that binding; use a new name or an annotated declaration (`x: T = ...`) to shadow instead. This applies uniformly to blocks and nested functions (C# closure semantics).
 
 ## Block Scoping
 
@@ -72,7 +72,9 @@ print(x)                # Prints "outer", 'x' was shadowed only
                         # in the for-loop, and not modified.
 ```
 
-### To modify outer variable
+### Write-Through Assignment
+
+Assignment to a name that already exists in an enclosing scope writes through to it — no `nonlocal` keyword needed:
 
 ```python
 x = 0
@@ -80,6 +82,34 @@ for i in range(5):      # 'i' is block-scoped
     x += i              # Modifies outer 'x'
 print(x)                # 10
 print(i)                # ERROR: 'i' is block-scoped
+```
+
+This applies to nested functions too (C# closure semantics — captured by reference):
+
+```python
+def main():
+    n: int = 1
+    def double_it():
+        n = n * 2        # Writes through to outer 'n'
+    double_it()
+    print(n)             # 2
+
+    count: int = 0
+    adder = lambda: count + 1  # Reads outer 'count'
+    count = 10
+    print(adder())       # 11 — lambda sees the updated value
+```
+
+To create a **new** local that shadows an outer name, use an annotated declaration:
+
+```python
+def main():
+    x: int = 1
+    def shadow_it():
+        x: str = "hello"  # New local — does NOT modify outer 'x'
+        print(x)          # "hello"
+    shadow_it()
+    print(x)              # 1 — outer 'x' unchanged
 ```
 
 ## Assignment Statement
@@ -111,4 +141,4 @@ x: auto = "hello"       # Shadowing with inferred type
 ```
 
 *Implementation:*
-- *🔄 Lowered - Generates variable names using simple integer versioning (`x`, `x_1`, `x_2`, etc.) via the `_variableVersions` dictionary in RoslynEmitter.*
+- *🔄 Lowered — `LocalNameAllocator` assigns C# spellings with monotonic integer versioning (`x`, `x_1`, `x_2`) during `CodeGenInfoComputer.ComputeForModule`. Rebinding chains link each redefinition to its predecessor; chain members share the root's spelling. The emitter reads `CodeGenInfo` and `TargetBinding` and owns no local-slot state.*
