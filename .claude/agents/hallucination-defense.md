@@ -29,7 +29,7 @@ All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `
 ```bash
 # Write a quick C# program (in the session scratchpad) and run it
 echo 'Console.WriteLine(string.IsNullOrEmpty(null));' > "$TMPDIR/Test.cs"
-.claude/scripts/dotnet-serialized run --project "$TMPDIR/Test.cs"
+.claude/scripts/dotnet-serialized run "$TMPDIR/Test.cs"   # .NET 10 file-based app
 ```
 Or search the codebase for existing usage patterns.
 
