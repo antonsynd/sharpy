@@ -2144,7 +2144,13 @@ public enum OperatorLoweringKind
 {
     Native,
     TrueDivisionCastLeft,
-    ShiftCountCastToInt
+    ShiftCountCastToInt,
+    OptionalNoneTest,
+    OptionalCoalesceBothOptional,
+    OptionalUnwrapOr,
+    StringRepeat,
+    StringOrdinalCompare,
+    TypeParameterCompareTo,
 }
 
 public sealed record OperatorLowering(OperatorLoweringKind Kind);

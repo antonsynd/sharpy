@@ -784,7 +784,7 @@ internal partial class RoslynEmitter
 
             // x ??= y → lowered null coalescing (Optional-aware)
             AssignmentOperator.NullCoalesceAssign =>
-                GenerateNullCoalesceValue(left, right, targetAst),
+                GenerateNullCoalesceValue(left, right, assignNode),
 
             // x @= y → x = x.MatMul(y) (matrix multiplication, PEP 465; no native C# operator)
             AssignmentOperator.MatMulAssign =>
@@ -806,6 +806,21 @@ internal partial class RoslynEmitter
                 sourceAst?.LineStart, sourceAst?.ColumnStart);
         }
 
+        if (assignNode != null)
+        {
+            var augLowering = _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind;
+            if (augLowering == OperatorLoweringKind.StringRepeat)
+            {
+                return InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                        IdentifierName("Repeat")))
+                    .AddArgumentListArguments(
+                        Argument(left),
+                        Argument(right));
+            }
+        }
+
         if (assignNode != null
             && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind
                 == OperatorLoweringKind.ShiftCountCastToInt)
@@ -820,19 +835,14 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generates a null-coalescing value, aware of Optional vs nullable types.
-    /// For Optional&lt;T&gt;: left.IsSome ? left : right (both Optional) or left.UnwrapOr(right)
-    /// For nullable/reference types: left ?? right
+    /// Reads the OperatorLowering tag to decide between Optional ternary and native ?? (#1623).
     /// </summary>
-    private ExpressionSyntax GenerateNullCoalesceValue(ExpressionSyntax left, ExpressionSyntax right, Expression? targetAst)
+    private ExpressionSyntax GenerateNullCoalesceValue(ExpressionSyntax left, ExpressionSyntax right, Assignment? assignNode)
     {
-        if (targetAst != null && GetExpressionSemanticType(targetAst) is OptionalType)
+        if (assignNode != null
+            && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind
+                == OperatorLoweringKind.OptionalCoalesceBothOptional)
         {
-            // Optional ??= value → target.IsSome ? target : value (staying Optional)
-            // or target.UnwrapOr(value) if rhs is raw T — but ??= assigns back to
-            // the same variable, so both sides are Optional in practice.
-            // `left` appears THREE times across the test and both arms — safe only because
-            // the caller has already hoisted any non-trivial target into a temp (#1227), so
-            // these are three reads of the same local, not three evaluations.
             return ConditionalExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName("IsSome")),
                 left,

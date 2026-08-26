@@ -148,19 +148,16 @@ internal partial class RoslynEmitter
                         .AddArgumentListArguments(Argument(left)));
 
             case BinaryOperator.Is:
-                // x is y → object.ReferenceEquals(x, y)
-                // Special optimization for None: x is None
                 if (binOp.Right is NoneLiteral)
                 {
-                    // For Optional<T> (struct): emit x.IsNone (property access)
-                    if (GetExpressionSemanticType(binOp.Left) is OptionalType)
+                    if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
+                        == OperatorLoweringKind.OptionalNoneTest)
                     {
                         return MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             left,
                             IdentifierName("IsNone"));
                     }
-                    // For nullable/reference types: x == null
                     return BinaryExpression(SyntaxKind.EqualsExpression,
                         left,
                         LiteralExpression(SyntaxKind.NullLiteralExpression));
@@ -174,19 +171,16 @@ internal partial class RoslynEmitter
                         Argument(right));
 
             case BinaryOperator.IsNot:
-                // x is not y → !object.ReferenceEquals(x, y)
-                // Special optimization for None: x is not None
                 if (binOp.Right is NoneLiteral)
                 {
-                    // For Optional<T> (struct): emit x.IsSome (property access)
-                    if (GetExpressionSemanticType(binOp.Left) is OptionalType)
+                    if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
+                        == OperatorLoweringKind.OptionalNoneTest)
                     {
                         return MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             left,
                             IdentifierName("IsSome"));
                     }
-                    // For nullable/reference types: x != null
                     return BinaryExpression(SyntaxKind.NotEqualsExpression,
                         left,
                         LiteralExpression(SyntaxKind.NullLiteralExpression));
@@ -201,13 +195,10 @@ internal partial class RoslynEmitter
                             Argument(right)));
 
             case BinaryOperator.NullCoalesce:
-                // x ?? y — for Optional<T>, lower to UnwrapOr or ternary
-                if (GetExpressionSemanticType(binOp.Left) is OptionalType)
                 {
-                    if (GetExpressionSemanticType(binOp.Right) is OptionalType)
+                    var coalesceKind = _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind;
+                    if (coalesceKind == OperatorLoweringKind.OptionalCoalesceBothOptional)
                     {
-                        // Both Optional: safeLeft.IsSome ? safeLeft : right
-                        // Ensure left is only evaluated once for complex expressions
                         var (safeLeft, captureLeft) = EnsureSingleEvaluation(left, binOp.Left);
                         ExpressionSyntax coalesceCondition = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             ParenthesizedExpression(safeLeft), IdentifierName("IsSome"));
@@ -215,37 +206,32 @@ internal partial class RoslynEmitter
                             coalesceCondition = BinaryExpression(SyntaxKind.LogicalAndExpression, captureLeft, coalesceCondition);
                         return ConditionalExpression(coalesceCondition, safeLeft, right);
                     }
-                    // Left Optional, right raw T: left.UnwrapOr(right)
-                    // UnwrapOr only evaluates left once (method call on the struct)
-                    return InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            ParenthesizedExpression(left), IdentifierName("UnwrapOr")))
-                        .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(right))));
-                }
-                // For nullable/reference types: C# ?? operator
-                return BinaryExpression(SyntaxKind.CoalesceExpression, left, right);
-
-            case BinaryOperator.Multiply:
-                {
-                    // String repetition: str * int, int * str, str * long
-                    var leftMulType = GetExpressionSemanticType(binOp.Left);
-                    var rightMulType = GetExpressionSemanticType(binOp.Right);
-                    if (leftMulType == SemanticType.Str || rightMulType == SemanticType.Str)
+                    if (coalesceKind == OperatorLoweringKind.OptionalUnwrapOr)
                     {
-                        // Ensure string is always the first argument
-                        var strArg = leftMulType == SemanticType.Str ? left : right;
-                        var countArg = leftMulType == SemanticType.Str ? right : left;
                         return InvocationExpression(
                             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
-                                IdentifierName("Repeat")))
-                            .AddArgumentListArguments(
-                                Argument(strArg),
-                                Argument(countArg));
+                                ParenthesizedExpression(left), IdentifierName("UnwrapOr")))
+                            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(right))));
                     }
-                    // Not string repetition — fall through to standard multiply
-                    break;
+                    return BinaryExpression(SyntaxKind.CoalesceExpression, left, right);
                 }
+
+            case BinaryOperator.Multiply:
+                if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
+                    == OperatorLoweringKind.StringRepeat)
+                {
+                    var leftMulType = GetExpressionSemanticType(binOp.Left);
+                    var strArg = leftMulType == SemanticType.Str ? left : right;
+                    var countArg = leftMulType == SemanticType.Str ? right : left;
+                    return InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                            IdentifierName("Repeat")))
+                        .AddArgumentListArguments(
+                            Argument(strArg),
+                            Argument(countArg));
+                }
+                break;
 
         }
 
@@ -372,16 +358,10 @@ internal partial class RoslynEmitter
                 : equalsInvocation;
         }
 
-        // For <, >, <=, >= on strings, emit string.Compare(left, right, StringComparison.Ordinal) <op> 0
-        // because System.String does not define relational operators
-        if (kind is SyntaxKind.LessThanExpression or SyntaxKind.GreaterThanExpression
-            or SyntaxKind.LessThanOrEqualExpression or SyntaxKind.GreaterThanOrEqualExpression)
         {
-            var leftCmpType = GetExpressionSemanticType(binOp.Left);
-            var rightCmpType = GetExpressionSemanticType(binOp.Right);
-            if (leftCmpType == SemanticType.Str && rightCmpType == SemanticType.Str)
+            var cmpLowering = _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind;
+            if (cmpLowering == OperatorLoweringKind.StringOrdinalCompare)
             {
-                // string.Compare(left, right, System.StringComparison.Ordinal)
                 var compareCall = InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         PredefinedType(Token(SyntaxKind.StringKeyword)),
@@ -399,20 +379,8 @@ internal partial class RoslynEmitter
                     compareCall,
                     LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
             }
-        }
-
-        // For <, >, <=, >= on generic type parameters with IComparable constraint,
-        // emit x.CompareTo(y) <op> 0 because C# does not allow relational operators
-        // on unconstrained generic types
-        if (kind is SyntaxKind.LessThanExpression or SyntaxKind.GreaterThanExpression
-            or SyntaxKind.LessThanOrEqualExpression or SyntaxKind.GreaterThanOrEqualExpression)
-        {
-            var leftType = GetExpressionSemanticType(binOp.Left);
-            var rightType = GetExpressionSemanticType(binOp.Right);
-            if ((leftType is Semantic.TypeParameterType leftTp && HasComparableConstraint(leftTp))
-                || (rightType is Semantic.TypeParameterType rightTp && HasComparableConstraint(rightTp)))
+            if (cmpLowering == OperatorLoweringKind.TypeParameterCompareTo)
             {
-                // left.CompareTo(right) <op> 0
                 var compareToCall = InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         left,

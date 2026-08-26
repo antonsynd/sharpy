@@ -1,0 +1,7 @@
+def main():
+    a: str = "apple"
+    b: str = "banana"
+    print(a < b)       # True
+    print(b > a)       # True
+    print(a <= a)      # True
+    print(a >= b)      # False

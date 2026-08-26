@@ -195,6 +195,45 @@ internal partial class TypeChecker
                 new OperatorLowering(OperatorLoweringKind.ShiftCountCastToInt));
         }
 
+        if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot
+            && (binOp.Right is NoneLiteral || binOp.Left is NoneLiteral)
+            && (leftType is OptionalType || rightType is OptionalType))
+        {
+            _semanticInfo.SetOperatorLowering(binOp,
+                new OperatorLowering(OperatorLoweringKind.OptionalNoneTest));
+        }
+
+        if (binOp.Operator == BinaryOperator.NullCoalesce && leftType is OptionalType)
+        {
+            var kind = rightType is OptionalType
+                ? OperatorLoweringKind.OptionalCoalesceBothOptional
+                : OperatorLoweringKind.OptionalUnwrapOr;
+            _semanticInfo.SetOperatorLowering(binOp,
+                new OperatorLowering(kind));
+        }
+
+        if (binOp.Operator == BinaryOperator.Multiply
+            && (leftType == SemanticType.Str || rightType == SemanticType.Str))
+        {
+            _semanticInfo.SetOperatorLowering(binOp,
+                new OperatorLowering(OperatorLoweringKind.StringRepeat));
+        }
+
+        if (binOp.Operator is BinaryOperator.LessThan or BinaryOperator.GreaterThan
+                or BinaryOperator.LessThanOrEqual or BinaryOperator.GreaterThanOrEqual)
+        {
+            if (leftType == SemanticType.Str && rightType == SemanticType.Str)
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.StringOrdinalCompare));
+            }
+            else if (leftType is TypeParameterType || rightType is TypeParameterType)
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.TypeParameterCompareTo));
+            }
+        }
+
         // Warn when is/is not is used with value types — identity comparison is
         // meaningless because value types are boxed, so the result is always False.
         if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)

@@ -415,6 +415,20 @@ internal partial class TypeChecker
                     new OperatorLowering(OperatorLoweringKind.ShiftCountCastToInt));
             }
 
+            if (assignment.Operator == AssignmentOperator.NullCoalesceAssign
+                && targetType is OptionalType)
+            {
+                _semanticInfo.SetOperatorLowering(assignment,
+                    new OperatorLowering(OperatorLoweringKind.OptionalCoalesceBothOptional));
+            }
+
+            if (assignment.Operator == AssignmentOperator.StarAssign
+                && (targetType == SemanticType.Str || valueType == SemanticType.Str))
+            {
+                _semanticInfo.SetOperatorLowering(assignment,
+                    new OperatorLowering(OperatorLoweringKind.StringRepeat));
+            }
+
             if (Features.IsEnabled("inplace_augassign")
                 && AugmentedCollectionAssignment.Classify(assignment, targetType) is { } mutation)
             {
