@@ -1,0 +1,4 @@
+# Pin: set subscript is refused (SPY0320, not an indexable type)
+def main():
+    s: set[int] = {1, 2, 3}
+    print(s[0])

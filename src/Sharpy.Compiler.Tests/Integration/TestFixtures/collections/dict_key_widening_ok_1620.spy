@@ -1,0 +1,6 @@
+def main():
+    # Normal str key on dict[str, int] — positive control
+    d: dict[str, int] = {"a": 1, "b": 2}
+    print(d["a"])
+    d["c"] = 3
+    print(d["c"])

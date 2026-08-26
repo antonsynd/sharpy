@@ -399,6 +399,22 @@ The bool refusal is a deliberate Type Safety deviation — Python permits `xs[Tr
 `bool` is a subclass of `int`, but Sharpy keeps `bool` and `int` distinct. The explicit spelling
 is `xs[int(flag)]`.
 
+### Dict Key Type Rule
+
+Dict subscript access `d[k]` and store `d[k] = v` validate the key against the dict's
+key type parameter using assignability (not strict equality). This means `dict[long, V]`
+accepts an `int` key (widening), and `dict[object, V]` accepts any key.
+
+| Expression | Key type | Outcome |
+|------------|----------|---------|
+| `d: dict[str, int]; d[1]` | `int` vs `str` | SPY0220 — `Dict key must be 'str', got 'int32'` |
+| `d: dict[str, int]; d[True]` | `bool` vs `str` | SPY0220 + bool steer |
+| `d: dict[long, str]; d[1]` | `int` vs `long` | Accepted (int assignable to long) |
+| `d: dict[str, int]; d["a"]` | `str` vs `str` | Accepted |
+
+User-defined `__getitem__` with multiple overloads resolves through `FindBestOverload`;
+a key matching no overload is refused with SPY0220.
+
 ### User Protocol
 
 A user-defined class can support subscript access via `__getitem__`. Slice support requires

@@ -1,0 +1,7 @@
+class MyContainer:
+    def __getitem__(self, key: str) -> int:
+        return 42
+
+def main():
+    c = MyContainer()
+    print(c[123])
