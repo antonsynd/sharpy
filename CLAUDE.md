@@ -25,6 +25,7 @@ Each of these exists because violating it has crashed sessions or destroyed work
 - **Parallel agents share one working tree.** "Read-only" is not a sufficient instruction — it has failed twice; agents read `git restore` as cleanup rather than modification. Enumerate the prohibition in agent prompts: *never run `git checkout` / `restore` / `clean` / `stash` / `reset` / `rm` on repo paths*, and say the tree is shared. A silent revert leaves no stash and no reflog entry, so commit lead work in small slices and re-check `git diff --stat` after each agent wave.
 - **Test logs:** the serialized wrapper tees stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (3-slot rotation, so an older log isn't clobbered by a new run; `-latest.log` symlinks the newest). Grep these instead of re-running suites (~22 min wall clock). `Sharpy.Compiler.Tests` dominates because the `[Trait("Category","GapDiscovery")]` sweeps run by default — filter them out for a fast pass.
 - **Prefer skills over raw commands:** `/build`, `/run-tests`, `/spy-emit`, `/spy-run`, `/quick-check`, `/commit`, `/push`, … (the harness injects the full list each session; sources in `.claude/skills/`). Skills handle logging, truncation, and temp files; the `/spy-*` skills accept inline source via the Write tool, avoiding bash-escaping issues with `#` and backticks in Sharpy source. Investigate failures by reading `.claude/tmp/*.log`, not by re-running.
+- **Plans live in `.claude/plans/`** (repo-local, gitignored): `/create-plan` writes there and the `/verify-plan`, `/implement-plan`, `/verify-implementation` argument-less defaults read there. Per-batch plans created before 2026-08-26 remain in `~/.claude/plans/`; pass the path explicitly for those.
 
 ## Critical Rules
 
@@ -38,6 +39,8 @@ Each of these exists because violating it has crashed sessions or destroyed work
 8. **TODO/BUG/FIXME comments must have GitHub issues** — create the issue first (`gh issue create`) and reference it in the comment (`// TODO(#123): ...`).
 9. **Warnings are errors** — `TreatWarningsAsErrors` solution-wide via `Directory.Build.props`.
 10. **Every active diagnostic code needs a `DiagnosticExplanations` entry** (`Diagnostics/DiagnosticExplanations.cs`, guarded by `DiagnosticExplanationsTests`).
+11. **Fix the class, not the cell** — name the violated contract and the cell matrix; an issue's repro list is a symptom report, not a test plan. Contract and standard cures: [docs/design/verification-contract.md](docs/design/verification-contract.md) §1, harnesses: [gap-discovery-contracts.md](docs/design/gap-discovery-contracts.md).
+12. **Guards are falsifiable** — mutation-test every new test/guard/harness (break the guarded thing → red, restore → green, both recorded in the commit body); the exemption is never the subject; absence assertions need a positive control; refusals are verified by direction against the prior commit (`run`, not `emit`). [verification-contract.md](docs/design/verification-contract.md) §2–§3.
 
 ## Axioms
 
@@ -125,6 +128,8 @@ dotnet test --filter "DisplayName~test_name"                          # By test 
 **Programmatic tests** inherit `IntegrationTestBase` and assert on `CompileAndExecute(source)` (`result.Success`, `result.StandardOutput`). Multi-file tests use `ProjectCompilationHelper` (`WithRootNamespace(...).AddSourceFile(...).CreateProjectFile()` then `Compile()`).
 
 **Gap-discovery sweeps** are standing conformance harnesses that hunt whole defect classes (contracts and roster: [docs/design/gap-discovery-contracts.md](docs/design/gap-discovery-contracts.md); run via `/gap-analysis`). They **ratchet** against an allowlist file next to the test: a non-allowlisted failure fails the suite; every allowlist entry cites an issue and is deleted when fixed ("drain on fix" — stale entries fail); allowlists must trend to empty. Never add an entry without an issue reference; never close a member bug by patching one cell — enforce the class contract.
+
+**Commit gate** = the whole solution: `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"` across all test projects, run in the background while doing read-only work; a filtered run is the edit loop, never the gate. Blast radius of `Semantic/`/`CodeGen/` changes: `Sharpy.Stdlib.Tests`, `Sharpy.Cli.Tests`, `FrontEndParityTests` (LSP), and the three GapDiscovery sweeps CI runs as separate steps (`InteropConformance`, `MetamorphicCorpus`, `DifferentialExecution`). Counts are reported `passed/failed/skipped @ sha (measured)`; a red is attributed only after a control run at the base commit ([verification-contract.md](docs/design/verification-contract.md) §5–§6).
 
 ## Git & Release
 
