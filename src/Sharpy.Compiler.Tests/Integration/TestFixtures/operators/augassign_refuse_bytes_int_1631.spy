@@ -1,0 +1,3 @@
+def main():
+    z: bytes = b"ab"
+    z += 1

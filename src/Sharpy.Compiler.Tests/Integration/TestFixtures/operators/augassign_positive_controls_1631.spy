@@ -1,0 +1,30 @@
+def main():
+    # bytes += bytes
+    b: bytes = b"ab"
+    b += b"cd"
+    print(b)
+
+    # str += str
+    s: str = "hello"
+    s += " world"
+    print(s)
+
+    # list += list
+    items: list[int] = [1, 2]
+    items += [3]
+    print(items)
+
+    # int <<= int
+    x: int = 1
+    x <<= 3
+    print(x)
+
+    # int **= int
+    y: int = 2
+    y **= 10
+    print(y)
+
+    # float /= int
+    z: float = 10.0
+    z /= 2
+    print(z)
