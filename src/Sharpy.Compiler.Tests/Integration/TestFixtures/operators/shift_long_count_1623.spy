@@ -1,0 +1,10 @@
+def main():
+    # Binary shift with long count — ShiftCountCastToInt
+    x: int = 1
+    n: int64 = 3
+    print(x << n)   # 8
+    print(16 >> n)   # 2
+
+    # int shift by int — Native, no cast
+    print(1 << 3)    # 8
+    print(16 >> 3)   # 2

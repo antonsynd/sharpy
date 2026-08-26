@@ -1,0 +1,10 @@
+def main():
+    # Augmented shift with long count — ShiftCountCastToInt (#1643)
+    x: int = 1
+    n: int64 = 2
+    x <<= n
+    print(x)    # 4
+
+    y: int = 32
+    y >>= n
+    print(y)    # 8
