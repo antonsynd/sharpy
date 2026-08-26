@@ -110,29 +110,22 @@ internal partial class TypeChecker
         // (validators may not catch all type incompatibilities)
         if (resultType == null)
         {
-            var message =
-                $"Type '{leftType.GetDisplayName()}' does not support operator '{GetOperatorSymbol(binOp.Operator)}' with operand of type '{rightType.GetDisplayName()}'";
-
             // When comparing against the `None` literal with ==/!=, point the user at the
             // supported spelling: Sharpy rejects `x == None` (SPY0222) but accepts `x is None`
             // (#1079). Both operand orders (`x == None` and `None == x`) get the hint. The
             // suggested operator rides the diagnostic data payload for a future LSP quick-fix.
             IReadOnlyDictionary<string, string>? data = null;
+            string? messageSuffix = null;
             if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual
                 && (binOp.Left is NoneLiteral || binOp.Right is NoneLiteral))
             {
                 var suggestedOperator = binOp.Operator == BinaryOperator.Equal ? "is None" : "is not None";
-                message += $". Did you mean '{suggestedOperator}'?";
+                messageSuffix = $". Did you mean '{suggestedOperator}'?";
                 data = new Dictionary<string, string> { ["suggestedOperator"] = suggestedOperator };
             }
 
-            AddError(
-                message,
-                binOp.LineStart,
-                binOp.ColumnStart,
-                code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
-                span: binOp.Span,
-                data: data);
+            ReportUnsupportedBinaryOperator(binOp, GetOperatorSymbol(binOp.Operator),
+                leftType, rightType, data, messageSuffix);
             return SemanticType.Unknown;
         }
 
@@ -1760,4 +1753,37 @@ internal partial class TypeChecker
         UnaryOperator.BitwiseNot => "~",
         _ => op.ToString()
     };
+
+    private static string GetAssignmentOperatorSymbol(AssignmentOperator op) => op switch
+    {
+        AssignmentOperator.PlusAssign => "+=",
+        AssignmentOperator.MinusAssign => "-=",
+        AssignmentOperator.StarAssign => "*=",
+        AssignmentOperator.SlashAssign => "/=",
+        AssignmentOperator.DoubleSlashAssign => "//=",
+        AssignmentOperator.PercentAssign => "%=",
+        AssignmentOperator.PowerAssign => "**=",
+        AssignmentOperator.AndAssign => "&=",
+        AssignmentOperator.OrAssign => "|=",
+        AssignmentOperator.XorAssign => "^=",
+        AssignmentOperator.LeftShiftAssign => "<<=",
+        AssignmentOperator.RightShiftAssign => ">>=",
+        AssignmentOperator.MatMulAssign => "@=",
+        AssignmentOperator.NullCoalesceAssign => "??=",
+        _ => op.ToString()
+    };
+
+    private void ReportUnsupportedBinaryOperator(
+        Node node, string operatorSpelling,
+        SemanticType left, SemanticType right,
+        IReadOnlyDictionary<string, string>? data = null,
+        string? messageSuffix = null)
+    {
+        var message = $"Type '{left.GetDisplayName()}' does not support operator '{operatorSpelling}' with operand of type '{right.GetDisplayName()}'";
+        if (messageSuffix != null)
+            message += messageSuffix;
+        AddError(message, node.LineStart, node.ColumnStart,
+            code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+            span: node.Span, data: data);
+    }
 }
