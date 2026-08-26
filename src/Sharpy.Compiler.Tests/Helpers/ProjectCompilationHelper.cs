@@ -586,7 +586,19 @@ public class ProjectCompilationHelper : IDisposable
         params string[] skippedFiles)
     {
         AssertCompilationSucceeded(result);
+        return AssertWarmBuildSkipped(result, skippedFiles);
+    }
 
+    /// <summary>
+    /// The warm-build proof of <see cref="AssertIncrementalSkipped"/> without the success assertion:
+    /// for a build that is EXPECTED to fail — a warm/cold differential whose cold arm refuses and
+    /// whose warm arm must refuse identically (#1568) — this is the half that proves the refusal was
+    /// measured on cache-served symbols and not on a silent full rebuild.
+    /// </summary>
+    public ProjectCompilationResult AssertWarmBuildSkipped(
+        ProjectCompilationResult result,
+        params string[] skippedFiles)
+    {
         if (!Incremental)
         {
             throw new Xunit.Sdk.XunitException(

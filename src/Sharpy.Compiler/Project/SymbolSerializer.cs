@@ -931,6 +931,19 @@ internal static class SymbolSerializer
     /// A segment with no <c>@</c> is a name with no provenance — the pre-provenance format, so old
     /// caches parse unchanged even though the schema bump means they are not read.
     /// </summary>
+    /// <summary>
+    /// The CLR origin a generic carries into the cache: its own <see cref="GenericType.ClrOriginTypeName"/>
+    /// when the bridge stamped one, else the definition's CLR type when analysis attached one (a
+    /// generic written in source against an imported CLR definition). Null for a Sharpy-written
+    /// generic, which has no CLR identity to carry (#1568).
+    /// </summary>
+    private static string? ClrOriginOf(GenericType generic)
+        => generic.ClrOriginTypeName is { Length: > 0 } stamped
+            ? stamped
+            : generic.GenericDefinition?.ClrType is { IsGenericTypeDefinition: true } definition
+                ? definition.FullName
+                : null;
+
     private static string SplitGenericName(string segment, out string? clrOriginTypeName)
     {
         var at = segment.IndexOf('@', StringComparison.Ordinal);
@@ -1284,8 +1297,15 @@ internal static class SymbolSerializer
             // reverts to the strict comparison — the #1252 shape would start declining again with no
             // diagnostic to explain why. `@` cannot occur in a Sharpy generic name or a CLR type's
             // FullName, so splitting the pre-bracket segment on it is unambiguous.
+            //
+            // A generic WRITTEN in source against an imported CLR definition (`-> Stack[int]`) carries
+            // its identity only in GenericDefinition, which is per-analysis and never serialized; the
+            // origin is derived from that definition here so the warm side has the same identity the
+            // bridge-mapped case has. Without it the #1533 absence gate — and every other consumer that
+            // falls back to ClrOriginTypeName when GenericDefinition is null — was silently off for a
+            // cache-served signature: cold refused SPY0203, warm leaked CS1061 behind SPY0908 (#1568).
             Register<GenericType>("generic",
-                gt => gt.ClrOriginTypeName is { Length: > 0 } origin
+                gt => ClrOriginOf(gt) is { Length: > 0 } origin
                     ? $"{gt.Name}@{origin}[{string.Join(",", gt.TypeArguments.Select(Serialize))}]"
                     : $"{gt.Name}[{string.Join(",", gt.TypeArguments.Select(Serialize))}]",
                 value =>

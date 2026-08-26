@@ -1156,11 +1156,23 @@ internal partial class TypeChecker
     /// The Sharpy-native form of a bridge-mapped collection type — the same type with its CLR
     /// provenance dropped. A value of this type is backed by the Sharpy wrapper (<c>Sharpy.List&lt;T&gt;</c>),
     /// which is what a Sharpy slot means by <c>list[T]</c>.
+    ///
+    /// <para>Only a generic the bridge COLLAPSED onto a Sharpy collection name has a native form to
+    /// take. A CLR generic kept as itself (<c>Stack[int]</c>, <c>IOrderedEnumerable[T]</c>) stays
+    /// exactly what it is, provenance included: on a warm build that provenance is the restored
+    /// type's only identity — <c>GenericDefinition</c> never survives the symbol cache — and dropping
+    /// it here turned <c>s = make(); s.no_such_member()</c> permissive (CS1061 behind SPY0908) while
+    /// <c>make().no_such_member()</c> on the same build refused SPY0203 (#1568).</para>
     /// </summary>
     private static SemanticType NativeCollectionForm(SemanticType type)
-        => type is GenericType { ClrOriginTypeName: not null } mapped
+        => type is GenericType { ClrOriginTypeName: not null } mapped && IsSharpyCollectionName(mapped.Name)
             ? mapped with { ClrOriginTypeName = null }
             : type;
+
+    /// <summary>The generic names the bridge collapses CLR collections onto (see <c>ClrTypeBridge.MapGenericType</c>).</summary>
+    private static bool IsSharpyCollectionName(string name)
+        => name is BuiltinNames.List or BuiltinNames.Dict or BuiltinNames.Set
+            or BuiltinNames.FrozenSet or BuiltinNames.FrozenDict;
 
     /// <summary>
     /// The element of a bridge-mapped CLR sequence INTERFACE — a generic the bridge kept as ITSELF
@@ -1482,7 +1494,10 @@ internal partial class TypeChecker
                     };
                     if (openType == null)
                     {
-                        var candidateClr = gt.GenericDefinition?.ClrType
+                        // GenericDefinitionOf reaches a cache-restored generic's definition through its
+                        // ClrOriginTypeName (#1568); the symbol-table lookup is the last resort for a
+                        // same-file spelling that carries neither.
+                        var candidateClr = GenericDefinitionOf(gt)?.ClrType
                             ?? _symbolTable.LookupType(gt.Name)?.ClrType;
                         if (candidateClr != null && candidateClr.IsGenericTypeDefinition
                             && candidateClr.GetGenericArguments().Length == gt.TypeArguments.Count)

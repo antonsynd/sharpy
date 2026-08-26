@@ -1544,7 +1544,7 @@ internal partial class TypeChecker
         var ownerSymbol = receiverType switch
         {
             UserDefinedType { Symbol: { } udtSymbol } => udtSymbol,
-            GenericType { GenericDefinition: { } genericDefinition } => genericDefinition,
+            GenericType generic when GenericDefinitionOf(generic) is { } genericDefinition => genericDefinition,
             _ => ResolveBuiltinTypeInfo(receiverType).TypeSymbol
         };
 

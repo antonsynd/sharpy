@@ -905,7 +905,7 @@ internal class ClrTypeBridge
     /// rather than assumed, so the same helper serves interfaces and the concrete definitions
     /// (the dict views) whose arms also need to carry a <c>GenericDefinition</c>.
     /// </summary>
-    private TypeSymbol GetOrCreateClrDefinitionSymbol(Type clrDef)
+    internal TypeSymbol GetOrCreateClrDefinitionSymbol(Type clrDef)
     {
         return _interfaceSymbolCache.GetOrAdd(clrDef, static def =>
         {

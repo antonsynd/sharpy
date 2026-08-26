@@ -659,7 +659,8 @@ internal partial class TypeChecker
         // members on the definition with the receiver's type-argument substitution applied. Without
         // this, every method call returned Unknown — so e.g. get_opcodes() lost its list[tuple]
         // type and tuple indexing on the loop variable couldn't lower to .ItemN (#892).
-        if (memberLookupType is GenericType { GenericDefinition: { ClrType: not null } genDef } genInstance)
+        if (memberLookupType is GenericType genInstance
+            && GenericDefinitionOf(genInstance) is { ClrType: not null } genDef)
         {
             var genericMember = ResolveGenericModuleClassMember(memberAccess, genDef, genInstance.TypeArguments);
             if (genericMember != null)
@@ -1004,16 +1005,7 @@ internal partial class TypeChecker
     /// </summary>
     private bool IsConstructedClrGenericReceiver(SemanticType type)
     {
-        if (type is not GenericType generic)
-            return false;
-
-        // #1568: GenericDefinition is per-analysis state that does not survive the
-        // symbol cache. Warm-restored generics have it null, so fall back to
-        // ClrOriginTypeName → ResolveOriginDefinition (the same pattern as
-        // ClrTypeHelper.cs:398).
-        var defClr = generic.GenericDefinition?.ClrType
-            ?? Discovery.ClrTypeHelper.ResolveOriginDefinition(generic);
-        if (defClr == null)
+        if (type is not GenericType generic || GenericDefinitionOf(generic)?.ClrType is not { } defClr)
             return false;
 
         return defClr.IsGenericTypeDefinition
@@ -1021,6 +1013,21 @@ internal partial class TypeChecker
             && clrType != typeof(object)
             && !clrType.IsGenericTypeDefinition;
     }
+
+    /// <summary>
+    /// The definition symbol a constructed generic instantiates: the one analysis attached, or — for
+    /// a generic restored from the symbol cache, where <see cref="GenericType.GenericDefinition"/> is
+    /// per-analysis state that never survives — the bridge's symbol for the CLR definition its
+    /// <see cref="GenericType.ClrOriginTypeName"/> names (#1568). Every consumer that keys on the
+    /// definition (the #1533 absence gate, the owner-symbol resolution behind it, the receiver's CLR
+    /// type, instance-method overload lookup) reads through this, so a warm build answers exactly as
+    /// the cold build does. Null when the type has neither: a Sharpy-written generic with no CLR origin.
+    /// </summary>
+    private TypeSymbol? GenericDefinitionOf(GenericType generic)
+        => generic.GenericDefinition
+           ?? (Discovery.ClrTypeHelper.ResolveOriginDefinition(generic) is { } originDefinition
+               ? _bclGenericMethodBridge.GetOrCreateClrDefinitionSymbol(originDefinition)
+               : null);
 
     /// <summary>
     /// The semantic type of a raw BCL member reached on a builtin receiver, or <c>null</c> when the
@@ -1569,7 +1576,7 @@ internal partial class TypeChecker
     private TypeSymbol? ResolveInstanceMemberOwnerSymbol(SemanticType ownerType) => ownerType switch
     {
         UserDefinedType { Symbol: { } udtSym } => udtSym,
-        GenericType { GenericDefinition: { } genDef } => genDef,
+        GenericType generic when GenericDefinitionOf(generic) is { } genDef => genDef,
         _ => ResolveBuiltinTypeInfo(ownerType).TypeSymbol
     };
 
