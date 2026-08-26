@@ -1,0 +1,7 @@
+def main():
+    if True:
+        x = 1
+        print(x)
+    if True:
+        x = 2
+        print(x)

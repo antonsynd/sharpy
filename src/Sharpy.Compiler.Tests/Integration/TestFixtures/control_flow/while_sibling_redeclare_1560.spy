@@ -1,0 +1,11 @@
+def main():
+    done1 = False
+    while not done1:
+        x = 1
+        print(x)
+        done1 = True
+    done2 = False
+    while not done2:
+        x = 2
+        print(x)
+        done2 = True

@@ -1,0 +1,16 @@
+class Resource:
+    name: str
+    def __init__(self, name: str):
+        self.name = name
+    def __enter__(self) -> Self:
+        return self
+    def __exit__(self) -> None:
+        pass
+
+def main() -> None:
+    with Resource("a") as r:
+        x = 1
+        print(x)
+    with Resource("b") as r:
+        x = 2
+        print(x)

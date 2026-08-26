@@ -1,0 +1,10 @@
+def main():
+    try:
+        x = 1
+        print(x)
+    except Exception:
+        x = 2
+        print(x)
+    finally:
+        x = 3
+        print(x)

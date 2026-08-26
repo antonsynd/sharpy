@@ -1,0 +1,6 @@
+def main():
+    match 42:
+        case x:
+            print(x)
+    x = 99
+    print(x)

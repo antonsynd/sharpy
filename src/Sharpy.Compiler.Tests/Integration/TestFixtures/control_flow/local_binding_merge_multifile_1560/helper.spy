@@ -1,0 +1,9 @@
+def sibling_and_writethrough() -> None:
+    x = 0
+    try:
+        x = 1
+        print(x)
+    except Exception:
+        x = 2
+        print(x)
+    print(x)

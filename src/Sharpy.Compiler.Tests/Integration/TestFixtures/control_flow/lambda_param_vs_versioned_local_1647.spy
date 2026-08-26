@@ -1,0 +1,7 @@
+def main():
+    x = 10
+    if True:
+        x = 20
+    f: (int) -> int = lambda x: x + 1
+    print(x)
+    print(f(100))

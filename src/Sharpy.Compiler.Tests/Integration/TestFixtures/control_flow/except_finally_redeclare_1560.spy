@@ -1,0 +1,9 @@
+def main():
+    try:
+        raise ValueError("test")
+    except ValueError:
+        x = 1
+        print(x)
+    finally:
+        x = 2
+        print(x)

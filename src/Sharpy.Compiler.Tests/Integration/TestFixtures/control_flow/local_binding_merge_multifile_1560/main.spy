@@ -1,0 +1,4 @@
+from helper import sibling_and_writethrough
+
+def main() -> None:
+    sibling_and_writethrough()
