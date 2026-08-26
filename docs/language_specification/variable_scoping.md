@@ -126,6 +126,27 @@ x += 5
 count *= 2
 ```
 
+### Sibling-Block Redeclaration
+
+Each block scope is independent — the same name can be reused across sibling blocks without collision:
+
+```python
+def main():
+    try:
+        x = 1
+        print(x)          # 1
+    except Exception:
+        x = 2
+        print(x)          # 2 (different 'x')
+    finally:
+        x = 3
+        print(x)          # 3 (different 'x')
+
+    # After the try, 'x' from any block is not visible:
+    x = 99                 # New outer declaration
+    print(x)               # 99
+```
+
 ## Variable Shadowing
 
 Variables can be redeclared in the same scope with a different type using explicit type annotation:
