@@ -18,6 +18,7 @@ public class SymbolTable : IGlobalSymbolTable
     private readonly Dictionary<string, Scope> _moduleScopes = new();
     private int _nextScopeId;
     private readonly Dictionary<int, LocalBindingLedger> _functionLedgers = new();
+    private readonly Dictionary<FunctionSymbol, int> _functionScopeMap = new();
     private int _currentFunctionScopeId = -1;
 
     /// <summary>
@@ -414,6 +415,15 @@ public class SymbolTable : IGlobalSymbolTable
         => _functionLedgers.GetValueOrDefault(functionScopeId);
 
     internal IReadOnlyDictionary<int, LocalBindingLedger> AllLedgers => _functionLedgers;
+
+    internal void RegisterFunctionScope(FunctionSymbol symbol)
+    {
+        if (_currentFunctionScopeId >= 0)
+            _functionScopeMap[symbol] = _currentFunctionScopeId;
+    }
+
+    internal int? GetFunctionScopeId(FunctionSymbol symbol)
+        => _functionScopeMap.TryGetValue(symbol, out var id) ? id : null;
 
     /// <summary>
     /// Merges per-file symbol tables into a single unified table.

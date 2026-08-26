@@ -611,7 +611,7 @@ internal partial class TypeChecker
         // Compute CodeGenInfo for all symbols if enabled
         if (computeCodeGenInfo)
         {
-            var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable, SemanticBinding, _diagnostics);
+            var codeGenInfoComputer = new CodeGenInfoComputer(_symbolTable, SemanticBinding, _diagnostics, _semanticInfo);
             // The file's NAME, not its symbol identity (#1433): module-class derivation must keep
             // working for an entry file whose symbol paths are nulled for the #1087 contract.
             codeGenInfoComputer.ComputeForModule(module, ModuleIdentityFilePath ?? _currentFilePath);

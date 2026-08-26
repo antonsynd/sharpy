@@ -15,17 +15,19 @@ internal class CodeGenInfoComputer
 {
     private readonly SymbolTable _symbolTable;
     private readonly SemanticBinding _semanticBinding;
+    private readonly SemanticInfo? _semanticInfo;
     private readonly DiagnosticBag _diagnostics;
     private readonly HashSet<string> _processedModuleLevelVars = new();
     private HashSet<string> _variablesWithExecutionOrderIssues = new();
     private string? _sourceFilePath;
 
     public CodeGenInfoComputer(SymbolTable symbolTable, SemanticBinding? semanticBinding = null,
-        DiagnosticBag? diagnostics = null)
+        DiagnosticBag? diagnostics = null, SemanticInfo? semanticInfo = null)
     {
         _symbolTable = symbolTable;
         _semanticBinding = semanticBinding ?? new SemanticBinding();
         _diagnostics = diagnostics ?? new DiagnosticBag();
+        _semanticInfo = semanticInfo;
     }
 
     /// <summary>
@@ -376,6 +378,15 @@ internal class CodeGenInfoComputer
                 StripsOverrideKeyword = ShouldStripOverrideKeyword(typeSymbol, funcDef.Name),
                 ImplementsInterfaceMethod = ImplementsInterfaceMethod(typeSymbol, funcDef.Name)
             });
+
+            AllocateLocals(methodSymbol);
+        }
+        else
+        {
+            var ctorSymbol = typeSymbol.Constructors
+                .FirstOrDefault(c => c.DeclarationLine == funcDef.LineStart);
+            if (ctorSymbol != null)
+                AllocateLocals(ctorSymbol);
         }
     }
 
@@ -476,7 +487,26 @@ internal class CodeGenInfoComputer
                 OriginalName = funcDef.Name,
                 IsModuleLevel = isModuleLevel
             });
+
+            AllocateLocals(funcSymbol);
         }
+    }
+
+    private void AllocateLocals(FunctionSymbol funcSymbol)
+    {
+        if (_semanticInfo == null)
+            return;
+
+        var scopeId = _symbolTable.GetFunctionScopeId(funcSymbol);
+        if (scopeId == null)
+            return;
+
+        var ledger = _symbolTable.GetLedger(scopeId.Value);
+        if (ledger == null)
+            return;
+
+        var allocator = new LocalNameAllocator(_semanticBinding, _semanticInfo);
+        allocator.AllocateForFunction(ledger);
     }
 
     /// <summary>
