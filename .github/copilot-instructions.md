@@ -15,7 +15,7 @@ Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files com
 ## Architecture & Pipeline
 
 ```
-.spy → Lexer → Parser (AST) → Semantic → ValidationPipeline → RoslynEmitter → C# → IL
+.spy → Lexer → Parser (AST) → Semantic → ValidationPipeline → Lowering (IR) → RoslynEmitter → C# → IL
 ```
 
 | Stage | Key Files | Notes |
@@ -23,6 +23,7 @@ Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files com
 | Lexer | `Compiler/Lexer/Lexer*.cs` (partials: FStrings, Indentation, Literals), `Token.cs` | Indentation-aware tokenization |
 | Parser | `Compiler/Parser/Parser*.cs` (partials: Definitions, Expressions, Primaries, Statements, Types), `Ast/*.cs` | Immutable AST records; recursive descent with precedence levels |
 | Semantic | `Compiler/Semantic/` | Ordered passes — see below |
+| Lowering | `Compiler/Lowering/LoweringPass*.cs`, `IrPassManager.cs`, `Passes/` | AST + `SemanticInfo` → typed immutable IR (`IrCompilation`), then feature-gated IR→IR passes (`ConstFoldPass`, `ComprehensionFusionPass`, `StackCollectionsPass`); invoked by `Project/ProjectCompiler.CodeGen.cs` (`BuildLoweringIr`) after validation and before emission; the emitter reads the pass side-tables (`FoldedConstants`, optimized comprehensions, stack-allocated literals). Design: [docs/design/lowering-ir.md](../docs/design/lowering-ir.md) |
 | CodeGen | `Compiler/CodeGen/RoslynEmitter*.cs` | **SyntaxFactory only** — no string templating |
 
 ## Semantic Analysis Pipeline
@@ -194,6 +195,9 @@ Assert.Equal("3\n", result.StandardOutput);
 ```
 Multi-file: `ProjectCompilationHelper` (`WithRootNamespace(...).AddSourceFile(...).CreateProjectFile()`, then `Compile()`).
 
+### Standing class-contract harnesses
+Whole defect classes are guarded by conformance sweeps that ratchet against an allowlist next to the test (drain on fix; every entry cites an issue): roster and contracts in [docs/design/gap-discovery-contracts.md](../docs/design/gap-discovery-contracts.md); the process rules a fix must satisfy (class before cell, mutation-tested guards, control runs, `@ sha (measured)` counts) in [docs/design/verification-contract.md](../docs/design/verification-contract.md). CI runs the `InteropConformance`, `MetamorphicCorpus`, and `DifferentialExecution` sweeps as separate steps, excluded from the main Compiler test step.
+
 ## Feature Implementation Order
 
 ```
@@ -210,6 +214,7 @@ Lexer → Parser → Semantic → Validation → CodeGen → LSP → Tests
 |------|---------|
 | `Analysis/ControlFlow/` | `ControlFlowGraph`, `ControlFlowGraphBuilder`, `BasicBlock` |
 | `Diagnostics/` | `DiagnosticBag`, `DiagnosticCodes`, `DiagnosticExplanations`, `DiagnosticRenderer`, `CompilationMetrics` |
+| `Lowering/` | `IrNode`/`IrExpressions`/`IrStatements` (typed immutable IR), `LoweringPass*.cs` (AST → IR), `IrTreeRewriter`, `IrPassManager` (feature-gated pass registry), `Passes/` (`ConstFoldPass`, `ComprehensionFusionPass`, `StackCollectionsPass`) |
 | `Discovery/` | CLR type discovery: `ClrTypeMapper`, `CachedModuleDiscovery`; `Caching/` holds `OverloadIndex`, `OverloadIndexCache`, `AssemblyIdentity` |
 | `Shared/` | `CSharpKeywords` (keyword escaping), `CSharpTypeNames` (collection type constants), `NameMangler` |
 | `Model/` | `CompilationUnit`, `CompilationUnitFactory`, `ProjectModel` |
