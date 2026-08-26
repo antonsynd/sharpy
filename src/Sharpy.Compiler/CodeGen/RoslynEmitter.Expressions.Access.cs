@@ -1661,8 +1661,7 @@ internal partial class RoslynEmitter
             var interfaceCast = _context.SemanticInfo?.GetInterfaceCastLowering(memberAccess);
             if (interfaceCast != null)
             {
-                var interfaceType = MakeGlobalQualifiedName(interfaceCast.InterfaceTypeName.Split('.'));
-                obj = ParenthesizedExpression(CastExpression(interfaceType, obj));
+                obj = ParenthesizedExpression(CastExpression(MakeInterfaceCastTypeName(interfaceCast), obj));
             }
 
             // obj.member (or ((InterfaceType)obj).member when interface-cast lowering is active)
@@ -1677,6 +1676,31 @@ internal partial class RoslynEmitter
         // .Unwrap()/.Value/! per the field's declared shape. Suppressed for assignment write targets
         // (applyNarrowing: false) — narrowing applies only to reads, and a narrowed LHS is not an lvalue.
         return applyNarrowing ? ApplyNarrowedReadLowering(memberAccess, result) : result;
+    }
+
+    /// <summary>
+    /// Renders the cast target of an <see cref="InterfaceCastLowering"/> as a <c>global::</c>-qualified
+    /// name. A generic interface closes its last segment with the materialized type arguments
+    /// (<c>global::System.Collections.Generic.ICollection&lt;long&gt;</c>); a non-generic one is a plain
+    /// qualified name (<c>global::System.Collections.IList</c>) (#1572).
+    /// </summary>
+    private NameSyntax MakeInterfaceCastTypeName(InterfaceCastLowering interfaceCast)
+    {
+        var parts = interfaceCast.InterfaceTypeName.Split('.');
+        if (interfaceCast.TypeArguments.Count == 0)
+        {
+            return MakeGlobalQualifiedName(parts);
+        }
+
+        var typeArguments = TypeArgumentList(
+            SeparatedList(interfaceCast.TypeArguments.Select(_typeMapper.MapSemanticType)));
+        var last = GenericName(Identifier(parts[^1]), typeArguments);
+        if (parts.Length == 1)
+        {
+            return AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), last);
+        }
+
+        return QualifiedName(MakeGlobalQualifiedName(parts[..^1]), last);
     }
 
     /// <summary>

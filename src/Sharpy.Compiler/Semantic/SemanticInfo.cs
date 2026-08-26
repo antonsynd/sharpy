@@ -2151,4 +2151,12 @@ public enum TruthinessLowering
 /// Records that a member access requires casting the receiver to a CLR interface
 /// before accessing the member (explicitly-implemented interface members, #1572).
 /// </summary>
-public sealed record InterfaceCastLowering(string InterfaceTypeName);
+/// <param name="InterfaceTypeName">
+/// The arity-stripped CLR full name of the interface (e.g. <c>System.Collections.IList</c> or
+/// <c>System.Collections.Generic.ICollection</c>). Never carries a <c>`N</c> suffix.
+/// </param>
+/// <param name="TypeArguments">
+/// The closed type arguments of a generic interface, already mapped to semantic types so the
+/// emitter can render them without reflection; empty for a non-generic interface.
+/// </param>
+public sealed record InterfaceCastLowering(string InterfaceTypeName, IReadOnlyList<SemanticType> TypeArguments);

@@ -1,0 +1,14 @@
+# Non-generic CLR receiver whose member is directly public (#1572 control case).
+#
+# System.Collections.ArrayList declares IsFixedSize as a public virtual property, so no
+# interface cast is needed: the TypeChecker's directly-public early return fires and the
+# emitter renders a plain member access:
+#   xs.IsFixedSize
+# The explicitly-implemented non-generic case is covered by the Task twin.
+
+from System.Collections import ArrayList
+
+def main() -> None:
+    xs: ArrayList = ArrayList()
+    xs.add(1)
+    print(xs.is_fixed_size)

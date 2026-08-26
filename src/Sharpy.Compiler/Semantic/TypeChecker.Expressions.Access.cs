@@ -1722,16 +1722,38 @@ internal partial class TypeChecker
             {
                 var ifaceMembers = iface.GetMember(candidate,
                     BindingFlags.Public | BindingFlags.Instance);
-                if (ifaceMembers.Length > 0)
-                {
-                    var interfaceFqn = iface.IsGenericType
-                        ? iface.GetGenericTypeDefinition().FullName ?? iface.Name
-                        : iface.FullName ?? iface.Name;
+                if (ifaceMembers.Length == 0)
+                    continue;
 
+                if (!iface.IsGenericType)
+                {
                     _semanticInfo.SetInterfaceCastLowering(memberAccess,
-                        new InterfaceCastLowering(interfaceFqn));
+                        new InterfaceCastLowering(iface.FullName ?? iface.Name, Array.Empty<SemanticType>()));
                     return;
                 }
+
+                // An open generic interface (only the open definition was reachable) cannot be
+                // rendered as a cast target; keep searching — a non-generic sibling such as
+                // IList may also expose the member.
+                if (iface.ContainsGenericParameters)
+                    continue;
+
+                var typeArguments = new List<SemanticType>();
+                foreach (var clrArg in iface.GetGenericArguments())
+                {
+                    var mapped = _bclGenericMethodBridge.MapClrTypeToSemanticType(clrArg);
+                    if (mapped is UnknownType or UnmappedClrType)
+                        break;
+                    typeArguments.Add(mapped);
+                }
+
+                if (typeArguments.Count != iface.GetGenericArguments().Length)
+                    continue;
+
+                var definitionFqn = iface.GetGenericTypeDefinition().FullName ?? iface.Name;
+                _semanticInfo.SetInterfaceCastLowering(memberAccess,
+                    new InterfaceCastLowering(ClrNameHelper.StripArity(definitionFqn), typeArguments));
+                return;
             }
         }
     }

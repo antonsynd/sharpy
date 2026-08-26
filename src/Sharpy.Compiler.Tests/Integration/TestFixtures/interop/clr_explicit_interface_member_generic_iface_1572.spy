@@ -1,0 +1,14 @@
+# Access an explicitly-implemented GENERIC interface member on a CLR collection type (#1572).
+#
+# System.Collections.Generic.List<T> explicitly implements ICollection<T>.IsReadOnly. The
+# TypeChecker records an InterfaceCastLowering carrying the arity-stripped interface name plus
+# its closed type arguments, so the emitter renders a valid closed generic cast:
+#   ((global::System.Collections.Generic.ICollection<long>)xs).IsReadOnly
+# Emitting the open definition name (ICollection`1) would be a C# syntax error behind SPY0599.
+
+from System.Collections.Generic import List
+
+def main() -> None:
+    xs: List[int] = List[int]()
+    xs.add(1)
+    print(xs.is_read_only)

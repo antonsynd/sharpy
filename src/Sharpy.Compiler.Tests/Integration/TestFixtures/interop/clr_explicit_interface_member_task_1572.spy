@@ -1,0 +1,12 @@
+# Interface-cast lowering on a NON-GENERIC CLR receiver (#1572).
+#
+# System.Threading.Tasks.Task explicitly implements IAsyncResult.CompletedSynchronously. The
+# receiver type has no generic arguments, so the recorded InterfaceCastLowering carries an
+# empty type-argument list and the emitter renders a plain qualified cast:
+#   ((global::System.IAsyncResult)t).CompletedSynchronously
+
+from System.Threading.Tasks import Task
+
+def main() -> None:
+    t: Task = Task.completed_task
+    print(t.completed_synchronously)

@@ -1,0 +1,12 @@
+# Access a second explicitly-implemented interface member on a CLR collection type (#1572).
+#
+# System.Collections.Generic.List<T> explicitly implements the non-generic
+# ICollection.IsSynchronized. The emitter wraps the receiver in an interface cast:
+#   ((global::System.Collections.ICollection)xs).IsSynchronized
+
+from System.Collections.Generic import List
+
+def main() -> None:
+    xs: List[int] = List[int]()
+    xs.add(1)
+    print(xs.is_synchronized)
