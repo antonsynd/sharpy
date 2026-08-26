@@ -384,6 +384,40 @@ match value:
 - *Maps to C# `when` clause on `case` arms*
 - *Guards do not affect exhaustiveness analysis*
 
+## Arm Ordering
+
+An irrefutable pattern — a wildcard (`_`), an unguarded name capture, or an or-pattern
+containing either — matches all values, making any following arms unreachable. The
+fall-through arm **must be the last arm** (SPY0700). This matches CPython's rule:
+`SyntaxError: name capture 'x' makes remaining patterns unreachable`.
+
+A guarded irrefutable pattern (`case x if cond:`) is refutable and may appear anywhere.
+
+```python
+# OK — trailing capture
+match status:
+    case 200:
+        print("ok")
+    case code:
+        print(f"error: {code}")
+
+# SPY0700 — capture before literal
+match status:
+    case code:           # error: name capture 'code' makes remaining patterns unreachable
+        print(code)
+    case 200:
+        print("ok")
+
+# OK — guarded capture is refutable
+match status:
+    case code if code >= 400:
+        print(f"error: {code}")
+    case 200:
+        print("ok")
+    case _:
+        print("other")
+```
+
 ## Exhaustiveness Checking
 
 The `ExhaustivenessValidator` checks that `match` statements and expressions cover all possible cases.
