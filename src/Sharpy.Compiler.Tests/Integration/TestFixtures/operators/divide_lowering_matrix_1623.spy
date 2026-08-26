@@ -1,0 +1,21 @@
+def main():
+    # int / int -> float (TrueDivisionCastLeft)
+    a: int = 7
+    b: int = 2
+    print(a / b)
+
+    # float / int -> float (Native, no cast needed)
+    c: float = 7.0
+    print(c / b)
+
+    # int / float -> float (Native, no cast needed)
+    print(a / 2.0)
+
+    # literal int / literal int
+    print(10 / 3)
+
+    # int /= int (augmented, TrueDivisionCastLeft on the target)
+    d: float = 10.0
+    e: int = 3
+    d /= e
+    print(d)

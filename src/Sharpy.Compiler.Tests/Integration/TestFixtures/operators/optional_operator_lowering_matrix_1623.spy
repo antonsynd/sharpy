@@ -1,0 +1,32 @@
+def main():
+    # is None on Optional — OptionalNoneTest
+    x: int? = None()
+    print(x is None)      # True
+
+    # is not None on Optional — OptionalNoneTest
+    y: int? = Some(42)
+    print(y is not None)  # True
+
+    # is None on nullable — no tag (native == null)
+    z: str? = None
+    print(z is None)      # True
+
+    # ?? both Optional — OptionalCoalesceBothOptional
+    a: int? = None()
+    b: int? = Some(10)
+    c: int? = a ?? b
+    print(c is not None)  # True
+
+    # ?? Optional left, raw right — OptionalUnwrapOr
+    d: int? = Some(5)
+    e: int = d ?? 99
+    print(e)              # 5
+
+    f: int? = None()
+    g: int = f ?? 99
+    print(g)              # 99
+
+    # ?? nullable — native coalesce
+    h: str? = None
+    i: str = h ?? "default"
+    print(i)              # default

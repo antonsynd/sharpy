@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
@@ -392,6 +393,66 @@ internal partial class TypeChecker
                     assignment.ColumnStart,
                     code: DiagnosticCodes.Semantic.TypeMismatch,
                     span: assignment.Span);
+            }
+
+            // Record operator lowering for augmented assignments (#1623).
+            if (assignment.Operator == AssignmentOperator.SlashAssign
+                && resultType == SemanticType.Double
+                && !PrimitiveCatalog.IsDecimal(targetType) && !PrimitiveCatalog.IsDecimal(valueType)
+                && !PrimitiveCatalog.IsFloatingPoint(targetType) && !PrimitiveCatalog.IsFloatingPoint(valueType)
+                && targetType is not UserDefinedType and not GenericType
+                && valueType is not UserDefinedType and not GenericType)
+            {
+                _semanticInfo.SetOperatorLowering(assignment,
+                    new OperatorLowering(OperatorLoweringKind.TrueDivisionCastLeft));
+            }
+
+            if (assignment.Operator is AssignmentOperator.LeftShiftAssign or AssignmentOperator.RightShiftAssign
+                && TypeUtils.IsInteger(valueType) && valueType != SemanticType.Int
+                && targetType is not UserDefinedType and not GenericType)
+            {
+                _semanticInfo.SetOperatorLowering(assignment,
+                    new OperatorLowering(OperatorLoweringKind.ShiftCountCastToInt));
+            }
+
+            if (assignment.Operator == AssignmentOperator.NullCoalesceAssign
+                && targetType is OptionalType)
+            {
+                _semanticInfo.SetOperatorLowering(assignment,
+                    new OperatorLowering(OperatorLoweringKind.OptionalCoalesceBothOptional));
+            }
+
+            if (assignment.Operator == AssignmentOperator.StarAssign
+                && (targetType == SemanticType.Str || valueType == SemanticType.Str))
+            {
+                _semanticInfo.SetOperatorLowering(assignment,
+                    new OperatorLowering(OperatorLoweringKind.StringRepeat));
+            }
+
+            if (assignment.Operator == AssignmentOperator.PowerAssign
+                && targetType is not UserDefinedType and not GenericType
+                && valueType is not UserDefinedType and not GenericType)
+            {
+                if (PrimitiveCatalog.IsDecimal(targetType) || PrimitiveCatalog.IsDecimal(valueType))
+                {
+                    _semanticInfo.SetOperatorLowering(assignment,
+                        new OperatorLowering(OperatorLoweringKind.DecimalPow));
+                }
+                else if (PrimitiveCatalog.IsFloatingPoint(targetType) || PrimitiveCatalog.IsFloatingPoint(valueType))
+                {
+                    _semanticInfo.SetOperatorLowering(assignment,
+                        new OperatorLowering(OperatorLoweringKind.FloatPow));
+                }
+                else if (resultType == SemanticType.Long)
+                {
+                    _semanticInfo.SetOperatorLowering(assignment,
+                        new OperatorLowering(OperatorLoweringKind.IntegerPowLong));
+                }
+                else if (TypeUtils.IsInteger(targetType) && TypeUtils.IsInteger(valueType))
+                {
+                    _semanticInfo.SetOperatorLowering(assignment,
+                        new OperatorLowering(OperatorLoweringKind.IntegerPowInt));
+                }
             }
 
             if (Features.IsEnabled("inplace_augassign")
@@ -964,6 +1025,20 @@ internal partial class TypeChecker
                 iterType = new UserDefinedType { Name = enumTypeSym.Name, Symbol = enumTypeSym };
                 _semanticInfo.SetExpressionType(forStmt.Iterator, iterType);
             }
+        }
+
+        if (iterType == SemanticType.Str)
+        {
+            _semanticInfo.SetIterationLowering(forStmt.Iterator,
+                new IterationLowering(IterationLoweringKind.StringChars));
+        }
+        else if (iterType is UserDefinedType { Symbol: { TypeKind: TypeKind.Enum } enumSym })
+        {
+            var kind = enumSym.IsStringEnum
+                ? IterationLoweringKind.StringEnumValues
+                : IterationLoweringKind.EnumValues;
+            _semanticInfo.SetIterationLowering(forStmt.Iterator,
+                new IterationLowering(kind));
         }
 
         // Infer element type from the iterator (errors reported by validator in pipeline)

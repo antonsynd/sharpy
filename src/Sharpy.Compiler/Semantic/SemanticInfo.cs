@@ -303,6 +303,12 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, MultiAxisAccessLowering> _multiAxisAccessLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    private readonly ConcurrentDictionary<Node, OperatorLowering> _operatorLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
+    private readonly ConcurrentDictionary<Expression, IterationLowering> _iterationLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // #1572: Map a member-access expression to an interface cast the emitter must wrap the receiver
     // in before accessing the member. Only present when the member is reachable exclusively through
     // an explicitly-implemented interface (e.g. IList.IsFixedSize on List<T>). The TypeChecker
@@ -1293,6 +1299,26 @@ public class SemanticInfo : ISemanticQuery
         return _multiAxisAccessLowerings.TryGetValue(multiAxis, out var lowering) ? lowering : null;
     }
 
+    public void SetOperatorLowering(Node node, OperatorLowering lowering)
+    {
+        _operatorLowerings[node] = lowering;
+    }
+
+    public OperatorLowering? GetOperatorLowering(Node node)
+    {
+        return _operatorLowerings.TryGetValue(node, out var lowering) ? lowering : null;
+    }
+
+    public void SetIterationLowering(Expression iterator, IterationLowering lowering)
+    {
+        _iterationLowerings[iterator] = lowering;
+    }
+
+    public IterationLowering? GetIterationLowering(Expression iterator)
+    {
+        return _iterationLowerings.TryGetValue(iterator, out var lowering) ? lowering : null;
+    }
+
     /// <summary>
     /// Gets the lowering strategy for an index access.
     /// Returns <see cref="IndexAccessLowering.Native"/> when no override was recorded.
@@ -1511,6 +1537,12 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._multiAxisAccessLowerings)
             _multiAxisAccessLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._operatorLowerings)
+            _operatorLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._iterationLowerings)
+            _iterationLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._genericReferences)
             _genericReferences.TryAdd(kvp.Key, kvp.Value);
@@ -2005,7 +2037,13 @@ public enum BinaryOpLowering
     /// on reference-semantics types — this bypasses any overloaded <c>op_Equality</c> and matches Python's
     /// identity fallback (a live object <c>== None</c> is <c>False</c>). Operand order is irrelevant (#901).
     /// </summary>
-    NoneCheck
+    NoneCheck,
+
+    /// <summary>
+    /// Lower to <c>EqualityComparer&lt;T&gt;.Default.Equals(left, right)</c>. Used for type-parameter
+    /// operands where C# does not allow native <c>==</c> on unconstrained generic types.
+    /// </summary>
+    EqualityComparerDefault
 }
 
 /// <summary>
@@ -2123,6 +2161,28 @@ public enum MultiAxisAccessKind { IndexSpread, SliceCall }
 public sealed record MultiAxisAccessLowering(
     MultiAxisAccessKind Kind,
     System.Collections.Immutable.ImmutableArray<MultiAxisDimensionKind> Dimensions);
+
+public enum OperatorLoweringKind
+{
+    Native,
+    TrueDivisionCastLeft,
+    ShiftCountCastToInt,
+    OptionalNoneTest,
+    OptionalCoalesceBothOptional,
+    OptionalUnwrapOr,
+    StringRepeat,
+    StringOrdinalCompare,
+    TypeParameterCompareTo,
+    DecimalPow,
+    FloatPow,
+    IntegerPowInt,
+    IntegerPowLong,
+}
+
+public sealed record OperatorLowering(OperatorLoweringKind Kind);
+
+public enum IterationLoweringKind { EnumValues, StringEnumValues, StringChars }
+public sealed record IterationLowering(IterationLoweringKind Kind);
 
 public enum SliceLoweringKind { List, Array, Str, Bytes, NdArray, UserProtocol, Tuple }
 

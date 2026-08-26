@@ -1,0 +1,11 @@
+def main():
+    # str * int — StringRepeat
+    print("ab" * 3)     # ababab
+
+    # int * str — StringRepeat (reversed order)
+    print(3 * "xy")     # xyxyxy
+
+    # str *= int — augmented StringRepeat
+    s: str = "ha"
+    s *= 3
+    print(s)            # hahaha

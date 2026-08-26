@@ -90,32 +90,17 @@ internal partial class RoslynEmitter
                     // `x ** f()` had different overflow behaviour from `x ** y` — a spelling
                     // difference changing semantics. Both spellings now raise OverflowError.
                     return GeneratePowerValue(
-                        left, right, binOp.Left, binOp.Right, GetExpressionSemanticType(binOp));
+                        left, right, binOp.Left, binOp.Right, GetExpressionSemanticType(binOp), binOp);
                 }
 
             case BinaryOperator.Divide:
-                // User-defined/generic types with operator/: emit plain left / right (C# operator overload)
-                var leftDivType = _context.SemanticInfo?.GetExpressionType(binOp.Left);
-                var rightDivType = _context.SemanticInfo?.GetExpressionType(binOp.Right);
-                if (leftDivType is UserDefinedType or GenericType || rightDivType is UserDefinedType or GenericType)
-                    return BinaryExpression(SyntaxKind.DivideExpression, left, right);
-
-                // x / y → true division with Python semantics (always returns float64)
-                // Cast at least one operand to double to ensure float result
-                // If either operand is already float, the division will naturally produce float
-                // Decimal division: no cast needed, C# decimal / decimal works natively
-                if (IsDecimalExpression(binOp.Left) || IsDecimalExpression(binOp.Right))
-                    return BinaryExpression(SyntaxKind.DivideExpression, left, right);
-                var leftIsFloat = IsFloatExpression(binOp.Left);
-                var rightIsFloat = IsFloatExpression(binOp.Right);
-                if (!leftIsFloat && !rightIsFloat)
+                if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
+                    == OperatorLoweringKind.TrueDivisionCastLeft)
                 {
-                    // Both operands are integers: cast left to double
                     return BinaryExpression(SyntaxKind.DivideExpression,
                         CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
                         right);
                 }
-                // At least one operand is float, so result will be float naturally
                 return BinaryExpression(SyntaxKind.DivideExpression, left, right);
 
             case BinaryOperator.FloorDivide:
@@ -163,19 +148,16 @@ internal partial class RoslynEmitter
                         .AddArgumentListArguments(Argument(left)));
 
             case BinaryOperator.Is:
-                // x is y → object.ReferenceEquals(x, y)
-                // Special optimization for None: x is None
                 if (binOp.Right is NoneLiteral)
                 {
-                    // For Optional<T> (struct): emit x.IsNone (property access)
-                    if (GetExpressionSemanticType(binOp.Left) is OptionalType)
+                    if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
+                        == OperatorLoweringKind.OptionalNoneTest)
                     {
                         return MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             left,
                             IdentifierName("IsNone"));
                     }
-                    // For nullable/reference types: x == null
                     return BinaryExpression(SyntaxKind.EqualsExpression,
                         left,
                         LiteralExpression(SyntaxKind.NullLiteralExpression));
@@ -189,19 +171,16 @@ internal partial class RoslynEmitter
                         Argument(right));
 
             case BinaryOperator.IsNot:
-                // x is not y → !object.ReferenceEquals(x, y)
-                // Special optimization for None: x is not None
                 if (binOp.Right is NoneLiteral)
                 {
-                    // For Optional<T> (struct): emit x.IsSome (property access)
-                    if (GetExpressionSemanticType(binOp.Left) is OptionalType)
+                    if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
+                        == OperatorLoweringKind.OptionalNoneTest)
                     {
                         return MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             left,
                             IdentifierName("IsSome"));
                     }
-                    // For nullable/reference types: x != null
                     return BinaryExpression(SyntaxKind.NotEqualsExpression,
                         left,
                         LiteralExpression(SyntaxKind.NullLiteralExpression));
@@ -216,13 +195,10 @@ internal partial class RoslynEmitter
                             Argument(right)));
 
             case BinaryOperator.NullCoalesce:
-                // x ?? y — for Optional<T>, lower to UnwrapOr or ternary
-                if (GetExpressionSemanticType(binOp.Left) is OptionalType)
                 {
-                    if (GetExpressionSemanticType(binOp.Right) is OptionalType)
+                    var coalesceKind = _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind;
+                    if (coalesceKind == OperatorLoweringKind.OptionalCoalesceBothOptional)
                     {
-                        // Both Optional: safeLeft.IsSome ? safeLeft : right
-                        // Ensure left is only evaluated once for complex expressions
                         var (safeLeft, captureLeft) = EnsureSingleEvaluation(left, binOp.Left);
                         ExpressionSyntax coalesceCondition = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             ParenthesizedExpression(safeLeft), IdentifierName("IsSome"));
@@ -230,37 +206,32 @@ internal partial class RoslynEmitter
                             coalesceCondition = BinaryExpression(SyntaxKind.LogicalAndExpression, captureLeft, coalesceCondition);
                         return ConditionalExpression(coalesceCondition, safeLeft, right);
                     }
-                    // Left Optional, right raw T: left.UnwrapOr(right)
-                    // UnwrapOr only evaluates left once (method call on the struct)
-                    return InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            ParenthesizedExpression(left), IdentifierName("UnwrapOr")))
-                        .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(right))));
-                }
-                // For nullable/reference types: C# ?? operator
-                return BinaryExpression(SyntaxKind.CoalesceExpression, left, right);
-
-            case BinaryOperator.Multiply:
-                {
-                    // String repetition: str * int, int * str, str * long
-                    var leftMulType = GetExpressionSemanticType(binOp.Left);
-                    var rightMulType = GetExpressionSemanticType(binOp.Right);
-                    if (leftMulType == SemanticType.Str || rightMulType == SemanticType.Str)
+                    if (coalesceKind == OperatorLoweringKind.OptionalUnwrapOr)
                     {
-                        // Ensure string is always the first argument
-                        var strArg = leftMulType == SemanticType.Str ? left : right;
-                        var countArg = leftMulType == SemanticType.Str ? right : left;
                         return InvocationExpression(
                             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
-                                IdentifierName("Repeat")))
-                            .AddArgumentListArguments(
-                                Argument(strArg),
-                                Argument(countArg));
+                                ParenthesizedExpression(left), IdentifierName("UnwrapOr")))
+                            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(right))));
                     }
-                    // Not string repetition — fall through to standard multiply
-                    break;
+                    return BinaryExpression(SyntaxKind.CoalesceExpression, left, right);
                 }
+
+            case BinaryOperator.Multiply:
+                if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
+                    == OperatorLoweringKind.StringRepeat)
+                {
+                    var leftMulType = GetExpressionSemanticType(binOp.Left);
+                    var strArg = leftMulType == SemanticType.Str ? left : right;
+                    var countArg = leftMulType == SemanticType.Str ? right : left;
+                    return InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                            IdentifierName("Repeat")))
+                        .AddArgumentListArguments(
+                            Argument(strArg),
+                            Argument(countArg));
+                }
+                break;
 
         }
 
@@ -335,17 +306,22 @@ internal partial class RoslynEmitter
             return IsPatternExpression(operand, nullPattern);
         }
 
-        // For == and != on generic type parameters, use EqualityComparer<T>.Default.Equals()
-        // because C# does not allow == on unconstrained generic types
-        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression)
+        // Honor the semantic-recorded Equals-call lowering (#886): tuples and CLR types that
+        // implement Equals/IEquatable but define no op_Equality. A native C# == would either be
+        // reference equality (wrong) or fail to compile (struct without op_Equality). The
+        // instance-vs-static choice was materialized by the TypeChecker; the emitter switches on
+        // the tag alone (value types -> left.Equals(right); reference types -> object.Equals(...)).
+        var equalsLowering = GetIrBinaryOpLowering(binOp) ?? BinaryOpLowering.NativeOperator;
+        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
+            && equalsLowering is not BinaryOpLowering.NativeOperator and not BinaryOpLowering.NoneCheck)
         {
-            var leftType = GetExpressionSemanticType(binOp.Left);
-            var rightType = GetExpressionSemanticType(binOp.Right);
-            if (leftType is Semantic.TypeParameterType || rightType is Semantic.TypeParameterType)
+            ExpressionSyntax equalsInvocation;
+            if (equalsLowering == BinaryOpLowering.EqualityComparerDefault)
             {
-                // EqualityComparer<T>.Default.Equals(left, right)
+                var leftType = GetExpressionSemanticType(binOp.Left);
+                var rightType = GetExpressionSemanticType(binOp.Right);
                 var typeParamType = (leftType as Semantic.TypeParameterType ?? rightType as Semantic.TypeParameterType)!;
-                var equalsCall = InvocationExpression(
+                equalsInvocation = InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             GenericName("EqualityComparer")
@@ -354,49 +330,33 @@ internal partial class RoslynEmitter
                             IdentifierName("Default")),
                         IdentifierName("Equals")))
                     .AddArgumentListArguments(Argument(left), Argument(right));
-
-                return kind == SyntaxKind.NotEqualsExpression
-                    ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(equalsCall))
-                    : (ExpressionSyntax)equalsCall;
             }
-        }
-
-        // Honor the semantic-recorded Equals-call lowering (#886): tuples and CLR types that
-        // implement Equals/IEquatable but define no op_Equality. A native C# == would either be
-        // reference equality (wrong) or fail to compile (struct without op_Equality). The
-        // instance-vs-static choice was materialized by the TypeChecker; the emitter switches on
-        // the tag alone (value types -> left.Equals(right); reference types -> object.Equals(...)).
-        var equalsLowering = GetIrBinaryOpLowering(binOp);
-        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
-            && equalsLowering is BinaryOpLowering.EqualsCallInstance or BinaryOpLowering.EqualsCallStatic)
-        {
-            ExpressionSyntax equalsInvocation = equalsLowering == BinaryOpLowering.EqualsCallInstance
-                ? InvocationExpression(
+            else if (equalsLowering == BinaryOpLowering.EqualsCallInstance)
+            {
+                equalsInvocation = InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             left,
                             IdentifierName("Equals")))
-                    .AddArgumentListArguments(Argument(right))
-                : InvocationExpression(
+                    .AddArgumentListArguments(Argument(right));
+            }
+            else
+            {
+                equalsInvocation = InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             PredefinedType(Token(SyntaxKind.ObjectKeyword)),
                             IdentifierName("Equals")))
                     .AddArgumentListArguments(Argument(left), Argument(right));
+            }
 
             return kind == SyntaxKind.NotEqualsExpression
                 ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(equalsInvocation))
                 : equalsInvocation;
         }
 
-        // For <, >, <=, >= on strings, emit string.Compare(left, right, StringComparison.Ordinal) <op> 0
-        // because System.String does not define relational operators
-        if (kind is SyntaxKind.LessThanExpression or SyntaxKind.GreaterThanExpression
-            or SyntaxKind.LessThanOrEqualExpression or SyntaxKind.GreaterThanOrEqualExpression)
         {
-            var leftCmpType = GetExpressionSemanticType(binOp.Left);
-            var rightCmpType = GetExpressionSemanticType(binOp.Right);
-            if (leftCmpType == SemanticType.Str && rightCmpType == SemanticType.Str)
+            var cmpLowering = _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind;
+            if (cmpLowering == OperatorLoweringKind.StringOrdinalCompare)
             {
-                // string.Compare(left, right, System.StringComparison.Ordinal)
                 var compareCall = InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         PredefinedType(Token(SyntaxKind.StringKeyword)),
@@ -414,20 +374,8 @@ internal partial class RoslynEmitter
                     compareCall,
                     LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
             }
-        }
-
-        // For <, >, <=, >= on generic type parameters with IComparable constraint,
-        // emit x.CompareTo(y) <op> 0 because C# does not allow relational operators
-        // on unconstrained generic types
-        if (kind is SyntaxKind.LessThanExpression or SyntaxKind.GreaterThanExpression
-            or SyntaxKind.LessThanOrEqualExpression or SyntaxKind.GreaterThanOrEqualExpression)
-        {
-            var leftType = GetExpressionSemanticType(binOp.Left);
-            var rightType = GetExpressionSemanticType(binOp.Right);
-            if ((leftType is Semantic.TypeParameterType leftTp && HasComparableConstraint(leftTp))
-                || (rightType is Semantic.TypeParameterType rightTp && HasComparableConstraint(rightTp)))
+            if (cmpLowering == OperatorLoweringKind.TypeParameterCompareTo)
             {
-                // left.CompareTo(right) <op> 0
                 var compareToCall = InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         left,
@@ -440,17 +388,12 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Shift operators: C# requires the count to be int. When the semantic type of the
-        // right operand is wider (long), emit an explicit cast (#1315).
-        if (kind is SyntaxKind.LeftShiftExpression or SyntaxKind.RightShiftExpression)
+        if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
+            == OperatorLoweringKind.ShiftCountCastToInt)
         {
-            var rightType = _context.SemanticInfo?.GetExpressionType(binOp.Right);
-            if (rightType is BuiltinType { ClrType: var clr } && clr != typeof(int))
-            {
-                right = CastExpression(
-                    PredefinedType(Token(SyntaxKind.IntKeyword)),
-                    ParenthesizedExpression(right));
-            }
+            right = CastExpression(
+                PredefinedType(Token(SyntaxKind.IntKeyword)),
+                ParenthesizedExpression(right));
         }
 
         return BinaryExpression(kind, left, right);
@@ -936,22 +879,4 @@ internal partial class RoslynEmitter
             ? MapTypeTestTarget(lowering)
             : _typeMapper.MapType(annotation);
 
-    /// <summary>
-    /// Returns true if the type parameter has an IComparable constraint.
-    /// Matches IComparable, IComparable[T], System.IComparable, etc.
-    /// </summary>
-    private static bool HasComparableConstraint(Semantic.TypeParameterType typeParam)
-    {
-        foreach (var constraint in typeParam.Constraints)
-        {
-            if (constraint is TypeConstraint tc
-                && (tc.Type.Name == "IComparable" || tc.Type.Name == "System.IComparable"
-                    || tc.Type.Name.StartsWith("IComparable<", System.StringComparison.Ordinal)
-                    || tc.Type.Name.StartsWith("System.IComparable<", System.StringComparison.Ordinal)))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
 }

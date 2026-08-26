@@ -1,0 +1,18 @@
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+def main():
+    # StringChars — for-statement
+    s: str = "abc"
+    for c in s:
+        print(c)
+
+    # EnumValues — for-statement
+    for color in Color:
+        print(color.value)
+
+    # EnumValues — comprehension
+    vals = [c.value for c in Color]
+    print(vals)

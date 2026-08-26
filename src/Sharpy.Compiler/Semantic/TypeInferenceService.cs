@@ -106,6 +106,9 @@ internal class TypeInferenceService
         if (IsNoneReferenceEquality(op, left, right))
             return BinaryOpLowering.NoneCheck;
 
+        if (left is TypeParameterType || right is TypeParameterType)
+            return BinaryOpLowering.EqualityComparerDefault;
+
         if (IsTupleEquality(op, left, right) || IsClrEqualsFallback(op, left, right))
         {
             // Value types (tuples, structs) use left.Equals(right) to avoid boxing; reference types

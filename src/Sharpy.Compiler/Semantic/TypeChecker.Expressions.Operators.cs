@@ -175,6 +175,91 @@ internal partial class TypeChecker
             CheckConstantIntegerOverflow(binOp, resultType);
         }
 
+        // Record operator lowering tags so the emitter never re-derives these decisions (#1623).
+        if (binOp.Operator == BinaryOperator.Divide
+            && resultType == SemanticType.Double
+            && !PrimitiveCatalog.IsDecimal(leftType) && !PrimitiveCatalog.IsDecimal(rightType)
+            && !PrimitiveCatalog.IsFloatingPoint(leftType) && !PrimitiveCatalog.IsFloatingPoint(rightType)
+            && leftType is not UserDefinedType and not GenericType
+            && rightType is not UserDefinedType and not GenericType)
+        {
+            _semanticInfo.SetOperatorLowering(binOp,
+                new OperatorLowering(OperatorLoweringKind.TrueDivisionCastLeft));
+        }
+
+        if (binOp.Operator is BinaryOperator.LeftShift or BinaryOperator.RightShift
+            && TypeUtils.IsInteger(rightType) && rightType != SemanticType.Int
+            && leftType is not UserDefinedType and not GenericType)
+        {
+            _semanticInfo.SetOperatorLowering(binOp,
+                new OperatorLowering(OperatorLoweringKind.ShiftCountCastToInt));
+        }
+
+        if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot
+            && (binOp.Right is NoneLiteral || binOp.Left is NoneLiteral)
+            && (leftType is OptionalType || rightType is OptionalType))
+        {
+            _semanticInfo.SetOperatorLowering(binOp,
+                new OperatorLowering(OperatorLoweringKind.OptionalNoneTest));
+        }
+
+        if (binOp.Operator == BinaryOperator.NullCoalesce && leftType is OptionalType)
+        {
+            var kind = rightType is OptionalType
+                ? OperatorLoweringKind.OptionalCoalesceBothOptional
+                : OperatorLoweringKind.OptionalUnwrapOr;
+            _semanticInfo.SetOperatorLowering(binOp,
+                new OperatorLowering(kind));
+        }
+
+        if (binOp.Operator == BinaryOperator.Multiply
+            && (leftType == SemanticType.Str || rightType == SemanticType.Str))
+        {
+            _semanticInfo.SetOperatorLowering(binOp,
+                new OperatorLowering(OperatorLoweringKind.StringRepeat));
+        }
+
+        if (binOp.Operator is BinaryOperator.LessThan or BinaryOperator.GreaterThan
+                or BinaryOperator.LessThanOrEqual or BinaryOperator.GreaterThanOrEqual)
+        {
+            if (leftType == SemanticType.Str && rightType == SemanticType.Str)
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.StringOrdinalCompare));
+            }
+            else if (leftType is TypeParameterType || rightType is TypeParameterType)
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.TypeParameterCompareTo));
+            }
+        }
+
+        if (binOp.Operator == BinaryOperator.Power
+            && leftType is not UserDefinedType and not GenericType
+            && rightType is not UserDefinedType and not GenericType)
+        {
+            if (PrimitiveCatalog.IsDecimal(leftType) || PrimitiveCatalog.IsDecimal(rightType))
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.DecimalPow));
+            }
+            else if (PrimitiveCatalog.IsFloatingPoint(leftType) || PrimitiveCatalog.IsFloatingPoint(rightType))
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.FloatPow));
+            }
+            else if (resultType == SemanticType.Long)
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.IntegerPowLong));
+            }
+            else if (TypeUtils.IsInteger(leftType) && TypeUtils.IsInteger(rightType))
+            {
+                _semanticInfo.SetOperatorLowering(binOp,
+                    new OperatorLowering(OperatorLoweringKind.IntegerPowInt));
+            }
+        }
+
         // Warn when is/is not is used with value types — identity comparison is
         // meaningless because value types are boxed, so the result is always False.
         if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)
