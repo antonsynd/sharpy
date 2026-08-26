@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Shared;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -135,6 +136,15 @@ def main():
 
         augResult.Success.Should().BeFalse($"augmented `{lType} ??= {rType}` should refuse");
         binResult.Success.Should().BeFalse($"binary `{lType} ?? {rType}` should refuse");
+
+        // Parity is a CODE claim: both spellings refuse through the same SPY0222 seam
+        // (InferNullCoalesceType → ReportUnsupportedBinaryOperator), not merely "some error".
+        augResult.RawDiagnostics.Should().Contain(d =>
+            d.Code == DiagnosticCodes.Semantic.InvalidBinaryOperation,
+            $"augmented `{lType} ??= {rType}` should produce SPY0222");
+        binResult.RawDiagnostics.Should().Contain(d =>
+            d.Code == DiagnosticCodes.Semantic.InvalidBinaryOperation,
+            $"binary `{lType} ?? {rType}` should produce SPY0222");
     }
 
     public static IEnumerable<object[]> CompatiblePairs()
@@ -145,6 +155,9 @@ def main():
         yield return new object[] { "<<=", "<<", "int", "1", "int", "3", "8" };
         yield return new object[] { "**=", "**", "int", "2", "int", "10", "1024" };
         yield return new object[] { "/=", "/", "float", "10.0", "int", "2", "5.0" };
+        // set |= frozenset — the spec's own cross-kind positive control (collection_types.md
+        // "Set augmented assignment"); the pair must stay accepted on BOTH spellings.
+        yield return new object[] { "|=", "|", "set[int]", "{1, 2}", "frozenset[int]", "frozenset([3])", "{1, 2, 3}" };
     }
 
     [Theory]
@@ -177,6 +190,59 @@ def main():
             $"augmented `{lType} {aug} {rType}` output");
         binResult.StandardOutput.Trim().Should().Be(expectedOutput,
             $"binary `{lType} {bin} {rType}` output");
+    }
+
+    /// <summary>
+    /// `@=` is the one augmented operator with no native C# spelling: it lowers through the
+    /// receiver's `__matmul__` (`MatMul` method). Deleting `OperatorValidator.ValidateAugmentedAssignment`
+    /// (#1631 Task 3) removed that validator's explicit `MatMul` deferral, so this control is
+    /// load-bearing: the augmented form must resolve through the same dunder lookup the binary form
+    /// does and both must run. The operator is gated behind the experimental `matmul` feature.
+    /// </summary>
+    [Fact]
+    public void MatMulPositiveControlBothAcceptAndMatch()
+    {
+        const string prelude = @"
+class Vec:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+    def __matmul__(self, other: Vec) -> Vec:
+        return Vec(self.x * other.x)
+";
+        var augSource = prelude + @"
+def main() -> None:
+    a: Vec = Vec(3)
+    b: Vec = Vec(4)
+    a @= b
+    print(a.x)
+";
+        var binSource = prelude + @"
+def main() -> None:
+    a: Vec = Vec(3)
+    b: Vec = Vec(4)
+    a = a @ b
+    print(a.x)
+";
+        var features = FeatureFlags.None.Enable("matmul");
+        var augResult = CompileAndExecute(augSource, features: features);
+        var binResult = CompileAndExecute(binSource, features: features);
+
+        augResult.Success.Should().BeTrue("augmented `Vec @= Vec` should accept under the matmul feature: "
+            + string.Join("; ", augResult.CompilationErrors));
+        binResult.Success.Should().BeTrue("binary `Vec @ Vec` should accept under the matmul feature: "
+            + string.Join("; ", binResult.CompilationErrors));
+        augResult.StandardOutput.Trim().Should().Be("12");
+        binResult.StandardOutput.Trim().Should().Be("12");
+
+        // Ungated twin: the same program without the feature is refused by the gate (SPY0331) on
+        // both spellings — the control proves the flag, not the operator, is what it toggles.
+        CompileAndExecute(augSource).RawDiagnostics.Should().Contain(d =>
+            d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled);
+        CompileAndExecute(binSource).RawDiagnostics.Should().Contain(d =>
+            d.Code == DiagnosticCodes.Semantic.FeatureNotEnabled);
     }
 
     [Fact]
