@@ -1577,7 +1577,6 @@ internal partial class TypeChecker
     /// plain <c>int</c> (list, str, bytes, array). A nullable receiver exposes the underlying
     /// type's protocols, matching <see cref="TypeInferenceService.InferIndexAccessType"/>.
     /// </summary>
-    // TODO(#1620): dict/set subscript key types
     private static bool IsIntIndexedSequence(SemanticType type)
     {
         if (type is NullableType nullable)
@@ -1606,6 +1605,26 @@ internal partial class TypeChecker
         AddError(
             message,
             index.LineStart, index.ColumnStart,
+            code: DiagnosticCodes.Semantic.TypeMismatch, span: index.Span);
+    }
+
+    private void CheckDictKey(Expression index, SemanticType indexType, SemanticType keyType)
+    {
+        if (indexType is UnknownType)
+            return;
+        if (IsAssignable(indexType, keyType))
+            return;
+        var message = $"Dict key must be '{keyType.GetDisplayName()}', got '{indexType.GetDisplayName()}'";
+        if (indexType == BuiltinType.Bool)
+        {
+            message += ". CPython treats True as 1, but Sharpy requires the conversion to be "
+                + "explicit — use d[int(flag)]";
+        }
+        if (indexType is OptionalType optIdx && IsAssignable(optIdx.UnderlyingType, keyType))
+        {
+            message += ". Unwrap the Optional key first";
+        }
+        AddError(message, index.LineStart, index.ColumnStart,
             code: DiagnosticCodes.Semantic.TypeMismatch, span: index.Span);
     }
 

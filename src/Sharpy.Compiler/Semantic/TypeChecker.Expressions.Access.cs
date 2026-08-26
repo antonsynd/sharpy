@@ -2019,10 +2019,13 @@ internal partial class TypeChecker
         RecordIndexAccessLowering(indexAccess, objectType);
 
         // #1608: int-indexed builtin sequences (list/str/bytes/array) take a plain 'int' index.
-        // Tuple indexing keeps its own constant-int rule below (SPY0327); dict/set key typing is
-        // TODO(#1620): dict/set subscript key types.
         if (IsIntIndexedSequence(objectType))
             CheckIntIndex(indexAccess.Index, indexType);
+
+        // #1620: dict subscript key type validation
+        var unwrappedObj = objectType is NullableType nullableObj ? nullableObj.UnderlyingType : objectType;
+        if (unwrappedObj is GenericType { Name: BuiltinNames.Dict, TypeArguments.Count: >= 2 } dictType)
+            CheckDictKey(indexAccess.Index, indexType, dictType.TypeArguments[0]);
 
         // Tuple positional indexing: the index must be a compile-time constant because tuples
         // are heterogeneous (each position can have a different type, and a C# ValueTuple has no
@@ -2101,11 +2104,20 @@ internal partial class TypeChecker
             }
         }
 
-        // Use TypeInferenceService for type inference (errors reported by validator in pipeline)
         var resultType = _typeInference.InferIndexAccessType(objectType, indexType);
-
-        // TypeInferenceService covers all supported operations - return Unknown for unsupported
-        return resultType ?? SemanticType.Unknown;
+        if (resultType == null)
+        {
+            if (indexType is not UnknownType && objectType is not UnknownType)
+            {
+                AddError(
+                    $"Type '{objectType.GetDisplayName()}' does not support subscript with key of type '{indexType.GetDisplayName()}'",
+                    indexAccess.Index.LineStart, indexAccess.Index.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: indexAccess.Index.Span);
+            }
+            return SemanticType.Unknown;
+        }
+        return resultType;
     }
 
     /// <summary>

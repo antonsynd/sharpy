@@ -1415,9 +1415,6 @@ internal class TypeInferenceService
             var bestOverload = FindBestOverload(getItemMethods, index, container);
             if (bestOverload != null)
                 return bestOverload.ReturnType;
-            // Fall back to first overload's return type
-            if (getItemMethods.Count > 0)
-                return getItemMethods[0].ReturnType;
         }
 
         return null;
