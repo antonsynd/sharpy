@@ -151,8 +151,17 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateComprehensionIterator(Expression iterator)
     {
         var iterExpr = GenerateExpression(iterator);
-        if (GetExpressionSemanticType(iterator) is Semantic.UserDefinedType
-            { Symbol.TypeKind: Semantic.TypeKind.Enum } enumUdt)
+        var iterLowering = _context.SemanticInfo?.GetIterationLowering(iterator);
+        if (iterLowering?.Kind == IterationLoweringKind.StringChars)
+        {
+            iterExpr = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                    IdentifierName("Iterate")))
+                .AddArgumentListArguments(Argument(iterExpr));
+        }
+        else if (iterLowering != null
+            && GetExpressionSemanticType(iterator) is Semantic.UserDefinedType enumUdt)
         {
             iterExpr = GenerateEnumValuesIterator(enumUdt);
         }

@@ -422,6 +422,20 @@ internal partial class TypeChecker
             }
         }
 
+        if (iterType == SemanticType.Str)
+        {
+            _semanticInfo.SetIterationLowering(forClause.Iterator,
+                new IterationLowering(IterationLoweringKind.StringChars));
+        }
+        else if (iterType is UserDefinedType { Symbol: { TypeKind: TypeKind.Enum } enumSym2 })
+        {
+            var kind = enumSym2.IsStringEnum
+                ? IterationLoweringKind.StringEnumValues
+                : IterationLoweringKind.EnumValues;
+            _semanticInfo.SetIterationLowering(forClause.Iterator,
+                new IterationLowering(kind));
+        }
+
         var elemType = _typeInference.InferIterableElementType(iterType) ?? SemanticType.Unknown;
 
         if (forClause.Target is Identifier id)

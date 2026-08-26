@@ -306,6 +306,9 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Node, OperatorLowering> _operatorLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    private readonly ConcurrentDictionary<Expression, IterationLowering> _iterationLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // #1572: Map a member-access expression to an interface cast the emitter must wrap the receiver
     // in before accessing the member. Only present when the member is reachable exclusively through
     // an explicitly-implemented interface (e.g. IList.IsFixedSize on List<T>). The TypeChecker
@@ -1306,6 +1309,16 @@ public class SemanticInfo : ISemanticQuery
         return _operatorLowerings.TryGetValue(node, out var lowering) ? lowering : null;
     }
 
+    public void SetIterationLowering(Expression iterator, IterationLowering lowering)
+    {
+        _iterationLowerings[iterator] = lowering;
+    }
+
+    public IterationLowering? GetIterationLowering(Expression iterator)
+    {
+        return _iterationLowerings.TryGetValue(iterator, out var lowering) ? lowering : null;
+    }
+
     /// <summary>
     /// Gets the lowering strategy for an index access.
     /// Returns <see cref="IndexAccessLowering.Native"/> when no override was recorded.
@@ -1527,6 +1540,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._operatorLowerings)
             _operatorLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._iterationLowerings)
+            _iterationLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._genericReferences)
             _genericReferences.TryAdd(kvp.Key, kvp.Value);
@@ -2164,6 +2180,9 @@ public enum OperatorLoweringKind
 }
 
 public sealed record OperatorLowering(OperatorLoweringKind Kind);
+
+public enum IterationLoweringKind { EnumValues, StringEnumValues, StringChars }
+public sealed record IterationLowering(IterationLoweringKind Kind);
 
 public enum SliceLoweringKind { List, Array, Str, Bytes, NdArray, UserProtocol, Tuple }
 

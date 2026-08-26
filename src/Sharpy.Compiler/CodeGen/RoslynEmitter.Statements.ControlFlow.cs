@@ -447,15 +447,8 @@ internal partial class RoslynEmitter
         var iteratorType = GetExpressionSemanticType(forStmt.Iterator);
         var iterator = GenerateExpression(forStmt.Iterator);
 
-        // String iteration: `for c in s:` → `foreach (var c in StringHelpers.Iterate(s))`
-        // Yields string elements (single-character strings), not char.
-        //
-        // This test once carried an exception for variadic parameters, which the emitter recognised
-        // by tracking their names per scope: `*args: str` was typed as the ELEMENT type `str` and
-        // would otherwise have been iterated as one string's characters. The exception is gone with
-        // its cause — a variadic binds as `array[str]` (#1292), so it never reaches this test at all,
-        // and the emitter reads the semantic type without knowing which parameters were variadic.
-        if (iteratorType == SemanticType.Str)
+        var iterLowering = _context.SemanticInfo?.GetIterationLowering(forStmt.Iterator);
+        if (iterLowering?.Kind == IterationLoweringKind.StringChars)
         {
             iterator = InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
@@ -463,9 +456,7 @@ internal partial class RoslynEmitter
                     IdentifierName("Iterate")))
                 .AddArgumentListArguments(Argument(iterator));
         }
-
-        // Enum iteration: `for c in Color:` → `foreach (var c in Enum.GetValues<Color>())`
-        if (iteratorType is Semantic.UserDefinedType { Symbol.TypeKind: Semantic.TypeKind.Enum } enumUdt)
+        else if (iterLowering != null && iteratorType is Semantic.UserDefinedType enumUdt)
         {
             iterator = GenerateEnumValuesIterator(enumUdt);
         }
