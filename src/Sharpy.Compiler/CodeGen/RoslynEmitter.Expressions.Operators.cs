@@ -94,28 +94,13 @@ internal partial class RoslynEmitter
                 }
 
             case BinaryOperator.Divide:
-                // User-defined/generic types with operator/: emit plain left / right (C# operator overload)
-                var leftDivType = _context.SemanticInfo?.GetExpressionType(binOp.Left);
-                var rightDivType = _context.SemanticInfo?.GetExpressionType(binOp.Right);
-                if (leftDivType is UserDefinedType or GenericType || rightDivType is UserDefinedType or GenericType)
-                    return BinaryExpression(SyntaxKind.DivideExpression, left, right);
-
-                // x / y → true division with Python semantics (always returns float64)
-                // Cast at least one operand to double to ensure float result
-                // If either operand is already float, the division will naturally produce float
-                // Decimal division: no cast needed, C# decimal / decimal works natively
-                if (IsDecimalExpression(binOp.Left) || IsDecimalExpression(binOp.Right))
-                    return BinaryExpression(SyntaxKind.DivideExpression, left, right);
-                var leftIsFloat = IsFloatExpression(binOp.Left);
-                var rightIsFloat = IsFloatExpression(binOp.Right);
-                if (!leftIsFloat && !rightIsFloat)
+                if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
+                    == OperatorLoweringKind.TrueDivisionCastLeft)
                 {
-                    // Both operands are integers: cast left to double
                     return BinaryExpression(SyntaxKind.DivideExpression,
                         CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
                         right);
                 }
-                // At least one operand is float, so result will be float naturally
                 return BinaryExpression(SyntaxKind.DivideExpression, left, right);
 
             case BinaryOperator.FloorDivide:
@@ -440,17 +425,12 @@ internal partial class RoslynEmitter
             }
         }
 
-        // Shift operators: C# requires the count to be int. When the semantic type of the
-        // right operand is wider (long), emit an explicit cast (#1315).
-        if (kind is SyntaxKind.LeftShiftExpression or SyntaxKind.RightShiftExpression)
+        if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
+            == OperatorLoweringKind.ShiftCountCastToInt)
         {
-            var rightType = _context.SemanticInfo?.GetExpressionType(binOp.Right);
-            if (rightType is BuiltinType { ClrType: var clr } && clr != typeof(int))
-            {
-                right = CastExpression(
-                    PredefinedType(Token(SyntaxKind.IntKeyword)),
-                    ParenthesizedExpression(right));
-            }
+            right = CastExpression(
+                PredefinedType(Token(SyntaxKind.IntKeyword)),
+                ParenthesizedExpression(right));
         }
 
         return BinaryExpression(kind, left, right);

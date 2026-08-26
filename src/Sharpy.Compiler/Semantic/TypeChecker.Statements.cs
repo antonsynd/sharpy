@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
@@ -392,6 +393,26 @@ internal partial class TypeChecker
                     assignment.ColumnStart,
                     code: DiagnosticCodes.Semantic.TypeMismatch,
                     span: assignment.Span);
+            }
+
+            // Record operator lowering for augmented assignments (#1623).
+            if (assignment.Operator == AssignmentOperator.SlashAssign
+                && resultType == SemanticType.Double
+                && !PrimitiveCatalog.IsDecimal(targetType) && !PrimitiveCatalog.IsDecimal(valueType)
+                && !PrimitiveCatalog.IsFloatingPoint(targetType) && !PrimitiveCatalog.IsFloatingPoint(valueType)
+                && targetType is not UserDefinedType and not GenericType
+                && valueType is not UserDefinedType and not GenericType)
+            {
+                _semanticInfo.SetOperatorLowering(assignment,
+                    new OperatorLowering(OperatorLoweringKind.TrueDivisionCastLeft));
+            }
+
+            if (assignment.Operator is AssignmentOperator.LeftShiftAssign or AssignmentOperator.RightShiftAssign
+                && TypeUtils.IsInteger(valueType) && valueType != SemanticType.Int
+                && targetType is not UserDefinedType and not GenericType)
+            {
+                _semanticInfo.SetOperatorLowering(assignment,
+                    new OperatorLowering(OperatorLoweringKind.ShiftCountCastToInt));
             }
 
             if (Features.IsEnabled("inplace_augassign")

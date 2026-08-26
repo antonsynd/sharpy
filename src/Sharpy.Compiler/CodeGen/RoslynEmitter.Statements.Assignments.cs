@@ -192,7 +192,7 @@ internal partial class RoslynEmitter
                 // becomes a double evaluation.
                 var readExpr = ApplyNarrowedReadLowering(name, EscapedIdentifierName(varName));
 
-                var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, assign.Target, assign.Value);
+                var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, assign.Target, assign.Value, assign);
 
                 return ExpressionStatement(
                     AssignmentExpression(
@@ -246,7 +246,7 @@ internal partial class RoslynEmitter
                         Argument(obj),
                         Argument(index));
 
-                var augmented = GenerateAugmentedValue(assign.Operator, getItem, value, assign.Target, assign.Value);
+                var augmented = GenerateAugmentedValue(assign.Operator, getItem, value, assign.Target, assign.Value, assign);
 
                 return ExpressionStatement(
                     arrayHelpersSetItem.AddArgumentListArguments(
@@ -261,7 +261,7 @@ internal partial class RoslynEmitter
 
             var augmentedValue = assign.Operator == AssignmentOperator.Assign
                 ? value
-                : GenerateAugmentedValue(assign.Operator, elementAccess, value, assign.Target, assign.Value);
+                : GenerateAugmentedValue(assign.Operator, elementAccess, value, assign.Target, assign.Value, assign);
 
             return ExpressionStatement(
                 AssignmentExpression(
@@ -318,7 +318,7 @@ internal partial class RoslynEmitter
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
                 ? TryGenerateBareNoneForOptional(assign.Value, targetMemberType)
                     ?? ApplyOptionalDelegateConversion(assign.Value, value, targetMemberType)
-                : GenerateAugmentedValue(assign.Operator, target, value, assign.Target, assign.Value);
+                : GenerateAugmentedValue(assign.Operator, target, value, assign.Target, assign.Value, assign);
 
             return ExpressionStatement(
                 AssignmentExpression(
@@ -746,7 +746,7 @@ internal partial class RoslynEmitter
     /// <param name="right">Generated C# expression for the value</param>
     /// <param name="targetAst">Original AST target expression (for type inference)</param>
     /// <param name="valueAst">Original AST value expression (for type inference)</param>
-    private ExpressionSyntax GenerateAugmentedValue(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right, Expression? targetAst = null, Expression? valueAst = null)
+    private ExpressionSyntax GenerateAugmentedValue(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right, Expression? targetAst = null, Expression? valueAst = null, Assignment? assignNode = null)
     {
         return op switch
         {
@@ -763,7 +763,7 @@ internal partial class RoslynEmitter
 
             // x /= y → true division with Python semantics (always returns float64)
             // Cast left to double if both operands are integers
-            AssignmentOperator.SlashAssign => GenerateTrueDivisionAugmented(left, right, targetAst, valueAst),
+            AssignmentOperator.SlashAssign => GenerateTrueDivisionAugmented(left, right, assignNode),
 
             // x //= y → floor division with Python semantics (toward negative infinity)
             // Integer operands: (int)Math.Floor((double)x / y) → result is int32
@@ -791,11 +791,11 @@ internal partial class RoslynEmitter
                 GenerateMatMulCall(left, right),
 
             // All other operators use simple binary expressions
-            _ => GenerateAugmentedBinaryExpression(op, left, right, targetAst)
+            _ => GenerateAugmentedBinaryExpression(op, left, right, targetAst, assignNode)
         };
     }
 
-    private ExpressionSyntax GenerateAugmentedBinaryExpression(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right, Expression? sourceAst = null)
+    private ExpressionSyntax GenerateAugmentedBinaryExpression(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right, Expression? sourceAst = null, Assignment? assignNode = null)
     {
         var kind = GetAugmentedAssignmentOperator(op);
         if (kind == SyntaxKind.None)
@@ -805,6 +805,16 @@ internal partial class RoslynEmitter
                 DiagnosticCodes.CodeGen.UnsupportedOperator,
                 sourceAst?.LineStart, sourceAst?.ColumnStart);
         }
+
+        if (assignNode != null
+            && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind
+                == OperatorLoweringKind.ShiftCountCastToInt)
+        {
+            right = CastExpression(
+                PredefinedType(Token(SyntaxKind.IntKeyword)),
+                ParenthesizedExpression(right));
+        }
+
         return BinaryExpression(kind, left, right);
     }
 
@@ -833,22 +843,18 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Generates true division for augmented assignment (x /= y).
-    /// If both operands are integers, casts the left to double before division.
+    /// Reads the OperatorLowering tag to decide whether to cast the left operand (#1623).
     /// </summary>
-    private ExpressionSyntax GenerateTrueDivisionAugmented(ExpressionSyntax left, ExpressionSyntax right, Expression? targetAst, Expression? valueAst)
+    private ExpressionSyntax GenerateTrueDivisionAugmented(ExpressionSyntax left, ExpressionSyntax right, Assignment? assignNode)
     {
-        var targetIsFloat = targetAst != null && IsFloatExpression(targetAst);
-        var valueIsFloat = valueAst != null && IsFloatExpression(valueAst);
-
-        if (!targetIsFloat && !valueIsFloat)
+        if (assignNode != null
+            && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind
+                == OperatorLoweringKind.TrueDivisionCastLeft)
         {
-            // Both operands are integers: cast left to double
             return BinaryExpression(SyntaxKind.DivideExpression,
                 CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
                 right);
         }
-
-        // At least one operand is float, so result will be float naturally
         return BinaryExpression(SyntaxKind.DivideExpression, left, right);
     }
 
