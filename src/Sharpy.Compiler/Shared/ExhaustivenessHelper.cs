@@ -132,6 +132,43 @@ internal static class ExhaustivenessHelper
     }
 
     /// <summary>
+    /// Returns true if a pattern unconditionally covers all values
+    /// (wildcard, unguarded binding with no constant/union-case, or an OrPattern
+    /// containing any irrefutable alternative).
+    /// </summary>
+    public static bool IsIrrefutable(Pattern pattern, SemanticInfo? info)
+    {
+        return pattern switch
+        {
+            WildcardPattern => true,
+            BindingPattern bp =>
+                info?.GetPatternConstantSymbol(bp) == null
+                && info?.GetPatternUnionCase(bp) == null,
+            OrPattern or => or.Alternatives.Any(alt => IsIrrefutable(alt, info)),
+            GuardPattern => false,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Returns a human-readable description of an irrefutable pattern,
+    /// or null if the pattern is not irrefutable.
+    /// </summary>
+    public static string? DescribeIrrefutable(Pattern pattern, SemanticInfo? info)
+    {
+        return pattern switch
+        {
+            WildcardPattern => "wildcard",
+            BindingPattern bp when info?.GetPatternConstantSymbol(bp) == null
+                && info?.GetPatternUnionCase(bp) == null => $"name capture '{bp.Name.Name}'",
+            OrPattern or => or.Alternatives
+                .Select(alt => DescribeIrrefutable(alt, info))
+                .FirstOrDefault(d => d != null),
+            _ => null
+        };
+    }
+
+    /// <summary>
     /// Returns true if the match statement is semantically exhaustive
     /// (all cases of a finite type are covered by unguarded arms).
     /// </summary>

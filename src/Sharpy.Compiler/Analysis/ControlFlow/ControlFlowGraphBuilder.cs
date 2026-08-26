@@ -903,16 +903,7 @@ internal class ControlFlowGraphBuilder
     /// </summary>
     private bool IsUnconditionallyExhaustivePattern(Pattern pattern)
     {
-        return pattern switch
-        {
-            WildcardPattern => true,
-            BindingPattern bp =>
-                (_semanticInfo?.GetPatternConstantSymbol(bp)) == null
-                && (_semanticInfo?.GetPatternUnionCase(bp)) == null,
-            OrPattern orPat => orPat.Alternatives.Any(IsUnconditionallyExhaustivePattern),
-            GuardPattern => false,
-            _ => false
-        };
+        return ExhaustivenessHelper.IsIrrefutable(pattern, _semanticInfo);
     }
 
     /// <summary>

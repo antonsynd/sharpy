@@ -148,15 +148,7 @@ internal class ExhaustivenessValidator : SemanticValidatorBase
     /// </summary>
     private bool PatternCoversAll(Pattern pattern)
     {
-        return pattern switch
-        {
-            WildcardPattern => true,
-            BindingPattern bp =>
-                _context.SemanticInfo.GetPatternConstantSymbol(bp) == null
-                && _context.SemanticInfo.GetPatternUnionCase(bp) == null,
-            OrPattern or => or.Alternatives.Any(PatternCoversAll),
-            _ => false
-        };
+        return ExhaustivenessHelper.IsIrrefutable(pattern, _context.SemanticInfo);
     }
 
     /// <summary>

@@ -81,10 +81,7 @@ internal partial class RoslynEmitter
         // but has no wildcard/default case, add a default throw to satisfy the C# compiler's
         // definite return analysis. This is unreachable at runtime.
         bool hasDefault = matchStmt.Cases.Any(c =>
-            c.Guard == null && c.Pattern is WildcardPattern
-            || (c.Guard == null && c.Pattern is BindingPattern bp
-                && _context.SemanticInfo?.GetPatternConstantSymbol(bp) == null
-                && _context.SemanticInfo?.GetPatternUnionCase(bp) == null));
+            c.Guard == null && ExhaustivenessHelper.IsIrrefutable(c.Pattern, _context.SemanticInfo));
         if (!hasDefault && scrutineeType != null && _context.SemanticInfo != null
             && ExhaustivenessHelper.IsExhaustiveMatch(
                 scrutineeType,
