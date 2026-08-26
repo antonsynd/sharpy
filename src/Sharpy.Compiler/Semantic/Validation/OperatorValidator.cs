@@ -43,10 +43,6 @@ internal class OperatorValidator : ValidatingAstWalker
 
     public override void VisitAssignment(Assignment node)
     {
-        if (node.Operator != AssignmentOperator.Assign)
-        {
-            ValidateAugmentedAssignment(node);
-        }
         base.VisitAssignment(node);
     }
 
@@ -231,46 +227,6 @@ internal class OperatorValidator : ValidatingAstWalker
                     $"Type '{operandType.GetDisplayName()}' does not support unary operator '{OperatorToString(unaryOp.Operator)}'",
                     unaryOp.LineStart, unaryOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
                     span: unaryOp.Span);
-            }
-        }
-    }
-
-    private void ValidateAugmentedAssignment(Assignment assignment)
-    {
-        var targetType = Context.SemanticInfo.GetExpressionType(assignment.Target);
-        var valueType = Context.SemanticInfo.GetExpressionType(assignment.Value);
-
-        if (targetType == null || valueType == null)
-            return;
-        if (targetType is UnknownType || valueType is UnknownType)
-            return;
-
-        // In-place operators don't exist in Sharpy; augmented assignment desugars
-        // to x = x op y, so validate via the regular binary operator.
-        var binaryOp = AugmentedOperatorToBinaryOperator(assignment.Operator);
-        if (binaryOp == null)
-            return;
-
-        var dunderName = BinaryOperatorToDunder(binaryOp.Value);
-        if (dunderName == null)
-            return;
-
-        if (!SupportsOperator(targetType, dunderName))
-        {
-            // `@=` (matmul) has no native C# operator; support may come from a named CLR
-            // instance method the dunder tables don't list. Defer to the inference service,
-            // which resolves that path (mirrors ValidateArithmeticOrComparisonOp).
-            if (binaryOp.Value == BinaryOperator.MatMul
-                && Context.TypeInference != null
-                && Context.TypeInference.InferBinaryOpType(binaryOp.Value, targetType, valueType) != null)
-                return;
-
-            if (!HasErrorAtPosition(assignment.LineStart, assignment.ColumnStart))
-            {
-                AddError(
-                    $"Unsupported operand types for {OperatorToString(assignment.Operator)}: '{targetType.GetDisplayName()}' and '{valueType.GetDisplayName()}'",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
-                    span: assignment.Span);
             }
         }
     }
@@ -483,27 +439,6 @@ internal class OperatorValidator : ValidatingAstWalker
         };
     }
 
-    private static BinaryOperator? AugmentedOperatorToBinaryOperator(AssignmentOperator op)
-    {
-        return op switch
-        {
-            AssignmentOperator.PlusAssign => BinaryOperator.Add,
-            AssignmentOperator.MinusAssign => BinaryOperator.Subtract,
-            AssignmentOperator.StarAssign => BinaryOperator.Multiply,
-            AssignmentOperator.MatMulAssign => BinaryOperator.MatMul,
-            AssignmentOperator.SlashAssign => BinaryOperator.Divide,
-            AssignmentOperator.DoubleSlashAssign => BinaryOperator.FloorDivide,
-            AssignmentOperator.PercentAssign => BinaryOperator.Modulo,
-            AssignmentOperator.PowerAssign => BinaryOperator.Power,
-            AssignmentOperator.AndAssign => BinaryOperator.BitwiseAnd,
-            AssignmentOperator.OrAssign => BinaryOperator.BitwiseOr,
-            AssignmentOperator.XorAssign => BinaryOperator.BitwiseXor,
-            AssignmentOperator.LeftShiftAssign => BinaryOperator.LeftShift,
-            AssignmentOperator.RightShiftAssign => BinaryOperator.RightShift,
-            _ => null
-        };
-    }
-
     private string OperatorToString(BinaryOperator op)
     {
         return op switch
@@ -543,24 +478,4 @@ internal class OperatorValidator : ValidatingAstWalker
         };
     }
 
-    private string OperatorToString(AssignmentOperator op)
-    {
-        return op switch
-        {
-            AssignmentOperator.PlusAssign => "+=",
-            AssignmentOperator.MinusAssign => "-=",
-            AssignmentOperator.StarAssign => "*=",
-            AssignmentOperator.SlashAssign => "/=",
-            AssignmentOperator.DoubleSlashAssign => "//=",
-            AssignmentOperator.PercentAssign => "%=",
-            AssignmentOperator.PowerAssign => "**=",
-            AssignmentOperator.AndAssign => "&=",
-            AssignmentOperator.OrAssign => "|=",
-            AssignmentOperator.XorAssign => "^=",
-            AssignmentOperator.LeftShiftAssign => "<<=",
-            AssignmentOperator.RightShiftAssign => ">>=",
-            AssignmentOperator.MatMulAssign => "@=",
-            _ => op.ToString()
-        };
-    }
 }
