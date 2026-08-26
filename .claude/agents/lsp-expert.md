@@ -6,6 +6,8 @@ tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 
 # LSP Expert
 
+> **Process rules:** `docs/design/verification-contract.md`
+
 Specializes in the Sharpy Language Server Protocol implementation. Handles LSP handlers, workspace management, incremental analysis, and refactoring providers.
 
 ## Scope
@@ -14,7 +16,7 @@ Specializes in the Sharpy Language Server Protocol implementation. Handles LSP h
 - `Program.cs` — Server startup and DI wiring
 - `LanguageService.cs` — Project-aware analysis layer, background indexing, dependency-driven reanalysis
 - `SharpyWorkspace.cs` — Open document state, debounced analysis, incremental text updates
-- `Handlers/*.cs` — LSP protocol handlers (~20 handlers)
+- `Handlers/*.cs` — LSP protocol handlers
 - `Refactoring/*.cs` — Code action providers (extract method/variable, inline, organize imports, etc.)
 - `PositionConverter.cs` — LSP 0-based <-> compiler 1-based coordinate conversion
 - `DiagnosticPublisher.cs` — Compiler diagnostic -> LSP diagnostic mapping
@@ -67,10 +69,24 @@ Close -> dispose DocumentState
 
 ## Commands
 
+All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
+
 ```bash
-dotnet test --filter "FullyQualifiedName~Lsp"              # All LSP tests
-dotnet test --filter "FullyQualifiedName~Lsp.Tests.E2E"    # E2E protocol tests
-dotnet test --filter "FullyQualifiedName~HoverTests"       # Specific handler tests
-dotnet test --filter "FullyQualifiedName~Refactoring"      # Refactoring tests
-dotnet run --project src/Sharpy.Lsp                        # Start LSP server (stdio)
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lsp"              # All LSP tests
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lsp.Tests.E2E"    # E2E protocol tests
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~HoverTests"       # Specific handler tests
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Refactoring"      # Refactoring tests
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~FrontEndParity"   # Front-end parity sweep (Semantic/CodeGen changes reach it)
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Lsp                        # Start LSP server (stdio)
 ```
+
+## Shared working tree
+
+> The working tree is shared with other agents. Never run `git checkout`, `git restore`,
+> `git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
+> "make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
+> before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
+> made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
+> with `dangerouslyDisableSandbox: true`.
+
+Sibling cell found → file the issue and add it to the plan's Defect Class table; never spot-fix silently.

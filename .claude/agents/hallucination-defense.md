@@ -8,6 +8,8 @@ model: sonnet
 
 # Hallucination Defense
 
+> **Process rules:** `docs/design/verification-contract.md`
+
 Validates factual accuracy of claims about .NET, Roslyn, Python, and Sharpy. **Read-only.**
 
 ## Use Proactively
@@ -22,10 +24,12 @@ Invoke this agent when claims are made that could lead to bugs if incorrect:
 
 ### 1. .NET API
 Create a minimal test program to verify behavior:
+All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
+
 ```bash
-# Write a quick C# program and run it
-echo 'Console.WriteLine(string.IsNullOrEmpty(null));' > /tmp/Test.cs
-dotnet run --project /tmp/Test.cs
+# Write a quick C# program (in the session scratchpad) and run it
+echo 'Console.WriteLine(string.IsNullOrEmpty(null));' > "$TMPDIR/Test.cs"
+.claude/scripts/dotnet-serialized run --project "$TMPDIR/Test.cs"
 ```
 Or search the codebase for existing usage patterns.
 

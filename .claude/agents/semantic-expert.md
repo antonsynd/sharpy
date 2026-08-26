@@ -6,6 +6,8 @@ tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 
 # Semantic Expert
 
+> **Process rules:** `docs/design/verification-contract.md`
+
 Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, name resolution, and validation.
 
 ## Scope
@@ -14,7 +16,7 @@ Specializes in Sharpy semantic analysis. Handles symbol tables, type inference, 
 - `NameResolver.cs` - Symbol table construction, name binding
 - `ImportResolver.cs` - Module imports via `ModuleLoader`
 - `TypeResolver.cs` - Type annotation resolution
-- `TypeChecker*.cs` - Type checking (5 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Statements.cs`, `.Utilities.cs`) - ~4,640 lines total
+- `TypeChecker*.cs` - Type checking (partial files by area)
 - `SemanticInfo.cs` - Type/symbol annotations (separate from AST)
 - `SemanticBinding.cs` - Computed data, materialized at phase boundaries
 - `Symbol.cs` - Symbol hierarchy (VariableSymbol, FunctionSymbol, TypeSymbol, etc.)
@@ -142,11 +144,15 @@ Source of truth for primitive types:
 
 ## Commands
 
+All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
+
 ```bash
-dotnet test --filter "FullyQualifiedName~Semantic"
-dotnet test --filter "FullyQualifiedName~TypeChecker"
-dotnet test --filter "FullyQualifiedName~ValidationPipeline"
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Semantic"
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~TypeChecker"
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~ValidationPipeline"
 ```
+
+Semantic changes reach every project that compiles Sharpy source (`Sharpy.Stdlib.Tests`, `Sharpy.Cli.Tests`, the LSP parity sweep, the GapDiscovery sweeps) — the component filter is the edit loop; the lead runs the whole-solution gate. Any new node-keyed `SemanticInfo` dictionary must be added to `SemanticInfo.MergeFrom` or its entries are silently dropped.
 
 ## Boundaries
 
@@ -156,3 +162,14 @@ dotnet test --filter "FullyQualifiedName~ValidationPipeline"
 - Validation pipeline
 - NOT Parser/AST structure (-> parser-expert)
 - NOT Code generation (-> codegen-expert)
+
+## Shared working tree
+
+> The working tree is shared with other agents. Never run `git checkout`, `git restore`,
+> `git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
+> "make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
+> before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
+> made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
+> with `dangerouslyDisableSandbox: true`.
+
+Sibling cell found → file the issue and add it to the plan's Defect Class table; never spot-fix silently.

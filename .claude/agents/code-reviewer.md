@@ -8,6 +8,8 @@ model: sonnet
 
 # Code Reviewer
 
+> **Process rules:** `docs/design/verification-contract.md` — refute, don't confirm: report NOT REFUTED only after naming what you tried.
+
 Reviews C#/.NET pull requests for the Sharpy compiler and standard library. **Read-only.**
 
 ## Use Proactively
@@ -54,6 +56,14 @@ Sharpy is **.NET first, Pythonic second**:
 | Multiple ways to do same thing | Consistency issue |
 | Magic behavior | Unpredictable |
 
+### Class-cure checklist (refute "it's the root cause")
+- **Seam vs arm** — did the fix land at the shared seam, or on one arm of a mirrored/parallel-site structure (a second switch arm, a twin resolver, the LSP copy of a compiler table)? If one arm: is there a completeness scan, and are the sibling cells listed in the plan's Defect Class table? (verification-contract.md §1)
+- **Materialization** — every new node-keyed `SemanticInfo` dictionary is in `SemanticInfo.MergeFrom`; every fact codegen reads is materialized (`Symbol.CodeGenInfo` or `SemanticInfo`), never decided in the emitter (CLAUDE.md Rule 2)
+- **SPY0908 fixes name their check** — a fix for "generated C# failed to compile" names the semantic-time refusal or the materialized lowering it adds; "document-and-close" is not a fix (`docs/design/spy0908-policy.md`)
+- **Refusals by direction** — every program the change newly rejects is classified against the prior commit (`ICE` / `wrong output` / `worked`); a `worked` cell is a regression wearing a diagnostic (§3)
+- **Guards** — each new test records its mutation outcome ("broken → red, restored → green") in the commit body; a guard with no mutation, or an absence assertion without a positive control, is a finding (§2)
+- **Allowlists** — entries the fix should have drained are deleted in the same commit; no new entry without an issue reference (§8)
+
 ### Change Scope
 - No unnecessary churn; localized changes over sweeping refactors
 - Split unrelated formatting into separate PRs
@@ -63,6 +73,7 @@ Sharpy is **.NET first, Pythonic second**:
 Provide review feedback:
 - Inline comments on specific lines with code suggestions
 - Summary by severity (critical/warning/suggestion)
+- For each class-cure item: `REFUTED` (with the input that shows it) or `NOT REFUTED` (with what was tried)
 - Review decision: `APPROVE`, `REQUEST_CHANGES`, or `COMMENT`
 
 ## Boundaries

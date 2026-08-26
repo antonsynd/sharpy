@@ -8,6 +8,8 @@ model: haiku
 
 # .NET Axiom Guardian
 
+> **Process rules:** `docs/design/verification-contract.md` — refute, don't confirm: name the construct you probed and the emitted C# you read.
+
 Guards **Axiom 1: .NET Runtime Compatibility**. **Advisory only - does not modify code.**
 
 ## Use Proactively
@@ -16,7 +18,7 @@ Invoke this agent during codegen work to catch C# 9.0 compliance issues early.
 
 ## C# 9.0 Rules
 
-**C# 9.0 applies to `Sharpy.Core` (targets `netstandard2.1;netstandard2.0`) and generated code.** The compiler (`Sharpy.Compiler`) and CLI (`Sharpy.Cli`) target `net10.0` with `LangVersion latest` and are not constrained to C# 9.0.
+**C# 9.0 applies to `Sharpy.Core` and `Sharpy.Stdlib` on their `netstandard2.1` target (both multi-target `net10.0;netstandard2.1`; net10-only paths go behind `#if NET10_0_OR_GREATER`) and to generated code.** The compiler (`Sharpy.Compiler`) and CLI (`Sharpy.Cli`) target `net10.0` with `LangVersion latest` and are not constrained to C# 9.0.
 
 | C# 9.0 Allowed | C# 10+ Not Allowed |
 |-------------------|----------------------|
@@ -55,10 +57,14 @@ using System;
 
 ## Verification
 
+All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
+
 ```bash
 # Verify generated C# compiles as 9.0
-dotnet build -p:LangVersion=9.0
+.claude/scripts/dotnet-serialized build -p:LangVersion=9.0
 ```
+
+A probe whose construct never appears in the emitted C# has exercised nothing — grep the emitted output for the construct under test before interpreting a green result.
 
 ## Common Issues
 

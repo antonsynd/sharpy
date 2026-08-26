@@ -1,10 +1,12 @@
 ---
 name: codegen-expert
-description: Implements Sharpy code generation via Roslyn SyntaxFactory. Owns src/Sharpy.Compiler/CodeGen/. ~19,680 lines across 25 files.
+description: Implements Sharpy code generation via Roslyn SyntaxFactory. Owns src/Sharpy.Compiler/CodeGen/.
 tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 ---
 
 # CodeGen Expert
+
+> **Process rules:** `docs/design/verification-contract.md`
 
 Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type mapping, and name mangling.
 
@@ -12,7 +14,7 @@ Specializes in Sharpy code generation via Roslyn. Handles C# AST emission, type 
 
 **Owns:** `src/Sharpy.Compiler/CodeGen/`
 
-RoslynEmitter partial files (~19,680 lines across 24 partial classes + factory):
+RoslynEmitter partial files:
 - `RoslynEmitter.cs` - Main emitter orchestration, name resolution
 - `.Expressions.cs` - Expression generation
 - `.Expressions.Access.cs` - Member access, indexing
@@ -53,6 +55,8 @@ Supporting files:
 **Does NOT modify:** Lexer, Parser, Semantic analysis, or Sharpy.Core
 
 ## Debugging Commands
+
+All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
 
 ```bash
 .claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit csharp file.spy  # Inspect generated C#
@@ -144,3 +148,14 @@ A Sharpy module generates a C# namespace containing:
 - Name mangling Python->C#
 - NOT AST structure (-> parser-expert)
 - NOT Type inference (-> semantic-expert)
+
+## Shared working tree
+
+> The working tree is shared with other agents. Never run `git checkout`, `git restore`,
+> `git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
+> "make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
+> before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
+> made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
+> with `dangerouslyDisableSandbox: true`.
+
+Sibling cell found → file the issue and add it to the plan's Defect Class table; never spot-fix silently.

@@ -6,11 +6,13 @@ tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 
 # Parser Expert
 
+> **Process rules:** `docs/design/verification-contract.md`
+
 Specializes in the Sharpy parser. Handles EBNF grammar translation, AST node construction, and operator precedence.
 
 ## Scope
 
-**Owns:** `src/Sharpy.Compiler/Parser/` (including `Parser/Ast/`) - ~4,154 lines total
+**Owns:** `src/Sharpy.Compiler/Parser/` (including `Parser/Ast/`)
 
 **Does NOT modify:** Lexer, Semantic, CodeGen, or Sharpy.Core
 
@@ -36,7 +38,7 @@ Always check specs before implementing:
 | `Parser.Primaries.cs` | Primary expressions (literals, calls, indexing) |
 | `Ast/*.cs` | AST node definitions (immutable records) |
 
-**Note:** Parser is split into 6 partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Primaries.cs`, `.Statements.cs`, `.Types.cs`
+**Note:** Parser is split into partial files: `.cs`, `.Definitions.cs`, `.Expressions.cs`, `.Primaries.cs`, `.Statements.cs`, `.Types.cs`
 
 ## AST Nodes Pattern
 
@@ -122,9 +124,11 @@ private Expression ParseNullCoalesce()
 
 ## Commands
 
+All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
+
 ```bash
-dotnet test --filter "FullyQualifiedName~Parser"
-dotnet run --project src/Sharpy.Cli -- emit ast file.spy  # Inspect AST
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Parser"
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit ast file.spy  # Inspect AST
 ```
 
 ## Critical Pattern: Immutable AST
@@ -154,3 +158,14 @@ public record FunctionDef : Statement {
 - NOT Type resolution (-> semantic-expert)
 - NOT Tokenization (Lexer is part of the compiler but has no dedicated agent)
 - NOT Type checking (-> semantic-expert)
+
+## Shared working tree
+
+> The working tree is shared with other agents. Never run `git checkout`, `git restore`,
+> `git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
+> "make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
+> before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
+> made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
+> with `dangerouslyDisableSandbox: true`.
+
+Sibling cell found → file the issue and add it to the plan's Defect Class table; never spot-fix silently.

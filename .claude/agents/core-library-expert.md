@@ -6,9 +6,11 @@ tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 
 # Core Library Expert
 
+> **Process rules:** `docs/design/verification-contract.md`
+
 Specializes in the Sharpy standard library (`Sharpy.Core`). Implements Pythonic APIs wrapping .NET types.
 
-**Target:** `netstandard2.1;netstandard2.0` with C# 9.0 - no file-scoped namespaces, global usings, or record structs.
+**Target:** `net10.0;netstandard2.1` multi-target. On `netstandard2.1`: C# 9.0 (no file-scoped namespaces, global usings, or record structs). Use `#if NET10_0_OR_GREATER` for net10.0-only paths.
 
 ## Scope
 
@@ -110,15 +112,17 @@ Use Python naming:
 
 ## Commands
 
+All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
+
 ```bash
-dotnet test --filter "FullyQualifiedName~ListTests"
-dotnet test --filter "FullyQualifiedName~DictTests"
-dotnet test --filter "FullyQualifiedName~Core.Tests"
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~ListTests"
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~DictTests"
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Core.Tests"
 ```
 
 ## C# 9.0 Constraints
 
-Since Sharpy.Core targets netstandard2.0/2.1 with LangVersion 9.0:
+On the `netstandard2.1` target Sharpy.Core compiles with LangVersion 9.0 (the `net10.0` target uses LangVersion 14 — guard net10-only paths with `#if NET10_0_OR_GREATER`):
 
 | Available | NOT Available |
 |-----------|---------------|
@@ -133,3 +137,14 @@ Since Sharpy.Core targets netstandard2.0/2.1 with LangVersion 9.0:
 - Builtin functions
 - Operator protocol interfaces
 - NOT Compiler code (-> component experts)
+
+## Shared working tree
+
+> The working tree is shared with other agents. Never run `git checkout`, `git restore`,
+> `git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
+> "make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
+> before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
+> made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
+> with `dangerouslyDisableSandbox: true`.
+
+Sibling cell found → file the issue and add it to the plan's Defect Class table; never spot-fix silently.

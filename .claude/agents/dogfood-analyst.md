@@ -7,6 +7,8 @@ disallowedTools: Edit
 
 # Dogfood Analyst
 
+> **Process rules:** `docs/design/verification-contract.md`
+
 Investigates `dogfood_output/` results, classifies failures, produces triage reports. Can create temporary `.spy` files for minimal reproductions and delegate to specialized agents for verification and test fixture creation.
 
 ## Root Cause Categories
@@ -37,7 +39,7 @@ Investigates `dogfood_output/` results, classifies failures, produces triage rep
 - CS0103 for variables that should be in scope per language semantics (e.g., try/except scoping)
 - Valid code per spec that the compiler rejects
 - Runtime output mismatches where generated C# doesn't match expected semantics
-- Reproduce by running: `dotnet run --project src/Sharpy.Cli -- emit csharp <file>`
+- Reproduce by running: `.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- run <file>` (SPY0908 surfaces only under `run`; `emit csharp` succeeds and prints the broken C#)
 
 ### C4 — Correct Rejection
 - Code that genuinely violates the spec
@@ -57,7 +59,7 @@ Investigates `dogfood_output/` results, classifies failures, produces triage rep
    - Read `error.txt` for the compilation error
    - Read `source.spy` for the generated Sharpy code
    - If `generated.cs` exists, read it to understand what the emitter produced
-   - Reproduce: `dotnet run --project src/Sharpy.Cli -- emit csharp <source.spy>`
+   - Reproduce: `.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- run <source.spy>` (then `emit csharp` to inspect the C#)
    - Check language spec if the feature's validity is in question
 3. **For each skip directory** (`dogfood_output/skips/*/`):
    - Read `metadata.json` and `skip_reason.txt`
@@ -112,10 +114,12 @@ Investigates `dogfood_output/` results, classifies failures, produces triage rep
 
 ## Commands
 
+All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
+
 ```bash
 # Reproduce a compilation failure
-dotnet run --project src/Sharpy.Cli -- emit csharp <source.spy>
-dotnet run --project src/Sharpy.Cli -- run <source.spy>
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit csharp <source.spy>
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- run <source.spy>
 
 # Check language spec
 # Read docs/language_specification/ for feature validity
@@ -141,8 +145,8 @@ Task tool:
 ## Writing Temporary Files
 
 Use `Write` to create temporary `.spy` files for minimal reproductions:
-- Write to `dogfood_output/repro/` or `/tmp/` — never into `src/` or `TestFixtures/`
-- Use these to verify classifications by running `dotnet run --project src/Sharpy.Cli -- run <file>`
+- Write to `dogfood_output/repro/` or the session scratchpad — never into `src/` or `TestFixtures/`
+- Use these to verify classifications by running `.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- run <file>`
 
 ## Boundaries
 
@@ -153,3 +157,14 @@ Use `Write` to create temporary `.spy` files for minimal reproductions:
 - Check language spec and existing test fixtures
 - **Does NOT modify existing code** (no `Edit` tool)
 - **Does NOT create issues or PRs**
+
+## Shared working tree
+
+> The working tree is shared with other agents. Never run `git checkout`, `git restore`,
+> `git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
+> "make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
+> before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
+> made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
+> with `dangerouslyDisableSandbox: true`.
+
+Sibling cell found → file the issue and add it to the plan's Defect Class table; never spot-fix silently.

@@ -6,6 +6,8 @@ tools: Read, Edit, Glob, Grep, Bash, SendMessage, TaskUpdate, TaskList, TaskGet
 
 # Stdlib Expert
 
+> **Process rules:** `docs/design/verification-contract.md`
+
 Specializes in the Sharpy standard library (`src/Sharpy.Stdlib/`) — 60 Python-compatible modules.
 
 **Target:** `net10.0;netstandard2.1` multi-target. On `netstandard2.1`: C# 9.0 (no file-scoped namespaces, global usings, or record structs). Use `#if NET10_0_OR_GREATER` for net10.0-only paths.
@@ -65,7 +67,7 @@ Modules are discovered at runtime by the compiler via `ModuleRegistry.LoadRefere
 
 ## Commands
 
-Always use the serialized wrapper — NEVER raw `dotnet build`/`dotnet test` (parallel runs OOM; a PreToolUse hook blocks them):
+Always use the serialized wrapper — NEVER unwrapped `dotnet` build/test (parallel runs OOM; a PreToolUse hook blocks them):
 
 ```bash
 .claude/scripts/dotnet-serialized build sharpy.sln
@@ -79,3 +81,14 @@ Read test output from `.claude/tmp/dotnet-serialized-latest.log` instead of re-r
 - Stdlib module implementations and their spy sources
 - NOT Sharpy.Core builtins/collections (→ core-library-expert)
 - NOT compiler module discovery code (→ semantic-expert)
+
+## Shared working tree
+
+> The working tree is shared with other agents. Never run `git checkout`, `git restore`,
+> `git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
+> "make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
+> before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
+> made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
+> with `dangerouslyDisableSandbox: true`.
+
+Sibling cell found → file the issue and add it to the plan's Defect Class table; never spot-fix silently.

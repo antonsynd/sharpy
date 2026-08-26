@@ -6,6 +6,8 @@ tools: Read, Edit, Write, Glob, Grep, Bash, SendMessage, Task
 
 # Implementer
 
+> **Process rules:** `docs/design/verification-contract.md`
+
 Full-stack implementation agent for Sharpy compiler and standard library.
 
 ## Workflow
@@ -31,20 +33,25 @@ Full-stack implementation agent for Sharpy compiler and standard library.
 
 For new language features, touch in order:
 1. `Lexer/Token.cs` + `Lexer.cs` - new token types
-2. `Parser/Ast/*.cs` + `Parser*.cs` (6 partial files) - AST records and parsing
-3. `Semantic/TypeChecker*.cs` (5 partial files) - type rules, add validator if needed
-4. `CodeGen/RoslynEmitter*.cs` (8 partial files) - C# emission via SyntaxFactory
+2. `Parser/Ast/*.cs` + `Parser*.cs` - AST records and parsing
+3. `Semantic/TypeChecker*.cs` - type rules, add validator if needed; materialize every fact codegen reads
+4. `CodeGen/RoslynEmitter*.cs` - C# emission via SyntaxFactory
 5. Tests in `*Tests/` projects
 
 ## Commands
 
+All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `dangerouslyDisableSandbox: true`; a PreToolUse hook blocks unwrapped `dotnet` build/test/run). Read results from `.claude/tmp/dotnet-serialized-latest.log` instead of re-running.
+
 ```bash
-dotnet build sharpy.sln && dotnet test   # Build + test all
+.claude/scripts/dotnet-serialized build sharpy.sln                                      # Build all
+.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark"                   # Whole-solution gate (~22 min)
+.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Parser" --no-build  # Edit loop
 dotnet format whitespace                 # Format code (auto-formatted on save by Claude hook)
 python3 -c "..."                         # Verify Python behavior
-dotnet run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
-dotnet run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser
-dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Debug lexer
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit tokens file.spy  # Debug lexer
+.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- run file.spy          # Behavior (SPY0908 surfaces only here)
 ```
 
 ## Test Patterns
@@ -63,7 +70,7 @@ dotnet run --project src/Sharpy.Cli -- emit tokens file.spy  # Debug lexer
 | `NameMangler.cs` | `snake_case` -> `PascalCase`, `__str__` -> `ToString()` |
 | `SemanticInfo.cs` | Type/symbol annotations (separate from AST) |
 | `SemanticBinding.cs` | Computed data, materialized at phase boundaries |
-| `RoslynEmitter*.cs` | 8 partial classes by AST category |
+| `RoslynEmitter*.cs` | Partial classes by AST category |
 | `PrimitiveCatalog.cs` | Primitive types and CLR mappings |
 
 ## Semantic Analysis Pipeline
@@ -93,3 +100,14 @@ Key tracking variables in TypeChecker:
 - `_sourceVariableNames` - Original Python names
 - `_constVariables` - Compile-time constants
 - `_moduleFieldNames` - Module-level field names
+
+## Shared working tree
+
+> The working tree is shared with other agents. Never run `git checkout`, `git restore`,
+> `git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
+> "make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
+> before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
+> made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
+> with `dangerouslyDisableSandbox: true`.
+
+Sibling cell found → file the issue and add it to the plan's Defect Class table; never spot-fix silently.

@@ -1,76 +1,82 @@
 # Skills Quick Reference
 
-All skills are invoked with `/{skill-name}`.
+All skills are invoked with `/{skill-name}`; sources live in `.claude/skills/<name>/SKILL.md` (this table is generated from their frontmatter — regenerate it when a skill directory is added or removed). Process rules every workflow skill applies: `docs/design/verification-contract.md`.
 
-## Build & Test (Smart Truncation + Logging)
+## dotnet execution and logs
 
-All skills below capture full output to `.claude/tmp/*.log` while showing truncated output. Test skills auto-build before running.
+Every skill that runs `dotnet` goes through `.claude/scripts/dotnet-serialized` (exclusive lock — concurrent test runs OOM the machine; a PreToolUse hook blocks unwrapped `dotnet` build/test/run; the wrapper needs `dangerouslyDisableSandbox: true`). The wrapper tees stdout+stderr to `.claude/tmp/dotnet-serialized-{0,1,2}.log` (3-slot rotation) with `.claude/tmp/dotnet-serialized-latest.log` symlinked to the newest run. Read those logs instead of re-running a suite (~22 min wall clock); note `-latest.log` can rotate to a peer's run.
 
-| Skill | Usage | Log File | On Failure Shows |
-|-------|-------|----------|------------------|
-| `/build` | Build solution | `last-build.log` | Last 100 lines |
-| `/build-verbose` | Build with diagnostics | `last-build-verbose.log` | Last 100 lines |
-| `/run-tests` [filter] | Build + run tests with optional filter | `last-test-run.log` | Last 80 lines |
-| `/test-fixture` `<name>` | Build + run specific test | `last-test-fixture.log` | Last 80 lines |
-| `/format` | Format whitespace | `last-format.log` | Last 50 lines |
-| `/regenerate-snapshots` | Build + update `.expected.cs` files | `last-snapshot-regen.log` | Last 80 lines |
+## Build & Test
+
+| Skill | Arguments | Purpose |
+|-------|-----------|---------|
+| `/build` | — | Build the Sharpy solution with smart output truncation |
+| `/run-tests` | `[filter]` | Run Sharpy tests — summary on success, last 80 lines on failure, full log saved |
+| `/format` | — | Format code whitespace per project conventions (also auto-formatted on save by Claude hook) |
+| `/regenerate-snapshots` | — | Regenerate C# snapshot tests and spy stdlib after intentional codegen changes |
+| `/gap-analysis` | — | Run all gap discovery tests and present a unified summary |
+| `/property-stress` | `[rounds=10] [filter]` | Stress-test property tests across many rounds with fresh random seeds |
+| `/benchmark` | — | Run compiler or cross-language benchmarks and compare results |
+| `/clean-dotnet` | — | Kill zombie dotnet processes and clean build artifacts (kill specific PIDs, never blanket `pkill`) |
 
 ## Debug & Development
 
-| Skill | Usage | Log File | Notes |
-|-------|-------|----------|-------|
-| `/spy-emit-csharp` `<file.spy>` | Emit generated C# | `last-spy-emit-csharp.log` | Shows last 100 lines |
-| `/spy-emit-ast` `<file.spy>` | Emit parsed AST | `last-spy-emit-ast.log` | Shows last 100 lines |
-| `/spy-emit-tokens` `<file.spy>` | Emit lexer tokens | `last-spy-emit-tokens.log` | Shows last 100 lines |
-| `/spy-run` `<file.spy>` | Execute .spy file | `last-spy-run.log` | Shows full output on success |
-| `/spy-project` `<.spyproj>` | Run multi-file project | `last-spy-project.log` | Shows full output on success |
-| `/verify-python` `<expr>` | Verify Python behavior | — | Direct execution |
-| `/clean-dotnet` | Kill zombie dotnet processes | — | Use when builds hang |
+| Skill | Arguments | Purpose |
+|-------|-----------|---------|
+| `/spy-emit` | `<mode> <file.spy or inline source>` | Emit compiler output (`csharp`, `ast`, `tokens`, `diagnostics`) — SPY0908 never shows here |
+| `/spy-run` | `<file.spy or inline source>` | Compile and run a Sharpy source file or inline source (the only command that surfaces SPY0908) |
+| `/quick-check` | `<file.spy or inline source>` | Emit C# and run a .spy file or inline source in one shot |
+| `/verify-python` | `<expression or code>` | Run a Python 3 expression or snippet to verify behavior before implementing Sharpy semantics |
+| `/lsp-hover` | `<file.spy> <line> <col>` | Get LSP hover tooltip for a position in a .spy file (emulates VS Code hover) |
+| `/lsp-review` | `[fixture path or directory]` | Interactive LSP review session — user reports hover/coloring issues, Claude files GitHub issues |
+| `/playground` | — | Run the Sharpy playground (Blazor WASM) locally with hot reload |
 
-## Git Workflow
+The `/spy-*` and `/quick-check` skills accept inline source via the Write tool, avoiding bash-escaping issues with `#` and backticks.
 
-| Skill | Usage | Notes |
-|-------|-------|-------|
-| `/commit` [message] | Stage and commit changes | Auto-generates message if none provided |
-| `/push` [--close-issues N,N] | Push current branch | Optionally close GitHub issues |
+## Scaffolding
 
-## Analysis & Planning
+| Skill | Arguments | Purpose |
+|-------|-----------|---------|
+| `/add-test-fixture` | `<description of test>` | Create a file-based integration test (.spy + .expected/.error pair) |
+| `/add-stdlib-module` | — | Scaffold a new Sharpy.Stdlib module (spy-sourced or handwritten C#) with all required files, conventions, docs, and tests |
 
-| Skill | Usage | Notes |
-|-------|-------|-------|
-| `/compiler-audit` [focus-area] | Comprehensive compiler health audit | Spawns parallel read-only agents |
-| `/create-plan` `<issues or desc>` | Create implementation plan | From GitHub issues or description |
-| `/verify-plan` `<plan.md>` | Verify plan accuracy against codebase | Adds verification stamp |
-| `/implement-plan` `<plan.md>` | Implement plan with agent team | Incremental commits |
-| `/verify-implementation` `<plan.md>` | Verify implementation, fix gaps | Post-implementation audit |
-| `/add-test-fixture` `<desc>` | Create file-based integration test | .spy + .expected/.error pair |
-| `/dogfood-run` [N] | Run dogfooding iterations | Defaults to 5 iterations |
-| `/dogfood-analyze` [dir] | Analyze dogfood results | Classifies failures C1-C5 |
+## Git & Release
+
+| Skill | Arguments | Purpose |
+|-------|-----------|---------|
+| `/commit` | `[optional commit message override]` | Stage and commit current changes with an auto-generated message |
+| `/push` | `[--close-issues 123,456]` | Push current branch to remote origin (runs the generated-artifact staleness gates CI enforces) |
+| `/bump-version` | `[--apply] [--major\|--minor\|--patch]` | Suggest and apply a semver version bump based on commits since the last tag |
+| `/close-issues` | `<plan.md or issue numbers: 123,456>` | Close GitHub issues that have been implemented, with verification |
+
+## Planning & Verification
+
+Plans live in `.claude/plans/` (repo-local, gitignored); per-batch plans created before 2026-08-26 remain in `~/.claude/plans/` — pass the path explicitly for those.
+
+| Skill | Arguments | Purpose |
+|-------|-----------|---------|
+| `/create-plan` | `<issue numbers or description>` | Create an implementation plan from GitHub issues or a description |
+| `/verify-plan` | `<path/to/plan.md>` | Verify a plan for accuracy and architectural soundness |
+| `/implement-plan` | `<path/to/plan.md> [--exclude "section1,section2"]` | Implement a verified plan with coordinated agents, lead-owned gates, and mutation-tested guards |
+| `/verify-implementation` | `<path/to/plan.md>` | Verify completed plan implementation, fix gaps/bugs/regressions, and commit fixes |
+| `/compiler-audit` | `[focus-area]` | Run a comprehensive compiler health audit |
+
+## Dogfooding
+
+| Skill | Arguments | Purpose |
+|-------|-----------|---------|
+| `/dogfood-run` | `[number_of_iterations]` | Run dogfooding iterations to test the Sharpy compiler |
+| `/dogfood-analyze` | `[directory_name]` | Analyze dogfood results and classify failures by root cause |
 
 ## Investigating Failures
 
-When a skill fails, use the full log for deeper investigation without re-running:
-
 ```bash
-# Read the full log (use the Read tool)
-/read .claude/tmp/last-test-run.log
-
-# Search for specific patterns
-grep "Exception" .claude/tmp/last-test-run.log
-grep "error" .claude/tmp/last-build.log
+grep -n "Failed\|error" .claude/tmp/dotnet-serialized-latest.log   # newest run (may be a peer's)
+ls -lt .claude/tmp/dotnet-serialized-*.log                          # pick the slot by mtime
 ```
 
-## Log File Cleanup
-
-Logs are overwritten on each skill run. To clean up:
-
-```bash
-rm -rf .claude/tmp/*.log
-```
+A log proves a green only if its binaries postdate the change under test — check the `Test run for` lines against the commit.
 
 ## Skill Structure
 
-Skills are implemented as directories with `SKILL.md` files containing:
-- YAML frontmatter with `name`, `description`, and optional `argument-hint`
-- Documentation for usage and expected behavior
-- Optional `disable-model-invocation: true` to prevent automatic invocation
+Skills are directories with a `SKILL.md` containing YAML frontmatter (`name`, `description`, optional `argument-hint`, optional `disable-model-invocation: true`) followed by the instructions the skill executes.
