@@ -1,0 +1,12 @@
+def side_effect() -> int:
+    print("call")
+    return 42
+
+def main() -> None:
+    side_effect()
+    x: int = side_effect()
+    print(x)
+    None
+    True
+    1 + 2
+    print("done")

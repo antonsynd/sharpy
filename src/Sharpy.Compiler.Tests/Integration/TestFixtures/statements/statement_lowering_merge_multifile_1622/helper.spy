@@ -1,0 +1,8 @@
+def demo() -> None:
+    side_effect()
+    42
+    None
+    1 + 2
+
+def side_effect() -> None:
+    print("ok")
