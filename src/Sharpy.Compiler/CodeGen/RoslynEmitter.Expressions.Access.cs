@@ -2157,40 +2157,36 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateMultiAxisAccess(MultiAxisAccess multiAxis)
     {
         var obj = GenerateExpression(multiAxis.Object);
+        var lowering = _context.SemanticInfo?.GetMultiAxisAccessLowering(multiAxis);
 
-        var hasSlice = false;
-        foreach (var dim in multiAxis.Dimensions)
-        {
-            if (dim.IsSlice)
-            {
-                hasSlice = true;
-                break;
-            }
-        }
+        var isSliceCall = lowering?.Kind == MultiAxisAccessKind.SliceCall;
 
-        if (!hasSlice)
+        if (!isSliceCall)
         {
             // All indices: a[1, 2] → a[1, 2] (spread into params int[])
             var args = new List<ArgumentSyntax>();
             foreach (var dim in multiAxis.Dimensions)
                 args.Add(Argument(GenerateExpression(dim.Index!)));
-            return ElementAccessExpression(obj)
-                .AddArgumentListArguments(args.ToArray());
+            return ApplyNarrowedReadLowering(multiAxis,
+                ElementAccessExpression(obj)
+                    .AddArgumentListArguments(args.ToArray()));
         }
 
         // Any slice: a[1:3, :] → a.Slice(new SliceSpec(1, 3), SliceSpec.All)
         var sliceArgs = new List<ArgumentSyntax>();
-        foreach (var dim in multiAxis.Dimensions)
+        for (int i = 0; i < multiAxis.Dimensions.Length; i++)
         {
-            if (dim.IsSlice)
+            var dim = multiAxis.Dimensions[i];
+            var dimKind = lowering!.Dimensions.Length > i
+                ? lowering.Dimensions[i]
+                : (dim.IsSlice ? MultiAxisDimensionKind.Slice : MultiAxisDimensionKind.Index);
+
+            if (dimKind == MultiAxisDimensionKind.Slice)
             {
                 sliceArgs.Add(Argument(GenerateSliceSpec(dim)));
             }
             else
             {
-                // Index dimension → SliceSpec.Range(i, i + 1)
-                // Generate the expression twice: Roslyn SyntaxNodes cannot be
-                // shared across two positions in the syntax tree.
                 var idxForStart = GenerateExpression(dim.Index!);
                 var idxForEnd = GenerateExpression(dim.Index!);
                 sliceArgs.Add(Argument(
@@ -2205,11 +2201,12 @@ internal partial class RoslynEmitter
             }
         }
 
-        return InvocationExpression(
-            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                obj,
-                IdentifierName("Slice")))
-            .AddArgumentListArguments(sliceArgs.ToArray());
+        return ApplyNarrowedReadLowering(multiAxis,
+            InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    obj,
+                    IdentifierName("Slice")))
+                .AddArgumentListArguments(sliceArgs.ToArray()));
     }
 
     private ExpressionSyntax GenerateSliceSpec(SubscriptDimension dim)

@@ -246,6 +246,13 @@ public static partial class DiagnosticExplanations
             "from system import Math\nx: float = Math.floor(1)  # int matches both double and decimal overloads",
             "Cast the ambiguous argument to the intended type, e.g. Math.floor(float(1)).");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.MultiAxisNotSupported,
+            "multi-axis subscript not supported", "Semantic",
+            "Multi-axis subscripts (a[i, j] or a[i:j, k]) are supported only for ndarray. " +
+            "Other types do not implement the multi-dimensional indexing protocol.",
+            "x: list[int] = [1, 2, 3]\nprint(x[0, 1])  # list does not support multi-axis subscripting",
+            "Use separate subscript operations or switch to an ndarray.");
+
         return dict;
     }
 

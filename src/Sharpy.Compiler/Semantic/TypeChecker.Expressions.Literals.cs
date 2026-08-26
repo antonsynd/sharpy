@@ -747,27 +747,40 @@ internal partial class TypeChecker
     {
         var objType = CheckExpression(multiAxis.Object);
 
-        // #1608: on the int-indexed multi-axis receiver (ndarray), index dimensions must be
-        // plain 'int' and slice dimensions obey the same int? bound rule as single-axis slices.
-        var intIndexed = IsNdArrayType(objType);
+        if (!IsNdArrayType(objType) && objType is not UnknownType)
+        {
+            AddError(
+                $"Type '{objType.GetDisplayName()}' does not support multi-axis subscripting",
+                multiAxis.LineStart, multiAxis.ColumnStart,
+                code: DiagnosticCodes.SemanticOverflow.MultiAxisNotSupported,
+                span: multiAxis.Span);
+            return SemanticType.Unknown;
+        }
 
+        var dimensionKinds = System.Collections.Immutable.ImmutableArray.CreateBuilder<MultiAxisDimensionKind>();
         var hasSlice = false;
         foreach (var dim in multiAxis.Dimensions)
         {
             if (dim.IsSlice)
             {
                 hasSlice = true;
+                dimensionKinds.Add(MultiAxisDimensionKind.Slice);
                 CheckSliceBound(dim.Start);
                 CheckSliceBound(dim.Stop);
                 CheckSliceBound(dim.Step);
             }
             else
             {
+                dimensionKinds.Add(MultiAxisDimensionKind.Index);
                 var indexType = CheckExpression(dim.Index!);
-                if (intIndexed)
+                if (IsNdArrayType(objType))
                     CheckIntIndex(dim.Index!, indexType);
             }
         }
+
+        var accessKind = hasSlice ? MultiAxisAccessKind.SliceCall : MultiAxisAccessKind.IndexSpread;
+        _semanticInfo.SetMultiAxisAccessLowering(multiAxis,
+            new MultiAxisAccessLowering(accessKind, dimensionKinds.ToImmutable()));
 
         // Any slice → same type as object (sub-array view)
         if (hasSlice)

@@ -315,6 +315,8 @@ Types that are NOT sliceable produce a compile-time error:
 - `set[T]` / `frozenset[T]` — unordered; slicing is meaningless.
 - `tuple[T1, T2, ...]` — constant-bound slicing only (see [Tuple Slicing](#tuple-slicing) below).
 
+Multi-axis subscripts (`a[i, j]` and `a[i:j, k]`) are supported only for `ndarray`; other receivers refuse with SPY0602.
+
 ### Syntax
 
 ```python

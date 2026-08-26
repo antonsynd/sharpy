@@ -300,6 +300,9 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, IndexAccessLowering> _indexAccessLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    private readonly ConcurrentDictionary<Expression, MultiAxisAccessLowering> _multiAxisAccessLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // #1572: Map a member-access expression to an interface cast the emitter must wrap the receiver
     // in before accessing the member. Only present when the member is reachable exclusively through
     // an explicitly-implemented interface (e.g. IList.IsFixedSize on List<T>). The TypeChecker
@@ -1280,6 +1283,16 @@ public class SemanticInfo : ISemanticQuery
         _indexAccessLowerings[indexAccess] = lowering;
     }
 
+    public void SetMultiAxisAccessLowering(Expression multiAxis, MultiAxisAccessLowering lowering)
+    {
+        _multiAxisAccessLowerings[multiAxis] = lowering;
+    }
+
+    public MultiAxisAccessLowering? GetMultiAxisAccessLowering(Expression multiAxis)
+    {
+        return _multiAxisAccessLowerings.TryGetValue(multiAxis, out var lowering) ? lowering : null;
+    }
+
     /// <summary>
     /// Gets the lowering strategy for an index access.
     /// Returns <see cref="IndexAccessLowering.Native"/> when no override was recorded.
@@ -1496,6 +1509,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._indexAccessLowerings)
             _indexAccessLowerings.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._multiAxisAccessLowerings)
+            _multiAxisAccessLowerings.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._genericReferences)
             _genericReferences.TryAdd(kvp.Key, kvp.Value);
 
@@ -1541,6 +1557,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._statementLowerings)
             _statementLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._multiAxisAccessLowerings)
+            _multiAxisAccessLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._sliceLowerings)
             _sliceLowerings.TryAdd(kvp.Key, kvp.Value);
@@ -2098,6 +2117,12 @@ public enum StatementLoweringKind
 }
 
 public sealed record StatementLowering(StatementLoweringKind Kind);
+
+public enum MultiAxisDimensionKind { Index, Slice }
+public enum MultiAxisAccessKind { IndexSpread, SliceCall }
+public sealed record MultiAxisAccessLowering(
+    MultiAxisAccessKind Kind,
+    System.Collections.Immutable.ImmutableArray<MultiAxisDimensionKind> Dimensions);
 
 public enum SliceLoweringKind { List, Array, Str, Bytes, NdArray, UserProtocol, Tuple }
 
