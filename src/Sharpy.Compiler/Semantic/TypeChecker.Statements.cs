@@ -369,13 +369,24 @@ internal partial class TypeChecker
                 return;
             }
 
-            // For augmented assignments, use TypeInferenceService (errors reported by validator in pipeline)
             var resultType = _typeInference.InferAugmentedAssignmentType(
                 assignment.Operator,
                 targetType,
                 valueType);
 
-            if (resultType != null && !resultType.IsAssignableTo(targetType))
+            if (resultType == null)
+            {
+                if (targetType is not UnknownType && valueType is not UnknownType)
+                {
+                    var opSpelling = assignment.Operator == AssignmentOperator.NullCoalesceAssign
+                        ? "??="
+                        : GetAssignmentOperatorSymbol(assignment.Operator);
+                    ReportUnsupportedBinaryOperator(assignment, opSpelling, targetType, valueType);
+                }
+                return;
+            }
+
+            if (!resultType.IsAssignableTo(targetType))
             {
                 AddError(
                     $"Result type '{resultType.GetDisplayName()}' of augmented assignment is not assignable to target type '{targetType.GetDisplayName()}'",
