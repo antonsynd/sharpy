@@ -104,19 +104,21 @@ internal partial class RoslynEmitter
                 // x // y → floor division with Python semantics (toward negative infinity).
                 // One Builtins.FloorDiv invocation for integer AND float operands (#1226) —
                 // guard and dispatch live in the helper, each operand spliced once.
-                // Decimal operands: native truncating quotient (routed inside the wrapper,
-                // which both this site and the augmented `//=` site share).
-                return GenerateFloorDivideValue(left, right, binOp.Left, binOp.Right);
+                // Decimal operands: native truncating quotient. Which arm is the recorded
+                // OperatorLowering tag on this node (#1658), read inside the wrapper that both
+                // this site and the augmented `//=` site share.
+                return GenerateFloorDivideValue(left, right, binOp);
 
             case BinaryOperator.Modulo:
                 // x % y → Python floored modulo (result sign = divisor sign) for int/long/
                 // float32/float64 operands: C#'s native `%` takes the sign of the dividend, which
                 // diverges from Python. Decimal keeps the native truncating remainder but routes
-                // through a zero-divisor guard (#1189). Both decisions live in the routing wrapper
-                // this site shares with the augmented `%=` site, so the two cannot drift. User
-                // types with `__mod__` (→ operator %) and other CLR `op_Modulus` types get null
-                // back and MUST keep the native ModuloExpression map below.
-                var moduloValue = GenerateModuloValue(left, right, binOp.Left, binOp.Right);
+                // through a zero-divisor guard (#1189). Which arm is the recorded OperatorLowering
+                // tag on this node (#1658), read inside the routing wrapper this site shares with
+                // the augmented `%=` site, so the two cannot drift. User types with `__mod__`
+                // (→ operator %) and other CLR `op_Modulus` types have no record, get null back,
+                // and MUST keep the native ModuloExpression map below.
+                var moduloValue = GenerateModuloValue(left, right, binOp);
                 if (moduloValue != null)
                     return moduloValue;
                 break;
