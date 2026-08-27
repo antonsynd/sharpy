@@ -314,6 +314,130 @@ public class RoslynEmitterOperatorLoweringTests
 
     #endregion
 
+    #region Floor division and modulo (#1658)
+
+    [Theory]
+    // Integer and float tags share ONE FloorDiv invocation — C# overload resolution (int/long/
+    // float/double) is the width dispatch, so the two tags emit the same syntax; decimal differs.
+    [InlineData(OperatorLoweringKind.IntegerFloorDivide, "global::Sharpy.Builtins.FloorDiv(a, b)")]
+    [InlineData(OperatorLoweringKind.FloatFloorDivide, "global::Sharpy.Builtins.FloorDiv(a, b)")]
+    [InlineData(OperatorLoweringKind.DecimalFloorDivide, "global::Sharpy.Builtins.DecimalFloorDiv(a, b)")]
+    public void FloorDivide_SameAst_FollowsTheRecordedFamily(OperatorLoweringKind kind, string expected)
+    {
+        var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.FloorDivide, Right = Id("b") };
+        var info = new SemanticInfo();
+        info.SetOperatorLowering(binOp, new OperatorLowering(kind));
+        _context.SemanticInfo = info;
+
+        Emit(binOp).Should().Be(expected);
+    }
+
+    [Fact]
+    public void FloorDivide_WithoutTag_Throws()
+    {
+        var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.FloorDivide, Right = Id("b") };
+        _context.SemanticInfo = new SemanticInfo();
+
+        var act = () => Emit(binOp);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*No floor-division lowering recorded*");
+    }
+
+    [Theory]
+    [InlineData(OperatorLoweringKind.FlooredModulo, "global::Sharpy.Builtins.FloorMod(a, b)")]
+    [InlineData(OperatorLoweringKind.DecimalModulo, "global::Sharpy.Builtins.DecimalMod(a, b)")]
+    public void Modulo_SameAst_FollowsTheRecordedFamily(OperatorLoweringKind kind, string expected)
+    {
+        var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Modulo, Right = Id("b") };
+        var info = new SemanticInfo();
+        info.SetOperatorLowering(binOp, new OperatorLowering(kind));
+        _context.SemanticInfo = info;
+
+        Emit(binOp).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Modulo_WithoutTag_EmitsNativeModulo()
+    {
+        // No record is the Native cell (user __mod__ → operator %, CLR op_Modulus, widened CLR
+        // integer operands): the same AST with no tag is the native operator, not a throw.
+        var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Modulo, Right = Id("b") };
+        _context.SemanticInfo = new SemanticInfo();
+
+        Emit(binOp).Should().Be("a % b");
+    }
+
+    /// <summary>
+    /// Emits <c>a OP= b</c> through the real front end (so the local has its CodeGenInfo), then
+    /// overwrites the tag the checker recorded on the Assignment before emitting — the emitted C# must
+    /// follow the OVERWRITTEN tag, proving the augmented site reads the fact and not the operand types.
+    /// <see cref="OperatorLoweringKind.Native"/> stands in for "no family recorded": the emitter's
+    /// switch treats any non-family tag exactly as an absent record.
+    /// </summary>
+    private static string EmitAugmentedWithTag(string source, AssignmentOperator op, OperatorLoweringKind kind)
+    {
+        var analysis = EmitterTestPipeline.Analyze(EmitterTestPipeline.Parse(source));
+        analysis.TypeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+        var assignment = analysis.Module.GetChildNodes().SelectMany(Descendants).OfType<Assignment>()
+            .Single(a => a.Operator == op);
+        analysis.SemanticInfo.SetOperatorLowering(assignment, new OperatorLowering(kind));
+        return analysis.Emitter.GenerateCompilationUnit(analysis.Module).NormalizeWhitespace().ToFullString();
+    }
+
+    private static IEnumerable<Node> Descendants(Node node)
+    {
+        yield return node;
+        foreach (var child in node.GetChildNodes())
+            foreach (var d in Descendants(child))
+                yield return d;
+    }
+
+    private const string AugmentedFloorDivideSource = @"
+def main() -> None:
+    a: int = -7
+    b: int = 3
+    a //= b
+";
+
+    private const string AugmentedModuloSource = @"
+def main() -> None:
+    a: int = -7
+    b: int = 3
+    a %= b
+";
+
+    [Theory]
+    [InlineData(OperatorLoweringKind.IntegerFloorDivide, "global::Sharpy.Builtins.FloorDiv(a, b)")]
+    [InlineData(OperatorLoweringKind.FloatFloorDivide, "global::Sharpy.Builtins.FloorDiv(a, b)")]
+    [InlineData(OperatorLoweringKind.DecimalFloorDivide, "global::Sharpy.Builtins.DecimalFloorDiv(a, b)")]
+    public void AugmentedFloorDivide_SameSource_FollowsTheRecordedTagNotTheTypes(OperatorLoweringKind kind, string expected)
+    {
+        // int //= int would classify as IntegerFloorDivide; the overwritten tag wins.
+        EmitAugmentedWithTag(AugmentedFloorDivideSource, AssignmentOperator.DoubleSlashAssign, kind)
+            .Should().Contain("a = " + expected);
+    }
+
+    [Fact]
+    public void AugmentedFloorDivide_WithoutFamilyTag_Throws()
+    {
+        var act = () => EmitAugmentedWithTag(AugmentedFloorDivideSource, AssignmentOperator.DoubleSlashAssign, OperatorLoweringKind.Native);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*No floor-division lowering recorded*");
+    }
+
+    [Theory]
+    [InlineData(OperatorLoweringKind.FlooredModulo, "a = global::Sharpy.Builtins.FloorMod(a, b)")]
+    [InlineData(OperatorLoweringKind.DecimalModulo, "a = global::Sharpy.Builtins.DecimalMod(a, b)")]
+    [InlineData(OperatorLoweringKind.Native, "a = a % b")]
+    public void AugmentedModulo_SameSource_FollowsTheRecordedTagNotTheTypes(OperatorLoweringKind kind, string expected)
+    {
+        // int %= int would classify as FlooredModulo; the overwritten tag wins (Native = no family).
+        EmitAugmentedWithTag(AugmentedModuloSource, AssignmentOperator.PercentAssign, kind)
+            .Should().Contain(expected);
+    }
+
+    #endregion
+
     #region Negated integer literal (#1304, #1623)
 
     private static UnaryOp Negated(string literal)

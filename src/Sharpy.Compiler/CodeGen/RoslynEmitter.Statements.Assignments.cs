@@ -760,21 +760,27 @@ internal partial class RoslynEmitter
             // Cast left to double if both operands are integers
             AssignmentOperator.SlashAssign => GenerateTrueDivisionAugmented(left, right, assignNode),
 
-            // x //= y → floor division with Python semantics (toward negative infinity)
-            // Integer operands: (int)Math.Floor((double)x / y) → result is int32
-            // Float operands: Builtins.FloorDiv(x, y) → result is the operands' float type
-            // Decimal operands: native truncating quotient — shares the binary `//` routing
-            // wrapper so this site cannot miss an operand class the binary site handles.
+            // x //= y → floor division with Python semantics (toward negative infinity):
+            // Builtins.FloorDiv (int/long/float/double overloads) or the native truncating
+            // decimal quotient, selected by the OperatorLowering tag recorded on this Assignment
+            // (#1658) inside the binary `//` routing wrapper this site shares, so it cannot miss
+            // an operand class the binary site handles.
             AssignmentOperator.DoubleSlashAssign =>
-                GenerateFloorDivideValue(left, right, targetAst, valueAst),
+                GenerateFloorDivideValue(left, right,
+                    assignNode ?? throw new InvalidOperationException(
+                        "Augmented '//=' needs its Assignment node to read the recorded floor-division lowering (#1658)")),
 
             // x %= y → Python floored modulo (sign of divisor) for int/long/float operands, and
-            // the zero-guarded native remainder for decimal — both decided by the binary `%`
-            // routing wrapper this site shares, so it cannot miss an operand class the binary
-            // site handles. User __mod__ types (operator %) and other CLR op_Modulus types get
-            // null back and fall through to the native `%=` (PercentAssign → ModuloExpression).
+            // the zero-guarded native remainder for decimal — selected by the OperatorLowering tag
+            // recorded on this Assignment (#1658) inside the binary `%` routing wrapper this site
+            // shares, so it cannot miss an operand class the binary site handles. User __mod__
+            // types (operator %) and other CLR op_Modulus types have no record, get null back,
+            // and fall through to the native `%=` (PercentAssign → ModuloExpression).
             AssignmentOperator.PercentAssign
-                when GenerateModuloValue(left, right, targetAst, valueAst) is { } moduloValue =>
+                when GenerateModuloValue(left, right,
+                    assignNode ?? throw new InvalidOperationException(
+                        "Augmented '%=' needs its Assignment node to read the recorded modulo lowering (#1658)"))
+                    is { } moduloValue =>
                 moduloValue,
 
             // x ??= y → lowered null coalescing (Optional-aware)

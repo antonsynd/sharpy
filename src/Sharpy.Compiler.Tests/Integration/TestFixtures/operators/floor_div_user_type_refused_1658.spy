@@ -1,0 +1,20 @@
+# #1658: `//` has no __floordiv__ mapping (arithmetic_operators.md — C# has no `//` operator
+# to map one onto), so a user type under `//` is refused at type-check time with SPY0222. This
+# is the positive control for the emitter's "unrecorded `//` throws" contract: the only operand
+# pairs that pass inference are numeric ⊗ numeric, and the TypeChecker tags every one of them,
+# so the throw is unreachable from a program that type-checks.
+class Wrap:
+    value: int
+
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def __floordiv__(self, other: Wrap) -> Wrap:
+        return Wrap(self.value // other.value)
+
+
+def main() -> None:
+    a: Wrap = Wrap(7)
+    b: Wrap = Wrap(3)
+    c: Wrap = a // b
+    print(c.value)

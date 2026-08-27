@@ -345,6 +345,221 @@ def main() -> None:
 
     #endregion
 
+    #region Floor division and modulo (#1658)
+
+    // The five tags are classified by ONE TypeChecker helper from operand TYPES (literals included —
+    // `a // 3`, `7.0 // a`, `d % 3m`); the emitter switches on the tag and has no operand-type
+    // fallback, so an unrecorded `//` is an emitter ICE and an unrecorded `%` is the native operator.
+
+    [Theory]
+    // `//` — integer operands (int/long and the widened CLR integers) → IntegerFloorDivide
+    [InlineData("a: int = 7\n    b: int = 3", "a // b", OperatorLoweringKind.IntegerFloorDivide)]
+    [InlineData("a: long = 7\n    b: int = 3", "a // b", OperatorLoweringKind.IntegerFloorDivide)]
+    [InlineData("a: int = 7\n    b: long = 3", "a // b", OperatorLoweringKind.IntegerFloorDivide)]
+    [InlineData("a: int = 7", "a // 3", OperatorLoweringKind.IntegerFloorDivide)]
+    [InlineData("a: int = 7", "-7 // a", OperatorLoweringKind.IntegerFloorDivide)]
+    [InlineData("u: uint8 = 7\n    a: int = 3", "u // a", OperatorLoweringKind.IntegerFloorDivide)]
+    [InlineData("u: uint8 = 7\n    a: int = 3", "a // u", OperatorLoweringKind.IntegerFloorDivide)]
+    // `//` — a float32/float64 operand on either side → FloatFloorDivide
+    [InlineData("a: int = 7\n    f: float = 2.0", "a // f", OperatorLoweringKind.FloatFloorDivide)]
+    [InlineData("a: int = 7\n    f: float = 2.0", "f // a", OperatorLoweringKind.FloatFloorDivide)]
+    [InlineData("a: int = 7", "a // 2.0", OperatorLoweringKind.FloatFloorDivide)]
+    [InlineData("a: int = 7", "7.5 // a", OperatorLoweringKind.FloatFloorDivide)]
+    [InlineData("f: float = 7.5\n    g: float = 2.0", "f // g", OperatorLoweringKind.FloatFloorDivide)]
+    [InlineData("s: float32 = 7.5f\n    a: int = 2", "s // a", OperatorLoweringKind.FloatFloorDivide)]
+    // `//` — a decimal operand on either side → DecimalFloorDivide
+    [InlineData("d: decimal = 7m\n    a: int = 3", "d // a", OperatorLoweringKind.DecimalFloorDivide)]
+    [InlineData("d: decimal = 7m\n    a: int = 3", "a // d", OperatorLoweringKind.DecimalFloorDivide)]
+    [InlineData("d: decimal = 7m\n    e: decimal = 3m", "d // e", OperatorLoweringKind.DecimalFloorDivide)]
+    [InlineData("d: decimal = 7m", "d // 3m", OperatorLoweringKind.DecimalFloorDivide)]
+    [InlineData("d: decimal = 7m", "-7m // d", OperatorLoweringKind.DecimalFloorDivide)]
+    public void FloorDivide_RecordsItsFamily(string decls, string expr, OperatorLoweringKind expected)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    {decls}
+    r = {expr}
+");
+        errors.Should().BeEmpty();
+        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.FloorDivide))!.Kind.Should().Be(expected);
+    }
+
+    [Theory]
+    // `%` — both operands in {int, long, float32, float64} → FlooredModulo
+    [InlineData("a: int = 7\n    b: int = 3", "a % b", OperatorLoweringKind.FlooredModulo)]
+    [InlineData("a: long = 7\n    b: int = 3", "a % b", OperatorLoweringKind.FlooredModulo)]
+    [InlineData("a: int = 7", "a % 3", OperatorLoweringKind.FlooredModulo)]
+    [InlineData("a: int = 7", "-7 % a", OperatorLoweringKind.FlooredModulo)]
+    [InlineData("a: int = 7\n    f: float = 2.0", "a % f", OperatorLoweringKind.FlooredModulo)]
+    [InlineData("a: int = 7\n    f: float = 2.0", "f % a", OperatorLoweringKind.FlooredModulo)]
+    [InlineData("a: int = 7", "a % 2.0", OperatorLoweringKind.FlooredModulo)]
+    [InlineData("f: float = 7.5\n    g: float = 2.0", "f % g", OperatorLoweringKind.FlooredModulo)]
+    [InlineData("s: float32 = 7.5f\n    t: float32 = 2.0f", "s % t", OperatorLoweringKind.FlooredModulo)]
+    // `%` — a decimal operand on either side → DecimalModulo
+    [InlineData("d: decimal = 7m\n    a: int = 3", "d % a", OperatorLoweringKind.DecimalModulo)]
+    [InlineData("d: decimal = 7m\n    a: int = 3", "a % d", OperatorLoweringKind.DecimalModulo)]
+    [InlineData("d: decimal = 7m\n    e: decimal = 3m", "d % e", OperatorLoweringKind.DecimalModulo)]
+    [InlineData("d: decimal = 7m", "d % 3m", OperatorLoweringKind.DecimalModulo)]
+    public void Modulo_RecordsItsFamily(string decls, string expr, OperatorLoweringKind expected)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    {decls}
+    r = {expr}
+");
+        errors.Should().BeEmpty();
+        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Modulo))!.Kind.Should().Be(expected);
+    }
+
+    [Theory]
+    // A widened CLR integer operand is outside the FloorMod overload set: native `%`, no record.
+    [InlineData("u: uint8 = 7\n    a: int = 3", "u % a")]
+    [InlineData("u: uint8 = 7\n    a: int = 3", "a % u")]
+    [InlineData("u: uint8 = 7\n    v: uint8 = 3", "u % v")]
+    public void Modulo_WidenedClrInteger_RecordsNothing(string decls, string expr)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    {decls}
+    r = {expr}
+");
+        errors.Should().BeEmpty();
+        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Modulo)).Should().BeNull(
+            "native `%` is the no-record cell, exactly as the other families spell Native");
+    }
+
+    [Fact]
+    public void Modulo_UserDunder_RecordsNothing_ForBinaryAndAugmented()
+    {
+        var (module, info, errors) = Analyze(@"
+class Wrap:
+    value: int
+
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def __mod__(self, other: Wrap) -> Wrap:
+        return Wrap(self.value + other.value)
+
+
+def main() -> None:
+    a: Wrap = Wrap(10)
+    b: Wrap = Wrap(3)
+    c: Wrap = a % b
+    a %= b
+");
+        errors.Should().BeEmpty();
+        // The `%` inside __mod__ would be int % int; the user-type operands are the subject.
+        var binary = Find<BinaryOp>(module).Single(b => b.Operator == BinaryOperator.Modulo
+            && b.Left is Identifier { Name: "a" });
+        info.GetOperatorLowering(binary).Should().BeNull("user __mod__ maps to operator %, native");
+        var augmented = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.PercentAssign);
+        info.GetOperatorLowering(augmented).Should().BeNull("augmented %= on a user type is native too");
+    }
+
+    [Fact]
+    public void FloorDivide_UserType_IsRefused_NotRecorded()
+    {
+        // There is no __floordiv__ mapping (arithmetic_operators.md): a user type under `//` is SPY0222,
+        // so the "unrecorded `//`" cell can never reach the emitter's throw from a program that type-checks.
+        var (module, info, errors) = Analyze(@"
+class Wrap:
+    value: int
+
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+
+def main() -> None:
+    a: Wrap = Wrap(10)
+    b: Wrap = Wrap(3)
+    c = a // b
+");
+        errors.Should().ContainSingle(e => e.StartsWith("SPY0222"));
+        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.FloorDivide)).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("a: int = 7", "a //= 3", AssignmentOperator.DoubleSlashAssign, OperatorLoweringKind.IntegerFloorDivide)]
+    [InlineData("a: long = 7", "a //= 3", AssignmentOperator.DoubleSlashAssign, OperatorLoweringKind.IntegerFloorDivide)]
+    [InlineData("u: uint8 = 7\n    v: uint8 = 3", "u //= v", AssignmentOperator.DoubleSlashAssign, OperatorLoweringKind.IntegerFloorDivide)]
+    [InlineData("f: float = 7.5", "f //= 2", AssignmentOperator.DoubleSlashAssign, OperatorLoweringKind.FloatFloorDivide)]
+    [InlineData("f: float = 7.5", "f //= 2.0", AssignmentOperator.DoubleSlashAssign, OperatorLoweringKind.FloatFloorDivide)]
+    [InlineData("s: float32 = 7.5f", "s //= 2", AssignmentOperator.DoubleSlashAssign, OperatorLoweringKind.FloatFloorDivide)]
+    [InlineData("d: decimal = 7m", "d //= 3", AssignmentOperator.DoubleSlashAssign, OperatorLoweringKind.DecimalFloorDivide)]
+    [InlineData("d: decimal = 7m", "d //= 3m", AssignmentOperator.DoubleSlashAssign, OperatorLoweringKind.DecimalFloorDivide)]
+    [InlineData("a: int = 7", "a %= 3", AssignmentOperator.PercentAssign, OperatorLoweringKind.FlooredModulo)]
+    [InlineData("a: long = 7", "a %= 3", AssignmentOperator.PercentAssign, OperatorLoweringKind.FlooredModulo)]
+    [InlineData("f: float = 7.5", "f %= 2", AssignmentOperator.PercentAssign, OperatorLoweringKind.FlooredModulo)]
+    [InlineData("f: float = 7.5", "f %= 2.0", AssignmentOperator.PercentAssign, OperatorLoweringKind.FlooredModulo)]
+    [InlineData("s: float32 = 7.5f", "s %= 2.0f", AssignmentOperator.PercentAssign, OperatorLoweringKind.FlooredModulo)]
+    [InlineData("d: decimal = 7m", "d %= 3", AssignmentOperator.PercentAssign, OperatorLoweringKind.DecimalModulo)]
+    [InlineData("d: decimal = 7m", "d %= 3m", AssignmentOperator.PercentAssign, OperatorLoweringKind.DecimalModulo)]
+    public void AugmentedFloorDivideAndModulo_RecordTheSameFamilyAsTheBinaryForm(
+        string decls, string statement, AssignmentOperator op, OperatorLoweringKind expected)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    {decls}
+    {statement}
+");
+        errors.Should().BeEmpty();
+        var assignment = Find<Assignment>(module).Single(a => a.Operator == op);
+        info.GetOperatorLowering(assignment)!.Kind.Should().Be(expected);
+    }
+
+    [Fact]
+    public void AugmentedModulo_WidenedClrInteger_RecordsNothing()
+    {
+        var (module, info, errors) = Analyze(@"
+def main() -> None:
+    u: uint8 = 7
+    v: uint8 = 3
+    u %= v
+");
+        errors.Should().BeEmpty();
+        var assignment = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.PercentAssign);
+        info.GetOperatorLowering(assignment).Should().BeNull();
+    }
+
+    [Theory]
+    // Binary/augmented parity over the operand-type matrix: the two sites call ONE classifier, so a
+    // cell can never be tagged differently by its spelling. Left type is the augmented target.
+    [InlineData("int", "7", "int", "3", "//")]
+    [InlineData("int", "7", "int", "3", "%")]
+    [InlineData("long", "7", "int", "3", "//")]
+    [InlineData("long", "7", "int", "3", "%")]
+    [InlineData("float", "7.5", "int", "2", "//")]
+    [InlineData("float", "7.5", "int", "2", "%")]
+    [InlineData("float", "7.5", "float", "2.0", "//")]
+    [InlineData("float", "7.5", "float", "2.0", "%")]
+    [InlineData("decimal", "7m", "int", "3", "//")]
+    [InlineData("decimal", "7m", "int", "3", "%")]
+    [InlineData("decimal", "7m", "decimal", "3m", "//")]
+    [InlineData("decimal", "7m", "decimal", "3m", "%")]
+    [InlineData("uint8", "7", "uint8", "3", "//")]
+    [InlineData("uint8", "7", "uint8", "3", "%")]
+    public void FlooredArithmetic_BinaryAndAugmented_AgreeOnTheTag(
+        string leftType, string leftInit, string rightType, string rightInit, string op)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    a: {leftType} = {leftInit}
+    b: {rightType} = {rightInit}
+    r = a {op} b
+    a {op}= b
+");
+        errors.Should().BeEmpty();
+        var binaryOperator = op == "//" ? BinaryOperator.FloorDivide : BinaryOperator.Modulo;
+        var assignmentOperator = op == "//" ? AssignmentOperator.DoubleSlashAssign : AssignmentOperator.PercentAssign;
+        var binaryKind = info.GetOperatorLowering(SingleBinaryOp(module, binaryOperator))?.Kind;
+        var augmentedKind = info.GetOperatorLowering(
+            Find<Assignment>(module).Single(a => a.Operator == assignmentOperator))?.Kind;
+        augmentedKind.Should().Be(binaryKind);
+    }
+
+    #endregion
+
     #region Negated integer literal (#1304, #1623)
 
     [Theory]

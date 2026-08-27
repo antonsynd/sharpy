@@ -304,6 +304,10 @@ public class RoslynEmitterExpressionTests
             Right = new IntegerLiteral { Value = "3" }
         };
 
+        // The emitter is a pure translator: the `//` / `%` lowering is the fact CheckBinaryOp
+        // records (#1658), so the test records it the way the pipeline does.
+        RecordOperatorLowering(expr, OperatorLoweringKind.FlooredModulo);
+
         // Act
         var result = InvokeGenerateExpression(expr);
 
@@ -330,6 +334,10 @@ public class RoslynEmitterExpressionTests
             Left = new FloatLiteral { Value = "7", Suffix = "m" },
             Right = new FloatLiteral { Value = "3", Suffix = "m" }
         };
+
+        // The emitter is a pure translator: the `//` / `%` lowering is the fact CheckBinaryOp
+        // records (#1658), so the test records it the way the pipeline does.
+        RecordOperatorLowering(expr, OperatorLoweringKind.DecimalModulo);
 
         // Act
         var result = InvokeGenerateExpression(expr);
@@ -358,6 +366,10 @@ public class RoslynEmitterExpressionTests
             Right = new IntegerLiteral { Value = "3" }
         };
 
+        // The emitter is a pure translator: the `//` / `%` lowering is the fact CheckBinaryOp
+        // records (#1658), so the test records it the way the pipeline does.
+        RecordOperatorLowering(expr, OperatorLoweringKind.DecimalModulo);
+
         // Act
         var result = InvokeGenerateExpression(expr);
 
@@ -382,6 +394,10 @@ public class RoslynEmitterExpressionTests
             Left = new FloatLiteral { Value = "7", Suffix = "m" },
             Right = new FloatLiteral { Value = "3", Suffix = "m" }
         };
+
+        // The emitter is a pure translator: the `//` / `%` lowering is the fact CheckBinaryOp
+        // records (#1658), so the test records it the way the pipeline does.
+        RecordOperatorLowering(expr, OperatorLoweringKind.DecimalFloorDivide);
 
         // Act
         var result = InvokeGenerateExpression(expr);
@@ -408,6 +424,10 @@ public class RoslynEmitterExpressionTests
             Right = new IntegerLiteral { Value = "3" }
         };
 
+        // The emitter is a pure translator: the `//` / `%` lowering is the fact CheckBinaryOp
+        // records (#1658), so the test records it the way the pipeline does.
+        RecordOperatorLowering(expr, OperatorLoweringKind.DecimalFloorDivide);
+
         // Act
         var result = InvokeGenerateExpression(expr);
 
@@ -416,6 +436,17 @@ public class RoslynEmitterExpressionTests
         code.Should().Contain("global::Sharpy.Builtins.DecimalFloorDiv");
         code.Should().NotContain("global::System.Decimal.Divide");
         code.Should().NotContain("System.Math.Floor");
+    }
+
+    /// <summary>
+    /// Records the operator lowering the TypeChecker would record on <paramref name="expr"/> — the
+    /// emitter reads the tag and has no operand-type fallback (#1623, #1658).
+    /// </summary>
+    private void RecordOperatorLowering(BinaryOp expr, OperatorLoweringKind kind)
+    {
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetOperatorLowering(expr, new OperatorLowering(kind));
+        _context.SemanticInfo = semanticInfo;
     }
 
     private static int CountOccurrences(string haystack, string needle)
@@ -472,6 +503,10 @@ public class RoslynEmitterExpressionTests
             Right = new IntegerLiteral { Value = "3" }
         };
 
+        // The emitter is a pure translator: the `//` / `%` lowering is the fact CheckBinaryOp
+        // records (#1658), so the test records it the way the pipeline does.
+        RecordOperatorLowering(expr, OperatorLoweringKind.IntegerFloorDivide);
+
         // Act
         var result = InvokeGenerateExpression(expr).ToString();
 
@@ -497,6 +532,10 @@ public class RoslynEmitterExpressionTests
             Right = new FloatLiteral { Value = "2.0" }
         };
 
+        // The emitter is a pure translator: the `//` / `%` lowering is the fact CheckBinaryOp
+        // records (#1658), so the test records it the way the pipeline does.
+        RecordOperatorLowering(expr, OperatorLoweringKind.FloatFloorDivide);
+
         // Act
         var result = InvokeGenerateExpression(expr);
 
@@ -521,6 +560,10 @@ public class RoslynEmitterExpressionTests
             Left = new IntegerLiteral { Value = "7" },
             Right = new FloatLiteral { Value = "2.0" }
         };
+
+        // The emitter is a pure translator: the `//` / `%` lowering is the fact CheckBinaryOp
+        // records (#1658), so the test records it the way the pipeline does.
+        RecordOperatorLowering(expr, OperatorLoweringKind.FloatFloorDivide);
 
         // Act
         var result = InvokeGenerateExpression(expr);

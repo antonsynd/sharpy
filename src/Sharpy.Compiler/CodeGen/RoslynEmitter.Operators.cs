@@ -981,103 +981,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Checks if an expression evaluates to a decimal type.
-    /// Decimal division works natively in C# and must not be cast to double.
-    /// </summary>
-    private bool IsDecimalExpression(Expression expr)
-    {
-        var semanticType = GetExpressionSemanticType(expr);
-        if (semanticType != null)
-            return semanticType == SemanticType.Decimal;
-
-        return expr switch
-        {
-            FloatLiteral fl => fl.Suffix?.Equals("m", StringComparison.OrdinalIgnoreCase) == true,
-            UnaryOp unary => IsDecimalExpression(unary.Operand),
-            Parenthesized paren => IsDecimalExpression(paren.Expression),
-            _ => false
-        };
-    }
-
-    /// <summary>
-    /// Null-tolerant <see cref="IsDecimalExpression"/> for call sites whose operand AST is
-    /// optional (augmented assignment passes nullable target/value expressions).
-    /// </summary>
-    private bool IsDecimalOperand(Expression? expr)
-        => expr != null && IsDecimalExpression(expr);
-
-    /// <summary>
-    /// Checks if an expression evaluates to a floating-point type.
-    /// Used to determine floor division semantics.
-    /// Consults SemanticInfo for resolved types when available (variables, function calls, etc.).
-    /// Falls back to AST-based heuristic for literals and compound expressions.
-    /// </summary>
-    private bool IsFloatExpression(Expression expr)
-    {
-        // First, try to resolve via SemanticInfo (handles variables, function calls, etc.)
-        var semanticType = GetExpressionSemanticType(expr);
-        if (semanticType != null)
-        {
-            return semanticType == SemanticType.Float
-                || semanticType == SemanticType.Double
-                || semanticType == SemanticType.Float32;
-        }
-
-        // Fallback to AST-based heuristic for cases where SemanticInfo is not available
-        return expr switch
-        {
-            FloatLiteral => true,
-            UnaryOp unary => IsFloatExpression(unary.Operand),
-            BinaryOp binOp => binOp.Operator switch
-            {
-                // Division always produces float
-                BinaryOperator.Divide => true,
-                // Power: float if either operand is float, otherwise integer (cast to long)
-                BinaryOperator.Power => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right),
-                // Floor division depends on operands
-                BinaryOperator.FloorDivide => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right),
-                // Other operators: float if either operand is float
-                _ => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right)
-            },
-            Parenthesized paren => IsFloatExpression(paren.Expression),
-            _ => false
-        };
-    }
-
-    /// <summary>
-    /// Checks whether an expression is a primitive numeric operand eligible for the floored
-    /// lowerings shared by <c>%</c> and <c>//</c> (int/long/float32/float64). Gates the
-    /// <c>%</c> rewrite so user <c>__mod__</c> types and CLR <c>op_Modulus</c> types (e.g.
-    /// decimal) keep the native C# <c>%</c> operator, and names the same allowlist for
-    /// floor division (see <see cref="GenerateFloorDivideValue"/>). Reads the materialized
-    /// semantic type; falls back to an AST heuristic for bare literals when SemanticInfo is
-    /// unavailable.
-    /// </summary>
-    private bool IsFlooredNumericOperand(Expression expr)
-    {
-        var semanticType = GetExpressionSemanticType(expr);
-        if (semanticType != null)
-        {
-            return semanticType == SemanticType.Int
-                || semanticType == SemanticType.Long
-                || semanticType == SemanticType.Float32
-                || semanticType == SemanticType.Double
-                || semanticType == SemanticType.Float;
-        }
-
-        // Fallback for literals/compound expressions with no resolved type (decimal `m`
-        // literals are excluded so they keep the native `%` path).
-        return expr switch
-        {
-            IntegerLiteral => true,
-            FloatLiteral fl => fl.Suffix?.Equals("m", StringComparison.OrdinalIgnoreCase) != true,
-            UnaryOp unary => IsFlooredNumericOperand(unary.Operand),
-            Parenthesized paren => IsFlooredNumericOperand(paren.Expression),
-            _ => false
-        };
-    }
-
-    /// <summary>
     /// Generates a floored-modulo call: <c>global::Sharpy.Builtins.FloorMod(left, right)</c>.
     /// The Core helper carries the sign-of-divisor adjust and the ZeroDivisionError guard, so
     /// no operand is spliced more than once (unlike an inline sign-adjust).
@@ -1096,29 +999,36 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Single routing seam for <c>%</c> — used by both the binary-operator site and the
     /// augmented <c>%=</c> site so neither can drift, mirroring
-    /// <see cref="GenerateFloorDivideValue"/>. Decimal operands take the guarded native
-    /// remainder; the floored-numeric allowlist keeps the floored
-    /// <see cref="GenerateFloorModulo"/> lowering. Returns null for every other operand
-    /// shape — user <c>__mod__</c> types (which map to <c>operator %</c>) and other CLR
-    /// <c>op_Modulus</c> types — so the caller falls through to the native
-    /// <c>ModuloExpression</c> map exactly as before.
+    /// <see cref="GenerateFloorDivideValue"/>. The lowering is the <see cref="OperatorLowering"/>
+    /// tag the TypeChecker recorded on <paramref name="operatorNode"/> (the <c>BinaryOp</c> or the
+    /// augmented <c>Assignment</c>, #1658 — the #1623 shape): <see cref="OperatorLoweringKind.DecimalModulo"/>
+    /// is the guarded native remainder (<see cref="GenerateDecimalModulo"/>),
+    /// <see cref="OperatorLoweringKind.FlooredModulo"/> the floored <see cref="GenerateFloorModulo"/>.
+    /// <para>
+    /// <b>No record is a legitimate cell here</b>, unlike <c>//</c> and <c>**</c>: the TypeChecker
+    /// records nothing for a user <c>__mod__</c> type (which maps to <c>operator %</c>), a CLR
+    /// <c>op_Modulus</c> type, or a widened CLR integer operand — that is how every #1623 family
+    /// spells <c>Native</c> — so this method returns <c>null</c> and the caller falls through to
+    /// the native <c>ModuloExpression</c> map. There is no operand-type fallback: the emitter
+    /// switches on the tag alone (Critical Rule 2 pattern (b)).
+    /// </para>
     /// </summary>
     /// <param name="left">Generated C# expression for the left operand.</param>
     /// <param name="right">Generated C# expression for the right operand.</param>
-    /// <param name="leftAst">Left operand AST (for type inference); may be null.</param>
-    /// <param name="rightAst">Right operand AST (for type inference); may be null.</param>
-    private ExpressionSyntax? GenerateModuloValue(ExpressionSyntax left, ExpressionSyntax right, Expression? leftAst, Expression? rightAst)
+    /// <param name="operatorNode">The node carrying the recorded modulo lowering.</param>
+    private ExpressionSyntax? GenerateModuloValue(ExpressionSyntax left, ExpressionSyntax right, Node operatorNode)
     {
-        // Decimal is matched positively (as in GenerateFloorDivideValue) rather than as
-        // "not floored-eligible", so widened CLR integer types keep their existing routing.
-        if (IsDecimalOperand(leftAst) || IsDecimalOperand(rightAst))
-            return GenerateDecimalModulo(left, right);
+        switch (_context.SemanticInfo?.GetOperatorLowering(operatorNode)?.Kind)
+        {
+            case OperatorLoweringKind.DecimalModulo:
+                return GenerateDecimalModulo(left, right);
 
-        if (leftAst != null && rightAst != null
-            && IsFlooredNumericOperand(leftAst) && IsFlooredNumericOperand(rightAst))
-            return GenerateFloorModulo(left, right);
+            case OperatorLoweringKind.FlooredModulo:
+                return GenerateFloorModulo(left, right);
 
-        return null;
+            default:
+                return null;
+        }
     }
 
     /// <summary>
@@ -1241,29 +1151,39 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Single routing seam for <c>//</c> — used by both the binary-operator site and the
-    /// augmented <c>//=</c> site so neither can drift. Decimal operands take the native
-    /// truncating path; every other operand shape keeps the floored
-    /// <see cref="GenerateFloorDivision"/> lowering.
+    /// augmented <c>//=</c> site so neither can drift. The lowering is the
+    /// <see cref="OperatorLowering"/> tag the TypeChecker recorded on <paramref name="operatorNode"/>
+    /// (the <c>BinaryOp</c> or the augmented <c>Assignment</c>, #1658 — the #1623 shape):
+    /// <see cref="OperatorLoweringKind.DecimalFloorDivide"/> is the native truncating
+    /// <see cref="GenerateDecimalFloorDivision"/>; <see cref="OperatorLoweringKind.FloatFloorDivide"/>
+    /// and <see cref="OperatorLoweringKind.IntegerFloorDivide"/> are both the floored
+    /// <see cref="GenerateFloorDivision"/> — ONE <c>Builtins.FloorDiv</c> invocation whose int / long /
+    /// float / double overload C# selects from the operand types, so the two tags emit the same
+    /// syntax and differ only in what the checker classified. There is no operand-type fallback:
+    /// an unrecorded <c>//</c> throws, because a <c>//</c> that passed inference is always numeric
+    /// ⊗ numeric (no <c>__floordiv__</c> mapping, no CLR <c>op_</c> name) and the checker classifies
+    /// every such pair.
     /// </summary>
     /// <param name="left">Generated C# expression for the left operand.</param>
     /// <param name="right">Generated C# expression for the right operand.</param>
-    /// <param name="leftAst">Left operand AST (for type inference); may be null.</param>
-    /// <param name="rightAst">Right operand AST (for type inference); may be null.</param>
-    private ExpressionSyntax GenerateFloorDivideValue(ExpressionSyntax left, ExpressionSyntax right, Expression? leftAst, Expression? rightAst)
+    /// <param name="operatorNode">The node carrying the recorded floor-division lowering.</param>
+    private ExpressionSyntax GenerateFloorDivideValue(ExpressionSyntax left, ExpressionSyntax right, Node operatorNode)
     {
-        // Operand routing mirrors `%` (#1174): the floored lowering below covers the
-        // floored-numeric allowlist (see IsFlooredNumericOperand — int/long/float32/float64),
-        // and `decimal` sits outside it, keeping the native CLR division. Decimal is matched
-        // positively rather than as "not eligible" so that widened CLR integers (byte, uint,
-        // ...) keep their existing Math.Floor emission, and so a future allowlist change can
-        // never re-route decimal into Math.Floor's `(double)` cast (CS0019 → SPY0908).
-        if (IsDecimalOperand(leftAst) || IsDecimalOperand(rightAst))
-            return GenerateDecimalFloorDivision(left, right);
+        switch (_context.SemanticInfo?.GetOperatorLowering(operatorNode)?.Kind)
+        {
+            case OperatorLoweringKind.DecimalFloorDivide:
+                return GenerateDecimalFloorDivision(left, right);
 
-        var hasFloatOperand = (leftAst != null && IsFloatExpression(leftAst))
-            || (rightAst != null && IsFloatExpression(rightAst));
+            case OperatorLoweringKind.FloatFloorDivide:
+            case OperatorLoweringKind.IntegerFloorDivide:
+                return GenerateFloorDivision(left, right);
 
-        return GenerateFloorDivision(left, right, hasFloatOperand);
+            default:
+                throw new InvalidOperationException(
+                    "No floor-division lowering recorded for '//' — the TypeChecker must classify every "
+                    + "floor division that passes inference as IntegerFloorDivide/FloatFloorDivide/"
+                    + "DecimalFloorDivide (#1658)");
+        }
     }
 
     /// <summary>
@@ -1306,39 +1226,29 @@ internal partial class RoslynEmitter
     /// once (#1216, #1226):
     /// - Integer operands: the int/long overloads compute the floored quotient in integer
     ///   arithmetic — exact across the full int64 range, int//int → int32, any long → int64
-    /// - Float operands: the float overloads carry CPython's <c>float_floor_div</c> algorithm
+    /// - Float operands: the float overloads carry CPython's <c>float_floor_div</c> algorithm —
+    ///   <c>Math.Floor(a / b)</c> is not CPython-equivalent, since <c>a / b</c> can round up across
+    ///   an integer boundary, making <c>1.0 // 0.1</c> give 10.0 instead of 9.0 (#1185)
+    /// <para>
+    /// One syntax for both the <see cref="OperatorLoweringKind.IntegerFloorDivide"/> and
+    /// <see cref="OperatorLoweringKind.FloatFloorDivide"/> tags (#1658): overload selection is C#'s
+    /// — int operands pick <c>FloorDiv(int, int)</c>, long operands the long overload, a float
+    /// operand the float/double overload — so a long quotient is never truncated to int by a cast
+    /// and the emitter needs no float/integer dispatch of its own. The former <c>hasFloatOperand</c>
+    /// parameter selected two identical arms; it is gone with the emitter-side type inspection
+    /// that computed it.
+    /// </para>
+    /// <para>
+    /// What this replaced spliced <c>right</c> TWICE — once into <c>right == 0 ? throw ... : ...</c>
+    /// and once into the division — so <c>7 // divisor()</c> called <c>divisor()</c> twice where
+    /// CPython calls it once (values were correct both times, so only a side-effecting operand or a
+    /// count of the emitted C# shows it). It also computed <c>(int)Math.Floor((double)left / right)</c>,
+    /// which loses precision above 2^53 and saturates at the <c>int.MinValue / -1</c> boundary;
+    /// <c>Builtins.FloorDiv</c> computes in integer arithmetic and raises OverflowError there.
+    /// </para>
     /// </summary>
-    private ExpressionSyntax GenerateFloorDivision(ExpressionSyntax left, ExpressionSyntax right, bool hasFloatOperand)
+    private ExpressionSyntax GenerateFloorDivision(ExpressionSyntax left, ExpressionSyntax right)
     {
-        if (hasFloatOperand)
-        {
-            // Math.Floor(a / b) is not CPython-equivalent: a / b can round up across an
-            // integer boundary, making 1.0 // 0.1 give 10.0 instead of 9.0 (#1185). The
-            // Core helper derives the quotient from the raw fmod remainder and carries the
-            // zero guard, so — as with GenerateFloorModulo — no operand is spliced twice.
-            return InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    MakeGlobalQualifiedName("Sharpy", "Builtins"),
-                    IdentifierName("FloorDiv")))
-                .AddArgumentListArguments(
-                    Argument(left),
-                    Argument(right));
-        }
-
-        // The integer arm mirrors the float arm above: ONE invocation, each operand spliced once,
-        // the zero guard inside the helper (#1226, the #1216 shape).
-        //
-        // What this replaces spliced `right` TWICE — once into `right == 0 ? throw ... : ...` and
-        // once into the division — so `7 // divisor()` called `divisor()` twice where CPython calls
-        // it once. Note the values were correct both times, which is why no behavioral fixture
-        // caught it; the defect is only visible with a side-effecting operand or by counting
-        // occurrences in the emitted C#.
-        //
-        // It also computed `(int)Math.Floor((double)left / right)`, which loses precision above 2^53
-        // and saturates at the int.MinValue / -1 boundary (returning int.MaxValue — a silently wrong
-        // value). Builtins.FloorDiv computes in integer arithmetic and raises OverflowError there.
-        // Overload selection is C#'s: int operands pick FloorDiv(int, int), long operands the
-        // long overload, so a long quotient is no longer truncated to int by an unconditional cast.
         return InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                 MakeGlobalQualifiedName("Sharpy", "Builtins"),

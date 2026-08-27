@@ -2228,6 +2228,16 @@ public enum OperatorLoweringKind
     IntegerPowLong,
     NegateLiteralInt,
     NegateLiteralLong,
+    /// <summary><c>//</c> with a <c>decimal</c> operand: <c>Builtins.DecimalFloorDiv</c> (native truncating quotient) (#1658).</summary>
+    DecimalFloorDivide,
+    /// <summary><c>//</c> with a float32/float64 operand (no decimal): the float <c>Builtins.FloorDiv</c> overload (#1658).</summary>
+    FloatFloorDivide,
+    /// <summary><c>//</c> over integer operands only: the int/long <c>Builtins.FloorDiv</c> overload (#1658).</summary>
+    IntegerFloorDivide,
+    /// <summary><c>%</c> with a <c>decimal</c> operand: <c>Builtins.DecimalMod</c> (native truncating remainder) (#1658).</summary>
+    DecimalModulo,
+    /// <summary><c>%</c> over int/long/float32/float64 operands: <c>Builtins.FloorMod</c> (sign of the divisor) (#1658). User <c>__mod__</c> / CLR <c>op_Modulus</c> operands record nothing — native <c>%</c>.</summary>
+    FlooredModulo,
 }
 
 public sealed record OperatorLowering(OperatorLoweringKind Kind);
