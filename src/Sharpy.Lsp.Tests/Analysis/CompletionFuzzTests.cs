@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Xunit;
@@ -35,7 +36,9 @@ public class CompletionFuzzTests
         int totalMemberAccesses = 0;
         int memberAccessesWithTypeInfo = 0;
 
-        var fixtureFiles = Directory.GetFiles(FixturesPath, "*.spy", SearchOption.AllDirectories);
+        var fixtureFiles = Directory.GetFiles(FixturesPath, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !CrashBundleWriter.IsNonSourceSegment(IOPath.GetRelativePath(FixturesPath, f)))
+            .ToArray();
 
         foreach (var file in fixtureFiles)
         {

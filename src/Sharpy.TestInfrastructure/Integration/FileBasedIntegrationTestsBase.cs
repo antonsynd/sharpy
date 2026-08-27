@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Formatting;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 using Xunit;
@@ -42,7 +43,10 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
             var entryPointFile = FindEntryPoint(projectDir);
             Output.WriteLine($"Entry point: {entryPointFile}");
 
-            var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories);
+            var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
+                .Where(f => !Compiler.Diagnostics.CrashBundleWriter.IsNonSourceSegment(
+                    Path.GetRelativePath(projectDir, f)))
+                .ToArray();
             Output.WriteLine("=== Source Files ===");
             foreach (var sourceFile in sourceFiles)
             {

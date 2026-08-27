@@ -103,7 +103,9 @@ public class MultiFileDeterminismTests
     {
         _output.WriteLine($"Fixture: {testName}");
 
-        var files = Directory.GetFiles(fixtureDir, "*.spy", SearchOption.AllDirectories);
+        var files = Directory.GetFiles(fixtureDir, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(fixtureDir, f)))
+            .ToArray();
         var sorted = files.OrderBy(f => f, StringComparer.Ordinal).ToList();
         var reversed = Enumerable.Reverse(sorted).ToList();
 

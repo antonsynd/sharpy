@@ -345,7 +345,9 @@ public class FrontEndParityTests
         ConcurrentBag<Comparison> comparisons, ConcurrentBag<CrashRecord> crashes)
     {
         var projectDir = fixture.SpyFilePath;
-        var spyFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories).ToList();
+        var spyFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(projectDir, f)))
+            .ToList();
         var mainSpy = Path.Combine(projectDir, "main.spy");
         var entryPoint = File.Exists(mainSpy) ? "main.spy" : Path.GetFileName(spyFiles[0]);
         var features = FeatureFlags.None.Enable(fixture.Features);

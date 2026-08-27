@@ -480,6 +480,7 @@ public class MetamorphicCorpusSweepTests : IntegrationTestBase
         FeatureFlags features)
     {
         var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(projectDir, f)))
             .OrderBy(f => f, StringComparer.Ordinal)
             .ToList();
 

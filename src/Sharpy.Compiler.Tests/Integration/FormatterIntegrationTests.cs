@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Formatting;
 using Xunit;
 using Xunit.Abstractions;
@@ -45,6 +46,7 @@ public class FormatterIntegrationTests
         }
 
         foreach (var spyFile in Directory.EnumerateFiles(FixturesPath, "*.spy", SearchOption.AllDirectories)
+                     .Where(f => !CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(FixturesPath, f)))
                      .OrderBy(p => p, StringComparer.Ordinal))
         {
             var formattedFile = Path.ChangeExtension(spyFile, ".formatted");
@@ -123,7 +125,9 @@ public class FormatterIntegrationTests
         Assert.True(Directory.Exists(FixturesPath),
             $"Formatting fixtures directory not found at: {FixturesPath}");
 
-        var spyFiles = Directory.GetFiles(FixturesPath, "*.spy", SearchOption.AllDirectories);
+        var spyFiles = Directory.GetFiles(FixturesPath, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(FixturesPath, f)))
+            .ToArray();
         Assert.NotEmpty(spyFiles);
     }
 }

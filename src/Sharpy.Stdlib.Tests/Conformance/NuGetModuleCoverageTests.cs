@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Sharpy.Compiler.Diagnostics;
 using Xunit;
 using IOPath = System.IO.Path;
 
@@ -49,8 +50,10 @@ public class NuGetModuleCoverageTests
             + $"which stdlib module(s) it backs — add it to {nameof(PackageToModules)} (empty array "
             + "if it backs none) so this guard keeps covering the class.");
 
+        var fixturesDir = FixturesDirectory();
         var fixtureSources = Directory
-            .GetFiles(FixturesDirectory(), "*.spy", SearchOption.AllDirectories)
+            .GetFiles(fixturesDir, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !CrashBundleWriter.IsNonSourceSegment(IOPath.GetRelativePath(fixturesDir, f)))
             .Select(File.ReadAllText)
             .ToList();
 

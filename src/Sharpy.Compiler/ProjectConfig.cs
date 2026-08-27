@@ -489,6 +489,8 @@ public static class ProjectFileParser
         return result.Files
             .Select(f => Path.GetFullPath(Path.Combine(baseDirectory, f.Path)))
             .Where(File.Exists)
+            .Where(f => !Diagnostics.CrashBundleWriter.IsNonSourceSegment(
+                Path.GetRelativePath(baseDirectory, f)))
             .ToList();
     }
 }

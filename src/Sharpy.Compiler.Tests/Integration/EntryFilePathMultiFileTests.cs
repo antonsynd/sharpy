@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -62,7 +63,9 @@ public class EntryFilePathMultiFileTests : FileBasedIntegrationTestsBase
         var entryFilePath = Path.Combine(projectDir, entryPointFile);
         Output.WriteLine($"Entry point (compiled as `sharpyc run` would): {entryFilePath}");
 
-        var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories);
+        var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(projectDir, f)))
+            .ToArray();
         Output.WriteLine("=== Source Files ===");
         foreach (var sourceFile in sourceFiles)
         {

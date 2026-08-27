@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Lsp.Handlers;
 using Xunit;
@@ -40,6 +41,7 @@ public class SemanticTokenCoverageTests
             $"TestFixtures directory not found at {FixturesPath}");
 
         var spyFiles = Directory.GetFiles(FixturesPath, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !CrashBundleWriter.IsNonSourceSegment(IOPath.GetRelativePath(FixturesPath, f)))
             .Where(f => !File.Exists(IOPath.ChangeExtension(f, ".skip")))
             .OrderBy(f => f)
             .ToList();

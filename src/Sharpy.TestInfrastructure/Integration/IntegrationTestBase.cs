@@ -551,6 +551,8 @@ public abstract class IntegrationTestBase
             // Directory.GetFiles order is filesystem-dependent; sort ordinally so the test
             // harness compiles in the same deterministic order as ProjectFileParser.Load (#1032).
             var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
+                .Where(f => !Compiler.Diagnostics.CrashBundleWriter.IsNonSourceSegment(
+                    Path.GetRelativePath(projectDir, f)))
                 .OrderBy(f => f, StringComparer.Ordinal)
                 .ToList();
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Sharpy.Compiler;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Xunit;
@@ -35,7 +36,9 @@ public class HoverFuzzTests
         int totalIdentifiers = 0;
         int identifiersWithFullInfo = 0;
 
-        var fixtureFiles = Directory.GetFiles(FixturesPath, "*.spy", SearchOption.AllDirectories);
+        var fixtureFiles = Directory.GetFiles(FixturesPath, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !CrashBundleWriter.IsNonSourceSegment(IOPath.GetRelativePath(FixturesPath, f)))
+            .ToArray();
 
         foreach (var file in fixtureFiles)
         {

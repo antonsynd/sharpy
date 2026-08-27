@@ -79,6 +79,8 @@ public static class FormatRunner
         }
 
         var results = Directory.EnumerateFiles(directoryPath, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !Diagnostics.CrashBundleWriter.IsNonSourceSegment(
+                Path.GetRelativePath(directoryPath, f)))
             .ToList();
         results.Sort(StringComparer.Ordinal);
         return results;

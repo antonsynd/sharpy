@@ -184,7 +184,9 @@ public class DiagnosticSweepTests
         if (fixture.IsMultiFile)
         {
             var projectDir = fixture.SpyFilePath;
-            var spyFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories).ToList();
+            var spyFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
+                .Where(f => !CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(projectDir, f)))
+                .ToList();
             var mainSpy = Path.Combine(projectDir, "main.spy");
             var entryPoint = File.Exists(mainSpy) ? "main.spy" : Path.GetFileName(spyFiles[0]);
 

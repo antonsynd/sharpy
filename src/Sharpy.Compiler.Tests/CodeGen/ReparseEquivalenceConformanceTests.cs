@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Project;
@@ -643,6 +644,7 @@ public class ReparseEquivalenceConformanceTests
             var projectDir = fixture.SpyFilePath;
             var entryPoint = FindEntryPoint(projectDir);
             var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
+                .Where(f => !CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(projectDir, f)))
                 .OrderBy(f => f, StringComparer.Ordinal)
                 .ToList();
 
