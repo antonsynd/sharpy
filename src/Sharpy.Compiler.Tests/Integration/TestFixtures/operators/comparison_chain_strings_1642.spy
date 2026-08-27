@@ -1,0 +1,26 @@
+# #1642: a comparison chain applies the same per-link lowering its binary form gets — str
+# ordering links lower to string.Compare(..., Ordinal), so `a < b < c` on strings runs (the
+# issue's repro was CS0019 behind SPY0908) in every position: expression, if, comprehension
+# filter, lambda body, function body. Reference: python3.
+def check(p: str, q: str, r: str) -> bool:
+    return p < q < r
+
+
+def main() -> None:
+    a: str = "apple"
+    b: str = "banana"
+    c: str = "cherry"
+    print(a < b < c)
+    print(a < c < b)
+    print(a <= a < b)
+    print(c > b > a)
+    print(c >= b >= b)
+    print(a < b < c < "date")
+    if a < b < c:
+        print("chain-if")
+    xs: list[str] = [x for x in ["p", "q", "0"] if "a" < x < "z"]
+    print(xs)
+    f: (str, str, str) -> bool = lambda p, q, r: p < q < r
+    print(f("a", "b", "c"))
+    print(check("x", "y", "z"))
+    print(check("z", "y", "x"))

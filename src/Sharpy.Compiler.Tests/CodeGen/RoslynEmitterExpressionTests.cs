@@ -1147,6 +1147,14 @@ public class RoslynEmitterExpressionTests
                 ComparisonOperator.LessThan
             }.ToImmutableArray()
         };
+        // The emitter is a pure translator: every chain link lowers by the fact CheckComparisonChain
+        // records (#1642), so the test records the native links the pipeline would.
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetComparisonChainLowering(expr, new ComparisonChainLowering(
+            ImmutableArray.Create(
+                new ComparisonLinkLowering(OperatorLoweringKind.Native, null),
+                new ComparisonLinkLowering(OperatorLoweringKind.Native, null))));
+        _context.SemanticInfo = semanticInfo;
 
         // Act
         var result = InvokeGenerateExpression(expr);

@@ -309,6 +309,13 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, IterationLowering> _iterationLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // #1642: one record per ComparisonChain node carrying the lowering of EVERY link — the same
+    // classification the binary form of `Operands[i] <op> Operands[i+1]` would record (ordering
+    // kind + equality strategy). Keyed on the chain, not its operands: an operand can be a BinaryOp
+    // with its own OperatorLowering tag.
+    private readonly ConcurrentDictionary<Expression, ComparisonChainLowering> _comparisonChainLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // #1572: Map a member-access expression to an interface cast the emitter must wrap the receiver
     // in before accessing the member. Only present when the member is reachable exclusively through
     // an explicitly-implemented interface (e.g. IList.IsFixedSize on List<T>). The TypeChecker
@@ -1319,6 +1326,16 @@ public class SemanticInfo : ISemanticQuery
         return _iterationLowerings.TryGetValue(iterator, out var lowering) ? lowering : null;
     }
 
+    public void SetComparisonChainLowering(Expression chain, ComparisonChainLowering lowering)
+    {
+        _comparisonChainLowerings[chain] = lowering;
+    }
+
+    public ComparisonChainLowering? GetComparisonChainLowering(Expression chain)
+    {
+        return _comparisonChainLowerings.TryGetValue(chain, out var lowering) ? lowering : null;
+    }
+
     /// <summary>
     /// Gets the lowering strategy for an index access.
     /// Returns <see cref="IndexAccessLowering.Native"/> when no override was recorded.
@@ -1543,6 +1560,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._iterationLowerings)
             _iterationLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._comparisonChainLowerings)
+            _comparisonChainLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._genericReferences)
             _genericReferences.TryAdd(kvp.Key, kvp.Value);
@@ -2183,6 +2203,19 @@ public sealed record OperatorLowering(OperatorLoweringKind Kind);
 
 public enum IterationLoweringKind { EnumValues, StringEnumValues, StringChars }
 public sealed record IterationLowering(IterationLoweringKind Kind);
+
+/// <summary>
+/// The lowering of one comparison — a binary <c>==</c>/<c>!=</c>/<c>&lt;</c>/… or one link of a
+/// <see cref="ComparisonChain"/>. <see cref="Kind"/> is the ordering lowering
+/// (<see cref="OperatorLoweringKind.StringOrdinalCompare"/>, <see cref="OperatorLoweringKind.TypeParameterCompareTo"/>
+/// or <see cref="OperatorLoweringKind.Native"/>); <see cref="Equality"/> is the <c>==</c>/<c>!=</c> strategy
+/// (<c>null</c> for ordering operators). Both positions are classified by the same TypeChecker helper (#1642).
+/// </summary>
+public sealed record ComparisonLinkLowering(OperatorLoweringKind Kind, BinaryOpLowering? Equality);
+
+/// <summary>Per-link lowering of a <see cref="ComparisonChain"/>; <c>Links[i]</c> is operator <c>i</c> (#1642).</summary>
+public sealed record ComparisonChainLowering(
+    System.Collections.Immutable.ImmutableArray<ComparisonLinkLowering> Links);
 
 public enum SliceLoweringKind { List, Array, Str, Bytes, NdArray, UserProtocol, Tuple }
 
