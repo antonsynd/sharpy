@@ -1,0 +1,122 @@
+# #1658: every `//` and `%` emission is a recorded tag — IntegerFloorDivide / FloatFloorDivide /
+# DecimalFloorDivide and FlooredModulo / DecimalModulo — for the binary form and `//=` / `%=`
+# alike, classified by ONE TypeChecker helper from operand TYPES. The emitter has no
+# operand-type fallback: an unrecorded `//` throws, an unrecorded `%` is the native operator
+# (the user-__mod__ and widened-CLR-integer cells). Reference: python3 for int/long/float and
+# `from decimal import Decimal` for the decimal cells (Decimal truncates `//` and keeps the
+# dividend's sign for `%`, arithmetic_operators.md). Each numeric cell also prints the divmod
+# identity a == (a // b) * b + (a % b) — it holds for decimal too, since `//` and `%` are
+# consistently both truncating there.
+class Wrap:
+    value: int
+
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def __mod__(self, other: Wrap) -> Wrap:
+        # Deliberately not a remainder — proves operator % (native) is called, not FloorMod.
+        return Wrap(self.value * 100 + other.value)
+
+
+def ident_int(a: int, b: int) -> bool:
+    return a == (a // b) * b + (a % b)
+
+
+def ident_long(a: long, b: long) -> bool:
+    return a == (a // b) * b + (a % b)
+
+
+def ident_float(a: float, b: float) -> bool:
+    return a == (a // b) * b + (a % b)
+
+
+def ident_decimal(a: decimal, b: decimal) -> bool:
+    return a == (a // b) * b + (a % b)
+
+
+def main() -> None:
+    # int — IntegerFloorDivide / FlooredModulo, all four sign pairs (floored, sign of divisor)
+    a: int = 7
+    b: int = 3
+    print(a // b, a % b, ident_int(a, b))
+    print(-a // b, -a % b, ident_int(-a, b))
+    print(a // -b, a % -b, ident_int(a, -b))
+    print(-a // -b, -a % -b, ident_int(-a, -b))
+    # long — exact above 2^53 (the double round-trip would lose it)
+    l: long = 9007199254740993
+    m: long = 7
+    print(l // m, l % m, ident_long(l, m))
+    print(-l // m, -l % m, ident_long(-l, m))
+    # float — FloatFloorDivide / FlooredModulo (CPython float_floor_div / float_mod)
+    f: float = 7.5
+    g: float = 2.0
+    print(f // g, f % g, ident_float(f, g))
+    print(-f // g, -f % g, ident_float(-f, g))
+    print(f // -g, f % -g, ident_float(f, -g))
+    print(1.0 // 0.1, 1.0 % 0.1, ident_float(1.0, 0.1))
+    # decimal — DecimalFloorDivide / DecimalModulo: truncating quotient, dividend-sign remainder
+    d: decimal = -7m
+    e: decimal = 3m
+    print(d // e, d % e, ident_decimal(d, e))
+    print(7m // -3m, 7m % -3m, ident_decimal(7m, -3m))
+    print(7.5m // 2m, 7.5m % 2m, ident_decimal(7.5m, 2m))
+    print(-7.5m // 2m, -7.5m % 2m, ident_decimal(-7.5m, 2m))
+    # mixed int/float — a float operand on EITHER side selects the float family
+    print(a // 2.0, a % 2.0)
+    print(2.0 // a, 2.0 % a)
+    print(-a // 2.0, -a % 2.0)
+    print(-7.5 // b, -7.5 % b)
+    # mixed int/decimal — a decimal operand on EITHER side selects the decimal family
+    print(d // b, d % b)
+    print(b // e, b % e)
+    print(7 // -3m, 7 % -3m)
+    print(-7m // 3, -7m % 3)
+    # widened CLR integer (uint8): `//` is the integer family (C# picks FloorDiv(int, int));
+    # `%` is outside the FloorMod overload set and stays native (no record)
+    u: uint8 = 7
+    print(u // b, u % b)
+    print(b // u, b % u)
+    # user __mod__: native operator %, no record (and `//` on a user type is SPY0222, see
+    # floor_div_user_type_refused_1658)
+    w: Wrap = Wrap(7) % Wrap(3)
+    print(w.value)
+    # augmented forms read the same tags, recorded on the Assignment node
+    x: int = -7
+    x //= 3
+    print(x)
+    y: int = -7
+    y %= 3
+    print(y)
+    p: long = -9007199254740993
+    p //= 7
+    print(p)
+    q: long = -9007199254740993
+    q %= 7
+    print(q)
+    r: float = -7.5
+    r //= 2.0
+    print(r)
+    s: float = -7.5
+    s %= 2.0
+    print(s)
+    t: float = -7.5
+    t //= 2
+    print(t)
+    v: float = -7.5
+    v %= 2
+    print(v)
+    dd: decimal = -7m
+    dd //= 3m
+    print(dd)
+    ee: decimal = -7m
+    ee %= 3m
+    print(ee)
+    ff: decimal = -7m
+    ff //= 3
+    print(ff)
+    gg: decimal = -7m
+    gg %= 3
+    print(gg)
+    ww: Wrap = Wrap(7)
+    ww %= Wrap(3)
+    print(ww.value)

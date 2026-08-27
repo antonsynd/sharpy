@@ -65,3 +65,16 @@ def demo() -> None:
     print("a" < "b" < "c")
     # type-parameter equality (EqualityComparerDefault)
     print(same(1, 1))
+    # floor division / modulo families (#1658): IntegerFloorDivide / FlooredModulo,
+    # FloatFloorDivide / FlooredModulo, DecimalFloorDivide / DecimalModulo — through variables so
+    # nothing folds; a dropped tag is an emitter throw (`//`) or a native-sign value (`%`)
+    fa: int = -7
+    print(fa // i)
+    print(fa % i)
+    ff: float = -7.5
+    print(ff // f)
+    print(ff % f)
+    fd: decimal = -7m
+    fe: decimal = 3m
+    print(fd // fe)
+    print(fd % fe)
