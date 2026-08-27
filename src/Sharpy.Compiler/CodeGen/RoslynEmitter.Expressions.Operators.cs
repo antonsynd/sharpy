@@ -217,21 +217,15 @@ internal partial class RoslynEmitter
                 }
 
             case BinaryOperator.Multiply:
-                if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
-                    == OperatorLoweringKind.StringRepeat)
                 {
-                    var leftMulType = GetExpressionSemanticType(binOp.Left);
-                    var strArg = leftMulType == SemanticType.Str ? left : right;
-                    var countArg = leftMulType == SemanticType.Str ? right : left;
-                    return InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
-                            IdentifierName("Repeat")))
-                        .AddArgumentListArguments(
-                            Argument(strArg),
-                            Argument(countArg));
+                    // String repetition: the tag says which operand is the string (#1623).
+                    var repeatKind = _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind;
+                    if (repeatKind == OperatorLoweringKind.StringRepeatStrLeft)
+                        return GenerateStringRepeat(left, right);
+                    if (repeatKind == OperatorLoweringKind.StringRepeatStrRight)
+                        return GenerateStringRepeat(right, left);
+                    break;
                 }
-                break;
 
         }
 
@@ -301,6 +295,23 @@ internal partial class RoslynEmitter
         }
 
         return BinaryExpression(kind, left, right);
+    }
+
+    /// <summary>
+    /// <c>global::Sharpy.StringHelpers.Repeat(str, count)</c> — the string-repetition lowering shared
+    /// by the binary <c>*</c> and the augmented <c>*=</c> sites. The caller passes the operands in
+    /// the order the recorded <see cref="OperatorLoweringKind.StringRepeatStrLeft"/> /
+    /// <see cref="OperatorLoweringKind.StringRepeatStrRight"/> tag dictates (#1623).
+    /// </summary>
+    private ExpressionSyntax GenerateStringRepeat(ExpressionSyntax str, ExpressionSyntax count)
+    {
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                IdentifierName("Repeat")))
+            .AddArgumentListArguments(
+                Argument(str),
+                Argument(count));
     }
 
     /// <summary>

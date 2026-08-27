@@ -248,4 +248,39 @@ public class RoslynEmitterOperatorLoweringTests
     }
 
     #endregion
+
+    #region String repeat (#1623)
+
+    [Fact]
+    public void Multiply_StringRepeatStrLeft_EmitsRepeatStringFirst()
+    {
+        var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Multiply, Right = Id("b") };
+        var info = new SemanticInfo();
+        info.SetOperatorLowering(binOp, new OperatorLowering(OperatorLoweringKind.StringRepeatStrLeft));
+        _context.SemanticInfo = info;
+
+        Emit(binOp).Should().Be("global::Sharpy.StringHelpers.Repeat(a, b)");
+    }
+
+    [Fact]
+    public void Multiply_StringRepeatStrRight_SameAst_SwapsTheArguments()
+    {
+        var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Multiply, Right = Id("b") };
+        var info = new SemanticInfo();
+        info.SetOperatorLowering(binOp, new OperatorLowering(OperatorLoweringKind.StringRepeatStrRight));
+        _context.SemanticInfo = info;
+
+        Emit(binOp).Should().Be("global::Sharpy.StringHelpers.Repeat(b, a)");
+    }
+
+    [Fact]
+    public void Multiply_WithoutTag_EmitsNativeMultiply()
+    {
+        var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Multiply, Right = Id("b") };
+        _context.SemanticInfo = new SemanticInfo();
+
+        Emit(binOp).Should().Be("a * b");
+    }
+
+    #endregion
 }

@@ -262,4 +262,45 @@ def main() -> None:
     }
 
     #endregion
+
+    #region String repeat (#1623)
+
+    [Theory]
+    [InlineData("r: str = \"ab\" * 3", OperatorLoweringKind.StringRepeatStrLeft)]
+    [InlineData("r: str = 3 * \"ab\"", OperatorLoweringKind.StringRepeatStrRight)]
+    public void StringRepeat_RecordsWhichOperandIsTheString(string statement, OperatorLoweringKind expected)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    {statement}
+");
+        errors.Should().BeEmpty();
+        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Multiply))!.Kind.Should().Be(expected);
+    }
+
+    [Fact]
+    public void AugmentedStringRepeat_RecordsStrLeft_OnTheAssignment()
+    {
+        var (module, info, errors) = Analyze(@"
+def main() -> None:
+    s: str = ""a""
+    s *= 3
+");
+        errors.Should().BeEmpty();
+        var assignment = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.StarAssign);
+        info.GetOperatorLowering(assignment)!.Kind.Should().Be(OperatorLoweringKind.StringRepeatStrLeft);
+    }
+
+    [Fact]
+    public void IntMultiply_RecordsNoStringRepeat()
+    {
+        var (module, info, errors) = Analyze(@"
+def main() -> None:
+    r: int = 3 * 4
+");
+        errors.Should().BeEmpty();
+        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Multiply)).Should().BeNull();
+    }
+
+    #endregion
 }

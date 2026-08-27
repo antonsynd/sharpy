@@ -220,11 +220,17 @@ internal partial class TypeChecker
                 new OperatorLowering(kind));
         }
 
-        if (binOp.Operator == BinaryOperator.Multiply
-            && (leftType == SemanticType.Str || rightType == SemanticType.Str))
+        // `str * int` / `int * str` → StringHelpers.Repeat(str, count): which operand is the
+        // string is decided HERE and carried by the tag, so the emitter never re-inspects types.
+        if (binOp.Operator == BinaryOperator.Multiply && leftType == SemanticType.Str)
         {
             _semanticInfo.SetOperatorLowering(binOp,
-                new OperatorLowering(OperatorLoweringKind.StringRepeat));
+                new OperatorLowering(OperatorLoweringKind.StringRepeatStrLeft));
+        }
+        else if (binOp.Operator == BinaryOperator.Multiply && rightType == SemanticType.Str)
+        {
+            _semanticInfo.SetOperatorLowering(binOp,
+                new OperatorLowering(OperatorLoweringKind.StringRepeatStrRight));
         }
 
         if (binOp.Operator == BinaryOperator.Power

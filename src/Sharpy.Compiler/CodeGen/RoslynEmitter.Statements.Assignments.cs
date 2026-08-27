@@ -809,16 +809,10 @@ internal partial class RoslynEmitter
         if (assignNode != null)
         {
             var augLowering = _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind;
-            if (augLowering == OperatorLoweringKind.StringRepeat)
-            {
-                return InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
-                        IdentifierName("Repeat")))
-                    .AddArgumentListArguments(
-                        Argument(left),
-                        Argument(right));
-            }
+            if (augLowering == OperatorLoweringKind.StringRepeatStrLeft)
+                return GenerateStringRepeat(left, right);
+            if (augLowering == OperatorLoweringKind.StringRepeatStrRight)
+                return GenerateStringRepeat(right, left);
         }
 
         if (assignNode != null
