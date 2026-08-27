@@ -48,7 +48,7 @@ Precedence when the three axioms conflict: **.NET > Type Safety > Python Syntax*
 
 | Conflict | Resolution |
 |----------|------------|
-| `//` and `%` semantics | Both **floored** (Python semantics, zero cost — see `arithmetic_operators.md`): `//` lowers to `Math.Floor`, `%` to `Sharpy.Builtins.FloorMod`; the divmod identity `a == (a // b) * b + (a % b)` holds |
+| `//` and `%` semantics | Both **floored** (Python semantics, zero cost — see `arithmetic_operators.md`): `//` lowers to `Sharpy.Builtins.FloorDiv`, `%` to `Sharpy.Builtins.FloorMod`; the divmod identity `a == (a // b) * b + (a % b)` holds |
 | String indexing | Axiom 1 wins — UTF-16 code units with helper methods |
 | `global`/`nonlocal` | Axiom 1 wins — C# scoping rules apply |
 | Duck typing | Axioms 1+3 win — explicit interfaces |
