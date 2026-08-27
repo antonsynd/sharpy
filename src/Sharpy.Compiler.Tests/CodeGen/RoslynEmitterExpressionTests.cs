@@ -441,6 +441,11 @@ public class RoslynEmitterExpressionTests
             Left = new IntegerLiteral { Value = "2" },
             Right = new IntegerLiteral { Value = "3" }
         };
+        // The emitter is a pure translator: the integer-power lowering is the fact CheckBinaryOp
+        // records (#1623), so the test records it the way the pipeline does.
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetOperatorLowering(expr, new OperatorLowering(OperatorLoweringKind.IntegerPowInt));
+        _context.SemanticInfo = semanticInfo;
 
         // Act
         var result = InvokeGenerateExpression(expr).ToString();
