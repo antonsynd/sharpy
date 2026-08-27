@@ -155,9 +155,9 @@ namespace Sharpy
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
-                catch (global::System.Net.Sockets.SocketException ex)
+                catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw Error.FromSocketException(ex_1);
                 }
             }
 
@@ -229,9 +229,9 @@ namespace Sharpy
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
-                catch (global::System.Net.Sockets.SocketException ex)
+                catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw Error.FromSocketException(ex_1);
                 }
             }
 
@@ -248,9 +248,9 @@ namespace Sharpy
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
-                catch (global::System.Net.Sockets.SocketException ex)
+                catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw Error.FromSocketException(ex_1);
                 }
             }
 
@@ -279,9 +279,9 @@ namespace Sharpy
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
-                catch (global::System.Net.Sockets.SocketException ex)
+                catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw Error.FromSocketException(ex_1);
                 }
             }
 
@@ -302,9 +302,9 @@ namespace Sharpy
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
-                catch (global::System.Net.Sockets.SocketException ex)
+                catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw Error.FromSocketException(ex_1);
                 }
             }
 
@@ -323,9 +323,9 @@ namespace Sharpy
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
-                catch (global::System.Net.Sockets.SocketException ex)
+                catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw Error.FromSocketException(ex_1);
                 }
             }
 
@@ -348,9 +348,9 @@ namespace Sharpy
                 {
                     throw new Timeout("timed out", ex, ((int)ex.SocketErrorCode));
                 }
-                catch (global::System.Net.Sockets.SocketException ex)
+                catch (global::System.Net.Sockets.SocketException ex_1)
                 {
-                    throw Error.FromSocketException(ex);
+                    throw Error.FromSocketException(ex_1);
                 }
             }
 

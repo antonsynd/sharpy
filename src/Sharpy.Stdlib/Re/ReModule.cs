@@ -611,8 +611,8 @@ namespace Sharpy
                 {
                     foreach (var __loopVar_3 in this._Regex.Split(s, maxsplit + 1))
                     {
-                        var part = __loopVar_3;
-                        result.Append(part);
+                        var part_1 = __loopVar_3;
+                        result.Append(part_1);
                     }
                 }
 

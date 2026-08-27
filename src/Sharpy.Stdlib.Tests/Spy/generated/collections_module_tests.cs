@@ -336,9 +336,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                 foreach (var __loopVar_4 in elements)
 #line hidden
                 {
-                    var e = __loopVar_4;
+                    var e_1 = __loopVar_4;
 #line (145, 9) - (147, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-                    if (e == "b")
+                    if (e_1 == "b")
 #line hidden
                     {
 #line (146, 13) - (146, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"

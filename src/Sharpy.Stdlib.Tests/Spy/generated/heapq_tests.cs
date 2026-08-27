@@ -710,9 +710,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                 foreach (var __loopVar_4 in b)
 #line hidden
                 {
-                    var s = __loopVar_4;
+                    var s_1 = __loopVar_4;
 #line (215, 9) - (215, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                    combined.Append(s);
+                    combined.Append(s_1);
 #line hidden
                 }
 
@@ -761,9 +761,9 @@ namespace Sharpy.Stdlib.Tests.Spy
                 foreach (var __loopVar_6 in b)
 #line hidden
                 {
-                    var s = __loopVar_6;
+                    var s_1 = __loopVar_6;
 #line (228, 9) - (228, 27) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
-                    combined.Append(s);
+                    combined.Append(s_1);
 #line hidden
                 }
 

@@ -104,14 +104,14 @@ namespace Sharpy
             sb.Append("\"");
             foreach (var __loopVar_1 in global::Sharpy.StringHelpers.Iterate(field))
             {
-                var c = __loopVar_1;
-                if (c == "\"")
+                var c_1 = __loopVar_1;
+                if (c_1 == "\"")
                 {
                     sb.Append("\"\"");
                 }
                 else
                 {
-                    sb.Append(c);
+                    sb.Append(c_1);
                 }
             }
 
