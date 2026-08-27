@@ -810,6 +810,43 @@ internal partial class TypeChecker
 
                     // Classify every expression statement so the emitter never pattern-matches
                     // AST shape to pick plain/discard/elide (#1622).
+                    //
+                    // Refusals first: a Discard lowers to `_ = expr;`, which C# accepts only for an
+                    // expression with a value of a known type. The shapes that reach the Discard arm
+                    // with no such value are refused HERE (SPY0603) instead of surfacing as a C#
+                    // error behind SPY0908 — CPython evaluates each as a no-op, so every one of
+                    // these was an ICE before, never a program that ran. The elided shapes (`None`,
+                    // method groups) and the type-name statement (SPY0342) are handled elsewhere.
+                    // A refused statement records no lowering; the emitter throws on an absent fact.
+                    if (unwrapped is LambdaExpression)
+                    {
+                        AddError(
+                            "a lambda cannot be an expression statement; call it or bind it to a name",
+                            exprStmt.LineStart, exprStmt.ColumnStart,
+                            code: DiagnosticCodes.SemanticOverflow.ExpressionStatementNotDiscardable,
+                            span: exprStmt.Expression.Span);
+                        break;
+                    }
+                    if (exprType is ModuleType)
+                    {
+                        AddError(
+                            "a module reference cannot be an expression statement",
+                            exprStmt.LineStart, exprStmt.ColumnStart,
+                            code: DiagnosticCodes.SemanticOverflow.ExpressionStatementNotDiscardable,
+                            span: exprStmt.Expression.Span);
+                        break;
+                    }
+                    if (exprType is VoidType
+                        && unwrapped is not (FunctionCall or Parser.Ast.AwaitExpression or NoneLiteral))
+                    {
+                        AddError(
+                            "expression statement of type 'None' must be a call; write the branch as an if statement",
+                            exprStmt.LineStart, exprStmt.ColumnStart,
+                            code: DiagnosticCodes.SemanticOverflow.ExpressionStatementNotDiscardable,
+                            span: exprStmt.Expression.Span);
+                        break;
+                    }
+
                     if (unwrapped is NoneLiteral)
                     {
                         _semanticInfo.SetStatementLowering(exprStmt,

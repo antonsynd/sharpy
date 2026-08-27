@@ -1,0 +1,11 @@
+# #1622: a bare module reference as an expression statement lowers to `_ = HelperModule;`,
+# a type name (CS0119). CPython runs it as a no-op; Sharpy refuses (SPY0603). A local module
+# is used so the cell needs no stdlib assembly (the same shape with `import os` fails the
+# same way: CS0119 "'OsModule' is a type, which is not valid in the given context").
+# Pre-fix (50fa866d8 and 97e60e2b4): SPY0908 — CS0119.
+import helper
+
+
+def main() -> None:
+    helper
+    print("done")
