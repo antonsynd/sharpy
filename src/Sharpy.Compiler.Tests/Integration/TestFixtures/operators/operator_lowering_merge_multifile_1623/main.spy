@@ -1,0 +1,5 @@
+from helper import demo
+
+
+def main() -> None:
+    demo()

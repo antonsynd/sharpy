@@ -1,0 +1,67 @@
+# #1623 merge control: one cell of EVERY operator-lowering family, recorded in a NON-entry file
+# and read by codegen only through SemanticInfo.MergeFrom (the per-file → project merge). Dropping
+# the _operatorLowerings / _iterationLowerings / _comparisonChainLowerings stanza turns this red
+# (wrong value, CS0019/CS0119 behind SPY0908, or the emitter's no-fact throw).
+enum Color:
+    RED = 1
+    GREEN = 2
+
+
+enum Tone:
+    LOW = "low"
+    HIGH = "high"
+
+
+def mx[T: IComparable[T]](a: T, b: T) -> T:
+    if a < b:
+        return b
+    return a
+
+
+def same[T](a: T, b: T) -> bool:
+    return a == b
+
+
+def demo() -> None:
+    # divide cast (TrueDivisionCastLeft)
+    print(7 / 2)
+    # shift count cast (ShiftCountCastToInt)
+    n: long = 3
+    print(1 << n)
+    # Optional none-test / coalesce (OptionalNoneTest, OptionalUnwrapOr)
+    o: int? = Some(5)
+    print(o is None)
+    print(o is not None)
+    print(o ?? 0)
+    # string repeat, both orders (StringRepeatStrLeft / StringRepeatStrRight)
+    print("ab" * 2)
+    print(2 * "cd")
+    s: str = "e"
+    s *= 3
+    print(s)
+    # ordinal compare (StringOrdinalCompare)
+    print("a" < "b")
+    # CompareTo on a constrained type parameter (TypeParameterCompareTo)
+    print(mx("x", "y"))
+    # power int / long / float (IntegerPowInt / IntegerPowLong / FloatPow)
+    i: int = 3
+    print(i ** 2)
+    l: long = 3
+    print(l ** 2)
+    f: float = 2.0
+    print(f ** 3)
+    # negated literal width (NegateLiteralInt / NegateLiteralLong)
+    print(-2147483648)
+    print(-2147483649)
+    # enum + string-enum + str iteration (EnumValues / StringEnumValues / StringChars)
+    for c in Color:
+        print(c.value)
+    for t in Tone:
+        print(t.value)
+    for ch in "hi":
+        print(ch)
+    print([c.value for c in Color])
+    # string comparison chain (ComparisonChainLowering)
+    print("a" < "b" < "c")
+    # type-parameter equality (EqualityComparerDefault)
+    print(same(1, 1))
