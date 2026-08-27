@@ -362,4 +362,117 @@ public class RoslynEmitterOperatorLoweringTests
     }
 
     #endregion
+
+    #region Iteration source (#1623)
+
+    private string EmitFor(Expression iterator, SemanticInfo info)
+    {
+        _context.SemanticInfo = info;
+        var forStmt = new ForStatement
+        {
+            Target = Id("x"),
+            Iterator = iterator,
+            Body = ImmutableArray.Create<Statement>(new PassStatement()),
+        };
+        var method = typeof(RoslynEmitter).GetMethod("GenerateBodyStatement", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        try
+        {
+            return ((StatementSyntax)method.Invoke(_emitter, new object[] { forStmt })!).NormalizeWhitespace().ToFullString();
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            throw tie.InnerException;
+        }
+    }
+
+    private string EmitComprehensionIterator(Expression iterator, SemanticInfo info)
+    {
+        _context.SemanticInfo = info;
+        var method = typeof(RoslynEmitter).GetMethod("GenerateComprehensionIterator", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        try
+        {
+            return ((ExpressionSyntax)method.Invoke(_emitter, new object[] { iterator })!).NormalizeWhitespace().ToFullString();
+        }
+        catch (TargetInvocationException tie) when (tie.InnerException != null)
+        {
+            throw tie.InnerException;
+        }
+    }
+
+    private static SemanticInfo EnumIteratorInfo(Expression iterator, IterationLoweringKind kind)
+    {
+        var info = new SemanticInfo();
+        info.SetExpressionType(iterator, new UserDefinedType { Name = "Color" });
+        info.SetIterationLowering(iterator, new IterationLowering(kind));
+        return info;
+    }
+
+    [Fact]
+    public void For_EnumValuesTag_EmitsEnumGetValues()
+    {
+        var iterator = Id("Color");
+        EmitFor(iterator, EnumIteratorInfo(iterator, IterationLoweringKind.EnumValues))
+            .Should().Contain("Enum.GetValues<Color>()");
+    }
+
+    [Fact]
+    public void For_StringEnumValuesTag_SameAst_EmitsValuesMember()
+    {
+        var iterator = Id("Color");
+        var code = EmitFor(iterator, EnumIteratorInfo(iterator, IterationLoweringKind.StringEnumValues));
+        code.Should().Contain("Color.Values");
+        code.Should().NotContain("GetValues");
+    }
+
+    [Fact]
+    public void For_StringCharsTag_EmitsIterateHelper()
+    {
+        // A str iterator is an ordinary local (spelled as such), not a type name.
+        var iterator = Id("s");
+        var info = new SemanticInfo();
+        info.SetIterationLowering(iterator, new IterationLowering(IterationLoweringKind.StringChars));
+        EmitFor(iterator, info).Should().Contain("global::Sharpy.StringHelpers.Iterate(s)");
+    }
+
+    [Fact]
+    public void For_WithoutTag_IteratesTheExpressionAsIs()
+    {
+        var iterator = Id("items");
+        var code = EmitFor(iterator, new SemanticInfo());
+        code.Should().Contain("in items");
+        code.Should().NotContain("GetValues");
+        code.Should().NotContain("Iterate");
+    }
+
+    [Theory]
+    [InlineData(IterationLoweringKind.EnumValues, "Enum.GetValues<Color>()")]
+    [InlineData(IterationLoweringKind.StringEnumValues, "Color.Values")]
+    public void ComprehensionIterator_SameAst_FollowsTheEnumTag(IterationLoweringKind kind, string expected)
+    {
+        var iterator = Id("Color");
+        EmitComprehensionIterator(iterator, EnumIteratorInfo(iterator, kind)).Should().Be(expected);
+    }
+
+    [Fact]
+    public void ComprehensionIterator_StringCharsTag_EmitsIterateHelper()
+    {
+        var iterator = Id("s");
+        var info = new SemanticInfo();
+        info.SetIterationLowering(iterator, new IterationLowering(IterationLoweringKind.StringChars));
+        EmitComprehensionIterator(iterator, info).Should().Be("global::Sharpy.StringHelpers.Iterate(s)");
+    }
+
+    [Fact]
+    public void EnumIteration_WithoutRecordedExpressionType_Throws()
+    {
+        var iterator = Id("Color");
+        var info = new SemanticInfo();
+        info.SetIterationLowering(iterator, new IterationLowering(IterationLoweringKind.EnumValues));
+
+        var act = () => EmitComprehensionIterator(iterator, info);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*No expression type recorded*");
+    }
+
+    #endregion
 }

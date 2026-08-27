@@ -1128,25 +1128,39 @@ internal partial class RoslynEmitter
     /// which that call does not even bind (CS0453 — not a value type), so it reads the generated
     /// <c>Values</c> list instead (#1284).
     /// </summary>
-    private ExpressionSyntax GenerateEnumValuesIterator(Semantic.UserDefinedType enumUdt)
+    /// <summary>
+    /// The iterable a <c>for x in SomeEnum</c> loops over, chosen by the recorded
+    /// <see cref="IterationLoweringKind"/> (#1623): a string-backed enum is a class whose
+    /// <see cref="StringEnumValuesMember"/> array lists its singletons, an int-backed enum is a C#
+    /// enum read through <c>Enum.GetValues&lt;T&gt;()</c>. <paramref name="enumType"/> is the
+    /// iterator expression's recorded type, used only to spell the type name.
+    /// </summary>
+    private ExpressionSyntax GenerateEnumValuesIterator(SemanticType enumType, IterationLoweringKind kind)
     {
-        var enumTypeSyntax = _typeMapper.MapSemanticType(enumUdt);
+        var enumTypeSyntax = _typeMapper.MapSemanticType(enumType);
 
-        if (enumUdt.Symbol is { } enumSymbol && IsStringEnumSymbol(enumSymbol))
+        switch (kind)
         {
-            return MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                enumTypeSyntax,
-                IdentifierName(StringEnumValuesMember));
-        }
+            case IterationLoweringKind.StringEnumValues:
+                return MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    enumTypeSyntax,
+                    IdentifierName(StringEnumValuesMember));
 
-        return InvocationExpression(
-            MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName("Enum"),
-                GenericName(Identifier("GetValues"))
-                    .WithTypeArgumentList(TypeArgumentList(
-                        SingletonSeparatedList(enumTypeSyntax)))));
+            case IterationLoweringKind.EnumValues:
+                return InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName("Enum"),
+                        GenericName(Identifier("GetValues"))
+                            .WithTypeArgumentList(TypeArgumentList(
+                                SingletonSeparatedList(enumTypeSyntax)))));
+
+            default:
+                throw new InvalidOperationException(
+                    $"IterationLoweringKind.{kind} is not an enum iteration — the for/comprehension "
+                    + "arms must route only EnumValues/StringEnumValues here (#1623)");
+        }
     }
 
     /// <summary>

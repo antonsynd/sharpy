@@ -3,6 +3,10 @@ enum Color:
     GREEN = 2
     BLUE = 3
 
+enum Tone:
+    LOW = "low"
+    HIGH = "high"
+
 def main():
     # StringChars — for-statement
     s: str = "abc"
@@ -16,3 +20,11 @@ def main():
     # EnumValues — comprehension
     vals = [c.value for c in Color]
     print(vals)
+
+    # StringEnumValues — for-statement (string-backed enum iterates its Values member)
+    for tone in Tone:
+        print(tone.value)
+
+    # StringEnumValues — comprehension
+    tones = [t.value for t in Tone]
+    print(tones)
