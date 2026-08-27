@@ -142,19 +142,19 @@ public class SemanticBinding
 
     /// <summary>
     /// Freeze inheritance data (BaseType, Interfaces) after inheritance resolution completes.
-    /// Any subsequent SetBaseType/AddInterface calls will emit a logged warning.
+    /// Any subsequent SetBaseType/AddInterface call throws <see cref="PhaseViolationException"/>.
     /// </summary>
     internal void FreezeInheritance() => _inheritanceFrozen = true;
 
     /// <summary>
     /// Freeze variable type data after type checking completes.
-    /// Any subsequent SetVariableType calls will emit a logged warning.
+    /// Any subsequent SetVariableType call throws <see cref="PhaseViolationException"/>.
     /// </summary>
     internal void FreezeVariableTypes() => _variableTypesFrozen = true;
 
     /// <summary>
     /// Freeze CodeGenInfo data after type checking completes.
-    /// Any subsequent SetCodeGenInfo calls will emit a logged warning.
+    /// Any subsequent SetCodeGenInfo call throws <see cref="PhaseViolationException"/>.
     /// </summary>
     internal void FreezeCodeGenInfo() => _codeGenInfoFrozen = true;
 

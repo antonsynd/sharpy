@@ -48,7 +48,7 @@ internal partial class RoslynEmitter
 
         // lambda x, y: x + y → (x, y) => x + y
         var parameters = lambda.Parameters
-            .Select(p => Parameter(EscapedIdentifier(NameMangler.ToCamelCase(p.Name))))
+            .Select(p => Parameter(EscapedIdentifier(ParameterCSharpName(p))))
             .ToArray();
 
         if (_context.SemanticInfo?.GetLambdaBodyLowering(lambda.Body) != null)
@@ -96,7 +96,7 @@ internal partial class RoslynEmitter
         for (int i = 0; i < lambda.Parameters.Length; i++)
         {
             var param = lambda.Parameters[i];
-            var paramName = NameMangler.ToCamelCase(param.Name);
+            var paramName = ParameterCSharpName(param);
             var paramType = ResolveParameterTypeSyntax(lambda, lambdaType, i);
 
             parameters.Add(Parameter(EscapedIdentifier(paramName)).WithType(paramType));
@@ -169,7 +169,7 @@ internal partial class RoslynEmitter
         for (int i = 0; i < lambda.Parameters.Length; i++)
         {
             var param = lambda.Parameters[i];
-            var paramName = NameMangler.ToCamelCase(param.Name);
+            var paramName = ParameterCSharpName(param);
             var paramType = ResolveParameterTypeSyntax(lambda, lambdaType, i);
 
             var paramSyntax = Parameter(EscapedIdentifier(paramName)).WithType(paramType);
@@ -1161,15 +1161,41 @@ internal partial class RoslynEmitter
                         typeSyntax = _typeMapper.MapType(modArg.InlineType);
                     }
 
-                    // Register the variable for subsequent references
-                    var mangledName = GetMangledVariableName(modArg.InlineName,
-                        isNewDeclaration: true, modArg.IsNameBacktickEscaped);
+                    // The binding is a recorded fact (#1560 R3): a rebind of an already-bound name
+                    // passes the existing C# local (`out v`), a fresh name declares it
+                    // (`out int v`). The name-based arm is for an argument the checker never saw
+                    // (AST-only unit tests).
+                    var outInfo = _context.SemanticInfo;
+                    var outSymbol = outInfo?.GetInlineOutSymbol(modArg);
+                    string mangledName;
+                    var rebinds = false;
+                    if (outSymbol != null)
+                    {
+                        var outBinding = outInfo!.GetTargetBinding(modArg)
+                            ?? throw new InvalidOperationException(
+                                $"No TargetBinding recorded for inline out '{modArg.InlineName}' at {modArg.LineStart}:{modArg.ColumnStart}");
+                        mangledName = GetCSharpNameForSymbol(outSymbol);
+                        rebinds = outBinding.Kind == TargetBindingKind.Rebinds;
+                    }
+                    else
+                    {
+                        mangledName = GetMangledVariableName(modArg.InlineName,
+                            isNewDeclaration: true, modArg.IsNameBacktickEscaped);
+                    }
 
-                    yield return Argument(
-                        DeclarationExpression(
-                            typeSyntax,
-                            SingleVariableDesignation(EscapedIdentifier(mangledName))))
-                        .WithRefKindKeyword(Token(SyntaxKind.OutKeyword));
+                    if (rebinds)
+                    {
+                        yield return Argument(EscapedIdentifierName(mangledName))
+                            .WithRefKindKeyword(Token(SyntaxKind.OutKeyword));
+                    }
+                    else
+                    {
+                        yield return Argument(
+                            DeclarationExpression(
+                                typeSyntax,
+                                SingleVariableDesignation(EscapedIdentifier(mangledName))))
+                            .WithRefKindKeyword(Token(SyntaxKind.OutKeyword));
+                    }
                 }
                 else
                 {

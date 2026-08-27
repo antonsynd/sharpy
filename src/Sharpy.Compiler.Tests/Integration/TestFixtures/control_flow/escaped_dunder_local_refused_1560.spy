@@ -1,0 +1,3 @@
+def main() -> None:
+    `__lambda_0` = 5
+    print(`__lambda_0`)

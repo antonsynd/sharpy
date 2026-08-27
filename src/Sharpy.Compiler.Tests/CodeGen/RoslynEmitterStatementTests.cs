@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -31,6 +32,70 @@ public class RoslynEmitterStatementTests
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         var result = method!.Invoke(_emitter, new object[] { stmt }) as StatementSyntax;
         return result?.NormalizeWhitespace().ToFullString() ?? "";
+    }
+
+    /// <summary>
+    /// Emits <paramref name="stmt"/> from inside <c>def main()</c> after full semantic analysis,
+    /// with a no-op <c>def name(): pass</c> for each callee the statement names and
+    /// <paramref name="leading"/> statements before it. The honest route for a hand-built
+    /// statement that calls functions or binds locals: the checker records the
+    /// StatementLowering, TargetBinding and CodeGenInfo the emitter reads, so <c>cleanup()</c>
+    /// resolves to the module function <c>Cleanup()</c> exactly as a compiled file does — no
+    /// fact is faked onto the AST (#1560 R9).
+    /// </summary>
+    private static string GenerateStatementCodeWithSemantics(Statement stmt, string[] calleeNames, params Statement[] leading)
+    {
+        var body = new List<Statement>();
+        foreach (var callee in calleeNames)
+        {
+            body.Add(new FunctionDef
+            {
+                Name = callee,
+                Parameters = ImmutableArray<Parameter>.Empty,
+                ReturnType = null,
+                Body = ImmutableArray.Create<Statement>(new PassStatement()),
+                Decorators = ImmutableArray<Decorator>.Empty
+            });
+        }
+
+        body.Add(new FunctionDef
+        {
+            Name = "main",
+            Parameters = ImmutableArray<Parameter>.Empty,
+            ReturnType = null,
+            Body = leading.Append(stmt).ToImmutableArray(),
+            Decorators = ImmutableArray<Decorator>.Empty
+        });
+        var module = new Module { Body = body.ToImmutableArray() };
+
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var semanticInfo = new SemanticInfo();
+        var semanticBinding = new SemanticBinding();
+        var logger = Sharpy.Compiler.Logging.NullLogger.Instance;
+
+        var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
+        nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance();
+        semanticBinding.MaterializeInheritance();
+
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
+        {
+            SemanticBinding = semanticBinding
+        };
+        typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
+        semanticBinding.MaterializeCodeGenInfo();
+        semanticBinding.MaterializeVariableTypes();
+
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            IsEntryPoint = true,
+            SemanticBinding = semanticBinding,
+            SemanticInfo = semanticInfo
+        };
+        var emitter = new RoslynEmitter(context);
+        return emitter.GenerateCompilationUnit(module).NormalizeWhitespace().ToFullString();
     }
 
     #region Simple Statements
@@ -592,7 +657,18 @@ public class RoslynEmitterStatementTests
             }.ToImmutableArray()
         };
 
-        var result = GenerateStatementCode(stmt);
+        // `items` is bound first so the loop, its target and the print are checked for real.
+        var result = GenerateStatementCodeWithSemantics(stmt, System.Array.Empty<string>(),
+            new Assignment
+            {
+                Target = new Identifier { Name = "items" },
+                Operator = AssignmentOperator.Assign,
+                Value = new FunctionCall
+                {
+                    Function = new Identifier { Name = "range" },
+                    Arguments = ImmutableArray.Create<Sharpy.Compiler.Parser.Ast.Expression>(new IntegerLiteral { Value = "3" })
+                }
+            });
 
         Assert.Contains("foreach", result);
         Assert.Contains("var", result);
@@ -700,7 +776,7 @@ public class RoslynEmitterStatementTests
             }.ToImmutableArray()
         };
 
-        var result = GenerateStatementCode(stmt);
+        var result = GenerateStatementCodeWithSemantics(stmt, System.Array.Empty<string>());
 
         Assert.Contains("try", result);
         Assert.Contains("catch (Exception", result);
@@ -734,12 +810,12 @@ public class RoslynEmitterStatementTests
             }.ToImmutableArray()
         };
 
-        var result = GenerateStatementCode(stmt);
+        var result = GenerateStatementCodeWithSemantics(stmt, new[] { "cleanup" });
 
         Assert.Contains("try", result);
         Assert.Contains("var x = 1;", result);
         Assert.Contains("finally", result);
-        Assert.Contains("cleanup();", result);
+        Assert.Contains("Cleanup();", result);
     }
 
     [Fact]
@@ -780,13 +856,13 @@ public class RoslynEmitterStatementTests
             }.ToImmutableArray()
         };
 
-        var result = GenerateStatementCode(stmt);
+        var result = GenerateStatementCodeWithSemantics(stmt, new[] { "cleanup" });
 
         Assert.Contains("try", result);
         Assert.Contains("var x = 1;", result);
         Assert.Contains("catch (Exception)", result);
         Assert.Contains("finally", result);
-        Assert.Contains("cleanup();", result);
+        Assert.Contains("Cleanup();", result);
     }
 
     [Fact]
@@ -869,7 +945,7 @@ public class RoslynEmitterStatementTests
             }.ToImmutableArray()
         };
 
-        var result = GenerateStatementCode(stmt);
+        var result = GenerateStatementCodeWithSemantics(stmt, new[] { "success" });
 
         // Check for flag pattern: bool __trySucceeded_N = false;
         Assert.Contains("bool __trySucceeded_", result);
@@ -881,7 +957,7 @@ public class RoslynEmitterStatementTests
         Assert.Contains("catch (Exception)", result);
         // Check for else execution: if (__trySucceeded_N) { Success(); }
         Assert.Contains("if (__trySucceeded_", result);
-        Assert.Contains("success();", result);
+        Assert.Contains("Success();", result);
     }
 
     [Fact]
@@ -933,7 +1009,7 @@ public class RoslynEmitterStatementTests
             }.ToImmutableArray()
         };
 
-        var result = GenerateStatementCode(stmt);
+        var result = GenerateStatementCodeWithSemantics(stmt, new[] { "success", "cleanup" });
 
         // Check for flag pattern
         Assert.Contains("bool __trySucceeded_", result);
@@ -941,10 +1017,10 @@ public class RoslynEmitterStatementTests
         Assert.Contains("try", result);
         Assert.Contains("catch (Exception)", result);
         Assert.Contains("finally", result);
-        Assert.Contains("cleanup();", result);
+        Assert.Contains("Cleanup();", result);
         // Check for else execution after try-catch-finally
         Assert.Contains("if (__trySucceeded_", result);
-        Assert.Contains("success();", result);
+        Assert.Contains("Success();", result);
     }
 
     #endregion

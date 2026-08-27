@@ -7,3 +7,19 @@ def sibling_and_writethrough() -> None:
         x = 2
         print(x)
     print(x)
+
+def walrus_rebind() -> int:
+    x = 10
+    if (x := 30) > 0:
+        print(x)
+    return x
+
+def try_parse(s: str, result: out int) -> bool:
+    result = len(s)
+    return True
+
+def out_pair() -> None:
+    if try_parse("ab", out v: int):
+        print(v)
+    if try_parse("abc", out v: int):
+        print(v)

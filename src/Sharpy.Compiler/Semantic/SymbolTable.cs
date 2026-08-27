@@ -17,8 +17,15 @@ public class SymbolTable : IGlobalSymbolTable
     private readonly BuiltinRegistry _builtins;
     private readonly Dictionary<string, Scope> _moduleScopes = new();
     private int _nextScopeId;
+    private int _nextBindingSequence;
+    private readonly Dictionary<int, Scope> _scopesById = new();
+
+    // One ledger per function-like scope, created structurally in EnterScope so no owner kind can
+    // be forgotten (#1560 C1: methods, constructors, accessors, lambdas, nested defs, pre-passes all
+    // arrive through the same call). The owner stack restores _currentFunctionScopeId on exit, so a
+    // binding after a lambda or nested def lands in the ENCLOSING function's ledger again.
     private readonly Dictionary<int, LocalBindingLedger> _functionLedgers = new();
-    private readonly Dictionary<FunctionSymbol, int> _functionScopeMap = new();
+    private readonly Stack<int> _functionOwnerStack = new();
     private int _currentFunctionScopeId = -1;
 
     /// <summary>
@@ -93,11 +100,13 @@ public class SymbolTable : IGlobalSymbolTable
 
         var scopeId = _nextScopeId++;
         var newScope = new Scope(name, CurrentScope, scopeId);
+        _scopesById[scopeId] = newScope;
         _scopeStack.Push(newScope);
 
         if (IsFunctionLikeScope(name))
         {
-            _functionLedgers[scopeId] = new LocalBindingLedger();
+            _functionLedgers[scopeId] = new LocalBindingLedger(scopeId, name, _currentFunctionScopeId);
+            _functionOwnerStack.Push(scopeId);
             _currentFunctionScopeId = scopeId;
         }
     }
@@ -120,6 +129,7 @@ public class SymbolTable : IGlobalSymbolTable
         {
             moduleScope = new Scope($"module:{moduleName}", _globalScope, _nextScopeId++);
             _moduleScopes[moduleName] = moduleScope;
+            _scopesById[moduleScope.Id] = moduleScope;
         }
 
         // Exited-variable tracking is per-function within a module — clear when
@@ -173,6 +183,15 @@ public class SymbolTable : IGlobalSymbolTable
         }
 
         _scopeStack.Pop();
+
+        // Leaving a function-like scope hands the ledger back to the enclosing owner. Without
+        // this, every binding after a lambda or nested def went into the NESTED ledger, which
+        // no allocation ever walked, and the emitter spelled those locals from nothing (#1560 C1).
+        if (IsFunctionLikeScope(scope.Name))
+        {
+            _functionOwnerStack.Pop();
+            _currentFunctionScopeId = _functionOwnerStack.Count > 0 ? _functionOwnerStack.Peek() : -1;
+        }
     }
 
     /// <summary>
@@ -220,11 +239,14 @@ public class SymbolTable : IGlobalSymbolTable
     }
 
     /// <summary>
-    /// Returns true if the scope name represents a function-like boundary
-    /// (function body, lambda, or type-checker pre-pass). Crossing such a
-    /// boundary invalidates exited-variable tracking from the prior function.
+    /// Returns true if the scope name represents a function-like boundary — a function or method
+    /// body, a lambda, a property/event accessor, a property observer, or the type-checker's
+    /// signature pre-pass. Crossing such a boundary invalidates exited-variable tracking from the
+    /// prior function, and every such scope owns a <see cref="LocalBindingLedger"/>. This is the
+    /// ONE predicate that decides ledger ownership; a new scope-name family that emits its own C#
+    /// method body is added here, nowhere else.
     /// </summary>
-    private static bool IsFunctionLikeScope(string scopeName)
+    internal static bool IsFunctionLikeScope(string scopeName)
     {
         return scopeName == "lambda"
             || scopeName.StartsWith("function:", StringComparison.Ordinal)
@@ -234,6 +256,23 @@ public class SymbolTable : IGlobalSymbolTable
             || scopeName.StartsWith("observer:", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// True for the function-like scope names whose C# body has the implicit <c>value</c>
+    /// parameter in scope: property <c>set</c>/<c>init</c> accessors, event <c>add</c>/<c>remove</c>
+    /// accessors, and property observers (emitted inside the setter). Getters are excluded: a
+    /// C# getter declares no <c>value</c>.
+    /// </summary>
+    internal static bool ScopeReservesImplicitValue(string scopeName)
+    {
+        if (scopeName.StartsWith("event:", StringComparison.Ordinal)
+            || scopeName.StartsWith("observer:", StringComparison.Ordinal))
+            return true;
+
+        return scopeName.StartsWith("property:", StringComparison.Ordinal)
+            && (scopeName.EndsWith(":Set", StringComparison.Ordinal)
+                || scopeName.EndsWith(":Init", StringComparison.Ordinal));
+    }
+
     public void Define(Symbol symbol)
     {
         CurrentScope.Define(symbol);
@@ -241,7 +280,7 @@ public class SymbolTable : IGlobalSymbolTable
         if (_currentFunctionScopeId >= 0
             && _functionLedgers.TryGetValue(_currentFunctionScopeId, out var ledger))
         {
-            ledger.Append(symbol, CurrentScope.Id);
+            ledger.Append(symbol, CurrentScope.Id, _nextBindingSequence++);
         }
     }
 
@@ -411,19 +450,20 @@ public class SymbolTable : IGlobalSymbolTable
         return CurrentScope.Remove(name);
     }
 
+    /// <summary>The ledger owned by the function-like scope with this id, or null.</summary>
     internal LocalBindingLedger? GetLedger(int functionScopeId)
         => _functionLedgers.GetValueOrDefault(functionScopeId);
 
+    /// <summary>
+    /// Every ledger of this table, keyed by owner scope id. The <see cref="LocalNameAllocator"/>
+    /// walks all of them at <c>CodeGenInfoComputer.ComputeForModule</c>; there is no per-owner
+    /// registration to forget.
+    /// </summary>
     internal IReadOnlyDictionary<int, LocalBindingLedger> AllLedgers => _functionLedgers;
 
-    internal void RegisterFunctionScope(FunctionSymbol symbol)
-    {
-        if (_currentFunctionScopeId >= 0)
-            _functionScopeMap[symbol] = _currentFunctionScopeId;
-    }
-
-    internal int? GetFunctionScopeId(FunctionSymbol symbol)
-        => _functionScopeMap.TryGetValue(symbol, out var id) ? id : null;
+    /// <summary>The scope with this id, whether or not it is still on the stack.</summary>
+    internal Scope? GetScope(int scopeId)
+        => _scopesById.GetValueOrDefault(scopeId);
 
     /// <summary>
     /// Merges per-file symbol tables into a single unified table.

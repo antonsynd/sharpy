@@ -8,9 +8,10 @@ namespace Sharpy.Compiler.CodeGen;
 /// Consolidated service for resolving Sharpy names to C# identifiers during code generation.
 ///
 /// Resolution Order (explicit and documented):
-/// 1. CodeGenInfo.CSharpName — Precomputed during semantic analysis for module-level symbols
-/// 2. Local variable versioning — For redeclared locals: x, x_1, x_2
-/// 3. NameMangler fallback — snake_case → PascalCase/camelCase based on symbol kind
+/// 1. CodeGenInfo.CSharpName (+ Version) — precomputed during semantic analysis for every symbol,
+///    locals included: the LocalNameAllocator records x, x_1, x_2 for redeclared locals (#1560)
+/// 2. NameMangler fallback — snake_case → PascalCase/camelCase based on symbol kind, for symbols
+///    that carry no CodeGenInfo (never a local: the emitter throws for those)
 ///
 /// This service centralizes name resolution logic that was previously scattered across
 /// multiple methods in RoslynEmitter (GetMangledVariableName, TryGetCSharpNameFromCodeGenInfo,

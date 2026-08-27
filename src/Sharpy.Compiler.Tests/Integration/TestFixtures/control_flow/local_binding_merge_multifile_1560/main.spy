@@ -1,4 +1,6 @@
-from helper import sibling_and_writethrough
+from helper import sibling_and_writethrough, walrus_rebind, out_pair
 
 def main() -> None:
     sibling_and_writethrough()
+    print(walrus_rebind())
+    out_pair()

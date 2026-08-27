@@ -564,13 +564,19 @@ internal partial class RoslynEmitter : ICodeEmitter
 
     private string GetMangledVariableName(VariableDeclaration varDecl, bool isNewDeclaration)
         => ResolveViaNodeKeyedSymbol(_context.SemanticInfo?.GetDeclarationSymbol(varDecl), isNewDeclaration)
-           ?? GetMangledVariableName(varDecl.Name, isNewDeclaration, varDecl.IsNameBacktickEscaped);
+           ?? (varDecl.IsConst
+               // No symbol (AST-only unit tests): the syntactic const casing, as the allocator
+               // would have recorded it (NameCasing.ResolveConstant, version 0).
+               ? NameCasing.ResolveConstant(varDecl.Name, varDecl.IsNameBacktickEscaped)
+               : GetMangledVariableName(varDecl.Name, isNewDeclaration, varDecl.IsNameBacktickEscaped));
 
     private string? ResolveViaNodeKeyedSymbol(Symbol? symbol, bool isNewDeclaration)
     {
-        if (symbol == null) return null;
+        if (symbol == null)
+            return null;
         var info = GetCodeGenInfo(symbol);
-        if (info == null) return null;
+        if (info == null)
+            return null;
         var resolved = _nameResolutionService.TryResolveFromCodeGenInfo(
             symbol, info, isNewDeclaration, _forceModuleLevelFields)
             ?? info.GetVersionedCSharpName();
@@ -618,6 +624,13 @@ internal partial class RoslynEmitter : ICodeEmitter
         if (codeGenName != null)
             return codeGenName;
 
+        // A variable with no CodeGenInfo is a missing fact, never a spelling to improvise: every
+        // local is named by the LocalNameAllocator and every module-level variable by the
+        // CodeGenInfoComputer. Silently returning the base name is how a lambda-scoped ledger's
+        // locals came out CS0136 behind SPY0908 (#1560 C2).
+        if (symbol is VariableSymbol)
+            throw MissingLocalCodeGenInfo(name);
+
         // Nested functions (local defs) that have no CodeGenInfo AND no VariableSymbol
         // resolve via NameCasing. Only fires when the symbol table has a FunctionSymbol
         // and nothing else — a lambda assigned to a variable has a VariableSymbol whose
@@ -626,9 +639,17 @@ internal partial class RoslynEmitter : ICodeEmitter
             && GetCodeGenInfo(symbol) == null)
             return NameCasing.ResolveMethod(name, isBacktickEscaped);
 
-        // Fallback for names with no symbol and no CodeGenInfo (e.g., unresolved references)
+        // Fallback for names with NO symbol at all (AST-only unit tests, unresolved references).
         return baseName;
     }
+
+    /// <summary>
+    /// The one exception for a variable the allocator did not name. Thrown, not logged: an
+    /// improvised spelling compiles into the wrong C# local or fails with CS0136/CS0103 behind
+    /// SPY0908, and either is worse than a loud compiler bug.
+    /// </summary>
+    private static InvalidOperationException MissingLocalCodeGenInfo(string name)
+        => new($"No CodeGenInfo for local '{name}' — the LocalNameAllocator must name every ledger entry");
 
     // Note: RegisterLocalSlot, SetSlotVersion, ReleaseLocalSlot, RestoreSlotTable,
     // CarryForwardOuterSlot, SlotState, CaptureSlot, RestoreSlot, SlotAnswersSpelling,
@@ -651,8 +672,17 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// <see cref="NameCasing.ResolveVariable"/>'s plain arm is the <c>ToCamelCase</c> that
     /// <c>NameMangler.Transform(..., NameContext.Parameter)</c> already applied.
     /// </summary>
-    private static string ParameterCSharpName(Parameter param)
-        => NameCasing.ResolveVariable(param.Name, param.IsNameBacktickEscaped);
+    private string ParameterCSharpName(Parameter param)
+    {
+        // A parameter is a ledger entry like every other local (#1560, #1647): a nested def's or a
+        // lambda's parameter spelled like an enclosing local is VERSIONED by the allocator, and the
+        // declaration must say what the references say. The escape-aware base spelling is only
+        // for parameters the checker never bound (AST-only unit tests).
+        var symbol = _context.SemanticInfo?.GetParameterSymbol(param);
+        return symbol != null
+            ? GetCSharpNameForSymbol(symbol)
+            : NameCasing.ResolveVariable(param.Name, param.IsNameBacktickEscaped);
+    }
 
     /// <summary>
     /// The C# name for a parameter known only through its SEMANTIC symbol — constructor and
@@ -717,7 +747,7 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// </summary>
     /// <remarks>
     /// Since #1560, every local variable has CodeGenInfo assigned by LocalNameAllocator.
-    /// A VariableSymbol without CodeGenInfo is an allocator bug.
+    /// A VariableSymbol without CodeGenInfo is an allocator bug and throws.
     /// </remarks>
     private string GetCSharpNameForSymbol(Symbol symbol, bool isNewDeclaration = false)
     {
@@ -739,12 +769,9 @@ internal partial class RoslynEmitter : ICodeEmitter
             return _nameResolutionService.ResolveName(symbol, codeGenInfo: null);
         }
 
-        // Variables must have CodeGenInfo — fall back to NameCasing for resilience.
-        // Must NOT delegate to GetMangledVariableName(string) which does LookupSymbol(name) and
-        // can find a different symbol kind (e.g., TypeSymbol "double" when the local shadows it).
-        if (symbol is VariableSymbol vs && vs.IsConstant)
-            return NameCasing.ResolveConstant(symbol.Name, symbol.IsNameBacktickEscaped);
-        return NameCasing.ResolveVariable(symbol.Name, symbol.IsNameBacktickEscaped);
+        // A variable without CodeGenInfo is a missing fact (#1560 C2). Not a NameCasing fallback:
+        // that is exactly the silent path that spelled a lambda-ledger local from nothing.
+        throw MissingLocalCodeGenInfo(symbol.Name);
     }
 
     /// <summary>

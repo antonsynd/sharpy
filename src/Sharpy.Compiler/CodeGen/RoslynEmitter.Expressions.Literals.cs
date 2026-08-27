@@ -1133,9 +1133,33 @@ internal partial class RoslynEmitter
         // Generate the value expression
         var value = GenerateExpression(walrus.Value);
 
-        // Get the mangled variable name, registering it as a new declaration
-        var varName = GetMangledVariableName(walrus.Target, isNewDeclaration: true,
-            walrus.IsNameBacktickEscaped);
+        // The binding is a recorded fact (#1560 R2): the checker linked the walrus to its symbol
+        // and classified it. A rebind assigns to the chain head's one C# local — inline in every
+        // mode, since nothing needs declaring — and a fresh binding declares it below. The
+        // name-based arm is for a walrus the checker never saw (AST-only unit tests).
+        var info = _context.SemanticInfo;
+        var symbol = info?.GetWalrusSymbol(walrus);
+        string varName;
+        if (symbol != null)
+        {
+            var binding = info!.GetTargetBinding(walrus)
+                ?? throw new InvalidOperationException(
+                    $"No TargetBinding recorded for walrus '{walrus.Target}' at {walrus.LineStart}:{walrus.ColumnStart}");
+            varName = GetCSharpNameForSymbol(symbol);
+            if (binding.Kind == TargetBindingKind.Rebinds)
+            {
+                return ParenthesizedExpression(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        EscapedIdentifierName(varName),
+                        value));
+            }
+        }
+        else
+        {
+            varName = GetMangledVariableName(walrus.Target, isNewDeclaration: true,
+                walrus.IsNameBacktickEscaped);
+        }
 
         if (_walrusInlineMode)
         {

@@ -1,0 +1,18 @@
+class C:
+    _v: int
+    def __init__(self):
+        self._v = 0
+    property get v(self) -> int:
+        return self._v
+    property set v(self, incoming: int) -> None:
+        if True:
+            value = incoming * 2
+            self._v = value
+        if True:
+            value = incoming * 3
+            self._v = self._v + value
+
+def main() -> None:
+    c: C = C()
+    c.v = 5
+    print(c.v)
