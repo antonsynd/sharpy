@@ -1,0 +1,21 @@
+# #1304 / #1623: the width of a negated integer literal is a recorded fact — NegateLiteralInt /
+# NegateLiteralLong from the TypeChecker's magnitude classification — so -2147483648 is an int
+# literal and -2147483649 / -9223372036854775808 are long literals (no `-(2147483648L)` CS0266);
+# a parenthesized or non-literal operand takes the ordinary unary-minus path. Reference: python3.
+def main() -> None:
+    a: int = -2147483648
+    print(a)
+    b: long = -2147483649
+    print(b)
+    c: long = -9223372036854775808
+    print(c)
+    d: int = -(5)
+    print(d)
+    x: int = 7
+    print(-x)
+    print(-0)
+    e: long = -1L
+    print(e)
+    print(-2147483648)
+    print(-2147483649)
+    print(-2147483647 - 1)

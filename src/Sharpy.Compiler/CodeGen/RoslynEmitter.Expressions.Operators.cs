@@ -427,34 +427,26 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateUnaryOp(UnaryOp unaryOp)
     {
-        // Minus over an integer literal: emit a single literal token from the semantic type
-        // so -2147483648 is int.MinValue, not -(2147483648L) which is CS0266 (#1304).
+        // Minus over an integer literal: emit a single literal token of the width the TypeChecker
+        // recorded (NegateLiteralInt / NegateLiteralLong, #1623) so -2147483648 is int.MinValue,
+        // not -(2147483648L) which is CS0266 (#1304). The classifier that recorded the tag already
+        // parsed the magnitude and proved it fits, so no overflow path exists here; any other
+        // width (or no tag) takes the ordinary unary-minus path below.
         if (unaryOp.Operator == UnaryOperator.Minus && unaryOp.Operand is IntegerLiteral il)
         {
-            var semanticType = _context.SemanticInfo?.GetExpressionType(unaryOp);
-            if (semanticType is BuiltinType bt)
+            var negateKind = _context.SemanticInfo?.GetOperatorLowering(unaryOp)?.Kind;
+            if (negateKind is OperatorLoweringKind.NegateLiteralInt or OperatorLoweringKind.NegateLiteralLong)
             {
-                var text = il.Value.Replace("_", "", StringComparison.Ordinal);
-                try
+                var ulongMagnitude = ParseIntegerText(il.Value.Replace("_", "", StringComparison.Ordinal));
+                if (negateKind == OperatorLoweringKind.NegateLiteralInt)
                 {
-                    var ulongMagnitude = ParseIntegerText(text);
-                    if (bt.ClrType == typeof(int) && ulongMagnitude <= (ulong)int.MaxValue + 1)
-                    {
-                        return LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                            Literal(-(int)(long)ulongMagnitude));
-                    }
-                    if (bt.ClrType == typeof(long))
-                    {
-                        if (ulongMagnitude == (ulong)long.MaxValue + 1)
-                            return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(long.MinValue));
-                        return LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                            Literal(-(long)ulongMagnitude));
-                    }
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                        Literal((int)(-(long)ulongMagnitude)));
                 }
-                catch (OverflowException)
-                {
-                    // Fall through to normal path
-                }
+                if (ulongMagnitude == (ulong)long.MaxValue + 1)
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(long.MinValue));
+                return LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                    Literal(-(long)ulongMagnitude));
             }
         }
 

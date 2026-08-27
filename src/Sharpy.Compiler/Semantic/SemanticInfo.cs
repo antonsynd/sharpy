@@ -2198,6 +2198,8 @@ public enum OperatorLoweringKind
     FloatPow,
     IntegerPowInt,
     IntegerPowLong,
+    NegateLiteralInt,
+    NegateLiteralLong,
 }
 
 public sealed record OperatorLowering(OperatorLoweringKind Kind);

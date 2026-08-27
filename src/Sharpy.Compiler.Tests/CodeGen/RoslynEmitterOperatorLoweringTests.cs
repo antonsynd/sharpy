@@ -313,4 +313,53 @@ public class RoslynEmitterOperatorLoweringTests
     }
 
     #endregion
+
+    #region Negated integer literal (#1304, #1623)
+
+    private static UnaryOp Negated(string literal)
+        => new() { Operator = UnaryOperator.Minus, Operand = new IntegerLiteral { Value = literal } };
+
+    [Fact]
+    public void NegatedLiteral_IntTag_EmitsIntMinValueLiteral()
+    {
+        var unary = Negated("2147483648");
+        var info = new SemanticInfo();
+        info.SetOperatorLowering(unary, new OperatorLowering(OperatorLoweringKind.NegateLiteralInt));
+        _context.SemanticInfo = info;
+
+        Emit(unary).Should().Be("-2147483648");
+    }
+
+    [Fact]
+    public void NegatedLiteral_LongTag_SameAst_EmitsLongLiteral()
+    {
+        var unary = Negated("2147483648");
+        var info = new SemanticInfo();
+        info.SetOperatorLowering(unary, new OperatorLowering(OperatorLoweringKind.NegateLiteralLong));
+        _context.SemanticInfo = info;
+
+        Emit(unary).Should().Be("-2147483648L");
+    }
+
+    [Fact]
+    public void NegatedLiteral_LongMinValue_EmitsLongMinValueLiteral()
+    {
+        var unary = Negated("9223372036854775808");
+        var info = new SemanticInfo();
+        info.SetOperatorLowering(unary, new OperatorLowering(OperatorLoweringKind.NegateLiteralLong));
+        _context.SemanticInfo = info;
+
+        Emit(unary).Should().Be("-9223372036854775808L");
+    }
+
+    [Fact]
+    public void NegatedLiteral_WithoutTag_TakesTheOrdinaryUnaryMinusPath()
+    {
+        var unary = Negated("5");
+        _context.SemanticInfo = new SemanticInfo();
+
+        Emit(unary).Should().Be("-5");
+    }
+
+    #endregion
 }

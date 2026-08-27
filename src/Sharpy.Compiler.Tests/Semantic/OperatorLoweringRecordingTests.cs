@@ -344,4 +344,39 @@ def main() -> None:
     }
 
     #endregion
+
+    #region Negated integer literal (#1304, #1623)
+
+    [Theory]
+    [InlineData("-5", OperatorLoweringKind.NegateLiteralInt)]
+    [InlineData("-2147483648", OperatorLoweringKind.NegateLiteralInt)]
+    [InlineData("-2147483649", OperatorLoweringKind.NegateLiteralLong)]
+    [InlineData("-9223372036854775808", OperatorLoweringKind.NegateLiteralLong)]
+    [InlineData("-1L", OperatorLoweringKind.NegateLiteralLong)]
+    public void NegatedIntegerLiteral_RecordsItsWidth(string literal, OperatorLoweringKind expected)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    r = {literal}
+");
+        errors.Should().BeEmpty();
+        var unary = Find<UnaryOp>(module).Single();
+        info.GetOperatorLowering(unary)!.Kind.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("x: int = 5\n    r = -x")]
+    [InlineData("r = -(5)")]
+    public void NegatedNonLiteral_RecordsNoWidthTag(string body)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    {body}
+");
+        errors.Should().BeEmpty();
+        var unary = Find<UnaryOp>(module).Single();
+        info.GetOperatorLowering(unary).Should().BeNull();
+    }
+
+    #endregion
 }

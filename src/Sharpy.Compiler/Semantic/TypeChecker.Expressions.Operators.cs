@@ -915,6 +915,19 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Semantic.IntegerLiteralOutOfRange,
                     span: unOp.Span);
             }
+            else if (result.Type == SemanticType.Int)
+            {
+                // The emitted literal's width is this classification, carried by the tag so the
+                // emitter never re-inspects the CLR type (#1623): a single int literal token for
+                // -2147483648, a single long token for -2147483649 / long.MinValue.
+                _semanticInfo.SetOperatorLowering(unOp,
+                    new OperatorLowering(OperatorLoweringKind.NegateLiteralInt));
+            }
+            else if (result.Type == SemanticType.Long)
+            {
+                _semanticInfo.SetOperatorLowering(unOp,
+                    new OperatorLowering(OperatorLoweringKind.NegateLiteralLong));
+            }
             _semanticInfo.SetExpressionType(unOp.Operand, result.Type);
             return result.Type;
         }
