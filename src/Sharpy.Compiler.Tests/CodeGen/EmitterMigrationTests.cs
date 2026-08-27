@@ -21,49 +21,8 @@ public class EmitterMigrationTests
     /// <summary>
     /// Compile source code with CodeGenInfo enabled and return the generated C#.
     /// </summary>
-    private string CompileToString(string source, bool isEntryPoint = true)
-    {
-        var logger = NullLogger.Instance;
-        var lexer = new Sharpy.Compiler.Lexer.Lexer(source, logger);
-        var tokens = lexer.TokenizeAll();
-        var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
-        var module = parser.ParseModule();
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-        var semanticInfo = new SemanticInfo();
-        var semanticBinding = new SemanticBinding();
-
-        var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
-        nameResolver.ResolveDeclarations(module);
-        nameResolver.ResolveInheritance();
-        semanticBinding.MaterializeInheritance();
-
-        var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-        var pipeline = ValidationPipelineFactory.CreateDefault(logger);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger, pipeline)
-        {
-            SemanticBinding = semanticBinding
-        };
-
-        // Enable CodeGenInfo computation (simulates UsePrecomputedCodeGenInfo = true)
-        typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: isEntryPoint);
-
-        // Materialize onto Symbol properties for code generation
-        semanticBinding.MaterializeCodeGenInfo();
-        semanticBinding.MaterializeVariableTypes();
-
-        var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
-        {
-            IsEntryPoint = isEntryPoint,
-            Logger = logger,
-            SemanticBinding = semanticBinding
-        };
-        var emitter = new RoslynEmitter(codeGenContext);
-        var compilationUnit = emitter.GenerateCompilationUnit(module);
-
-        return compilationUnit.ToFullString();
-    }
+    private static string CompileToString(string source, bool isEntryPoint = true)
+        => EmitterTestPipeline.EmitCompilationUnit(source, isEntryPoint, runValidators: true).ToFullString();
 
     [Fact]
     public void ModuleLevelVariable_UsesCodeGenInfo()

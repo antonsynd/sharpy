@@ -6,6 +6,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
+using Sharpy.Compiler.Semantic.Validation;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
@@ -50,7 +51,9 @@ internal static class EmitterTestPipeline
     /// Runs the full front end on an already-parsed module and returns an emitter whose context
     /// carries the materialized facts.
     /// </summary>
-    internal static Analysis Analyze(Module module, bool isEntryPoint = false, string? sourceFilePath = null)
+    /// <param name="runValidators">Run the default <see cref="ValidationPipeline"/> inside CheckModule, as FileCompilationPipeline does.</param>
+    /// <param name="emitLineDirectives">Override <see cref="CodeGenContext.EmitLineDirectives"/> (default: the context's default, true).</param>
+    internal static Analysis Analyze(Module module, bool isEntryPoint = false, string? sourceFilePath = null, bool runValidators = false, bool? emitLineDirectives = null)
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
@@ -64,7 +67,8 @@ internal static class EmitterTestPipeline
         semanticBinding.MaterializeInheritance();
 
         var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger,
+            runValidators ? ValidationPipelineFactory.CreateDefault(logger) : null)
         {
             SemanticBinding = semanticBinding
         };
@@ -78,9 +82,12 @@ internal static class EmitterTestPipeline
         {
             SourceFilePath = sourceFilePath,
             IsEntryPoint = isEntryPoint,
+            Logger = logger,
             SemanticBinding = semanticBinding,
             SemanticInfo = semanticInfo
         };
+        if (emitLineDirectives is { } directives)
+            context.EmitLineDirectives = directives;
         return new Analysis(module, new RoslynEmitter(context), typeChecker, symbolTable, semanticInfo, semanticBinding);
     }
 
@@ -90,9 +97,9 @@ internal static class EmitterTestPipeline
     /// subject is the emitted shape of a well-typed program. Leave false for tests that emit in
     /// the presence of diagnostics on purpose.
     /// </param>
-    internal static CompilationUnitSyntax EmitCompilationUnit(string source, bool isEntryPoint = false, bool requireNoErrors = false, string? sourceFilePath = null)
+    internal static CompilationUnitSyntax EmitCompilationUnit(string source, bool isEntryPoint = false, bool requireNoErrors = false, string? sourceFilePath = null, bool runValidators = false, bool? emitLineDirectives = null)
     {
-        var analysis = Analyze(Parse(source), isEntryPoint, sourceFilePath);
+        var analysis = Analyze(Parse(source), isEntryPoint, sourceFilePath, runValidators, emitLineDirectives);
         if (requireNoErrors)
             analysis.TypeChecker.Diagnostics.GetErrors().Should().BeEmpty("Sharpy source should have no type errors");
         return analysis.Emitter.GenerateCompilationUnit(analysis.Module);

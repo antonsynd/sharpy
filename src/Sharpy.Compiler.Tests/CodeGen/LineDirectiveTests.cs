@@ -351,42 +351,5 @@ def main():
     /// mirroring the CLI's "emit csharp" path.
     /// </summary>
     private static string GenerateWithDirectivesDisabled(string source, string filePath)
-    {
-        var logger = NullLogger.Instance;
-        var lexer = new Sharpy.Compiler.Lexer.Lexer(source, logger);
-        var tokens = lexer.TokenizeAll();
-        var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
-        var module = parser.ParseModule();
-
-        var builtins = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtins);
-        var semanticInfo = new SemanticInfo();
-        var semanticBinding = new SemanticBinding();
-
-        var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
-        nameResolver.ResolveDeclarations(module);
-        nameResolver.ResolveInheritance();
-        semanticBinding.MaterializeInheritance();
-
-        var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
-        {
-            SemanticBinding = semanticBinding
-        };
-        typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
-        semanticBinding.MaterializeCodeGenInfo();
-        semanticBinding.MaterializeVariableTypes();
-
-        var context = new CodeGenContext(symbolTable, builtins)
-        {
-            SourceFilePath = filePath,
-            IsEntryPoint = true,
-            EmitLineDirectives = false,
-            SemanticBinding = semanticBinding,
-            SemanticInfo = semanticInfo
-        };
-        var emitter = new RoslynEmitter(context);
-        var compilationUnit = emitter.GenerateCompilationUnit(module);
-        return compilationUnit.ToFullString();
-    }
+        => EmitterTestPipeline.EmitCompilationUnit(source, isEntryPoint: true, sourceFilePath: filePath, emitLineDirectives: false).ToFullString();
 }

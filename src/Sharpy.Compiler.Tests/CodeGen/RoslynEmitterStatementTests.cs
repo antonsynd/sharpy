@@ -67,35 +67,8 @@ public class RoslynEmitterStatementTests
             Decorators = ImmutableArray<Decorator>.Empty
         });
         var module = new Module { Body = body.ToImmutableArray() };
-
-        var builtins = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtins);
-        var semanticInfo = new SemanticInfo();
-        var semanticBinding = new SemanticBinding();
-        var logger = Sharpy.Compiler.Logging.NullLogger.Instance;
-
-        var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
-        nameResolver.ResolveDeclarations(module);
-        nameResolver.ResolveInheritance();
-        semanticBinding.MaterializeInheritance();
-
-        var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
-        {
-            SemanticBinding = semanticBinding
-        };
-        typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: true);
-        semanticBinding.MaterializeCodeGenInfo();
-        semanticBinding.MaterializeVariableTypes();
-
-        var context = new CodeGenContext(symbolTable, builtins)
-        {
-            IsEntryPoint = true,
-            SemanticBinding = semanticBinding,
-            SemanticInfo = semanticInfo
-        };
-        var emitter = new RoslynEmitter(context);
-        return emitter.GenerateCompilationUnit(module).NormalizeWhitespace().ToFullString();
+        var analysis = EmitterTestPipeline.Analyze(module, isEntryPoint: true);
+        return analysis.Emitter.GenerateCompilationUnit(module).NormalizeWhitespace().ToFullString();
     }
 
     #region Simple Statements
