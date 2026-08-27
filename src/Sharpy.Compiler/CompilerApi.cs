@@ -593,10 +593,10 @@ public sealed class CompilerApi
     /// Returns a cached <see cref="AnalysisCacheEntry"/> when the reference, module-path, and
     /// package-reference set is unchanged (path + mtime identity), or builds a fresh one and
     /// caches it. The compile path bypasses this entirely — H5/H6/H9 make per-call fresh
-    /// registries essential there. Sharing the registry across analyses is safe for inheritance
-    /// materialization because its TypeSymbols are constructed fully resolved — never with
-    /// deferred base/interface names — so per-analysis freezes write nothing onto them
-    /// (see <c>SemanticBinding.MaterializeInheritance</c>, #1140 H3).
+    /// registries essential there. On a cache hit the returned <see cref="BuiltinRegistry"/> is a
+    /// per-compilation clone (#1633) so that <c>MaterializeCodeGenInfo</c> writes never reach
+    /// the master — <c>DualWriteAssertions.AssertCodeGenInfoConsistency</c> would throw on a
+    /// second compilation if the master's symbols carried state from the first.
     /// </summary>
     internal (ModuleRegistry? Registry, BuiltinRegistry Builtins) GetOrBuildAnalysisContext(
         ProjectConfig config)
@@ -606,7 +606,10 @@ public sealed class CompilerApi
         lock (_analysisCacheLock)
         {
             if (_analysisCache != null && _analysisCache.Key.SequenceEqual(key))
-                return (_analysisCache.Registry, _analysisCache.Builtins);
+                // Clone the cached registry so MaterializeCodeGenInfo writes are
+                // per-compilation and DualWriteAssertions never see a prior compilation's
+                // state (#1633).
+                return (_analysisCache.Registry, _analysisCache.Builtins.CloneForCompilation());
         }
 
         var builtins = new BuiltinRegistry(_logger);
@@ -618,6 +621,7 @@ public sealed class CompilerApi
             _analysisCache = entry;
         }
 
+        // First use — no clone needed; the master is not yet shared.
         return (registry, builtins);
     }
 
