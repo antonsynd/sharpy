@@ -1,0 +1,6 @@
+# #1622: `print(_)` desugars to a partial application (a lambda). As an expression
+# statement its result is a function C# cannot discard (CS8183 behind SPY0908 at
+# 97e60e2b4), so the StatementLowering classification refuses it with SPY0603.
+
+def main():
+    print(_)

@@ -1,0 +1,4 @@
+# Refused at the classification seam, not at the emitter: no SPY0908.
+a '_' placeholder partial application cannot be an expression statement
+!SPY0908
+!count 1

@@ -78,24 +78,15 @@ internal static class BlockKinds
 
     /// <summary>
     /// Ratcheted known-red cells (verification-contract §1: an allowlist entry cites an issue and is
-    /// deleted when fixed). <c>for-else</c>/<c>while-else</c> bodies are never type-checked
-    /// (#1656), so every cell that needs a symbol, a TargetBinding or a spelling there is red;
-    /// definite assignment treats a <c>defer</c> body as executing in place (#1657).
+    /// deleted when fixed). <c>for-else</c>/<c>while-else</c> bodies are now type-checked (#1659,
+    /// the TypeChecker half of #1656 — ten cells drained 2026-08-26), but definite assignment still
+    /// does not walk them, so the SPY0600 cell stays red (#1656); definite assignment treats a
+    /// <c>defer</c> body as executing in place (#1657).
     /// </summary>
     private static readonly System.Collections.Generic.Dictionary<(string Kind, string Cell), string> KnownRed = new()
     {
-        [("for-else", "OuterRedeclareAfterBare")] = "#1656",
-        [("for-else", "OuterRedeclareAfterAnnotated")] = "#1656",
-        [("for-else", "WriteThrough")] = "#1656",
         [("for-else", "UseBeforeAssign")] = "#1656",
-        [("for-else", "SiblingRedeclareRecorded")] = "#1656",
-        [("for-else", "OuterReassignRecorded")] = "#1656",
-        [("while-else", "OuterRedeclareAfterBare")] = "#1656",
-        [("while-else", "OuterRedeclareAfterAnnotated")] = "#1656",
-        [("while-else", "WriteThrough")] = "#1656",
         [("while-else", "UseBeforeAssign")] = "#1656",
-        [("while-else", "SiblingRedeclareRecorded")] = "#1656",
-        [("while-else", "OuterReassignRecorded")] = "#1656",
         [("defer", "UseBeforeAssign")] = "#1657",
     };
 

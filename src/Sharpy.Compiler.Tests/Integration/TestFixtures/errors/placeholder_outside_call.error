@@ -1,1 +1,4 @@
-placeholder
+# The bare-`_` cell of SPY0132 (the diagnostic's own example is `x = _`).
+'_' placeholder can only be used inside function call arguments for partial application
+!SPY0908
+!count 1

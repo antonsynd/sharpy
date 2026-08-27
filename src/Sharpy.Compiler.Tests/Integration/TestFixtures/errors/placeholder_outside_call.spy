@@ -1,6 +1,12 @@
-# SPY0132: '_' placeholder used outside a function call context.
-# When '_' is not defined as a variable and used as an expression,
-# we emit a specific diagnostic instead of the generic UndefinedVariable.
+# SPY0132: '_' placeholder used outside a function call / operator context.
+# When '_' is not defined as a variable and appears as a bare expression, the
+# specific diagnostic fires instead of the generic UndefinedVariable.
+#
+# History: this fixture used `print(_)`, which is a placeholder INSIDE a call —
+# a partial application, never SPY0132 — and its sidecar matched the word
+# "placeholder" in the SPY0908 text's file path (vacuous). `print(_)` as a
+# statement is the SPY0603 cell in statements/expression_statement_refuse_placeholder_1622.
 
 def main():
-    print(_)
+    x = _
+    print(x)
