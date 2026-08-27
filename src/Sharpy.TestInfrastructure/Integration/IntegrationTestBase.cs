@@ -582,7 +582,8 @@ public abstract class IntegrationTestBase
                 EntryPoint = entryPointFile,
                 SourceFiles = sourceFiles,
                 Configuration = "Debug",
-                TargetFramework = "net10.0"
+                TargetFramework = "net10.0",
+                CrashRoot = Path.GetTempPath(),
             };
 
             // Set up module registry with an isolated test cache so the fixture suite never

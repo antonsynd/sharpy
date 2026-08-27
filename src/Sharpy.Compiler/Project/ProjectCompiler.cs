@@ -457,6 +457,9 @@ internal partial class ProjectCompiler
     /// </summary>
     private static string? ResolveCrashOutputDirectory(ProjectConfig config)
     {
+        if (!string.IsNullOrEmpty(config.CrashRoot))
+            return config.CrashRoot;
+
         try
         {
             var outputPath = config.OutputAssemblyPath;

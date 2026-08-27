@@ -200,6 +200,13 @@ public class ProjectConfig
     public string? OutputAssemblyPathOverride { get; set; }
 
     /// <summary>
+    /// When set, crash bundles land under this directory instead of the output assembly's
+    /// directory. The test harness sets it to a temp path so crash-bundle copies of fixture
+    /// sources never end up inside the fixture tree (#1660).
+    /// </summary>
+    public string? CrashRoot { get; init; }
+
+    /// <summary>
     /// Compute CodeGenInfo during semantic analysis. This is required for code generation.
     /// Symbols will have their CodeGenInfo property populated after type checking,
     /// containing pre-computed C# names, version numbers, and other code generation metadata.
@@ -260,6 +267,7 @@ public class ProjectConfig
             Features = Features,
             OutputAssemblyPathOverride = OutputAssemblyPathOverride,
             UsePrecomputedCodeGenInfo = UsePrecomputedCodeGenInfo,
+            CrashRoot = CrashRoot,
         };
     }
 }
