@@ -996,6 +996,17 @@ internal partial class TypeChecker
             CheckStatement(stmt);
         _controlFlowDepth--;
         _symbolTable.ExitScope();
+
+        // The else body runs once the condition is false without a break. It was never
+        // type-checked (#1659): errors in it leaked to the C# compiler and its
+        // expression statements carried no StatementLowering.
+        if (whileStmt.ElseBody.Length > 0)
+        {
+            _symbolTable.EnterScope("while-else");
+            foreach (var stmt in whileStmt.ElseBody)
+                CheckStatement(stmt);
+            _symbolTable.ExitScope();
+        }
     }
 
     private void CheckFor(ForStatement forStmt)
@@ -1134,6 +1145,17 @@ internal partial class TypeChecker
 
         // Exit for-body scope
         _symbolTable.ExitScope();
+
+        // The else body runs once the iterator is exhausted without a break. It was never
+        // type-checked (#1659): errors in it leaked to the C# compiler and its
+        // expression statements carried no StatementLowering.
+        if (forStmt.ElseBody.Length > 0)
+        {
+            _symbolTable.EnterScope("for-else");
+            foreach (var stmt in forStmt.ElseBody)
+                CheckStatement(stmt);
+            _symbolTable.ExitScope();
+        }
     }
 
     /// <summary>

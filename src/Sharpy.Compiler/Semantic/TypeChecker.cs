@@ -818,10 +818,19 @@ internal partial class TypeChecker
                     // these was an ICE before, never a program that ran. The elided shapes (`None`,
                     // method groups) and the type-name statement (SPY0342) are handled elsewhere.
                     // A refused statement records no lowering; the emitter throws on an absent fact.
-                    if (unwrapped is LambdaExpression)
+                    if (unwrapped is LambdaExpression lambdaStmt)
                     {
+                        // A `_` placeholder call (`f(_)`) is desugared by the parser into a lambda
+                        // whose parameters carry the `__placeholder_` prefix (the parser's own
+                        // marker, Parser.Expressions.cs); as a statement that partial application
+                        // is built and dropped. Name the placeholder so the message points at the
+                        // source spelling, not the desugaring.
+                        var isPlaceholderPartial = lambdaStmt.Parameters.Length > 0
+                            && lambdaStmt.Parameters[0].Name.StartsWith("__placeholder_", StringComparison.Ordinal);
                         AddError(
-                            "a lambda cannot be an expression statement; call it or bind it to a name",
+                            isPlaceholderPartial
+                                ? "a '_' placeholder partial application cannot be an expression statement; its result is a function: call it or bind it to a name"
+                                : "a lambda cannot be an expression statement; call it or bind it to a name",
                             exprStmt.LineStart, exprStmt.ColumnStart,
                             code: DiagnosticCodes.SemanticOverflow.ExpressionStatementNotDiscardable,
                             span: exprStmt.Expression.Span);
@@ -836,8 +845,11 @@ internal partial class TypeChecker
                             span: exprStmt.Expression.Span);
                         break;
                     }
+                    // `...` types as Void but never reaches the discard: the emitter lowers an
+                    // ellipsis statement to `throw new NotImplementedException()` (a transform
+                    // applied before the kind switch), so it is excluded here.
                     if (exprType is VoidType
-                        && unwrapped is not (FunctionCall or Parser.Ast.AwaitExpression or NoneLiteral))
+                        && unwrapped is not (FunctionCall or Parser.Ast.AwaitExpression or NoneLiteral or EllipsisLiteral))
                     {
                         AddError(
                             "expression statement of type 'None' must be a call; write the branch as an if statement",

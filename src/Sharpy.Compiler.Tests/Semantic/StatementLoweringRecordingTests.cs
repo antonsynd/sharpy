@@ -118,6 +118,9 @@ async def main() -> None:
     [InlineData("[x for x in range(2)]", StatementLoweringKind.Discard)]
     [InlineData("(w := 5)", StatementLoweringKind.Discard)]
     [InlineData("value() if True else 0", StatementLoweringKind.Discard)]
+    // `...` types as Void; it is NOT refused (the emitter lowers it to a throw before the kind
+    // switch) and records Discard like any other non-call value statement.
+    [InlineData("...", StatementLoweringKind.Discard)]
     public void EveryAcceptedKind_RecordsItsLowering(string statement, StatementLoweringKind expected)
     {
         var (lowering, diagnostics) = LoweringOfLast(statement);
@@ -133,6 +136,9 @@ async def main() -> None:
     [InlineData("(lambda: 1)", "a lambda cannot be an expression statement")]
     [InlineData("sink() if True else sink()", "expression statement of type 'None' must be a call")]
     [InlineData("(sink() if True else sink())", "expression statement of type 'None' must be a call")]
+    // `value(_)` is parser-desugared into a lambda; the message names the placeholder, not the
+    // desugaring (the errors/placeholder_outside_call fixture asserts the same substring).
+    [InlineData("print(_)", "'_' placeholder partial application cannot be an expression statement")]
     public void UndiscardableShape_IsRefusedWithSpy0603_AndRecordsNoLowering(string statement, string message)
     {
         var (lowering, diagnostics) = LoweringOfLast(statement);
@@ -143,6 +149,40 @@ async def main() -> None:
             "expected SPY0603, got: " + string.Join("\n", diagnostics.GetAll().Select(d => $"{d.Code}: {d.Message}")));
         Assert.Contains(message, refusal!.Message);
         Assert.Null(lowering);
+    }
+
+    [Fact]
+    public void LoopElseBodies_AreCheckedAndRecordLowerings()
+    {
+        // #1659: the else bodies of while/for were never visited by the checker, so their
+        // expression statements carried no lowering (and their errors leaked to C#). Both an
+        // accepted statement (lowering recorded) and a refused one (SPY0200) are pinned per loop.
+        var (module, info, diagnostics) = Analyze(@"
+def sink() -> None:
+    pass
+
+def main() -> None:
+    x: int = 0
+    while x < 1:
+        x += 1
+    else:
+        sink()
+        undefined_in_while_else()
+    for i in range(2):
+        pass
+    else:
+        sink()
+        undefined_in_for_else()
+");
+        var stmts = FindExpressionStatements(module).ToList();
+        Assert.Equal(4, stmts.Count);
+        foreach (var stmt in stmts)
+            Assert.NotNull(info.GetStatementLowering(stmt));
+        var undefined = diagnostics.GetAll()
+            .Where(d => d.Code == DiagnosticCodes.Semantic.UndefinedVariable)
+            .Select(d => d.Message).ToList();
+        Assert.Contains(undefined, m => m.Contains("undefined_in_while_else"));
+        Assert.Contains(undefined, m => m.Contains("undefined_in_for_else"));
     }
 
     [Fact]

@@ -1,0 +1,10 @@
+# #1659: the else: body of a while loop was never type-checked — an undefined name in it
+# reached the C# compiler (pre-fix @ 97e60e2b4: SPY0908 CS0103). It is now checked like the
+# loop body, so the semantic diagnostic fires.
+def main() -> None:
+    x: int = 0
+    while x < 1:
+        x += 1
+    else:
+        undefined_name()
+    print("done")
