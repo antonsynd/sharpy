@@ -122,6 +122,10 @@ public static class CompilerOptionsFactory
             ["OutputAssemblyPath"] =
                 "Computed virtual getter derived from OutputPath and OutputAssemblyPathOverride; "
                 + "no independent value to thread.",
+
+            ["CrashRoot"] =
+                "Read directly from config by ProjectCompiler.ResolveCrashOutputDirectory "
+                + "to route crash bundles outside the project tree (#1660); not a compiler option.",
         };
 
     /// <summary>
