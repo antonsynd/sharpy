@@ -66,6 +66,26 @@ public static class CrashBundleWriter
     public const string CrashRootDirectoryName = ".sharpy-crash";
 
     /// <summary>
+    /// Path segments that hold build output or compiler scratch rather than source.
+    /// A source glob matching <c>*.spy</c> with <see cref="SearchOption.AllDirectories"/> must
+    /// exclude paths under any of these segments, or stale build output and crash-bundle copies
+    /// are treated as sources (#1660).
+    /// </summary>
+    private static readonly string[] NonSourceSegments = ["bin", "obj", CrashRootDirectoryName];
+
+    /// <summary>
+    /// Whether <paramref name="relativePath"/> lies under a build-output or scratch directory.
+    /// The path must already be relative to the project/corpus root. Shared by the compiler
+    /// (<see cref="Project.ProjectConfig.ResolveGlobPattern"/>), the formatter, and the test
+    /// infrastructure (<c>FixtureDiscoveryHelper</c>) so every source glob applies one predicate
+    /// (#1660). <c>InternalsVisibleTo("Sharpy.TestInfrastructure")</c> makes this accessible.
+    /// </summary>
+    internal static bool IsNonSourceSegment(string relativePath)
+        => relativePath
+            .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Any(segment => NonSourceSegments.Contains(segment, StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>
     /// Key under which the shared span descriptor is stamped onto a diagnostic's
     /// <see cref="CompilerDiagnostic.Data"/> so span info is carried in the same format the bundle uses.
     /// </summary>
@@ -129,11 +149,9 @@ public static class CrashBundleWriter
 
     private static string ResolveCrashRoot(string? outputDirectory)
     {
-        var baseDir = !string.IsNullOrWhiteSpace(outputDirectory) && Directory.Exists(outputDirectory)
+        var baseDir = !string.IsNullOrWhiteSpace(outputDirectory)
             ? outputDirectory!
-            : !string.IsNullOrWhiteSpace(outputDirectory)
-                ? outputDirectory!
-                : Directory.GetCurrentDirectory();
+            : Directory.GetCurrentDirectory();
         return Path.Combine(baseDir, CrashRootDirectoryName);
     }
 

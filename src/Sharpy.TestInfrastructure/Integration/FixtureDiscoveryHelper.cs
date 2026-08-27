@@ -70,18 +70,14 @@ public static class FixtureDiscoveryHelper
     /// "Missing expected output file" — a red suite caused by an earlier run rather than by any
     /// change under test, self-inflicted and reproducible only after a crash (#1484).
     /// </summary>
-    private static readonly string[] NonCorpusSegments = ["bin", "obj", ".sharpy-crash"];
-
     /// <summary>
     /// Whether <paramref name="path"/> lies under a build-output or scratch directory relative to
-    /// the corpus root. Checked on the RELATIVE path so a root that itself sits under, say, a
-    /// <c>bin</c> directory — which is exactly where the test host runs from — is not excluded
-    /// wholesale.
+    /// the corpus root. Delegates to <see cref="Sharpy.Compiler.Diagnostics.CrashBundleWriter.IsNonSourceSegment"/>
+    /// so the compiler, formatter, and test infrastructure share one predicate (#1660).
     /// </summary>
     private static bool IsNonCorpus(string basePath, string path)
-        => Path.GetRelativePath(basePath, path)
-            .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(segment => NonCorpusSegments.Contains(segment, StringComparer.OrdinalIgnoreCase));
+        => Compiler.Diagnostics.CrashBundleWriter.IsNonSourceSegment(
+            Path.GetRelativePath(basePath, path));
 
     private static IEnumerable<TestFixtureInfo> DiscoverFrom(FixtureRoot root)
     {
