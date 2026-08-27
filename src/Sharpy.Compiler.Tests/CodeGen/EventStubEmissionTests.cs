@@ -246,24 +246,5 @@ public class EventStubEmissionTests
     private static string Emit(string source) => EmitUnit(source).NormalizeWhitespace().ToFullString();
 
     private static CompilationUnitSyntax EmitUnit(string source)
-    {
-        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
-        var parser = new global::Sharpy.Compiler.Parser.Parser(lexer.TokenizeAll(), NullLogger.Instance);
-        var module = parser.ParseModule();
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-        var semanticInfo = new SemanticInfo();
-
-        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance);
-        nameResolver.ResolveDeclarations(module);
-        nameResolver.ResolveInheritance();
-
-        var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance);
-        typeChecker.CheckModule(module);
-
-        var emitter = new RoslynEmitter(new CodeGenContext(symbolTable, builtinRegistry));
-        return emitter.GenerateCompilationUnit(module);
-    }
+        => EmitterTestPipeline.EmitCompilationUnit(source);
 }

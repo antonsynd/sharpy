@@ -161,70 +161,20 @@ public partial class RoslynEmitterDefinitionTests
     [Fact]
     public void GenerateStructDeclaration_WithMethod_GeneratesMethod()
     {
-        // Arrange
-        var structDef = new StructDef
-        {
-            Name = "Vector2",
-            Body = new List<Statement>
-            {
-                new VariableDeclaration
-                {
-                    Name = "x",
-                    Type = new TypeAnnotation { Name = "double" },
-                    InitialValue = null
-                },
-                new VariableDeclaration
-                {
-                    Name = "y",
-                    Type = new TypeAnnotation { Name = "double" },
-                    InitialValue = null
-                },
-                new FunctionDef
-                {
-                    Name = "length",
-                    Parameters = new List<Parameter>
-                    {
-                        new Parameter { Name = "self", Type = null }
-                    }.ToImmutableArray(),
-                    ReturnType = new TypeAnnotation { Name = "double" },
-                    Body = new List<Statement>
-                    {
-                        new ReturnStatement
-                        {
-                            Value = new BinaryOp
-                            {
-                                Left = new BinaryOp
-                                {
-                                    Left = new MemberAccess
-                                    {
-                                        Object = new Identifier { Name = "self" },
-                                        Member = "x"
-                                    },
-                                    Operator = BinaryOperator.Power,
-                                    Right = new IntegerLiteral { Value = "2" }
-                                },
-                                Operator = BinaryOperator.Add,
-                                Right = new BinaryOp
-                                {
-                                    Left = new MemberAccess
-                                    {
-                                        Object = new Identifier { Name = "self" },
-                                        Member = "y"
-                                    },
-                                    Operator = BinaryOperator.Power,
-                                    Right = new IntegerLiteral { Value = "2" }
-                                }
-                            }
-                        }
-                    }.ToImmutableArray()
-                }
-            }.ToImmutableArray()
-        };
+        // Arrange — through the real front end: the method body's `**` is emitted from the
+        // recorded power lowering (#1623), so an AST-only module has no fact to read and the
+        // emitter throws by contract. Source in, facts recorded, then emit.
+        var source = @"
+struct Vector2:
+    x: float
+    y: float
+
+    def length(self) -> float:
+        return self.x ** 2 + self.y ** 2
+";
 
         // Act
-        var module = new Module { Body = new List<Statement> { structDef }.ToImmutableArray() };
-        var compilationUnit = _emitter.GenerateCompilationUnit(module);
-        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+        var code = EmitterTestPipeline.CompileToCSharp(source, requireNoErrors: true);
 
         // Assert
         Assert.Contains("public struct Vector2", code);

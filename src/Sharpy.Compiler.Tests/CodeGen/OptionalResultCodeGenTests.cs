@@ -27,38 +27,8 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// </summary>
 public class OptionalResultCodeGenTests
 {
-    private string CompileToCSharp(string sharpySource, bool isEntryPoint = false)
-    {
-        var logger = NullLogger.Instance;
-        var lexer = new Sharpy.Compiler.Lexer.Lexer(sharpySource, logger);
-        var tokens = lexer.TokenizeAll();
-        var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
-        var module = parser.ParseModule();
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-        var semanticInfo = new SemanticInfo();
-
-        var nameResolver = new NameResolver(symbolTable, logger);
-        nameResolver.ResolveDeclarations(module);
-        nameResolver.ResolveInheritance();
-
-        var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
-        typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: isEntryPoint);
-
-        typeChecker.Diagnostics.GetErrors().Should().BeEmpty("Sharpy source should have no type errors");
-
-        var context = new CodeGenContext(symbolTable, builtinRegistry)
-        {
-            IsEntryPoint = isEntryPoint,
-            SemanticInfo = semanticInfo
-        };
-        var emitter = new RoslynEmitter(context);
-        var compilationUnit = emitter.GenerateCompilationUnit(module);
-
-        return compilationUnit.NormalizeWhitespace().ToFullString();
-    }
+    private static string CompileToCSharp(string sharpySource, bool isEntryPoint = false)
+        => EmitterTestPipeline.CompileToCSharp(sharpySource, isEntryPoint, requireNoErrors: true);
 
     #region Type Mapping
 

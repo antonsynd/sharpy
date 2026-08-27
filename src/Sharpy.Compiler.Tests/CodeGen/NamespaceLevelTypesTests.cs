@@ -18,36 +18,7 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 public class NamespaceLevelTypesTests
 {
     private static string CompileToCSharp(string source, bool isEntryPoint = true)
-    {
-        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
-        var tokens = lexer.TokenizeAll();
-        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
-        var module = parser.ParseModule();
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-        var semanticInfo = new SemanticInfo();
-
-        // Name resolution
-        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance);
-        nameResolver.ResolveDeclarations(module);
-        nameResolver.ResolveInheritance();
-
-        // Type checking
-        var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance);
-        typeChecker.CheckModule(module, isEntryPoint: isEntryPoint);
-
-        // Code generation
-        var context = new CodeGenContext(symbolTable, builtinRegistry)
-        {
-            IsEntryPoint = isEntryPoint
-        };
-        var emitter = new RoslynEmitter(context);
-        var compilationUnit = emitter.GenerateCompilationUnit(module);
-
-        return compilationUnit.NormalizeWhitespace().ToFullString();
-    }
+        => EmitterTestPipeline.CompileToCSharp(source, isEntryPoint);
 
     [Fact]
     public void ClassDef_GeneratesNestedInModuleClass()

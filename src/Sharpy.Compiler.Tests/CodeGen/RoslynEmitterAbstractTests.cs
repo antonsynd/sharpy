@@ -17,34 +17,8 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// </summary>
 public class RoslynEmitterAbstractTests
 {
-    private string CompileToCSharp(string source)
-    {
-        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
-        var tokens = lexer.TokenizeAll();
-        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
-        var module = parser.ParseModule();
-
-        var builtinRegistry = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtinRegistry);
-        var semanticInfo = new SemanticInfo();
-
-        // Name resolution
-        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance);
-        nameResolver.ResolveDeclarations(module);
-        nameResolver.ResolveInheritance();
-
-        // Type checking
-        var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance);
-        typeChecker.CheckModule(module);
-
-        // Code generation
-        var context = new CodeGenContext(symbolTable, builtinRegistry);
-        var emitter = new RoslynEmitter(context);
-        var compilationUnit = emitter.GenerateCompilationUnit(module);
-
-        return compilationUnit.NormalizeWhitespace().ToFullString();
-    }
+    private static string CompileToCSharp(string source)
+        => EmitterTestPipeline.CompileToCSharp(source);
 
     [Fact]
     public void GenerateAbstractMethod_ImplicitAbstract_NoBody()
@@ -192,8 +166,9 @@ class Shape(IDisplayable):
         var code = CompileToCSharp(source);
 
         code.Should().Contain("public abstract class Shape : IDisplayable");
-        // display() should appear once as a concrete method, not as abstract stub
-        code.Should().Contain("public void Display()");
+        // display() should appear once as a concrete (virtual — implements an interface
+        // method, #1519) method, not as an abstract stub
+        code.Should().Contain("public virtual void Display()");
         // Should NOT have duplicate abstract stub
         var abstractDisplayCount = System.Text.RegularExpressions.Regex.Matches(
             code, @"public abstract void Display\(\)").Count;
@@ -281,8 +256,12 @@ class BaseWidget(IWidget):
         var code = CompileToCSharp(source);
 
         code.Should().Contain("public abstract class BaseWidget : IWidget");
-        // draw is implemented, should be concrete
-        code.Should().Contain("public void Draw()");
+        // draw is implemented, so it is concrete — and virtual, because it implements an
+        // interface method in a non-sealed class (the ImplementsInterfaceMethod fact frozen
+        // onto CodeGenInfo, #1519). The former `public void Draw()` expectation pinned the
+        // output of a test pipeline that never materialized CodeGenInfo; `sharpyc emit csharp`
+        // on this program emits `public virtual void Draw()`.
+        code.Should().Contain("public virtual void Draw()");
         // resize is missing, should be abstract stub
         code.Should().Contain("public abstract void Resize(int width, int height);");
     }

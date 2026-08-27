@@ -33,40 +33,8 @@ public class RoslynEmitterIntegrationTests
     /// Creates an emitter with full semantic analysis including CodeGenInfo computation.
     /// Use this when testing code generation that depends on semantic analysis results.
     /// </summary>
-    private RoslynEmitter CreateEmitterWithSemanticAnalysis(Module module, string? sourceFilePath = null, bool isEntryPoint = true)
-    {
-        var builtins = new BuiltinRegistry();
-        var symbolTable = new SymbolTable(builtins);
-        var semanticInfo = new SemanticInfo();
-        var semanticBinding = new SemanticBinding();
-        var logger = NullLogger.Instance;
-
-        // Run name resolution
-        var nameResolver = new NameResolver(symbolTable, logger, semanticBinding);
-        nameResolver.ResolveDeclarations(module);
-        nameResolver.ResolveInheritance();
-        semanticBinding.MaterializeInheritance();
-
-        // Run type checking with CodeGenInfo computation
-        var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger)
-        {
-            SemanticBinding = semanticBinding
-        };
-        typeChecker.CheckModule(module, computeCodeGenInfo: true, isEntryPoint: isEntryPoint);
-
-        // Materialize onto Symbol properties for code generation
-        semanticBinding.MaterializeCodeGenInfo();
-        semanticBinding.MaterializeVariableTypes();
-
-        var context = new CodeGenContext(symbolTable, builtins)
-        {
-            SourceFilePath = sourceFilePath,
-            IsEntryPoint = isEntryPoint,
-            SemanticBinding = semanticBinding
-        };
-        return new RoslynEmitter(context);
-    }
+    private static RoslynEmitter CreateEmitterWithSemanticAnalysis(Module module, string? sourceFilePath = null, bool isEntryPoint = true)
+        => EmitterTestPipeline.Analyze(module, isEntryPoint, sourceFilePath).Emitter;
 
     private bool CompileCode(string code, out string errors)
     {
