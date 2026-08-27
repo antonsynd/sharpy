@@ -61,20 +61,18 @@ internal partial class RoslynEmitter
                     // (widened to int/long, or SPY0328 when it exceeds long) into an IrConstant, so
                     // emit the literal directly instead of a lossy Math.Pow round-trip. e.g.
                     // `y: long = 10 ** 18`. (E2 #1056: read from the IR, not SemanticInfo.)
+                    // The literal's width is the folded constant's own recorded type — the same
+                    // emitter the E3 fold uses, so there is one folded-literal spelling (#1623).
                     if (_context.Ir?.Index.TryGetValue(binOp, out var foldedNode) == true
                         && foldedNode is IrConstant foldedConst)
                     {
-                        var foldedPow = (long)foldedConst.Value;
-                        return GetExpressionSemanticType(binOp) == SemanticType.Long
-                            ? LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(foldedPow))
-                            : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)foldedPow));
+                        return EmitFoldedConstant(foldedConst);
                     }
 
-                    // x ** y → ONE invocation, each operand spliced once (#1228): integer
-                    // operands take Sharpy.Builtins.CheckedIntPow, everything else Math.Pow.
-                    // Both decisions live in the routing wrapper this site shares with the
-                    // augmented `**=` site (#1227), so the two cannot drift — the same
-                    // arrangement `//` and `%` already use.
+                    // x ** y → ONE invocation, each operand spliced once (#1228): the recorded
+                    // power tag picks CheckedIntPow (int/long width) or Math.Pow. The routing
+                    // wrapper is shared with the augmented `**=` site (#1227), so the two cannot
+                    // drift — the same arrangement `//` and `%` already use.
                     //
                     // CheckedIntPow absorbs the negative-exponent case itself (returning the
                     // truncating double-path value, so `2 ** -1` is still 0 per the spec), which
@@ -89,8 +87,7 @@ internal partial class RoslynEmitter
                     // silently degraded the lowering to the saturating `(int)Math.Pow` cast, so
                     // `x ** f()` had different overflow behaviour from `x ** y` — a spelling
                     // difference changing semantics. Both spellings now raise OverflowError.
-                    return GeneratePowerValue(
-                        left, right, binOp.Left, binOp.Right, GetExpressionSemanticType(binOp), binOp);
+                    return GeneratePowerValue(left, right, binOp);
                 }
 
             case BinaryOperator.Divide:

@@ -758,8 +758,9 @@ internal partial class RoslynEmitter
             // n **= 4` both failed with SPY0908 / CS0266 ("cannot implicitly convert 'double' to
             // 'int'/'long'"). The target's own type selects the integer width.
             AssignmentOperator.PowerAssign =>
-                GeneratePowerValue(left, right, targetAst, valueAst,
-                    targetAst != null ? GetExpressionSemanticType(targetAst) : null, assignNode),
+                GeneratePowerValue(left, right,
+                    assignNode ?? throw new InvalidOperationException(
+                        "Augmented '**=' needs its Assignment node to read the recorded power lowering (#1623)")),
 
             // x /= y → true division with Python semantics (always returns float64)
             // Cast left to double if both operands are integers

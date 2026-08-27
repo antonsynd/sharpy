@@ -283,4 +283,34 @@ public class RoslynEmitterOperatorLoweringTests
     }
 
     #endregion
+
+    #region Power (#1623)
+
+    [Theory]
+    [InlineData(OperatorLoweringKind.IntegerPowInt, "global::Sharpy.Builtins.CheckedIntPow((int)(a), (int)(b))")]
+    [InlineData(OperatorLoweringKind.IntegerPowLong, "global::Sharpy.Builtins.CheckedIntPow((long)(a), (long)(b))")]
+    [InlineData(OperatorLoweringKind.FloatPow, "global::System.Math.Pow(a, b)")]
+    [InlineData(OperatorLoweringKind.DecimalPow, "global::System.Math.Pow((double)(a), (double)(b))")]
+    public void Power_SameAst_FollowsTheRecordedFamily(OperatorLoweringKind kind, string expected)
+    {
+        var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Power, Right = Id("b") };
+        var info = new SemanticInfo();
+        info.SetOperatorLowering(binOp, new OperatorLowering(kind));
+        _context.SemanticInfo = info;
+
+        Emit(binOp).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Power_WithoutTag_Throws()
+    {
+        var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Power, Right = Id("b") };
+        _context.SemanticInfo = new SemanticInfo();
+
+        var act = () => Emit(binOp);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*No power lowering recorded*");
+    }
+
+    #endregion
 }

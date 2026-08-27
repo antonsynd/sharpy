@@ -303,4 +303,45 @@ def main() -> None:
     }
 
     #endregion
+
+    #region Power (#1623)
+
+    [Theory]
+    [InlineData("n: int = 3", "n ** 2", OperatorLoweringKind.IntegerPowInt)]
+    [InlineData("n: long = 3", "n ** 2", OperatorLoweringKind.IntegerPowLong)]
+    [InlineData("n: int = 3\n    k: long = 2", "n ** k", OperatorLoweringKind.IntegerPowLong)]
+    [InlineData("n: long = 3\n    k: long = 2", "n ** k", OperatorLoweringKind.IntegerPowLong)]
+    [InlineData("f: float = 2.0", "f ** 2", OperatorLoweringKind.FloatPow)]
+    [InlineData("n: int = 3", "n ** 0.5", OperatorLoweringKind.FloatPow)]
+    [InlineData("d: decimal = 2.5m", "d ** 2", OperatorLoweringKind.DecimalPow)]
+    [InlineData("n: int = 3\n    e: int = -1", "n ** e", OperatorLoweringKind.IntegerPowInt)]
+    public void Power_RecordsItsFamily(string decls, string expr, OperatorLoweringKind expected)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    {decls}
+    r = {expr}
+");
+        errors.Should().BeEmpty();
+        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Power))!.Kind.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("a: int = 2", "a **= 3", OperatorLoweringKind.IntegerPowInt)]
+    [InlineData("a: long = 2", "a **= 3", OperatorLoweringKind.IntegerPowLong)]
+    [InlineData("a: long = 2\n    k: long = 3", "a **= k", OperatorLoweringKind.IntegerPowLong)]
+    [InlineData("a: float = 2.0", "a **= 0.5", OperatorLoweringKind.FloatPow)]
+    public void AugmentedPower_RecordsTheSameFamilyAsItsBinaryForm(string decls, string statement, OperatorLoweringKind expected)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    {decls}
+    {statement}
+");
+        errors.Should().BeEmpty();
+        var assignment = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.PowerAssign);
+        info.GetOperatorLowering(assignment)!.Kind.Should().Be(expected);
+    }
+
+    #endregion
 }

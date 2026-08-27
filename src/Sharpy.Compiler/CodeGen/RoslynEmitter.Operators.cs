@@ -1170,79 +1170,58 @@ internal partial class RoslynEmitter
     /// saying a shared wrapper cannot miss an operand class the binary site handles, and
     /// <c>**=</c> was the one arm that had never joined them.
     /// </para>
+    /// <para>
+    /// The lowering is the <see cref="OperatorLowering"/> tag the TypeChecker recorded on
+    /// <paramref name="operatorNode"/> (the <c>BinaryOp</c> or the augmented <c>Assignment</c>,
+    /// #1623): <see cref="OperatorLoweringKind.IntegerPowInt"/> / <see cref="OperatorLoweringKind.IntegerPowLong"/>
+    /// select the <c>CheckedIntPow</c> width, <see cref="OperatorLoweringKind.FloatPow"/> is
+    /// <c>Math.Pow</c>, <see cref="OperatorLoweringKind.DecimalPow"/> is <c>Math.Pow</c> over
+    /// <c>(double)</c> casts. There is no type-inspecting fallback: an unrecorded power throws,
+    /// because a `**` that passed inference is always one of these four (a user-defined or CLR
+    /// operand is refused by inference — no <c>__pow__</c> mapping exists).
+    /// </para>
     /// </summary>
     /// <param name="left">Generated C# expression for the left operand.</param>
     /// <param name="right">Generated C# expression for the right operand.</param>
-    /// <param name="leftAst">Left operand AST (for type inference); may be null.</param>
-    /// <param name="rightAst">Right operand AST (for type inference); may be null.</param>
-    /// <param name="resultType">
-    /// Semantic type the result must have — the binary node's own type at the binary site, the
-    /// assignment target's type at the <c>**=</c> site. Selects the integer width only.
-    /// </param>
+    /// <param name="operatorNode">The node carrying the recorded power lowering.</param>
     private ExpressionSyntax GeneratePowerValue(
         ExpressionSyntax left,
         ExpressionSyntax right,
-        Expression? leftAst,
-        Expression? rightAst,
-        SemanticType? resultType,
-        Node? operatorNode = null)
+        Node operatorNode)
     {
-        var powKind = operatorNode != null
-            ? _context.SemanticInfo?.GetOperatorLowering(operatorNode)?.Kind
-            : null;
+        var powKind = _context.SemanticInfo?.GetOperatorLowering(operatorNode)?.Kind;
 
-        if (powKind == OperatorLoweringKind.DecimalPow)
+        switch (powKind)
         {
-            return GenerateDoublePow(
-                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
-                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(right)));
+            case OperatorLoweringKind.DecimalPow:
+                return GenerateDoublePow(
+                    CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
+                    CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(right)));
+
+            case OperatorLoweringKind.FloatPow:
+                return GenerateDoublePow(left, right);
+
+            case OperatorLoweringKind.IntegerPowInt:
+            case OperatorLoweringKind.IntegerPowLong:
+                {
+                    var castKind = powKind == OperatorLoweringKind.IntegerPowLong
+                        ? SyntaxKind.LongKeyword
+                        : SyntaxKind.IntKeyword;
+
+                    return InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                            IdentifierName("CheckedIntPow")))
+                        .AddArgumentListArguments(
+                            Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(left))),
+                            Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(right))));
+                }
+
+            default:
+                throw new InvalidOperationException(
+                    "No power lowering recorded for '**' — the TypeChecker must classify every power "
+                    + "that passes inference as IntegerPowInt/IntegerPowLong/FloatPow/DecimalPow (#1623)");
         }
-
-        if (powKind == OperatorLoweringKind.FloatPow)
-        {
-            return GenerateDoublePow(left, right);
-        }
-
-        if (powKind == OperatorLoweringKind.IntegerPowInt || powKind == OperatorLoweringKind.IntegerPowLong)
-        {
-            var castKind = powKind == OperatorLoweringKind.IntegerPowLong
-                ? SyntaxKind.LongKeyword
-                : SyntaxKind.IntKeyword;
-
-            return InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    MakeGlobalQualifiedName("Sharpy", "Builtins"),
-                    IdentifierName("CheckedIntPow")))
-                .AddArgumentListArguments(
-                    Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(left))),
-                    Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(right))));
-        }
-
-        // Fallback for UDT/generic or when no tag is recorded: use the old type-dispatch path.
-        if (IsDecimalOperand(leftAst) || IsDecimalOperand(rightAst))
-        {
-            return GenerateDoublePow(
-                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
-                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(right)));
-        }
-
-        if ((leftAst != null && IsFloatExpression(leftAst))
-            || (rightAst != null && IsFloatExpression(rightAst)))
-        {
-            return GenerateDoublePow(left, right);
-        }
-
-        var fallbackCastKind = resultType == SemanticType.Long
-            ? SyntaxKind.LongKeyword
-            : SyntaxKind.IntKeyword;
-
-        return InvocationExpression(
-            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                MakeGlobalQualifiedName("Sharpy", "Builtins"),
-                IdentifierName("CheckedIntPow")))
-            .AddArgumentListArguments(
-                Argument(CastExpression(PredefinedType(Token(fallbackCastKind)), ParenthesizedExpression(left))),
-                Argument(CastExpression(PredefinedType(Token(fallbackCastKind)), ParenthesizedExpression(right))));
     }
 
     /// <summary>

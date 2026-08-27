@@ -1,0 +1,48 @@
+# #1623: every `**` emission is a recorded tag — IntegerPowInt / IntegerPowLong / FloatPow /
+# DecimalPow — for the binary form and `**=` alike; the emitter has no type-inspecting fallback
+# (an unrecorded power throws). Constant integer powers fold (width from the folded IR constant).
+# Reference: python3, except the spec's documented deviation `2 ** -1` == 0 (integer `**` with a
+# negative exponent keeps the truncating double path, arithmetic_operators.md).
+def main() -> None:
+    # int ** int (non-constant) — IntegerPowInt
+    n: int = 3
+    print(n ** 2)
+    # int ** long, long ** int, long ** long — IntegerPowLong
+    k: long = 4
+    m: long = 3
+    print(n ** k)
+    print(m ** 2)
+    print(m ** k)
+    # float — FloatPow
+    f: float = 2.0
+    print(f ** 3)
+    print(2 ** 0.5)
+    print(n ** 0.5)
+    # decimal — DecimalPow (float64 result, see decimal_power fixture)
+    d: decimal = 2.5m
+    print(d ** 2)
+    # negative exponent: spec deviation — int stays int, truncating double path
+    print(2 ** -1)
+    e: int = -2
+    print(n ** e)
+    # unary minus binds looser than ** (Python precedence): -(2 ** 2)
+    print(-2 ** 2)
+    # folded constants: int width, long width
+    print(3 ** 2)
+    print(10 ** 18)
+    print(2 ** 62)
+    big: long = 10 ** 18
+    print(big)
+    # augmented forms read the same tags
+    a: int = 2
+    a **= 10
+    print(a)
+    b: long = 3
+    b **= 30
+    print(b)
+    c: long = 2
+    c **= k
+    print(c)
+    g: float = 2.0
+    g **= 0.5
+    print(g)
