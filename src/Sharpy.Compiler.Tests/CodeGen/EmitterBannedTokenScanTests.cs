@@ -196,6 +196,182 @@ public class EmitterBannedTokenScanTests
             "analysis decided.\nViolations:\n" + string.Join("\n", violations));
     }
 
+    // ---- scoped guard: operator / statement / access lowering reads facts, not types (#1623, #1618) ----
+
+    /// <summary>
+    /// The Batch-6 class guard (plan-c6ae1b D7, #1618 census, #1623 umbrella): every operator, statement
+    /// and multi-axis-access lowering decision is a fact recorded by semantic analysis
+    /// (<c>OperatorLowering</c>, <c>IterationLowering</c>, <c>StatementLowering</c>,
+    /// <c>MultiAxisAccessLowering</c>, <c>BinaryOpLowering</c>), so the emitter methods that consume
+    /// them may switch on a tag but may never inspect a semantic type, a CLR type, or an AST shape to
+    /// pick a lowering. Each root below is walked transitively over its same-file callees exactly like
+    /// <see cref="GenericReferenceDispatch_LowersFromTheFact_WithoutCallTargetRederivation"/>, and every
+    /// token in <see cref="TypeDispatchTokens"/> / member access in <see cref="TypeDispatchMemberAccesses"/>
+    /// / <c>typeof(...)</c> found in a body is a violation. No root is exempt and there is no allowlist:
+    /// a new generator joins by being LISTED here, so an unlisted one is a loud review gap rather than a
+    /// silent pass (the exemption must never be the subject).
+    ///
+    /// <para><b>Mutation procedure</b> (executed once at authoring time; record the observation in the commit
+    /// body): re-introduce one dispatch in a copy of the production file, e.g. in
+    /// <c>GenerateBinaryOp</c> add <c>if (GetExpressionSemanticType(binOp) is UserDefinedType) { }</c>,
+    /// run this theory — the <c>GenerateBinaryOp</c> row must go red naming that line — then restore the
+    /// file from the copy. The positive control below
+    /// (<see cref="TypeDispatchDetector_FlagsEachBannedShape_PositiveControl"/>) proves the detector itself
+    /// recognises every banned shape, so an all-green run is not vacuous.</para>
+    ///
+    /// <para><b>Known limit — the walk stops at the partial-file boundary.</b> A callee that lives in a
+    /// different <c>RoslynEmitter.*.cs</c> partial is not reached from a root in another one: the
+    /// <c>//</c> / <c>%</c> routing seams <c>GenerateFloorDivideValue</c> / <c>GenerateModuloValue</c>
+    /// (<c>RoslynEmitter.Operators.cs</c>) are called from <c>GenerateBinaryOp</c> yet still classify by
+    /// operand type — the class escape tracked by #1658. When #1658 lands they join this list as roots
+    /// of their own file; until then their absence here is a documented gap, not a pass.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("RoslynEmitter.Expressions.Operators.cs", "GenerateBinaryOp")]
+    [InlineData("RoslynEmitter.Expressions.Operators.cs", "GenerateComparisonChain")]
+    [InlineData("RoslynEmitter.Expressions.Operators.cs", "GenerateUnaryOp")]
+    [InlineData("RoslynEmitter.Statements.Assignments.cs", "GenerateAugmentedValue")]
+    [InlineData("RoslynEmitter.Statements.Assignments.cs", "GenerateNullCoalesceValue")]
+    [InlineData("RoslynEmitter.Operators.cs", "GeneratePowerValue")]
+    [InlineData("RoslynEmitter.Expressions.Access.cs", "GenerateMultiAxisAccess")]
+    [InlineData("RoslynEmitter.Statements.cs", "GenerateExpressionStatement")]
+    [InlineData("RoslynEmitter.Expressions.Comprehensions.cs", "GenerateComprehensionIterator")]
+    [InlineData("RoslynEmitter.Statements.ControlFlow.cs", "GenerateFor")]
+    [InlineData("RoslynEmitter.TypeDeclarations.cs", "GenerateEnumValuesIterator")]
+    public void OperatorDispatchRoots_LowerFromTheRecordedFact_WithoutTypeDispatch(string fileName, string rootMethod)
+    {
+        var file = Path.Combine(FindCodeGenSourceDirectory(), fileName);
+        File.Exists(file).Should().BeTrue(
+            $"{rootMethod} is expected in {fileName}; if it moved, update this guard's root table");
+
+        var root = (CompilationUnitSyntax)CSharpSyntaxTree.ParseText(File.ReadAllText(file)).GetRoot();
+        var methodsByName = root.DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .GroupBy(m => m.Identifier.Text, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+
+        methodsByName.Should().ContainKey(rootMethod,
+            $"{rootMethod} is a lowering root this guard protects; a rename must update the root table, " +
+            "not silently drop the root");
+
+        var scope = CollectTransitiveCallScope(methodsByName, rootMethod);
+        scope.Should().Contain(rootMethod);
+
+        var violations = new List<string>();
+        foreach (var methodName in scope.OrderBy(n => n, StringComparer.Ordinal))
+        {
+            foreach (var method in methodsByName[methodName])
+            {
+                foreach (var (line, what) in FindTypeDispatch(method))
+                    violations.Add($"{fileName}:{line} — {methodName} (reached from {rootMethod}) decides by {what}");
+            }
+        }
+
+        violations.Should().BeEmpty(
+            "operator/statement/access lowering must switch on the RECORDED fact (OperatorLowering, " +
+            "IterationLowering, StatementLowering, MultiAxisAccessLowering, BinaryOpLowering strategy) " +
+            "and never re-derive the decision from a semantic type, a CLR type, or an AST shape " +
+            "(Critical Rule 2 pattern (b); #1618 census, #1623 umbrella, plan-c6ae1b D4–D7). If an " +
+            "emission body needs something the fact does not carry, that is a MISSING TAG: add it to the " +
+            "enum, record it in the TypeChecker, and read it here.\nViolations:\n" +
+            string.Join("\n", violations));
+    }
+
+    /// <summary>
+    /// Identifier spellings that mark an emitter-side type/shape decision inside the operator roots:
+    /// the <c>SemanticType</c> subclasses (allowed as carriers elsewhere — <see cref="EmitterCarrierOnlyConformanceTests"/>
+    /// permits them file-wide, which is exactly why this scan is method-scoped), the CLR-type accessor,
+    /// and the deleted emitter-side predicates. <c>IsStringEnumSymbol</c> is deliberately absent: it is a
+    /// symbol-keyed materialized fact (#1284) the plan allows the iteration arm to read.
+    /// </summary>
+    private static readonly string[] TypeDispatchTokens =
+    {
+        "UserDefinedType", "GenericType", "OptionalType", "TypeParameterType", "BuiltinType",
+        "ClrType", "HasComparableConstraint", "IsFloatExpression", "IsDecimalExpression", "IsDecimalOperand",
+    };
+
+    /// <summary>
+    /// Qualified member accesses that are type dispatch: <c>SemanticType.Str/Long/Int</c> comparisons and
+    /// <c>TypeKind.Enum</c>. Stored as (qualifier, member) pairs so <c>Semantic.TypeKind.Enum</c> is caught too.
+    /// </summary>
+    private static readonly (string Qualifier, string Member)[] TypeDispatchMemberAccesses =
+    {
+        ("SemanticType", "Str"), ("SemanticType", "Long"), ("SemanticType", "Int"), ("TypeKind", "Enum"),
+    };
+
+    /// <summary>
+    /// Every banned shape in one method body, as (line, description). Bodies only — a doc comment naming
+    /// a token is not a violation.
+    /// </summary>
+    private static IEnumerable<(int Line, string What)> FindTypeDispatch(MethodDeclarationSyntax method)
+    {
+        var body = (SyntaxNode?)method.Body ?? method.ExpressionBody;
+        if (body is null)
+            yield break;
+
+        foreach (var node in body.DescendantNodes())
+        {
+            switch (node)
+            {
+                case IdentifierNameSyntax id when Array.IndexOf(TypeDispatchTokens, id.Identifier.Text) >= 0:
+                    yield return (LineOf(id), $"'{id.Identifier.Text}'");
+                    break;
+                case MemberAccessExpressionSyntax { Name: SimpleNameSyntax member } access
+                    when TypeDispatchMemberAccesses.Any(p =>
+                        string.Equals(p.Member, member.Identifier.Text, StringComparison.Ordinal)
+                        && string.Equals(p.Qualifier, RightmostName(access.Expression), StringComparison.Ordinal)):
+                    yield return (LineOf(access), $"'{RightmostName(access.Expression)}.{member.Identifier.Text}'");
+                    break;
+                case TypeOfExpressionSyntax typeOf:
+                    yield return (LineOf(typeOf), "'typeof(...)'");
+                    break;
+            }
+        }
+    }
+
+    private static int LineOf(SyntaxNode node) => node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+
+    private static string? RightmostName(ExpressionSyntax expr) => expr switch
+    {
+        IdentifierNameSyntax id => id.Identifier.Text,
+        MemberAccessExpressionSyntax { Name: SimpleNameSyntax name } => name.Identifier.Text,
+        _ => null,
+    };
+
+    /// <summary>
+    /// Positive control for <see cref="FindTypeDispatch"/>: each banned shape, planted in a synthetic method,
+    /// must be reported — so an all-green <see cref="OperatorDispatchRoots_LowerFromTheRecordedFact_WithoutTypeDispatch"/>
+    /// is evidence about the emitter, not about a detector that matches nothing.
+    /// </summary>
+    [Theory]
+    [InlineData("if (t is UserDefinedType u) { }", "'UserDefinedType'")]
+    [InlineData("var b = t is GenericType;", "'GenericType'")]
+    [InlineData("var b = t is OptionalType;", "'OptionalType'")]
+    [InlineData("var b = t is TypeParameterType;", "'TypeParameterType'")]
+    [InlineData("var b = t is BuiltinType;", "'BuiltinType'")]
+    [InlineData("var c = bt.ClrType;", "'ClrType'")]
+    [InlineData("var c = bt.ClrType == typeof(int);", "'typeof(...)'")]
+    [InlineData("var b = HasComparableConstraint(t);", "'HasComparableConstraint'")]
+    [InlineData("var b = IsFloatExpression(e);", "'IsFloatExpression'")]
+    [InlineData("var b = IsDecimalExpression(e);", "'IsDecimalExpression'")]
+    [InlineData("var b = t == SemanticType.Str;", "'SemanticType.Str'")]
+    [InlineData("var b = t == SemanticType.Long;", "'SemanticType.Long'")]
+    [InlineData("var b = t == SemanticType.Int;", "'SemanticType.Int'")]
+    [InlineData("var b = k == Semantic.TypeKind.Enum;", "'TypeKind.Enum'")]
+    public void TypeDispatchDetector_FlagsEachBannedShape_PositiveControl(string statement, string expected)
+    {
+        var source = "class C { void M() { " + statement + " } }";
+        var method = CSharpSyntaxTree.ParseText(source).GetRoot()
+            .DescendantNodes().OfType<MethodDeclarationSyntax>().Single();
+
+        FindTypeDispatch(method).Select(v => v.What).Should().Contain(expected,
+            "the detector must recognise this shape, otherwise the scoped scan passes vacuously");
+
+        var clean = CSharpSyntaxTree.ParseText("class C { void M() { var k = lowering?.Kind; } }").GetRoot()
+            .DescendantNodes().OfType<MethodDeclarationSyntax>().Single();
+        FindTypeDispatch(clean).Should().BeEmpty("a fact read is not type dispatch");
+    }
+
     /// <summary>
     /// The transitive set of same-file method names reachable from <paramref name="entry"/> through
     /// unqualified (same-class) invocations — <c>Foo(...)</c>, <c>Foo&lt;T&gt;(...)</c> and

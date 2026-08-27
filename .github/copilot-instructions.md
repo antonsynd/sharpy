@@ -48,7 +48,7 @@ Statement-level flow (e.g. `if x is not None:` narrows `T?` → `T`) comes from 
 
 ### Key Data Structures
 
-- **`SemanticInfo`** — Maps AST nodes → types/symbols. Uses `ReferenceEqualityComparer` because AST nodes are records (value equality) but identity is needed. Per-file instances merge into the project-wide instance at `SemanticInfo.MergeFrom` — every node-keyed dictionary must participate or its entries are silently dropped.
+- **`SemanticInfo`** — Maps AST nodes → types/symbols. Uses `ReferenceEqualityComparer` because AST nodes are records (value equality) but identity is needed. Per-file instances merge into the project-wide instance at `SemanticInfo.MergeFrom` — every node-keyed dictionary must participate or its entries are silently dropped. Node-keyed lowering carriers the emitter reads (each with a `MergeFrom` stanza and a multi-file merge-control fixture): `NarrowedReadLowering`, `TruthinessLowering`, `InterfaceCastLowering`, `SliceLowering`, `StatementLowering` (`PlainStatement` / `Discard` / `ElideNoneLiteral` / `ElideMethodGroupStatement`), `MultiAxisAccessLowering`, `OperatorLowering`, `IterationLowering`, `TargetBinding` (declare vs rebind per binding node), `MatchScrutineeLowering`, `ComparisonChainLowering` (per-link chain lowering, #1642); `BinaryOpLowering` (equality strategy incl. `EqualityComparerDefault`) rides the lowering IR. Local C# spellings are symbol-keyed (`CodeGenInfo.CSharpName/Version`), allocated per function by `LocalNameAllocator` at `CodeGenInfoComputer.ComputeForModule` from the `LocalBindingLedger` that `SymbolTable.Define` appends to (#1560).
 - **`SemanticBinding`** — Stores computed semantic data (CodeGenInfo, variable types) separately from symbols, materialized at phase boundaries.
 - **`SymbolTable`** — Global scope of all declared symbols.
 
@@ -121,7 +121,9 @@ Pluggable validators implement `ISemanticValidator` with an `Order` property (lo
 - **Order 170**: `InterfaceConflictValidator` — Interface conflict detection
 - **Order 250**: `DefaultParameterValidator` — Default parameter validation
 - **Order 400**: `ControlFlowValidator` — CFG-based unreachable code, missing returns
+- **Order 402**: `DefiniteAssignmentValidator` — bare-declared variable use-before-assign (#1559)
 - **Order 405**: `ExhaustivenessValidator` — Match statement exhaustiveness checks
+- **Order 406**: `MatchArmOrderValidator` — non-trailing irrefutable match arm (SPY0700, #1624)
 - **Order 410**: `PropertyValidator` — Property validation
 - **Order 411**: `FinalFieldValidator` — Final field validation
 - **Order 412**: `EventValidator` — Event validation

@@ -43,6 +43,7 @@ ICE with a diagnostic" from "restricts working code" (the round-8 Batch B lesson
 | CsClean property tests | `src/Sharpy.Compiler.Tests/Properties/CodeGen/` | Random-seed property tests asserting no raw CSxxxx leaks |
 | EmitterCarrierOnlyConformanceTests | `src/Sharpy.Compiler.Tests/CodeGen/` | Rule 2 — decisions cannot be taken emitter-side (prevents un-lowerable shapes from being introduced) |
 | EmitterLocalStateScanTests | `src/Sharpy.Compiler.Tests/CodeGen/` | Scans CodeGen sources for deleted slot-tracking members (`_declaredVariables`, `_variableVersions`, etc.) — prevents re-introduction of emitter-side local state (#1560) |
+| EmitterBannedTokenScanTests.OperatorDispatchRoots | `src/Sharpy.Compiler.Tests/CodeGen/` | Scoped type-dispatch scan: every operator / statement / multi-axis-access lowering root (`GenerateBinaryOp`, `GenerateComparisonChain`, `GenerateUnaryOp`, `GenerateAugmentedValue`, `GenerateNullCoalesceValue`, `GeneratePowerValue`, `GenerateMultiAxisAccess`, `GenerateExpressionStatement`, `GenerateComprehensionIterator`, `GenerateFor`, `GenerateEnumValuesIterator`) and its same-file transitive callees may switch on a recorded tag but never on a semantic type, CLR type, or AST shape; no allowlist, roots join by being listed (#1618 class, #1623) |
 | Ratchet policy | all allowlists | Drain-on-fix, entries cite issues, allowlists trend to empty |
 
 ## Starting census (measured @ `8bacf3d34`)
