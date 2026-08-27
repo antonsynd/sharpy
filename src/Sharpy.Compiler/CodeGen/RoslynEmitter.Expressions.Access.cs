@@ -2176,7 +2176,10 @@ internal partial class RoslynEmitter
         {
             case MultiAxisAccessKind.IndexSpread:
                 {
-                    // All indices: a[1, 2] → a[1, 2] (spread into params int[])
+                    // All indices: a[1, 2] → a[1, 2] (spread into params int[]). The parser emits a
+                    // MultiAxisAccess only when some dimension is a slice (an all-index `a[1, 2]` is
+                    // an IndexAccess with a tuple index), so this arm is reached only from a
+                    // constructed AST today; it stays because the fact's kind set includes it (D6).
                     var args = new List<ArgumentSyntax>();
                     foreach (var dim in multiAxis.Dimensions)
                         args.Add(Argument(GenerateExpression(dim.Index!)));

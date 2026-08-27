@@ -1,0 +1,25 @@
+# #1621: the all-index sibling of the multi-axis matrix. `a[i, j]` with no slice is NOT a
+# MultiAxisAccess — the parser makes it an IndexAccess whose index is the tuple (i, j), and it
+# lowers through the ndarray's CLR indexer (params int[]) like any other index read; only a
+# comma-plus-slice subscript is a MultiAxisAccess (see ndarray_multi_axis_slice_1621). This
+# fixture pins the all-index path's values so the two spellings stay consistent.
+# Values verified against python3 + numpy 2.5.1: a[1, 2] = 60.0, a[0, 0] = 10.0,
+# a[1, 1] = 50.0, a[0, 2] = 30.0.
+import numpy as np
+
+
+def f() -> int:
+    print("f")
+    return 1
+
+
+def main():
+    a = np.array([[10.0, 20.0, 30.0], [40.0, 50.0, 60.0]])
+    print(a[1, 2])
+    print(a[0, 0])
+    # A call nested in an index dimension is checked and emitted in place (evaluation order
+    # is preserved: "f" prints before the element).
+    print(a[f(), 1])
+    i: int = 0
+    j: int = 2
+    print(a[i, j])

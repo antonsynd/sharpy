@@ -1,0 +1,11 @@
+# #1644: a user class with __getitem__ is not a multi-axis receiver — only ndarray has the
+# params-int indexer + Slice(params SliceSpec[]) pair the lowering targets.
+# Pre-fix (50fa866d8): SPY0908 — generated C# failed with CS1061 (no Slice on Box).
+class Box:
+    def __getitem__(self, k: int) -> int:
+        return k
+
+
+def main() -> None:
+    b: Box = Box()
+    print(b[0:1, 2])

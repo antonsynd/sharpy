@@ -22,7 +22,10 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 ///   <item><see cref="MultiAxisAccessLowering"/> read by <c>GenerateMultiAxisAccess</c> (#1621):
 ///   two Index dimensions emit <c>a[1, 2]</c> under <c>IndexSpread</c> and a <c>.Slice(…)</c>
 ///   call under <c>SliceCall [Slice, Index]</c>, proving the emitter reads the recorded
-///   per-dimension kinds and never <c>SubscriptDimension.IsSlice</c>.</item>
+///   per-dimension kinds and never <c>SubscriptDimension.IsSlice</c>. (The parser produces a
+///   <c>MultiAxisAccess</c> only when some dimension is a slice, so the IndexSpread arm is
+///   reachable only from a constructed AST like this one — see
+///   <c>MultiAxisAccessLoweringRecordingTests.AllIndexSubscript_IsNotMultiAxis_ItIsATupleIndexAccess</c>.)</item>
 ///   <item><see cref="StatementLowering"/> read by <c>GenerateExpressionStatement</c> (#1622):
 ///   the same <c>f()</c> statement emits a bare invocation under <c>PlainStatement</c> and
 ///   <c>_ = f();</c> under <c>Discard</c>, proving the emitter reads the tag and never

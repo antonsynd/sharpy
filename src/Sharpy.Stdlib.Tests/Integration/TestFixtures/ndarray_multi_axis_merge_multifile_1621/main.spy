@@ -1,0 +1,13 @@
+# The cross-file half of #1621. Every multi-axis subscript lives in grid.spy, a non-entry
+# file — the MultiAxisAccessLowering facts are recorded while checking grid.spy and must
+# survive SemanticInfo.MergeFrom into the project-wide merge that code generation reads.
+# Without the stanza in MergeFrom the facts are dropped and the emitter's absent-fact throw
+# fires (descriptive ICE) instead of emitting the indexer / Slice call.
+# Values verified against python3 + numpy 2.5.1 (see grid.spy).
+import grid
+
+
+def main() -> None:
+    print(grid.center())
+    print(grid.corner_sum())
+    print(grid.row_size())

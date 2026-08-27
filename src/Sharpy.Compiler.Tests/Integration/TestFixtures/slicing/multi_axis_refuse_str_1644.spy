@@ -1,3 +1,5 @@
+# #1644: str is not a multi-axis receiver (see multi_axis_refuse_list_1644).
+# Pre-fix (50fa866d8): SPY0908 — generated C# failed with CS1061 (no Slice on string).
 def main():
     s: str = "hello"
-    print(s[0, 1])
+    print(s[0:2, 1])

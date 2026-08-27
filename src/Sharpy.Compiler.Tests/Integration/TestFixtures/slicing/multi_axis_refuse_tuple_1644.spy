@@ -1,0 +1,5 @@
+# #1644: tuple is not a multi-axis receiver.
+# Pre-fix (50fa866d8): SPY0908 — generated C# failed with CS1061 (no Slice on the tuple).
+def main():
+    t: tuple[int, str, int] = (1, "a", 2)
+    print(t[0:1, 1])

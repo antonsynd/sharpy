@@ -1,1 +1,2 @@
-Index must be 'int', got 'tuple
+Type 'list[int32]' does not support multi-axis subscripting
+!count 1

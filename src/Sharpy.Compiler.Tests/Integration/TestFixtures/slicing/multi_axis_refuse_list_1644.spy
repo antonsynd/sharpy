@@ -1,3 +1,7 @@
+# #1644: a comma-plus-slice subscript is a MultiAxisAccess; only ndarray classifies as a
+# multi-axis receiver, every other receiver is refused (SPY0602). (`x[0, 1]` with no slice
+# is a tuple INDEX, refused by the index-type rule instead — see collection_types.md.)
+# Pre-fix (50fa866d8): SPY0908 — generated C# failed with CS1061 (no Slice on List<T>).
 def main():
-    x: list[int] = [1, 2, 3]
-    print(x[0, 1])
+    xs: list[int] = [1, 2, 3]
+    print(xs[0:2, 1])
