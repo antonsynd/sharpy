@@ -219,12 +219,14 @@ public class EmitterBannedTokenScanTests
     /// (<see cref="TypeDispatchDetector_FlagsEachBannedShape_PositiveControl"/>) proves the detector itself
     /// recognises every banned shape, so an all-green run is not vacuous.</para>
     ///
-    /// <para><b>Known limit — the walk stops at the partial-file boundary.</b> A callee that lives in a
-    /// different <c>RoslynEmitter.*.cs</c> partial is not reached from a root in another one: the
-    /// <c>//</c> / <c>%</c> routing seams <c>GenerateFloorDivideValue</c> / <c>GenerateModuloValue</c>
-    /// (<c>RoslynEmitter.Operators.cs</c>) are called from <c>GenerateBinaryOp</c> yet still classify by
-    /// operand type — the class escape tracked by #1658. When #1658 lands they join this list as roots
-    /// of their own file; until then their absence here is a documented gap, not a pass.</para>
+    /// <para><b>The walk is same-file.</b> A callee that lives in a different <c>RoslynEmitter.*.cs</c>
+    /// partial is not reached from a root in another one, so a cross-partial callee joins this table as a
+    /// root of its OWN file — the precedent is the <c>//</c> / <c>%</c> routing seams
+    /// <c>GenerateFloorDivideValue</c> / <c>GenerateModuloValue</c> (<c>RoslynEmitter.Operators.cs</c>),
+    /// called from <c>GenerateBinaryOp</c> and <c>GenerateAugmentedValue</c> and listed below since #1658
+    /// (their rows were red against the pre-#1658 emitter: <c>IsDecimalOperand</c> / <c>IsFloatExpression</c>
+    /// at the roots and <c>SemanticType.Int</c> / <c>SemanticType.Long</c> in the reached
+    /// <c>IsFlooredNumericOperand</c>).</para>
     /// </summary>
     [Theory]
     [InlineData("RoslynEmitter.Expressions.Operators.cs", "GenerateBinaryOp")]
@@ -233,6 +235,8 @@ public class EmitterBannedTokenScanTests
     [InlineData("RoslynEmitter.Statements.Assignments.cs", "GenerateAugmentedValue")]
     [InlineData("RoslynEmitter.Statements.Assignments.cs", "GenerateNullCoalesceValue")]
     [InlineData("RoslynEmitter.Operators.cs", "GeneratePowerValue")]
+    [InlineData("RoslynEmitter.Operators.cs", "GenerateFloorDivideValue")]
+    [InlineData("RoslynEmitter.Operators.cs", "GenerateModuloValue")]
     [InlineData("RoslynEmitter.Expressions.Access.cs", "GenerateMultiAxisAccess")]
     [InlineData("RoslynEmitter.Statements.cs", "GenerateExpressionStatement")]
     [InlineData("RoslynEmitter.Expressions.Comprehensions.cs", "GenerateComprehensionIterator")]
@@ -288,6 +292,7 @@ public class EmitterBannedTokenScanTests
     {
         "UserDefinedType", "GenericType", "OptionalType", "TypeParameterType", "BuiltinType",
         "ClrType", "HasComparableConstraint", "IsFloatExpression", "IsDecimalExpression", "IsDecimalOperand",
+        "IsFlooredNumericOperand",
     };
 
     /// <summary>
@@ -354,6 +359,8 @@ public class EmitterBannedTokenScanTests
     [InlineData("var b = HasComparableConstraint(t);", "'HasComparableConstraint'")]
     [InlineData("var b = IsFloatExpression(e);", "'IsFloatExpression'")]
     [InlineData("var b = IsDecimalExpression(e);", "'IsDecimalExpression'")]
+    [InlineData("var b = IsDecimalOperand(e);", "'IsDecimalOperand'")]
+    [InlineData("var b = IsFlooredNumericOperand(e);", "'IsFlooredNumericOperand'")]
     [InlineData("var b = t == SemanticType.Str;", "'SemanticType.Str'")]
     [InlineData("var b = t == SemanticType.Long;", "'SemanticType.Long'")]
     [InlineData("var b = t == SemanticType.Int;", "'SemanticType.Int'")]
