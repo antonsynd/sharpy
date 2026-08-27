@@ -161,6 +161,20 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
         base.VisitTypePattern(node);
     }
 
+    public override void VisitLambdaExpression(LambdaExpression node)
+    {
+        // A lambda parameter is a local of the enclosing C# body, but a same-spelling collision
+        // with another local is VERSIONED by the allocator (#1647), not refused, so it does not
+        // enter the collision map. Only the reserved-prefix rule applies to it.
+        foreach (var parameter in node.Parameters)
+        {
+            RefuseReservedEscapedPrefix(parameter.Name, parameter.IsNameBacktickEscaped,
+                parameter.LineStart, parameter.ColumnStart);
+        }
+
+        base.VisitLambdaExpression(node);
+    }
+
     public override void VisitModifiedArgument(ModifiedArgument node)
     {
         // An inline out declaration (`try_parse("42", out value: int)`) introduces a local at the
@@ -195,9 +209,39 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
         }
     }
 
+    /// <summary>
+    /// Refuses a backtick-escaped local whose spelling starts with <c>__</c> (SPY0522, #1560 D1 §3).
+    /// An escaped local is emitted verbatim, and <c>__{prefix}_{n}</c> is the shape of every
+    /// temporary the emitter declares in the same C# body (<c>__lambda_0</c>, <c>__loopVar_1</c>,
+    /// <c>__spread_2</c>, …), so such a local can collide with a temporary that no source line
+    /// names. The unescaped spelling is not affected: <c>__t</c> camelCases to <c>t</c>.
+    /// </summary>
+    /// <returns>True when the binding was refused.</returns>
+    private bool RefuseReservedEscapedPrefix(string spelling, bool isEscaped, int line, int column)
+    {
+        if (_scope == null || !isEscaped || !spelling.StartsWith("__", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        AddError(
+            $"Escaped local '{spelling}' is reserved: a name starting with '__' is the compiler's own "
+            + "temporary-name space, and an escaped local is emitted verbatim. Drop the backticks or "
+            + "rename it.",
+            line,
+            column,
+            code: DiagnosticCodes.CodeGen.MemberNameCollision);
+        return true;
+    }
+
     private void Declare(string spelling, bool isEscaped, int line, int column)
     {
         if (_scope == null || spelling.Length == 0)
+        {
+            return;
+        }
+
+        if (RefuseReservedEscapedPrefix(spelling, isEscaped, line, column))
         {
             return;
         }

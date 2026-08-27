@@ -1,0 +1,5 @@
+def main() -> None:
+    __t = 5
+    print(__t)
+    f: (int) -> int = lambda __u: __u + 1
+    print(f(__t))
