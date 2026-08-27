@@ -399,6 +399,20 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Whether an identifier names a function — a method group when passed as an argument.
+    /// The recorded identifier symbol (<see cref="SemanticInfo.GetIdentifierSymbol"/>) is the
+    /// authority: it is the only route by which a nested <c>def</c> is visible here, because
+    /// the emitter's scope lookup runs at the enclosing declaration's level and the former
+    /// emitter-side local-function table was deleted with #1560 (the null-forgiving <c>!</c>
+    /// on <c>objectHook: InjectHook</c> in the regenerated json spy tests went missing and
+    /// CS8622 came back — plan-c6ae1b verification @ 3bc6bc2a7). The name lookup remains for
+    /// top-level functions in AST-only unit tests, where no identifier symbol was recorded.
+    /// </summary>
+    private bool IsFunctionReference(Identifier id)
+        => _context.SemanticInfo?.GetIdentifierSymbol(id) is FunctionSymbol
+            || _context.LookupSymbol(id.Name) is FunctionSymbol;
+
+    /// <summary>
     /// Returns true if the expression is a method group (an identifier or member access
     /// resolving to a function symbol rather than a delegate-typed variable) or a lambda.
     /// These require an explicit delegate cast before user-defined implicit conversions
@@ -412,7 +426,7 @@ internal partial class RoslynEmitter
         return expr switch
         {
             LambdaExpression => true,
-            Identifier id => _context.LookupSymbol(id.Name) is FunctionSymbol,
+            Identifier id => IsFunctionReference(id),
             MemberAccess ma =>
                 _context.SemanticInfo?.GetMemberAccessResolution(ma)?.Member is FunctionSymbol,
             _ => false,
@@ -432,7 +446,7 @@ internal partial class RoslynEmitter
 
         return expr switch
         {
-            Identifier id => _context.LookupSymbol(id.Name) is FunctionSymbol,
+            Identifier id => IsFunctionReference(id),
             MemberAccess ma =>
                 _context.SemanticInfo?.GetMemberAccessResolution(ma)?.Member is FunctionSymbol,
             _ => false,

@@ -263,7 +263,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (114, 5) - (114, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-                var decoder = new global::Sharpy.JSONDecoder(objectHook: InjectHook);
+                var decoder = new global::Sharpy.JSONDecoder(objectHook: InjectHook!);
 #line (115, 5) - (115, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 object result = json.Loads("{\"a\": 1}", cls: decoder);
 #line (116, 5) - (122, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
@@ -326,7 +326,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (137, 5) - (137, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-                json.Loads("{\"inner\": {\"deep\": {}}}", objectHook: CountingHook);
+                json.Loads("{\"inner\": {\"deep\": {}}}", objectHook: CountingHook!);
 #line (138, 5) - (138, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 Xunit.Assert.Equal(3, count.GetItemUnchecked(0));
 #line hidden
@@ -353,7 +353,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 }
 
 #line (146, 5) - (146, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
-                json.Loads("[{\"a\": 1}, {\"b\": 2}]", objectHook: CountingHook);
+                json.Loads("[{\"a\": 1}, {\"b\": 2}]", objectHook: CountingHook!);
 #line (147, 5) - (147, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 Xunit.Assert.Equal(2, count.GetItemUnchecked(0));
 #line hidden
