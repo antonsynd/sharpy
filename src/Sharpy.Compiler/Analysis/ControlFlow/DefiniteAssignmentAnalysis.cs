@@ -167,69 +167,71 @@ internal static class DefiniteAssignmentAnalysis
                 foreach (var element in tuple.Elements)
                     CollectAssignedNames(element, assigned);
                 break;
+            case StarExpression star:
+                CollectAssignedNames(star.Operand, assigned);
+                break;
+            case Parenthesized paren:
+                CollectAssignedNames(paren.Expression, assigned);
+                break;
+            case IndexAccess:
+            case MemberAccess:
+                break;
         }
     }
 
     private static void CollectReads(Statement stmt, List<(string, Identifier, int)> reads, int stmtIdx)
     {
-        switch (stmt)
+        if (stmt is Assignment assign)
         {
-            case ExpressionStatement exprStmt:
-                CollectReadsFromExpr(exprStmt.Expression, reads, stmtIdx);
+            CollectReadsFromExpr(assign.Value, reads, stmtIdx);
+            CollectTargetReads(assign.Target, reads, stmtIdx);
+            return;
+        }
+
+        foreach (var child in stmt.GetChildNodes())
+        {
+            if (child is Expression expr)
+                CollectReadsFromExpr(expr, reads, stmtIdx);
+        }
+    }
+
+    private static void CollectTargetReads(Expression target, List<(string, Identifier, int)> reads, int stmtIdx)
+    {
+        switch (target)
+        {
+            case Identifier:
                 break;
-            case ReturnStatement ret when ret.Value != null:
-                CollectReadsFromExpr(ret.Value, reads, stmtIdx);
+            case TupleLiteral tuple:
+                foreach (var element in tuple.Elements)
+                    CollectTargetReads(element, reads, stmtIdx);
                 break;
-            case Assignment assign:
-                CollectReadsFromExpr(assign.Value, reads, stmtIdx);
+            case StarExpression star:
+                CollectTargetReads(star.Operand, reads, stmtIdx);
                 break;
-            case VariableDeclaration vd when vd.InitialValue != null:
-                CollectReadsFromExpr(vd.InitialValue, reads, stmtIdx);
+            case Parenthesized paren:
+                CollectTargetReads(paren.Expression, reads, stmtIdx);
                 break;
-            case AssertStatement assert:
-                CollectReadsFromExpr(assert.Test, reads, stmtIdx);
-                if (assert.Message != null)
-                    CollectReadsFromExpr(assert.Message, reads, stmtIdx);
+            default:
+                CollectReadsFromExpr(target, reads, stmtIdx);
                 break;
         }
     }
 
     private static void CollectReadsFromExpr(Expression expr, List<(string, Identifier, int)> reads, int stmtIdx)
     {
-        switch (expr)
+        if (expr is Identifier id)
         {
-            case Identifier id:
-                reads.Add((id.Name, id, stmtIdx));
-                break;
-            case FunctionCall call:
-                CollectReadsFromExpr(call.Function, reads, stmtIdx);
-                foreach (var arg in call.Arguments)
-                    CollectReadsFromExpr(arg, reads, stmtIdx);
-                foreach (var kwarg in call.KeywordArguments)
-                    CollectReadsFromExpr(kwarg.Value, reads, stmtIdx);
-                break;
-            case BinaryOp bin:
-                CollectReadsFromExpr(bin.Left, reads, stmtIdx);
-                CollectReadsFromExpr(bin.Right, reads, stmtIdx);
-                break;
-            case UnaryOp un:
-                CollectReadsFromExpr(un.Operand, reads, stmtIdx);
-                break;
-            case MemberAccess ma:
-                CollectReadsFromExpr(ma.Object, reads, stmtIdx);
-                break;
-            case IndexAccess ia:
-                CollectReadsFromExpr(ia.Object, reads, stmtIdx);
-                CollectReadsFromExpr(ia.Index, reads, stmtIdx);
-                break;
-            case ConditionalExpression cond:
-                CollectReadsFromExpr(cond.Test, reads, stmtIdx);
-                CollectReadsFromExpr(cond.ThenValue, reads, stmtIdx);
-                CollectReadsFromExpr(cond.ElseValue, reads, stmtIdx);
-                break;
-            case Parenthesized paren:
-                CollectReadsFromExpr(paren.Expression, reads, stmtIdx);
-                break;
+            reads.Add((id.Name, id, stmtIdx));
+            return;
+        }
+
+        if (expr is LambdaExpression)
+            return;
+
+        foreach (var child in expr.GetChildNodes())
+        {
+            if (child is Expression childExpr)
+                CollectReadsFromExpr(childExpr, reads, stmtIdx);
         }
     }
 }
