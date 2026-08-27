@@ -564,7 +564,11 @@ internal partial class RoslynEmitter : ICodeEmitter
 
     private string GetMangledVariableName(VariableDeclaration varDecl, bool isNewDeclaration)
         => ResolveViaNodeKeyedSymbol(_context.SemanticInfo?.GetDeclarationSymbol(varDecl), isNewDeclaration)
-           ?? GetMangledVariableName(varDecl.Name, isNewDeclaration, varDecl.IsNameBacktickEscaped);
+           ?? (varDecl.IsConst
+               // No symbol (AST-only unit tests): the syntactic const casing, as the allocator
+               // would have recorded it (NameCasing.ResolveConstant, version 0).
+               ? NameCasing.ResolveConstant(varDecl.Name, varDecl.IsNameBacktickEscaped)
+               : GetMangledVariableName(varDecl.Name, isNewDeclaration, varDecl.IsNameBacktickEscaped));
 
     private string? ResolveViaNodeKeyedSymbol(Symbol? symbol, bool isNewDeclaration)
     {

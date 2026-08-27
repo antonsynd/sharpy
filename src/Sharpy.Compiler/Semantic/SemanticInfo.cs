@@ -246,6 +246,15 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Parameter, VariableSymbol> _parameterSymbols =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map a walrus expression / an inline `out name: T` argument to the variable symbol it binds.
+    // Both bind a name from an EXPRESSION position, so no Identifier node carries the symbol; the
+    // emitter reads the symbol's CodeGenInfo for the spelling and the node's TargetBinding for
+    // declaration-vs-assignment (#1560 R2/R3). Mirrors _parameterSymbols in shape and merge.
+    private readonly ConcurrentDictionary<WalrusExpression, VariableSymbol> _walrusSymbols =
+        new(ReferenceEqualityComparer.Instance);
+    private readonly ConcurrentDictionary<ModifiedArgument, VariableSymbol> _inlineOutSymbols =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map each rebinding to the binding it REPLACED in the same scope. A plain `x = ...` defines a
     // FRESH VariableSymbol (TypeChecker.CheckAssignment's simple-identifier branch) which
     // Scope.Define swaps in for the previous one, so each binding's reference collection holds only
@@ -1170,6 +1179,22 @@ public class SemanticInfo : ISemanticQuery
         return _parameterSymbols.TryGetValue(parameter, out var symbol) ? symbol : null;
     }
 
+    /// <summary>Records the variable symbol a walrus expression binds (#1560 R2).</summary>
+    public void SetWalrusSymbol(WalrusExpression walrus, VariableSymbol symbol)
+        => _walrusSymbols[walrus] = symbol;
+
+    /// <summary>The variable symbol a walrus expression binds, or null when unchecked.</summary>
+    public VariableSymbol? GetWalrusSymbol(WalrusExpression walrus)
+        => _walrusSymbols.GetValueOrDefault(walrus);
+
+    /// <summary>Records the variable symbol an inline <c>out name: T</c> argument binds (#1560 R3).</summary>
+    public void SetInlineOutSymbol(ModifiedArgument argument, VariableSymbol symbol)
+        => _inlineOutSymbols[argument] = symbol;
+
+    /// <summary>The variable symbol an inline <c>out</c> argument binds, or null when unchecked.</summary>
+    public VariableSymbol? GetInlineOutSymbol(ModifiedArgument argument)
+        => _inlineOutSymbols.GetValueOrDefault(argument);
+
     /// <summary>
     /// Records that <paramref name="rebinding"/> replaced <paramref name="predecessor"/> — the same
     /// variable, rebound. Called from the checker where both are in hand and the scope is alive.
@@ -1519,6 +1544,12 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._parameterSymbols)
             _parameterSymbols.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._walrusSymbols)
+            _walrusSymbols.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._inlineOutSymbols)
+            _inlineOutSymbols.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._rebindingPredecessors)
             _rebindingPredecessors.TryAdd(kvp.Key, kvp.Value);

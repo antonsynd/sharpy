@@ -1,0 +1,9 @@
+def try_parse(s: str, result: out int) -> bool:
+    result = 42
+    return True
+
+def main() -> None:
+    if try_parse("1", out v: int):
+        print(v)
+    if try_parse("2", out v: int):
+        print(v)

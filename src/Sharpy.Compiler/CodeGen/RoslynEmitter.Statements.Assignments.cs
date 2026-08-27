@@ -85,15 +85,9 @@ internal partial class RoslynEmitter
             // Check if this is a simple assignment or augmented assignment
             if (assign.Operator == AssignmentOperator.Assign)
             {
-                // Simple assignment: x = value
-                // In Sharpy, assignments can be redefinitions with type changes
-                // However, inside a function/loop, we should update existing vars
-                // Get the base name to check if already declared
-                var baseName = LocalBaseName(name.Name, name.IsNameBacktickEscaped);
-
-                // Check if this variable was already declared in current scope
-                // _variableVersions tracks local variables by base name
-                // Also check if this is a module-level variable via CodeGenInfo
+                // Simple assignment: x = value. Whether this declares a fresh C# local or assigns
+                // to a live one is the recorded TargetBinding (#1560); a module-level variable is
+                // always assigned (it is a field).
                 var symbol = _context.LookupSymbol(name.Name);
                 var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
                 var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(name)?.Kind == TargetBindingKind.Rebinds;
@@ -918,10 +912,11 @@ internal partial class RoslynEmitter
             }
         }
 
-        // NOW get the mangled variable name (which may update version tracking for redeclarations)
-        var varName = varDecl.IsConst
-            ? NameCasing.ResolveConstant(varDecl.Name, varDecl.IsNameBacktickEscaped)
-            : GetMangledVariableName(varDecl, isNewDeclaration: true);
+        // The declared name is the symbol's recorded spelling — for a local const too. The
+        // allocator versions a const re-declared in a sibling block (K, K_1) and every reference
+        // reads that spelling; declaring it from NameCasing.ResolveConstant here left the
+        // declaration at K while the references said K_1 (CS0103 behind SPY0908, #1560 R4).
+        var varName = GetMangledVariableName(varDecl, isNewDeclaration: true);
 
         // Handle 'auto' type annotation - use 'var' in C#
         // For const without type annotation, infer type from initializer (C# const can't use 'var')

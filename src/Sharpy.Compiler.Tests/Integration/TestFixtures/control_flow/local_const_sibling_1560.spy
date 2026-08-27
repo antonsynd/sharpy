@@ -1,0 +1,7 @@
+def main() -> None:
+    if True:
+        const K: int = 1
+        print(K)
+    if True:
+        const K: int = 2
+        print(K)

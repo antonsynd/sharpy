@@ -227,48 +227,81 @@ internal partial class TypeChecker
             // (TypeResolver returns UnknownType for "auto", which maps to C# var)
             var resolvedType = _typeResolver.ResolveTypeAnnotation(modArg.InlineType);
 
-            // Register the variable in the current scope (follows walrus operator pattern,
-            // including the escape's part in the binding's identity — #1326)
-            var existingSymbol = _symbolTable.Lookup(modArg.InlineName, searchParents: false);
-            if (existingSymbol is VariableSymbol existingVar
-                && existingVar.IsNameBacktickEscaped == modArg.IsNameBacktickEscaped)
+            // Bind the name exactly as a walrus does (#1560 D1 §2, R3): an already-bound name is
+            // REBOUND by a chained successor — the emitter then passes the existing C# local as
+            // `out v` instead of declaring a second `out int v` (CS0128) — and a fresh name is
+            // declared. The escape is part of the binding's identity (#1326).
+            if (TryReportNonVariableRedefinition(modArg.InlineName, modArg.Argument.LineStart, modArg.Argument.ColumnStart, modArg.Span))
+                return SemanticType.Unknown;
+
+            var candidate = _symbolTable.Lookup(modArg.InlineName, searchParents: false)
+                ?? _symbolTable.Lookup(modArg.InlineName, searchParents: true);
+            if (candidate is VariableSymbol { IsConstant: true })
             {
-                // Variable already exists in this scope — update its type
-                SemanticBinding.SetVariableType(existingVar, resolvedType);
-            }
-            else
-            {
-                // New variable — create and register it
-                var newSymbol = new VariableSymbol
-                {
-                    Name = modArg.InlineName,
-                    Kind = SymbolKind.Variable,
-                    Type = resolvedType,
-                    IsConstant = false,
-                    IsNameBacktickEscaped = modArg.IsNameBacktickEscaped,
-                    DeclarationLine = modArg.Argument.LineStart,
-                    DeclarationColumn = modArg.Argument.ColumnStart,
-                    NameDeclarationLine = modArg.Argument.LineStart,
-                    NameDeclarationColumn = modArg.Argument.ColumnStart
-                };
-                _symbolTable.Define(newSymbol);
-                SemanticBinding.SetVariableType(newSymbol, resolvedType);
+                AddError($"Cannot reassign constant variable '{modArg.InlineName}'",
+                    modArg.Argument.LineStart, modArg.Argument.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidAssignmentTarget, span: modArg.Span);
+                return SemanticType.Unknown;
             }
 
+            var predecessor = ExpressionRebindingPredecessor(candidate, modArg.IsNameBacktickEscaped);
+            var bindingType = resolvedType;
+            if (predecessor != null)
+            {
+                // `out v: auto` on a bound v re-uses the variable as it is; an explicit annotation
+                // must fit the variable's type, as any rebinding must (#1301).
+                var boundExisting = GetVariableType(predecessor);
+                if (resolvedType is UnknownType)
+                {
+                    bindingType = boundExisting;
+                }
+                else if (boundExisting is not UnknownType && !IsAssignable(resolvedType, boundExisting))
+                {
+                    AddError(
+                        $"Cannot assign type '{resolvedType.GetDisplayName()}' to variable of type "
+                        + $"'{boundExisting.GetDisplayName()}'",
+                        modArg.Argument.LineStart, modArg.Argument.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeMismatch, span: modArg.Span);
+                    return SemanticType.Unknown;
+                }
+                else if (boundExisting is not UnknownType)
+                {
+                    bindingType = boundExisting;
+                }
+            }
+
+            var newSymbol = new VariableSymbol
+            {
+                Name = modArg.InlineName,
+                Kind = SymbolKind.Variable,
+                Type = bindingType,
+                IsConstant = false,
+                IsNameBacktickEscaped = modArg.IsNameBacktickEscaped,
+                DeclarationLine = modArg.Argument.LineStart,
+                DeclarationColumn = modArg.Argument.ColumnStart,
+                NameDeclarationLine = modArg.Argument.LineStart,
+                NameDeclarationColumn = modArg.Argument.ColumnStart,
+                DeclarationSpan = modArg.Span,
+                DeclaringFilePath = _currentFilePath
+            };
+            _symbolTable.Define(newSymbol);
+            RecordExpressionBinding(modArg, newSymbol, predecessor, bindingType);
+            _semanticInfo.SetInlineOutSymbol(modArg, newSymbol);
+
             // Record type for the Argument (Identifier) sub-expression so codegen can find it
-            _semanticInfo.SetExpressionType(modArg.Argument, resolvedType);
+            _semanticInfo.SetExpressionType(modArg.Argument, bindingType);
 
             // For 'auto', TypeResolver returns UnknownType — mark as error recovery
             // so SPY0907 doesn't fire (C# var handles the inference at compile time)
-            if (resolvedType is UnknownType)
+            if (bindingType is UnknownType)
             {
                 MarkExpressionAsErrorRecovery(modArg.Argument,
                     ErrorRecoveryReason.DeliberatelyPermissive(
                         "'auto' defers the inference to C#'s var at compile time"));
             }
 
-            // Return the resolved type; CheckExpression caches it on the ModifiedArgument node
-            return resolvedType;
+            // Return the binding's type; CheckExpression caches it on the ModifiedArgument node
+            return bindingType;
         }
 
         if (modArg.Modifier is Parser.Ast.ParameterModifier.Ref or Parser.Ast.ParameterModifier.Out)
@@ -650,39 +683,93 @@ internal partial class TypeChecker
     {
         var valueType = CheckExpression(walrus.Value);
 
-        // Register the walrus target variable in the current scope. The escape is part of the
-        // binding's identity, so a `` `len` := 5 `` never rebinds a bare `len` already in scope and
-        // vice versa: they are two names that happen to share a spelling (#1326).
-        var existingSymbol = _symbolTable.Lookup(walrus.Target, searchParents: false);
-        if (existingSymbol is VariableSymbol existingVar
-            && existingVar.IsNameBacktickEscaped == walrus.IsNameBacktickEscaped)
+        // `x := v` binds exactly as `x = v` does (#1560 D1 §2): a name already bound — in this
+        // scope or an enclosing one, write-through per the owner ruling — is rebound by a CHAINED
+        // successor symbol, never mutated in place, so the ledger records the binding and the
+        // emitter assigns to the chain head's one C# local instead of declaring a second one
+        // (CS0128/CS0136 behind SPY0908, R2). The escape is part of the binding's identity, so a
+        // `` `len` := 5 `` never rebinds a bare `len` already in scope and vice versa (#1326).
+        if (TryReportNonVariableRedefinition(walrus.Target, walrus.LineStart, walrus.ColumnStart, walrus.Span))
+            return SemanticType.Unknown;
+
+        var candidate = _symbolTable.Lookup(walrus.Target, searchParents: false)
+            ?? _symbolTable.Lookup(walrus.Target, searchParents: true);
+        if (candidate is VariableSymbol { IsConstant: true })
         {
-            // Variable already exists — update its type (redeclaration)
-            SemanticBinding.SetVariableType(existingVar, valueType);
-            _semanticInfo.SetTargetBinding(walrus, new TargetBinding(TargetBindingKind.Rebinds));
-        }
-        else
-        {
-            // New variable — create and register it
-            var newSymbol = new VariableSymbol
-            {
-                Name = walrus.Target,
-                Kind = SymbolKind.Variable,
-                Type = valueType,
-                IsConstant = false,
-                IsNameBacktickEscaped = walrus.IsNameBacktickEscaped,
-                DeclarationLine = walrus.LineStart,
-                DeclarationColumn = walrus.ColumnStart,
-                NameDeclarationLine = walrus.LineStart,
-                NameDeclarationColumn = walrus.ColumnStart
-            };
-            _symbolTable.Define(newSymbol);
-            SemanticBinding.SetVariableType(newSymbol, valueType);
-            _semanticInfo.SetTargetBinding(walrus, new TargetBinding(TargetBindingKind.Declares));
+            AddError($"Cannot reassign constant variable '{walrus.Target}'",
+                walrus.LineStart, walrus.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidAssignmentTarget, span: walrus.Span);
+            return SemanticType.Unknown;
         }
 
-        // The walrus expression both assigns and returns the value
-        return valueType;
+        var predecessor = ExpressionRebindingPredecessor(candidate, walrus.IsNameBacktickEscaped);
+        var bindingType = valueType;
+        if (predecessor != null)
+        {
+            // Same contract as the statement form (#1301): the chain shares one C# local, so the
+            // value must fit the variable's type.
+            var boundExisting = GetVariableType(predecessor);
+            if (boundExisting is not UnknownType && valueType is not UnknownType
+                && !IsAssignable(valueType, boundExisting))
+            {
+                AddError(
+                    $"Cannot assign type '{valueType.GetDisplayName()}' to variable of type "
+                    + $"'{boundExisting.GetDisplayName()}'",
+                    walrus.LineStart, walrus.ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch, span: walrus.Span);
+                return SemanticType.Unknown;
+            }
+
+            if (boundExisting is not UnknownType)
+                bindingType = boundExisting;
+        }
+
+        var newSymbol = new VariableSymbol
+        {
+            Name = walrus.Target,
+            Kind = SymbolKind.Variable,
+            Type = bindingType,
+            IsConstant = false,
+            IsNameBacktickEscaped = walrus.IsNameBacktickEscaped,
+            DeclarationLine = walrus.LineStart,
+            DeclarationColumn = walrus.ColumnStart,
+            NameDeclarationLine = walrus.LineStart,
+            NameDeclarationColumn = walrus.ColumnStart,
+            DeclarationSpan = walrus.Span,
+            DeclaringFilePath = _currentFilePath
+        };
+        _symbolTable.Define(newSymbol);
+        RecordExpressionBinding(walrus, newSymbol, predecessor, bindingType);
+        _semanticInfo.SetWalrusSymbol(walrus, newSymbol);
+
+        // The walrus expression both assigns and evaluates to the variable — so its type is the
+        // variable's (a rebind of a float by an int literal reads as float, as the C# assignment
+        // expression does).
+        return bindingType;
+    }
+
+    /// <summary>
+    /// The variable an expression-position binding (walrus, inline <c>out</c>) chains to: the
+    /// candidate when it is a non-const variable spelled with the same escape, else null (fresh).
+    /// </summary>
+    private static VariableSymbol? ExpressionRebindingPredecessor(Symbol? candidate, bool isNameBacktickEscaped)
+        => candidate is VariableSymbol { IsConstant: false } variable
+            && variable.IsNameBacktickEscaped == isNameBacktickEscaped
+            ? variable
+            : null;
+
+    /// <summary>
+    /// Records the facts every expression-position binding shares: the chain link, the
+    /// <see cref="TargetBinding"/> on the binding node (<c>Rebinds</c> iff a predecessor was
+    /// linked), and the variable's type.
+    /// </summary>
+    private void RecordExpressionBinding(Node bindingNode, VariableSymbol symbol, VariableSymbol? predecessor, SemanticType type)
+    {
+        if (predecessor != null)
+            _semanticInfo.SetRebindingPredecessor(symbol, predecessor);
+        _semanticInfo.SetTargetBinding(bindingNode,
+            new TargetBinding(predecessor != null ? TargetBindingKind.Rebinds : TargetBindingKind.Declares));
+        SemanticBinding.SetVariableType(symbol, type);
     }
 
     private SemanticType CheckMatchExpression(MatchExpression matchExpr)
