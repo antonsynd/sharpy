@@ -456,9 +456,15 @@ internal partial class RoslynEmitter
                     IdentifierName("Iterate")))
                 .AddArgumentListArguments(Argument(iterator));
         }
-        else if (iterLowering != null && iteratorType is Semantic.UserDefinedType enumUdt)
+        else if (iterLowering?.Kind is IterationLoweringKind.EnumValues or IterationLoweringKind.StringEnumValues)
         {
-            iterator = GenerateEnumValuesIterator(enumUdt);
+            // Enum iteration routes by the recorded kind alone (#1623); the recorded expression
+            // type only spells the enum's name.
+            iterator = GenerateEnumValuesIterator(
+                iteratorType ?? throw new InvalidOperationException(
+                    "No expression type recorded for an enum iteration source — the TypeChecker "
+                    + "records the enum type alongside the IterationLowering (#1623)"),
+                iterLowering.Kind);
         }
 
         // If there's no else clause, generate simple foreach loop

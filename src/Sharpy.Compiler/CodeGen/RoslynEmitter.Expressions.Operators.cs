@@ -61,20 +61,18 @@ internal partial class RoslynEmitter
                     // (widened to int/long, or SPY0328 when it exceeds long) into an IrConstant, so
                     // emit the literal directly instead of a lossy Math.Pow round-trip. e.g.
                     // `y: long = 10 ** 18`. (E2 #1056: read from the IR, not SemanticInfo.)
+                    // The literal's width is the folded constant's own recorded type — the same
+                    // emitter the E3 fold uses, so there is one folded-literal spelling (#1623).
                     if (_context.Ir?.Index.TryGetValue(binOp, out var foldedNode) == true
                         && foldedNode is IrConstant foldedConst)
                     {
-                        var foldedPow = (long)foldedConst.Value;
-                        return GetExpressionSemanticType(binOp) == SemanticType.Long
-                            ? LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(foldedPow))
-                            : LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)foldedPow));
+                        return EmitFoldedConstant(foldedConst);
                     }
 
-                    // x ** y → ONE invocation, each operand spliced once (#1228): integer
-                    // operands take Sharpy.Builtins.CheckedIntPow, everything else Math.Pow.
-                    // Both decisions live in the routing wrapper this site shares with the
-                    // augmented `**=` site (#1227), so the two cannot drift — the same
-                    // arrangement `//` and `%` already use.
+                    // x ** y → ONE invocation, each operand spliced once (#1228): the recorded
+                    // power tag picks CheckedIntPow (int/long width) or Math.Pow. The routing
+                    // wrapper is shared with the augmented `**=` site (#1227), so the two cannot
+                    // drift — the same arrangement `//` and `%` already use.
                     //
                     // CheckedIntPow absorbs the negative-exponent case itself (returning the
                     // truncating double-path value, so `2 ** -1` is still 0 per the spec), which
@@ -89,8 +87,7 @@ internal partial class RoslynEmitter
                     // silently degraded the lowering to the saturating `(int)Math.Pow` cast, so
                     // `x ** f()` had different overflow behaviour from `x ** y` — a spelling
                     // difference changing semantics. Both spellings now raise OverflowError.
-                    return GeneratePowerValue(
-                        left, right, binOp.Left, binOp.Right, GetExpressionSemanticType(binOp), binOp);
+                    return GeneratePowerValue(left, right, binOp);
                 }
 
             case BinaryOperator.Divide:
@@ -217,21 +214,15 @@ internal partial class RoslynEmitter
                 }
 
             case BinaryOperator.Multiply:
-                if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
-                    == OperatorLoweringKind.StringRepeat)
                 {
-                    var leftMulType = GetExpressionSemanticType(binOp.Left);
-                    var strArg = leftMulType == SemanticType.Str ? left : right;
-                    var countArg = leftMulType == SemanticType.Str ? right : left;
-                    return InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
-                            IdentifierName("Repeat")))
-                        .AddArgumentListArguments(
-                            Argument(strArg),
-                            Argument(countArg));
+                    // String repetition: the tag says which operand is the string (#1623).
+                    var repeatKind = _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind;
+                    if (repeatKind == OperatorLoweringKind.StringRepeatStrLeft)
+                        return GenerateStringRepeat(left, right);
+                    if (repeatKind == OperatorLoweringKind.StringRepeatStrRight)
+                        return GenerateStringRepeat(right, left);
+                    break;
                 }
-                break;
 
         }
 
@@ -282,110 +273,14 @@ internal partial class RoslynEmitter
                 DiagnosticCodes.CodeGen.UnsupportedOperator, binOp.LineStart, binOp.ColumnStart);
         }
 
-        // Honor the semantic-recorded NoneCheck lowering (#901): `x == None` / `x != None`
-        // on reference-semantics types lowers to a C# null pattern check (`x is null` /
-        // `x is not null`). This bypasses any overloaded op_Equality and matches Python's
-        // identity fallback (a live object == None is False). Operand order is irrelevant —
-        // detect the non-None side from the AST.
-        // The literal-shape guard `(Left is NoneLiteral) != (Right is NoneLiteral)` is an
-        // invariant assertion, mirroring the one in ControlFlow.cs: the #911 semantic gate
-        // (SPY0329) rejects any non-literal VoidType comparison operand before lowering, so
-        // a NoneCheck lowering always has exactly one NoneLiteral operand. The guard is
-        // defense-in-depth — a future regression that violated the invariant would fall
-        // through to the native `==`/`!=` operator (a loud C# compile error) rather than
-        // silently dropping the non-literal operand.
-        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
-            && (binOp.Left is NoneLiteral) != (binOp.Right is NoneLiteral)
-            && GetIrBinaryOpLowering(binOp) == BinaryOpLowering.NoneCheck)
+        // Comparisons lower through the SAME helper every comparison-chain link uses (#1642):
+        // the equality strategy rides the IR transport, the ordering kind the OperatorLowering tag.
+        if (IsComparisonSyntaxKind(kind))
         {
-            var operand = binOp.Left is NoneLiteral ? right : left;
-            PatternSyntax nullPattern = ConstantPattern(
-                LiteralExpression(SyntaxKind.NullLiteralExpression));
-            if (kind == SyntaxKind.NotEqualsExpression)
-                nullPattern = UnaryPattern(Token(SyntaxKind.NotKeyword), nullPattern);
-            return IsPatternExpression(operand, nullPattern);
-        }
-
-        // Honor the semantic-recorded Equals-call lowering (#886): tuples and CLR types that
-        // implement Equals/IEquatable but define no op_Equality. A native C# == would either be
-        // reference equality (wrong) or fail to compile (struct without op_Equality). The
-        // instance-vs-static choice was materialized by the TypeChecker; the emitter switches on
-        // the tag alone (value types -> left.Equals(right); reference types -> object.Equals(...)).
-        var equalsLowering = GetIrBinaryOpLowering(binOp) ?? BinaryOpLowering.NativeOperator;
-        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
-            && equalsLowering is not BinaryOpLowering.NativeOperator and not BinaryOpLowering.NoneCheck)
-        {
-            ExpressionSyntax equalsInvocation;
-            if (equalsLowering == BinaryOpLowering.EqualityComparerDefault)
-            {
-                var leftType = GetExpressionSemanticType(binOp.Left);
-                var rightType = GetExpressionSemanticType(binOp.Right);
-                var typeParamType = (leftType as Semantic.TypeParameterType ?? rightType as Semantic.TypeParameterType)!;
-                equalsInvocation = InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            GenericName("EqualityComparer")
-                                .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(
-                                    (TypeSyntax)IdentifierName(typeParamType.Name)))),
-                            IdentifierName("Default")),
-                        IdentifierName("Equals")))
-                    .AddArgumentListArguments(Argument(left), Argument(right));
-            }
-            else if (equalsLowering == BinaryOpLowering.EqualsCallInstance)
-            {
-                equalsInvocation = InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            left,
-                            IdentifierName("Equals")))
-                    .AddArgumentListArguments(Argument(right));
-            }
-            else
-            {
-                equalsInvocation = InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            PredefinedType(Token(SyntaxKind.ObjectKeyword)),
-                            IdentifierName("Equals")))
-                    .AddArgumentListArguments(Argument(left), Argument(right));
-            }
-
-            return kind == SyntaxKind.NotEqualsExpression
-                ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(equalsInvocation))
-                : equalsInvocation;
-        }
-
-        {
-            var cmpLowering = _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind;
-            if (cmpLowering == OperatorLoweringKind.StringOrdinalCompare)
-            {
-                var compareCall = InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        PredefinedType(Token(SyntaxKind.StringKeyword)),
-                        IdentifierName("Compare")))
-                    .AddArgumentListArguments(
-                        Argument(left),
-                        Argument(right),
-                        Argument(
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                    IdentifierName("System"),
-                                    IdentifierName("StringComparison")),
-                                IdentifierName("Ordinal"))));
-                return BinaryExpression(kind,
-                    compareCall,
-                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
-            }
-            if (cmpLowering == OperatorLoweringKind.TypeParameterCompareTo)
-            {
-                var compareToCall = InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        left,
-                        IdentifierName("CompareTo")))
-                    .AddArgumentListArguments(Argument(right));
-
-                return BinaryExpression(kind,
-                    compareToCall,
-                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
-            }
+            return GenerateLoweredComparison(
+                kind, left, right, binOp.Left, binOp.Right,
+                _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind ?? OperatorLoweringKind.Native,
+                GetIrBinaryOpLowering(binOp) ?? BinaryOpLowering.NativeOperator);
         }
 
         if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
@@ -397,6 +292,23 @@ internal partial class RoslynEmitter
         }
 
         return BinaryExpression(kind, left, right);
+    }
+
+    /// <summary>
+    /// <c>global::Sharpy.StringHelpers.Repeat(str, count)</c> — the string-repetition lowering shared
+    /// by the binary <c>*</c> and the augmented <c>*=</c> sites. The caller passes the operands in
+    /// the order the recorded <see cref="OperatorLoweringKind.StringRepeatStrLeft"/> /
+    /// <see cref="OperatorLoweringKind.StringRepeatStrRight"/> tag dictates (#1623).
+    /// </summary>
+    private ExpressionSyntax GenerateStringRepeat(ExpressionSyntax str, ExpressionSyntax count)
+    {
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                IdentifierName("Repeat")))
+            .AddArgumentListArguments(
+                Argument(str),
+                Argument(count));
     }
 
     /// <summary>
@@ -515,34 +427,26 @@ internal partial class RoslynEmitter
 
     private ExpressionSyntax GenerateUnaryOp(UnaryOp unaryOp)
     {
-        // Minus over an integer literal: emit a single literal token from the semantic type
-        // so -2147483648 is int.MinValue, not -(2147483648L) which is CS0266 (#1304).
+        // Minus over an integer literal: emit a single literal token of the width the TypeChecker
+        // recorded (NegateLiteralInt / NegateLiteralLong, #1623) so -2147483648 is int.MinValue,
+        // not -(2147483648L) which is CS0266 (#1304). The classifier that recorded the tag already
+        // parsed the magnitude and proved it fits, so no overflow path exists here; any other
+        // width (or no tag) takes the ordinary unary-minus path below.
         if (unaryOp.Operator == UnaryOperator.Minus && unaryOp.Operand is IntegerLiteral il)
         {
-            var semanticType = _context.SemanticInfo?.GetExpressionType(unaryOp);
-            if (semanticType is BuiltinType bt)
+            var negateKind = _context.SemanticInfo?.GetOperatorLowering(unaryOp)?.Kind;
+            if (negateKind is OperatorLoweringKind.NegateLiteralInt or OperatorLoweringKind.NegateLiteralLong)
             {
-                var text = il.Value.Replace("_", "", StringComparison.Ordinal);
-                try
+                var ulongMagnitude = ParseIntegerText(il.Value.Replace("_", "", StringComparison.Ordinal));
+                if (negateKind == OperatorLoweringKind.NegateLiteralInt)
                 {
-                    var ulongMagnitude = ParseIntegerText(text);
-                    if (bt.ClrType == typeof(int) && ulongMagnitude <= (ulong)int.MaxValue + 1)
-                    {
-                        return LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                            Literal(-(int)(long)ulongMagnitude));
-                    }
-                    if (bt.ClrType == typeof(long))
-                    {
-                        if (ulongMagnitude == (ulong)long.MaxValue + 1)
-                            return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(long.MinValue));
-                        return LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                            Literal(-(long)ulongMagnitude));
-                    }
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                        Literal((int)(-(long)ulongMagnitude)));
                 }
-                catch (OverflowException)
-                {
-                    // Fall through to normal path
-                }
+                if (ulongMagnitude == (ulong)long.MaxValue + 1)
+                    return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(long.MinValue));
+                return LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                    Literal(-(long)ulongMagnitude));
             }
         }
 
@@ -575,6 +479,140 @@ internal partial class RoslynEmitter
         return PrefixUnaryExpression(kind, operand);
     }
 
+    private static bool IsComparisonSyntaxKind(SyntaxKind kind)
+        => kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
+            or SyntaxKind.LessThanExpression or SyntaxKind.LessThanOrEqualExpression
+            or SyntaxKind.GreaterThanExpression or SyntaxKind.GreaterThanOrEqualExpression;
+
+    /// <summary>
+    /// Emits one comparison (<c>==</c>, <c>!=</c>, <c>&lt;</c>, <c>&lt;=</c>, <c>&gt;</c>, <c>&gt;=</c>) by the
+    /// lowering semantic analysis recorded for it — the binary operator reads its
+    /// <see cref="OperatorLowering"/> tag + IR equality strategy, a comparison-chain link its
+    /// <see cref="ComparisonLinkLowering"/> — so the two positions share one emission and cannot drift (#1642).
+    /// <para>
+    /// Equality: <see cref="BinaryOpLowering.NoneCheck"/> (#901) is a C# null pattern on the non-None side
+    /// (<c>x is null</c> / <c>x is not null</c>); the literal-shape guard is an invariant assertion mirroring
+    /// ControlFlow.cs — the #911 semantic gate (SPY0329) rejects any non-literal VoidType comparand, so a
+    /// NoneCheck always has exactly one NoneLiteral operand and a regression falls through to the loud native
+    /// operator rather than dropping an operand. <see cref="BinaryOpLowering.EqualsCallInstance"/> /
+    /// <see cref="BinaryOpLowering.EqualsCallStatic"/> (#886) are the tuple/CLR Equals calls whose
+    /// instance-vs-static choice the TypeChecker materialized; <see cref="BinaryOpLowering.EqualityComparerDefault"/>
+    /// names the comparand's recorded type as <c>EqualityComparer&lt;T&gt;</c>'s argument.
+    /// </para>
+    /// <para>
+    /// Ordering: <see cref="OperatorLoweringKind.StringOrdinalCompare"/> is <c>string.Compare(l, r, Ordinal) op 0</c>,
+    /// <see cref="OperatorLoweringKind.TypeParameterCompareTo"/> is <c>l.CompareTo(r) op 0</c>; anything else is the
+    /// native C# operator.
+    /// </para>
+    /// </summary>
+    private ExpressionSyntax GenerateLoweredComparison(
+        SyntaxKind kind,
+        ExpressionSyntax left,
+        ExpressionSyntax right,
+        Expression leftAst,
+        Expression rightAst,
+        OperatorLoweringKind orderingLowering,
+        BinaryOpLowering equalityLowering)
+    {
+        if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression)
+        {
+            if (equalityLowering == BinaryOpLowering.NoneCheck
+                && (leftAst is NoneLiteral) != (rightAst is NoneLiteral))
+            {
+                var operand = leftAst is NoneLiteral ? right : left;
+                PatternSyntax nullPattern = ConstantPattern(
+                    LiteralExpression(SyntaxKind.NullLiteralExpression));
+                if (kind == SyntaxKind.NotEqualsExpression)
+                    nullPattern = UnaryPattern(Token(SyntaxKind.NotKeyword), nullPattern);
+                return IsPatternExpression(operand, nullPattern);
+            }
+
+            if (equalityLowering is BinaryOpLowering.NativeOperator or BinaryOpLowering.NoneCheck)
+                return BinaryExpression(kind, left, right);
+
+            ExpressionSyntax equalsInvocation;
+            switch (equalityLowering)
+            {
+                case BinaryOpLowering.EqualityComparerDefault:
+                    {
+                        // The comparand's type is a recorded fact (the TypeChecker classified the pair as
+                        // type-parameter equality); the type mapper spells it.
+                        var comparandType = GetExpressionSemanticType(leftAst)
+                            ?? throw new InvalidOperationException(
+                                "No expression type recorded for the left operand of an EqualityComparerDefault "
+                                + "comparison — the TypeChecker must type every comparand it classifies (#1623)");
+                        equalsInvocation = InvocationExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    GenericName("EqualityComparer")
+                                        .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(
+                                            _typeMapper.MapSemanticType(comparandType)))),
+                                    IdentifierName("Default")),
+                                IdentifierName("Equals")))
+                            .AddArgumentListArguments(Argument(left), Argument(right));
+                        break;
+                    }
+                case BinaryOpLowering.EqualsCallInstance:
+                    equalsInvocation = InvocationExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                left,
+                                IdentifierName("Equals")))
+                        .AddArgumentListArguments(Argument(right));
+                    break;
+                case BinaryOpLowering.EqualsCallStatic:
+                    equalsInvocation = InvocationExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+                                IdentifierName("Equals")))
+                        .AddArgumentListArguments(Argument(left), Argument(right));
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"Unhandled equality lowering strategy '{equalityLowering}' — add its emission here");
+            }
+
+            return kind == SyntaxKind.NotEqualsExpression
+                ? PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(equalsInvocation))
+                : equalsInvocation;
+        }
+
+        switch (orderingLowering)
+        {
+            case OperatorLoweringKind.StringOrdinalCompare:
+                {
+                    var compareCall = InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            PredefinedType(Token(SyntaxKind.StringKeyword)),
+                            IdentifierName("Compare")))
+                        .AddArgumentListArguments(
+                            Argument(left),
+                            Argument(right),
+                            Argument(
+                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                        IdentifierName("System"),
+                                        IdentifierName("StringComparison")),
+                                    IdentifierName("Ordinal"))));
+                    return BinaryExpression(kind,
+                        compareCall,
+                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
+                }
+            case OperatorLoweringKind.TypeParameterCompareTo:
+                {
+                    var compareToCall = InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            left,
+                            IdentifierName("CompareTo")))
+                        .AddArgumentListArguments(Argument(right));
+                    return BinaryExpression(kind,
+                        compareToCall,
+                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
+                }
+            default:
+                return BinaryExpression(kind, left, right);
+        }
+    }
+
     private ExpressionSyntax GenerateComparisonChain(ComparisonChain chain)
     {
         // a < b < c → a < b && b < c
@@ -582,10 +620,23 @@ internal partial class RoslynEmitter
         // For non-trivial intermediate expressions (function calls, member access, etc.),
         // we use the C# "is var" pattern to capture the value inline:
         //   a < (f() is var __cmp_0 ? __cmp_0 : __cmp_0) && __cmp_0 < c
+        // Each link applies the lowering the TypeChecker recorded for it — the same
+        // classification its binary form would get (#1642) — through GenerateLoweredComparison.
 
         if (chain.Operands.Length < 2 || chain.Operators.Length != chain.Operands.Length - 1)
         {
             throw new InvalidOperationException("Invalid comparison chain");
+        }
+
+        var chainLowering = _context.SemanticInfo?.GetComparisonChainLowering(chain)
+            ?? throw new InvalidOperationException(
+                "No ComparisonChainLowering recorded for comparison chain — CheckComparisonChain must "
+                + "record one link per operator (#1642)");
+        if (chainLowering.Links.Length != chain.Operators.Length)
+        {
+            throw new InvalidOperationException(
+                $"ComparisonChainLowering has {chainLowering.Links.Length} link(s) for a chain with "
+                + $"{chain.Operators.Length} operator(s) (#1642)");
         }
 
         // For intermediate operands (indices 1..n-2), decide if they need a temp variable.
@@ -645,7 +696,10 @@ internal partial class RoslynEmitter
                     DiagnosticCodes.CodeGen.UnsupportedOperator, chain.LineStart, chain.ColumnStart);
             }
 
-            var comparison = BinaryExpression(kind, left, right);
+            var link = chainLowering.Links[i];
+            var comparison = GenerateLoweredComparison(
+                kind, left, right, chain.Operands[i], chain.Operands[i + 1],
+                link.Kind, link.Equality ?? BinaryOpLowering.NativeOperator);
 
             result = result == null
                 ? comparison

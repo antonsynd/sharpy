@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
@@ -129,9 +130,12 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
-        // Record how equality (==/!=) should be lowered by codegen. Tuples and CLR types
-        // that resolve via Equals (no op_Equality) must emit an Equals call rather than a
-        // native C# operator. The emitter reads this annotation from SemanticInfo (#886).
+        // Record how a comparison should be lowered by codegen — the equality strategy (#886:
+        // tuples and CLR types that resolve via Equals, no op_Equality, must emit an Equals call;
+        // #901: reference-type ==/!= None is a null pattern) rides the IR transport, the ordering
+        // kind (#1623: ordinal string compare, constrained type-parameter CompareTo) the
+        // OperatorLowering tag. Both come from the ONE classifier every comparison-chain link also
+        // uses, so the binary and chain positions cannot drift (#1642).
         //
         // Invariant (#911): any VoidType operand reaching this point is guaranteed to be the
         // `None` literal — void-returning call operands were rejected above with SPY0329. This
@@ -139,12 +143,16 @@ internal partial class TypeChecker
         // consumers rely on it: InferBinaryOpType/GetBinaryOpLowering (TypeInferenceService),
         // the emitter's NoneCheck branches (RoslynEmitter.Expressions.Operators / .Statements.
         // ControlFlow), and OperatorValidator (suppress-only, never selects operands).
-        if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual)
+        if (IsComparisonOperator(binOp.Operator))
         {
-            var lowering = _typeInference.GetBinaryOpLowering(binOp.Operator, leftType, rightType);
-            if (lowering != BinaryOpLowering.NativeOperator)
+            var link = ClassifyComparisonLowering(binOp.Operator, leftType, rightType);
+            if (link.Equality is { } equality && equality != BinaryOpLowering.NativeOperator)
             {
-                _semanticInfo.SetBinaryOpLowering(binOp, lowering);
+                _semanticInfo.SetBinaryOpLowering(binOp, equality);
+            }
+            if (link.Kind != OperatorLoweringKind.Native)
+            {
+                _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(link.Kind));
             }
         }
 
@@ -212,26 +220,17 @@ internal partial class TypeChecker
                 new OperatorLowering(kind));
         }
 
-        if (binOp.Operator == BinaryOperator.Multiply
-            && (leftType == SemanticType.Str || rightType == SemanticType.Str))
+        // `str * int` / `int * str` → StringHelpers.Repeat(str, count): which operand is the
+        // string is decided HERE and carried by the tag, so the emitter never re-inspects types.
+        if (binOp.Operator == BinaryOperator.Multiply && leftType == SemanticType.Str)
         {
             _semanticInfo.SetOperatorLowering(binOp,
-                new OperatorLowering(OperatorLoweringKind.StringRepeat));
+                new OperatorLowering(OperatorLoweringKind.StringRepeatStrLeft));
         }
-
-        if (binOp.Operator is BinaryOperator.LessThan or BinaryOperator.GreaterThan
-                or BinaryOperator.LessThanOrEqual or BinaryOperator.GreaterThanOrEqual)
+        else if (binOp.Operator == BinaryOperator.Multiply && rightType == SemanticType.Str)
         {
-            if (leftType == SemanticType.Str && rightType == SemanticType.Str)
-            {
-                _semanticInfo.SetOperatorLowering(binOp,
-                    new OperatorLowering(OperatorLoweringKind.StringOrdinalCompare));
-            }
-            else if (leftType is TypeParameterType || rightType is TypeParameterType)
-            {
-                _semanticInfo.SetOperatorLowering(binOp,
-                    new OperatorLowering(OperatorLoweringKind.TypeParameterCompareTo));
-            }
+            _semanticInfo.SetOperatorLowering(binOp,
+                new OperatorLowering(OperatorLoweringKind.StringRepeatStrRight));
         }
 
         if (binOp.Operator == BinaryOperator.Power
@@ -916,6 +915,19 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Semantic.IntegerLiteralOutOfRange,
                     span: unOp.Span);
             }
+            else if (result.Type == SemanticType.Int)
+            {
+                // The emitted literal's width is this classification, carried by the tag so the
+                // emitter never re-inspects the CLR type (#1623): a single int literal token for
+                // -2147483648, a single long token for -2147483649 / long.MinValue.
+                _semanticInfo.SetOperatorLowering(unOp,
+                    new OperatorLowering(OperatorLoweringKind.NegateLiteralInt));
+            }
+            else if (result.Type == SemanticType.Long)
+            {
+                _semanticInfo.SetOperatorLowering(unOp,
+                    new OperatorLowering(OperatorLoweringKind.NegateLiteralLong));
+            }
             _semanticInfo.SetExpressionType(unOp.Operand, result.Type);
             return result.Type;
         }
@@ -985,7 +997,10 @@ internal partial class TypeChecker
             operandTypes.Add(CheckExpression(chain.Operands[i]));
         }
 
-        // Validate each comparison pair
+        // Validate each comparison pair and record its lowering. Every link gets a record — an
+        // Unknown-operand or refused link records the native form — so the emitter reads one
+        // fact per operator and never needs a fallback (#1642).
+        var links = ImmutableArray.CreateBuilder<ComparisonLinkLowering>(chain.Operators.Length);
         for (int i = 0; i < chain.Operators.Length; i++)
         {
             var leftType = operandTypes[i];
@@ -994,6 +1009,7 @@ internal partial class TypeChecker
             // Skip validation if either operand is Unknown to avoid cascading errors
             if (leftType is UnknownType || rightType is UnknownType)
             {
+                links.Add(new ComparisonLinkLowering(OperatorLoweringKind.Native, null));
                 continue;
             }
 
@@ -1010,11 +1026,55 @@ internal partial class TypeChecker
                     chain.Operands[i].ColumnStart,
                     code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
                     span: chain.Span);
+                links.Add(new ComparisonLinkLowering(OperatorLoweringKind.Native, null));
+                continue;
             }
+
+            // The SAME classifier the binary form `Operands[i] <op> Operands[i+1]` uses.
+            links.Add(ClassifyComparisonLowering(binaryOp, leftType, rightType));
         }
+
+        _semanticInfo.SetComparisonChainLowering(chain, new ComparisonChainLowering(links.MoveToImmutable()));
 
         // All comparison chains return bool
         return SemanticType.Bool;
+    }
+
+    private static bool IsComparisonOperator(BinaryOperator op)
+        => op is BinaryOperator.Equal or BinaryOperator.NotEqual
+            or BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
+            or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual;
+
+    /// <summary>
+    /// The one classifier for a comparison's lowering, shared by <see cref="CheckBinaryOp"/> and every
+    /// <see cref="CheckComparisonChain"/> link so the two positions cannot drift (#1642). Equality
+    /// (<c>==</c>/<c>!=</c>) is answered by <see cref="TypeInferenceService.GetBinaryOpLowering"/> — the
+    /// existing equality authority (#886, #901, EqualityComparerDefault for type parameters); ordering
+    /// operators lower to an ordinal <c>string.Compare</c> for <c>str</c> operands and to <c>CompareTo</c>
+    /// when either operand is a (Comparable-constrained) type parameter, both of which C# cannot express
+    /// as a native operator (#1623). Everything else is the native C# operator.
+    /// </summary>
+    private ComparisonLinkLowering ClassifyComparisonLowering(
+        BinaryOperator op, SemanticType leftType, SemanticType rightType)
+    {
+        if (op is BinaryOperator.Equal or BinaryOperator.NotEqual)
+        {
+            return new ComparisonLinkLowering(
+                OperatorLoweringKind.Native,
+                _typeInference.GetBinaryOpLowering(op, leftType, rightType));
+        }
+
+        if (op is BinaryOperator.LessThan or BinaryOperator.GreaterThan
+            or BinaryOperator.LessThanOrEqual or BinaryOperator.GreaterThanOrEqual)
+        {
+            if (leftType == SemanticType.Str && rightType == SemanticType.Str)
+                return new ComparisonLinkLowering(OperatorLoweringKind.StringOrdinalCompare, null);
+
+            if (leftType is TypeParameterType || rightType is TypeParameterType)
+                return new ComparisonLinkLowering(OperatorLoweringKind.TypeParameterCompareTo, null);
+        }
+
+        return new ComparisonLinkLowering(OperatorLoweringKind.Native, null);
     }
 
     private SemanticType CheckConditionalExpression(ConditionalExpression cond)

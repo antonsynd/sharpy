@@ -559,6 +559,22 @@ public class TypeInferenceServiceTests
     }
 
     [Fact]
+    public void GetBinaryOpLowering_TypeParameter_ReturnsEqualityComparerDefault()
+    {
+        // C# has no native == on an unconstrained T; the equality authority answers
+        // EqualityComparer<T>.Default for either operand position and both operators (#1623).
+        var t = new TypeParameterType { Name = "T" };
+        _service.GetBinaryOpLowering(BinaryOperator.Equal, t, t)
+            .Should().Be(BinaryOpLowering.EqualityComparerDefault);
+        _service.GetBinaryOpLowering(BinaryOperator.NotEqual, t, t)
+            .Should().Be(BinaryOpLowering.EqualityComparerDefault);
+        _service.GetBinaryOpLowering(BinaryOperator.Equal, t, SemanticType.Int)
+            .Should().Be(BinaryOpLowering.EqualityComparerDefault);
+        _service.GetBinaryOpLowering(BinaryOperator.Equal, SemanticType.Int, t)
+            .Should().Be(BinaryOpLowering.EqualityComparerDefault);
+    }
+
+    [Fact]
     public void InferBinaryOpType_ClrType_NoOpEquality_OverridesEquals_ReturnsBool()
     {
         // System.Tuple<int,int> overrides Equals(object) but defines no op_Equality —

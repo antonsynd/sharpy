@@ -5,3 +5,6 @@ c
 2
 3
 [1, 2, 3]
+low
+high
+['low', 'high']

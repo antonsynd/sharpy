@@ -1,0 +1,49 @@
+# #1642: a chain's links lower individually by the same classification their binary forms get —
+# ordinal string compare next to the equality authority's strategies (native, tuple Equals call,
+# None null pattern) — in expressions, `if`, comprehension filters and lambdas; a non-trivial
+# intermediate operand still evaluates exactly once. Reference: python3.
+class Dog:
+    n: int
+
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+
+def mid() -> str:
+    print("mid-called")
+    return "m"
+
+
+def main() -> None:
+    a: str = "apple"
+    b: str = "banana"
+    s: str = "s"
+    t: str = "s"
+    # ordinal ordering link + native equality link, both orders
+    print("a" < s == t)
+    print(a == a < b)
+    print(a < b == b)
+    print(a < b != b)
+    # NoneCheck equality link next to an ordinal link, None on either side
+    print(a < b == None)
+    print(None != a < b)
+    d: Dog = Dog(1)
+    e: Dog = Dog(2)
+    print(d == None != e)
+    # tuple equality links (instance Equals call)
+    t1: tuple[int, int] = (1, 2)
+    t2: tuple[int, int] = (1, 2)
+    print(t1 == t2 == t1)
+    print(t1 != t2 == t1)
+    # non-trivial intermediate operand: evaluated once, lowered on both sides
+    print("a" < mid() < "z")
+    # positions
+    if "a" < s == t:
+        print("chain-if")
+    xs: list[str] = [x for x in ["p", "q", "0"] if "a" < x == x]
+    print(xs)
+    f: (str, str) -> bool = lambda p, q: p < q == q
+    print(f("a", "b"))
+    # int control: native links, unchanged
+    n: int = 1
+    print(0 < n < 2 == 2)

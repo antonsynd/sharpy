@@ -379,10 +379,8 @@ internal partial class TypeChecker
             {
                 if (targetType is not UnknownType && valueType is not UnknownType)
                 {
-                    var opSpelling = assignment.Operator == AssignmentOperator.NullCoalesceAssign
-                        ? "??="
-                        : GetAssignmentOperatorSymbol(assignment.Operator);
-                    ReportUnsupportedBinaryOperator(assignment, opSpelling, targetType, valueType);
+                    ReportUnsupportedBinaryOperator(assignment,
+                        GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType);
                 }
                 return;
             }
@@ -424,11 +422,18 @@ internal partial class TypeChecker
                     new OperatorLowering(OperatorLoweringKind.OptionalCoalesceBothOptional));
             }
 
-            if (assignment.Operator == AssignmentOperator.StarAssign
-                && (targetType == SemanticType.Str || valueType == SemanticType.Str))
+            // `x *= n` reads the same string-repeat tag family as the binary form (#1623): the
+            // target is the string (StrLeft) or the count (StrRight — refused above as a str
+            // result assigned to a non-str target, but classified identically all the same).
+            if (assignment.Operator == AssignmentOperator.StarAssign && targetType == SemanticType.Str)
             {
                 _semanticInfo.SetOperatorLowering(assignment,
-                    new OperatorLowering(OperatorLoweringKind.StringRepeat));
+                    new OperatorLowering(OperatorLoweringKind.StringRepeatStrLeft));
+            }
+            else if (assignment.Operator == AssignmentOperator.StarAssign && valueType == SemanticType.Str)
+            {
+                _semanticInfo.SetOperatorLowering(assignment,
+                    new OperatorLowering(OperatorLoweringKind.StringRepeatStrRight));
             }
 
             if (assignment.Operator == AssignmentOperator.PowerAssign

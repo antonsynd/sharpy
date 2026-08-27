@@ -1,0 +1,26 @@
+# #1623 / #1642: ordering on a Comparable-constrained type parameter lowers to CompareTo — C# has
+# no native `<` on T — for the binary form AND for every link of a comparison chain (the chain
+# form was CS0019 behind SPY0908). Reference: python3.
+def mx[T: IComparable[T]](a: T, b: T) -> T:
+    if a < b:
+        return b
+    return a
+
+
+def between[T: IComparable[T]](lo: T, x: T, hi: T) -> bool:
+    return lo <= x <= hi
+
+
+def strictly_desc[T: IComparable[T]](a: T, b: T, c: T) -> bool:
+    return a > b > c
+
+
+def main() -> None:
+    print(mx(1, 2))
+    print(mx("a", "b"))
+    print(mx(2.5, 1.5))
+    print(between(1, 5, 10))
+    print(between("a", "m", "z"))
+    print(between(1, 50, 10))
+    print(strictly_desc(3, 2, 1))
+    print(strictly_desc(1, 2, 3))
