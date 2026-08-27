@@ -1621,9 +1621,6 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._statementLowerings)
             _statementLowerings.TryAdd(kvp.Key, kvp.Value);
 
-        foreach (var kvp in other._multiAxisAccessLowerings)
-            _multiAxisAccessLowerings.TryAdd(kvp.Key, kvp.Value);
-
         foreach (var kvp in other._sliceLowerings)
             _sliceLowerings.TryAdd(kvp.Key, kvp.Value);
 

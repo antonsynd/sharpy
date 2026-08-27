@@ -810,6 +810,55 @@ internal partial class TypeChecker
 
                     // Classify every expression statement so the emitter never pattern-matches
                     // AST shape to pick plain/discard/elide (#1622).
+                    //
+                    // Refusals first: a Discard lowers to `_ = expr;`, which C# accepts only for an
+                    // expression with a value of a known type. The shapes that reach the Discard arm
+                    // with no such value are refused HERE (SPY0603) instead of surfacing as a C#
+                    // error behind SPY0908 — CPython evaluates each as a no-op, so every one of
+                    // these was an ICE before, never a program that ran. The elided shapes (`None`,
+                    // method groups) and the type-name statement (SPY0342) are handled elsewhere.
+                    // A refused statement records no lowering; the emitter throws on an absent fact.
+                    if (unwrapped is LambdaExpression lambdaStmt)
+                    {
+                        // A `_` placeholder call (`f(_)`) is desugared by the parser into a lambda
+                        // whose parameters carry the `__placeholder_` prefix (the parser's own
+                        // marker, Parser.Expressions.cs); as a statement that partial application
+                        // is built and dropped. Name the placeholder so the message points at the
+                        // source spelling, not the desugaring.
+                        var isPlaceholderPartial = lambdaStmt.Parameters.Length > 0
+                            && lambdaStmt.Parameters[0].Name.StartsWith("__placeholder_", StringComparison.Ordinal);
+                        AddError(
+                            isPlaceholderPartial
+                                ? "a '_' placeholder partial application cannot be an expression statement; its result is a function: call it or bind it to a name"
+                                : "a lambda cannot be an expression statement; call it or bind it to a name",
+                            exprStmt.LineStart, exprStmt.ColumnStart,
+                            code: DiagnosticCodes.SemanticOverflow.ExpressionStatementNotDiscardable,
+                            span: exprStmt.Expression.Span);
+                        break;
+                    }
+                    if (exprType is ModuleType)
+                    {
+                        AddError(
+                            "a module reference cannot be an expression statement",
+                            exprStmt.LineStart, exprStmt.ColumnStart,
+                            code: DiagnosticCodes.SemanticOverflow.ExpressionStatementNotDiscardable,
+                            span: exprStmt.Expression.Span);
+                        break;
+                    }
+                    // `...` types as Void but never reaches the discard: the emitter lowers an
+                    // ellipsis statement to `throw new NotImplementedException()` (a transform
+                    // applied before the kind switch), so it is excluded here.
+                    if (exprType is VoidType
+                        && unwrapped is not (FunctionCall or Parser.Ast.AwaitExpression or NoneLiteral or EllipsisLiteral))
+                    {
+                        AddError(
+                            "expression statement of type 'None' must be a call; write the branch as an if statement",
+                            exprStmt.LineStart, exprStmt.ColumnStart,
+                            code: DiagnosticCodes.SemanticOverflow.ExpressionStatementNotDiscardable,
+                            span: exprStmt.Expression.Span);
+                        break;
+                    }
+
                     if (unwrapped is NoneLiteral)
                     {
                         _semanticInfo.SetStatementLowering(exprStmt,

@@ -1,12 +1,53 @@
+# #1622: one expression statement of every accepted StatementLoweringKind, executed.
+#   PlainStatement            side_effect() / b.m() / await avoid()
+#   ElideNoneLiteral          None
+#   ElideMethodGroupStatement side_effect / b.m   (no C#; SPY0480 pinned by the .warning sidecar)
+#   Discard                   literal, string, binary op, member value, index read, comprehension,
+#                             walrus — each lowers to `_ = expr;`
+# The index read has a side-effecting receiver call AND a side-effecting index call: under
+# `_ = get_list()[side_effect() % 3]` C# evaluates the receiver before the index, exactly as
+# CPython does ("receiver" then "call"). Expected output derived from python3 (asyncio.run(main())).
+class Box:
+    v: int
+
+    def __init__(self) -> None:
+        self.v = 7
+
+    def m(self) -> int:
+        print("m")
+        return 2
+
+
 def side_effect() -> int:
     print("call")
     return 42
 
-def main() -> None:
+
+def get_list() -> list[int]:
+    print("receiver")
+    return [10, 20, 30]
+
+
+async def avoid() -> None:
+    print("await")
+
+
+async def main() -> None:
     side_effect()
     x: int = side_effect()
     print(x)
+    await avoid()
     None
+    b: Box = Box()
+    b.m()
+    side_effect
+    b.m
     True
+    "docstringish"
     1 + 2
+    b.v
+    get_list()[side_effect() % 3]
+    [side_effect() for i in range(2)]
+    (w := side_effect())
+    print(w)
     print("done")

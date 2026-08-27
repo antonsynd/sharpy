@@ -1,0 +1,6 @@
+# #1644: dict is not a multi-axis receiver. The bounds are ints so the only diagnostic is the
+# receiver refusal (str slice bounds are a separate, already-fixtured refusal: slice_refuse_*_bound_1608).
+# Pre-fix (50fa866d8): SPY0908 — generated C# failed with CS1503 (cannot convert 'string' to 'int').
+def main():
+    d: dict[str, int] = {"a": 1, "b": 2}
+    print(d[0:1, "c"])

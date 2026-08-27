@@ -315,7 +315,17 @@ Types that are NOT sliceable produce a compile-time error:
 - `set[T]` / `frozenset[T]` — unordered; slicing is meaningless.
 - `tuple[T1, T2, ...]` — constant-bound slicing only (see [Tuple Slicing](#tuple-slicing) below).
 
-Multi-axis subscripts (`a[i, j]` and `a[i:j, k]`) are supported only for `ndarray`; other receivers refuse with SPY0602.
+A subscript that mixes a comma with a slice (`a[i:j, k]`, `a[:, k]`, `a[i, ::2]`) is a
+**multi-axis subscript**, supported only for `ndarray`; every other receiver refuses with
+SPY0602. A comma with no slice (`a[i, j]`) is not multi-axis: it is an ordinary subscript whose
+index is the tuple `(i, j)`, so it is refused by the receiver's index-type rule (SPY0220) unless
+the receiver accepts a tuple index (an `ndarray` does; `a[i, j]` reads one element).
+
+```python
+xs: list[int] = [1, 2, 3]
+print(xs[0, 1])    # SPY0220: Index must be 'int', got 'tuple[int32, int32]'
+print(xs[0:2, 1])  # SPY0602: Type 'list[int32]' does not support multi-axis subscripting
+```
 
 ### Syntax
 

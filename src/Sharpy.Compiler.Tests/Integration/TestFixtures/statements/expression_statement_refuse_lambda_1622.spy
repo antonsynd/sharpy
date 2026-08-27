@@ -1,0 +1,6 @@
+# #1622: a bare lambda as an expression statement lowers to `_ = () => 1;`, which C# cannot
+# type. CPython runs it as a no-op; Sharpy refuses (SPY0603).
+# Pre-fix (97e60e2b4): SPY0908 — CS8183 "Cannot infer the type of implicitly-typed discard".
+def main() -> None:
+    lambda: 1
+    print("done")

@@ -253,6 +253,17 @@ public static partial class DiagnosticExplanations
             "x: list[int] = [1, 2, 3]\nprint(x[0, 1])  # list does not support multi-axis subscripting",
             "Use separate subscript operations or switch to an ndarray.");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.ExpressionStatementNotDiscardable,
+            "expression statement cannot be discarded", "Semantic",
+            "An expression statement that is not a call lowers to a C# discard (`_ = expr;`), " +
+            "which requires the expression to produce a value of a known type. A non-call expression " +
+            "of type 'None' (such as a conditional expression whose arms are calls returning None), a " +
+            "bare lambda, or a bare module reference has no such value. CPython evaluates these as " +
+            "no-ops; Sharpy refuses them at compile time instead of failing in the generated C#.",
+            "def a() -> None: ...\ndef b() -> None: ...\na() if flag else b()  # expression statement of type 'None' must be a call\nlambda: 1  # a lambda cannot be an expression statement",
+            "Write the branch as an if statement (if flag: a() else: b()), call the value, or bind it " +
+            "to a name.");
+
         return dict;
     }
 

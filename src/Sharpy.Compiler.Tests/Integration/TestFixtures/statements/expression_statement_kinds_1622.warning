@@ -1,0 +1,2 @@
+method reference 'side_effect' as a statement has no effect; did you mean to call it? 'side_effect()'
+method reference 'm' as a statement has no effect; did you mean to call it? 'm()'

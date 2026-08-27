@@ -1,0 +1,15 @@
+# #1622: a Discard-classified expression statement lowers to `_ = expr;`, which needs a value.
+# A conditional expression whose arms are None-returning calls has none. CPython runs it as a
+# no-op; Sharpy refuses (SPY0603) instead of failing in the generated C#.
+# Pre-fix (97e60e2b4): SPY0908 — CS8209 "A value of type 'void' may not be assigned".
+def a() -> None:
+    print("a")
+
+
+def b() -> None:
+    print("b")
+
+
+def main() -> None:
+    a() if True else b()
+    print("done")

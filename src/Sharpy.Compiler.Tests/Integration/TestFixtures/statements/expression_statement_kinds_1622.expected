@@ -1,4 +1,12 @@
 call
 call
 42
+await
+m
+receiver
+call
+call
+call
+call
+42
 done

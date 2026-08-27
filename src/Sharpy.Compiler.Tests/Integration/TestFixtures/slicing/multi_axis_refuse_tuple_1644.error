@@ -1,0 +1,2 @@
+Type 'tuple[int32, str, int32]' does not support multi-axis subscripting
+!count 1

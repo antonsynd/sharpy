@@ -1,0 +1,6 @@
+# #1622: the parenthesized spelling of expression_statement_refuse_lambda_1622 — grouping is
+# transparent at the statement seam, so the same refusal fires.
+# Pre-fix (97e60e2b4): SPY0908 — CS8183 "Cannot infer the type of implicitly-typed discard".
+def main() -> None:
+    (lambda: 1)
+    print("done")

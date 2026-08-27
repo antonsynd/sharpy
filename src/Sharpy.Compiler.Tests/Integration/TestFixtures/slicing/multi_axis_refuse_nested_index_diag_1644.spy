@@ -1,0 +1,11 @@
+# #1644: the multi-axis receiver refusal (SPY0602) must not swallow diagnostics nested in
+# the subscript's dimensions. The index dimension holds a wrong-typed call: BOTH the receiver
+# refusal and the nested argument mismatch must be reported (pre-fix: only SPY0602, the
+# dimension was never checked).
+def probe(n: int) -> int:
+    return n
+
+
+def main():
+    xs: list[int] = [1, 2, 3]
+    print(xs[probe("s"), 1:2])

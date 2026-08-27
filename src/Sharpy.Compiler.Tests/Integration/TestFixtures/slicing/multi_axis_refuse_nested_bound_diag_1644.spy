@@ -1,0 +1,10 @@
+# #1644: the slice-bound arm of the same contract as multi_axis_refuse_nested_index_diag_1644 —
+# a wrong-typed call in a slice BOUND of a refused multi-axis subscript must still be reported
+# alongside SPY0602 (pre-fix: only SPY0602, the bound was never checked).
+def probe(n: int) -> int:
+    return n
+
+
+def main():
+    xs: list[int] = [1, 2, 3]
+    print(xs[0, probe("s"):2])

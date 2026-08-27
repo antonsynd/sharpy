@@ -485,9 +485,14 @@ internal partial class RoslynEmitter
         var generated = GenerateExpression(expr);
 
         // Switch on the recorded StatementLowering (#1622). The TypeChecker classifies every
-        // ExpressionStatement; the null fallback handles code paths without semantic analysis
-        // (direct AST construction in programmatic tests).
-        return _context.SemanticInfo?.GetStatementLowering(exprStmt)?.Kind switch
+        // ExpressionStatement it accepts; an absent fact means the statement never went through
+        // semantic analysis (or was refused there), so the emitter fails loud rather than
+        // re-deriving the classification from the AST shape (D0b; SliceLowering precedent #1608).
+        var lowering = _context.SemanticInfo?.GetStatementLowering(exprStmt)
+            ?? throw new InvalidOperationException(
+                "No StatementLowering recorded for expression statement — semantic analysis must " +
+                "classify every expression statement the emitter is asked to generate (#1622)");
+        return lowering.Kind switch
         {
             StatementLoweringKind.PlainStatement => ExpressionStatement(generated),
             StatementLoweringKind.Discard => ExpressionStatement(
@@ -495,12 +500,7 @@ internal partial class RoslynEmitter
                     DiscardIdentifierName(), generated)),
             StatementLoweringKind.ElideNoneLiteral => EmptyStatement(),
             StatementLoweringKind.ElideMethodGroupStatement => EmptyStatement(),
-            null => expr is FunctionCall or Parser.Ast.AwaitExpression
-                ? ExpressionStatement(generated)
-                : ExpressionStatement(AssignmentExpression(
-                    SyntaxKind.SimpleAssignmentExpression, DiscardIdentifierName(), generated)),
-            _ => throw new InvalidOperationException(
-                $"Unknown StatementLoweringKind: {_context.SemanticInfo?.GetStatementLowering(exprStmt)?.Kind}")
+            _ => throw new InvalidOperationException($"Unknown StatementLoweringKind: {lowering.Kind}")
         };
     }
 
@@ -783,15 +783,6 @@ internal partial class RoslynEmitter
             .AddArgumentListArguments(Argument(item), Argument(collection)));
     }
 
-    /// <summary>
-    /// Determines if an expression is valid as a standalone C# statement.
-    /// Valid statement expressions in C# are:
-    /// - Invocation expressions (method calls)
-    /// - Object creation expressions (new)
-    /// - Assignment expressions
-    /// - Increment/decrement expressions (++/--)
-    /// - Await expressions
-    /// </summary>
     private StatementSyntax GenerateReturn(ReturnStatement ret)
     {
         // In generator methods, bare return → yield break

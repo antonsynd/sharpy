@@ -1,0 +1,5 @@
+# #1644: bytes is not a multi-axis receiver.
+# Pre-fix (50fa866d8): SPY0908 — generated C# failed with CS7036 (Bytes.Slice(int?, int?, int?) arity).
+def main():
+    b: bytes = b"abc"
+    print(b[0:1, 1])

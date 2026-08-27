@@ -760,17 +760,12 @@ internal partial class TypeChecker
     private SemanticType CheckMultiAxisAccess(MultiAxisAccess multiAxis)
     {
         var objType = CheckExpression(multiAxis.Object);
+        var isNdArray = IsNdArrayType(objType);
 
-        if (!IsNdArrayType(objType) && objType is not UnknownType)
-        {
-            AddError(
-                $"Type '{objType.GetDisplayName()}' does not support multi-axis subscripting",
-                multiAxis.LineStart, multiAxis.ColumnStart,
-                code: DiagnosticCodes.SemanticOverflow.MultiAxisNotSupported,
-                span: multiAxis.Span);
-            return SemanticType.Unknown;
-        }
-
+        // Every dimension is checked BEFORE the receiver is classified or refused (#1644): a
+        // refusal must not swallow the diagnostics (or the symbol/type facts tooling reads) of the
+        // expressions nested in the subscript. Only the ndarray-specific int-index rule is gated on
+        // the receiver; the per-dimension checks themselves are receiver-independent.
         var dimensionKinds = System.Collections.Immutable.ImmutableArray.CreateBuilder<MultiAxisDimensionKind>();
         var hasSlice = false;
         foreach (var dim in multiAxis.Dimensions)
@@ -787,9 +782,25 @@ internal partial class TypeChecker
             {
                 dimensionKinds.Add(MultiAxisDimensionKind.Index);
                 var indexType = CheckExpression(dim.Index!);
-                if (IsNdArrayType(objType))
+                if (isNdArray)
                     CheckIntIndex(dim.Index!, indexType);
             }
+        }
+
+        // Classify the receiver or refuse. A refused (or already-Unknown) receiver records NO
+        // lowering: the emitter throws on an absent fact, so an unclassified receiver can never
+        // reach code generation silently (D6 classify-or-refuse; SliceLowering precedent #1608).
+        if (!isNdArray)
+        {
+            if (objType is not UnknownType)
+            {
+                AddError(
+                    $"Type '{objType.GetDisplayName()}' does not support multi-axis subscripting",
+                    multiAxis.LineStart, multiAxis.ColumnStart,
+                    code: DiagnosticCodes.SemanticOverflow.MultiAxisNotSupported,
+                    span: multiAxis.Span);
+            }
+            return SemanticType.Unknown;
         }
 
         var accessKind = hasSlice ? MultiAxisAccessKind.SliceCall : MultiAxisAccessKind.IndexSpread;
