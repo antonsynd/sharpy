@@ -259,6 +259,12 @@ internal partial class TypeChecker
             }
         }
 
+        // `//` and `%` (#1658): ONE classifier shared with the augmented `//=` / `%=` site.
+        if (ClassifyFlooredArithmetic(binOp.Operator, leftType, rightType) is { } flooredKind)
+        {
+            _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(flooredKind));
+        }
+
         // Warn when is/is not is used with value types — identity comparison is
         // meaningless because value types are boxed, so the result is always False.
         if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)
@@ -283,6 +289,62 @@ internal partial class TypeChecker
 
         return resultType;
     }
+
+    /// <summary>
+    /// Classifies how a <c>//</c> or <c>%</c> lowers, from the two operand types the ONE
+    /// <c>InferBinaryOpType</c> call already produced — the single classifier shared by the
+    /// binary site (<see cref="CheckBinaryOp"/>, node = the <c>BinaryOp</c>) and the augmented
+    /// <c>//=</c> / <c>%=</c> site (node = the <c>Assignment</c>), so the two cannot drift (#1658,
+    /// the #1623 shape). The emitter switches on the recorded tag alone and never re-derives it
+    /// from operand types.
+    /// <list type="bullet">
+    /// <item><c>//</c>: a <c>decimal</c> operand → <see cref="OperatorLoweringKind.DecimalFloorDivide"/>;
+    /// a float32/float64 operand → <see cref="OperatorLoweringKind.FloatFloorDivide"/>; otherwise
+    /// <see cref="OperatorLoweringKind.IntegerFloorDivide"/> (int/long and the widened CLR
+    /// integers — byte, uint, … — which C# overload resolution promotes). Exhaustive: a <c>//</c>
+    /// that passed inference is always numeric ⊗ numeric (there is no <c>__floordiv__</c>
+    /// mapping and no CLR <c>op_</c> name for it), so an unrecorded <c>//</c> is an emitter ICE.</item>
+    /// <item><c>%</c>: a <c>decimal</c> operand → <see cref="OperatorLoweringKind.DecimalModulo"/>;
+    /// both operands in {int, long, float32, float64} → <see cref="OperatorLoweringKind.FlooredModulo"/>;
+    /// every other shape — user <c>__mod__</c> (→ <c>operator %</c>), CLR <c>op_Modulus</c>, a
+    /// widened CLR integer operand — returns <c>null</c>: no record, native <c>%</c>, exactly as
+    /// the other families spell "Native".</item>
+    /// </list>
+    /// Literal operands are classified from their TYPE like any other operand (the checker knows
+    /// literal types); no AST-shape fallback exists here.
+    /// </summary>
+    private static OperatorLoweringKind? ClassifyFlooredArithmetic(
+        BinaryOperator op, SemanticType leftType, SemanticType rightType)
+    {
+        var hasDecimal = PrimitiveCatalog.IsDecimal(leftType) || PrimitiveCatalog.IsDecimal(rightType);
+        switch (op)
+        {
+            case BinaryOperator.FloorDivide:
+                if (hasDecimal)
+                    return OperatorLoweringKind.DecimalFloorDivide;
+                if (PrimitiveCatalog.IsFloatingPoint(leftType) || PrimitiveCatalog.IsFloatingPoint(rightType))
+                    return OperatorLoweringKind.FloatFloorDivide;
+                return OperatorLoweringKind.IntegerFloorDivide;
+
+            case BinaryOperator.Modulo:
+                if (hasDecimal)
+                    return OperatorLoweringKind.DecimalModulo;
+                if (IsFlooredNumeric(leftType) && IsFlooredNumeric(rightType))
+                    return OperatorLoweringKind.FlooredModulo;
+                return null;
+
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>
+    /// The floored-<c>%</c> operand allowlist: int, long, float32, float64 (the four
+    /// <c>Builtins.FloorMod</c> overloads). Widened CLR integers (byte, short, uint, …) and
+    /// <c>decimal</c> are outside it.
+    /// </summary>
+    private static bool IsFlooredNumeric(SemanticType type)
+        => PrimitiveCatalog.IsSharpyInteger(type) || PrimitiveCatalog.IsFloatingPoint(type);
 
     /// <summary>
     /// Constant-folds a <c>base ** exponent</c> expression when both operands are constant

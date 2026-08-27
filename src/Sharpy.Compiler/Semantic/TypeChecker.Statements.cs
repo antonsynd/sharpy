@@ -462,6 +462,20 @@ internal partial class TypeChecker
                 }
             }
 
+            // `//=` and `%=` read the same tags as their binary forms, from the ONE classifier
+            // the binary site uses (#1658) — target is the left operand, value the right.
+            var flooredOp = assignment.Operator switch
+            {
+                AssignmentOperator.DoubleSlashAssign => BinaryOperator.FloorDivide,
+                AssignmentOperator.PercentAssign => BinaryOperator.Modulo,
+                _ => (BinaryOperator?)null,
+            };
+            if (flooredOp is { } floored
+                && ClassifyFlooredArithmetic(floored, targetType, valueType) is { } flooredKind)
+            {
+                _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(flooredKind));
+            }
+
             if (Features.IsEnabled("inplace_augassign")
                 && AugmentedCollectionAssignment.Classify(assignment, targetType) is { } mutation)
             {
