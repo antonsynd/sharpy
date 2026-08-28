@@ -34,6 +34,9 @@ operands:
 |----------|-------------|----------|
 | Both `int` | `int32` | Floored (toward negative infinity) |
 | Any `long` operand (with `int` or `long`) | `int64` | Floored (toward negative infinity) |
+| Narrow signed integers (`int8`, `int16`) | Promoted type (typically `int32`) | Floored (toward negative infinity) |
+| Narrow unsigned integers (`uint8`, `uint16`, `uint32`) | Promoted type | Floored (toward negative infinity) |
+| Both `uint64` | `uint64` | Floored (= truncated, since both operands are non-negative) |
 | Any float type | Same float type | Floored (toward negative infinity) |
 | Mixed integer and float | Float type of the float operand | Floored (toward negative infinity) |
 | Both `decimal` | `decimal` | **Truncated** (toward zero) — see below |

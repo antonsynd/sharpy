@@ -1,0 +1,56 @@
+# #1662: narrow integer widths (int8, int16, uint8, uint16, uint32, uint64) floor
+# `//` and `%` via Builtins.FloorDiv/FloorMod, not truncating C# operators.
+# Signed types prove flooring by the sign-of-divisor remainder; unsigned types
+# prove the result TYPE is integer, not double. Each row verifies the divmod
+# identity a == (a // b) * b + (a % b), checked against python3.
+
+
+def main() -> None:
+    # === int8: signed narrow, mixed signs show floor vs truncation ===
+    a8: int8 = -7
+    b8: int8 = 2
+    q8: int = a8 // b8
+    r8: int = a8 % b8
+    print(q8, r8, a8 == (a8 // b8) * b8 + (a8 % b8))
+
+    c8: int8 = 7
+    d8: int8 = -3
+    print(c8 // d8, c8 % d8, c8 == (c8 // d8) * d8 + (c8 % d8))
+
+    # === int16: signed narrow ===
+    a16: int16 = -123
+    b16: int16 = 7
+    q16: int = a16 // b16
+    r16: int = a16 % b16
+    print(q16, r16, a16 == (a16 // b16) * b16 + (a16 % b16))
+
+    # === uint8: unsigned narrow ===
+    u8: uint8 = 200
+    v8: uint8 = 7
+    print(u8 // v8, u8 % v8, u8 == (u8 // v8) * v8 + (u8 % v8))
+
+    # === uint16: unsigned narrow ===
+    u16: uint16 = 50000
+    v16: uint16 = 7
+    print(u16 // v16, u16 % v16, u16 == (u16 // v16) * v16 + (u16 % v16))
+
+    # === uint32: unsigned 32-bit ===
+    u32: uint32 = 3000000000
+    v32: uint32 = 7
+    print(u32 // v32, u32 % v32, u32 == (u32 // v32) * v32 + (u32 % v32))
+
+    # === uint64: must produce integer result, not double ===
+    u64: uint64 = 7
+    v64: uint64 = 2
+    q64: uint64 = u64 // v64
+    r64: uint64 = u64 % v64
+    print(q64, r64, u64 == q64 * v64 + r64)
+
+    # === augmented assignment with narrow types ===
+    x8: int8 = -7
+    x8 %= 2
+    print(x8)
+
+    y16: int16 = -123
+    y16 //= 7
+    print(y16)
