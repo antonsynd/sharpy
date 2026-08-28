@@ -146,6 +146,47 @@ public class FloorDiv_Tests
 }
 
 /// <summary>
+/// The <c>ulong</c> <c>FloorDiv</c> overload added in #1662.
+/// Both operands are non-negative, so floor division is truncating division.
+/// The overload prevents widening to double.
+/// </summary>
+public class ULongFloorDiv_Tests
+{
+    [Theory]
+    [InlineData(7UL, 2UL, 3UL)]
+    [InlineData(7UL, 3UL, 2UL)]
+    [InlineData(0UL, 5UL, 0UL)]
+    [InlineData(1UL, 2UL, 0UL)]
+    [InlineData(ulong.MaxValue, 2UL, 9223372036854775807UL)]
+    public void FloorDiv_ULong_MatchesTruncation(ulong x, ulong y, ulong expected)
+    {
+        FloorDiv(x, y).Should().Be(expected);
+    }
+
+    [Fact]
+    public void FloorDiv_ULong_ZeroDivisor_RaisesZeroDivisionError()
+    {
+        var act = () => FloorDiv(0UL, 0UL);
+
+        act.Should().Throw<ZeroDivisionError>()
+            .WithMessage("integer division or modulo by zero");
+    }
+
+    [Fact]
+    public void FloorDiv_ULong_SatisfiesTheDivmodIdentity()
+    {
+        for (ulong x = 0; x <= 10; x++)
+        {
+            for (ulong y = 1; y <= 10; y++)
+            {
+                (FloorDiv(x, y) * y + FloorMod(x, y)).Should().Be(
+                    x, "the divmod identity must hold for {0} // {1}", x, y);
+            }
+        }
+    }
+}
+
+/// <summary>
 /// The integer <c>FloorDiv</c> overloads added in #1226.
 /// </summary>
 /// <remarks>

@@ -208,5 +208,21 @@ namespace Sharpy
 
             return float.IsNegative(x / y) ? -0.0f : 0.0f;
         }
+
+        /// <summary>
+        /// Returns the floored quotient of two <c>ulong</c> operands.
+        /// Both operands are non-negative, so floored division is identical to
+        /// truncating division. The overload exists so C# overload resolution
+        /// selects it instead of widening to <c>double</c> (#1662).
+        /// </summary>
+        public static ulong FloorDiv(ulong x, ulong y)
+        {
+            if (y == 0UL)
+            {
+                throw new ZeroDivisionError("integer division or modulo by zero");
+            }
+
+            return x / y;
+        }
     }
 }

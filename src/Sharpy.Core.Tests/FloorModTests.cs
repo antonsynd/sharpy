@@ -130,6 +130,26 @@ public class FloorMod_Tests
         FloorMod(x, y).Should().BeApproximately(remainder, 1e-9);
     }
 
+    // #1662 — ulong overload: both operands non-negative, so floor mod = truncating mod.
+    [Theory]
+    [InlineData(7UL, 3UL, 1UL)]
+    [InlineData(7UL, 2UL, 1UL)]
+    [InlineData(0UL, 5UL, 0UL)]
+    [InlineData(6UL, 3UL, 0UL)]
+    [InlineData(ulong.MaxValue, 2UL, 1UL)]
+    public void FloorMod_ULong_MatchesTruncation(ulong x, ulong y, ulong expected)
+    {
+        FloorMod(x, y).Should().Be(expected);
+    }
+
+    [Fact]
+    public void FloorMod_ULong_ZeroDivisor_ThrowsZeroDivisionError()
+    {
+        FluentActions.Invoking(() => FloorMod(1UL, 0UL))
+            .Should().Throw<ZeroDivisionError>()
+            .WithMessage("integer modulo by zero");
+    }
+
     // #1186 — a zero remainder carries the DIVISOR's sign (CPython float_mod), where
     // C#'s `%` gives it the dividend's sign. Asserted via IsNegative because
     // -0.0 == 0.0 makes an equality assertion blind to the difference.

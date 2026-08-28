@@ -151,5 +151,21 @@ namespace Sharpy
 
             return r;
         }
+
+        /// <summary>
+        /// Returns the floored remainder of two <c>ulong</c> operands.
+        /// Both operands are non-negative, so the floored remainder is identical
+        /// to the truncating remainder. The overload exists so C# overload
+        /// resolution selects it instead of widening to <c>double</c> (#1662).
+        /// </summary>
+        public static ulong FloorMod(ulong x, ulong y)
+        {
+            if (y == 0UL)
+            {
+                throw new ZeroDivisionError("integer modulo by zero");
+            }
+
+            return x % y;
+        }
     }
 }
