@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -23,6 +24,7 @@ public class RoslynEmitterIntegrationTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = sourceFilePath,
             IsEntryPoint = isEntryPoint
         };

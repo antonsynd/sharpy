@@ -29,27 +29,16 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateListLiteral(ListLiteral list)
     {
         // new Sharpy.List<T> { elem1, elem2, elem3 }
-        // Prefer target type annotation if available (e.g., list[int] = [...])
         TypeSyntax elementType;
-        if (_targetTypeContext != null &&
-            _targetTypeContext.Name == BuiltinNames.List &&
-            _targetTypeContext.TypeArguments.Length > 0)
+        if (GetExpressionSemanticType(list) is GenericType listSemType &&
+            listSemType.Name == BuiltinNames.List &&
+            listSemType.TypeArguments.Count > 0 &&
+            listSemType.TypeArguments[0] is not UnknownType)
         {
-            // Use the declared element type from the target type annotation
-            elementType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
-        }
-        else if (GetExpressionSemanticType(list) is GenericType listSemType &&
-                 listSemType.Name == BuiltinNames.List &&
-                 listSemType.TypeArguments.Count > 0 &&
-                 listSemType.TypeArguments[0] is not UnknownType)
-        {
-            // Use the type inferred by the TypeChecker via SemanticInfo
             elementType = _typeMapper.MapSemanticType(listSemType.TypeArguments[0]);
         }
         else
         {
-            // Empty or heterogeneous literal — the TypeChecker records a concrete element type
-            // whenever one is inferable, so reaching here means the neutral object element type.
             elementType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
@@ -58,7 +47,7 @@ internal partial class RoslynEmitter
         // three-object Sharpy.List construction. StackAllocatedLiterals is empty unless the pass ran, so
         // the default path is byte-identical; the pass never marks a spread literal, so the array form
         // always has plain elements (no spread builder needed).
-        if (_context.Ir?.StackAllocatedLiterals.Contains(list) == true)
+        if (_context.Ir.StackAllocatedLiterals.Contains(list))
         {
             var arrayElements = list.Elements.Select(elem => GenerateWithNestedTargetType(elem, _targetTypeContext));
             return ArrayCreationExpression(
@@ -91,30 +80,18 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateDictLiteral(DictLiteral dict)
     {
         // new System.Collections.Generic.Dictionary<K,V> { { key1, value1 }, { key2, value2 } }
-        // v0.1.x uses .NET types directly per phases.md
-        // Prefer target type annotation if available (e.g., dict[str, int] = {...})
         TypeSyntax keyType, valueType;
-        if (_targetTypeContext != null &&
-            _targetTypeContext.Name == BuiltinNames.Dict &&
-            _targetTypeContext.TypeArguments.Length >= 2)
+        if (GetExpressionSemanticType(dict) is GenericType dictSemType &&
+            dictSemType.Name == BuiltinNames.Dict &&
+            dictSemType.TypeArguments.Count >= 2 &&
+            dictSemType.TypeArguments[0] is not UnknownType &&
+            dictSemType.TypeArguments[1] is not UnknownType)
         {
-            keyType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
-            valueType = _typeMapper.MapType(_targetTypeContext.TypeArguments[1]);
-        }
-        else if (GetExpressionSemanticType(dict) is GenericType dictSemType &&
-                 dictSemType.Name == BuiltinNames.Dict &&
-                 dictSemType.TypeArguments.Count >= 2 &&
-                 dictSemType.TypeArguments[0] is not UnknownType &&
-                 dictSemType.TypeArguments[1] is not UnknownType)
-        {
-            // Use the types inferred by the TypeChecker via SemanticInfo
             keyType = _typeMapper.MapSemanticType(dictSemType.TypeArguments[0]);
             valueType = _typeMapper.MapSemanticType(dictSemType.TypeArguments[1]);
         }
         else
         {
-            // Empty or heterogeneous literal — neutral object key/value when the TypeChecker
-            // inferred no concrete element type.
             keyType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
             valueType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
@@ -128,13 +105,29 @@ internal partial class RoslynEmitter
             return GenerateSpreadDictBuilder(dict.Entries, dictType, dictInfo!.SpreadMethodName);
         }
 
+        var valueTargetType = _targetTypeContext?.Name == BuiltinNames.Dict
+            && _targetTypeContext.TypeArguments.Length >= 2
+            ? _targetTypeContext.TypeArguments[1]
+            : null;
         var initializers = dict.Entries.Select(entry =>
-            InitializerExpression(SyntaxKind.ComplexElementInitializerExpression,
-                SeparatedList(new[]
-                {
-                    GenerateExpression(entry.Key!),
-                    GenerateExpression(entry.Value)
-                })));
+        {
+            var keyExpr = GenerateExpression(entry.Key!);
+            ExpressionSyntax valExpr;
+            if (valueTargetType != null
+                && entry.Value is ListLiteral or SetLiteral or DictLiteral or TupleLiteral)
+            {
+                var prev = _targetTypeContext;
+                _targetTypeContext = valueTargetType;
+                try { valExpr = GenerateExpression(entry.Value); }
+                finally { _targetTypeContext = prev; }
+            }
+            else
+            {
+                valExpr = GenerateExpression(entry.Value);
+            }
+            return InitializerExpression(SyntaxKind.ComplexElementInitializerExpression,
+                SeparatedList(new[] { keyExpr, valExpr }));
+        });
 
         return ObjectCreationExpression(dictType)
             .WithArgumentList(ArgumentList())
@@ -174,25 +167,16 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateSetLiteral(SetLiteral set)
     {
         // new Sharpy.Set<T> { elem1, elem2, elem3 }
-        // Prefer target type annotation if available (e.g., set[int] = {...})
         TypeSyntax elementType;
-        if (_targetTypeContext != null &&
-            _targetTypeContext.Name == BuiltinNames.Set &&
-            _targetTypeContext.TypeArguments.Length > 0)
+        if (GetExpressionSemanticType(set) is GenericType setSemType &&
+            setSemType.Name == BuiltinNames.Set &&
+            setSemType.TypeArguments.Count > 0 &&
+            setSemType.TypeArguments[0] is not UnknownType)
         {
-            elementType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
-        }
-        else if (GetExpressionSemanticType(set) is GenericType setSemType &&
-                 setSemType.Name == BuiltinNames.Set &&
-                 setSemType.TypeArguments.Count > 0 &&
-                 setSemType.TypeArguments[0] is not UnknownType)
-        {
-            // Use the type inferred by the TypeChecker via SemanticInfo
             elementType = _typeMapper.MapSemanticType(setSemType.TypeArguments[0]);
         }
         else
         {
-            // Empty or heterogeneous literal — neutral object element type.
             elementType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
@@ -1339,13 +1323,11 @@ internal partial class RoslynEmitter
     {
         if (parentTargetType == null ||
             parentTargetType.TypeArguments.Length == 0 ||
-            element is not (ListLiteral or SetLiteral or DictLiteral))
+            element is not (ListLiteral or SetLiteral or DictLiteral or TupleLiteral))
         {
             return GenerateExpression(element);
         }
 
-        // For list[list[int]], the inner target type is list[int] (first type argument)
-        // For set[set[str]], the inner target type is set[str] (first type argument)
         var innerTargetType = parentTargetType.TypeArguments[0];
 
         var previousTargetType = _targetTypeContext;

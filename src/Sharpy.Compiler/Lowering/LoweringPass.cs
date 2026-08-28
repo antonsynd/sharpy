@@ -312,6 +312,12 @@ internal sealed record IrCompilation(
     private static readonly IReadOnlySet<ListLiteral> EmptyStackLiterals =
         new HashSet<ListLiteral>(ReferenceEqualityComparer.Instance);
 
+    public static IrCompilation Empty { get; } = new(
+        ImmutableArray<IrModule>.Empty,
+        new IrIndex(new Dictionary<Node, IrNode>(ReferenceEqualityComparer.Instance)),
+        new Dictionary<WithItem, IrWithItem>(ReferenceEqualityComparer.Instance),
+        new HashSet<FunctionDef>(ReferenceEqualityComparer.Instance));
+
     /// <summary>
     /// AST expressions the E3 const-folding pass (<c>opt_const_fold</c>, #640) reduced to a compile-time
     /// <see cref="IrConstant"/>, keyed by the expression node the AST-driven emitter will generate. Empty

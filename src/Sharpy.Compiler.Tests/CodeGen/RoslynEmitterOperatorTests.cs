@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Xunit;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -19,7 +20,7 @@ public class RoslynEmitterOperatorTests
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        _context = new CodeGenContext(symbolTable, builtins);
+        _context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
         _emitter = new RoslynEmitter(_context);
     }
 

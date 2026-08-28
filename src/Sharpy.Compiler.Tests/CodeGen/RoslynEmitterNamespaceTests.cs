@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -23,6 +24,7 @@ public class RoslynEmitterNamespaceTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             ProjectNamespace = projectNamespace,
             ProjectRootPath = projectRootPath,
             SourceFilePath = sourceFilePath

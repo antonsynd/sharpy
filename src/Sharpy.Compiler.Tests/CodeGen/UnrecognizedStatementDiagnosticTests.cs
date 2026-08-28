@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -27,7 +28,7 @@ public class UnrecognizedStatementDiagnosticTests
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        var context = new CodeGenContext(symbolTable, builtins);
+        var context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
         var emitter = new RoslynEmitter(context);
 
         var fakeStmt = new FakeStatement { LineStart = 5, ColumnStart = 3 };
@@ -60,7 +61,7 @@ public class UnrecognizedStatementDiagnosticTests
         };
         symbolTable.TryDefine(classSymbol);
 
-        var context = new CodeGenContext(symbolTable, builtins);
+        var context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
         var emitter = new RoslynEmitter(context);
 
         var fakeStmt = new FakeStatement { LineStart = 10, ColumnStart = 1 };

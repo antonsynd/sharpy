@@ -1,6 +1,7 @@
 using Xunit;
 using FluentAssertions;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
@@ -195,7 +196,7 @@ def main():
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        var context = new CodeGenContext(symbolTable, builtins);
+        var context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
 
         context.EmitLineDirectives.Should().BeTrue();
     }
@@ -207,6 +208,7 @@ def main():
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             EmitLineDirectives = false
         };
 

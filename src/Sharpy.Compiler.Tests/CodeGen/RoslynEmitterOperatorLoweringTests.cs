@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -27,7 +28,7 @@ public class RoslynEmitterOperatorLoweringTests
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        _context = new CodeGenContext(symbolTable, builtins);
+        _context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
         _emitter = new RoslynEmitter(_context);
         _generateExpression = typeof(RoslynEmitter).GetMethod(
             "GenerateExpression", BindingFlags.NonPublic | BindingFlags.Instance)

@@ -47,7 +47,7 @@ internal partial class RoslynEmitter
             : NameCasing.ResolveMethod(func.Name, func.IsNameBacktickEscaped);
 
         // Check if this function is a generator and/or async
-        using var _ = SetGeneratorScope(_context.Ir?.IsGenerator(func) == true);
+        using var _ = SetGeneratorScope(_context.Ir.IsGenerator(func));
         using var _async = SetAsyncScope(func.IsAsync);
 
         // Track @test context so assert statements in the body emit xUnit assertions

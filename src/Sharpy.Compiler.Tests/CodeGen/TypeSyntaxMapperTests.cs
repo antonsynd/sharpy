@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -21,7 +22,7 @@ public class TypeSyntaxMapperTests
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        _context = new CodeGenContext(symbolTable, builtins);
+        _context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
         _typeMapper = new TypeSyntaxMapper(_context);
     }
 

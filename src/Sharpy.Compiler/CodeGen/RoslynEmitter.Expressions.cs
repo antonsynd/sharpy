@@ -151,7 +151,7 @@ internal partial class RoslynEmitter
         // E3 const-folding (opt_const_fold, #640): an operation the pass reduced emits as its literal
         // value. FoldedConstants is empty unless the pass ran for this file, so the default
         // (flag-off) path is byte-identical.
-        if (_context.Ir?.FoldedConstants.TryGetValue(expr, out var foldedConstant) == true)
+        if (_context.Ir.FoldedConstants.TryGetValue(expr, out var foldedConstant))
             return EmitFoldedConstant(foldedConstant);
 
         return expr switch
@@ -331,6 +331,12 @@ internal partial class RoslynEmitter
         if (_context.SemanticInfo?.GetConstructorReferenceLowering(name) is { } constructorReference)
             return GenerateConstructorReference(name.IsNameBacktickEscaped, constructorReference);
 
+        // #1638: a builtin function name used as a value. The recorded fact carries the selected
+        // overload's parameter types so we generate a typed lambda instead of a bare method group —
+        // method groups break on struct boxing, generic inference, CS0121 ambiguity, and params elision.
+        if (_context.SemanticInfo?.GetCallableReferenceLowering(name) is { } callableRef)
+            return GenerateCallableReferenceLambda(callableRef);
+
         // Builtin function references (e.g., key=len, map(int, items)) need full qualification.
         // Shadowing check: if the semantic analysis resolved this identifier to a VariableSymbol,
         // it's a local variable shadowing the builtin — skip the builtin emission path.
@@ -458,6 +464,41 @@ internal partial class RoslynEmitter
             ParameterList(SeparatedList(
                 sourceNames.Select(n => Parameter(EscapedIdentifier(n))))),
             construction);
+    }
+
+    /// <summary>
+    /// Generates an eta-expanded lambda for a builtin function reference (#1638). The lambda
+    /// forwards positional arguments to the fully qualified method, e.g.
+    /// <c>(__callable_p_0) =&gt; global::Sharpy.Builtins.Len(__callable_p_0)</c>.
+    /// A lambda is accepted everywhere a method group was, so this is regression-free.
+    /// Parameters are untyped — C# infers from the target delegate at the call site.
+    /// </summary>
+    private ExpressionSyntax GenerateCallableReferenceLambda(CallableReferenceLowering lowering)
+    {
+        var paramNames = new string[lowering.ParameterTypes.Count];
+        for (int i = 0; i < paramNames.Length; i++)
+            paramNames[i] = $"__callable_p_{_tempVarCounter++}";
+
+        var callee = MakeGlobalQualifiedName(lowering.QualifiedName.Split('.'));
+        var invocation = InvocationExpression(callee)
+            .WithArgumentList(ArgumentList(SeparatedList(
+                paramNames.Select(n => Argument(EscapedIdentifierName(n))))));
+
+        if (paramNames.Length == 0)
+        {
+            return ParenthesizedLambdaExpression(ParameterList(), invocation);
+        }
+
+        if (paramNames.Length == 1)
+        {
+            return SimpleLambdaExpression(
+                Parameter(EscapedIdentifier(paramNames[0])), invocation);
+        }
+
+        return ParenthesizedLambdaExpression(
+            ParameterList(SeparatedList(
+                paramNames.Select(n => Parameter(EscapedIdentifier(n))))),
+            invocation);
     }
 
     /// <summary>

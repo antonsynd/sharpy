@@ -3,6 +3,7 @@ using FluentAssertions;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Microsoft.CodeAnalysis.CSharp;
 using DiscoveryTypeMapper = Sharpy.Compiler.Discovery.ClrTypeBridge;
@@ -169,7 +170,7 @@ public class TypeMappingConsistencyTests
         // Create minimal CodeGenContext for testing
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        var context = new CodeGenContext(symbolTable, builtins);
+        var context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
         var mapper = new Sharpy.Compiler.CodeGen.TypeSyntaxMapper(context);
 
         // Test each primitive (excluding void, which cannot be used as a value type)

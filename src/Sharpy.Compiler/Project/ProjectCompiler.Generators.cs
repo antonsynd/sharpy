@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.Emit;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Model;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
@@ -123,6 +124,14 @@ internal partial class ProjectCompiler
         var generatorTrees = new Dictionary<string, SyntaxTree>();
         var builtinRegistry = SymbolTable.BuiltinRegistry;
 
+        var generatorModules = partition.GeneratorFiles
+            .Select(fp => _projectModel!.Units[fp])
+            .Where(unit => unit.Ast != null)
+            .OrderBy(unit => unit.FilePath, StringComparer.Ordinal)
+            .Select(unit => (unit.FilePath, unit.Ast!))
+            .ToList();
+        var generatorIr = new LoweringPass().Lower(generatorModules, SemanticInfo, SymbolTable);
+
         foreach (var filePath in partition.GeneratorFiles)
         {
             var unit = _projectModel!.Units[filePath];
@@ -146,6 +155,7 @@ internal partial class ProjectCompiler
                 Logger = _logger,
                 SemanticBinding = _projectModel.SemanticBinding,
                 SemanticInfo = SemanticInfo,
+                Ir = generatorIr,
                 Features = ImportResolver.GetEffectiveFeatures(_features, filePath)
             };
 

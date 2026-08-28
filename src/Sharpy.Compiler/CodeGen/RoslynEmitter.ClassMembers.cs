@@ -486,7 +486,7 @@ internal partial class RoslynEmitter
                     : PredefinedType(Token(SyntaxKind.ObjectKeyword));
                 return GenerateEnumerableBridgeMembers(elemType);
             }
-            else if (_context.Ir?.IsGenerator(funcDef) == true)
+            else if (_context.Ir.IsGenerator(funcDef))
             {
                 // Generator __iter__: body contains yield → emit IEnumerator<T> GetEnumerator()
                 return GenerateGeneratorIterMethod(funcDef);
@@ -501,7 +501,7 @@ internal partial class RoslynEmitter
         // __reversed__ → GetReverseEnumerator() with IEnumerator<T> return type
         registry.Register(DunderNames.Reversed, (funcDef, _) =>
         {
-            using var _gen = SetGeneratorScope(_context.Ir?.IsGenerator(funcDef) == true);
+            using var _gen = SetGeneratorScope(_context.Ir.IsGenerator(funcDef));
             using var _asyncRev = SetAsyncScope(funcDef.IsAsync);
             return new[] { GenerateReverseEnumeratorMethod(funcDef) };
         });

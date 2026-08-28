@@ -645,7 +645,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private ContextManagerKind? GetIrContextManagerKind(WithItem item)
     {
-        return _context.Ir?.WithItems.TryGetValue(item, out var withItem) == true
+        return _context.Ir.WithItems.TryGetValue(item, out var withItem)
             ? withItem.Kind
             : null;
     }

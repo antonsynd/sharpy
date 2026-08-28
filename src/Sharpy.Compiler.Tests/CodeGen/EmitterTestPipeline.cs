@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -78,13 +79,19 @@ internal static class EmitterTestPipeline
         semanticBinding.MaterializeCodeGenInfo();
         semanticBinding.MaterializeVariableTypes();
 
+        var ir = new LoweringPass().Lower(
+            new[] { (sourceFilePath ?? "<test>", module) },
+            semanticInfo,
+            symbolTable);
+
         var context = new CodeGenContext(symbolTable, builtins)
         {
             SourceFilePath = sourceFilePath,
             IsEntryPoint = isEntryPoint,
             Logger = logger,
             SemanticBinding = semanticBinding,
-            SemanticInfo = semanticInfo
+            SemanticInfo = semanticInfo,
+            Ir = ir
         };
         if (emitLineDirectives is { } directives)
             context.EmitLineDirectives = directives;

@@ -1,4 +1,5 @@
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -14,7 +15,7 @@ public class RoslynEmitterFactoryTests
         var factory = new RoslynEmitterFactory();
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        var context = new CodeGenContext(symbolTable, builtins);
+        var context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
 
         var emitter = factory.Create(context);
 
@@ -27,7 +28,7 @@ public class RoslynEmitterFactoryTests
         var factory = new RoslynEmitterFactory();
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        var context = new CodeGenContext(symbolTable, builtins);
+        var context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
 
         var emitter = factory.Create(context);
 
@@ -40,8 +41,8 @@ public class RoslynEmitterFactoryTests
         var factory = new RoslynEmitterFactory();
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        var context1 = new CodeGenContext(symbolTable, builtins);
-        var context2 = new CodeGenContext(symbolTable, builtins);
+        var context1 = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
+        var context2 = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
 
         var emitter1 = factory.Create(context1);
         var emitter2 = factory.Create(context2);
@@ -55,7 +56,7 @@ public class RoslynEmitterFactoryTests
         var factory = new RoslynEmitterFactory();
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        var context = new CodeGenContext(symbolTable, builtins);
+        var context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
 
         var emitter = factory.Create(context);
         var result = emitter.GenerateCompilationUnit(new Module());
@@ -69,7 +70,7 @@ public class RoslynEmitterFactoryTests
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        var context = new CodeGenContext(symbolTable, builtins);
+        var context = new CodeGenContext(symbolTable, builtins) { Ir = IrCompilation.Empty };
 
         var emitter = new RoslynEmitter(context);
 

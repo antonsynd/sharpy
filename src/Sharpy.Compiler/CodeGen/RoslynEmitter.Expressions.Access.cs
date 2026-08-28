@@ -1930,7 +1930,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private IndexAccessLowering? GetIrIndexAccessLowering(IndexAccess indexAccess)
     {
-        return _context.Ir?.Index.TryGetValue(indexAccess, out var node) == true
+        return _context.Ir.Index.TryGetValue(indexAccess, out var node)
             && node is IrIndexAccess irIndexAccess
             ? irIndexAccess.Strategy
             : null;
@@ -1943,7 +1943,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private StaticExtensionDispatch? GetIrStaticExtensionDispatch(MemberAccess memberAccess)
     {
-        return _context.Ir?.Index.TryGetValue(memberAccess, out var node) == true
+        return _context.Ir.Index.TryGetValue(memberAccess, out var node)
             && node is IrMemberAccess irMemberAccess
             ? irMemberAccess.ExtensionDispatch
             : null;
@@ -1956,7 +1956,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private string? GetIrResolvedClrMemberName(MemberAccess memberAccess)
     {
-        return _context.Ir?.Index.TryGetValue(memberAccess, out var node) == true
+        return _context.Ir.Index.TryGetValue(memberAccess, out var node)
             && node is IrMemberAccess irMemberAccess
             ? irMemberAccess.ResolvedClrMemberName
             : null;
@@ -2244,23 +2244,20 @@ internal partial class RoslynEmitter
                 IdentifierName("All"));
         }
 
+        var nullableInt = NullableType(PredefinedType(Token(SyntaxKind.IntKeyword)));
         var args = new List<ArgumentSyntax>();
 
         args.Add(Argument(start != null
-            ? CastExpression(NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                GenerateExpression(start))
+            ? CastExpression(nullableInt, GenerateExpression(start))
             : LiteralExpression(SyntaxKind.NullLiteralExpression)));
 
         args.Add(Argument(stop != null
-            ? CastExpression(NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                GenerateExpression(stop))
+            ? CastExpression(nullableInt, GenerateExpression(stop))
             : LiteralExpression(SyntaxKind.NullLiteralExpression)));
 
         if (step != null)
         {
-            args.Add(Argument(CastExpression(
-                NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
-                GenerateExpression(step))));
+            args.Add(Argument(CastExpression(nullableInt, GenerateExpression(step))));
         }
 
         return ObjectCreationExpression(

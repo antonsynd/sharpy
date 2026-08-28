@@ -50,20 +50,19 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// Reads the lowered comprehension node for <paramref name="comprehension"/> from the lowering IR
-    /// (E2 #1056, migrates the comprehension transform). Returns <c>null</c> when the IR was not built
-    /// for this codegen path (the REPL and the source-generator sub-pipeline do not build it, and
-    /// direct-emitter unit tests construct a context without it); callers then recompute the decisions
-    /// via the shared <see cref="LoweringPass"/> helpers so output is unchanged.
+    /// (E2 #1056, migrates the comprehension transform). Returns <c>null</c> when the node was not
+    /// lowered as a comprehension (an error case); callers then recompute the decisions via the
+    /// shared <see cref="LoweringPass"/> helpers so output is unchanged.
     /// </summary>
     private IrLoweredLoop? GetIrLoweredLoop(Expression comprehension)
     {
         // Prefer the E3 comprehension pass's optimized copy (opt_comprehension_fusion, #1057) when it
         // marked this comprehension; the map is empty unless the pass ran, so the default path reads
         // the initial-lowering copy from the index and is byte-identical.
-        if (_context.Ir?.OptimizedComprehensions.TryGetValue(comprehension, out var optimized) == true)
+        if (_context.Ir.OptimizedComprehensions.TryGetValue(comprehension, out var optimized))
             return optimized;
 
-        return _context.Ir?.Index.TryGetValue(comprehension, out var node) == true
+        return _context.Ir.Index.TryGetValue(comprehension, out var node)
             && node is IrLoweredLoop loop
             ? loop
             : null;

@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -21,6 +22,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = sourceFilePath
         };
         return new RoslynEmitter(context);
@@ -356,6 +358,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/myapp/services/auth.spy",
             ProjectNamespace = "MyProject",
             ProjectRootPath = "/project/src"
@@ -406,6 +409,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/lib/mymodule.spy",
             ProjectNamespace = "MyApp",
             ProjectRootPath = "/project/src"
@@ -509,6 +513,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/20260113_test/module.spy",
             ProjectNamespace = "TestApp",
             ProjectRootPath = "/project/src"
@@ -550,6 +555,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/my-app.test/module.spy",
             ProjectNamespace = "TestApp",
             ProjectRootPath = "/project/src"
@@ -574,6 +580,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/dogfood/issues/20260113_failed_0001/source.spy",
             ProjectNamespace = "Dogfood",
             ProjectRootPath = "/dogfood/issues"
@@ -615,6 +622,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/some/path/mymodule.spy",
             ProjectNamespace = "MyApp"
             // ProjectRootPath not set
@@ -1069,6 +1077,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/mypackage/__init__.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src"
@@ -1109,6 +1118,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/level1/level2/__init__.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src"
@@ -1181,6 +1191,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/utils.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src"
@@ -1216,6 +1227,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/main.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src",
@@ -1252,6 +1264,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/mypackage/helpers.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src"
@@ -1286,6 +1299,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/mypackage/__init__.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src",
@@ -1326,6 +1340,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/animal.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src"
@@ -1376,6 +1391,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/point.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src"
@@ -1411,6 +1427,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/drawable.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src"
@@ -1445,6 +1462,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/color.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src"
@@ -1486,6 +1504,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/mypackage/__init__.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src",
@@ -1538,6 +1557,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/mypackage/__init__.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src",
@@ -1588,6 +1608,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/mypackage/__init__.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src",
@@ -1638,6 +1659,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = "/project/src/mymodule.spy",
             ProjectNamespace = "TestProject",
             ProjectRootPath = "/project/src",
@@ -1689,6 +1711,7 @@ public class RoslynEmitterModuleTests
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
+            Ir = IrCompilation.Empty,
             SourceFilePath = sourceFilePath,
             IsEntryPoint = isEntryPoint
         };

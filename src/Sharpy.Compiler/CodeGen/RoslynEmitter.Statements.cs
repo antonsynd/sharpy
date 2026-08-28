@@ -281,7 +281,7 @@ internal partial class RoslynEmitter
     private LocalFunctionStatementSyntax GenerateLocalFunction(FunctionDef func)
     {
         // Set generator and async scope (disposable — auto-restores)
-        using var _ = SetGeneratorScope(_context.Ir?.IsGenerator(func) == true);
+        using var _ = SetGeneratorScope(_context.Ir.IsGenerator(func));
         using var _async = SetAsyncScope(func.IsAsync);
 
         // Mangle name: snake_case → PascalCase, unless the name was backtick-escaped.
