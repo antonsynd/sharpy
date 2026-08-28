@@ -116,6 +116,18 @@ internal static class StatementWalker
                     return found;
             }
         }
+        else if (stmt is DeferStatement deferStmt)
+        {
+            var found = FirstOrDefault(deferStmt.Body, selector);
+            if (found != null)
+                return found;
+        }
+        else if (stmt is DecoratedStatement decorated)
+        {
+            var found = TryRecurseSelect(decorated.Statement, selector);
+            if (found != null)
+                return found;
+        }
 
         return null;
     }
