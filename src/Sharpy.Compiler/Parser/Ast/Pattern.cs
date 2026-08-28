@@ -504,6 +504,7 @@ public record AsPattern : Pattern
     public override IEnumerable<Node> GetChildNodes()
     {
         yield return Inner;
+        yield return Name;
     }
 }
 

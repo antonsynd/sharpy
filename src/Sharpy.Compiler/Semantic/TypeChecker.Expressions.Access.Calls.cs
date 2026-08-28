@@ -2890,8 +2890,10 @@ internal partial class TypeChecker
         int totalArgCount, bool isNullConditionalCall, bool isOptionalNullConditional)
     {
         // #1650: FunctionType has no parameter names, so keyword arguments cannot bind.
-        // Refuse them with a steer to pass positionally.
-        if (call.KeywordArguments.Length > 0)
+        // Refuse them with a steer to pass positionally — but only for true function-typed
+        // values (identifiers/lambdas), not member-access method calls that fell through
+        // without a FunctionSymbol (e.g. super().__init__(), which has named parameters).
+        if (call.KeywordArguments.Length > 0 && call.Function is not MemberAccess)
         {
             foreach (var kwarg in call.KeywordArguments)
             {

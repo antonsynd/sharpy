@@ -97,8 +97,8 @@ public class StaticStateConformanceTests
                 "Keyword→token-type table, initialized inline and read-only after.",
             [("Sharpy.Compiler.Semantic.CodeGenInfoComputer", "IteratorProtocolReservedNames")] =
                 "Reserved iterator-protocol member names, initialized inline and read-only.",
-            [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "RegisteredPrimitiveNames")] =
-                "Primitive type names, initialized inline and read-only after.",
+            [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "SeparatelyRegisteredClrTypes")] =
+                "CLR types registered separately from the catalog, initialized inline and read-only after.",
             [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "TaggedUnionConstructors")] =
                 "Tagged-union constructor names, initialized inline and read-only after.",
             [("Sharpy.Compiler.Semantic.SynthesisAnalyzer", "SynthesizableSharpyCoreInterfaces")] =
@@ -113,6 +113,8 @@ public class StaticStateConformanceTests
                 "Unsupported decorator→message map, initialized inline and read-only.",
             [("Sharpy.Compiler.Shared.CSharpKeywords", "All")] =
                 "Set of C# reserved keywords for identifier escaping, initialized inline.",
+            [("Sharpy.Compiler.Shared.SelfMatchingBuiltins", "Names")] =
+                "PEP 634 self-matching builtin names, initialized inline and read-only (#1653).",
             [("Sharpy.Compiler.Shared.DataclassesEquivalences", "Messages")] =
                 "dataclasses guidance-message table, initialized inline and read-only.",
             [("Sharpy.Compiler.Shared.DunderDetector", "DunderProperties")] =
