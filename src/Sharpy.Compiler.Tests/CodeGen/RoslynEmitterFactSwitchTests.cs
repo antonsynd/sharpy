@@ -111,7 +111,7 @@ public class RoslynEmitterFactSwitchTests
         var code = result.NormalizeWhitespace().ToFullString();
         code.Should().StartWith("a.Slice(");
         code.Should().Contain("SliceSpec.All");
-        code.Should().Contain("SliceSpec.Range(2, 2 + 1)");
+        code.Should().Contain("SliceSpec.At(2)");
         code.Should().NotContain("a[");
     }
 
