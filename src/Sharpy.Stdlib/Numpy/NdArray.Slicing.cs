@@ -17,6 +17,11 @@ namespace Sharpy
         /// <summary>Step between successive indices. <c>null</c> defaults to 1. Cannot be 0.</summary>
         public int? Step { get; }
 
+        private readonly bool _isSqueeze;
+
+        /// <summary>True when this spec was created by <see cref="At"/> and the axis should be removed from the result shape.</summary>
+        public bool IsSqueeze => _isSqueeze;
+
         /// <summary>Construct a slice with the given (optional) start, stop, and step.</summary>
         public SliceSpec(int? start = null, int? stop = null, int? step = null)
         {
@@ -28,10 +33,22 @@ namespace Sharpy
             Start = start;
             Stop = stop;
             Step = step;
+            _isSqueeze = false;
+        }
+
+        private SliceSpec(int start, int stop, int? step, bool isSqueeze)
+        {
+            Start = start;
+            Stop = stop;
+            Step = step;
+            _isSqueeze = isSqueeze;
         }
 
         /// <summary>Sentinel slice representing <c>:</c> — take every element along this axis.</summary>
         public static SliceSpec All => new SliceSpec(null, null, null);
+
+        /// <summary>Create a single-index spec that squeezes (removes) the axis from the result.</summary>
+        public static SliceSpec At(int index) => new SliceSpec(index, index + 1, null, true);
 
         /// <summary>Create a slice of the form <c>start:stop</c>.</summary>
         public static SliceSpec Range(int start, int stop) => new SliceSpec(start, stop, null);
@@ -146,7 +163,7 @@ namespace Sharpy
 
         /// <inheritdoc />
         public bool Equals(SliceSpec other) =>
-            Start == other.Start && Stop == other.Stop && Step == other.Step;
+            Start == other.Start && Stop == other.Stop && Step == other.Step && _isSqueeze == other._isSqueeze;
 
         /// <inheritdoc />
         public override bool Equals(object? obj) => obj is SliceSpec other && Equals(other);
@@ -160,6 +177,7 @@ namespace Sharpy
                 h = h * 31 + (Start?.GetHashCode() ?? 0);
                 h = h * 31 + (Stop?.GetHashCode() ?? 0);
                 h = h * 31 + (Step?.GetHashCode() ?? 0);
+                h = h * 31 + _isSqueeze.GetHashCode();
                 return h;
             }
         }
@@ -197,16 +215,40 @@ namespace Sharpy
                     $"too many indices for array: array is {_shape.Length}-dimensional, but {slices.Length} slices were provided");
             }
 
-            var newShape = new int[_shape.Length];
-            var newStrides = new int[_shape.Length];
+            int squeezeCount = 0;
+            var tmpShape = new int[_shape.Length];
+            var tmpStrides = new int[_shape.Length];
             int newOffset = _offset;
 
             for (int axis = 0; axis < slices.Length; axis++)
             {
                 var (start, _, step, length) = slices[axis].Resolve(_shape[axis]);
-                newShape[axis] = length;
-                newStrides[axis] = _strides[axis] * step;
+                tmpShape[axis] = length;
+                tmpStrides[axis] = _strides[axis] * step;
                 newOffset += start * _strides[axis];
+                if (slices[axis].IsSqueeze)
+                {
+                    squeezeCount++;
+                }
+            }
+
+            if (squeezeCount == 0)
+            {
+                return new NdArray<T>(_data, tmpShape, tmpStrides, newOffset);
+            }
+
+            int outRank = _shape.Length - squeezeCount;
+            var newShape = new int[outRank];
+            var newStrides = new int[outRank];
+            int j = 0;
+            for (int axis = 0; axis < slices.Length; axis++)
+            {
+                if (!slices[axis].IsSqueeze)
+                {
+                    newShape[j] = tmpShape[axis];
+                    newStrides[j] = tmpStrides[axis];
+                    j++;
+                }
             }
 
             return new NdArray<T>(_data, newShape, newStrides, newOffset);

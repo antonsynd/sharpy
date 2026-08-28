@@ -2205,17 +2205,13 @@ internal partial class RoslynEmitter
             }
             else
             {
-                var idxForStart = GenerateExpression(dim.Index!);
-                var idxForEnd = GenerateExpression(dim.Index!);
                 sliceArgs.Add(Argument(
                     InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             MakeGlobalQualifiedName("Sharpy", "SliceSpec"),
-                            IdentifierName("Range")))
+                            IdentifierName("At")))
                     .AddArgumentListArguments(
-                        Argument(idxForStart),
-                        Argument(BinaryExpression(SyntaxKind.AddExpression,
-                            idxForEnd, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))))));
+                        Argument(GenerateExpression(dim.Index!)))));
             }
         }
 
