@@ -190,11 +190,22 @@ done
 
 # --- Orphan detection: delete generated .cs files whose .spy source is gone ---
 
+# Membership test with NO pipe: `printf … | grep -q` under `set -o pipefail` returned non-zero
+# whenever grep exited before printf finished (SIGPIPE), reporting a false ORPHAN in --check
+# mode and DELETING a valid generated file in regenerate mode (#1673).
+stem_known() {
+    local candidate
+    for candidate in "${stems[@]}"; do
+        [[ "$candidate" == "$1" ]] && return 0
+    done
+    return 1
+}
+
 if [[ "$mode" != "check" ]]; then
     for cs_file in "$GENERATED_DIR"/*.cs; do
         [[ -f "$cs_file" ]] || continue
         stem=$(basename "$cs_file" .cs)
-        if ! printf '%s\n' "${stems[@]}" | grep -qx "$stem"; then
+        if ! stem_known "$stem"; then
             echo "Removing orphan: generated/${stem}.cs"
             rm "$cs_file"
         fi
@@ -203,7 +214,7 @@ elif [[ -d "$GENERATED_DIR" ]]; then
     for cs_file in "$GENERATED_DIR"/*.cs; do
         [[ -f "$cs_file" ]] || continue
         stem=$(basename "$cs_file" .cs)
-        if ! printf '%s\n' "${stems[@]}" | grep -qx "$stem"; then
+        if ! stem_known "$stem"; then
             echo "ORPHAN: generated/${stem}.cs has no corresponding .spy source"
             errors=1
         fi
