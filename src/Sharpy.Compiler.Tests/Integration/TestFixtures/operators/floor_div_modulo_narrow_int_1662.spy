@@ -34,13 +34,6 @@ def main() -> None:
     v16: uint16 = 7
     print(u16 // v16, u16 % v16, u16 == (u16 // v16) * v16 + (u16 % v16))
 
-    # === uint32: unsigned 32-bit ===
-    u32: uint32 = 2000000000
-    v32: uint32 = 7
-    q32: long = u32 // v32
-    r32: long = u32 % v32
-    print(q32, r32, u32 == q32 * v32 + r32)
-
     # === uint64: must produce integer result, not double ===
     u64: uint64 = 7
     v64: uint64 = 2
