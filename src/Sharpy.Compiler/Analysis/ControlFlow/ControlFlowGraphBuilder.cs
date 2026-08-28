@@ -30,6 +30,9 @@ internal class ControlFlowGraphBuilder
     // Exception handler tracking for re-raise
     private readonly Stack<BasicBlock> _handlerStack = new();
 
+    // Defer bodies collected during body build, inserted at scope exit (LIFO)
+    private readonly List<DeferStatement> _deferBodies = new();
+
     public ControlFlowGraphBuilder() : this(null, null) { }
 
     public ControlFlowGraphBuilder(HashSet<MatchStatement>? exhaustiveMatches,
@@ -65,6 +68,9 @@ internal class ControlFlowGraphBuilder
 
         BuildStatements(function.Body);
 
+        // Insert deferred bodies (LIFO) on the fall-through exit path
+        InsertDeferChain();
+
         // If we didn't explicitly return, connect to exit
         if (_currentBlock.Terminator == null)
         {
@@ -92,6 +98,8 @@ internal class ControlFlowGraphBuilder
 
         BuildStatements(statements);
 
+        InsertDeferChain();
+
         if (_currentBlock.Terminator == null)
         {
             Connect(_currentBlock, _exit);
@@ -106,6 +114,7 @@ internal class ControlFlowGraphBuilder
         _blocks.Clear();
         _loopStack.Clear();
         _handlerStack.Clear();
+        _deferBodies.Clear();
         _currentBlock = null!;
     }
 
@@ -231,6 +240,10 @@ internal class ControlFlowGraphBuilder
                 BuildMatch(matchStmt);
                 break;
 
+            case DeferStatement deferStmt:
+                BuildDefer(deferStmt);
+                break;
+
             case YieldStatement:
                 // Yield does not terminate a block — it produces a value and continues
                 AddStatement(stmt);
@@ -302,6 +315,29 @@ internal class ControlFlowGraphBuilder
         {
             SourceStatement = stmt
         };
+    }
+
+    private void BuildDefer(DeferStatement stmt)
+    {
+        _deferBodies.Add(stmt);
+    }
+
+    private void InsertDeferChain()
+    {
+        if (_deferBodies.Count == 0)
+            return;
+
+        for (int i = _deferBodies.Count - 1; i >= 0; i--)
+        {
+            if (_currentBlock.Terminator != null)
+                break;
+
+            var deferBlock = CreateBlock("defer_body");
+            Connect(_currentBlock, deferBlock);
+            _currentBlock.Terminator = new BranchTerminator(deferBlock);
+            _currentBlock = deferBlock;
+            BuildStatements(_deferBodies[i].Body);
+        }
     }
 
     private void BuildRaise(RaiseStatement stmt)
