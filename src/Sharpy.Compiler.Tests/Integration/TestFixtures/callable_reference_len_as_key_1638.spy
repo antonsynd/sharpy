@@ -1,0 +1,8 @@
+# #1638: builtin function `len` used as a value in key= position.
+# Before the fix, the emitter produced a bare method group `Sharpy.Builtins.Len`
+# which broke on struct boxing / generic inference. Now emits an eta-expanded lambda.
+
+def main() -> None:
+    words: list[str] = ["ccc", "a", "bb"]
+    shortest: str = min(words, key=len)
+    print(shortest)

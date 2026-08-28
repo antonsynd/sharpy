@@ -1,0 +1,28 @@
+# __getitem__ overloads with different key types emit one indexer each (#1654).
+
+class MultiMap:
+    _by_int: dict[int, str]
+    _by_str: dict[str, str]
+
+    def __init__(self) -> None:
+        self._by_int = {}
+        self._by_str = {}
+
+    def __getitem__(self, key: int) -> str:
+        return self._by_int[key]
+
+    def __getitem__(self, key: str) -> str:
+        return self._by_str[key]
+
+    def __setitem__(self, key: int, value: str) -> None:
+        self._by_int[key] = value
+
+    def __setitem__(self, key: str, value: str) -> None:
+        self._by_str[key] = value
+
+def main() -> None:
+    m: MultiMap = MultiMap()
+    m[0] = "zero"
+    m["hello"] = "world"
+    print(m[0])
+    print(m["hello"])

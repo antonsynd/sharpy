@@ -923,6 +923,7 @@ public static class DiagnosticCodes
     public static class ValidationOverflow
     {
         public const string IrrefutablePatternNotLast = "SPY0700"; // Active (#1624)
-        // SPY0701-SPY0799: Available for new validation diagnostics
+        public const string DuplicateDunderSignature = "SPY0701"; // Active (#1654)
+        // SPY0702-SPY0799: Available for new validation diagnostics
     }
 }

@@ -1,0 +1,11 @@
+# Two __getitem__ overloads with the same CLR-mapped key type are refused.
+
+class BadMap:
+    def __getitem__(self, key: int) -> str:
+        return "a"
+
+    def __getitem__(self, key: int) -> int:
+        return 0
+
+def main() -> None:
+    pass

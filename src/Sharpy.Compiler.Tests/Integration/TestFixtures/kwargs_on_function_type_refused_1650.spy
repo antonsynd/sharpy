@@ -1,0 +1,8 @@
+# #1650: keyword arguments on a function-typed value are refused with SPY0279.
+# FunctionType has no parameter names — .NET delegates do not carry named-parameter metadata.
+
+def apply(f: (int, int) -> int, x: int, y: int) -> int:
+    return f(a=x, b=y)
+
+def main() -> None:
+    print(apply(lambda a, b: a + b, 1, 2))

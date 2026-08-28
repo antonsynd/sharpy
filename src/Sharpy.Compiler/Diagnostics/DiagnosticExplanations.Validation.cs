@@ -973,5 +973,13 @@ public static partial class DiagnosticExplanations
             "following arms unreachable. Move it to the last position or add a guard condition.",
             "match x:\n    case y:        # SPY0700 — captures everything\n        print(y)\n    case 42:\n        print(\"specific\")",
             "Move the irrefutable arm last, or add a guard: `case y if y != 42:`.");
+
+        Add(dict, DiagnosticCodes.ValidationOverflow.DuplicateDunderSignature,
+            "Duplicate CLR-mapped dunder signature", "Validation",
+            "Two overloads of the same dunder method produce identical C# parameter types " +
+            "after CLR mapping, which would emit duplicate indexers or operator overloads " +
+            "that the .NET runtime cannot distinguish.",
+            "class MyMap:\n    def __getitem__(self, key: int) -> str:\n        ...\n    def __getitem__(self, key: int) -> int:  # SPY0701\n        ...",
+            "Use different parameter types for each overload, or merge the overloads into one.");
     }
 }

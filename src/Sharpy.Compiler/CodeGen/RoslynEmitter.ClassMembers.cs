@@ -106,9 +106,9 @@ internal partial class RoslynEmitter
         // Collect all __init__ methods for constructor generation (supports overloading)
         var initMethods = new List<FunctionDef>();
 
-        // Collect __getitem__ and __setitem__ for indexer generation
-        FunctionDef? getItemFunc = null;
-        FunctionDef? setItemFunc = null;
+        // Collect __getitem__ and __setitem__ for indexer generation (supports overloads)
+        var getItemFuncs = new List<FunctionDef>();
+        var setItemFuncs = new List<FunctionDef>();
 
         // Collect all PropertyDef nodes, grouped by name for combining getter/setter
         var propertyGroups = new Dictionary<string, List<PropertyDef>>();
@@ -140,11 +140,11 @@ internal partial class RoslynEmitter
                     }
                     else if (funcDef.Name == DunderNames.GetItem)
                     {
-                        getItemFunc = funcDef;
+                        getItemFuncs.Add(funcDef);
                     }
                     else if (funcDef.Name == DunderNames.SetItem)
                     {
-                        setItemFunc = funcDef;
+                        setItemFuncs.Add(funcDef);
                     }
                     // Memoization decorators expand into multiple members (cache field +
                     // private body + public wrapper + accessor methods). Handled before
@@ -257,10 +257,16 @@ internal partial class RoslynEmitter
             members.Add(GenerateGroupedEvent(eventGroup));
         }
 
-        // Generate indexer from __getitem__/__setitem__ (combined into single C# indexer)
-        if (getItemFunc != null || setItemFunc != null)
+        // Generate indexer(s) from __getitem__/__setitem__ — one C# indexer per key signature.
+        // Group getters and setters by the CLR-mapped key parameter type so that int-keyed
+        // and str-keyed overloads each emit their own indexer.
+        if (getItemFuncs.Count > 0 || setItemFuncs.Count > 0)
         {
-            members.Add(GenerateIndexer(getItemFunc, setItemFunc));
+            var indexerGroups = GroupIndexersByKeySignature(getItemFuncs, setItemFuncs);
+            foreach (var (getter, setter) in indexerGroups)
+            {
+                members.Add(GenerateIndexer(getter, setter));
+            }
         }
 
         // Generate constructors: either explicit __init__ or synthesized @dataclass constructor
@@ -346,6 +352,36 @@ internal partial class RoslynEmitter
     /// event grouping: a second implementation is how the two paths drift apart (the interface path had
     /// none, so a pair emitted twice — CS0102, #1239).
     /// </summary>
+    private static string IndexerKeySignature(FunctionDef func)
+    {
+        var keyParam = func.Parameters
+            .FirstOrDefault(p =>
+                !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(p.Name, PythonNames.Cls, StringComparison.OrdinalIgnoreCase));
+        return keyParam?.Type?.Name ?? "object";
+    }
+
+    private static List<(FunctionDef? Getter, FunctionDef? Setter)> GroupIndexersByKeySignature(
+        List<FunctionDef> getters, List<FunctionDef> setters)
+    {
+        var groups = new Dictionary<string, (FunctionDef? Getter, FunctionDef? Setter)>();
+        foreach (var g in getters)
+        {
+            var sig = IndexerKeySignature(g);
+            groups[sig] = groups.TryGetValue(sig, out var existing)
+                ? (g, existing.Setter)
+                : (g, null);
+        }
+        foreach (var s in setters)
+        {
+            var sig = IndexerKeySignature(s);
+            groups[sig] = groups.TryGetValue(sig, out var existing)
+                ? (existing.Getter, s)
+                : (null, s);
+        }
+        return groups.Values.ToList();
+    }
+
     private static Dictionary<string, List<EventDef>> GroupEventsByName(IReadOnlyList<Statement> body)
     {
         var eventGroups = new Dictionary<string, List<EventDef>>();

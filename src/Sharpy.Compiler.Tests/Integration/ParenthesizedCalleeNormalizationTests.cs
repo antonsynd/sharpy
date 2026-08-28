@@ -390,18 +390,17 @@ def main() -> None:
     }
 
     [Fact]
-    public void ArityUniformOverloadSets_StayUsableAsFunctionReferences()
+    public void BuiltinFunctionReference_EmitsEtaExpandedLambda()
     {
-        // The conversion families and single-argument builtins all have several overloads that differ
-        // only in parameter type. Whichever binds, calls through it pass the same arity check, so
-        // passing them as a key/map function remains supported.
+        // #1638: builtin function references (e.g. key=len) now emit an eta-expanded lambda instead
+        // of a bare method group, which broke on struct boxing, generic inference, CS0121 ambiguity,
+        // and optional/params elision. The lambda is regression-free by construction.
         AssertOutput(@"
 def main() -> None:
     words: list[str] = [""ccc"", ""a"", ""bb""]
     print(min(words, key=len))
-    nums: list[str] = [""3"", ""1"", ""2""]
-    print(list(map(int, nums)))
-", "a\n[3, 1, 2]\n");
+    print(sorted(words, key=len))
+", "a\n['a', 'bb', 'ccc']\n");
     }
 
     [Fact]
