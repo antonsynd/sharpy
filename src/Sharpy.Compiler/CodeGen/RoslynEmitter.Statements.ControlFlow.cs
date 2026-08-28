@@ -633,9 +633,23 @@ internal partial class RoslynEmitter
                 : complexForeachStmt;
         }
 
-        return EmitNotImplementedStatement(
-            $"Unsupported expression type in code generation: for loop target type '{target.GetType().Name}'",
-            DiagnosticCodes.CodeGen.UnsupportedExpressionType, target.LineStart, target.ColumnStart);
+        // MemberAccess, IndexAccess, or other target: temp + store + body
+        {
+            var tempLoopVar = GenerateTempVarName("loopVar");
+            var body = GenerateSuiteBlock(bodyStatements);
+            var storeStmt = GenerateStore(target, IdentifierName(tempLoopVar));
+            var newBodyStatements = new List<StatementSyntax> { storeStmt };
+            newBodyStatements.AddRange(body.Statements);
+
+            var foreachStmt = ForEachStatement(
+                IdentifierName("var"),
+                Identifier(tempLoopVar),
+                iterator,
+                Block(newBodyStatements));
+            return isAsync
+                ? foreachStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
+                : foreachStmt;
+        }
     }
 
     /// <summary>

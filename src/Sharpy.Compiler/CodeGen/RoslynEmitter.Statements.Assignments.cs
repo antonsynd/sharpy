@@ -524,9 +524,7 @@ internal partial class RoslynEmitter
             return unpackStmts[^1];
         }
 
-        return EmitNotImplementedStatement(
-            $"Unsupported expression type in code generation: assignment target type '{assign.Target.GetType().Name}'",
-            DiagnosticCodes.CodeGen.UnsupportedExpressionType, assign.LineStart, assign.ColumnStart);
+        return GenerateStore(assign.Target, value);
     }
 
     private SyntaxKind GetAugmentedAssignmentOperator(AssignmentOperator op)
@@ -1220,50 +1218,24 @@ internal partial class RoslynEmitter
         // Elements before star: name = __t[i] or __t.ItemN (for tuples)
         for (int i = 0; i < numBefore; i++)
         {
-            if (elements[i] is Identifier id)
+            ExpressionSyntax indexExpr;
+            if (isTupleSource)
             {
-                ExpressionSyntax indexExpr;
-                if (isTupleSource)
-                {
-                    // ValueTuple uses 1-based .ItemN properties
-                    indexExpr = MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(sourceVar),
-                        IdentifierName($"Item{i + 1}"));
-                }
-                else
-                {
-                    indexExpr = ElementAccessExpression(IdentifierName(sourceVar))
-                        .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
-                            Argument(LiteralExpression(
-                                SyntaxKind.NumericLiteralExpression,
-                                Literal(i))))));
-                }
-
-                var baseName = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
-                var sym = _context.LookupSymbol(id.Name);
-                var existsAsModuleLevel = sym != null && GetCodeGenInfo(sym)?.IsModuleLevel == true;
-                var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(id)?.Kind == TargetBindingKind.Rebinds;
-
-                if (existsAsModuleLevel || existsAsLocal)
-                {
-                    var currentName = GetMangledVariableName(id, isNewDeclaration: false);
-                    statements.Add(ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            EscapedIdentifierName(currentName),
-                            indexExpr)));
-                }
-                else
-                {
-                    var varName = GetMangledVariableName(id, isNewDeclaration: true);
-                    statements.Add(LocalDeclarationStatement(
-                        VariableDeclaration(IdentifierName("var"))
-                            .WithVariables(SingletonSeparatedList(
-                                VariableDeclarator(EscapedIdentifier(varName))
-                                    .WithInitializer(EqualsValueClause(indexExpr))))));
-                }
+                indexExpr = MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(sourceVar),
+                    IdentifierName($"Item{i + 1}"));
             }
+            else
+            {
+                indexExpr = ElementAccessExpression(IdentifierName(sourceVar))
+                    .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
+                        Argument(LiteralExpression(
+                            SyntaxKind.NumericLiteralExpression,
+                            Literal(i))))));
+            }
+
+            statements.Add(GenerateStore(elements[i], indexExpr));
         }
 
         // Star element: rest = __t.GetSlice(...) or new Sharpy.List<T> { __t.ItemN, ... } (for tuples)
@@ -1347,54 +1319,28 @@ internal partial class RoslynEmitter
         {
             int elemIndex = starIndex + 1 + i;
 
-            if (elements[elemIndex] is Identifier id)
+            ExpressionSyntax afterExpr;
+            if (isTupleSource)
             {
-                ExpressionSyntax afterExpr;
-                if (isTupleSource)
-                {
-                    // Compute 1-based index: tupleArity - numAfter + i + 1
-                    int itemIndex = tupleArity - numAfter + i + 1;
-                    afterExpr = MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(sourceVar),
-                        IdentifierName($"Item{itemIndex}"));
-                }
-                else
-                {
-                    int negIndex = numAfter - i; // distance from end: numAfter, ..., 1
-                    afterExpr = ElementAccessExpression(IdentifierName(sourceVar))
-                        .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
-                            Argument(PrefixUnaryExpression(
-                                SyntaxKind.UnaryMinusExpression,
-                                LiteralExpression(
-                                    SyntaxKind.NumericLiteralExpression,
-                                    Literal(negIndex)))))));
-                }
-
-                var baseName = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
-                var sym = _context.LookupSymbol(id.Name);
-                var existsAsModuleLevel = sym != null && GetCodeGenInfo(sym)?.IsModuleLevel == true;
-                var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(id)?.Kind == TargetBindingKind.Rebinds;
-
-                if (existsAsModuleLevel || existsAsLocal)
-                {
-                    var currentName = GetMangledVariableName(id, isNewDeclaration: false);
-                    statements.Add(ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            EscapedIdentifierName(currentName),
-                            afterExpr)));
-                }
-                else
-                {
-                    var varName = GetMangledVariableName(id, isNewDeclaration: true);
-                    statements.Add(LocalDeclarationStatement(
-                        VariableDeclaration(IdentifierName("var"))
-                            .WithVariables(SingletonSeparatedList(
-                                VariableDeclarator(EscapedIdentifier(varName))
-                                    .WithInitializer(EqualsValueClause(afterExpr))))));
-                }
+                int itemIndex = tupleArity - numAfter + i + 1;
+                afterExpr = MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(sourceVar),
+                    IdentifierName($"Item{itemIndex}"));
             }
+            else
+            {
+                int negIndex = numAfter - i;
+                afterExpr = ElementAccessExpression(IdentifierName(sourceVar))
+                    .WithArgumentList(BracketedArgumentList(SingletonSeparatedList(
+                        Argument(PrefixUnaryExpression(
+                            SyntaxKind.UnaryMinusExpression,
+                            LiteralExpression(
+                                SyntaxKind.NumericLiteralExpression,
+                                Literal(negIndex)))))));
+            }
+
+            statements.Add(GenerateStore(elements[elemIndex], afterExpr));
         }
     }
 
@@ -1408,35 +1354,7 @@ internal partial class RoslynEmitter
                 IdentifierName(sourceVarName),
                 IdentifierName($"Item{i + 1}"));
 
-            if (targets[i] is Identifier id)
-            {
-                var baseName = LocalBaseName(id.Name, id.IsNameBacktickEscaped);
-                var symbol = _context.LookupSymbol(id.Name);
-                var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
-                var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(id)?.Kind == TargetBindingKind.Rebinds;
-
-                if (existsAsModuleLevel || existsAsLocal)
-                {
-                    // Existing variable — update
-                    var currentName = GetMangledVariableName(id, isNewDeclaration: false);
-                    statements.Add(ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            EscapedIdentifierName(currentName),
-                            itemAccess)));
-                }
-                else
-                {
-                    // New variable — declare
-                    var varName = GetMangledVariableName(id, isNewDeclaration: true);
-                    statements.Add(LocalDeclarationStatement(
-                        VariableDeclaration(IdentifierName("var"))
-                            .WithVariables(SingletonSeparatedList(
-                                VariableDeclarator(EscapedIdentifier(varName))
-                                    .WithInitializer(EqualsValueClause(itemAccess))))));
-                }
-            }
-            else if (targets[i] is TupleLiteral nestedTuple)
+            if (targets[i] is TupleLiteral nestedTuple)
             {
                 var tempVarName = $"__t{_tempVarCounter++}";
                 statements.Add(LocalDeclarationStatement(
@@ -1446,6 +1364,100 @@ internal partial class RoslynEmitter
                                 .WithInitializer(EqualsValueClause(itemAccess))))));
                 GenerateRecursiveTupleUnpacking(nestedTuple.Elements, tempVarName, statements);
             }
+            else
+            {
+                statements.Add(GenerateStore(targets[i], itemAccess));
+            }
+        }
+    }
+
+    private StatementSyntax GenerateStore(Expression target, ExpressionSyntax value)
+    {
+        switch (target)
+        {
+            case Identifier id:
+            {
+                var symbol = _context.LookupSymbol(id.Name);
+                var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
+                var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(id)?.Kind == TargetBindingKind.Rebinds;
+
+                if (existsAsModuleLevel || existsAsLocal)
+                {
+                    var currentName = GetMangledVariableName(id, isNewDeclaration: false);
+                    return ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            EscapedIdentifierName(currentName),
+                            value));
+                }
+
+                var varName = GetMangledVariableName(id, isNewDeclaration: true);
+                return LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(EscapedIdentifier(varName))
+                                .WithInitializer(EqualsValueClause(value)))));
+            }
+
+            case IndexAccess indexAccess:
+            {
+                var obj = GenerateExpression(indexAccess.Object);
+                var index = GenerateExpression(indexAccess.Index);
+
+                var objectType = GetExpressionSemanticType(indexAccess.Object);
+                if (objectType is Semantic.GenericType { Name: BuiltinNames.Array })
+                {
+                    return ExpressionStatement(
+                        InvocationExpression(
+                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                MakeGlobalQualifiedName("Sharpy", "ArrayHelpers"),
+                                IdentifierName("SetItem")))
+                            .AddArgumentListArguments(
+                                Argument(obj),
+                                Argument(index),
+                                Argument(value)));
+                }
+
+                return ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        ElementAccessExpression(obj)
+                            .WithArgumentList(BracketedArgumentList(
+                                SingletonSeparatedList(Argument(index)))),
+                        value));
+            }
+
+            case MemberAccess memberAccess:
+            {
+                var memberTarget = GenerateMemberAccess(memberAccess, applyNarrowing: false);
+                return ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        memberTarget,
+                        value));
+            }
+
+            case TupleLiteral tuple:
+            {
+                var stmts = new List<StatementSyntax>();
+                var tempVarName = $"__t{_tempVarCounter++}";
+                stmts.Add(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(EscapedIdentifier(tempVarName))
+                                .WithInitializer(EqualsValueClause(value))))));
+                GenerateRecursiveTupleUnpacking(tuple.Elements, tempVarName, stmts);
+
+                for (int i = 0; i < stmts.Count - 1; i++)
+                    _hoistedStatements.Add(stmts[i]);
+                return stmts[^1];
+            }
+
+            default:
+                return EmitNotImplementedStatement(
+                    $"Unsupported store target type '{target.GetType().Name}'",
+                    DiagnosticCodes.CodeGen.UnsupportedExpressionType,
+                    target.LineStart, target.ColumnStart);
         }
     }
 }

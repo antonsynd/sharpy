@@ -1,0 +1,46 @@
+# Store target × position matrix: every target kind (identifier, index,
+# member, tuple) works at multiple store positions.
+
+class Box:
+    value: int
+    def __init__(self, v: int) -> None:
+        self.value = v
+
+def main() -> None:
+    # === Assignment position ===
+    # Identifier
+    x: int = 10
+    print(x)
+
+    # Index
+    xs: list[int] = [0, 0, 0]
+    xs[1] = 42
+    print(xs[1])
+
+    # Member
+    b: Box = Box(0)
+    b.value = 99
+    print(b.value)
+
+    # Tuple unpack — assignment position
+    a: int = 0
+    c: int = 0
+    a, c = 1, 2
+    print(a, c)
+
+    # === Tuple unpack — nested ===
+    p: int = 0
+    q: int = 0
+    r: int = 0
+    (p, q), r = (3, 4), 5
+    print(p, q, r)
+
+    # === Star unpack ===
+    first: int = 0
+    rest: list[int] = []
+    first, *rest = [10, 20, 30]
+    print(first, rest)
+
+    # === For target — identifier ===
+    for i in [1, 2, 3]:
+        print(i)
