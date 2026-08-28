@@ -751,5 +751,23 @@ internal partial class RoslynEmitter
 
             return visited;
         }
+
+        public override SyntaxNode? VisitCastExpression(CastExpressionSyntax node)
+        {
+            var visited = (CastExpressionSyntax)base.VisitCastExpression(node)!;
+
+            // "(int? )expr" -> "(int?)expr": NormalizeWhitespace adds a trailing space
+            // after the ? token of a NullableType inside a cast, producing a stray space
+            // before the close paren (#1641).
+            if (visited.Type is NullableTypeSyntax nullable
+                && nullable.QuestionToken.TrailingTrivia.Any())
+            {
+                visited = visited.WithType(
+                    nullable.WithQuestionToken(
+                        nullable.QuestionToken.WithTrailingTrivia(SyntaxTriviaList.Empty)));
+            }
+
+            return visited;
+        }
     }
 }
