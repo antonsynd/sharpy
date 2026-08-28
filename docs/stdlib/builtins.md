@@ -669,6 +669,58 @@ float("-1.5")    # -1.5
 
 - `ValueError` -- Thrown when the string cannot be parsed
 
+### `float32(b: bool) -> float32`
+
+Convert bool to float32. True becomes 1.0f, False becomes 0.0f.
+
+### `float32(i: int) -> float32`
+
+Convert int to float32.
+
+### `float32(l: long) -> float32`
+
+Convert long to float32.
+
+### `float32(f: float32) -> float32`
+
+Convert float to float32 (identity).
+
+### `float32(d: float) -> float32`
+
+Convert double to float32 (narrowing). Overflow produces Infinity.
+
+### `float32(m: decimal) -> float32`
+
+Convert decimal to float32.
+
+### `float32(s: str) -> float32`
+
+Parse string to float32. Overflow produces Infinity, matching Python semantics.
+
+### `float32(b: byte) -> float32`
+
+Convert byte to float32.
+
+### `float32(sb: sbyte) -> float32`
+
+Convert sbyte to float32.
+
+### `float32(s: short) -> float32`
+
+Convert short to float32.
+
+### `float32(us: ushort) -> float32`
+
+Convert ushort to float32.
+
+### `float32(u: uint) -> float32`
+
+Convert uint to float32.
+
+### `float32(ul: ulong) -> float32`
+
+Convert ulong to float32.
+
 ### `floor_div(x: float, y: float) -> float`
 
 Returns the floored quotient of *x* divided by
@@ -789,6 +841,13 @@ See the `FloorDiv(double, double)` overload.
 
 - `ZeroDivisionError` -- Thrown when *y* is zero
 
+### `floor_div(x: ulong, y: ulong) -> ulong`
+
+Returns the floored quotient of two `ulong` operands.
+Both operands are non-negative, so floored division is identical to
+truncating division. The overload exists so C# overload resolution
+selects it instead of widening to `double` (#1662).
+
 ### `floor_mod(x: int, y: int) -> int`
 
 Returns the remainder of Python's floored division of *x* by
@@ -870,6 +929,13 @@ Returns the remainder of Python's floored division of *x* by
 **Raises:**
 
 - `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `floor_mod(x: ulong, y: ulong) -> ulong`
+
+Returns the floored remainder of two `ulong` operands.
+Both operands are non-negative, so the floored remainder is identical
+to the truncating remainder. The overload exists so C# overload
+resolution selects it instead of widening to `double` (#1662).
 
 ### `format(value: object | None, format_spec: str = "") -> str`
 
@@ -1042,6 +1108,118 @@ Convert uint to int
 ### `int(ul: ulong) -> int`
 
 Convert ulong to int
+
+### `int16(b: bool) -> short`
+
+Convert bool to int16. True becomes 1, False becomes 0.
+
+### `int16(i: int) -> short`
+
+Convert int to int16.
+
+### `int16(l: long) -> short`
+
+Convert long to int16.
+
+### `int16(f: float32) -> short`
+
+Convert float to int16 (truncates toward zero).
+
+### `int16(d: float) -> short`
+
+Convert double to int16 (truncates toward zero).
+
+### `int16(m: decimal) -> short`
+
+Convert decimal to int16 (truncates toward zero).
+
+### `int16(s: str) -> short`
+
+Parse string to int16.
+
+### `int16(s: str, @base: int) -> short`
+
+Parse string to int16 with explicit base.
+
+### `int16(b: byte) -> short`
+
+Convert byte to int16 (widening).
+
+### `int16(sb: sbyte) -> short`
+
+Convert sbyte to int16 (widening).
+
+### `int16(s: short) -> short`
+
+Convert short to int16 (identity).
+
+### `int16(us: ushort) -> short`
+
+Convert ushort to int16.
+
+### `int16(u: uint) -> short`
+
+Convert uint to int16.
+
+### `int16(ul: ulong) -> short`
+
+Convert ulong to int16.
+
+### `int8(b: bool) -> sbyte`
+
+Convert bool to int8. True becomes 1, False becomes 0.
+
+### `int8(i: int) -> sbyte`
+
+Convert int to int8.
+
+### `int8(l: long) -> sbyte`
+
+Convert long to int8.
+
+### `int8(f: float32) -> sbyte`
+
+Convert float to int8 (truncates toward zero).
+
+### `int8(d: float) -> sbyte`
+
+Convert double to int8 (truncates toward zero).
+
+### `int8(m: decimal) -> sbyte`
+
+Convert decimal to int8 (truncates toward zero).
+
+### `int8(s: str) -> sbyte`
+
+Parse string to int8.
+
+### `int8(s: str, @base: int) -> sbyte`
+
+Parse string to int8 with explicit base (2, 8, 10, or 16).
+
+### `int8(b: byte) -> sbyte`
+
+Convert byte to int8.
+
+### `int8(sb: sbyte) -> sbyte`
+
+Convert sbyte to int8 (identity).
+
+### `int8(s: short) -> sbyte`
+
+Convert short to int8.
+
+### `int8(us: ushort) -> sbyte`
+
+Convert ushort to int8.
+
+### `int8(u: uint) -> sbyte`
+
+Convert uint to int8.
+
+### `int8(ul: ulong) -> sbyte`
+
+Convert ulong to int8.
 
 ### `isinstance(obj: object | None) -> bool`
 
@@ -2140,6 +2318,230 @@ type(42)        # <class 'int'>
 type("hello")   # <class 'str'>
 type([1, 2])    # <class 'list'>
 ```
+
+### `u_int16(b: bool) -> ushort`
+
+Convert bool to uint16. True becomes 1, False becomes 0.
+
+### `u_int16(i: int) -> ushort`
+
+Convert int to uint16.
+
+### `u_int16(l: long) -> ushort`
+
+Convert long to uint16.
+
+### `u_int16(f: float32) -> ushort`
+
+Convert float to uint16 (truncates toward zero).
+
+### `u_int16(d: float) -> ushort`
+
+Convert double to uint16 (truncates toward zero).
+
+### `u_int16(m: decimal) -> ushort`
+
+Convert decimal to uint16 (truncates toward zero).
+
+### `u_int16(s: str) -> ushort`
+
+Parse string to uint16.
+
+### `u_int16(s: str, @base: int) -> ushort`
+
+Parse string to uint16 with explicit base.
+
+### `u_int16(b: byte) -> ushort`
+
+Convert byte to uint16 (widening).
+
+### `u_int16(sb: sbyte) -> ushort`
+
+Convert sbyte to uint16.
+
+### `u_int16(s: short) -> ushort`
+
+Convert short to uint16.
+
+### `u_int16(us: ushort) -> ushort`
+
+Convert ushort to uint16 (identity).
+
+### `u_int16(u: uint) -> ushort`
+
+Convert uint to uint16.
+
+### `u_int16(ul: ulong) -> ushort`
+
+Convert ulong to uint16.
+
+### `u_int32(b: bool) -> uint`
+
+Convert bool to uint32. True becomes 1, False becomes 0.
+
+### `u_int32(i: int) -> uint`
+
+Convert int to uint32.
+
+### `u_int32(l: long) -> uint`
+
+Convert long to uint32.
+
+### `u_int32(f: float32) -> uint`
+
+Convert float to uint32 (truncates toward zero).
+
+### `u_int32(d: float) -> uint`
+
+Convert double to uint32 (truncates toward zero).
+
+### `u_int32(m: decimal) -> uint`
+
+Convert decimal to uint32 (truncates toward zero).
+
+### `u_int32(s: str) -> uint`
+
+Parse string to uint32.
+
+### `u_int32(s: str, @base: int) -> uint`
+
+Parse string to uint32 with explicit base.
+
+### `u_int32(b: byte) -> uint`
+
+Convert byte to uint32 (widening).
+
+### `u_int32(sb: sbyte) -> uint`
+
+Convert sbyte to uint32.
+
+### `u_int32(s: short) -> uint`
+
+Convert short to uint32.
+
+### `u_int32(us: ushort) -> uint`
+
+Convert ushort to uint32 (widening).
+
+### `u_int32(u: uint) -> uint`
+
+Convert uint to uint32 (identity).
+
+### `u_int32(ul: ulong) -> uint`
+
+Convert ulong to uint32.
+
+### `u_int64(b: bool) -> ulong`
+
+Convert bool to uint64. True becomes 1, False becomes 0.
+
+### `u_int64(i: int) -> ulong`
+
+Convert int to uint64.
+
+### `u_int64(l: long) -> ulong`
+
+Convert long to uint64.
+
+### `u_int64(f: float32) -> ulong`
+
+Convert float to uint64 (truncates toward zero).
+
+### `u_int64(d: float) -> ulong`
+
+Convert double to uint64 (truncates toward zero).
+
+### `u_int64(m: decimal) -> ulong`
+
+Convert decimal to uint64 (truncates toward zero).
+
+### `u_int64(s: str) -> ulong`
+
+Parse string to uint64.
+
+### `u_int64(s: str, @base: int) -> ulong`
+
+Parse string to uint64 with explicit base.
+
+### `u_int64(b: byte) -> ulong`
+
+Convert byte to uint64 (widening).
+
+### `u_int64(sb: sbyte) -> ulong`
+
+Convert sbyte to uint64.
+
+### `u_int64(s: short) -> ulong`
+
+Convert short to uint64.
+
+### `u_int64(us: ushort) -> ulong`
+
+Convert ushort to uint64 (widening).
+
+### `u_int64(u: uint) -> ulong`
+
+Convert uint to uint64 (widening).
+
+### `u_int64(ul: ulong) -> ulong`
+
+Convert ulong to uint64 (identity).
+
+### `u_int8(b: bool) -> byte`
+
+Convert bool to uint8. True becomes 1, False becomes 0.
+
+### `u_int8(i: int) -> byte`
+
+Convert int to uint8.
+
+### `u_int8(l: long) -> byte`
+
+Convert long to uint8.
+
+### `u_int8(f: float32) -> byte`
+
+Convert float to uint8 (truncates toward zero).
+
+### `u_int8(d: float) -> byte`
+
+Convert double to uint8 (truncates toward zero).
+
+### `u_int8(m: decimal) -> byte`
+
+Convert decimal to uint8 (truncates toward zero).
+
+### `u_int8(s: str) -> byte`
+
+Parse string to uint8.
+
+### `u_int8(s: str, @base: int) -> byte`
+
+Parse string to uint8 with explicit base.
+
+### `u_int8(b: byte) -> byte`
+
+Convert byte to uint8 (identity).
+
+### `u_int8(sb: sbyte) -> byte`
+
+Convert sbyte to uint8.
+
+### `u_int8(s: short) -> byte`
+
+Convert short to uint8.
+
+### `u_int8(us: ushort) -> byte`
+
+Convert ushort to uint8.
+
+### `u_int8(u: uint) -> byte`
+
+Convert uint to uint8.
+
+### `u_int8(ul: ulong) -> byte`
+
+Convert ulong to uint8.
 
 ### `zip(iterable1: Iterable[T1], iterable2: Iterable[T2]) -> ZipIterator[T1, T2]`
 
