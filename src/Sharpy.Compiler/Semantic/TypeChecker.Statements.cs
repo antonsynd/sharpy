@@ -1869,6 +1869,16 @@ internal partial class TypeChecker
                     CheckDeferBodyControlFlow(s, insideLoop);
                 return;
 
+            case MatchStatement matchStmt:
+                foreach (var matchCase in matchStmt.Cases)
+                    foreach (var s in matchCase.Body)
+                        CheckDeferBodyControlFlow(s, insideLoop);
+                return;
+
+            case DecoratedStatement decorated:
+                CheckDeferBodyControlFlow(decorated.Statement, insideLoop);
+                return;
+
             // FunctionDef / ClassDef / lambdas open their own scope: a return inside them
             // belongs to that scope, not the deferred block, so we stop here.
             default:
