@@ -1229,4 +1229,97 @@ public class InteropConformanceTests
         public int Refused;
         public int NotAttempted;
     }
+
+    // ================================================================================
+    // Semantic-type fidelity axis (#1640, #1645)
+    // ================================================================================
+
+    private sealed record FidelityCell(
+        string Label, string Source, bool ExpectsError, string? ErrorSubstring = null);
+
+    private static IEnumerable<FidelityCell> FidelityCells()
+    {
+        yield return new FidelityCell("Stack[int].peek-correct",
+            "from system.collections.generic import Stack\n\ndef _use() -> None:\n    s = Stack[int]()\n    s.push(1)\n    n: int = s.peek()\n",
+            false);
+
+        yield return new FidelityCell("Stack[int].peek-wrong-type",
+            "from system.collections.generic import Stack\n\ndef _use() -> None:\n    s = Stack[int]()\n    s.push(1)\n    x: str = s.peek()\n",
+            true, "Cannot assign type 'int32'");
+
+        yield return new FidelityCell("Queue[int].peek-wrong-type",
+            "from system.collections.generic import Queue\n\ndef _use() -> None:\n    q = Queue[int]()\n    q.enqueue(1)\n    x: str = q.peek()\n",
+            true, "Cannot assign type 'int32'");
+
+        yield return new FidelityCell("Stack[int].count-correct",
+            "from system.collections.generic import Stack\n\ndef _use() -> None:\n    s = Stack[int]()\n    n: int = s.count\n",
+            false);
+
+        yield return new FidelityCell("Stack[Queue[int]].peek-nested",
+            "from system.collections.generic import Stack, Queue\n\ndef _use() -> None:\n    s = Stack[Queue[int]]()\n    s.push(Queue[int]())\n    _q = s.peek()\n",
+            false);
+    }
+
+    [Fact]
+    public void SemanticTypeFidelity_UnmappedBclGenerics_ReturnReflectedType()
+    {
+        var (corePath, stdlibPath) = ResolveStdlibAssemblyPaths();
+        var api = new CompilerApi(NullLogger.Instance, new[] { corePath, stdlibPath });
+
+        var failures = new List<string>();
+        var cells = FidelityCells().ToList();
+
+        foreach (var cell in cells)
+        {
+            CompileResult result;
+            try
+            {
+                result = api.Compile(cell.Source, new CompilerOptions { OutputType = "library" });
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{cell.Label}: crashed — {ex.GetType().Name}: {ex.Message}");
+                continue;
+            }
+
+            var errors = result.Diagnostics
+                .Where(d => d.Severity == CompilerDiagnosticSeverity.Error)
+                .ToList();
+
+            if (errors.Any(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError))
+            {
+                failures.Add($"{cell.Label}: SPY0908 — the member resolved to Unknown instead of its reflected type");
+                continue;
+            }
+
+            if (cell.ExpectsError)
+            {
+                if (errors.Count == 0)
+                {
+                    failures.Add($"{cell.Label}: expected SPY0220 but compiled clean — the member type is still Unknown");
+                    continue;
+                }
+
+                if (cell.ErrorSubstring != null
+                    && !errors.Any(d => d.Message.Contains(cell.ErrorSubstring, StringComparison.Ordinal)))
+                {
+                    failures.Add(
+                        $"{cell.Label}: expected '{cell.ErrorSubstring}', got {errors[0].Code}: {errors[0].Message}");
+                }
+            }
+            else
+            {
+                if (errors.Count > 0)
+                    failures.Add($"{cell.Label}: expected to compile but drew {errors[0].Code}: {errors[0].Message}");
+            }
+        }
+
+        _output.WriteLine($"Fidelity cells: {cells.Count}  Failures: {failures.Count}");
+
+        Assert.True(failures.Count == 0,
+            "Semantic-type fidelity (#1640, #1645): every member access on a CLR-origin receiver must " +
+            "have the reflected semantic type, so a mistyped destination is SPY0220 — never Unknown " +
+            "(SPY0908 / silent wrong type).\n" +
+            string.Join("\n", failures.Select(f => "  " + f)));
+    }
 }

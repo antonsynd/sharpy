@@ -1,0 +1,12 @@
+# DeliberatelyPermissive site ratchet — each entry records:
+#   filename  count  issue-reference
+#
+# Every entry must reference an issue explaining why the sites are permissive.
+# When a site is resolved (the type is now tracked), drain the count. When the
+# count reaches 0, delete the entry. Adding a new file or increasing a count
+# requires a new issue reference.
+#
+# Measured @ 4ee7e49d3 (#1640, #1645).
+TypeChecker.Expressions.Access.cs 4 #1640
+TypeChecker.Expressions.cs 2 #1640
+TypeChecker.Expressions.Operators.cs 1 #1640
