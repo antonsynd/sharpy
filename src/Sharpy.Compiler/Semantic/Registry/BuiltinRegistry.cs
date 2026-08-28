@@ -47,6 +47,29 @@ internal class BuiltinRegistry
     };
 
     /// <summary>
+    /// The canonical Sharpy name for each CLR type that has multiple catalog entries.
+    /// User-facing short names for common types (int, float, long, str, bool),
+    /// width-qualified names for narrower types (int8, uint8, uint32, etc.).
+    /// The dedup uses this to pick the TypeSymbol.Name (#1667).
+    /// </summary>
+    private static readonly Dictionary<Type, string> PreferredPrimitiveNames = new()
+    {
+        [typeof(sbyte)] = "int8",
+        [typeof(short)] = "int16",
+        [typeof(int)] = "int",
+        [typeof(long)] = "long",
+        [typeof(byte)] = "uint8",
+        [typeof(ushort)] = "uint16",
+        [typeof(uint)] = "uint32",
+        [typeof(ulong)] = "uint64",
+        [typeof(float)] = "float32",
+        [typeof(double)] = "float",
+        [typeof(string)] = "str",
+        [typeof(bool)] = "bool",
+        [typeof(decimal)] = "decimal",
+    };
+
+    /// <summary>
     /// Tagged union constructor names that the type checker handles via expected type inference.
     /// These are not regular functions — the type checker recognizes them based on context.
     /// </summary>
@@ -231,11 +254,14 @@ internal class BuiltinRegistry
         // (int32, float64) and user-facing aliases (int, float) for the same CLR type.
         // Register the first occurrence as a full TypeSymbol; subsequent occurrences
         // alias to it so operator resolution sees one TypeSymbol per CLR type.
-        // Iterate shorter names first so user-facing names (int, float, str) become
-        // the TypeSymbol.Name, and width-qualified names (int32, float64) are aliases.
+        // Order by PreferredPrimitiveNames so canonical Sharpy names become the
+        // TypeSymbol.Name: "int" for System.Int32, "uint8" for System.Byte (#1667).
         var registeredClrTypes = new Dictionary<Type, string>();
         foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives()
-            .OrderBy(e => e.Name.Length).ThenBy(e => e.Name, StringComparer.Ordinal))
+            .OrderBy(e => PreferredPrimitiveNames.TryGetValue(e.Info.ClrType, out var pref)
+                && pref == e.Name ? 0 : 1)
+            .ThenBy(e => e.Name.Length)
+            .ThenBy(e => e.Name, StringComparer.Ordinal))
         {
             if (info.ConversionFunction == null)
                 continue;
@@ -429,6 +455,25 @@ internal class BuiltinRegistry
             if (stripped != funcName && _types.ContainsKey(stripped) && !_functions.ContainsKey(stripped))
             {
                 _functions[stripped] = _functions[funcName];
+            }
+        }
+
+        // Propagate function overloads to CLR-type dedup aliases (#1667).
+        // The dedup in LoadBuiltins maps multiple spellings (byte/uint8, int/int32) to
+        // the same TypeSymbol. Conversion functions are registered under the discovered
+        // name (e.g. uint8). Ensure every alias spelling also has the overloads so that
+        // bare byte(), int32(), etc. are callable.
+        foreach (var (typeName, typeSymbol) in _types.ToList())
+        {
+            if (_functions.ContainsKey(typeName))
+                continue;
+            foreach (var (otherName, otherSymbol) in _types)
+            {
+                if (ReferenceEquals(otherSymbol, typeSymbol) && _functions.ContainsKey(otherName))
+                {
+                    _functions[typeName] = _functions[otherName];
+                    break;
+                }
             }
         }
     }

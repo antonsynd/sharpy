@@ -939,18 +939,28 @@ internal partial class TypeChecker
     /// Shared by every arm of the classifier so <c>int</c> means the same thing bare, module-qualified,
     /// and as a type argument.
     /// </summary>
-    private static SemanticType? ResolveBuiltinPrimitiveTypeName(string name) => name switch
+    private static SemanticType? ResolveBuiltinPrimitiveTypeName(string name)
     {
-        BuiltinNames.Int => SemanticType.Int,
-        BuiltinNames.Long => SemanticType.Long,
-        BuiltinNames.Float => SemanticType.Float,
-        BuiltinNames.Float32 => SemanticType.Float32,
-        BuiltinNames.Decimal => SemanticType.Decimal,
-        BuiltinNames.Double => SemanticType.Double,
-        BuiltinNames.Bool => SemanticType.Bool,
-        BuiltinNames.Str => SemanticType.Str,
-        _ => null
-    };
+        var direct = name switch
+        {
+            BuiltinNames.Int => SemanticType.Int,
+            BuiltinNames.Long => SemanticType.Long,
+            BuiltinNames.Float => SemanticType.Float,
+            BuiltinNames.Float32 => SemanticType.Float32,
+            BuiltinNames.Decimal => SemanticType.Decimal,
+            BuiltinNames.Double => SemanticType.Double,
+            BuiltinNames.Bool => SemanticType.Bool,
+            BuiltinNames.Str => SemanticType.Str,
+            _ => (SemanticType?)null
+        };
+        if (direct != null)
+            return direct;
+
+        var info = PrimitiveCatalog.GetByName(name);
+        if (info != null)
+            return TypeResolver.ClrTypeToSemanticType(info.ClrType);
+        return null;
+    }
 
     /// <summary>
     /// Best-effort textual rendering of a type-position expression for the multi-type diagnostic.

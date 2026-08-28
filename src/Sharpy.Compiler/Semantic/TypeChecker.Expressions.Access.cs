@@ -228,6 +228,26 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
 
+            // Primitive-overload carve-out fallback (#1667): TryResolveBuiltinsQualifiedType
+            // returns null for primitives with overloads in callee position so that
+            // CheckBuiltinsQualifiedCall routes through overload resolution. But when the
+            // module's CLR-discovered exports don't include this spelling (aliases like
+            // byte/ulong map to CLR names UInt8/UInt64), the fall-through below emits
+            // SPY0203. Return a type here so the member resolves; the call handler overrides.
+            if (IsCurrentCallCallee(memberAccess)
+                && !memberAccess.IsMemberBacktickEscaped
+                && IsBuiltinsModule(moduleSymbol))
+            {
+                var registryFallback = _symbolTable.BuiltinRegistry.GetType(memberName);
+                if (registryFallback != null
+                    && PrimitiveCatalog.IsPrimitive(memberName)
+                    && _symbolTable.BuiltinRegistry.GetFunctionOverloads(memberName) is { Count: > 0 })
+                {
+                    _semanticInfo.MarkTypeReference(memberAccess);
+                    return new UserDefinedType { Name = registryFallback.Name, Symbol = registryFallback };
+                }
+            }
+
             // For .NET modules, try PascalCase conversion if the exact name isn't found
             // (e.g., system.console -> System.Console)
             if (!moduleSymbol.Exports.ContainsKey(memberName) && moduleSymbol.IsNetModule)

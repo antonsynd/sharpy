@@ -512,7 +512,7 @@ internal class TypeResolver
         return false;
     }
 
-    private static SemanticType? ClrTypeToSemanticType(Type clrType)
+    internal static SemanticType? ClrTypeToSemanticType(Type clrType)
     {
         if (clrType == typeof(sbyte))
             return SemanticType.SByte;

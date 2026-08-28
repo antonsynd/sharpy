@@ -97,6 +97,8 @@ public class StaticStateConformanceTests
                 "Keyword→token-type table, initialized inline and read-only after.",
             [("Sharpy.Compiler.Semantic.CodeGenInfoComputer", "IteratorProtocolReservedNames")] =
                 "Reserved iterator-protocol member names, initialized inline and read-only.",
+            [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "PreferredPrimitiveNames")] =
+                "CLR→canonical Sharpy name map for dedup ordering, initialized inline and read-only after (#1667).",
             [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "SeparatelyRegisteredClrTypes")] =
                 "CLR types registered separately from the catalog, initialized inline and read-only after.",
             [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "TaggedUnionConstructors")] =
