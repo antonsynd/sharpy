@@ -1,0 +1,14 @@
+# #1664 negative control: a local assigned only INSIDE the try body is not definitely
+# assigned in the handler — the exception may be raised before the assignment.
+def risky() -> int:
+    raise ValueError("boom")
+
+def probe() -> None:
+    y: int
+    try:
+        y = risky()
+    except ValueError:
+        print(y)
+
+def main():
+    probe()

@@ -603,8 +603,10 @@ internal class ControlFlowGraphBuilder
         var exitBlock = CreateBlock("for_exit");
 
         // The loop variable(s) are rebound on every entry to the body, so narrowing facts about them
-        // must not survive into the loop (#1042).
+        // must not survive into the loop (#1042). The binder is block-scoped, so the exit and else
+        // blocks restore the pre-loop state for those names (#1635).
         bodyBlock.EntryRebinds = CollectBindingKeys(stmt.Target);
+        exitBlock.RebindScopeEntry = bodyBlock;
 
         // Connect current block to header
         Connect(_currentBlock, headerBlock);
@@ -617,6 +619,7 @@ internal class ControlFlowGraphBuilder
         {
             // With else clause: normal exit goes to else block, break goes to exit
             elseBlock = CreateBlock("for_else");
+            elseBlock.RebindScopeEntry = bodyBlock;
             loopExitTarget = elseBlock;
         }
         else
@@ -828,16 +831,32 @@ internal class ControlFlowGraphBuilder
             _currentBlock.Expressions.Add(item.ContextExpression);
 
         var withBindings = CollectWithBindingKeys(stmt);
-        if (withBindings.Count > 0)
+        if (withBindings.Count == 0)
         {
-            var withBodyBlock = CreateBlock("with_body");
-            withBodyBlock.EntryRebinds = withBindings;
-            Connect(_currentBlock, withBodyBlock);
-            _currentBlock.Terminator = new BranchTerminator(withBodyBlock);
-            _currentBlock = withBodyBlock;
+            BuildStatements(stmt.Body);
+            return;
         }
 
+        var withBodyBlock = CreateBlock("with_body");
+        withBodyBlock.EntryRebinds = withBindings;
+        Connect(_currentBlock, withBodyBlock);
+        _currentBlock.Terminator = new BranchTerminator(withBodyBlock);
+        _currentBlock = withBodyBlock;
+
         BuildStatements(stmt.Body);
+
+        // The `as` binder is block-scoped (#1647): the statements after the `with` run in a block
+        // that restores the pre-binding state for those names, so a must-assign analysis neither
+        // credits the binder to an outer bare local of the same name nor loses an outer local that
+        // was assigned before the statement (#1635).
+        if (_currentBlock.Terminator == null)
+        {
+            var withExitBlock = CreateBlock("with_exit");
+            withExitBlock.RebindScopeEntry = withBodyBlock;
+            Connect(_currentBlock, withExitBlock);
+            _currentBlock.Terminator = new BranchTerminator(withExitBlock);
+            _currentBlock = withExitBlock;
+        }
     }
 
     /// <summary>

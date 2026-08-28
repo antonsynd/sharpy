@@ -1,0 +1,19 @@
+# #1664 negative control for the struct twin: a field assigned only INSIDE the try body is not
+# definitely assigned on the handler path, so the constructor may exit without initializing it.
+def risky() -> int:
+    raise ValueError("boom")
+
+struct Reading:
+    base: int
+    value: int
+
+    def __init__(self):
+        self.base = 1
+        try:
+            self.value = risky()
+        except ValueError:
+            pass
+
+def main() -> None:
+    r = Reading()
+    print(r.base)

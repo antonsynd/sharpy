@@ -1,0 +1,39 @@
+# #1664: a bare local assigned BEFORE a try statement is definitely assigned inside every
+# handler, the else body, the finally body, and after the statement — the exception edge
+# carries the try block's entry state, not the empty set. Sibling cell: a local assigned only
+# INSIDE the try body stays unassigned in the handler (except_handler_reads_try_body_spy0600_1664).
+# else and finally are exercised in separate statements: their relative ORDER is #1669.
+def risky(flag: bool) -> int:
+    if flag:
+        raise ValueError("boom")
+    return 1
+
+def probe(flag: bool) -> None:
+    x: int
+    y: int
+    x = 10
+    try:
+        y = risky(flag)
+    except ValueError:
+        print(f"handler sees {x}")
+    else:
+        print(f"else sees {x} and {y}")
+    try:
+        y = risky(flag)
+    except ValueError:
+        print(f"handler again sees {x}")
+    finally:
+        print(f"finally sees {x}")
+    try:
+        try:
+            y = risky(flag)
+        except ValueError:
+            print(f"inner handler sees {x}")
+            raise
+    except ValueError:
+        print(f"outer handler sees {x}")
+    print(f"after sees {x}")
+
+def main():
+    probe(False)
+    probe(True)

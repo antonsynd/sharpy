@@ -87,6 +87,62 @@ def main() -> None:
     print(z)  # ERROR SPY0600 — z is not assigned on the else path
 ```
 
+Definite assignment follows the **emitted** control flow, and Sharpy's analysis is more precise
+than C#'s in three places. A bare local it proves assigned is emitted with a definite
+initializer (`= default!`) so the C# compiler agrees:
+
+- **`except` handlers** are entered from the state at the `try` statement's *entry*: a local
+  assigned before the `try` is definitely assigned in every handler, `else`, `finally`, and
+  after the statement; a local assigned only inside the try body is not (the exception may be
+  raised before the assignment). Struct fields assigned in `__init__` follow the same rule.
+- **Loop `else`** bodies run whenever the loop ends without `break`, so a local assigned in the
+  `else` body (or on every path through the body *and* the `else`) is definitely assigned after
+  the loop.
+- **`defer` bodies** run at scope exit, after every statement of the enclosing scope, so a
+  deferred read of a local assigned *later* in that scope is definitely assigned (bodies run in
+  LIFO order).
+
+```spy
+def risky(flag: bool) -> int:
+    if flag:
+        raise ValueError("boom")
+    return 1
+
+def handlers(flag: bool) -> None:
+    x: int
+    y: int
+    x = 10
+    try:
+        y = risky(flag)
+    except ValueError:
+        print(x)          # OK — x was assigned before the try
+    else:
+        print(x, y)       # OK — y is assigned when the try body completed
+
+def loop_else(items: list[int]) -> None:
+    x: int
+    for i in items:
+        x = i
+    else:
+        x = -1
+    print(x)              # OK — the else body assigned x on the no-break path
+
+def deferred() -> None:
+    x: int
+    defer:
+        print(x)          # OK — runs at scope exit, after `x = 7`
+    x = 7
+```
+
+```spy
+def handler_reads_try_body() -> None:
+    y: int
+    try:
+        y = risky(True)
+    except ValueError:
+        print(y)          # ERROR SPY0600 — the exception may precede the assignment
+```
+
 **Class and struct fields** can also be declared without initialization if they are assigned in `__init__`.
 
 ## Module-Level vs Function-Level Variables

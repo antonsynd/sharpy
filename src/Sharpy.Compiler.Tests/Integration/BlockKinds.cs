@@ -78,16 +78,13 @@ internal static class BlockKinds
 
     /// <summary>
     /// Ratcheted known-red cells (verification-contract §1: an allowlist entry cites an issue and is
-    /// deleted when fixed). <c>for-else</c>/<c>while-else</c> bodies are now type-checked (#1659,
-    /// the TypeChecker half of #1656 — ten cells drained 2026-08-26), but definite assignment still
-    /// does not walk them, so the SPY0600 cell stays red (#1656). The <c>defer</c> entry drained
-    /// when the CFG builder gained a scope-exit model for defer bodies (#1657, f2d5270b7).
+    /// deleted when fixed). Empty since the 2026-08-27 round: <c>for-else</c>/<c>while-else</c>
+    /// bodies are type-checked (#1659) and their UseBeforeAssign cells flipped to
+    /// <c>DefinitelyRunBeforeSibling</c> once DA-proved bare locals gained a definite initializer
+    /// (#1656); the <c>defer</c> entry drained when the CFG builder gained a scope-exit model for
+    /// defer bodies (#1657, f2d5270b7).
     /// </summary>
-    private static readonly System.Collections.Generic.Dictionary<(string Kind, string Cell), string> KnownRed = new()
-    {
-        [("for-else", "UseBeforeAssign")] = "#1656",
-        [("while-else", "UseBeforeAssign")] = "#1656",
-    };
+    private static readonly System.Collections.Generic.Dictionary<(string Kind, string Cell), string> KnownRed = new();
 
     /// <summary>
     /// Runs a cell's assertion. A cell not in <see cref="KnownRed"/> must pass. A known-red cell

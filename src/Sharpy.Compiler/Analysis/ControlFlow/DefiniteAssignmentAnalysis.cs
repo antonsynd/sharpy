@@ -42,11 +42,20 @@ internal static class DefiniteAssignmentAnalysis
         var bareDecls = new Dictionary<string, VariableDeclaration>();
         var assignedInBlock = new Dictionary<BasicBlock, HashSet<string>>();
         var readsInBlock = new Dictionary<BasicBlock, List<(string Name, Identifier Node, int StatementIndex)>>();
+        // Reads inside lambda bodies are not flow-positioned: the lambda may run after a later
+        // assignment (`f = lambda: x; x = 7; f()` is legal Python). They are judged once, at the
+        // end, against "is this local assigned ANYWHERE in the function" (#1635).
+        var lambdaReads = new List<(string Name, Identifier Node)>();
 
         foreach (var block in cfg.Blocks)
         {
             var blockAssigned = new HashSet<string>();
             var blockReads = new List<(string, Identifier, int)>();
+
+            // A block entered by rebinding its binder (for-target, with-as) assigns those names
+            // before its first statement runs (#1635 write kinds).
+            foreach (var key in block.EntryRebinds)
+                blockAssigned.Add(key);
 
             for (int i = 0; i < block.Statements.Count; i++)
             {
@@ -62,17 +71,20 @@ internal static class DefiniteAssignmentAnalysis
                     CollectAssignedNames(assignment.Target, blockAssigned);
                 }
 
-                CollectReads(stmt, blockReads, i);
+                CollectWalrusTargets(stmt, blockAssigned);
+                CollectReads(stmt, blockReads, i, lambdaReads);
             }
 
             foreach (var expr in block.Expressions)
             {
-                CollectReadsFromExpr(expr, blockReads, block.Statements.Count);
+                CollectWalrusTargets(expr, blockAssigned);
+                CollectReadsFromExpr(expr, blockReads, block.Statements.Count, lambdaReads);
             }
 
             if (block.Terminator is ConditionalBranchTerminator cbt)
             {
-                CollectReadsFromExpr(cbt.Condition, blockReads, block.Statements.Count);
+                CollectWalrusTargets(cbt.Condition, blockAssigned);
+                CollectReadsFromExpr(cbt.Condition, blockReads, block.Statements.Count, lambdaReads);
             }
 
             assignedInBlock[block] = blockAssigned;
@@ -84,13 +96,8 @@ internal static class DefiniteAssignmentAnalysis
 
         var bareNames = new HashSet<string>(bareDecls.Keys);
 
-        var outSets = new Dictionary<BasicBlock, HashSet<string>>();
-        foreach (var block in cfg.Blocks)
-        {
-            outSets[block] = block == cfg.Entry
-                ? new HashSet<string>()
-                : new HashSet<string>(bareNames);
-        }
+        var inSets = MustAssignDataflow.InitializeSets(cfg, bareNames);
+        var outSets = MustAssignDataflow.InitializeSets(cfg, bareNames);
 
         var rpo = cfg.GetReversePostOrder();
         bool changed = true;
@@ -102,9 +109,17 @@ internal static class DefiniteAssignmentAnalysis
                 if (block == cfg.Entry)
                     continue;
 
-                var inSet = ComputeInSet(block, bareNames, outSets);
+                var inSet = MustAssignDataflow.ComputeInSet(block, bareNames, inSets, outSets);
                 if (inSet == null)
                     continue;
+
+                // An exception successor reads THIS block's in-set, so a change here must
+                // re-run the fixpoint even when the out-set is unchanged.
+                if (!inSet.SetEquals(inSets[block]))
+                {
+                    inSets[block] = inSet;
+                    changed = true;
+                }
 
                 var newOut = new HashSet<string>(inSet);
                 newOut.UnionWith(assignedInBlock[block]);
@@ -123,14 +138,21 @@ internal static class DefiniteAssignmentAnalysis
             if (block == cfg.Entry)
                 continue;
 
-            var definitelyAssigned = ComputeInSet(block, bareNames, outSets)
+            var definitelyAssigned = MustAssignDataflow.ComputeInSet(block, bareNames, inSets, outSets)
                 ?? new HashSet<string>();
 
             var localAssigned = new HashSet<string>(definitelyAssigned);
+            foreach (var key in block.EntryRebinds)
+                localAssigned.Add(key);
 
             for (int i = 0; i < block.Statements.Count; i++)
             {
                 var stmt = block.Statements[i];
+
+                // A walrus binds before the reads that follow it; within one statement it is
+                // credited at the statement's start (Python evaluates left to right, so a read
+                // textually before the walrus in the same statement is not caught here).
+                CollectWalrusTargets(stmt, localAssigned);
 
                 foreach (var (name, node, stmtIdx) in readsInBlock[block])
                 {
@@ -146,6 +168,11 @@ internal static class DefiniteAssignmentAnalysis
                 }
             }
 
+            foreach (var expr in block.Expressions)
+                CollectWalrusTargets(expr, localAssigned);
+            if (block.Terminator is ConditionalBranchTerminator terminatorCondition)
+                CollectWalrusTargets(terminatorCondition.Condition, localAssigned);
+
             foreach (var (name, node, stmtIdx) in readsInBlock[block])
             {
                 if (stmtIdx == block.Statements.Count && bareDecls.ContainsKey(name) && !localAssigned.Contains(name))
@@ -155,22 +182,37 @@ internal static class DefiniteAssignmentAnalysis
             }
         }
 
+        // A bare local a lambda reads that is assigned NOWHERE in the function can never be bound
+        // when the lambda runs (python3: NameError). Without this the definite initializer the
+        // emitter adds for DA-proved locals turned the read into a silent `default` (#1635).
+        if (lambdaReads.Count > 0)
+        {
+            var assignedAnywhere = new HashSet<string>();
+            foreach (var assigned in assignedInBlock.Values)
+                assignedAnywhere.UnionWith(assigned);
+            foreach (var (name, node) in lambdaReads)
+            {
+                if (bareDecls.ContainsKey(name) && !assignedAnywhere.Contains(name))
+                    violations.Add(new Violation(bareDecls[name], node));
+            }
+        }
+
         return violations;
     }
 
-    private static HashSet<string>? ComputeInSet(BasicBlock block, HashSet<string> bareNames,
-        Dictionary<BasicBlock, HashSet<string>> outSets)
+    /// <summary>
+    /// Adds every walrus target (<c>name := value</c>) reachable from <paramref name="node"/>
+    /// to <paramref name="assigned"/>, not descending into lambda bodies (a lambda's walrus binds
+    /// the lambda's own scope).
+    /// </summary>
+    private static void CollectWalrusTargets(Node node, HashSet<string> assigned)
     {
-        if (block.ExceptionPredecessors.Count > 0)
-            return new HashSet<string>();
-        if (block.Predecessors.Count > 0)
-        {
-            var inSet = new HashSet<string>(bareNames);
-            foreach (var pred in block.Predecessors)
-                inSet.IntersectWith(outSets[pred]);
-            return inSet;
-        }
-        return null;
+        if (node is LambdaExpression)
+            return;
+        if (node is WalrusExpression walrus)
+            assigned.Add(walrus.Target);
+        foreach (var child in node.GetChildNodes())
+            CollectWalrusTargets(child, assigned);
     }
 
     private static void CollectAssignedNames(Expression target, HashSet<string> assigned)
@@ -196,23 +238,27 @@ internal static class DefiniteAssignmentAnalysis
         }
     }
 
-    private static void CollectReads(Statement stmt, List<(string, Identifier, int)> reads, int stmtIdx)
+    private static void CollectReads(
+        Statement stmt, List<(string, Identifier, int)> reads, int stmtIdx,
+        List<(string, Identifier)> lambdaReads)
     {
         if (stmt is Assignment assign)
         {
-            CollectReadsFromExpr(assign.Value, reads, stmtIdx);
-            CollectTargetReads(assign.Target, reads, stmtIdx);
+            CollectReadsFromExpr(assign.Value, reads, stmtIdx, lambdaReads);
+            CollectTargetReads(assign.Target, reads, stmtIdx, lambdaReads);
             return;
         }
 
         foreach (var child in stmt.GetChildNodes())
         {
             if (child is Expression expr)
-                CollectReadsFromExpr(expr, reads, stmtIdx);
+                CollectReadsFromExpr(expr, reads, stmtIdx, lambdaReads);
         }
     }
 
-    private static void CollectTargetReads(Expression target, List<(string, Identifier, int)> reads, int stmtIdx)
+    private static void CollectTargetReads(
+        Expression target, List<(string, Identifier, int)> reads, int stmtIdx,
+        List<(string, Identifier)> lambdaReads)
     {
         switch (target)
         {
@@ -220,21 +266,23 @@ internal static class DefiniteAssignmentAnalysis
                 break;
             case TupleLiteral tuple:
                 foreach (var element in tuple.Elements)
-                    CollectTargetReads(element, reads, stmtIdx);
+                    CollectTargetReads(element, reads, stmtIdx, lambdaReads);
                 break;
             case StarExpression star:
-                CollectTargetReads(star.Operand, reads, stmtIdx);
+                CollectTargetReads(star.Operand, reads, stmtIdx, lambdaReads);
                 break;
             case Parenthesized paren:
-                CollectTargetReads(paren.Expression, reads, stmtIdx);
+                CollectTargetReads(paren.Expression, reads, stmtIdx, lambdaReads);
                 break;
             default:
-                CollectReadsFromExpr(target, reads, stmtIdx);
+                CollectReadsFromExpr(target, reads, stmtIdx, lambdaReads);
                 break;
         }
     }
 
-    private static void CollectReadsFromExpr(Expression expr, List<(string, Identifier, int)> reads, int stmtIdx)
+    private static void CollectReadsFromExpr(
+        Expression expr, List<(string, Identifier, int)> reads, int stmtIdx,
+        List<(string, Identifier)> lambdaReads)
     {
         if (expr is Identifier id)
         {
@@ -242,13 +290,28 @@ internal static class DefiniteAssignmentAnalysis
             return;
         }
 
-        if (expr is LambdaExpression)
+        if (expr is LambdaExpression lambda)
+        {
+            CollectLambdaReads(lambda, lambdaReads);
             return;
+        }
 
         foreach (var child in expr.GetChildNodes())
         {
             if (child is Expression childExpr)
-                CollectReadsFromExpr(childExpr, reads, stmtIdx);
+                CollectReadsFromExpr(childExpr, reads, stmtIdx, lambdaReads);
         }
+    }
+
+    /// <summary>Collects every identifier read inside a lambda body (nested lambdas included).</summary>
+    private static void CollectLambdaReads(Node node, List<(string, Identifier)> lambdaReads)
+    {
+        if (node is Identifier id)
+        {
+            lambdaReads.Add((id.Name, id));
+            return;
+        }
+        foreach (var child in node.GetChildNodes())
+            CollectLambdaReads(child, lambdaReads);
     }
 }

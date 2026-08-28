@@ -1,0 +1,7 @@
+# #1635 positive control for the lambda rule: a lambda may read a local assigned AFTER the
+# lambda expression, as long as the assignment exists — python3 prints 7.
+def main() -> None:
+    x: int
+    f: () -> int = lambda: x
+    x = 7
+    print(f())

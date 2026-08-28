@@ -1,0 +1,15 @@
+# #1635 / #1647: a `with ... as r` binder is block-scoped — it does not assign the OUTER bare
+# local `r`, so a read after the block is SPY0600 (the binder that satisfied the read inside the
+# block is gone). Silently printing the outer's default was the failure this cell guards.
+class Resource:
+    def __enter__(self) -> int:
+        return 5
+
+    def __exit__(self, exc_type: object?, exc: Exception?, tb: object?) -> bool:
+        return False
+
+def main() -> None:
+    r: int
+    with Resource() as r:
+        print(r)
+    print(r)

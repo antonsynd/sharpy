@@ -1,0 +1,24 @@
+# #1664 sibling (DefiniteFieldAssignmentAnalysis shares the exception-edge rule): a struct field
+# assigned BEFORE a try statement in __init__ is definitely assigned on the handler path too, so
+# the constructor initializes every field on every exit. The empty-set exception rule reported
+# "must initialize all fields" for this program.
+def risky(flag: bool) -> int:
+    if flag:
+        raise ValueError("boom")
+    return 5
+
+struct Reading:
+    base: int
+    value: int
+
+    def __init__(self, flag: bool):
+        self.base = 1
+        try:
+            self.value = risky(flag)
+        except ValueError:
+            self.value = -1
+
+def main() -> None:
+    a = Reading(False)
+    b = Reading(True)
+    print(a.base, a.value, b.base, b.value)

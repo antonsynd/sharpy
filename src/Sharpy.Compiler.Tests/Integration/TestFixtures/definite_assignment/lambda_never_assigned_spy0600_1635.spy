@@ -1,0 +1,8 @@
+# #1635 sibling: a bare local captured by a lambda and NEVER assigned anywhere in the function
+# is refused — python3 raises NameError when the lambda runs. Without this rule the DA walk
+# (which stops at lambdas, because a lambda may run after a later assignment) proved nothing
+# about `x`, the definite initializer made it `int x = default!`, and the call printed 0.
+def main() -> None:
+    x: int
+    f: () -> int = lambda: x
+    print(f())

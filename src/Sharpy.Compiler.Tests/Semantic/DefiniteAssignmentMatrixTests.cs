@@ -104,7 +104,7 @@ def main() -> None:
             "except handler sees x as possibly unassigned");
     }
 
-    [Fact(Skip = "TODO: #1664 — DA does not propagate assignment across try/except boundaries")]
+    [Fact]
     public void ExceptHandler_AssignedBeforeTry_Succeeds()
     {
         var source = @"

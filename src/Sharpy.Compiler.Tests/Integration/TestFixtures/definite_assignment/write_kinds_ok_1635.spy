@@ -1,0 +1,42 @@
+# #1635: every WRITE position marks a bare local assigned — a for-loop target inside its body,
+# a walrus target after the expression that bound it, a `with ... as` target inside the body.
+# The old collector saw only `x = ...` statements, so each of these reads was a false SPY0600.
+# for-targets and with-as binders are BLOCK-SCOPED in Sharpy (#1647): they satisfy reads inside
+# the block and never assign the outer bare local (with_as_binder_does_not_assign_outer_spy0600_1635).
+class Resource:
+    def __enter__(self) -> int:
+        return 5
+
+    def __exit__(self, exc_type: object?, exc: Exception?, tb: object?) -> bool:
+        return False
+
+def for_target(xs: list[int]) -> None:
+    x: int
+    for x in xs:
+        print(x)
+
+def walrus() -> None:
+    n: int
+    if (n := 5) > 0:
+        print(n)
+    print(n)
+
+def with_target() -> None:
+    r: int
+    with Resource() as r:
+        print(r)
+
+def main() -> None:
+    for_target([1, 2])
+    walrus()
+    with_target()
+    outer_survives_with()
+
+def outer_survives_with() -> None:
+    # An outer bare local assigned BEFORE the with keeps its value after it: the binder shadows
+    # it inside the block only (#1647 block-scoped binders).
+    r: int
+    r = 1
+    with Resource() as r:
+        print(r)
+    print(r)

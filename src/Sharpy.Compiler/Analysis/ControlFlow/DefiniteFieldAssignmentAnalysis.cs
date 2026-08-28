@@ -49,13 +49,8 @@ internal static class DefiniteFieldAssignmentAnalysis
         // Step 2: Initialize dataflow state
         // out[entry] = empty set
         // out[all other blocks] = allFields (optimistic initialization)
-        var outSets = new Dictionary<BasicBlock, HashSet<string>>();
-        foreach (var block in cfg.Blocks)
-        {
-            outSets[block] = block == cfg.Entry
-                ? new HashSet<string>()
-                : new HashSet<string>(allFields);
-        }
+        var inSets = MustAssignDataflow.InitializeSets(cfg, allFields);
+        var outSets = MustAssignDataflow.InitializeSets(cfg, allFields);
 
         // Step 3: Fixed-point iteration in reverse post-order
         var rpo = cfg.GetReversePostOrder();
@@ -70,31 +65,20 @@ internal static class DefiniteFieldAssignmentAnalysis
                 if (block == cfg.Entry)
                     continue;
 
-                // Compute in[B] from predecessors
-                HashSet<string> inSet;
-
-                bool hasNormalPreds = block.Predecessors.Count > 0;
-                bool hasExceptionPreds = block.ExceptionPredecessors.Count > 0;
-
-                if (hasExceptionPreds)
-                {
-                    // Any exception predecessor contributes empty set.
-                    // Since we intersect all predecessor out-sets, the result is empty.
-                    inSet = new HashSet<string>();
-                }
-                else if (hasNormalPreds)
-                {
-                    // Intersect out-sets of all normal predecessors
-                    inSet = new HashSet<string>(allFields);
-                    foreach (var pred in block.Predecessors)
-                    {
-                        inSet.IntersectWith(outSets[pred]);
-                    }
-                }
-                else
+                // Compute in[B] from predecessors — the rule is shared with
+                // DefiniteAssignmentAnalysis (MustAssignDataflow): normal predecessors
+                // contribute their out-sets, exception predecessors their in-sets (#1664).
+                var inSet = MustAssignDataflow.ComputeInSet(block, allFields, inSets, outSets);
+                if (inSet == null)
                 {
                     // No predecessors at all (unreachable block) — skip
                     continue;
+                }
+
+                if (!inSet.SetEquals(inSets[block]))
+                {
+                    inSets[block] = inSet;
+                    changed = true;
                 }
 
                 // out[B] = in[B] ∪ assignedInBlock[B]

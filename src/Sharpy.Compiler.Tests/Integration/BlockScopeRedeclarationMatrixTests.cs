@@ -124,7 +124,13 @@ public class BlockScopeRedeclarationMatrixTests : IntegrationTestBase
     }
 
     /// <summary>Kinds whose body has definitely executed when a sibling that follows it runs (C# DA: <c>finally</c>, <c>using</c>, a called local function).</summary>
-    private static readonly string[] DefinitelyRunBeforeSibling = { "finally", "with", "nested-def" };
+    // `for-else`/`while-else`: a loop that ends without `break` always runs its else body, and
+    // Sharpy's DA proves it; the emitter gives the proved-assigned local a definite initializer
+    // (`= default!`) so C#'s weaker DA agrees (#1656, R8 of the 2026-08-27 round).
+    // `except`: the template's try body always raises (`raise ValueError(...)`), so the handler is
+    // definitely run, and a handler is entered from the try statement's ENTRY state — a local the
+    // first handler assigned is definitely assigned when the second handler reads it (#1664).
+    private static readonly string[] DefinitelyRunBeforeSibling = { "finally", "with", "nested-def", "for-else", "while-else", "except" };
 
     [Theory]
     [MemberData(nameof(BodyKinds))]
