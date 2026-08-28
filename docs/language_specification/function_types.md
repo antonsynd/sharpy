@@ -56,6 +56,31 @@ handler: (count: int, message: str) -> bool
 
 **Note:** Parameter names in function types do not create named parameter requirements at call sites. They are purely for readability and documentation.
 
+**Calls through a function-typed value are positional-only.** A function type carries no
+parameter names (a .NET delegate has none), so a keyword argument on a value of function type —
+a `(T) -> R` parameter, a lambda, a `def` stored in a variable, a bound method stored as a
+value — cannot bind and is refused with SPY0279, which names the argument to pass positionally.
+The rule is about the *callee kind*, not the spelling: calling a `def` or a method directly binds
+keywords as usual, and redundant parentheses around such a callee (`(obj.method)(k=1)`) do not
+change that.
+
+```spy
+def apply(f: (int, int) -> int, x: int, y: int) -> int:
+    return f(x, y)          # OK — positional
+    # return f(a=x, b=y)    # ERROR SPY0279 — keyword arguments are not supported when
+                            # calling a function-typed value; pass 'a' positionally
+
+def add(a: int, b: int) -> int:
+    return a + b
+
+def main() -> None:
+    print(apply(add, 1, 2))
+    print(add(a=1, b=2))    # OK — a def call binds by name
+    print((add)(a=1, b=2))  # OK — the same call, parenthesized
+    g = add
+    # g(a=1, b=2)           # ERROR SPY0279 — `g` is a function-typed value
+```
+
 ```python
 # NOT YET IMPLEMENTED — named parameters in function type aliases
 type EventHandler = (sender: object, args: EventArgs) -> None
