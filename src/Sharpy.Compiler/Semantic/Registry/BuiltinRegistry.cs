@@ -37,12 +37,13 @@ internal class BuiltinRegistry
     private readonly Dictionary<Type, TypeSymbol> _interfaceSymbols = new();
 
     /// <summary>
-    /// Primitive types to register from PrimitiveCatalog.
-    /// This maintains backward compatibility with the original hard-coded type list.
+    /// Names excluded from primitive registration because they are registered separately
+    /// with additional wiring (object, None/void). The ConversionFunction field on
+    /// PrimitiveInfo drives registration for all other primitives.
     /// </summary>
-    private static readonly HashSet<string> RegisteredPrimitiveNames = new()
+    private static readonly HashSet<Type> SeparatelyRegisteredClrTypes = new()
     {
-        "int", "int32", "long", "int64", "float", "float64", "double", "decimal", "bool", "str"
+        typeof(void), typeof(object)
     };
 
     /// <summary>
@@ -224,13 +225,13 @@ internal class BuiltinRegistry
         var sharpyCoreAssembly = typeof(SharpyRT::Sharpy.Builtins).Assembly;
         _discovery.LoadAssembly(sharpyCoreAssembly);
 
-        // Register primitives from PrimitiveCatalog using the defined set of names
+        // Register every primitive that carries a ConversionFunction — the catalog
+        // is the single authority for which widths are callable (#1637).
         foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
         {
-            if (!RegisteredPrimitiveNames.Contains(name))
+            if (info.ConversionFunction == null)
                 continue;
-            // Skip void - it's registered separately below
-            if (info.ClrType == typeof(void))
+            if (SeparatelyRegisteredClrTypes.Contains(info.ClrType))
                 continue;
 
             var kind = info.ClrType.IsValueType ? TypeKind.Struct : TypeKind.Class;
@@ -401,6 +402,19 @@ internal class BuiltinRegistry
                 _functions[function.Name] = new List<FunctionSymbol>();
             }
             _functions[function.Name].Add(function);
+        }
+
+        // Alias underscore-mangled function names to registered type spellings. The CLR's
+        // PascalCase convention produces UInt8 → u_int8 after reverse-mangling, but the
+        // registered type is uint8 — the function is not callable without this mapping
+        // (#1637). Only the non-generic case needs it; generics are already filtered above.
+        foreach (var funcName in _functions.Keys.ToList())
+        {
+            var stripped = funcName.Replace("_", string.Empty, StringComparison.Ordinal);
+            if (stripped != funcName && _types.ContainsKey(stripped) && !_functions.ContainsKey(stripped))
+            {
+                _functions[stripped] = _functions[funcName];
+            }
         }
     }
 
