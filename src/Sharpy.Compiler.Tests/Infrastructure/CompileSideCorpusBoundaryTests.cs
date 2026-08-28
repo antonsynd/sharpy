@@ -42,29 +42,46 @@ public class CompileSideCorpusBoundaryTests : IDisposable
         catch { }
     }
 
+    /// <summary>
+    /// Cell (b) of the plan's compile-side twin: a REAL <c>.spyproj</c> with
+    /// <c>&lt;SourceFile Include="**/*.spy" /&gt;</c> goes through
+    /// <c>ProjectFileParser.ResolveGlobPattern</c> — the production glob — and must select only the
+    /// real source. The first version of this test re-implemented the filter inline over
+    /// <c>Directory.GetFiles</c> and asserted on its own call, so deleting the predicate from
+    /// <c>ResolveGlobPattern</c> left it green (found by the 2026-08-28 verification); the
+    /// mutation the plan names ("remove the predicate from ResolveGlobPattern → CS0017") can
+    /// only turn THIS shape red.
+    /// </summary>
     [Theory]
     [InlineData("bin/Debug/net10.0/.sharpy-crash/20260827/sources")]
     [InlineData("bin/Debug/net10.0")]
     [InlineData("obj/Debug")]
-    public void Compiler_ExcludesPlantedSources(string plantedRelativePath)
+    public void ProjectGlob_ExcludesPlantedSources(string plantedRelativePath)
     {
-        var realSource = "def main() -> None:\n    print(1)\n";
-        File.WriteAllText(Path.Combine(_root, "main.spy"), realSource);
+        PlantProject(plantedRelativePath);
+
+        var config = global::Sharpy.Compiler.ProjectFileParser.Load(Path.Combine(_root, "planted.spyproj"));
+
+        var sourceFile = Assert.Single(config.SourceFiles);
+        Assert.Equal("main.spy", Path.GetFileName(sourceFile));
+        Assert.Equal(_root, Path.GetDirectoryName(Path.GetFullPath(sourceFile)));
+    }
+
+    private void PlantProject(string plantedRelativePath)
+    {
+        File.WriteAllText(Path.Combine(_root, "main.spy"), "def main() -> None:\n    print(1)\n");
+        File.WriteAllText(Path.Combine(_root, "planted.spyproj"),
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<Project>\n  <PropertyGroup>\n"
+            + "    <RootNamespace>Planted</RootNamespace>\n    <OutputType>exe</OutputType>\n"
+            + "    <TargetFramework>net10.0</TargetFramework>\n    <AssemblyName>Planted</AssemblyName>\n"
+            + "    <EntryPoint>main.spy</EntryPoint>\n  </PropertyGroup>\n  <ItemGroup>\n"
+            + "    <SourceFile Include=\"**/*.spy\" />\n  </ItemGroup>\n</Project>\n");
 
         var plantedDir = Path.Combine(_root,
             plantedRelativePath.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(plantedDir);
         File.WriteAllText(Path.Combine(plantedDir, "main.spy"),
             "def main() -> None:\n    print(2)\n");
-
-        var sourceFiles = Directory.GetFiles(_root, "*.spy", SearchOption.AllDirectories)
-            .Where(f => !CrashBundleWriter.IsNonSourceSegment(
-                Path.GetRelativePath(_root, f)))
-            .ToList();
-
-        Assert.Single(sourceFiles);
-        Assert.Contains("main.spy", sourceFiles[0]);
-        Assert.DoesNotContain(plantedRelativePath.Split('/')[0], sourceFiles[0]);
     }
 
     [Theory]
@@ -83,5 +100,52 @@ public class CompileSideCorpusBoundaryTests : IDisposable
 
         Assert.Single(discovered);
         Assert.EndsWith("real.spy", discovered[0]);
+    }
+}
+
+/// <summary>
+/// Cell (a) of the compile-side twin: the multi-file test harness
+/// (<see cref="IntegrationTestBase.CompileAndExecuteProject"/>) globs the project directory
+/// itself. With a crash-bundle copy of <c>main.spy</c> planted under <c>bin/</c>, the harness
+/// must compile exactly the real source — the planted copy would otherwise be a second entry
+/// point (CS0017 behind SPY0908), the #1660 symptom.
+/// </summary>
+public class CompileSideCorpusBoundaryHarnessTests : IntegrationTestBase
+{
+    public CompileSideCorpusBoundaryHarnessTests(ITestOutputHelper output) : base(output)
+    {
+    }
+
+    [Theory]
+    [InlineData("bin/Debug/net10.0/.sharpy-crash/20260827/sources")]
+    [InlineData("obj/Debug")]
+    public void MultiFileHarness_ExcludesPlantedSources(string plantedRelativePath)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"sharpy_boundary_harness_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "main.spy"), "def main() -> None:\n    print(1)\n");
+            var plantedDir = Path.Combine(root,
+                plantedRelativePath.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(plantedDir);
+            File.WriteAllText(Path.Combine(plantedDir, "main.spy"),
+                "def main() -> None:\n    print(2)\n");
+
+            var result = CompileAndExecuteProject(root, "main.spy");
+
+            Assert.True(result.Success, string.Join("; ", result.CompilationErrors));
+            Assert.Equal("1", result.StandardOutput.Trim());
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(root, recursive: true);
+            }
+            catch
+            {
+            }
+        }
     }
 }
