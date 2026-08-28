@@ -1513,12 +1513,26 @@ internal class TypeInferenceService
     /// Because the supplied type is closed, the property type is already substituted.
     /// Returns null when the type exposes no readable indexer.
     /// </summary>
-    public SemanticType? InferClrIndexerReturnType(System.Type closedClrType)
+    public SemanticType? InferClrIndexerReturnType(System.Type closedClrType, System.Type? keyClrType = null)
     {
-        var indexer = closedClrType.GetProperties()
-            .FirstOrDefault(p => p.GetIndexParameters().Length > 0 && p.GetGetMethod() != null);
-        if (indexer == null)
+        var indexers = closedClrType.GetProperties()
+            .Where(p => p.GetIndexParameters().Length > 0 && p.GetGetMethod() != null)
+            .ToArray();
+
+        if (indexers.Length == 0)
             return null;
+
+        System.Reflection.PropertyInfo? indexer;
+        if (keyClrType != null && indexers.Length > 1)
+        {
+            indexer = indexers.FirstOrDefault(p =>
+                p.GetIndexParameters()[0].ParameterType.IsAssignableFrom(keyClrType))
+                ?? indexers[0];
+        }
+        else
+        {
+            indexer = indexers[0];
+        }
 
         var mapped = _clrTypeMapper.Value.MapClrTypeToSemanticType(indexer.PropertyType);
         return mapped is UnknownType ? null : mapped;

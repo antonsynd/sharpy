@@ -5439,7 +5439,16 @@ internal partial class TypeChecker
     private SemanticType? MapClrParameterType(System.Reflection.ParameterInfo parameter)
     {
         var mapped = _bclGenericMethodBridge.MapClrTypeToSemanticType(parameter.ParameterType);
-        return mapped is UnknownType || IsObjectType(mapped) ? null : mapped;
+        if (mapped is UnknownType || IsObjectType(mapped))
+            return null;
+
+        // A delegate parameter (Converter<T,U>, Func<>, Action<>, Predicate<>) maps to GenericType
+        // after #1640 (was UnmappedClrType → IsObjectType → null). The bridge cannot match a Sharpy
+        // FunctionType/lambda against a GenericType delegate spelling, so keep it unspellable.
+        if (mapped is GenericType && typeof(Delegate).IsAssignableFrom(parameter.ParameterType))
+            return null;
+
+        return mapped;
     }
 
     /// <summary>

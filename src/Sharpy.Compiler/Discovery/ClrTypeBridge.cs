@@ -739,26 +739,16 @@ internal class ClrTypeBridge
         // how #1210 surfaced with FrozenSet. `IReverseEnumerable<T>` — the `__reversed__` protocol
         // contract — was the one such interface left, and it kept the CoreGenericTypeMapping guard's
         // last allowlist entry alive (#1242).
-        //
-        // Scoped to Sharpy.Core's own interfaces rather than made a general fallback: mapping every
-        // unknown generic to a synthesized symbol would quietly change how a large set of BCL types
-        // are typed, which is a much larger decision than this one. GenericDefinition carries the CLR
-        // definition, so the closed type stays constructible for operator and overload resolution —
-        // the same shape the NdArray arm above uses.
-        if (genericDef is { IsInterface: true, Namespace: "Sharpy" })
+        // General fallback (#1640): every unmapped CLR generic maps to an honest GenericType
+        // so the type-checker can resolve member types via reflection on the closed CLR type
+        // (BclMemberTypeOnBuiltinReceiver) and the absence proof (IsConstructedClrGenericReceiver)
+        // can fire. GenericDefinition carries the CLR definition, so TryGetClrType can construct
+        // the closed type for operator and overload resolution.
+        return new GenericType
         {
-            return new GenericType
-            {
-                Name = ClrNameHelper.StripArity(genericDef.Name),
-                TypeArguments = typeArgs.Select(MapClrTypeToSemanticType).ToList(),
-                GenericDefinition = GetOrCreateClrDefinitionSymbol(genericDef)
-            };
-        }
-
-        return new UnmappedClrType
-        {
-            ClrTypeName = clrType.GetGenericTypeDefinition().FullName ?? clrType.Name,
-            ClrType = clrType
+            Name = ClrNameHelper.StripArity(genericDef.Name),
+            TypeArguments = typeArgs.Select(MapClrTypeToSemanticType).ToList(),
+            GenericDefinition = GetOrCreateClrDefinitionSymbol(genericDef)
         };
     }
 

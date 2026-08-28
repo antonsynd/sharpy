@@ -1,0 +1,10 @@
+from System.Collections.Generic import Stack
+
+def main() -> None:
+    s: Stack[int] = Stack[int]()
+    s.push(42)
+    s.push(7)
+    n: int = s.peek()
+    print(n)
+    print(s.pop())
+    print(s.count)

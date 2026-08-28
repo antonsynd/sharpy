@@ -1018,6 +1018,46 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Whether the GenericType's CLR definition is a collection type that
+    /// <see cref="Discovery.ClrTypeBridge.MapGenericTypeCore"/> maps to a Sharpy builtin.
+    /// These types already have working call-site resolution for their members, so
+    /// <see cref="BclMemberTypeOnBuiltinReceiver"/> must NOT type them — doing so changes
+    /// the error diagnostics for argument-type and arity mismatches (#1640).
+    /// </summary>
+    /// <remarks>
+    /// Keep in sync with the explicit arms of <c>MapGenericTypeCore</c> in
+    /// <c>ClrTypeBridge.cs</c>.
+    /// </remarks>
+    private bool IsExplicitlyMappedCollectionReceiver(GenericType gt)
+    {
+        var defClr = GenericDefinitionOf(gt)?.ClrType;
+        if (defClr == null || !defClr.IsGenericTypeDefinition)
+            return false;
+
+        if (defClr == typeof(List<>)
+            || defClr == typeof(Dictionary<,>)
+            || defClr == typeof(HashSet<>)
+            || defClr == typeof(IList<>)
+            || defClr == typeof(ICollection<>)
+            || defClr == typeof(IDictionary<,>)
+            || defClr == typeof(ISet<>)
+            || defClr == typeof(IReadOnlyList<>)
+            || defClr == typeof(IReadOnlyCollection<>)
+            || defClr == typeof(System.Collections.ObjectModel.ReadOnlyCollection<>)
+            || defClr == typeof(IReadOnlyDictionary<,>)
+            || defClr == typeof(IEnumerable<>)
+            || defClr == typeof(System.Threading.Tasks.Task<>))
+            return true;
+
+        var fn = defClr.FullName;
+        return fn == Discovery.ClrTypeBridge.SpecialCases.SharpyListFullName
+            || fn == Discovery.ClrTypeBridge.SpecialCases.SharpyDictFullName
+            || fn == Discovery.ClrTypeBridge.SpecialCases.SharpySetFullName
+            || fn == Discovery.ClrTypeBridge.SpecialCases.SharpyFrozenSetFullName
+            || fn == Discovery.ClrTypeBridge.SpecialCases.SharpyFrozenDictFullName;
+    }
+
+    /// <summary>
     /// Whether the receiver is a constructed CLR generic with a GenericDefinition carrying a live
     /// CLR type — e.g. <c>HashSet[int]</c> or <c>List[str]</c> from an import. The proof can be
     /// asked about it because <see cref="TryGetClrType"/> yields a closed constructed type whose
@@ -1050,15 +1090,15 @@ internal partial class TypeChecker
                : null);
 
     /// <summary>
-    /// The semantic type of a raw BCL member reached on a builtin receiver, or <c>null</c> when the
-    /// receiver is not a builtin with a CLR type or the member does not reflect (#1291).
+    /// The semantic type of a raw BCL member reached on a CLR-backed receiver, or <c>null</c> when
+    /// the receiver has no CLR type or the member does not reflect (#1291, #1640).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Deliberately narrow. Only a <see cref="BuiltinType"/> receiver is considered: a
-    /// <see cref="GenericType"/> receiver (<c>list[T].append</c>) is resolved by codegen through a
-    /// different discovery path, and typing it here would be a guess about machinery this method
-    /// does not own.
+    /// Handles <see cref="BuiltinType"/> receivers directly (#1291) and constructed CLR generics
+    /// (#1640) via <see cref="TryGetClrType"/>. For non-builtin receivers, only METHOD resolution
+    /// is attempted — property resolution is skipped because codegen's zero-arg-call collapse
+    /// (<c>.count()</c> → <c>.Count</c>) requires the member to stay permissive.
     /// </para>
     /// <para>
     /// Only the PRESENT case is answered. A member that reflects nothing keeps today's Unknown
@@ -1070,7 +1110,24 @@ internal partial class TypeChecker
     /// </remarks>
     private SemanticType? BclMemberTypeOnBuiltinReceiver(MemberAccess memberAccess, SemanticType receiverType)
     {
-        if (receiverType is not BuiltinType { ClrType: { } clrType })
+        Type? clrType;
+        if (receiverType is BuiltinType bt)
+        {
+            clrType = bt.ClrType;
+        }
+        else if (receiverType is GenericType gt
+            && !IsExplicitlyMappedCollectionReceiver(gt)
+            && GenericDefinitionOf(gt) is { ClrType: not null } def
+            && def.Methods.Count == 0)
+        {
+            clrType = TryGetClrType(receiverType);
+        }
+        else
+        {
+            return null;
+        }
+
+        if (clrType == null)
         {
             return null;
         }
@@ -1123,18 +1180,23 @@ internal partial class TypeChecker
             return new FunctionType { ParameterTypes = parameterTypes, ReturnType = returnType };
         }
 
-        var propertyName = Discovery.ClrTypeHelper.ResolveClrPropertyName(clrType, memberAccess.Member);
-        if (propertyName != null
-            && clrType.GetProperty(propertyName) is { } property)
+        // Property resolution is BuiltinType-only: a GenericType receiver's properties collide with
+        // codegen's zero-arg-call collapse (`.count()` → `.Count`), so typing the property here would
+        // make the call node see a non-callable int32 instead of staying permissive (#1640).
+        if (receiverType is BuiltinType)
         {
-            var propertyType = _bclGenericMethodBridge.MapClrTypeToSemanticType(property.PropertyType);
-            if (propertyType is UnknownType)
+            var propertyName = Discovery.ClrTypeHelper.ResolveClrPropertyName(clrType, memberAccess.Member);
+            if (propertyName != null
+                && clrType.GetProperty(propertyName) is { } property)
             {
-                return null;
-            }
+                var propertyType = _bclGenericMethodBridge.MapClrTypeToSemanticType(property.PropertyType);
+                if (propertyType is UnknownType)
+                {
+                    return null;
+                }
 
-            // A property read IS the value, so its conversion is recorded on the member node itself.
-            return ProjectClrChar(memberAccess, propertyType);
+                return ProjectClrChar(memberAccess, propertyType);
+            }
         }
 
         return null;
@@ -1561,9 +1623,17 @@ internal partial class TypeChecker
     /// </summary>
     private FunctionSymbol BuildBclGenericMethodSymbol(System.Reflection.MethodInfo method, string memberName)
     {
-        // MapClrTypeToSemanticType already collapses unrecognized generics (e.g. Converter<T,TOutput>)
-        // to SemanticType.Object, which is the conservative fallback we want.
-        SemanticType Map(Type t) => _bclGenericMethodBridge.MapClrTypeToSemanticType(t);
+        SemanticType Map(Type t)
+        {
+            var mapped = _bclGenericMethodBridge.MapClrTypeToSemanticType(t);
+            // Delegate types (Converter<T,U>, Func<>, Predicate<>) mapped to UnmappedClrType (treated
+            // as object) before #1640. The new GenericType fallback has no Sharpy assignability semantics
+            // — a lambda cannot match GenericType{Converter} — so keep the conservative object fallback
+            // for overload resolution.
+            if (mapped is GenericType && t.IsGenericType && t.BaseType == typeof(MulticastDelegate))
+                return SemanticType.Object;
+            return mapped;
+        }
 
         var typeParameters = method.GetGenericArguments()
             .Select(t => new Parser.Ast.TypeParameterDef { Name = t.Name })
@@ -2118,7 +2188,8 @@ internal partial class TypeChecker
             var closedClrType = TryGetClrType(objectType);
             if (closedClrType != null)
             {
-                var clrIndexerType = _typeInference.InferClrIndexerReturnType(closedClrType);
+                var keyClrType = TryGetClrType(indexType);
+                var clrIndexerType = _typeInference.InferClrIndexerReturnType(closedClrType, keyClrType);
                 if (clrIndexerType != null)
                     return clrIndexerType;
             }

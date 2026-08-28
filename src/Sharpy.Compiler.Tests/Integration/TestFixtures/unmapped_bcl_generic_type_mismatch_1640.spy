@@ -1,0 +1,7 @@
+from System.Collections.Generic import Stack
+
+def main() -> None:
+    s: Stack[int] = Stack[int]()
+    s.push(42)
+    a: str = s.peek()
+    print(a)

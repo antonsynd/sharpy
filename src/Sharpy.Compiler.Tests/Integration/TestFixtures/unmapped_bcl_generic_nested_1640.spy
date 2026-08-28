@@ -1,0 +1,10 @@
+from System.Collections.Generic import Stack, Queue
+
+def main() -> None:
+    s: Stack[Queue[int]] = Stack[Queue[int]]()
+    q: Queue[int] = Queue[int]()
+    q.enqueue(99)
+    s.push(q)
+    result: Queue[int] = s.peek()
+    n: int = result.dequeue()
+    print(n)
