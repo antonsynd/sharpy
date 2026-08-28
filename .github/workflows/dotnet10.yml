@@ -55,6 +55,11 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
+    - name: Verify generated C# is whitespace-clean (#1641)
+      # Regenerated spy-test/spy-stdlib C# is compiled from the compiler under test; a stray
+      # trivia token in the emitter (`(int? )`) lands in generated/ and fails `dotnet format`.
+      # The whole solution is checked so the gate cannot be dodged by adding a generated tree.
+      run: dotnet format whitespace sharpy.sln --verify-no-changes
     - name: Verify all test projects are covered
       run: |
         # Fail CI if a test project exists in src/ but isn't listed below
