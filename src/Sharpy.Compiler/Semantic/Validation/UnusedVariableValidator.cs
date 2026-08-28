@@ -294,10 +294,31 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                 // These define their own scope and are validated at the top level
                 break;
 
+            case DeferStatement deferStmt:
+                foreach (var s in deferStmt.Body)
+                    CollectFromStatement(s, defined, read, parameters, readCollector);
+                break;
+
+            case YieldStatement yieldStmt:
+                if (yieldStmt.Value != null)
+                    readCollector.Visit(yieldStmt.Value);
+                break;
+
             case DecoratedStatement decorated:
                 // @suppress wrapper (#1024): decorators are compile-time-only; the inner
                 // statement's definitions and reads must still be tracked.
                 CollectFromStatement(decorated.Statement, defined, read, parameters, readCollector);
+                break;
+
+            case PassStatement:
+            case BreakStatement:
+            case BreakWithFlagStatement:
+            case ContinueStatement:
+            case ImportStatement:
+            case FromImportStatement:
+            case TypeAlias:
+            case UnionDef:
+            case DelegateDef:
                 break;
         }
     }
