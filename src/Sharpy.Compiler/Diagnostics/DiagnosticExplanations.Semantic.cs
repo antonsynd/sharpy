@@ -874,6 +874,15 @@ public static partial class DiagnosticExplanations
             "def add(a: int, b: int = 10) -> int:\n    return a + b\n\nf: (int, int) -> int = add\nprint(f(1))  # error: defaults lost",
             "Call directly or pass all arguments:\n    print(add(1))    # direct call, default applies\n    print(f(1, 10))  # explicit argument");
 
+        Add(dict, DiagnosticCodes.Semantic.KeywordArgOnFunctionType,
+            "Keyword arguments not supported on function-typed values",
+            "Semantic",
+            "Function-typed values (lambdas, variables with a function type, aliased defs, " +
+            "and parameters typed as (T) -> R) do not carry parameter names — .NET delegates " +
+            "have no named-parameter metadata. Pass all arguments positionally.",
+            "def apply(f: (int, int) -> int, x: int) -> int:\n    return f(a=x, b=x)  # error: keyword arguments not supported",
+            "Pass arguments positionally:\n    return f(x, x)");
+
         Add(dict, DiagnosticCodes.Semantic.CircularConstantReference,
             "Circular constant reference",
             "Semantic",

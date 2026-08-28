@@ -319,7 +319,7 @@ public static class DiagnosticCodes
         public const string NarrowedReceiverAugAssign = "SPY0276"; // Active (#1615)
         public const string DelegateErasedDefaults = "SPY0277";     // Active (#1563)
         public const string CircularConstantReference = "SPY0278"; // Active (#1601)
-        // SPY0279: Reserved for future control flow diagnostics
+        public const string KeywordArgOnFunctionType = "SPY0279"; // Active — keyword arguments on a function-typed value (#1650)
 
         #endregion
 
