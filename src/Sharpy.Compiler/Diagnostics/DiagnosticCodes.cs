@@ -732,7 +732,7 @@ public static class DiagnosticCodes
         public const string BuiltinRebornByExplicitImport = "SPY0484";  // Active (#1324)
         public const string VariantPatternShadowsConstant = "SPY0485"; // Active (#1562)
         public const string DefaultsErasedByConversion = "SPY0486"; // Active (#1563)
-        public const string ImplicitTruthinessConversion = "SPY0487"; // Active (#1558)
+        // SPY0487: Reserved — never emitted (#1558, removed #1634)
         // SPY0488-SPY0489: Reserved for future validation warnings
 
         #endregion
