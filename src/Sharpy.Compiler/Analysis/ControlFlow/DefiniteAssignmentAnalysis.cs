@@ -84,21 +84,9 @@ internal static class DefiniteAssignmentAnalysis
                 if (block == cfg.Entry)
                     continue;
 
-                HashSet<string> inSet;
-                if (block.ExceptionPredecessors.Count > 0)
-                {
-                    inSet = new HashSet<string>();
-                }
-                else if (block.Predecessors.Count > 0)
-                {
-                    inSet = new HashSet<string>(bareNames);
-                    foreach (var pred in block.Predecessors)
-                        inSet.IntersectWith(outSets[pred]);
-                }
-                else
-                {
+                var inSet = ComputeInSet(block, bareNames, outSets);
+                if (inSet == null)
                     continue;
-                }
 
                 var newOut = new HashSet<string>(inSet);
                 newOut.UnionWith(assignedInBlock[block]);
@@ -117,17 +105,8 @@ internal static class DefiniteAssignmentAnalysis
             if (block == cfg.Entry)
                 continue;
 
-            HashSet<string> definitelyAssigned;
-            if (block.Predecessors.Count > 0)
-            {
-                definitelyAssigned = new HashSet<string>(bareNames);
-                foreach (var pred in block.Predecessors)
-                    definitelyAssigned.IntersectWith(outSets[pred]);
-            }
-            else
-            {
-                definitelyAssigned = new HashSet<string>();
-            }
+            var definitelyAssigned = ComputeInSet(block, bareNames, outSets)
+                ?? new HashSet<string>();
 
             var localAssigned = new HashSet<string>(definitelyAssigned);
 
@@ -159,6 +138,21 @@ internal static class DefiniteAssignmentAnalysis
         }
 
         return violations;
+    }
+
+    private static HashSet<string>? ComputeInSet(BasicBlock block, HashSet<string> bareNames,
+        Dictionary<BasicBlock, HashSet<string>> outSets)
+    {
+        if (block.ExceptionPredecessors.Count > 0)
+            return new HashSet<string>();
+        if (block.Predecessors.Count > 0)
+        {
+            var inSet = new HashSet<string>(bareNames);
+            foreach (var pred in block.Predecessors)
+                inSet.IntersectWith(outSets[pred]);
+            return inSet;
+        }
+        return null;
     }
 
     private static void CollectAssignedNames(Expression target, HashSet<string> assigned)
