@@ -1,0 +1,21 @@
+# Nested collection literals: the emitter must use the semantic type,
+# not the enclosing annotation, for every level of nesting.
+
+def main() -> None:
+    # list of ints
+    xs: list[int] = [1, 2, 3]
+    print(xs[0], xs[1], xs[2])
+
+    # nested lists
+    nested: list[list[int]] = [[10, 20], [30, 40]]
+    print(nested[0][0], nested[0][1])
+    print(nested[1][0], nested[1][1])
+
+    # dict with list values
+    d: dict[str, list[int]] = {"x": [1, 2], "y": [3, 4]}
+    print(d["x"][0], d["x"][1])
+    print(d["y"][0], d["y"][1])
+
+    # set (basic sanity)
+    s: set[int] = {10, 20, 30}
+    print(len(s))
