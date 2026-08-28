@@ -327,10 +327,8 @@ internal partial class TypeChecker
                 // the type it resolved to IS the registry's own. A user type that merely spells a
                 // primitive name (reachable now only backticked, since the bare spelling is
                 // refused) owns its constructor — the same discipline ConstructorReferenceOf uses.
-                var primitiveOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
-                if (primitiveOverloads != null && primitiveOverloads.Count > 0
-                    && PrimitiveCatalog.IsPrimitive(id.Name)
-                    && ReferenceEquals(typeSymbol, _symbolTable.BuiltinRegistry.GetType(id.Name)))
+                var primitiveOverloads = PrimitiveConversionResolver.ResolveOverloads(typeSymbol, _symbolTable.BuiltinRegistry);
+                if (primitiveOverloads != null && primitiveOverloads.Count > 0)
                 {
                     // Route to builtin function overload resolution below
                     // (fall through to overload handling)
@@ -2891,6 +2889,21 @@ internal partial class TypeChecker
         FunctionCall call, FunctionType ft, List<SemanticType> argTypes,
         int totalArgCount, bool isNullConditionalCall, bool isOptionalNullConditional)
     {
+        // #1650: FunctionType has no parameter names, so keyword arguments cannot bind.
+        // Refuse them with a steer to pass positionally.
+        if (call.KeywordArguments.Length > 0)
+        {
+            foreach (var kwarg in call.KeywordArguments)
+            {
+                AddError(
+                    $"Keyword arguments are not supported when calling a function-typed value; " +
+                    $"pass '{kwarg.Name}' positionally",
+                    kwarg.LineStart, kwarg.ColumnStart,
+                    code: DiagnosticCodes.Semantic.KeywordArgOnFunctionType,
+                    span: kwarg.Span);
+            }
+        }
+
         var paramTypes = ft.ParameterTypes;
         var returnType = ft.ReturnType;
 

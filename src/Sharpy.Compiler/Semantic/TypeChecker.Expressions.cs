@@ -572,7 +572,7 @@ internal partial class TypeChecker
             // bytes joins this gate only outside member-access qualifier position, because
             // bytes.fromhex needs the type-reference path (#1583, #1347).
             // Non-primitive TypeSymbols remain Unknown — resolved at FunctionCall level.
-            TypeSymbol ts when PrimitiveCatalog.IsPrimitive(ts.Name) =>
+            TypeSymbol ts when PrimitiveConversionResolver.IsPrimitiveConversion(ts, _symbolTable.BuiltinRegistry) =>
                 SynthesizePrimitiveFunctionType(ts),
             TypeSymbol ts when ts.Name == Shared.BuiltinNames.Bytes
                 && !IsCurrentMemberAccessQualifier(id) =>
@@ -611,15 +611,14 @@ internal partial class TypeChecker
         if (expanded is BuiltinType bt)
         {
             var registryType = _symbolTable.BuiltinRegistry.GetType(bt.Name);
-            if (registryType != null && PrimitiveCatalog.IsPrimitive(registryType.Name))
+            if (registryType != null && PrimitiveConversionResolver.IsPrimitiveConversion(registryType, _symbolTable.BuiltinRegistry))
                 return SynthesizePrimitiveFunctionType(registryType);
             return new UserDefinedType { Name = bt.Name, Symbol = registryType };
         }
 
         if (expanded is UserDefinedType { Symbol: TypeSymbol ts })
         {
-            if (PrimitiveCatalog.IsPrimitive(ts.Name)
-                && ReferenceEquals(ts, _symbolTable.BuiltinRegistry.GetType(ts.Name)))
+            if (PrimitiveConversionResolver.IsPrimitiveConversion(ts, _symbolTable.BuiltinRegistry))
                 return SynthesizePrimitiveFunctionType(ts);
             return SemanticType.Unknown;
         }
@@ -637,15 +636,15 @@ internal partial class TypeChecker
         {
             var lookupName = aliasSymbol.TypeAnnotation.Name;
             var registryType = _symbolTable.BuiltinRegistry.GetType(lookupName);
-            if (registryType != null && PrimitiveCatalog.IsPrimitive(registryType.Name))
+            if (registryType != null && PrimitiveConversionResolver.IsPrimitiveConversion(registryType, _symbolTable.BuiltinRegistry))
                 return SynthesizePrimitiveFunctionType(registryType);
             return new UserDefinedType { Name = lookupName, Symbol = registryType };
         }
 
         if (expanded is UserDefinedType udt)
         {
-            if (udt.Symbol is TypeSymbol ts && PrimitiveCatalog.IsPrimitive(ts.Name)
-                && ReferenceEquals(ts, _symbolTable.BuiltinRegistry.GetType(ts.Name)))
+            if (udt.Symbol is TypeSymbol ts
+                && PrimitiveConversionResolver.IsPrimitiveConversion(ts, _symbolTable.BuiltinRegistry))
                 return SynthesizePrimitiveFunctionType(ts);
             return udt;
         }
@@ -655,7 +654,8 @@ internal partial class TypeChecker
 
     private SemanticType SynthesizePrimitiveFunctionType(TypeSymbol ts)
     {
-        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(ts.Name);
+        var overloads = PrimitiveConversionResolver.ResolveOverloads(ts, _symbolTable.BuiltinRegistry)
+            ?? _symbolTable.BuiltinRegistry.GetFunctionOverloads(ts.Name);
         if (overloads == null || overloads.Count == 0)
             return SemanticType.Unknown;
 
