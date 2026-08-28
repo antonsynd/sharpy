@@ -770,6 +770,11 @@ internal partial class TypeChecker
         }
         if (_semanticInfo.GetPatternType(typePattern) == null && resolvedType is not UnknownType)
             _semanticInfo.SetPatternType(typePattern, resolvedType);
+        if (resolvedType is not UnknownType && scrutineeType is not UnknownType
+            && IsAssignable(scrutineeType, resolvedType))
+        {
+            _semanticInfo.SetPatternTotality(typePattern, true);
+        }
         BindTypePatternCapture(typePattern, resolvedType);
     }
 

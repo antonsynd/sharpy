@@ -149,6 +149,7 @@ internal static class ExhaustivenessHelper
                 info?.GetPatternConstantSymbol(bp) == null
                 && info?.GetPatternUnionCase(bp) == null,
             AsPattern asp => IsIrrefutable(asp.Inner, info),
+            TypePattern tp => info?.GetPatternTotality(tp) == true,
             OrPattern or => or.Alternatives.Any(alt => IsIrrefutable(alt, info)),
             GuardPattern => false,
             _ => false
@@ -169,6 +170,8 @@ internal static class ExhaustivenessHelper
             AsPattern asp => DescribeIrrefutable(asp.Inner, info) is { } innerDesc
                 ? $"{innerDesc} as '{asp.Name.Name}'"
                 : null,
+            TypePattern tp when info?.GetPatternTotality(tp) == true
+                => $"total class pattern '{tp.Type.Name}()'",
             OrPattern or => or.Alternatives
                 .Select(alt => DescribeIrrefutable(alt, info))
                 .FirstOrDefault(d => d != null),

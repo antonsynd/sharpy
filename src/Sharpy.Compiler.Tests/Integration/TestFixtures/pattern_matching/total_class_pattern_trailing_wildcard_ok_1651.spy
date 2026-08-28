@@ -1,0 +1,8 @@
+# Positive control: total class pattern followed by irrefutable wildcard is legal (R1').
+def main():
+    x: int = 42
+    match x:
+        case int() as n:
+            print(n)
+        case _:
+            print("unreachable")

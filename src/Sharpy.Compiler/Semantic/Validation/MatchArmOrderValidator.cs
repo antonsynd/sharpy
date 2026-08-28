@@ -41,6 +41,23 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
             if (!ExhaustivenessHelper.IsIrrefutable(pattern, context.SemanticInfo))
                 continue;
 
+            bool isTotalTypePattern = IsTypeTotalPattern(pattern, context.SemanticInfo);
+            if (isTotalTypePattern)
+            {
+                bool hasRefutableFollower = false;
+                for (int j = i + 1; j < arms.Count; j++)
+                {
+                    if (arms[j].Guard != null
+                        || !ExhaustivenessHelper.IsIrrefutable(arms[j].Pattern, context.SemanticInfo))
+                    {
+                        hasRefutableFollower = true;
+                        break;
+                    }
+                }
+                if (!hasRefutableFollower)
+                    continue;
+            }
+
             var description = ExhaustivenessHelper.DescribeIrrefutable(pattern, context.SemanticInfo)
                 ?? "pattern";
             AddError(
@@ -50,6 +67,16 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
                 code: DiagnosticCodes.ValidationOverflow.IrrefutablePatternNotLast,
                 span: pattern.Span);
         }
+    }
+
+    private static bool IsTypeTotalPattern(Pattern pattern, SemanticInfo? info)
+    {
+        return pattern switch
+        {
+            TypePattern tp => info?.GetPatternTotality(tp) == true,
+            AsPattern { Inner: TypePattern tp } => info?.GetPatternTotality(tp) == true,
+            _ => false
+        };
     }
 
     private class MatchCollector : AstVisitor

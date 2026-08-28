@@ -214,6 +214,9 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Pattern, SemanticType> _patternTypes =
         new(ReferenceEqualityComparer.Instance);
 
+    private readonly ConcurrentDictionary<Pattern, bool> _patternTotality =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track expressions whose type was set to UnknownType due to a user error
     // (i.e., a diagnostic was already emitted for the node). This distinguishes
     // expected error-recovery Unknown types from unexpected ones (compiler bugs).
@@ -946,6 +949,16 @@ public class SemanticInfo : ISemanticQuery
         return _patternTypes.TryGetValue(pattern, out var type) ? type : null;
     }
 
+    public void SetPatternTotality(Pattern pattern, bool isTotal)
+    {
+        _patternTotality[pattern] = isTotal;
+    }
+
+    public bool? GetPatternTotality(Pattern pattern)
+    {
+        return _patternTotality.TryGetValue(pattern, out var isTotal) ? isTotal : null;
+    }
+
     /// <summary>
     /// Marks an expression as having UnknownType due to error recovery.
     /// Call this when the type is set to UnknownType because a user-facing diagnostic
@@ -1592,6 +1605,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._patternTypes)
             _patternTypes.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._patternTotality)
+            _patternTotality.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._errorRecoveryNodes)
             _errorRecoveryNodes.TryAdd(kvp.Key, kvp.Value);

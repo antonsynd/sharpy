@@ -1,0 +1,8 @@
+# Total class pattern followed by a refutable arm: SPY0700.
+def main():
+    x: int = 42
+    match x:
+        case int() as n:
+            print(n)
+        case 99:
+            print("ninety-nine")
