@@ -2140,6 +2140,12 @@ Convert an `int` to string without boxing.
 
 Convert a `long` to string without boxing.
 
+### `str(l: ulong) -> str`
+
+Convert a `ulong` to string without boxing. Without this overload C#
+widened `uint64` to `double` and `str(uint64(7))` printed `7.0`
+(the other unsigned widths widen to `long` and were already exact).
+
 ### `str(d: float) -> str`
 
 Convert a `double` to string without boxing.
