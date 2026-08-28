@@ -549,7 +549,7 @@ namespace Sharpy
                     return m.Result(translated);
                 }
 
-                string result;
+                string result = default;
                 if (count == 0)
                 {
                     result = this._Regex.Replace(s, StrEvaluator);
@@ -578,7 +578,7 @@ namespace Sharpy
                     return repl(reMatch);
                 }
 
-                string result;
+                string result = default;
                 if (count == 0)
                 {
                     result = this._Regex.Replace(s, CallableEvaluator);
