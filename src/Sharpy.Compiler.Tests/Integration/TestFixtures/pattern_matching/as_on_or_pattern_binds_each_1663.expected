@@ -1,1 +1,5 @@
-42
+bound 42
+bound hi
+each 2.5
+each [1, 2]
+other

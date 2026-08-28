@@ -384,6 +384,11 @@ internal partial class RoslynEmitter
                     }
                     var asInnerPattern = GenerateMatchPattern(
                         asPattern.Inner, memberGuards, ref matchVarCounter, scrutineeType);
+                    // `as` scopes over the whole or-pattern (PEP 634, #1663), and C#'s `and` binds
+                    // tighter than `or`: `A or B and var w` would re-associate as `A or (B and var w)`
+                    // and leave `w` unassigned on the A arm (CS0165). Parenthesize the inner.
+                    if (asInnerPattern.RawKind == (int)SyntaxKind.OrPattern)
+                        asInnerPattern = ParenthesizedPattern(asInnerPattern);
                     return BinaryPattern(SyntaxKind.AndPattern,
                         asInnerPattern,
                         VarPattern(designation));

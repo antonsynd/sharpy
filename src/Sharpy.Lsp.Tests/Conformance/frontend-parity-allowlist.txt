@@ -43,6 +43,7 @@ compile::imports/import_decorator_rejected
 compile::errors/parser_recovery_nested_brackets
 compile::errors/walrus_type_annotation_error
 compile::errors/parser_recovery_consecutive_errors
+compile::pattern_matching/as_on_unparenthesized_alternative_syntax_error_1663
 compile::errors/del_rejected
 compile::expressions/dict_spread_call
 compile::errors/inline_non_stub_body

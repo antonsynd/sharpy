@@ -1418,11 +1418,16 @@ public partial class Parser
 
     private Pattern ParsePattern()
     {
-        // Precedence: '|' (OR) is lowest; 'and' binds tighter (mirrors boolean precedence).
+        // Precedence (PEP 634 `as_pattern: or_pattern 'as' NAME`): `as` is the OUTERMOST
+        // combinator, '|' sits below it, and 'and' binds tighter than '|' (mirrors boolean
+        // precedence). So `case A() | B() as w:` binds `w` to whichever alternative matched —
+        // CPython's meaning — and `case int() as n | str() as n:` is a syntax error here as in
+        // CPython (#1663): the first `as n` closes the pattern and the `|` has nowhere to go.
+        // Parenthesize an alternative to bind inside it: `(int() as n) | (str() as n)`.
         var first = ParseAndPattern();
 
         if (Current.Type != TokenType.Pipe)
-            return first;
+            return Current.Type == TokenType.As ? ParseAsSuffix(first) : first;
 
         var alternatives = new List<Pattern> { first };
 
@@ -1438,7 +1443,7 @@ public partial class Parser
         {
             span = new Text.TextSpan(first.Span.Value.Start, lastAlt.Span.Value.End - first.Span.Value.Start);
         }
-        return new OrPattern
+        Pattern orPattern = new OrPattern
         {
             Alternatives = alternatives.ToImmutableArray(),
             LineStart = first.LineStart,
@@ -1447,20 +1452,40 @@ public partial class Parser
             ColumnEnd = lastAlt.ColumnEnd,
             Span = span
         };
+        return Current.Type == TokenType.As ? ParseAsSuffix(orPattern) : orPattern;
+    }
+
+    /// <summary>
+    /// Refuses a <c>|</c> that follows an <c>as</c> binding with a steer. The binding closed the
+    /// pattern, so the alternative has nowhere to go — CPython reports a bare "invalid syntax";
+    /// the message here names both valid spellings (#1663).
+    /// </summary>
+    private void RefuseAlternativeAfterAsBinding()
+    {
+        if (Current.Type != TokenType.Pipe)
+            return;
+        throw ReportError(
+            "An 'as' binding closes the pattern, so '|' cannot follow it. Write "
+            + "'A() | B() as name' to bind whichever alternative matched, or parenthesize the "
+            + "alternative to bind inside it: '(A() as name) | (B() as name)'",
+            Current.Line, Current.Column,
+            DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
     }
 
     /// <summary>
     /// Parses an and-pattern (<c>p1 and p2 and ...</c>), left-associative, binding tighter than
-    /// '|' and looser than 'as' (#991). Returns the single pattern when no 'and' follows.
+    /// '|' (#991). 'as' is not an operand here — it is the outermost combinator, parsed by
+    /// <see cref="ParsePattern"/> after the or-pattern (#1663); parenthesize an operand to bind
+    /// inside it. Returns the single pattern when no 'and' follows.
     /// </summary>
     private Pattern ParseAndPattern()
     {
-        var left = ParseAsPattern();
+        var left = ParseSinglePattern();
 
         while (Current.Type == TokenType.And)
         {
             Advance(); // consume 'and'
-            var right = ParseAsPattern();
+            var right = ParseSinglePattern();
 
             Text.TextSpan? span = null;
             if (left.Span.HasValue && right.Span.HasValue)
@@ -1481,13 +1506,14 @@ public partial class Parser
         return left;
     }
 
-    private Pattern ParseAsPattern()
+    /// <summary>
+    /// Parses the <c>as NAME</c> suffix that closes a pattern (the current token is <c>as</c>),
+    /// wrapping <paramref name="inner"/> — a single, and-, or or-pattern — in an
+    /// <see cref="AsPattern"/>. Called only from <see cref="ParsePattern"/>, so the binding scopes
+    /// over everything the pattern matched (PEP 634).
+    /// </summary>
+    private Pattern ParseAsSuffix(Pattern inner)
     {
-        var inner = ParseSinglePattern();
-
-        if (Current.Type != TokenType.As)
-            return inner;
-
         Advance(); // consume 'as'
         if (Current.Type != TokenType.Identifier)
         {
@@ -1507,6 +1533,7 @@ public partial class Parser
             ColumnEnd = nameToken.Column + nameToken.Length,
             Span = GetSpanFromToken(nameToken)
         };
+        RefuseAlternativeAfterAsBinding();
 
         Text.TextSpan? span = null;
         if (inner.Span.HasValue && name.Span.HasValue)
@@ -1746,7 +1773,7 @@ public partial class Parser
             }
 
             // Return a TypePattern for error recovery (without generic args);
-            // 'as' binding is handled by ParseAsPattern at the call site.
+            // 'as' binding is handled by ParseAsSuffix from ParsePattern.
             var endToken = Previous;
             return new TypePattern
             {
@@ -1764,7 +1791,7 @@ public partial class Parser
         // Check what's inside the parentheses
         if (Current.Type == TokenType.RightParen)
         {
-            // Type() — pure type pattern; 'as' binding is handled by ParseAsPattern.
+            // Type() — pure type pattern; 'as' binding is handled by ParseAsSuffix from ParsePattern.
             Advance(); // consume ')'
             var endToken = Previous; // the ')'
 

@@ -1,0 +1,10 @@
+# #1663: `as` closes the whole pattern (PEP 634), so `int() as n | str() as n` has nowhere to
+# put the `|` — a syntax error in CPython ("invalid syntax") and a parse error here. Write
+# `case int() | str() as n:` to bind the matched alternative, or `(int() as n) | (str() as n)`.
+def main():
+    x: object = 42
+    match x:
+        case int() as n | str() as n:
+            print(n)
+        case _:
+            print("other")

@@ -160,6 +160,8 @@ if condition:
 | Member access | `case Color.RED:` | `case Color.RED:` | ✅ Implemented |
 | Guard clause | `case x if x > 0:` | `when` clause | ✅ Implemented |
 | Type with binding | `case int() as n:` | `case int n:` | ✅ Implemented |
+| Self-matching builtin | `case int(n):` | `case int n:` | ✅ Implemented — PEP 634: `bool bytearray bytes dict float frozenset int list set str tuple` take exactly one positional sub-pattern, matched against the whole subject (SPY0363 otherwise) |
+| `as` binding | `case <pattern> as n:` | `case <pattern> and var n` | ✅ Implemented — `as` is the outermost combinator: `case A() \| B() as n:` binds `n` to whichever alternative matched |
 | Or | `case "a" \| "b":` | `case "a" or "b":` | ✅ Implemented |
 | Property | `case Point(x=0):` | `case Point { X: 0 }:` | ✅ Implemented |
 | Positional | `case Point(0, y):` | `case Point { X: 0 }:` (mapped via fields) | ✅ Implemented |
@@ -167,7 +169,7 @@ if condition:
 
 *Implementation*
 - *All pattern types map to C# 9.0 pattern matching. Guard clauses (`if expr`) are supported on any pattern via C# `when` clauses.*
-- *Or-patterns use C# `or` pattern (`BinaryPattern`). Binding patterns inside or-patterns are rejected (SPY0359) — use wildcard `_` instead.*
+- *Or-patterns use C# `or` pattern (`BinaryPattern`). A name bound on only some alternatives is rejected (SPY0359): `case (int() as n) | str():` leaves `n` unbound when `str()` matches. Bind after the or-pattern (`case int() | str() as n:`) or bind the same name inside every parenthesized alternative (`case (int() as n) | (str() as n):`); an unparenthesized `case int() as n | str() as n:` is a syntax error, as in CPython, because `as` closes the pattern.*
 - *Relational patterns use C# `RelationalPattern` and require numeric scrutinee types.*
 - *Positional patterns are mapped to property patterns using field declaration order (no `Deconstruct` required).*
 
@@ -394,8 +396,39 @@ fall-through arm **must be the last arm** (SPY0700). This matches CPython's rule
 A guarded irrefutable pattern (`case x if cond:`) is refutable and may appear anywhere.
 Parentheses do not change a pattern's meaning: `case (x):` is a *group* pattern — the same
 capture as `case x:` — and is ordered the same way; only a trailing comma (`case (x,):`) or two
-or more elements make a tuple pattern. A capture nested inside a refutable pattern (`case [x]:`,
-`case int() as n:`) does not make the arm irrefutable.
+or more elements make a tuple pattern. A capture nested inside a refutable pattern (`case [x]:`)
+does not make the arm irrefutable; a class pattern such as `case int() as n:` is irrefutable only
+through totality for the scrutinee's static type (next paragraph).
+
+**Class-pattern totality.** A class pattern with no sub-patterns (`case int():`,
+`case int() as n:`, `case int(n):`) is *total* for the scrutinee's static type when every value
+of that type is an instance of the pattern's type — `case int():` over an `int` scrutinee
+matches everything. Totality is a fact of the scrutinee's static type, recorded during semantic
+analysis, not of the pattern's spelling. A total class pattern followed by a **refutable** arm
+makes that arm unreachable and is refused (SPY0700), the same rule as a capture. Irrefutable
+arms after it (`case _:`, `case x:`) stay legal: they lower to C#'s `default:`, which the C#
+compiler never marks unreachable, so the program compiles and the total arm runs. (Before this
+rule the total arm reached the C# compiler and failed with CS8120 behind SPY0908.)
+
+```python
+# OK — the trailing wildcard is irrefutable
+def kind(x: int) -> str:
+    match x:
+        case int() as n:
+            return f"int {n}"
+        case _:
+            return "other"
+
+# SPY0700 — `case 99:` is refutable and can never run after a total `case int():`
+def kind2(x: int) -> str:
+    match x:
+        case int():
+            return "int"
+        case 99:           # error: total class pattern 'int()' makes remaining patterns unreachable
+            return "ninety-nine"
+        case _:
+            return "other"
+```
 
 ```python
 # OK — trailing capture

@@ -1,9 +1,22 @@
-def main():
-    x: object = 42
+# #1653: PEP 634 self-matching builtins — `case int(n):` binds n to the WHOLE subject, and
+# binds it with the builtin's type, not the scrutinee's. The annotated destinations are the
+# type probe (print alone never is): `m: int = n` is SPY0220 if n is typed `object`.
+def describe(x: object) -> str:
     match x:
         case int(n):
-            print(n)
+            m: int = n + 1
+            return f"int {m}"
         case str(s):
-            print(s)
+            t: str = s.upper()
+            return f"str {t}"
+        case float(f):
+            g: float = f * 2.0
+            return f"float {g}"
         case _:
-            print("other")
+            return "other"
+
+def main():
+    print(describe(42))
+    print(describe("hi"))
+    print(describe(1.5))
+    print(describe([1]))

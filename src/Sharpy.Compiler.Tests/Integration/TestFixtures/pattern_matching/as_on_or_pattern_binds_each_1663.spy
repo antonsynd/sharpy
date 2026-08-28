@@ -1,7 +1,19 @@
-def main():
-    x: object = 42
+# #1663: `as` is the outermost pattern combinator (PEP 634 `as_pattern: or_pattern 'as' NAME`),
+# so `case int() | str() as v:` binds v to whichever alternative matched. The parenthesized
+# spelling `(float() as f) | (list() as f)` binds inside each alternative under one name.
+# Outputs are python3's (3.12) for the same program.
+def describe(x: object) -> str:
     match x:
-        case int() as n | str() as n:
-            print(n)
+        case int() | str() as v:
+            return f"bound {v}"
+        case (float() as f) | (list() as f):
+            return f"each {f}"
         case _:
-            print("other")
+            return "other"
+
+def main():
+    print(describe(42))
+    print(describe("hi"))
+    print(describe(2.5))
+    print(describe([1, 2]))
+    print(describe(None))

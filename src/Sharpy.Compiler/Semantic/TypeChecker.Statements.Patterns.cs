@@ -293,15 +293,26 @@ internal partial class TypeChecker
 
                     if (allHaveAs)
                     {
+                        // `(A() as v) | (B() as v)`: one name bound under every alternative. Its
+                        // type is what EVERY alternative guarantees — the alternatives' common
+                        // ancestor — not the first alternative's own type: binding `v` as `float`
+                        // for `(float() as v) | (list() as v)` while the emitted `var v` is
+                        // `object` gave CS1503 behind SPY0908 (#1663).
+                        var alternativeTypes = new List<SemanticType>();
                         foreach (var alt in orPattern.Alternatives)
                         {
                             var effectiveAlt = alt is GuardPattern gp ? gp.Inner : alt;
                             var asAlt = (AsPattern)effectiveAlt;
                             CheckPattern(asAlt.Inner, scrutineeType);
+                            alternativeTypes.Add(
+                                _semanticInfo.GetPatternType(asAlt.Inner) ?? scrutineeType);
                         }
                         var firstAs = (AsPattern)(orPattern.Alternatives[0] is GuardPattern gp3
                             ? gp3.Inner : orPattern.Alternatives[0]);
-                        BindAsPatternCapture(firstAs, scrutineeType);
+                        var joinedType = alternativeTypes.All(t => t.Equals(alternativeTypes[0]))
+                            ? alternativeTypes[0]
+                            : FindLeastCommonAncestor(alternativeTypes);
+                        BindAsPatternCapture(firstAs, scrutineeType, capturedTypeOverride: joinedType);
                         break;
                     }
 
@@ -485,11 +496,12 @@ internal partial class TypeChecker
         BindAsPatternCapture(asPattern, scrutineeType);
     }
 
-    private void BindAsPatternCapture(AsPattern asPattern, SemanticType scrutineeType)
+    private void BindAsPatternCapture(
+        AsPattern asPattern, SemanticType scrutineeType, SemanticType? capturedTypeOverride = null)
     {
-        var capturedType = scrutineeType;
+        var capturedType = capturedTypeOverride ?? scrutineeType;
 
-        if (asPattern.Inner is TypePattern typeInner)
+        if (capturedTypeOverride == null && asPattern.Inner is TypePattern typeInner)
         {
             var patternType = _semanticInfo.GetPatternType(typeInner);
             if (patternType != null)
@@ -979,8 +991,22 @@ internal partial class TypeChecker
                     span: positionalPattern.Span);
                 return;
             }
-            CheckPattern(positionalPattern.Elements[0], scrutineeType);
-            _semanticInfo.SetPatternType(positionalPattern, scrutineeType);
+            // PEP 634: the single sub-pattern matches the WHOLE subject, which at that point
+            // is known to be an instance of the builtin — so it binds with the builtin's type,
+            // exactly as `case int() as n:` does. Binding against the scrutinee's static type
+            // instead typed `n` as `object` under an `object` scrutinee (#1653): the value
+            // matched, the type did not.
+            var selfMatchedType = _typeResolver.ResolveTypeAnnotation(
+                positionalPattern.Type, bareGenericFillsFromContext: true);
+            if (selfMatchedType is UnknownType)
+                selfMatchedType = scrutineeType;
+            CheckPattern(positionalPattern.Elements[0], selfMatchedType);
+            _semanticInfo.SetPatternType(positionalPattern, selfMatchedType);
+            if (selfMatchedType is not UnknownType && scrutineeType is not UnknownType
+                && IsAssignable(scrutineeType, selfMatchedType))
+            {
+                _semanticInfo.SetPatternTotality(positionalPattern, true);
+            }
             return;
         }
 

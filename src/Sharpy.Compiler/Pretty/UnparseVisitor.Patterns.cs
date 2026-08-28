@@ -95,15 +95,31 @@ internal sealed partial class UnparseVisitor
         {
             if (i > 0)
                 _w.Write(" | ");
-            Visit(node.Alternatives[i]);
+            // `as` is the outermost combinator (PEP 634, #1663): an as-pattern that is an
+            // ALTERNATIVE only got there through parentheses, and must leave with them —
+            // `float() as f | list() as f` re-parses as a syntax error.
+            VisitPatternOperand(node.Alternatives[i], parenthesize: node.Alternatives[i] is AsPattern);
         }
     }
 
     public override void VisitAndPattern(AndPattern node)
     {
-        Visit(node.Left);
+        // 'and' binds tighter than '|' and 'as' (#991, #1663): either as an operand needs parens.
+        VisitPatternOperand(node.Left, parenthesize: node.Left is AsPattern or OrPattern);
         _w.Write(" and ");
-        Visit(node.Right);
+        VisitPatternOperand(node.Right, parenthesize: node.Right is AsPattern or OrPattern);
+    }
+
+    private void VisitPatternOperand(Pattern operand, bool parenthesize)
+    {
+        if (!parenthesize)
+        {
+            Visit(operand);
+            return;
+        }
+        _w.Write("(");
+        Visit(operand);
+        _w.Write(")");
     }
 
     public override void VisitAsPattern(AsPattern node)

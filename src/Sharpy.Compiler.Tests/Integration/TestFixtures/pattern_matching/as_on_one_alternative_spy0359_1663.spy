@@ -1,7 +1,11 @@
+# #1663: an `as` binder on ONE alternative of an or-pattern leaves the name unbound on the
+# other alternatives — CPython refuses it ("alternative patterns bind different names"); Sharpy
+# refuses with SPY0359. The alternative must be parenthesized to put `as` inside it at all:
+# unparenthesized `int() as n | str()` is a syntax error (as_on_unparenthesized_alternative_1663).
 def main():
     x: object = 42
     match x:
-        case int() as n | str():
+        case (int() as n) | str():
             print(n)
         case _:
             print("other")
