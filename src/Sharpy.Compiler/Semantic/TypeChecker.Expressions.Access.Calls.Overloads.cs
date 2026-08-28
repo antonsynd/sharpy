@@ -953,7 +953,13 @@ internal partial class TypeChecker
         // spelling, so both are pinned by the expected function type. Before this arm the
         // qualified spelling fell through to the synthesized `(__synth_T0) -> int` and was
         // refused with SPY0220 while the bare spelling ran.
+        //
+        // Only a module-qualified NAME PATH can spell such an alias; a computed receiver
+        // (`super().age`, `make().v`, `xs[0].v`) never can, and handing it to the resolver checks
+        // the receiver out of turn — `super().age` in value position reported SPY0287 (caught by
+        // the 2026-08-28 gate on properties/property_inheritance_0029).
         if (reference is MemberAccess aliasQualified
+            && IsModuleQualifiedNamePath(aliasQualified)
             && TryResolveTypeSymbolFromMemberAccess(aliasQualified, out var qualifiedAlias) is { } aliasTarget
             && qualifiedAlias != null)
         {
@@ -1931,6 +1937,20 @@ internal partial class TypeChecker
     }
 
     /// <summary>Renders a member access back to source form for a diagnostic suggestion.</summary>
+    /// <summary>
+    /// True when <paramref name="memberAccess"/> is a dotted NAME path whose root identifier
+    /// denotes a module (<c>lib.Handle</c>, <c>pkg.lib.Handle</c>) — the only shape a
+    /// module-qualified alias can take. Purely syntactic plus one symbol lookup: it never checks
+    /// an expression, so a computed receiver is rejected without side effects.
+    /// </summary>
+    private bool IsModuleQualifiedNamePath(MemberAccess memberAccess)
+    {
+        Expression root = memberAccess.Object;
+        while (root is MemberAccess nested)
+            root = nested.Object;
+        return root is Identifier rootId && _symbolTable.Lookup(rootId.Name) is ModuleSymbol;
+    }
+
     private static string DescribeMemberPath(MemberAccess memberAccess) => memberAccess.Object switch
     {
         Identifier objectId => $"{objectId.Name}.{memberAccess.Member}",

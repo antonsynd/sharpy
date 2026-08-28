@@ -1,0 +1,47 @@
+# #1636 class guard: a member access on a COMPUTED receiver in value position is never a
+# module-qualified alias (`lib.Handle`), so the constructor-reference classifier must not
+# resolve it — resolving it checks the receiver out of turn, and `super().age` reported
+# SPY0287 "super() must be followed by a method call" (caught by the 2026-08-28 gate on
+# properties/property_inheritance_0029). Cells: super() receiver, call receiver, index
+# receiver, parenthesized receiver, chained call receiver.
+
+class Person:
+    _age: int
+
+    def __init__(self, age: int):
+        self._age = age
+
+    @virtual
+    property get age(self) -> int:
+        return self._age
+
+class Employee(Person):
+    def __init__(self, age: int):
+        super().__init__(age)
+
+    @override
+    property get age(self) -> int:
+        base_age: int = super().age
+        return base_age + 1
+
+class Box:
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+    def twin(self) -> Box:
+        return Box(self.v * 2)
+
+def make(v: int) -> Box:
+    return Box(v)
+
+def main() -> None:
+    e = Employee(41)
+    a: int = e.age
+    b: int = make(7).v
+    boxes: list[Box] = [Box(1), Box(2)]
+    c: int = boxes[1].v
+    d: int = (make(3)).v
+    f: int = make(5).twin().v
+    print(a, b, c, d, f)
