@@ -1,0 +1,18 @@
+# #1650: a bound method stored as a VALUE has a FunctionType with no parameter names, so a
+# keyword argument on it is refused with SPY0279 — the honest border. Contrast with the
+# parenthesized method CALL `(s.scale)(2, times=4)`, which binds by name (see
+# kwargs_on_parenthesized_callee_ok_1650).
+
+class Scaler:
+    factor: int
+
+    def __init__(self, factor: int = 2) -> None:
+        self.factor = factor
+
+    def scale(self, value: int, *, times: int = 1) -> int:
+        return value * self.factor * times
+
+def main() -> None:
+    s = Scaler(factor=3)
+    g = s.scale
+    print(g(2, times=4))

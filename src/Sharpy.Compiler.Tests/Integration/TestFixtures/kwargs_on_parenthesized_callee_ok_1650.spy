@@ -1,0 +1,26 @@
+# #1650 positive control: keyword arguments bind through a PARENTHESIZED callee exactly as
+# through the bare spelling. Redundant parentheses never change what a call denotes (#1170),
+# so `(obj.method)(k=1)` is the method call `obj.method(k=1)`, not a call through a
+# function-typed value — SPY0279 must not fire here. The MetamorphicCorpus ParensWrapCallee
+# transform wraps every callee this way; this fixture is its standing positive control.
+
+class Scaler:
+    factor: int
+
+    def __init__(self, factor: int = 2) -> None:
+        self.factor = factor
+
+    def scale(self, value: int, *, times: int = 1) -> int:
+        return value * self.factor * times
+
+def combine(x: int = 1, *, y: int = 2) -> int:
+    return x + y
+
+def main() -> None:
+    s = Scaler(factor=3)
+    print(s.scale(2, times=4))
+    print((s.scale)(2, times=4))
+    print(((s.scale))(2, times=5))
+    print(combine(x=3, y=4))
+    print((combine)(x=3, y=4))
+    print(((combine))(y=10))

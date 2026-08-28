@@ -556,7 +556,7 @@ internal partial class TypeChecker
         // (which causes double validation, e.g., super().__init__() being flagged as duplicate).
         if (calleeType is FunctionType ft)
         {
-            return CheckLambdaCall(call, ft, argTypes, totalArgCount,
+            return CheckLambdaCall(call, callee, ft, argTypes, totalArgCount,
                 isNullConditionalCall, isOptionalNullConditional);
         }
 
@@ -2896,14 +2896,20 @@ internal partial class TypeChecker
     /// Validates a function call against a FunctionType (lambda/delegate calls without a FunctionSymbol).
     /// </summary>
     private SemanticType CheckLambdaCall(
-        FunctionCall call, FunctionType ft, List<SemanticType> argTypes,
+        FunctionCall call, Expression callee, FunctionType ft, List<SemanticType> argTypes,
         int totalArgCount, bool isNullConditionalCall, bool isOptionalNullConditional)
     {
         // #1650: FunctionType has no parameter names, so keyword arguments cannot bind.
         // Refuse them with a steer to pass positionally — but only for true function-typed
         // values (identifiers/lambdas), not member-access method calls that fell through
         // without a FunctionSymbol (e.g. super().__init__(), which has named parameters).
-        if (call.KeywordArguments.Length > 0 && call.Function is not MemberAccess)
+        //
+        // The shape test reads the CANONICAL callee (#1170), never `call.Function`: redundant
+        // parentheses do not change what a call denotes, so `(obj.method)(k=1)` is the same
+        // method call as `obj.method(k=1)`. Testing the surface node refused every
+        // parenthesized method call with a keyword argument — the MetamorphicCorpus
+        // ParensWrapCallee transform turned eight compile-clean fixtures red with SPY0279.
+        if (call.KeywordArguments.Length > 0 && callee is not MemberAccess)
         {
             foreach (var kwarg in call.KeywordArguments)
             {
