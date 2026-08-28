@@ -384,6 +384,15 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                 CollectDefinitionsFromPattern(andPattern.Right, defined, parameters);
                 break;
 
+            case AsPattern asPattern:
+                if (!parameters.Contains(asPattern.Name.Name))
+                {
+                    defined[asPattern.Name.Name] = new VariableInfo(
+                        asPattern.Name.LineStart, asPattern.Name.ColumnStart, asPattern.Name.Span, false);
+                }
+                CollectDefinitionsFromPattern(asPattern.Inner, defined, parameters);
+                break;
+
             case GuardPattern guardPattern:
                 CollectDefinitionsFromPattern(guardPattern.Inner, defined, parameters);
                 break;

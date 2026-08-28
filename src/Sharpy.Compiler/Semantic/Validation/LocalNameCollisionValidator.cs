@@ -161,6 +161,14 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
         base.VisitTypePattern(node);
     }
 
+    public override void VisitAsPattern(AsPattern node)
+    {
+        Declare(node.Name.Name, node.Name.IsNameBacktickEscaped,
+            node.Name.LineStart, node.Name.ColumnStart);
+
+        base.VisitAsPattern(node);
+    }
+
     public override void VisitLambdaExpression(LambdaExpression node)
     {
         // A lambda parameter is a local of the enclosing C# body, but a same-spelling collision

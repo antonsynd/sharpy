@@ -1,0 +1,7 @@
+def main():
+    x: object = 42
+    match x:
+        case int() as n | str():
+            print(n)
+        case _:
+            print("other")

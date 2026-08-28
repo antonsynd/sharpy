@@ -337,6 +337,10 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                 MarkPatternBound(andPattern.Left, scope, semanticInfo);
                 MarkPatternBound(andPattern.Right, scope, semanticInfo);
                 break;
+            case AsPattern asPattern:
+                scope.MarkBound(asPattern.Name.Name);
+                MarkPatternBound(asPattern.Inner, scope, semanticInfo);
+                break;
             case GuardPattern guard:
                 MarkPatternBound(guard.Inner, scope, semanticInfo);
                 break;

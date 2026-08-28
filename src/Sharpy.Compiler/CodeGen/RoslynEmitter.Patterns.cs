@@ -270,121 +270,7 @@ internal partial class RoslynEmitter
                 }
 
             case TypePattern typePattern:
-                {
-                    // Check if this is a union case pattern (e.g., case Point(): matching Shape)
-                    var unionCase = _context.SemanticInfo?.GetPatternUnionCase(typePattern);
-
-                    // #1358: the Some case of an un-narrowed Optional scrutinee. This MUST be tested
-                    // before the general union-case arm below: an Optional's synthetic Some carries
-                    // the synthetic `Optional` union as its BaseType, so BuildUnionCaseTypeSyntax
-                    // would render `Optional<T>.Some` — a nested type Sharpy.Optional<T> does not
-                    // have, with a `T` that is not in scope. That turns #1358's CS8121 into a
-                    // different ICE rather than fixing it, which is why the semantic and emitter
-                    // halves of #1358 cannot land separately.
-                    //
-                    // Optional<T>.Deconstruct(out bool hasValue, out T value), so the Some case is
-                    // the positional subpattern (true, <payload>) over the RAW Optional<T> — the same
-                    // shape `case Some(v):` already emits, and the mirror of `case None:` → (false, _)
-                    // in the LiteralPattern arm above. The subject is never unwrapped.
-                    if (unionCase?.Name == WellKnownCaseNames.Some && scrutineeType is OptionalType)
-                    {
-                        var payloadTypeSyntax = _context.SemanticInfo?.GetPatternType(typePattern) is { } payloadType
-                            ? _typeMapper.MapSemanticType(payloadType)
-                            : _typeMapper.MapType(typePattern.Type);
-
-                        PatternSyntax payloadPattern;
-                        if (typePattern.BindingName != null)
-                        {
-                            var payloadVarName = GetMangledVariableName(typePattern.BindingName, isNewDeclaration: true);
-                            payloadPattern = DeclarationPattern(payloadTypeSyntax,
-                                SingleVariableDesignation(Identifier(payloadVarName)));
-                        }
-                        else
-                        {
-                            payloadPattern = DeclarationPattern(payloadTypeSyntax, DiscardDesignation());
-                        }
-
-                        return RecursivePattern()
-                            .WithPositionalPatternClause(
-                                PositionalPatternClause(SeparatedList(new[]
-                                {
-                                    Subpattern(ConstantPattern(LiteralExpression(SyntaxKind.TrueLiteralExpression))),
-                                    Subpattern(payloadPattern)
-                                })));
-                    }
-
-                    if (unionCase != null)
-                    {
-                        var caseTypeSyntax = BuildUnionCaseTypeSyntax(unionCase, scrutineeType);
-                        if (typePattern.BindingName != null)
-                        {
-                            var varName = GetMangledVariableName(typePattern.BindingName, isNewDeclaration: true);
-                            return DeclarationPattern(caseTypeSyntax, SingleVariableDesignation(Identifier(varName)));
-                        }
-                        return DeclarationPattern(caseTypeSyntax, DiscardDesignation());
-                    }
-
-                    // Bare `case list()` against an `array[T]` scrutinee (e.g. a CLR
-                    // object?[] from interop): the semantic layer resolved the pattern to
-                    // the scrutinee's array type, so lower to a C# array declaration pattern
-                    // (`T[] r`) — a raw CLR array matches it and indexing on the binding
-                    // lowers to ArrayHelpers.GetItem.
-                    if (typePattern.Type.TypeArguments.Length == 0
-                        && typePattern.Type.Name == BuiltinNames.List
-                        && _context.SemanticInfo?.GetPatternType(typePattern)
-                            is GenericType { Name: BuiltinNames.Array } arrayPatternType)
-                    {
-                        var arrayTypeSyntax = _typeMapper.MapSemanticType(arrayPatternType);
-                        if (typePattern.BindingName != null)
-                        {
-                            var arrayVarName = GetMangledVariableName(typePattern.BindingName, isNewDeclaration: true);
-                            return DeclarationPattern(arrayTypeSyntax, SingleVariableDesignation(Identifier(arrayVarName)));
-                        }
-                        return DeclarationPattern(arrayTypeSyntax, DiscardDesignation());
-                    }
-
-                    // Non-generic collection fallback: `case list()` / `case dict()` /
-                    // `case set()` (no type arguments) against an `object` scrutinee cannot
-                    // use the generic Sharpy collection type (e.g. Sharpy.List<object>), which
-                    // would only match that exact closed generic.
-                    // All three use Sharpy protocol interfaces: IList (#876), IDict (#869),
-                    // ISet (#877). These are implemented by every generic instantiation via
-                    // explicit boxing adapters. Name-mangled member access resolves structurally.
-                    if (typePattern.Type.TypeArguments.Length == 0 && IsObjectType(scrutineeType))
-                    {
-                        var nonGenericInterface = typePattern.Type.Name switch
-                        {
-                            BuiltinNames.List => MakeGlobalQualifiedName("Sharpy", "IList"),
-                            BuiltinNames.Dict => MakeGlobalQualifiedName("Sharpy", "IDict"),
-                            BuiltinNames.Set => MakeGlobalQualifiedName("Sharpy", "ISet"),
-                            _ => null
-                        };
-                        if (nonGenericInterface != null)
-                        {
-                            if (typePattern.BindingName != null)
-                            {
-                                var bindVarName = GetMangledVariableName(typePattern.BindingName, isNewDeclaration: true);
-                                return DeclarationPattern(nonGenericInterface, SingleVariableDesignation(Identifier(bindVarName)));
-                            }
-                            return DeclarationPattern(nonGenericInterface, DiscardDesignation());
-                        }
-                    }
-
-                    // A bare generic name like `case Box():` names no runtime type on its own, so the
-                    // semantic phase filled its argument vector from the scrutinee and recorded the
-                    // result as the pattern's type (#1235). Reading that here is what stops the open
-                    // `Box<T>` from being emitted (CS0305 behind SPY0908); mapping the written
-                    // annotation is only right when nothing was decided.
-                    var typeSyntax = _context.SemanticInfo?.GetPatternType(typePattern) is { } decidedPatternType
-                        ? _typeMapper.MapSemanticType(decidedPatternType)
-                        : _typeMapper.MapType(typePattern.Type);
-                    if (typePattern.BindingName != null)
-                    {
-                        var varName = GetMangledVariableName(typePattern.BindingName, isNewDeclaration: true);
-                        return DeclarationPattern(typeSyntax, SingleVariableDesignation(Identifier(varName)));
-                    }
-                    return DeclarationPattern(typeSyntax, DiscardDesignation());
-                }
+                return GenerateTypePattern(typePattern, DiscardDesignation(), scrutineeType);
 
             case RelationalPattern relational:
                 {
@@ -455,6 +341,27 @@ internal partial class RoslynEmitter
                         return VarPattern(SingleVariableDesignation(Identifier(tempVarName)));
                     }
 
+                    // Or-pattern where every alternative is `as name`: strip the `as` wrappers,
+                    // build the or from the inner patterns, and bind once with `and var name`.
+                    // C# does not allow variable designations inside `or` patterns.
+                    if (orPattern.Alternatives.All(a => a is AsPattern))
+                    {
+                        var firstAs = (AsPattern)orPattern.Alternatives[0];
+                        var asVarName = GetMangledVariableName(firstAs.Name, isNewDeclaration: true);
+                        PatternSyntax orResult = GenerateMatchPattern(
+                            firstAs.Inner, memberGuards, ref matchVarCounter, scrutineeType);
+                        for (int i = 1; i < orPattern.Alternatives.Length; i++)
+                        {
+                            var innerAlt = ((AsPattern)orPattern.Alternatives[i]).Inner;
+                            var rightInner = GenerateMatchPattern(
+                                innerAlt, memberGuards, ref matchVarCounter, scrutineeType);
+                            orResult = BinaryPattern(SyntaxKind.OrPattern, orResult, rightInner);
+                        }
+                        return BinaryPattern(SyntaxKind.AndPattern,
+                            ParenthesizedPattern(orResult),
+                            VarPattern(SingleVariableDesignation(Identifier(asVarName))));
+                    }
+
                     // Simple or-pattern (including union case or-patterns): use C# `or` pattern syntax
                     PatternSyntax result = GenerateMatchPattern(
                         orPattern.Alternatives[0], memberGuards, ref matchVarCounter, scrutineeType);
@@ -465,6 +372,21 @@ internal partial class RoslynEmitter
                         result = BinaryPattern(SyntaxKind.OrPattern, result, right);
                     }
                     return result;
+                }
+
+            case AsPattern asPattern:
+                {
+                    var varName = GetMangledVariableName(asPattern.Name, isNewDeclaration: true);
+                    var designation = SingleVariableDesignation(Identifier(varName));
+                    if (asPattern.Inner is TypePattern tp)
+                    {
+                        return GenerateTypePattern(tp, designation, scrutineeType);
+                    }
+                    var asInnerPattern = GenerateMatchPattern(
+                        asPattern.Inner, memberGuards, ref matchVarCounter, scrutineeType);
+                    return BinaryPattern(SyntaxKind.AndPattern,
+                        asInnerPattern,
+                        VarPattern(designation));
                 }
 
             case GuardPattern guardPattern:
@@ -839,5 +761,61 @@ internal partial class RoslynEmitter
         }
 
         return SwitchExpression(scrutineeExpr, SeparatedList(arms));
+    }
+
+    private PatternSyntax GenerateTypePattern(
+        TypePattern typePattern, VariableDesignationSyntax designation, SemanticType? scrutineeType)
+    {
+        var unionCase = _context.SemanticInfo?.GetPatternUnionCase(typePattern);
+
+        if (unionCase?.Name == WellKnownCaseNames.Some && scrutineeType is OptionalType)
+        {
+            var payloadTypeSyntax = _context.SemanticInfo?.GetPatternType(typePattern) is { } payloadType
+                ? _typeMapper.MapSemanticType(payloadType)
+                : _typeMapper.MapType(typePattern.Type);
+
+            var payloadPattern = DeclarationPattern(payloadTypeSyntax, designation);
+
+            return RecursivePattern()
+                .WithPositionalPatternClause(
+                    PositionalPatternClause(SeparatedList(new[]
+                    {
+                        Subpattern(ConstantPattern(LiteralExpression(SyntaxKind.TrueLiteralExpression))),
+                        Subpattern(payloadPattern)
+                    })));
+        }
+
+        if (unionCase != null)
+        {
+            var caseTypeSyntax = BuildUnionCaseTypeSyntax(unionCase, scrutineeType);
+            return DeclarationPattern(caseTypeSyntax, designation);
+        }
+
+        if (typePattern.Type.TypeArguments.Length == 0
+            && typePattern.Type.Name == BuiltinNames.List
+            && _context.SemanticInfo?.GetPatternType(typePattern)
+                is GenericType { Name: BuiltinNames.Array } arrayPatternType)
+        {
+            var arrayTypeSyntax = _typeMapper.MapSemanticType(arrayPatternType);
+            return DeclarationPattern(arrayTypeSyntax, designation);
+        }
+
+        if (typePattern.Type.TypeArguments.Length == 0 && IsObjectType(scrutineeType))
+        {
+            var nonGenericInterface = typePattern.Type.Name switch
+            {
+                BuiltinNames.List => MakeGlobalQualifiedName("Sharpy", "IList"),
+                BuiltinNames.Dict => MakeGlobalQualifiedName("Sharpy", "IDict"),
+                BuiltinNames.Set => MakeGlobalQualifiedName("Sharpy", "ISet"),
+                _ => null
+            };
+            if (nonGenericInterface != null)
+                return DeclarationPattern(nonGenericInterface, designation);
+        }
+
+        var typeSyntax = _context.SemanticInfo?.GetPatternType(typePattern) is { } decidedPatternType
+            ? _typeMapper.MapSemanticType(decidedPatternType)
+            : _typeMapper.MapType(typePattern.Type);
+        return DeclarationPattern(typeSyntax, designation);
     }
 }

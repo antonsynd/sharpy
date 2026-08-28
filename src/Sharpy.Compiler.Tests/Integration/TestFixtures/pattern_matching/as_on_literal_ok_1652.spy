@@ -1,0 +1,7 @@
+def main():
+    x: int = 42
+    match x:
+        case 42 as n:
+            print(n)
+        case _:
+            print("other")

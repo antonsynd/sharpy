@@ -122,6 +122,10 @@ internal static class ExhaustivenessHelper
                 }
                 break;
 
+            case AsPattern asPattern:
+                CollectCoveredCases(asPattern.Inner, semanticInfo, covered);
+                break;
+
             case OrPattern orPattern:
                 foreach (var alt in orPattern.Alternatives)
                 {
@@ -144,6 +148,7 @@ internal static class ExhaustivenessHelper
             BindingPattern bp =>
                 info?.GetPatternConstantSymbol(bp) == null
                 && info?.GetPatternUnionCase(bp) == null,
+            AsPattern asp => IsIrrefutable(asp.Inner, info),
             OrPattern or => or.Alternatives.Any(alt => IsIrrefutable(alt, info)),
             GuardPattern => false,
             _ => false
@@ -161,6 +166,9 @@ internal static class ExhaustivenessHelper
             WildcardPattern => "wildcard",
             BindingPattern bp when info?.GetPatternConstantSymbol(bp) == null
                 && info?.GetPatternUnionCase(bp) == null => $"name capture '{bp.Name.Name}'",
+            AsPattern asp => DescribeIrrefutable(asp.Inner, info) is { } innerDesc
+                ? $"{innerDesc} as '{asp.Name.Name}'"
+                : null,
             OrPattern or => or.Alternatives
                 .Select(alt => DescribeIrrefutable(alt, info))
                 .FirstOrDefault(d => d != null),

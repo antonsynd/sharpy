@@ -1451,16 +1451,16 @@ public partial class Parser
 
     /// <summary>
     /// Parses an and-pattern (<c>p1 and p2 and ...</c>), left-associative, binding tighter than
-    /// '|' and looser than a single pattern (#991). Returns the single pattern when no 'and' follows.
+    /// '|' and looser than 'as' (#991). Returns the single pattern when no 'and' follows.
     /// </summary>
     private Pattern ParseAndPattern()
     {
-        var left = ParseSinglePattern();
+        var left = ParseAsPattern();
 
         while (Current.Type == TokenType.And)
         {
             Advance(); // consume 'and'
-            var right = ParseSinglePattern();
+            var right = ParseAsPattern();
 
             Text.TextSpan? span = null;
             if (left.Span.HasValue && right.Span.HasValue)
@@ -1479,6 +1479,49 @@ public partial class Parser
         }
 
         return left;
+    }
+
+    private Pattern ParseAsPattern()
+    {
+        var inner = ParseSinglePattern();
+
+        if (Current.Type != TokenType.As)
+            return inner;
+
+        Advance(); // consume 'as'
+        if (Current.Type != TokenType.Identifier)
+        {
+            throw ReportError($"Expected identifier after 'as' in pattern, got '{Current.Value}'",
+                Current.Line, Current.Column,
+                DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
+        }
+        var nameToken = Current;
+        Advance();
+
+        var name = new Ast.Identifier
+        {
+            Name = nameToken.Value,
+            LineStart = nameToken.Line,
+            ColumnStart = nameToken.Column,
+            LineEnd = nameToken.Line,
+            ColumnEnd = nameToken.Column + nameToken.Length,
+            Span = GetSpanFromToken(nameToken)
+        };
+
+        Text.TextSpan? span = null;
+        if (inner.Span.HasValue && name.Span.HasValue)
+            span = new Text.TextSpan(inner.Span.Value.Start, name.Span.Value.End - inner.Span.Value.Start);
+
+        return new AsPattern
+        {
+            Inner = inner,
+            Name = name,
+            LineStart = inner.LineStart,
+            ColumnStart = inner.ColumnStart,
+            LineEnd = nameToken.Line,
+            ColumnEnd = nameToken.Column + nameToken.Length,
+            Span = span
+        };
     }
 
     private Pattern ParseSinglePattern()
@@ -1702,34 +1745,12 @@ public partial class Parser
                 }
             }
 
-            // Check for 'as' binding after the consumed pattern
-            Ast.Identifier? recoveryBindingName = null;
-            Token endToken = Previous;
-            if (Current.Type == TokenType.As)
-            {
-                Advance(); // consume 'as'
-                if (Current.Type == TokenType.Identifier)
-                {
-                    var nameToken = Current;
-                    Advance();
-                    endToken = nameToken;
-                    recoveryBindingName = new Ast.Identifier
-                    {
-                        Name = nameToken.Value,
-                        LineStart = nameToken.Line,
-                        ColumnStart = nameToken.Column,
-                        LineEnd = nameToken.Line,
-                        ColumnEnd = nameToken.Column + nameToken.Length,
-                        Span = GetSpanFromToken(nameToken)
-                    };
-                }
-            }
-
-            // Return a TypePattern for error recovery (without generic args)
+            // Return a TypePattern for error recovery (without generic args);
+            // 'as' binding is handled by ParseAsPattern at the call site.
+            var endToken = Previous;
             return new TypePattern
             {
                 Type = typeAnnotation,
-                BindingName = recoveryBindingName,
                 LineStart = typeToken.Line,
                 ColumnStart = typeToken.Column,
                 LineEnd = endToken.Line,
@@ -1743,43 +1764,13 @@ public partial class Parser
         // Check what's inside the parentheses
         if (Current.Type == TokenType.RightParen)
         {
-            // Type() or Type() as name — pure type pattern
+            // Type() — pure type pattern; 'as' binding is handled by ParseAsPattern.
             Advance(); // consume ')'
-
-            Ast.Identifier? bindingName = null;
-            Token endToken;
-
-            if (Current.Type == TokenType.As)
-            {
-                Advance(); // consume 'as'
-                if (Current.Type != TokenType.Identifier)
-                {
-                    throw ReportError($"Expected identifier after 'as' in type pattern, got '{Current.Value}'",
-                        Current.Line, Current.Column,
-                        DiagnosticCodes.Parser.ExpectedPattern, span: CurrentSpan);
-                }
-                var nameToken = Current;
-                Advance();
-                endToken = nameToken;
-                bindingName = new Ast.Identifier
-                {
-                    Name = nameToken.Value,
-                    LineStart = nameToken.Line,
-                    ColumnStart = nameToken.Column,
-                    LineEnd = nameToken.Line,
-                    ColumnEnd = nameToken.Column + nameToken.Length,
-                    Span = GetSpanFromToken(nameToken)
-                };
-            }
-            else
-            {
-                endToken = Previous; // the ')'
-            }
+            var endToken = Previous; // the ')'
 
             return new TypePattern
             {
                 Type = typeAnnotation,
-                BindingName = bindingName,
                 LineStart = typeToken.Line,
                 ColumnStart = typeToken.Column,
                 LineEnd = endToken.Line,

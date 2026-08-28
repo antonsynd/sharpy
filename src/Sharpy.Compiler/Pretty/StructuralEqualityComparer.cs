@@ -115,6 +115,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             OrPattern a => NodesEqual(a.Alternatives, ((OrPattern)y).Alternatives),
             AndPattern a => Equals(a.Left, ((AndPattern)y).Left) && Equals(a.Right, ((AndPattern)y).Right),
             GuardPattern a => Equals(a.Inner, ((GuardPattern)y).Inner) && Equals(a.Guard, ((GuardPattern)y).Guard),
+            AsPattern a => Equals(a.Inner, ((AsPattern)y).Inner) && Equals(a.Name, ((AsPattern)y).Name),
             MemberAccessPattern a => a.Parts.SequenceEqual(((MemberAccessPattern)y).Parts),
             RelationalPattern a => a.Operator == ((RelationalPattern)y).Operator && Equals(a.Value, ((RelationalPattern)y).Value),
             PropertyPatternField a => a.Name == ((PropertyPatternField)y).Name && Equals(a.Pattern, ((PropertyPatternField)y).Pattern),

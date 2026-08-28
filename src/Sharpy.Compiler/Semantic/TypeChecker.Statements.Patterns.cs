@@ -288,13 +288,28 @@ internal partial class TypeChecker
             case OrPattern orPattern:
                 {
                     bool hasMemberAccess = orPattern.Alternatives.Any(a => a is MemberAccessPattern);
+                    bool allHaveAs = orPattern.Alternatives.All(a =>
+                        a is AsPattern || (a is GuardPattern gp2 && gp2.Inner is AsPattern));
+
+                    if (allHaveAs)
+                    {
+                        foreach (var alt in orPattern.Alternatives)
+                        {
+                            var effectiveAlt = alt is GuardPattern gp ? gp.Inner : alt;
+                            var asAlt = (AsPattern)effectiveAlt;
+                            CheckPattern(asAlt.Inner, scrutineeType);
+                        }
+                        var firstAs = (AsPattern)(orPattern.Alternatives[0] is GuardPattern gp3
+                            ? gp3.Inner : orPattern.Alternatives[0]);
+                        BindAsPatternCapture(firstAs, scrutineeType);
+                        break;
+                    }
+
                     foreach (var alt in orPattern.Alternatives)
                     {
-                        // GuardPattern wraps an inner pattern — check the inner pattern normally
                         var effectiveAlt = alt is GuardPattern gp ? gp.Inner : alt;
                         if (effectiveAlt is BindingPattern bindingInOr)
                         {
-                            // #1562: allow union-variant bindings in or-patterns
                             bool isUnionVariant = scrutineeType is not OptionalType and not ResultType
                                 && TryResolveUnionCaseFromPattern(bindingInOr.Name.Name, scrutineeType) != null;
                             if (!isUnionVariant)
@@ -309,6 +324,14 @@ internal partial class TypeChecker
                             {
                                 CheckPattern(alt, scrutineeType);
                             }
+                        }
+                        else if (effectiveAlt is AsPattern asInOr)
+                        {
+                            AddError(
+                                "Binding patterns are not allowed inside or-patterns",
+                                asInOr.LineStart, asInOr.ColumnStart,
+                                code: DiagnosticCodes.Semantic.BindingInOrPattern,
+                                span: asInOr.Span);
                         }
                         else if (hasMemberAccess && effectiveAlt is not MemberAccessPattern && effectiveAlt is not LiteralPattern && effectiveAlt is not WildcardPattern)
                         {
@@ -355,6 +378,10 @@ internal partial class TypeChecker
 
             case ListPattern listPattern:
                 CheckListPattern(listPattern, scrutineeType);
+                break;
+
+            case AsPattern asPattern:
+                CheckAsPattern(asPattern, scrutineeType);
                 break;
 
             case AndPattern andPattern:
@@ -452,6 +479,49 @@ internal partial class TypeChecker
         CheckPattern(andPattern.Right, scrutineeType);
     }
 
+    private void CheckAsPattern(AsPattern asPattern, SemanticType scrutineeType)
+    {
+        CheckPattern(asPattern.Inner, scrutineeType);
+        BindAsPatternCapture(asPattern, scrutineeType);
+    }
+
+    private void BindAsPatternCapture(AsPattern asPattern, SemanticType scrutineeType)
+    {
+        var capturedType = scrutineeType;
+
+        if (asPattern.Inner is TypePattern typeInner)
+        {
+            var patternType = _semanticInfo.GetPatternType(typeInner);
+            if (patternType != null)
+                capturedType = patternType;
+            else
+            {
+                var resolvedType = _typeResolver.ResolveTypeAnnotation(
+                    typeInner.Type, bareGenericFillsFromContext: true);
+                if (resolvedType is not UnknownType)
+                    capturedType = resolvedType;
+            }
+        }
+
+        var newSymbol = new VariableSymbol
+        {
+            Name = asPattern.Name.Name,
+            Kind = SymbolKind.Variable,
+            Type = capturedType,
+            IsConstant = false,
+            DeclarationLine = asPattern.Name.LineStart,
+            DeclarationColumn = asPattern.Name.ColumnStart,
+            NameDeclarationLine = asPattern.Name.LineStart,
+            NameDeclarationColumn = asPattern.Name.ColumnStart,
+            AccessLevel = AccessLevel.Public
+        };
+
+        _symbolTable.Define(newSymbol);
+        SemanticBinding.SetVariableType(newSymbol, capturedType);
+        _semanticInfo.SetIdentifierSymbol(asPattern.Name, newSymbol);
+        _semanticInfo.SetTargetBinding(asPattern, new TargetBinding(TargetBindingKind.Declares));
+    }
+
     /// <summary>
     /// Collects the capture (binding) names introduced by a pattern, recursing into composite
     /// patterns. Used to detect duplicate captures across the two sides of an and-pattern.
@@ -468,9 +538,11 @@ internal partial class TypeChecker
                 case BindingPattern b:
                     names.Add(b.Name.Name);
                     break;
-                case TypePattern tp:
-                    if (tp.BindingName != null)
-                        names.Add(tp.BindingName.Name);
+                case TypePattern:
+                    break;
+                case AsPattern asp:
+                    names.Add(asp.Name.Name);
+                    Walk(asp.Inner);
                     break;
                 case TuplePattern t:
                     foreach (var e in t.Elements)
@@ -527,6 +599,7 @@ internal partial class TypeChecker
         {
             _semanticInfo.SetPatternUnionCase(typePattern, earlyUnionCase);
             var earlyResolved = new UserDefinedType { Name = earlyUnionCase.Name, Symbol = earlyUnionCase };
+            _semanticInfo.SetPatternType(typePattern, earlyResolved);
             BindTypePatternCapture(typePattern, earlyResolved);
             return;
         }
@@ -695,6 +768,8 @@ internal partial class TypeChecker
                 code: DiagnosticCodes.Semantic.TypePatternIncompatible,
                 span: typePattern.Span);
         }
+        if (_semanticInfo.GetPatternType(typePattern) == null && resolvedType is not UnknownType)
+            _semanticInfo.SetPatternType(typePattern, resolvedType);
         BindTypePatternCapture(typePattern, resolvedType);
     }
 

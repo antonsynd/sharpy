@@ -106,6 +106,13 @@ internal sealed partial class UnparseVisitor
         Visit(node.Right);
     }
 
+    public override void VisitAsPattern(AsPattern node)
+    {
+        Visit(node.Inner);
+        _w.Write(" as ");
+        Visit(node.Name);
+    }
+
     public override void VisitGuardPattern(GuardPattern node)
     {
         Visit(node.Inner);

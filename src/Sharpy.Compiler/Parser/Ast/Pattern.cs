@@ -93,6 +93,8 @@ public record TypePattern : Pattern
 
     /// <summary>
     /// Optional variable to bind the casted value to.
+    /// Deprecated: new code uses <see cref="AsPattern"/> wrapping a TypePattern instead.
+    /// Retained for backward compatibility until all consumers are migrated.
     /// </summary>
     public Identifier? BindingName { get; init; }
 
@@ -471,6 +473,37 @@ public record GuardPattern : Pattern
     {
         yield return Inner;
         yield return Guard;
+    }
+}
+
+/// <summary>
+/// As pattern (pattern as name) - matches the inner pattern and binds the matched value.
+/// </summary>
+public record AsPattern : Pattern
+{
+    /// <summary>
+    /// The inner pattern that must match.
+    /// </summary>
+    public Pattern Inner { get; init; } = null!;
+
+    /// <summary>
+    /// The identifier to bind the matched value to.
+    /// </summary>
+    public Identifier Name { get; init; } = null!;
+
+    /// <inheritdoc/>
+    public override void ValidateInvariants()
+    {
+        base.ValidateInvariants();
+        Debug.Assert(Inner != null, "AsPattern.Inner cannot be null");
+        Debug.Assert(Name != null, "AsPattern.Name cannot be null");
+        Debug.Assert(!string.IsNullOrEmpty(Name.Name), "AsPattern.Name.Name cannot be null or empty");
+    }
+
+    /// <inheritdoc/>
+    public override IEnumerable<Node> GetChildNodes()
+    {
+        yield return Inner;
     }
 }
 

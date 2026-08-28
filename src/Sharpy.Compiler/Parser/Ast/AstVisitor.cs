@@ -305,6 +305,9 @@ public abstract class AstVisitor
             case GuardPattern n:
                 VisitGuardPattern(n);
                 break;
+            case AsPattern n:
+                VisitAsPattern(n);
+                break;
             case MemberAccessPattern n:
                 VisitMemberAccessPattern(n);
                 break;
@@ -525,6 +528,7 @@ public abstract class AstVisitor
     public virtual void VisitOrPattern(OrPattern node) => VisitPattern(node);
     public virtual void VisitAndPattern(AndPattern node) => VisitPattern(node);
     public virtual void VisitGuardPattern(GuardPattern node) => VisitPattern(node);
+    public virtual void VisitAsPattern(AsPattern node) => VisitPattern(node);
     public virtual void VisitMemberAccessPattern(MemberAccessPattern node) => VisitPattern(node);
     public virtual void VisitRelationalPattern(RelationalPattern node) => VisitPattern(node);
     public virtual void VisitPropertyPatternField(PropertyPatternField node) => DefaultVisit(node);
@@ -679,6 +683,7 @@ public abstract class AstVisitor<T>
             OrPattern n => VisitOrPattern(n),
             AndPattern n => VisitAndPattern(n),
             GuardPattern n => VisitGuardPattern(n),
+            AsPattern n => VisitAsPattern(n),
             MemberAccessPattern n => VisitMemberAccessPattern(n),
             RelationalPattern n => VisitRelationalPattern(n),
             PropertyPatternField n => VisitPropertyPatternField(n),
@@ -886,6 +891,7 @@ public abstract class AstVisitor<T>
     public virtual T VisitOrPattern(OrPattern node) => VisitPattern(node);
     public virtual T VisitAndPattern(AndPattern node) => VisitPattern(node);
     public virtual T VisitGuardPattern(GuardPattern node) => VisitPattern(node);
+    public virtual T VisitAsPattern(AsPattern node) => VisitPattern(node);
     public virtual T VisitMemberAccessPattern(MemberAccessPattern node) => VisitPattern(node);
     public virtual T VisitRelationalPattern(RelationalPattern node) => VisitPattern(node);
     public virtual T VisitPropertyPatternField(PropertyPatternField node) => DefaultVisit(node);

@@ -533,6 +533,9 @@ public sealed class AstNormalizer : AstVisitor<Node>
     public override Node VisitGuardPattern(GuardPattern node) =>
         Zero(node) with { Inner = (Pattern)Visit(node.Inner), Guard = (Expression)Visit(node.Guard) };
 
+    public override Node VisitAsPattern(AsPattern node) =>
+        Zero(node) with { Inner = (Pattern)Visit(node.Inner), Name = (Identifier)Visit(node.Name) };
+
     public override Node VisitMemberAccessPattern(MemberAccessPattern node) => Zero(node);
 
     public override Node VisitRelationalPattern(RelationalPattern node) =>
