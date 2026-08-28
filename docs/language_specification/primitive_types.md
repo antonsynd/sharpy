@@ -34,6 +34,45 @@ There are aliases present that help ease both Python and C# developers at the co
 | `ulong` | `uint64` |
 | `ushort` | `uint16` |
 
+## Conversions
+
+Every primitive width is callable as a conversion function. The function accepts any numeric
+type, `bool`, or `str`, returning the target width with range checking:
+
+```python
+x: int8 = int8("42")       # string parse → sbyte
+y: uint16 = uint16(1000)   # int → ushort, checked
+z: float32 = float32(3.14) # double → float, overflow → Infinity
+```
+
+| Sharpy Call | CLR Method | Returns | Out of range |
+|-------------|-----------|---------|--------------|
+| `int8(x)` | `Builtins.Int8` | `sbyte` | `OverflowError` |
+| `int16(x)` | `Builtins.Int16` | `short` | `OverflowError` |
+| `int(x)` / `int32(x)` | `Builtins.Int` | `int` | `OverflowError` |
+| `long(x)` / `int64(x)` | `Builtins.Long` | `long` | `OverflowError` |
+| `uint8(x)` | `Builtins.UInt8` | `byte` | `OverflowError` |
+| `uint16(x)` | `Builtins.UInt16` | `ushort` | `OverflowError` |
+| `uint32(x)` | `Builtins.UInt32` | `uint` | `OverflowError` |
+| `uint64(x)` | `Builtins.UInt64` | `ulong` | `OverflowError` |
+| `float32(x)` | `Builtins.Float32` | `float` | `Infinity` |
+| `float(x)` / `float64(x)` | `Builtins.Float` | `double` | `Infinity` |
+| `bool(x)` | `Builtins.Bool` | `bool` | — |
+| `str(x)` | `Builtins.Str` | `string` | — |
+| `decimal(x)` | `Builtins.Decimal` | `decimal` | `OverflowError` |
+
+Integer conversion functions also accept an explicit base for string parsing:
+
+```python
+int8("0xff", 16)   # ValueError — 255 > 127
+int8("0x7f", 16)   # 127
+uint8("0xff", 16)  # 255
+int16("0b1010", 2) # 10
+```
+
+Aliases are transparent in call position — `sbyte("42")` compiles identically to `int8("42")`,
+resolved by CLR type identity rather than by spelling.
+
 ## Array Type
 
 Sharpy exposes raw .NET arrays as `array[T]`, distinct from `list[T]`:

@@ -1,0 +1,9 @@
+def main():
+    x: int8 = int8(42)
+    print(x)
+    y: int8 = int8("127")
+    print(y)
+    z: int8 = int8(True)
+    print(z)
+    w: int8 = int8(3.9)
+    print(w)

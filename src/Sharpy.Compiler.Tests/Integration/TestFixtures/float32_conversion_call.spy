@@ -1,0 +1,7 @@
+def main():
+    x: float32 = float32(3.14)
+    print(x)
+    y: float32 = float32("42")
+    print(y)
+    z: float32 = float32(True)
+    print(z)
