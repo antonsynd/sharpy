@@ -1,0 +1,9 @@
+def main():
+    x: object = 42
+    match x:
+        case int(n):
+            print(n)
+        case str(s):
+            print(s)
+        case _:
+            print("other")

@@ -967,6 +967,23 @@ internal partial class TypeChecker
     /// </summary>
     private void CheckPositionalPattern(PositionalPattern positionalPattern, SemanticType scrutineeType)
     {
+        if (positionalPattern.Type != null
+            && SelfMatchingBuiltins.IsSelfMatching(positionalPattern.Type.Name))
+        {
+            if (positionalPattern.Elements.Length != 1)
+            {
+                AddError(
+                    $"Builtin type '{positionalPattern.Type.Name}' accepts exactly 1 positional sub-pattern ({positionalPattern.Elements.Length} given)",
+                    positionalPattern.LineStart, positionalPattern.ColumnStart,
+                    code: DiagnosticCodes.Semantic.PositionalPatternCountMismatch,
+                    span: positionalPattern.Span);
+                return;
+            }
+            CheckPattern(positionalPattern.Elements[0], scrutineeType);
+            _semanticInfo.SetPatternType(positionalPattern, scrutineeType);
+            return;
+        }
+
         TypeSymbol? typeSymbol = null;
         if (positionalPattern.Type != null)
         {
