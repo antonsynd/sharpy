@@ -981,7 +981,8 @@ internal partial class RoslynEmitter
         {
             declarator = VariableDeclarator(EscapedIdentifier(varName))
                 .WithInitializer(EqualsValueClause(
-                    LiteralExpression(SyntaxKind.DefaultLiteralExpression, Token(SyntaxKind.DefaultKeyword))));
+                    PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression,
+                        LiteralExpression(SyntaxKind.DefaultLiteralExpression, Token(SyntaxKind.DefaultKeyword)))));
         }
         else
         {
