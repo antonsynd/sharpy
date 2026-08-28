@@ -47,6 +47,11 @@ internal static class DefiniteAssignmentAnalysis
                 CollectReads(stmt, blockReads, i);
             }
 
+            foreach (var expr in block.Expressions)
+            {
+                CollectReadsFromExpr(expr, blockReads, block.Statements.Count);
+            }
+
             if (block.Terminator is ConditionalBranchTerminator cbt)
             {
                 CollectReadsFromExpr(cbt.Condition, blockReads, block.Statements.Count);

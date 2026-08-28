@@ -85,6 +85,13 @@ internal sealed class BasicBlock
     public System.Collections.Generic.List<Parser.Ast.Expression> MatchExpressionSubjects { get; } = new();
 
     /// <summary>
+    /// Expressions evaluated in this block that are not part of any statement — with-context
+    /// expressions, match scrutinees, and match guards. Definite-assignment analysis checks
+    /// these for reads after processing the block's statements.
+    /// </summary>
+    public List<Parser.Ast.Expression> Expressions { get; } = new();
+
+    /// <summary>
     /// For async analysis: true if any statement in this block contains an await expression.
     /// Set during CFG construction by scanning for AwaitExpression nodes.
     /// </summary>

@@ -788,6 +788,9 @@ internal class ControlFlowGraphBuilder
         // linearly; disposal happens at the end. When there is an `as` binding, the body runs in a
         // dedicated block so the narrowing analysis can kill facts about the rebound name on entry
         // (#1042); without a binding no extra block is created, so ordinary `with` CFGs are unchanged.
+        foreach (var item in stmt.Items)
+            _currentBlock.Expressions.Add(item.ContextExpression);
+
         var withBindings = CollectWithBindingKeys(stmt);
         if (withBindings.Count > 0)
         {
@@ -866,12 +869,16 @@ internal class ControlFlowGraphBuilder
         // (#1299). Without it the match statement was untracked and the subject read the pre-branch
         // fact set.
         condBlock.MatchSubject = stmt.Scrutinee;
+        condBlock.Expressions.Add(stmt.Scrutinee);
 
         foreach (var matchCase in stmt.Cases)
         {
             var caseBlock = CreateBlock("match_case");
             Connect(condBlock, caseBlock);
             _currentBlock = caseBlock;
+
+            if (matchCase.Guard != null)
+                caseBlock.Expressions.Add(matchCase.Guard);
 
             BuildStatements(matchCase.Body);
 
