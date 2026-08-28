@@ -971,9 +971,22 @@ internal partial class RoslynEmitter
                 CastExpression(delegateTypeSyntax, ParenthesizedExpression(initialValue)));
         }
 
-        VariableDeclaratorSyntax declarator = initialValue != null
-            ? VariableDeclarator(EscapedIdentifier(varName)).WithInitializer(EqualsValueClause(initialValue))
-            : VariableDeclarator(EscapedIdentifier(varName));
+        VariableDeclaratorSyntax declarator;
+        if (initialValue != null)
+        {
+            declarator = VariableDeclarator(EscapedIdentifier(varName))
+                .WithInitializer(EqualsValueClause(initialValue));
+        }
+        else if (varDecl.InitialValue == null && _context.SemanticInfo?.IsDefinitelyAssignedBareLocal(varDecl) == true)
+        {
+            declarator = VariableDeclarator(EscapedIdentifier(varName))
+                .WithInitializer(EqualsValueClause(
+                    LiteralExpression(SyntaxKind.DefaultLiteralExpression, Token(SyntaxKind.DefaultKeyword))));
+        }
+        else
+        {
+            declarator = VariableDeclarator(EscapedIdentifier(varName));
+        }
 
         var declaration = VariableDeclaration(typeSyntax)
             .WithVariables(SingletonSeparatedList(declarator));
