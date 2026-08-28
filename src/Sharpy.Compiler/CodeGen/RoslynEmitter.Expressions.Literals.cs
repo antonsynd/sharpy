@@ -29,8 +29,17 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateListLiteral(ListLiteral list)
     {
         // new Sharpy.List<T> { elem1, elem2, elem3 }
+        // Prefer the target-type annotation when present: `xs: list[Base] = [Derived()]` must
+        // emit `new Sharpy.List<Base>` so C#'s invariant generic assignment succeeds. The
+        // SemanticInfo type reflects the element-inferred type (List<Derived>), which is correct
+        // for Sharpy's covariant list semantics but breaks the C# emitter.
         TypeSyntax elementType;
-        if (GetExpressionSemanticType(list) is GenericType listSemType &&
+        if (_targetTypeContext is { Name: BuiltinNames.List } targetList
+            && targetList.TypeArguments.Length > 0)
+        {
+            elementType = _typeMapper.MapType(targetList.TypeArguments[0]);
+        }
+        else if (GetExpressionSemanticType(list) is GenericType listSemType &&
             listSemType.Name == BuiltinNames.List &&
             listSemType.TypeArguments.Count > 0 &&
             listSemType.TypeArguments[0] is not UnknownType)
@@ -81,7 +90,13 @@ internal partial class RoslynEmitter
     {
         // new System.Collections.Generic.Dictionary<K,V> { { key1, value1 }, { key2, value2 } }
         TypeSyntax keyType, valueType;
-        if (GetExpressionSemanticType(dict) is GenericType dictSemType &&
+        if (_targetTypeContext is { Name: BuiltinNames.Dict } targetDict
+            && targetDict.TypeArguments.Length >= 2)
+        {
+            keyType = _typeMapper.MapType(targetDict.TypeArguments[0]);
+            valueType = _typeMapper.MapType(targetDict.TypeArguments[1]);
+        }
+        else if (GetExpressionSemanticType(dict) is GenericType dictSemType &&
             dictSemType.Name == BuiltinNames.Dict &&
             dictSemType.TypeArguments.Count >= 2 &&
             dictSemType.TypeArguments[0] is not UnknownType &&
@@ -168,7 +183,12 @@ internal partial class RoslynEmitter
     {
         // new Sharpy.Set<T> { elem1, elem2, elem3 }
         TypeSyntax elementType;
-        if (GetExpressionSemanticType(set) is GenericType setSemType &&
+        if (_targetTypeContext is { Name: BuiltinNames.Set } targetSet
+            && targetSet.TypeArguments.Length > 0)
+        {
+            elementType = _typeMapper.MapType(targetSet.TypeArguments[0]);
+        }
+        else if (GetExpressionSemanticType(set) is GenericType setSemType &&
             setSemType.Name == BuiltinNames.Set &&
             setSemType.TypeArguments.Count > 0 &&
             setSemType.TypeArguments[0] is not UnknownType)
