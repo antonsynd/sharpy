@@ -1376,82 +1376,82 @@ internal partial class RoslynEmitter
         switch (target)
         {
             case Identifier id:
-            {
-                var symbol = _context.LookupSymbol(id.Name);
-                var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
-                var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(id)?.Kind == TargetBindingKind.Rebinds;
-
-                if (existsAsModuleLevel || existsAsLocal)
                 {
-                    var currentName = GetMangledVariableName(id, isNewDeclaration: false);
+                    var symbol = _context.LookupSymbol(id.Name);
+                    var existsAsModuleLevel = symbol != null && GetCodeGenInfo(symbol)?.IsModuleLevel == true;
+                    var existsAsLocal = _context.SemanticInfo?.GetTargetBinding(id)?.Kind == TargetBindingKind.Rebinds;
+
+                    if (existsAsModuleLevel || existsAsLocal)
+                    {
+                        var currentName = GetMangledVariableName(id, isNewDeclaration: false);
+                        return ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                EscapedIdentifierName(currentName),
+                                value));
+                    }
+
+                    var varName = GetMangledVariableName(id, isNewDeclaration: true);
+                    return LocalDeclarationStatement(
+                        VariableDeclaration(IdentifierName("var"))
+                            .WithVariables(SingletonSeparatedList(
+                                VariableDeclarator(EscapedIdentifier(varName))
+                                    .WithInitializer(EqualsValueClause(value)))));
+                }
+
+            case IndexAccess indexAccess:
+                {
+                    var obj = GenerateExpression(indexAccess.Object);
+                    var index = GenerateExpression(indexAccess.Index);
+
+                    var objectType = GetExpressionSemanticType(indexAccess.Object);
+                    if (objectType is Semantic.GenericType { Name: BuiltinNames.Array })
+                    {
+                        return ExpressionStatement(
+                            InvocationExpression(
+                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    MakeGlobalQualifiedName("Sharpy", "ArrayHelpers"),
+                                    IdentifierName("SetItem")))
+                                .AddArgumentListArguments(
+                                    Argument(obj),
+                                    Argument(index),
+                                    Argument(value)));
+                    }
+
                     return ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
-                            EscapedIdentifierName(currentName),
+                            ElementAccessExpression(obj)
+                                .WithArgumentList(BracketedArgumentList(
+                                    SingletonSeparatedList(Argument(index)))),
                             value));
                 }
 
-                var varName = GetMangledVariableName(id, isNewDeclaration: true);
-                return LocalDeclarationStatement(
-                    VariableDeclaration(IdentifierName("var"))
-                        .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(EscapedIdentifier(varName))
-                                .WithInitializer(EqualsValueClause(value)))));
-            }
-
-            case IndexAccess indexAccess:
-            {
-                var obj = GenerateExpression(indexAccess.Object);
-                var index = GenerateExpression(indexAccess.Index);
-
-                var objectType = GetExpressionSemanticType(indexAccess.Object);
-                if (objectType is Semantic.GenericType { Name: BuiltinNames.Array })
+            case MemberAccess memberAccess:
                 {
+                    var memberTarget = GenerateMemberAccess(memberAccess, applyNarrowing: false);
                     return ExpressionStatement(
-                        InvocationExpression(
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                MakeGlobalQualifiedName("Sharpy", "ArrayHelpers"),
-                                IdentifierName("SetItem")))
-                            .AddArgumentListArguments(
-                                Argument(obj),
-                                Argument(index),
-                                Argument(value)));
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            memberTarget,
+                            value));
                 }
 
-                return ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        ElementAccessExpression(obj)
-                            .WithArgumentList(BracketedArgumentList(
-                                SingletonSeparatedList(Argument(index)))),
-                        value));
-            }
-
-            case MemberAccess memberAccess:
-            {
-                var memberTarget = GenerateMemberAccess(memberAccess, applyNarrowing: false);
-                return ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        memberTarget,
-                        value));
-            }
-
             case TupleLiteral tuple:
-            {
-                var stmts = new List<StatementSyntax>();
-                var tempVarName = $"__t{_tempVarCounter++}";
-                stmts.Add(LocalDeclarationStatement(
-                    VariableDeclaration(IdentifierName("var"))
-                        .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(EscapedIdentifier(tempVarName))
-                                .WithInitializer(EqualsValueClause(value))))));
-                GenerateRecursiveTupleUnpacking(tuple.Elements, tempVarName, stmts);
+                {
+                    var stmts = new List<StatementSyntax>();
+                    var tempVarName = $"__t{_tempVarCounter++}";
+                    stmts.Add(LocalDeclarationStatement(
+                        VariableDeclaration(IdentifierName("var"))
+                            .WithVariables(SingletonSeparatedList(
+                                VariableDeclarator(EscapedIdentifier(tempVarName))
+                                    .WithInitializer(EqualsValueClause(value))))));
+                    GenerateRecursiveTupleUnpacking(tuple.Elements, tempVarName, stmts);
 
-                for (int i = 0; i < stmts.Count - 1; i++)
-                    _hoistedStatements.Add(stmts[i]);
-                return stmts[^1];
-            }
+                    for (int i = 0; i < stmts.Count - 1; i++)
+                        _hoistedStatements.Add(stmts[i]);
+                    return stmts[^1];
+                }
 
             default:
                 return EmitNotImplementedStatement(

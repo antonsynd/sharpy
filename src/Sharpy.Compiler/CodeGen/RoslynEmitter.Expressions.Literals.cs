@@ -133,7 +133,8 @@ internal partial class RoslynEmitter
             {
                 var prev = _targetTypeContext;
                 _targetTypeContext = valueTargetType;
-                try { valExpr = GenerateExpression(entry.Value); }
+                try
+                { valExpr = GenerateExpression(entry.Value); }
                 finally { _targetTypeContext = prev; }
             }
             else

@@ -154,12 +154,16 @@ public class GetChildNodesCompletenessTests
         for (int i = 0; i < afterTypeName.Length; i++)
         {
             char c = afterTypeName[i];
-            if (c == '(') parenDepth++;
-            else if (c == ')') parenDepth--;
+            if (c == '(')
+                parenDepth++;
+            else if (c == ')')
+                parenDepth--;
             else if (parenDepth == 0)
             {
-                if (c == '{') { scopeStart = i; break; }
-                if (c == ';') return null;
+                if (c == '{')
+                { scopeStart = i; break; }
+                if (c == ';')
+                    return null;
             }
         }
         if (scopeStart < 0)
@@ -169,11 +173,13 @@ public class GetChildNodesCompletenessTests
         int scopeEnd = -1;
         for (int i = scopeStart; i < afterTypeName.Length; i++)
         {
-            if (afterTypeName[i] == '{') depth++;
+            if (afterTypeName[i] == '{')
+                depth++;
             else if (afterTypeName[i] == '}')
             {
                 depth--;
-                if (depth == 0) { scopeEnd = i; break; }
+                if (depth == 0)
+                { scopeEnd = i; break; }
             }
         }
         if (scopeEnd < 0)
@@ -199,11 +205,13 @@ public class GetChildNodesCompletenessTests
             depth = 0;
             for (int i = 0; i < afterSig.Length; i++)
             {
-                if (afterSig[i] == '{') depth++;
+                if (afterSig[i] == '{')
+                    depth++;
                 else if (afterSig[i] == '}')
                 {
                     depth--;
-                    if (depth == 0) return afterSig[..(i + 1)];
+                    if (depth == 0)
+                        return afterSig[..(i + 1)];
                 }
             }
         }
