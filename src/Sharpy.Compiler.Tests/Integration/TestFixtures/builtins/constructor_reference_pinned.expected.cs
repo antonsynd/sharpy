@@ -74,7 +74,7 @@ public static partial class ConstructorReferencePinned
             "2"
         };
 #line (50, 5) - (50, 30) 8 "constructor_reference_pinned.spy"
-        global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Map(global::Sharpy.Builtins.Int, xs)));
+        global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Map(__callable_p_0 => global::Sharpy.Builtins.Int(__callable_p_0), xs)));
 #line (53, 5) - (53, 32) 8 "constructor_reference_pinned.spy"
         Sharpy.List<int> src = new Sharpy.List<int>()
 #line hidden
@@ -84,7 +84,7 @@ public static partial class ConstructorReferencePinned
             3
         };
 #line (54, 5) - (54, 49) 8 "constructor_reference_pinned.spy"
-        global::System.Func<Sharpy.List<int>, Sharpy.List<int>> copyMaker = __ctor_source_0 => new Sharpy.List<int>(__ctor_source_0);
+        global::System.Func<Sharpy.List<int>, Sharpy.List<int>> copyMaker = __ctor_source_1 => new Sharpy.List<int>(__ctor_source_1);
 #line (55, 5) - (55, 27) 8 "constructor_reference_pinned.spy"
         global::Sharpy.Builtins.Print(copyMaker(src));
 #line hidden
