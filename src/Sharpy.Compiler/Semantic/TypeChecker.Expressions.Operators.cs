@@ -339,12 +339,14 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The floored-<c>%</c> operand allowlist: int, long, float32, float64 (the four
-    /// <c>Builtins.FloorMod</c> overloads). Widened CLR integers (byte, short, uint, …) and
-    /// <c>decimal</c> are outside it.
+    /// The floored-<c>%</c> operand allowlist: every integer width (int, long, int8,
+    /// uint8, uint64, …) and float32/float64, matching the <c>Builtins.FloorMod</c>
+    /// overload set. Narrow integers widen to the <c>(int, int)</c> or <c>(long, long)</c>
+    /// overload; <c>ulong</c> has its own overload (#1662). <c>decimal</c> is outside it
+    /// (decimal modulo is truncating).
     /// </summary>
     private static bool IsFlooredNumeric(SemanticType type)
-        => PrimitiveCatalog.IsSharpyInteger(type) || PrimitiveCatalog.IsFloatingPoint(type);
+        => PrimitiveCatalog.IsInteger(type) || PrimitiveCatalog.IsFloatingPoint(type);
 
     /// <summary>
     /// Constant-folds a <c>base ** exponent</c> expression when both operands are constant

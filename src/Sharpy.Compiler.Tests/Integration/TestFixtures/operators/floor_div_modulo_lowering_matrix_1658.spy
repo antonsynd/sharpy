@@ -71,8 +71,8 @@ def main() -> None:
     print(b // e, b % e)
     print(7 // -3m, 7 % -3m)
     print(-7m // 3, -7m % 3)
-    # widened CLR integer (uint8): `//` is the integer family (C# picks FloorDiv(int, int));
-    # `%` is outside the FloorMod overload set and stays native (no record)
+    # widened CLR integer (uint8): `//` is IntegerFloorDivide, `%` is FlooredModulo —
+    # both widen to (int, int) overloads via C# implicit promotion (#1662)
     u: uint8 = 7
     print(u // b, u % b)
     print(b // u, b % u)

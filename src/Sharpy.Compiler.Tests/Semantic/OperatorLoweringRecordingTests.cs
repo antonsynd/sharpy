@@ -412,11 +412,12 @@ def main() -> None:
     }
 
     [Theory]
-    // A widened CLR integer operand is outside the FloorMod overload set: native `%`, no record.
-    [InlineData("u: uint8 = 7\n    a: int = 3", "u % a")]
-    [InlineData("u: uint8 = 7\n    a: int = 3", "a % u")]
-    [InlineData("u: uint8 = 7\n    v: uint8 = 3", "u % v")]
-    public void Modulo_WidenedClrInteger_RecordsNothing(string decls, string expr)
+    // #1662: every integer width floors — narrow CLR integers widen to the (int, int) overload,
+    // uint64 has its own overload.
+    [InlineData("u: uint8 = 7\n    a: int = 3", "u % a", OperatorLoweringKind.FlooredModulo)]
+    [InlineData("u: uint8 = 7\n    a: int = 3", "a % u", OperatorLoweringKind.FlooredModulo)]
+    [InlineData("u: uint8 = 7\n    v: uint8 = 3", "u % v", OperatorLoweringKind.FlooredModulo)]
+    public void Modulo_NarrowClrInteger_RecordsFlooredModulo(string decls, string expr, OperatorLoweringKind expected)
     {
         var (module, info, errors) = Analyze($@"
 def main() -> None:
@@ -424,8 +425,7 @@ def main() -> None:
     r = {expr}
 ");
         errors.Should().BeEmpty();
-        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Modulo)).Should().BeNull(
-            "native `%` is the no-record cell, exactly as the other families spell Native");
+        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Modulo))!.Kind.Should().Be(expected);
     }
 
     [Fact]
@@ -509,7 +509,7 @@ def main() -> None:
     }
 
     [Fact]
-    public void AugmentedModulo_WidenedClrInteger_RecordsNothing()
+    public void AugmentedModulo_NarrowClrInteger_RecordsFlooredModulo()
     {
         var (module, info, errors) = Analyze(@"
 def main() -> None:
@@ -519,7 +519,7 @@ def main() -> None:
 ");
         errors.Should().BeEmpty();
         var assignment = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.PercentAssign);
-        info.GetOperatorLowering(assignment).Should().BeNull();
+        info.GetOperatorLowering(assignment)!.Kind.Should().Be(OperatorLoweringKind.FlooredModulo);
     }
 
     [Theory]
