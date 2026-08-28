@@ -523,9 +523,64 @@ internal partial class TypeChecker
         if (CheckConstructorReference(reference, type) is { } constructorReferenceType)
             return constructorReferenceType;
 
-        return type is FunctionType referencedFunctionType
+        var resultType = type is FunctionType referencedFunctionType
             ? CheckReferencedCallableOverloads(reference, referencedFunctionType)
             : type;
+
+        // #1638: record an eta-expanded lambda lowering for builtin function names used as values.
+        // The emitter needs this to generate a typed lambda instead of a bare method group, which
+        // breaks on struct boxing, generic inference, CS0121 ambiguity, and params/optional elision.
+        if (resultType is FunctionType resolvedFt)
+            TryRecordCallableReferenceLowering(reference, resolvedFt);
+
+        return resultType;
+    }
+
+    /// <summary>
+    /// Records a <see cref="CallableReferenceLowering"/> when the reference names a builtin function
+    /// that should emit as an eta-expanded lambda instead of a bare method group (#1638). Only fires
+    /// for identifiers that resolve to a BuiltinRegistry function or type-builtin function — user
+    /// functions emit through CodeGenInfo/symbol resolution and need no lowering record.
+    /// </summary>
+    private void TryRecordCallableReferenceLowering(Expression reference, FunctionType ft)
+    {
+        if (reference is not Identifier id)
+            return;
+
+        // bytes is excluded: it emits as the struct type, not via Builtins.Bytes (#1347).
+        if (id.Name == Shared.BuiltinNames.Bytes)
+            return;
+
+        var resolvedSymbol = _semanticInfo.GetIdentifierSymbol(id);
+
+        // A VariableSymbol shadows the builtin — skip.
+        if (resolvedSymbol is VariableSymbol)
+            return;
+
+        // A user-declared FunctionSymbol shadows the builtin — skip. Only the builtin registry's
+        // own FunctionSymbol (identity check) gets the lowering. User functions emit through their
+        // own CodeGenInfo path, and at type-checking time CodeGenInfo is null for ALL symbols.
+        if (resolvedSymbol is FunctionSymbol fs)
+        {
+            var builtinFs = _symbolTable.BuiltinRegistry.GetFunction(id.Name);
+            if (builtinFs == null || !ReferenceEquals(fs, builtinFs))
+                return;
+        }
+        else if (resolvedSymbol is TypeSymbol)
+        {
+            if (_symbolTable.BuiltinRegistry.GetFunction(id.Name) == null)
+                return;
+        }
+        else
+        {
+            return;
+        }
+
+        var qualifiedName = "Sharpy.Builtins." +
+            Shared.NameCasing.ResolveMethod(id.Name, id.IsNameBacktickEscaped);
+
+        _semanticInfo.SetCallableReferenceLowering(reference, new CallableReferenceLowering(
+            qualifiedName, ft.ParameterTypes, ft.ReturnType));
     }
 
     /// <summary>

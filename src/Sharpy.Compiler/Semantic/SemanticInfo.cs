@@ -370,6 +370,14 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, ConstructorReferenceLowering> _constructorReferenceLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // #1638: Map a builtin or overloaded function name used as a value to the eta-expanded lambda
+    // shape codegen must emit. The TypeChecker records the selected overload's parameter and return
+    // types so the emitter generates `(T1 _p0, T2 _p1) => Sharpy.Builtins.X(_p0, _p1)` instead of
+    // the bare method group `Sharpy.Builtins.X`, which breaks on struct boxing, generic inference,
+    // CS0121 ambiguity, and optional/params elision. Keyed by node identity.
+    private readonly ConcurrentDictionary<Expression, CallableReferenceLowering> _callableReferenceLowerings =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map builtin-call argument expressions sitting in an ITERABLE position to how that argument
     // binds there: the element type it iterates as, plus the projection codegen must apply before
     // passing it (sorted(x), list(x), max(x), zip(x, …), filter(f, x), ", ".join(x), …). Present only
@@ -782,6 +790,25 @@ public class SemanticInfo : ISemanticQuery
     public ConstructorReferenceLowering? GetConstructorReferenceLowering(Expression reference)
     {
         return _constructorReferenceLowerings.TryGetValue(reference, out var lowering) ? lowering : null;
+    }
+
+    /// <summary>
+    /// Records the eta-expanded lambda shape for a builtin or overloaded function name used as a
+    /// value (#1638). The emitter reads this to generate a typed lambda instead of a bare method
+    /// group (Critical Rule 2 pattern (b)).
+    /// </summary>
+    public void SetCallableReferenceLowering(Expression reference, CallableReferenceLowering lowering)
+    {
+        _callableReferenceLowerings[reference] = lowering;
+    }
+
+    /// <summary>
+    /// Gets the callable-reference lowering for an expression, or <c>null</c> when the node is not
+    /// a builtin/overloaded function name used as a value.
+    /// </summary>
+    public CallableReferenceLowering? GetCallableReferenceLowering(Expression reference)
+    {
+        return _callableReferenceLowerings.TryGetValue(reference, out var lowering) ? lowering : null;
     }
 
     /// <summary>
@@ -1619,6 +1646,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._constructorReferenceLowerings)
             _constructorReferenceLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._callableReferenceLowerings)
+            _callableReferenceLowerings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._typeCoercionLowerings)
             _typeCoercionLowerings.TryAdd(kvp.Key, kvp.Value);
