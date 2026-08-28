@@ -80,14 +80,13 @@ internal static class BlockKinds
     /// Ratcheted known-red cells (verification-contract §1: an allowlist entry cites an issue and is
     /// deleted when fixed). <c>for-else</c>/<c>while-else</c> bodies are now type-checked (#1659,
     /// the TypeChecker half of #1656 — ten cells drained 2026-08-26), but definite assignment still
-    /// does not walk them, so the SPY0600 cell stays red (#1656); definite assignment treats a
-    /// <c>defer</c> body as executing in place (#1657).
+    /// does not walk them, so the SPY0600 cell stays red (#1656). The <c>defer</c> entry drained
+    /// when the CFG builder gained a scope-exit model for defer bodies (#1657, f2d5270b7).
     /// </summary>
     private static readonly System.Collections.Generic.Dictionary<(string Kind, string Cell), string> KnownRed = new()
     {
         [("for-else", "UseBeforeAssign")] = "#1656",
         [("while-else", "UseBeforeAssign")] = "#1656",
-        [("defer", "UseBeforeAssign")] = "#1657",
     };
 
     /// <summary>
