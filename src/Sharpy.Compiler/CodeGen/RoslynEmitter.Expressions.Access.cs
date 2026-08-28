@@ -257,7 +257,19 @@ internal partial class RoslynEmitter
                 }
 
                 // Use explicit AliasQualifiedName to handle all expression contexts (f-strings, etc.)
-                var builtinName = MakeGlobalQualifiedName("Sharpy", "Builtins", NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped));
+                //
+                // The CLR method name comes from the RECORDED call target (the overload the checker
+                // selected, whose ClrMethodName is the reflected `Builtins.<Method>`), and only falls
+                // back to PascalCasing the spelling when nothing was recorded. PascalCasing the
+                // spelling turned `uint8(x)` into `Builtins.Uint8` (the method is `UInt8`) and
+                // `int32(x)`/`int64(x)`/`float64(x)` into methods that do not exist (`Int`, `Long`,
+                // `Float`) — CS0117 behind SPY0908 for six widths and all six C# alias spellings
+                // (#1637). Which conversion a spelling denotes is a fact of the CLR type, decided
+                // once in semantic analysis; the emitter reads it (repo rule 2).
+                var recordedBuiltinTarget = _context.SemanticInfo?.GetCallTarget(call);
+                var builtinName = MakeGlobalQualifiedName("Sharpy", "Builtins",
+                    NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped,
+                        GetClrMethodName(recordedBuiltinTarget)));
                 return InvocationExpression(builtinName)
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }

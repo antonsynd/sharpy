@@ -66,4 +66,42 @@ public class SharedRegistryOwnershipTests
         var compileResult = api.Compile(compileSource);
         Assert.True(compileResult.Success, $"Compile after analyze failed: {string.Join("; ", compileResult.Diagnostics.Select(d => d.Message))}");
     }
+
+    /// <summary>
+    /// The clone preserves the master's identity structure: names that share ONE TypeSymbol in
+    /// the master (the CLR-type dedup — <c>int8</c>/<c>sbyte</c>, <c>int32</c>/<c>int</c>,
+    /// <c>uint8</c>/<c>byte</c>, <c>float64</c>/<c>float</c>, #1667) share one clone, and the
+    /// overload list an alias spelling shares with its canonical name clones to the same
+    /// FunctionSymbol instances. Cloning per NAME broke this on the Analyze path only —
+    /// <c>int8(7) + sbyte(1)</c> was SPY0222 there and accepted by the compile path (found by
+    /// the front-end parity sweep, 2026-08-28). Mutation: drop the <c>symbolMap</c> lookup at the
+    /// top of <c>CloneTypeSymbol</c> → every row below fails.
+    /// </summary>
+    [Theory]
+    [InlineData("int8", "sbyte")]
+    [InlineData("int32", "int")]
+    [InlineData("int64", "long")]
+    [InlineData("uint8", "byte")]
+    [InlineData("uint16", "ushort")]
+    [InlineData("uint32", "uint")]
+    [InlineData("uint64", "ulong")]
+    [InlineData("float64", "float")]
+    public void CloneForCompilation_PreservesAliasIdentity(string canonical, string alias)
+    {
+        var master = new BuiltinRegistry();
+        Assert.Same(master.GetType(canonical), master.GetType(alias));
+
+        var clone = master.CloneForCompilation();
+
+        Assert.Same(clone.GetType(canonical), clone.GetType(alias));
+        Assert.NotSame(master.GetType(canonical), clone.GetType(canonical));
+
+        var canonicalOverloads = clone.GetFunctionOverloads(canonical);
+        var aliasOverloads = clone.GetFunctionOverloads(alias);
+        Assert.NotNull(canonicalOverloads);
+        Assert.NotNull(aliasOverloads);
+        Assert.Equal(canonicalOverloads!.Count, aliasOverloads!.Count);
+        for (int i = 0; i < canonicalOverloads.Count; i++)
+            Assert.Same(canonicalOverloads[i], aliasOverloads[i]);
+    }
 }

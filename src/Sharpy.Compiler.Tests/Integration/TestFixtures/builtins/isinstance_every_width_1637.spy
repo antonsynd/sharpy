@@ -1,0 +1,13 @@
+# #1637 sibling: the isinstance TYPE position accepts every primitive spelling — canonical width,
+# python-facing name, and C# alias — not only the widths whose conversion overloads happen to
+# share one arity. `int8` deferred a value-selection (14 overloads) that a type test never
+# consumes, and was refused with SPY0336 while `int` passed.
+def main() -> None:
+    v: object = 5
+    print(isinstance(v, int), isinstance(v, int32), isinstance(v, int8), isinstance(v, sbyte))
+    print(isinstance(v, int16), isinstance(v, short), isinstance(v, int64), isinstance(v, long))
+    print(isinstance(v, uint8), isinstance(v, byte), isinstance(v, uint16), isinstance(v, ushort))
+    print(isinstance(v, uint32), isinstance(v, uint), isinstance(v, uint64), isinstance(v, ulong))
+    print(isinstance(v, float32), isinstance(v, float64), isinstance(v, float), isinstance(v, str))
+    w: object = uint8(7)
+    print(isinstance(w, uint8), isinstance(w, byte), isinstance(w, int))

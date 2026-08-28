@@ -167,6 +167,15 @@ internal class BuiltinRegistry
 
     private static TypeSymbol CloneTypeSymbol(TypeSymbol type, Dictionary<Symbol, Symbol> symbolMap)
     {
+        // One master instance → one clone. Several names share a TypeSymbol on purpose — the
+        // CLR-type dedup registers `int8`/`sbyte`, `int32`/`int`, `uint8`/`byte` … as ONE symbol so
+        // operator resolution and IsBuiltinSymbol answer by identity (#1667). Cloning per NAME
+        // gave every alias its own instance, and on the Analyze path (the only path that clones)
+        // `int8(7) + sbyte(1)` became SPY0222 "invalid binary operation" while the compile path
+        // accepted it — found by the front-end parity sweep during the 2026-08-28 verification.
+        if (symbolMap.TryGetValue(type, out var already))
+            return (TypeSymbol)already;
+
         // Clone the FunctionSymbol instances inside each collection.
         var clonedMethods = CloneFunctionList(type.Methods, symbolMap);
         var clonedConstructors = CloneFunctionList(type.Constructors, symbolMap);
@@ -191,6 +200,10 @@ internal class BuiltinRegistry
 
     private static FunctionSymbol CloneFunctionSymbol(FunctionSymbol fn, Dictionary<Symbol, Symbol> symbolMap)
     {
+        // Overload lists are shared between alias spellings (`_functions[alias]` IS
+        // `_functions[canonical]`); the same instance must clone to the same instance.
+        if (symbolMap.TryGetValue(fn, out var already))
+            return (FunctionSymbol)already;
         var cloned = fn with { CodeGenInfo = null };
         symbolMap[fn] = cloned;
         return cloned;

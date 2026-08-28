@@ -64,7 +64,7 @@ z: float32 = float32(3.14) # double → float, overflow → Infinity
 Integer conversion functions also accept an explicit base for string parsing:
 
 ```python
-int8("0xff", 16)   # ValueError — 255 > 127
+int8("0xff", 16)   # OverflowError — 255 > 127
 int8("0x7f", 16)   # 127
 uint8("0xff", 16)  # 255
 int16("0b1010", 2) # 10

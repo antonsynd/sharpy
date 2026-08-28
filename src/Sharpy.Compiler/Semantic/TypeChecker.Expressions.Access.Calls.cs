@@ -632,6 +632,15 @@ internal partial class TypeChecker
         var operandNode = call.Arguments[1];
         var subjectType = argTypes.Count > 0 ? argTypes[0] : null;
 
+        // The operand is a TYPE position: whatever value-selection its expression check deferred
+        // (a primitive spelling with arity-divergent conversion overloads) is never a value here.
+        DiscardPendingOverloadSelectionFor(UnwrapParenthesized(operandNode));
+        if (UnwrapParenthesized(operandNode) is TupleLiteral operandTuple)
+        {
+            foreach (var element in operandTuple.Elements)
+                DiscardPendingOverloadSelectionFor(UnwrapParenthesized(element));
+        }
+
         // (A, B) denotes tuple[A, B] — the second argument is a type position (#1532).
         // A parenthesized single (T) denotes tuple[T] per type_annotation_shorthand.md.
         var rawOperand = operandNode is Parenthesized paren ? paren.Expression : operandNode;

@@ -947,6 +947,21 @@ internal partial class TypeChecker
                 userTypeSym, userTypeSym.Name, DescribeMemberPath(userQualified), isBuiltin: false);
         }
 
+        // A user-module-qualified ALIAS of a primitive (`lib.Handle` where lib declares
+        // `type Handle = int`) denotes exactly what the bare `Handle` denotes (#1636, R3(ii)):
+        // the alias-expansion route below for bare identifiers is taken here for the qualified
+        // spelling, so both are pinned by the expected function type. Before this arm the
+        // qualified spelling fell through to the synthesized `(__synth_T0) -> int` and was
+        // refused with SPY0220 while the bare spelling ran.
+        if (reference is MemberAccess aliasQualified
+            && TryResolveTypeSymbolFromMemberAccess(aliasQualified, out var qualifiedAlias) is { } aliasTarget
+            && qualifiedAlias != null)
+        {
+            var isAliasBuiltin = _symbolTable.BuiltinRegistry.IsBuiltinSymbol(aliasTarget);
+            return ClassifyResolvedConstructorReference(
+                aliasTarget, aliasTarget.Name, DescribeMemberPath(aliasQualified), isAliasBuiltin);
+        }
+
         if (reference is not Identifier id)
             return default;
 
@@ -2012,6 +2027,13 @@ internal partial class TypeChecker
         if (IsCurrentMemberAccessQualifier(reference))
             return referencedType;
 
+        // The TYPE argument of a type test names a type, never a value, so the arity-divergence
+        // rule does not apply — the same exemption the SPY0337 value-position rule takes. Without
+        // it `isinstance(v, int8)` was refused with SPY0336 (14 conversion overloads of differing
+        // arity) while `isinstance(v, int)` passed (#1637 sibling, 2026-08-28).
+        if (IsTypeTestTypeArgument(reference))
+            return referencedType;
+
         if (ResolveReferencedCallableOverloads(reference) is not var (overloads, substitute)
             || overloads.Count <= 1)
         {
@@ -2346,6 +2368,25 @@ internal partial class TypeChecker
     /// Drops the current call's deferred selections without diagnosing them: the call already failed
     /// (inference reported its own error), and a second error on its argument would be noise.
     /// </summary>
+    /// <summary>
+    /// Drops the deferred selection recorded for one reference node. Used for a TYPE position
+    /// (the second argument of <c>isinstance</c>): the operand was checked as an expression first,
+    /// and a primitive with arity-divergent conversion overloads (<c>int8</c>, 14 overloads via
+    /// <c>IntParse</c>) deferred its selection, which nothing in a type test ever consumes — so it
+    /// was refused as SPY0336 "cannot be used as a value" at scope close while <c>int</c>, whose
+    /// overloads do not diverge, passed (#1637 sibling, found 2026-08-28).
+    /// </summary>
+    private void DiscardPendingOverloadSelectionFor(Expression reference)
+    {
+        if (!HasPendingOverloadSelections)
+            return;
+        for (int idx = _pendingOverloadSelections.Count - 1; idx >= _pendingOverloadWatermark; idx--)
+        {
+            if (ReferenceEquals(_pendingOverloadSelections[idx].Reference, reference))
+                _pendingOverloadSelections.RemoveAt(idx);
+        }
+    }
+
     private void DiscardPendingOverloadSelections()
     {
         if (HasPendingOverloadSelections)
