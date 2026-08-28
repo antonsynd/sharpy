@@ -41,6 +41,12 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<VariableDeclaration, Symbol> _declarationSymbols =
         new(ReferenceEqualityComparer.Instance);
 
+    // Bare declarations (`x: int`, no initializer) that the definite-assignment analysis proved are
+    // assigned on ALL paths before any read. The emitter adds `= default` so the C# compiler's own
+    // DA is satisfied even when Sharpy's DA is strictly stronger (e.g. for-else, while-else) (#1656).
+    private readonly ConcurrentDictionary<VariableDeclaration, byte> _definitelyAssignedBareLocals =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map function calls to resolved function symbols
     private readonly ConcurrentDictionary<FunctionCall, FunctionSymbol> _callTargets =
         new(ReferenceEqualityComparer.Instance);
@@ -511,6 +517,16 @@ public class SemanticInfo : ISemanticQuery
     public Symbol? GetDeclarationSymbol(VariableDeclaration declaration)
     {
         return _declarationSymbols.TryGetValue(declaration, out var symbol) ? symbol : null;
+    }
+
+    public void RecordDefinitelyAssignedBareLocal(VariableDeclaration decl)
+    {
+        _definitelyAssignedBareLocals[decl] = 0;
+    }
+
+    public bool IsDefinitelyAssignedBareLocal(VariableDeclaration decl)
+    {
+        return _definitelyAssignedBareLocals.ContainsKey(decl);
     }
 
     // #1438: TypeChecker call-node resolution routes must record targets through
@@ -1477,6 +1493,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._declarationSymbols)
             _declarationSymbols.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._definitelyAssignedBareLocals)
+            _definitelyAssignedBareLocals.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._callTargets)
             _callTargets.TryAdd(kvp.Key, kvp.Value);

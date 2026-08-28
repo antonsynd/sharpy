@@ -17,6 +17,24 @@ internal static class DefiniteAssignmentAnalysis
         Identifier ReadSite);
 
     /// <summary>
+    /// Returns the bare declarations (<c>x: int</c>, no initializer) found in the CFG,
+    /// keyed by variable name.
+    /// </summary>
+    public static IReadOnlyDictionary<string, VariableDeclaration> FindBareDeclarations(ControlFlowGraph cfg)
+    {
+        var bareDecls = new Dictionary<string, VariableDeclaration>();
+        foreach (var block in cfg.Blocks)
+        {
+            foreach (var stmt in block.Statements)
+            {
+                if (stmt is VariableDeclaration vd && vd.InitialValue == null && vd.Type != null)
+                    bareDecls.TryAdd(vd.Name, vd);
+            }
+        }
+        return bareDecls;
+    }
+
+    /// <summary>
     /// Finds all use-before-assign violations for bare-declared local variables in the given CFG.
     /// </summary>
     public static IReadOnlyList<Violation> FindViolations(ControlFlowGraph cfg)

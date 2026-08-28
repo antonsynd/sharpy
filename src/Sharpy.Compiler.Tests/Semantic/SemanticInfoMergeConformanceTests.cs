@@ -195,6 +195,20 @@ public class SemanticInfoMergeConformanceTests
             "the declaration→symbol binding must survive the per-file → project merge");
     }
 
+    [Fact]
+    public void MergeFrom_CarriesDefinitelyAssignedBareLocals()
+    {
+        var perFile = new SemanticInfo();
+        var decl = new VariableDeclaration { Name = "x", Type = new TypeAnnotation { Name = "int" } };
+        perFile.RecordDefinitelyAssignedBareLocal(decl);
+
+        var project = new SemanticInfo();
+        project.MergeFrom(perFile);
+
+        project.IsDefinitelyAssignedBareLocal(decl).Should().BeTrue(
+            "the definitely-assigned bare-local fact must survive the per-file → project merge");
+    }
+
     /// <summary>
     /// The same property through a real multi-file compile rather than two hand-built instances:
     /// the merged project SemanticInfo must answer for a declaration in a file that is not the

@@ -39,5 +39,19 @@ internal class DefiniteAssignmentValidator : ValidatingAstWalker
                 code: DiagnosticCodes.SemanticOverflow.UseBeforeAssignment,
                 span: v.ReadSite.Span);
         }
+
+        var bareDecls = DefiniteAssignmentAnalysis.FindBareDeclarations(cfg);
+        if (bareDecls.Count > 0)
+        {
+            var violatedNames = new HashSet<string>();
+            foreach (var v in violations)
+                violatedNames.Add(v.ReadSite.Name);
+
+            foreach (var (name, decl) in bareDecls)
+            {
+                if (!violatedNames.Contains(name))
+                    Context.SemanticInfo.RecordDefinitelyAssignedBareLocal(decl);
+            }
+        }
     }
 }
