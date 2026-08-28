@@ -27,7 +27,11 @@ internal static class PrimitiveConversionResolver
         if (!registry.IsBuiltinSymbol(typeSymbol))
             return null;
 
-        return registry.GetFunctionOverloads(info.SharpyName);
+        // Use the TypeSymbol's registered name, not the catalog's primary name —
+        // the catalog primary is int32/float64 but the overloads are registered
+        // under int/float (the user-facing name that matches the CLR discovery).
+        return registry.GetFunctionOverloads(typeSymbol.Name)
+            ?? registry.GetFunctionOverloads(info.SharpyName);
     }
 
     /// <summary>

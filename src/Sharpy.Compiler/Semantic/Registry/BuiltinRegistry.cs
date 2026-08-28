@@ -227,15 +227,30 @@ internal class BuiltinRegistry
 
         // Register every primitive that carries a ConversionFunction — the catalog
         // is the single authority for which widths are callable (#1637).
-        foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
+        // Deduplicate by CLR type: PrimitiveCatalog lists both width-qualified names
+        // (int32, float64) and user-facing aliases (int, float) for the same CLR type.
+        // Register the first occurrence as a full TypeSymbol; subsequent occurrences
+        // alias to it so operator resolution sees one TypeSymbol per CLR type.
+        // Iterate shorter names first so user-facing names (int, float, str) become
+        // the TypeSymbol.Name, and width-qualified names (int32, float64) are aliases.
+        var registeredClrTypes = new Dictionary<Type, string>();
+        foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives()
+            .OrderBy(e => e.Name.Length).ThenBy(e => e.Name, StringComparer.Ordinal))
         {
             if (info.ConversionFunction == null)
                 continue;
             if (SeparatelyRegisteredClrTypes.Contains(info.ClrType))
                 continue;
 
+            if (registeredClrTypes.TryGetValue(info.ClrType, out var existingName))
+            {
+                _types[info.SharpyName] = _types[existingName];
+                continue;
+            }
+
             var kind = info.ClrType.IsValueType ? TypeKind.Struct : TypeKind.Class;
             RegisterType(info.SharpyName, info.ClrType, kind);
+            registeredClrTypes[info.ClrType] = info.SharpyName;
         }
 
         // Collections (generic) - use Sharpy.Core wrapper types

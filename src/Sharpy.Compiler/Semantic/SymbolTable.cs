@@ -67,11 +67,16 @@ public class SymbolTable : IGlobalSymbolTable
 
     private void PopulateBuiltins()
     {
-        // Add builtin types
+        // Add builtin types. When the registry deduplicates CLR-type aliases (e.g. int32 → int),
+        // the alias entry's TypeSymbol.Name differs from its key. Define uses symbol.Name,
+        // so aliases need DefineAs to register under their own spelling.
         var typeNames = new HashSet<string>();
         foreach (var (name, typeSymbol) in _builtins.GetAllTypes())
         {
-            _globalScope.Define(typeSymbol);
+            if (typeSymbol.Name == name)
+                _globalScope.Define(typeSymbol);
+            else
+                _globalScope.DefineAs(name, typeSymbol);
             typeNames.Add(name);
         }
 

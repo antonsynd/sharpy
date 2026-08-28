@@ -51,6 +51,11 @@ public class Scope
         _symbols[symbol.Name] = symbol;
     }
 
+    internal void DefineAs(string name, Symbol symbol)
+    {
+        _symbols[name] = symbol;
+    }
+
     public Symbol? Lookup(string name, bool searchParent = true)
     {
         if (_symbols.TryGetValue(name, out var symbol))

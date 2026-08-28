@@ -214,6 +214,15 @@ public class RoslynEmitterStatementTests
     public void GenerateStatement_ListVarDeclaration_UsesTargetTypeForElements()
     {
         // Test that list[int] = [1, 2, 3] generates List<int>, not List<object>
+        var listLiteral = new ListLiteral
+        {
+            Elements = new List<Expression>
+            {
+                new IntegerLiteral { Value = "1" },
+                new IntegerLiteral { Value = "2" },
+                new IntegerLiteral { Value = "3" }
+            }.ToImmutableArray()
+        };
         var stmt = new VariableDeclaration
         {
             Name = "numbers",
@@ -225,16 +234,16 @@ public class RoslynEmitterStatementTests
                     new TypeAnnotation { Name = "int" }
                 }.ToImmutableArray()
             },
-            InitialValue = new ListLiteral
-            {
-                Elements = new List<Expression>
-                {
-                    new IntegerLiteral { Value = "1" },
-                    new IntegerLiteral { Value = "2" },
-                    new IntegerLiteral { Value = "3" }
-                }.ToImmutableArray()
-            }
+            InitialValue = listLiteral
         };
+
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetExpressionType(listLiteral, new GenericType
+        {
+            Name = "list",
+            TypeArguments = new List<SemanticType> { BuiltinType.Int }
+        });
+        _context.SemanticInfo = semanticInfo;
 
         var result = GenerateStatementCode(stmt);
 
@@ -248,6 +257,17 @@ public class RoslynEmitterStatementTests
     public void GenerateStatement_DictVarDeclaration_UsesTargetTypeForElements()
     {
         // Test that dict[str, int] = {"a": 1} generates Dictionary<string, int>
+        var dictLiteral = new DictLiteral
+        {
+            Entries = new List<DictEntry>
+            {
+                new DictEntry
+                {
+                    Key = new StringLiteral { Value = "a" },
+                    Value = new IntegerLiteral { Value = "1" }
+                }
+            }.ToImmutableArray()
+        };
         var stmt = new VariableDeclaration
         {
             Name = "lookup",
@@ -260,18 +280,16 @@ public class RoslynEmitterStatementTests
                     new TypeAnnotation { Name = "int" }
                 }.ToImmutableArray()
             },
-            InitialValue = new DictLiteral
-            {
-                Entries = new List<DictEntry>
-                {
-                    new DictEntry
-                    {
-                        Key = new StringLiteral { Value = "a" },
-                        Value = new IntegerLiteral { Value = "1" }
-                    }
-                }.ToImmutableArray()
-            }
+            InitialValue = dictLiteral
         };
+
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetExpressionType(dictLiteral, new GenericType
+        {
+            Name = "dict",
+            TypeArguments = new List<SemanticType> { BuiltinType.Str, BuiltinType.Int }
+        });
+        _context.SemanticInfo = semanticInfo;
 
         var result = GenerateStatementCode(stmt);
 
@@ -284,6 +302,15 @@ public class RoslynEmitterStatementTests
     public void GenerateStatement_SetVarDeclaration_UsesTargetTypeForElements()
     {
         // Test that set[int] = {1, 2, 3} generates HashSet<int>
+        var setLiteral = new SetLiteral
+        {
+            Elements = new List<Expression>
+            {
+                new IntegerLiteral { Value = "1" },
+                new IntegerLiteral { Value = "2" },
+                new IntegerLiteral { Value = "3" }
+            }.ToImmutableArray()
+        };
         var stmt = new VariableDeclaration
         {
             Name = "unique_nums",
@@ -295,16 +322,16 @@ public class RoslynEmitterStatementTests
                     new TypeAnnotation { Name = "int" }
                 }.ToImmutableArray()
             },
-            InitialValue = new SetLiteral
-            {
-                Elements = new List<Expression>
-                {
-                    new IntegerLiteral { Value = "1" },
-                    new IntegerLiteral { Value = "2" },
-                    new IntegerLiteral { Value = "3" }
-                }.ToImmutableArray()
-            }
+            InitialValue = setLiteral
         };
+
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetExpressionType(setLiteral, new GenericType
+        {
+            Name = "set",
+            TypeArguments = new List<SemanticType> { BuiltinType.Int }
+        });
+        _context.SemanticInfo = semanticInfo;
 
         var result = GenerateStatementCode(stmt);
 
