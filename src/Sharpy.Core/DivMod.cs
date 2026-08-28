@@ -62,6 +62,27 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Return the quotient and remainder of dividing two <c>ulong</c> operands.
+        /// Both operands are non-negative, so floored and truncating division coincide; the
+        /// overload exists so <c>divmod(uint64, uint64)</c> resolves instead of being refused
+        /// (SPY0354) or widened to <c>double</c> — the same reason
+        /// <see cref="FloorDiv(ulong, ulong)"/> and <see cref="FloorMod(ulong, ulong)"/> exist (#1662).
+        /// </summary>
+        /// <param name="x">The dividend</param>
+        /// <param name="y">The divisor</param>
+        /// <returns>A tuple of (quotient, remainder)</returns>
+        /// <exception cref="ZeroDivisionError">Thrown when <paramref name="y"/> is zero</exception>
+        public static (ulong, ulong) Divmod(ulong x, ulong y)
+        {
+            if (y == 0UL)
+            {
+                throw new ZeroDivisionError("integer division or modulo by zero");
+            }
+
+            return (FloorDiv(x, y), FloorMod(x, y));
+        }
+
+        /// <summary>
         /// Return the quotient and remainder of dividing x by y.
         /// Uses Python's floored division semantics where the remainder has the same sign as the divisor.
         /// </summary>

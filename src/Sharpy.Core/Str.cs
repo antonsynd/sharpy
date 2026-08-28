@@ -119,6 +119,16 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Convert a <see cref="ulong"/> to string without boxing. Without this overload C#
+        /// widened <c>uint64</c> to <c>double</c> and <c>str(uint64(7))</c> printed <c>7.0</c>
+        /// (the other unsigned widths widen to <see cref="long"/> and were already exact).
+        /// </summary>
+        public static string Str(ulong l)
+        {
+            return l.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
         /// Convert a <see cref="double"/> to string without boxing.
         /// Formats with Python-compatible trailing <c>.0</c> for whole numbers.
         /// </summary>

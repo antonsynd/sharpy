@@ -34,11 +34,26 @@ def main() -> None:
     v16: uint16 = 7
     print(u16 // v16, u16 % v16, u16 == (u16 // v16) * v16 + (u16 % v16))
 
+    # === uint32: unsigned 32-bit ===
+    u32: uint32 = 2000000000
+    v32: uint32 = 7
+    q32: long = u32 // v32
+    r32: long = u32 % v32
+    print(q32, r32, u32 == q32 * v32 + r32)
+
     # === uint64: must produce integer result, not double ===
     u64: uint64 = 7
     v64: uint64 = 2
     q64: uint64 = u64 // v64
     r64: uint64 = u64 % v64
     print(q64, r64, u64 == q64 * v64 + r64)
+
+    # === divmod: the third spelling of the same contract, every width ===
+    dq8, dr8 = divmod(a8, b8)
+    print(dq8, dr8)
+    dq64: uint64
+    dr64: uint64
+    dq64, dr64 = divmod(u64, v64)
+    print(dq64, dr64)
 
     # TODO(#1666): augmented //=/%= on narrow types needs a narrowing cast
