@@ -1,0 +1,38 @@
+# Slice-bound function calls evaluate exactly once (#1665, #1672 C3).
+
+class Counter:
+    value: int
+    def __init__(self):
+        self.value = 0
+
+c: Counter = Counter()
+
+def start_probe() -> int:
+    c.value += 1
+    print("start")
+    return 1
+
+def stop_probe() -> int:
+    c.value += 1
+    print("stop")
+    return 3
+
+def step_probe() -> int:
+    c.value += 1
+    print("step")
+    return 1
+
+def main() -> None:
+    # Slice read with function-call bounds
+    xs: list[int] = [10, 20, 30, 40, 50]
+    result: list[int] = xs[start_probe():stop_probe()]
+    print(result)
+    print(c.value)
+
+    # Reset
+    c.value = 0
+
+    # Slice with step
+    result2: list[int] = xs[start_probe():stop_probe():step_probe()]
+    print(result2)
+    print(c.value)

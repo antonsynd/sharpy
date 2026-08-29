@@ -1,0 +1,27 @@
+# Index read with a side-effecting function call evaluates once (#1672 C3).
+
+class Counter:
+    value: int
+    def __init__(self):
+        self.value = 0
+
+c: Counter = Counter()
+
+def probe() -> int:
+    c.value += 1
+    print("probe")
+    return 1
+
+def main() -> None:
+    # Simple index read
+    xs: list[int] = [10, 20, 30]
+    v: int = xs[probe()]
+    print(v)
+    print(c.value)
+
+    # Reset
+    c.value = 0
+
+    # Index read in a print expression
+    print(xs[probe()])
+    print(c.value)
