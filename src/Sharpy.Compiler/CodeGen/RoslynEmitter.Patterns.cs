@@ -459,18 +459,24 @@ internal partial class RoslynEmitter
                         if (innerElement is BindingPattern bp)
                         {
                             var selfVarName = GetMangledVariableName(bp.Name, isNewDeclaration: true);
-                            var selfTypeSyntax = _typeMapper.MapType(positionalPattern.Type);
+                            var selfTypeSyntax = _context.SemanticInfo?.GetPatternType(positionalPattern) is { } decidedSelfType
+                                ? _typeMapper.MapSemanticType(decidedSelfType)
+                                : _typeMapper.MapType(positionalPattern.Type);
                             return DeclarationPattern(selfTypeSyntax,
                                 SingleVariableDesignation(Identifier(selfVarName)));
                         }
                         if (innerElement is WildcardPattern)
                         {
-                            var selfTypeSyntax = _typeMapper.MapType(positionalPattern.Type);
+                            var selfTypeSyntax = _context.SemanticInfo?.GetPatternType(positionalPattern) is { } decidedWildType
+                                ? _typeMapper.MapSemanticType(decidedWildType)
+                                : _typeMapper.MapType(positionalPattern.Type);
                             return DeclarationPattern(selfTypeSyntax, DiscardDesignation());
                         }
                         var innerPat = GenerateMatchPattern(
                             innerElement, memberGuards, ref matchVarCounter, scrutineeType);
-                        var typeSyn = _typeMapper.MapType(positionalPattern.Type);
+                        var typeSyn = _context.SemanticInfo?.GetPatternType(positionalPattern) is { } decidedInnerType
+                            ? _typeMapper.MapSemanticType(decidedInnerType)
+                            : _typeMapper.MapType(positionalPattern.Type);
                         return BinaryPattern(SyntaxKind.AndPattern,
                             DeclarationPattern(typeSyn, DiscardDesignation()),
                             innerPat);
