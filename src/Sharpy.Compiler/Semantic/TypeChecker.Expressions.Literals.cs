@@ -64,6 +64,10 @@ internal partial class TypeChecker
                 BuiltinNames.List, 1, list, "x: list[int] = []") ?? SemanticType.Unknown;
         }
 
+        SemanticType? elementExpectation = null;
+        if (_expectedType is GenericType { Name: BuiltinNames.List, TypeArguments.Count: 1 } expectedList)
+            elementExpectation = expectedList.TypeArguments[0];
+
         var elementTypes = new List<SemanticType>();
         foreach (var elem in list.Elements)
         {
@@ -80,37 +84,29 @@ internal partial class TypeChecker
             }
             else
             {
+                var previousExpected = _expectedType;
+                _expectedType = elementExpectation;
                 elementTypes.Add(CheckExpression(elem));
+                _expectedType = previousExpected;
             }
         }
 
-        // Find least common ancestor of all element types
-        // This handles cases like [Bug(), Feature()] -> list[WorkItem]
         var commonType = FindLeastCommonAncestor(elementTypes);
 
-        // When LCA falls back to object (or Void, for an all-`None` literal) but a contextual
-        // type is available, use the expected element type if all elements are assignable to it.
-        // This handles cases like: x: list[float] = [a, b]; x: list[object] = [None] (#950).
-        if (commonType is UserDefinedType { Name: "object" } or UnmappedClrType or VoidType
-            && _expectedType is GenericType expectedList
-            && expectedList.Name == BuiltinNames.List
-            && expectedList.TypeArguments.Count == 1
-            && AllAssignableTo(elementTypes, expectedList.TypeArguments[0]))
-        {
-            commonType = expectedList.TypeArguments[0];
-        }
+        // When a contextual element type is available and every element is assignable to it,
+        // record the expected type. This handles covariant assignments (list[Base] = [Derived()])
+        // and depth > 1 contextual inference (#1671).
+        if (elementExpectation != null && AllAssignableTo(elementTypes, elementExpectation))
+            commonType = elementExpectation;
 
-        // A Void common element type means every element is `None` and no usable element type
-        // could be inferred (e.g. `[None]`); the contextual element type wins when present
-        // (`x: list[object] = [None]`), otherwise this is an un-inferable literal — error rather
-        // than emitting an invalid `List<void>` (#950).
         commonType = ResolveVoidElementType(
             commonType, BuiltinNames.List, list, "list[object]");
 
         return new GenericType
         {
             Name = BuiltinNames.List,
-            TypeArguments = new List<SemanticType> { commonType }
+            TypeArguments = new List<SemanticType> { commonType },
+            GenericDefinition = _symbolTable.BuiltinRegistry.GetType(BuiltinNames.List)
         };
     }
 
@@ -120,6 +116,14 @@ internal partial class TypeChecker
         {
             return TryInferEmptyCollectionType(
                 BuiltinNames.Dict, 2, dict, "d: dict[str, int] = {}") ?? SemanticType.Unknown;
+        }
+
+        SemanticType? keyExpectation = null;
+        SemanticType? valueExpectation = null;
+        if (_expectedType is GenericType { Name: BuiltinNames.Dict, TypeArguments.Count: 2 } expectedDict)
+        {
+            keyExpectation = expectedDict.TypeArguments[0];
+            valueExpectation = expectedDict.TypeArguments[1];
         }
 
         var keyTypes = new List<SemanticType>();
@@ -138,32 +142,25 @@ internal partial class TypeChecker
             }
             else
             {
+                var previousExpected = _expectedType;
+                _expectedType = keyExpectation;
                 keyTypes.Add(CheckExpression(entry.Key));
+                _expectedType = valueExpectation;
                 valueTypes.Add(CheckExpression(entry.Value));
+                _expectedType = previousExpected;
             }
         }
 
-        // Find least common ancestor for both keys and values
         var commonKeyType = FindLeastCommonAncestor(keyTypes);
         var commonValueType = FindLeastCommonAncestor(valueTypes);
 
-        // When LCA falls back to object but a contextual type is available,
-        // use the expected key/value types if all elements are assignable.
-        // This handles cases like: d: dict[str, float] = {"a": x, "b": y}
-        if (_expectedType is GenericType expectedDict
-            && expectedDict.Name == BuiltinNames.Dict
-            && expectedDict.TypeArguments.Count == 2)
-        {
-            if (commonKeyType is UserDefinedType { Name: "object" } or UnmappedClrType
-                && AllAssignableTo(keyTypes, expectedDict.TypeArguments[0]))
-                commonKeyType = expectedDict.TypeArguments[0];
-            if (commonValueType is UserDefinedType { Name: "object" } or UnmappedClrType or VoidType
-                && AllAssignableTo(valueTypes, expectedDict.TypeArguments[1]))
-                commonValueType = expectedDict.TypeArguments[1];
-        }
+        // When a contextual key/value type is available and every element is assignable,
+        // record the expected type (#1671).
+        if (keyExpectation != null && AllAssignableTo(keyTypes, keyExpectation))
+            commonKeyType = keyExpectation;
+        if (valueExpectation != null && AllAssignableTo(valueTypes, valueExpectation))
+            commonValueType = valueExpectation;
 
-        // `{"k": None}` with no usable value type errors rather than emitting a `void` value
-        // type argument (#950). Keys are likewise guarded for symmetry.
         commonKeyType = ResolveVoidElementType(
             commonKeyType, BuiltinNames.Dict, dict, "dict[str, object]");
         commonValueType = ResolveVoidElementType(
@@ -172,7 +169,8 @@ internal partial class TypeChecker
         return new GenericType
         {
             Name = BuiltinNames.Dict,
-            TypeArguments = new List<SemanticType> { commonKeyType, commonValueType }
+            TypeArguments = new List<SemanticType> { commonKeyType, commonValueType },
+            GenericDefinition = _symbolTable.BuiltinRegistry.GetType(BuiltinNames.Dict)
         };
     }
 
@@ -183,6 +181,10 @@ internal partial class TypeChecker
             return TryInferEmptyCollectionType(
                 BuiltinNames.Set, 1, set, "s: set[int] = set()") ?? SemanticType.Unknown;
         }
+
+        SemanticType? elementExpectation = null;
+        if (_expectedType is GenericType { Name: BuiltinNames.Set, TypeArguments.Count: 1 } expectedSet)
+            elementExpectation = expectedSet.TypeArguments[0];
 
         var elementTypes = new List<SemanticType>();
         foreach (var elem in set.Elements)
@@ -199,32 +201,26 @@ internal partial class TypeChecker
             }
             else
             {
+                var previousExpected = _expectedType;
+                _expectedType = elementExpectation;
                 elementTypes.Add(CheckExpression(elem));
+                _expectedType = previousExpected;
             }
         }
 
-        // Find least common ancestor of all element types
         var commonType = FindLeastCommonAncestor(elementTypes);
 
-        // When LCA falls back to object (or Void, for an all-`None` literal) but a contextual
-        // type is available, use the expected element type if all elements are assignable to it.
-        if (commonType is UserDefinedType { Name: "object" } or UnmappedClrType or VoidType
-            && _expectedType is GenericType expectedSet
-            && expectedSet.Name == BuiltinNames.Set
-            && expectedSet.TypeArguments.Count == 1
-            && AllAssignableTo(elementTypes, expectedSet.TypeArguments[0]))
-        {
-            commonType = expectedSet.TypeArguments[0];
-        }
+        if (elementExpectation != null && AllAssignableTo(elementTypes, elementExpectation))
+            commonType = elementExpectation;
 
-        // `{None}` with no usable element type errors rather than emitting `Set<void>` (#950).
         commonType = ResolveVoidElementType(
             commonType, BuiltinNames.Set, set, "set[object]");
 
         return new GenericType
         {
             Name = BuiltinNames.Set,
-            TypeArguments = new List<SemanticType> { commonType }
+            TypeArguments = new List<SemanticType> { commonType },
+            GenericDefinition = _symbolTable.BuiltinRegistry.GetType(BuiltinNames.Set)
         };
     }
 
@@ -263,7 +259,22 @@ internal partial class TypeChecker
             return new TupleType { ElementTypes = elementTypes };
         }
 
-        var directElementTypes = tuple.Elements.Select(CheckExpression).ToList();
+        List<SemanticType>? indexExpectations = null;
+        if (_expectedType is TupleType expectedTuple
+            && expectedTuple.ElementTypes.Count == tuple.Elements.Length)
+        {
+            indexExpectations = expectedTuple.ElementTypes;
+        }
+
+        var directElementTypes = new List<SemanticType>(tuple.Elements.Length);
+        for (int i = 0; i < tuple.Elements.Length; i++)
+        {
+            var previousExpected = _expectedType;
+            _expectedType = indexExpectations?[i];
+            directElementTypes.Add(CheckExpression(tuple.Elements[i]));
+            _expectedType = previousExpected;
+        }
+
         var tupleType = new TupleType { ElementTypes = directElementTypes };
 
         // Propagate element names for named tuple literals

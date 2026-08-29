@@ -1142,7 +1142,7 @@ internal partial class TypeChecker
                 TypeParameterVariance.Covariant => IsAssignable(sourceArg, targetArg),
                 TypeParameterVariance.Contravariant => IsAssignable(targetArg, sourceArg),
                 _ => sourceArg.Equals(targetArg)
-                     || (sourceArg.IsAssignableTo(targetArg) && targetArg.IsAssignableTo(sourceArg)),
+                     || (IsAssignable(sourceArg, targetArg) && IsAssignable(targetArg, sourceArg)),
             };
 
             if (!satisfied)
