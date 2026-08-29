@@ -28,7 +28,7 @@ public static class DiagnosticCodes
     /// Generic diagnostic code used by <see cref="Logging.StructuredLogger"/> for
     /// unstructured log messages that don't originate from a specific compiler phase.
     /// </summary>
-    public const string GenericError = "SPY0000";
+    public const string GenericError = "SPY0000";    // Active
 
     /// <summary>
     /// Lexer diagnostic codes (SPY0001-SPY0099).
@@ -89,7 +89,7 @@ public static class DiagnosticCodes
 
         #region Backtick identifier errors (SPY0025)
 
-        public const string DotInBacktickIdentifier = "SPY0025";    // Deprecated: dots now allowed in backtick identifiers
+        public const string DotInBacktickIdentifier = "SPY0025";    // Retired: dots now allowed in backtick identifiers
 
         #endregion
 
@@ -369,7 +369,7 @@ public static class DiagnosticCodes
         // import diagnostic reported at the import statement. Renumbering the two redirects to
         // carve a new sub-band would break shipped `.error` fixtures for no gain.
         // Retired — superseded by alias transparency (#1527); reserved, never reused
-        public const string BuiltinTypeAliasUnsupported = "SPY0312";
+        public const string BuiltinTypeAliasUnsupported = "SPY0312"; // Retired
         // SPY0313-SPY0319: Reserved for future import diagnostics
 
         #endregion
@@ -527,8 +527,8 @@ public static class DiagnosticCodes
         public const string DataclassFieldNoType = "SPY0382";             // Active
         public const string DataclassInvalidOption = "SPY0383";           // Active
         // Self type errors (SPY0384-SPY0385)
-        public const string SelfOutsideClass = "SPY0384";
-        public const string SelfInStaticMethod = "SPY0385";
+        public const string SelfOutsideClass = "SPY0384";               // Active
+        public const string SelfInStaticMethod = "SPY0385";             // Active
 
         // Builtin call errors (SPY0386)
         public const string UnsupportedTypeNone = "SPY0386";           // Active
@@ -660,7 +660,7 @@ public static class DiagnosticCodes
         public const string EqObjectWithoutHash = "SPY0455";        // Active
         public const string HashWithoutEqObject = "SPY0456";        // Active
         [System.Obsolete("SPY0457 is reserved — __reversed__ is now supported")]
-        public const string UnsupportedDunderReversed = "SPY0457";  // Deprecated — __reversed__ now supported (see audit 2026-05-11)
+        public const string UnsupportedDunderReversed = "SPY0457";  // Retired — __reversed__ now supported (see audit 2026-05-11)
         public const string VirtualOnObjectOverride = "SPY0458";    // Active
         public const string StaticFieldViaInstance = "SPY0459";     // Active
 
