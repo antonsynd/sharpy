@@ -643,7 +643,8 @@ public sealed class LspTestClient : IAsyncDisposable
         var dir = AppDomain.CurrentDomain.BaseDirectory;
         while (dir != null)
         {
-            if (Directory.Exists(System.IO.Path.Combine(dir, ".git"))
+            var gitPath = System.IO.Path.Combine(dir, ".git");
+            if (Directory.Exists(gitPath) || File.Exists(gitPath)
                 || File.Exists(System.IO.Path.Combine(dir, "sharpy.sln")))
             {
                 return dir;

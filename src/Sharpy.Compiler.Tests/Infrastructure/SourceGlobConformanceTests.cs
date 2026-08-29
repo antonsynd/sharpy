@@ -84,10 +84,11 @@ public class SourceGlobConformanceTests
         var dir = AppContext.BaseDirectory;
         while (dir != null)
         {
-            if (Directory.Exists(Path.Combine(dir, ".git")))
+            var gitPath = Path.Combine(dir, ".git");
+            if (Directory.Exists(gitPath) || File.Exists(gitPath))
                 return dir;
             dir = Path.GetDirectoryName(dir);
         }
-        throw new InvalidOperationException("Cannot find repo root (.git directory)");
+        throw new InvalidOperationException("Cannot find repo root (.git directory or file)");
     }
 }
