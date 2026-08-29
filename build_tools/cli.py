@@ -916,6 +916,10 @@ def status():
     click.echo("\n" + "=" * 60 + "\n")
 
 
+from build_tools.clean_fixture_bins import clean_fixture_bins
+cli.add_command(clean_fixture_bins)
+
+
 def main():
     """Main entry point."""
     cli()
