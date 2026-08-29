@@ -705,7 +705,7 @@ public static class DiagnosticCodes
         public const string SingleIsinstanceTypeHint = "SPY0475";     // Retired — isinstance second arg is now a type position (#1532); (A, B) denotes tuple[A, B]; non-type expressions draw SPY0344; reserved, never reused
         public const string NegativeTupleIndexHint = "SPY0476";       // Active (emitted by TransitionWarningValidator)
         public const string UnnecessaryStaticDecoratorHint = "SPY0477"; // Active
-        public const string AliasedCollectionAugmentedAssignmentHint = "SPY0478"; // Active (emitted by TransitionWarningValidator)
+        public const string AliasedCollectionAugmentedAssignmentHint = "SPY0478"; // Retired (#1614 graduated inplace_augassign)
         // SPY0479: Retired (#1127 — `to` cast operator removed in 0.8.0); reserved, never reused
         // The transition-hint band is now FULL: 0470-0473, 0476-0478 active; 0474/0475/0479
         // retired-and-never-reused. It does NOT extend into SPY0480-SPY0489 — that is the

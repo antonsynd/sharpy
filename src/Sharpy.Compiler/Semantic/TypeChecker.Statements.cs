@@ -493,8 +493,7 @@ internal partial class TypeChecker
                 _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(kind, narrowTo));
             }
 
-            if (Features.IsEnabled("inplace_augassign")
-                && AugmentedCollectionAssignment.Classify(assignment, targetType) is { } mutation)
+            if (AugmentedCollectionAssignment.Classify(assignment, targetType) is { } mutation)
             {
                 _semanticInfo.SetAugmentedAssignMutation(assignment, mutation.ClrName);
             }

@@ -174,13 +174,11 @@ public sealed class FeatureFlags
             // keeps rebind semantics plus the SPY0478 transition hint (#1394).
             ["inplace_augassign"] = new FeatureInfo(
                 "inplace_augassign",
-                "Experimental alias-mutating augmented assignment on collections (#1428): " +
+                "Graduated (#1614): in-place augmented assignment on collections is now the default. " +
                 "`xs += ys` / `s |= t` / `d |= e` on list/set/dict mutate the receiver in place " +
-                "(CPython `__iadd__`-family semantics) instead of rebinding. v1 scope: identifier " +
-                "targets; the five operators with a mutating CPython counterpart; frozenset stays " +
-                "rebinding. Behavioral flag — ungated code keeps rebind semantics plus the SPY0478 " +
-                "transition hint.",
-                FeatureScope.Semantic),
+                "(CPython `__iadd__`-family semantics). Safe to remove from .features files.",
+                FeatureScope.Semantic,
+                IsNoOp: true),
         };
 
     /// <summary>The names of all enabled features, in ordinal order.</summary>

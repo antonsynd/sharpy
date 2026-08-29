@@ -360,41 +360,10 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     // SPY0476 — Negative tuple index hint
     // ──────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Augmented assignment on a list/set/dict REBINDS the target where CPython mutates in place,
-    /// so a second binding keeps the old value (#1394). Fires only where a second binding is
-    /// visible — that is the only situation in which the difference is observable, and a hint that
-    /// fires on every augmented collection assignment trains users to ignore the band.
-    /// </summary>
-    private void CheckAliasedCollectionAugmentedAssignment(Assignment node)
-    {
-        if (node.Target is not Identifier target)
-            return;
-
-        var targetType = Context.SemanticInfo.GetExpressionType(node.Target)
-            ?? Context.SemanticInfo.GetExpressionType(node.Value);
-
-        var mutation = AugmentedCollectionAssignment.Classify(node, targetType);
-        if (mutation is null)
-            return;
-
-        // #1428: when the mutation is already materialized (inplace_augassign enabled), the
-        // divergence is gone — the gated semantics match CPython, so the hint is suppressed.
-        if (Context.SemanticInfo.GetAugmentedAssignMutation(node) != null)
-            return;
-
-        if (!AugmentedCollectionAssignment.IsAliasObservable(node, targetType, _enclosingBody))
-            return;
-
-        AddHint(
-            $"'{target.Name}' has another binding in this function, and augmented assignment on a "
-                + $"collection rebinds rather than mutating in place — the other binding keeps the "
-                + $"old value. CPython mutates through the alias here. Use '{target.Name}.{mutation.PythonName}(...)' "
-                + "if the other binding should see the change.",
-            node.LineStart, node.ColumnStart,
-            code: DiagnosticCodes.Validation.AliasedCollectionAugmentedAssignmentHint,
-            span: node.Span);
-    }
+    // Retired (#1614): inplace_augassign graduated — augmented assignment on collections
+    // now always mutates in place, so the rebind-vs-mutation divergence no longer exists.
+    // SPY0478 is never emitted. The method is kept as a no-op stub so callers don't break.
+    private void CheckAliasedCollectionAugmentedAssignment(Assignment node) { }
 
     private void CheckNegativeTupleIndex(IndexAccess node)
     {

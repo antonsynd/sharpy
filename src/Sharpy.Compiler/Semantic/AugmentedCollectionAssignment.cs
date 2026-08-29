@@ -44,23 +44,25 @@ internal static class AugmentedCollectionAssignment
     /// non-collection type, or non-Identifier target).
     /// </summary>
     /// <remarks>
-    /// v1 scope: Identifier targets only; the five operators with a mutating CPython counterpart
-    /// on list/set/dict. <c>frozenset</c> is excluded: verified with python3, <c>f |= {3}</c>
-    /// rebinds there too, so Sharpy already agrees. <c>list *=</c> mutates in CPython but is
-    /// excluded from v1 — tracked on the graduation issue.
+    /// Identifier, attribute (<c>self.xs</c>) and index (<c>d[k]</c>) targets are accepted;
+    /// the seven operators with a mutating CPython counterpart on list/set/dict.
+    /// <c>frozenset</c> is excluded: verified with python3, <c>f |= {3}</c> rebinds there too,
+    /// so Sharpy already agrees.
     /// </remarks>
     public static AugmentedMutation? Classify(Assignment node, SemanticType? targetType)
     {
         if (node.Operator == AssignmentOperator.Assign)
             return null;
 
-        if (node.Target is not Identifier)
+        if (node.Target is not (Identifier or MemberAccess or IndexAccess))
             return null;
 
         return (node.Operator, targetType) switch
         {
             (AssignmentOperator.PlusAssign, GenericType { Name: "list" })
                 => new AugmentedMutation("extend", "Extend"),
+            (AssignmentOperator.StarAssign, GenericType { Name: "list" })
+                => new AugmentedMutation("in_place_repeat", "InPlaceRepeat"),
             (AssignmentOperator.OrAssign, GenericType { Name: "set" })
                 => new AugmentedMutation("update", "Update"),
             (AssignmentOperator.AndAssign, GenericType { Name: "set" })

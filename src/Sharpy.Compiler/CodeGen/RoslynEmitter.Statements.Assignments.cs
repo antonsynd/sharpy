@@ -199,6 +199,24 @@ internal partial class RoslynEmitter
         // Handle index assignment: arr[0] = value
         if (assign.Target is IndexAccess indexAccess)
         {
+            var mutationMethod = _context.SemanticInfo?.GetAugmentedAssignMutation(assign);
+            if (mutationMethod != null)
+            {
+                var receiver = GenerateExpression(indexAccess.Object);
+                var idx = GenerateExpression(indexAccess.Index);
+                var element = ElementAccessExpression(receiver)
+                    .WithArgumentList(BracketedArgumentList(
+                        SingletonSeparatedList(Argument(idx))));
+                return ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            element,
+                            IdentifierName(mutationMethod)))
+                    .WithArgumentList(
+                        ArgumentList(SingletonSeparatedList(Argument(value)))));
+            }
+
             var obj = GenerateExpression(indexAccess.Object);
             var index = GenerateExpression(indexAccess.Index);
 
@@ -267,6 +285,20 @@ internal partial class RoslynEmitter
         // Handle member assignment: obj.field = value
         if (assign.Target is MemberAccess memberAccess)
         {
+            var mutationMethod = _context.SemanticInfo?.GetAugmentedAssignMutation(assign);
+            if (mutationMethod != null)
+            {
+                var receiver = GenerateMemberAccess(memberAccess);
+                return ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            receiver,
+                            IdentifierName(mutationMethod)))
+                    .WithArgumentList(
+                        ArgumentList(SingletonSeparatedList(Argument(value)))));
+            }
+
             // Event subscription/unsubscription: obj.on_change += handler / -= handler
             // Emit native C# event += / -= instead of desugaring through GenerateAugmentedValue
             if (_context.SemanticInfo?.IsEventAccess(memberAccess) == true

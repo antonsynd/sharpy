@@ -46,6 +46,20 @@ namespace Sharpy
             _list.AddRange(enumerable);
         }
 
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public void InPlaceRepeat(int n)
+        {
+            if (n <= 0)
+            {
+                _list.Clear();
+                return;
+            }
+
+            var original = new System.Collections.Generic.List<T>(_list);
+            for (int i = 1; i < n; i++)
+                _list.AddRange(original);
+        }
+
         /// <summary>
         /// Remove all items from the list.
         /// </summary>

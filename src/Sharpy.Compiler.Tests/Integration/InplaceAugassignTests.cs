@@ -16,7 +16,7 @@ public class InplaceAugassignTests : IntegrationTestBase
     public InplaceAugassignTests(ITestOutputHelper output) : base(output) { }
 
     [Fact]
-    public void UngatedSetUnion_RebindSemantics_AliasSeesSizeTwo()
+    public void UngatedSetUnion_MutationSemantics_AliasSeesSizeThree()
     {
         var source = @"
 def main() -> None:
@@ -27,7 +27,8 @@ def main() -> None:
 ";
         var result = CompileAndExecute(source);
         result.Success.Should().BeTrue(result.StandardError);
-        result.StandardOutput.TrimEnd().Should().Be("2");
+        // #1614 graduated: mutation is now the default — alias sees the change (python3: 3)
+        result.StandardOutput.TrimEnd().Should().Be("3");
     }
 
     [Fact]
@@ -61,11 +62,12 @@ def main() -> None:
 ";
 
     [Fact]
-    public void UngatedNullableNarrowed_RebindSemantics_CallerUnchanged()
+    public void UngatedNullableNarrowed_MutationSemantics_CallerSeesAppend()
     {
         var result = CompileAndExecute(NullableNarrowedSource);
         result.Success.Should().BeTrue(result.StandardError);
-        result.StandardOutput.TrimEnd().Should().Be("3");
+        // #1614 graduated: mutation is now the default — caller sees the append (python3: 4)
+        result.StandardOutput.TrimEnd().Should().Be("4");
     }
 
     [Fact]

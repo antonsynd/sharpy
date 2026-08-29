@@ -1,5 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
-using Sharpy.Compiler.Api;
+using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Xunit;
 using Xunit.Abstractions;
@@ -16,6 +15,7 @@ namespace Sharpy.Compiler.Tests.Conformance;
 public class ClrMemberFidelityMatrixTests
 {
     private readonly ITestOutputHelper _output;
+    private readonly CompilerApi _api = new();
 
     public ClrMemberFidelityMatrixTests(ITestOutputHelper output) => _output = output;
 
@@ -25,9 +25,6 @@ public class ClrMemberFidelityMatrixTests
     [Trait("Category", "Conformance")]
     public void ClrMemberFidelityMatrix_AllCellsPass()
     {
-        var (corePath, stdlibPath) = ResolveStdlibAssemblyPaths();
-        var api = new CompilerApi(NullLogger.Instance, new[] { corePath, stdlibPath });
-
         var failures = new List<string>();
         var cells = GenerateCells().ToList();
 
@@ -36,7 +33,7 @@ public class ClrMemberFidelityMatrixTests
             CompileResult result;
             try
             {
-                result = api.Compile(cell.Source, new CompilerOptions { OutputType = "library" });
+                result = _api.Compile(cell.Source, new CompilerOptions { OutputType = "library" });
             }
             catch (Exception ex)
             {
@@ -89,7 +86,6 @@ public class ClrMemberFidelityMatrixTests
     {
         // ── Unmapped generic: Stack[int] ──
 
-        // Method: peek() — Pythonic spelling
         yield return new Cell("Stack[int].peek()-correct-pythonic",
             Src("Stack", "s = Stack[int]()\n    s.push(1)\n    n: int = s.peek()"),
             false);
@@ -98,7 +94,6 @@ public class ClrMemberFidelityMatrixTests
             Src("Stack", "s = Stack[int]()\n    s.push(1)\n    x: str = s.peek()"),
             true, "Cannot assign type 'int32'");
 
-        // Method: Peek() — CLR-cased spelling
         yield return new Cell("Stack[int].Peek()-correct-clr",
             Src("Stack", "s = Stack[int]()\n    s.push(1)\n    n: int = s.Peek()"),
             false);
@@ -107,7 +102,6 @@ public class ClrMemberFidelityMatrixTests
             Src("Stack", "s = Stack[int]()\n    s.push(1)\n    x: str = s.Peek()"),
             true, "Cannot assign type 'int32'");
 
-        // Property: count — Pythonic spelling
         yield return new Cell("Stack[int].count-correct-pythonic",
             Src("Stack", "s = Stack[int]()\n    n: int = s.count"),
             false);
@@ -116,7 +110,6 @@ public class ClrMemberFidelityMatrixTests
             Src("Stack", "s = Stack[int]()\n    x: str = s.count"),
             true);
 
-        // Property: Count — CLR-cased spelling
         yield return new Cell("Stack[int].Count-correct-clr",
             Src("Stack", "s = Stack[int]()\n    n: int = s.Count"),
             false);
@@ -162,12 +155,4 @@ public class ClrMemberFidelityMatrixTests
 
     private static string Src(string type, string body) =>
         $"from system.collections.generic import {type}\n\ndef _use() -> None:\n    {body}\n";
-
-    private static (string CorePath, string StdlibPath) ResolveStdlibAssemblyPaths()
-    {
-        var baseDir = Path.GetDirectoryName(typeof(ClrMemberFidelityMatrixTests).Assembly.Location)!;
-        var core = Path.Combine(baseDir, "Sharpy.Core.dll");
-        var stdlib = Path.Combine(baseDir, "Sharpy.Stdlib.dll");
-        return (core, stdlib);
-    }
 }
