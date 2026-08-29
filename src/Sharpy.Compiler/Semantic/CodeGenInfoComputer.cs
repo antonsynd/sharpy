@@ -36,6 +36,9 @@ internal class CodeGenInfoComputer
     /// </summary>
     private void SetCodeGenInfo(Symbol symbol, CodeGenInfo info)
     {
+        System.Diagnostics.Debug.WriteLineIf(
+            _symbolTable.BuiltinRegistry.IsBuiltinSymbol(symbol),
+            $"[CodeGenInfoComputer] SetCodeGenInfo on builtin '{symbol.Name}' from {_sourceFilePath}");
         _semanticBinding.SetCodeGenInfo(symbol, info);
     }
 
@@ -126,7 +129,7 @@ internal class CodeGenInfoComputer
     private void ProcessModuleLevelProperty(PropertyDef propDef)
     {
         var symbol = _symbolTable.Lookup(propDef.Name);
-        if (symbol is VariableSymbol { IsModuleProperty: true } varSymbol && varSymbol.CodeGenInfo == null)
+        if (symbol is VariableSymbol { IsModuleProperty: true } varSymbol && !_semanticBinding.HasCodeGenInfo(varSymbol))
         {
             var escaped = propDef.IsNameBacktickEscaped;
             var csharpName = NameCasing.ResolveField(propDef.Name, escaped);

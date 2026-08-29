@@ -380,12 +380,9 @@ internal partial class RoslynEmitter
         // emitting them verbatim put a `Sharpy.List<T>` into a class with no `T`. Substituting here
         // would make the emitter decide a type, which Rule 2 forbids; it reads the frozen fact instead.
         //
-        // Read from the MATERIALIZED property, not the binding-first GetCodeGenInfo helper: the
-        // bridging happens at MaterializeCodeGenInfo, which writes Symbol.CodeGenInfo, so the raw
-        // binding entry the helper prefers never carries this field. Same reason #1122's
-        // OverridesClrBaseMember is read as `symbol.CodeGenInfo?.…` at
-        // RoslynEmitter.ClassMembers.Methods.cs:155.
-        if (_currentTypeSymbol?.CodeGenInfo?.ForwardingConstructors is { } substituted)
+        // MaterializeCodeGenInfo folds bridge tables into the binding entry (#1633),
+        // so GetCodeGenInfo returns the bridged record with ForwardingConstructors.
+        if (_currentTypeSymbol is { } cts && GetCodeGenInfo(cts)?.ForwardingConstructors is { } substituted)
         {
             return GenerateForwardersFrom(className, substituted);
         }

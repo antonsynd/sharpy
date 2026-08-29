@@ -518,8 +518,7 @@ internal class TypeSyntaxMapper
         {
             // For aliased imports, resolve the original type name for code generation.
             // E.g., "from helper import Config as Cfg" should generate "Helper.Config", not "Helper.Cfg".
-            var codeGenInfo = _context.SemanticBinding.GetCodeGenInfo(typeSymbol)
-                ?? typeSymbol.CodeGenInfo;
+            var codeGenInfo = _context.SemanticBinding.GetCodeGenInfo(typeSymbol);
 
             // A module-qualified spelling (`genlib.Holder`) names the type through segments that
             // QualifyFromSymbol re-derives from the symbol itself. Handing it the WRITTEN name
@@ -833,8 +832,7 @@ internal class TypeSyntaxMapper
         {
             // Use OriginalImportName for aliased imports, otherwise Symbol.Name.
             // This ensures "from pkg import Config as Cfg" generates "Pkg.Config", not "Pkg.Cfg".
-            var codeGenInfo = _context.SemanticBinding.GetCodeGenInfo(udt.Symbol)
-                ?? udt.Symbol.CodeGenInfo;
+            var codeGenInfo = _context.SemanticBinding.GetCodeGenInfo(udt.Symbol);
             var originalName = codeGenInfo?.OriginalImportName ?? udt.Symbol.Name;
 
             // A raw generic CLR type outside the Sharpy runtime namespace (imported by namespace) may

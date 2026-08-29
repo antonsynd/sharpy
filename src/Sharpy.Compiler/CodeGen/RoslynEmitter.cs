@@ -704,19 +704,16 @@ internal partial class RoslynEmitter : ICodeEmitter
     // ============================================================
     // CodeGenInfo helper methods
     //
-    // These methods read CodeGenInfo via SemanticBinding (preferred)
-    // with fallback to Symbol.CodeGenInfo (post-materialization).
-    // Materialization copies data from SemanticBinding to Symbol
-    // properties at phase boundaries, so both sources should agree
-    // after materialization.
+    // These methods read CodeGenInfo via SemanticBinding — the sole store
+    // since MaterializeCodeGenInfo folds bridge tables back into
+    // _codeGenInfo instead of writing Symbol.CodeGenInfo (#1633).
     // ============================================================
 
     /// <summary>
     /// Get CodeGenInfo for a symbol from SemanticBinding.
-    /// Falls back to symbol.CodeGenInfo for symbols not tracked by this binding.
     /// </summary>
     private CodeGenInfo? GetCodeGenInfo(Symbol symbol)
-        => _context.SemanticBinding.GetCodeGenInfo(symbol) ?? symbol.CodeGenInfo;
+        => _context.SemanticBinding.GetCodeGenInfo(symbol);
 
     /// <summary>
     /// Gets the original CLR method name for a symbol, if it is a discovery-loaded

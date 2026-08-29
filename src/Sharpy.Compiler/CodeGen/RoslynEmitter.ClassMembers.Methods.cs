@@ -150,7 +150,7 @@ internal partial class RoslynEmitter
         // #1122: add 'override' for a method that overrides an abstract/virtual member of a
         // CLR-backed base type.
         if (!modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
-            && methodSymbol?.CodeGenInfo?.OverridesClrBaseMember == true)
+            && methodSymbol is { } ms1 && GetCodeGenInfo(ms1)?.OverridesClrBaseMember == true)
         {
             modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
         }
@@ -159,7 +159,7 @@ internal partial class RoslynEmitter
         // If @override targets an interface method (not a base class), remove the override keyword.
         // The decision is made in semantic analysis and frozen onto CodeGenInfo (#1519).
         if (modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))
-            && methodSymbol?.CodeGenInfo?.StripsOverrideKeyword == true)
+            && methodSymbol is { } ms2 && GetCodeGenInfo(ms2)?.StripsOverrideKeyword == true)
         {
             modifiers = TokenList(modifiers.Where(m => !m.IsKind(SyntaxKind.OverrideKeyword)));
         }
@@ -185,7 +185,7 @@ internal partial class RoslynEmitter
             && !modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword))
             && !modifiers.Any(m => m.IsKind(SyntaxKind.SealedKeyword))
             && !func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Final)
-            && methodSymbol?.CodeGenInfo?.ImplementsInterfaceMethod == true)
+            && methodSymbol is { } ms3 && GetCodeGenInfo(ms3)?.ImplementsInterfaceMethod == true)
         {
             modifiers = modifiers.Add(Token(SyntaxKind.VirtualKeyword));
         }

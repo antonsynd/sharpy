@@ -40,6 +40,25 @@ public sealed class CompilerApi
     private AnalysisCacheEntry? _analysisCache;
 
     /// <summary>
+    /// Test-only: when true, <see cref="GetOrBuildAnalysisContext"/> returns the master
+    /// <see cref="BuiltinRegistry"/> without cloning, exposing any
+    /// <c>MaterializeCodeGenInfo</c> writes to the shared symbols (#1633).
+    /// </summary>
+    internal bool BypassRegistryCloneForTests { get; set; }
+
+    /// <summary>
+    /// Test-only: returns the master <see cref="BuiltinRegistry"/> held by the analysis
+    /// cache, or <c>null</c> if the cache is cold.
+    /// </summary>
+    internal BuiltinRegistry? GetCachedBuiltinsForTests()
+    {
+        lock (_analysisCacheLock)
+        {
+            return _analysisCache?.Builtins;
+        }
+    }
+
+    /// <summary>
     /// Creates a new CompilerApi with default settings.
     /// </summary>
     public CompilerApi() : this(null, null, null) { }
@@ -609,7 +628,10 @@ public sealed class CompilerApi
                 // Clone the cached registry so MaterializeCodeGenInfo writes are
                 // per-compilation and DualWriteAssertions never see a prior compilation's
                 // state (#1633).
-                return (_analysisCache.Registry, _analysisCache.Builtins.CloneForCompilation());
+                return (_analysisCache.Registry,
+                    BypassRegistryCloneForTests
+                        ? _analysisCache.Builtins
+                        : _analysisCache.Builtins.CloneForCompilation());
         }
 
         var builtins = new BuiltinRegistry(_logger);

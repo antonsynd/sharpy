@@ -478,7 +478,7 @@ public class SemanticBinding
                 && _synthesizedInterfaces.TryGetValue(symbol, out var synthesized))
                 effective = effective with { SynthesizedInterfaces = synthesized };
 
-            symbol.CodeGenInfo = effective;
+            _codeGenInfo[symbol] = effective;
         }
     }
 

@@ -733,7 +733,7 @@ internal partial class RoslynEmitter
         var result = new List<BaseTypeSyntax>();
 
         var typeSymbol = _context.LookupSymbol(originalTypeName) as TypeSymbol;
-        var synthesized = typeSymbol?.CodeGenInfo?.SynthesizedInterfaces;
+        var synthesized = typeSymbol is { } ts1 ? GetCodeGenInfo(ts1)?.SynthesizedInterfaces : null;
         if (synthesized == null || synthesized.Count == 0)
             return result;
 
@@ -799,7 +799,7 @@ internal partial class RoslynEmitter
     private List<MemberDeclarationSyntax> GenerateSelfInterfaceBridges(ClassDef classDef, TypeSymbol? classSymbol)
     {
         var bridges = new List<MemberDeclarationSyntax>();
-        var specs = classSymbol?.CodeGenInfo?.SelfInterfaceBridges;
+        var specs = classSymbol is { } cs1 ? GetCodeGenInfo(cs1)?.SelfInterfaceBridges : null;
         if (specs == null || specs.Count == 0)
             return bridges;
 

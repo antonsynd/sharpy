@@ -169,7 +169,7 @@ internal partial class RoslynEmitter
                     var constSymbol = _context.SemanticInfo?.GetPatternConstantSymbol(binding);
                     if (constSymbol != null)
                     {
-                        var constName = constSymbol.CodeGenInfo?.CSharpName
+                        var constName = GetCodeGenInfo(constSymbol)?.CSharpName
                             ?? NameMangler.ToConstantCase(constSymbol.Name);
                         return ConstantPattern(IdentifierName(constName));
                     }

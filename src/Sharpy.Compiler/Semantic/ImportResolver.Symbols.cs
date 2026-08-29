@@ -211,13 +211,13 @@ internal partial class ImportResolver
         // name so code generation uses the correct C# type name (e.g., "Config" not "Cfg").
         if (!string.Equals(effectiveName, originalType.Name, StringComparison.Ordinal))
         {
-            reExported.CodeGenInfo = new CodeGenInfo
+            _semanticBinding.SetCodeGenInfo(reExported, new CodeGenInfo
             {
                 CSharpName = NameMangler.ToPascalCase(originalType.Name),
                 OriginalName = effectiveName,
                 ImportKind = ImportKind.FromImportWithAlias,
                 OriginalImportName = originalType.Name
-            };
+            });
         }
 
         return reExported;
