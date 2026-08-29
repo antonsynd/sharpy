@@ -703,6 +703,9 @@ internal class ControlFlowGraphBuilder
             // predecessors from normal predecessors (conservative must-assign).
             ConnectException(tryBlock, handlerBlock);
 
+            if (!string.IsNullOrEmpty(handler.Name))
+                handlerBlock.EntryRebinds = new[] { handler.Name };
+
             // Push handler context for bare raise
             _handlerStack.Push(handlerBlock);
 
@@ -890,6 +893,61 @@ internal class ControlFlowGraphBuilder
         }
     }
 
+    private static IReadOnlyList<string> CollectPatternBindingKeys(Pattern pattern)
+    {
+        var keys = new List<string>();
+        CollectPatternBindingKeysInto(pattern, keys);
+        return keys;
+    }
+
+    private static void CollectPatternBindingKeysInto(Pattern pattern, List<string> keys)
+    {
+        switch (pattern)
+        {
+            case BindingPattern bp:
+                keys.Add(bp.Name.Name);
+                break;
+            case AsPattern ap:
+                keys.Add(ap.Name.Name);
+                CollectPatternBindingKeysInto(ap.Inner, keys);
+                break;
+            case OrPattern or:
+                foreach (var alt in or.Alternatives)
+                    CollectPatternBindingKeysInto(alt, keys);
+                break;
+            case AndPattern and:
+                CollectPatternBindingKeysInto(and.Left, keys);
+                CollectPatternBindingKeysInto(and.Right, keys);
+                break;
+            case TuplePattern tp:
+                foreach (var el in tp.Elements)
+                    CollectPatternBindingKeysInto(el, keys);
+                break;
+            case ListPattern lp:
+                foreach (var el in lp.Elements)
+                    CollectPatternBindingKeysInto(el, keys);
+                break;
+            case StarPattern sp when sp.Capture != null:
+                CollectPatternBindingKeysInto(sp.Capture, keys);
+                break;
+            case PositionalPattern pp:
+                foreach (var el in pp.Elements)
+                    CollectPatternBindingKeysInto(el, keys);
+                break;
+            case PropertyPattern prop:
+                foreach (var field in prop.Fields)
+                    CollectPatternBindingKeysInto(field.Pattern, keys);
+                break;
+            case GuardPattern gp:
+                CollectPatternBindingKeysInto(gp.Inner, keys);
+                break;
+            case UnionCasePattern ucp:
+                foreach (var fp in ucp.FieldPatterns)
+                    CollectPatternBindingKeysInto(fp, keys);
+                break;
+        }
+    }
+
     /// <summary>
     /// Collects the <c>as</c>-binding names of a <c>with</c> statement's items.
     /// </summary>
@@ -931,6 +989,10 @@ internal class ControlFlowGraphBuilder
             var caseBlock = CreateBlock("match_case");
             Connect(condBlock, caseBlock);
             _currentBlock = caseBlock;
+
+            var captureNames = CollectPatternBindingKeys(matchCase.Pattern);
+            if (captureNames.Count > 0)
+                caseBlock.EntryRebinds = captureNames;
 
             if (matchCase.Guard != null)
                 caseBlock.Expressions.Add(matchCase.Guard);

@@ -99,10 +99,10 @@ internal sealed class BasicBlock
 
     /// <summary>
     /// Narrowing keys rebound at this block's entry, before its statements execute — the targets of a
-    /// <c>for</c> loop (<c>for x in …</c>) or a <c>with … as x</c> binding. The narrowing dataflow
-    /// analysis kills facts about these keys on entry, since the variable now holds a fresh value
-    /// (#1042). Empty for ordinary blocks; consumed only by <c>NarrowingFlowAnalysis</c> (other CFG
-    /// consumers ignore it).
+    /// <c>for</c> loop (<c>for x in …</c>), a <c>with … as x</c> binding, an <c>except E as e</c>
+    /// handler, or a match case's capture bindings. The narrowing dataflow analysis kills facts about
+    /// these keys on entry (#1042); the definite-assignment and must-assign analyses treat them as
+    /// assigned before the block's first statement (#1635). Empty for ordinary blocks.
     /// </summary>
     public IReadOnlyList<string> EntryRebinds { get; internal set; } = System.Array.Empty<string>();
 
