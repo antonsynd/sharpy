@@ -1,0 +1,13 @@
+class Multiplier:
+    factor: int
+
+    def __init__(self, factor: int):
+        self.factor = factor
+
+    def __call__(self, x: int) -> int:
+        return self.factor * x
+
+def main():
+    m = Multiplier(3)
+    print(m(5))
+    print(m(10))

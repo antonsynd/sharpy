@@ -84,6 +84,16 @@ public static class ProtocolRegistry
             ExpectedReturnType: "None"
         ));
 
+        Register(protocols, new ProtocolInfo(
+            DunderName: DunderNames.Call,
+            Kind: ProtocolKind.Lifecycle,
+            SharpyCoreInterface: null,
+            InterfaceMethodName: null,
+            ClrMethodName: "Invoke",
+            ExpectedParamCount: -1,  // Variable (1+ including self)
+            ExpectedReturnType: null  // User-defined
+        ));
+
         // 2.2.2 Container protocols
         // ISized is defined in Sharpy.Core (ISized.cs) with a single int Count { get; } property.
         // __len__ codegen emits a Count property that satisfies this interface.

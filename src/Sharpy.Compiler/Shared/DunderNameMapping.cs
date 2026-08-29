@@ -15,6 +15,7 @@ internal static class DunderNameMapping
     private static readonly Dictionary<string, string> _dunderMethodMap = new()
     {
         { DunderNames.Init, "Constructor" },      // Special handling needed
+        { DunderNames.Call, "Invoke" },           // For callable objects via __call__
         { DunderNames.Str, "ToString" },
         { DunderNames.Repr, "ToString" },
         { DunderNames.PostInit, "PostInit" },  // For @dataclass post-initialization

@@ -146,6 +146,11 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<FunctionCall, bool> _clrPropertyCallLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // #1672: callable-object dispatch — when an obj(args) call resolves through __call__,
+    // the emitter emits obj.Invoke(args) from this recorded lowering.
+    private readonly ConcurrentDictionary<FunctionCall, CallableObjectDispatch> _callableObjectDispatches =
+        new(ReferenceEqualityComparer.Instance);
+
     // #1520: functools.partial spec — the target symbol and fixed-arg metadata resolved during
     // type checking, so the emitter reads the spec instead of re-deriving the target (#1520).
     private readonly ConcurrentDictionary<FunctionCall, FunctoolsPartialSpec> _functoolsPartialSpecs =
@@ -571,6 +576,16 @@ public class SemanticInfo : ISemanticQuery
     public bool IsClrPropertyCall(FunctionCall call)
     {
         return _clrPropertyCallLowerings.TryGetValue(call, out _);
+    }
+
+    public void SetCallableObjectDispatch(FunctionCall call, CallableObjectDispatch dispatch)
+    {
+        _callableObjectDispatches[call] = dispatch;
+    }
+
+    public CallableObjectDispatch? GetCallableObjectDispatch(FunctionCall call)
+    {
+        return _callableObjectDispatches.TryGetValue(call, out var dispatch) ? dispatch : null;
     }
 
     public void SetFunctoolsPartialSpec(FunctionCall call, FunctoolsPartialSpec spec)
@@ -1549,6 +1564,9 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._clrPropertyCallLowerings)
             _clrPropertyCallLowerings.TryAdd(kvp.Key, kvp.Value);
 
+        foreach (var kvp in other._callableObjectDispatches)
+            _callableObjectDispatches.TryAdd(kvp.Key, kvp.Value);
+
         foreach (var kvp in other._functoolsPartialSpecs)
             _functoolsPartialSpecs.TryAdd(kvp.Key, kvp.Value);
 
@@ -2403,3 +2421,11 @@ public sealed record InterfaceCastLowering(string InterfaceTypeName, IReadOnlyLi
 public enum TargetBindingKind { Declares, Rebinds }
 
 public sealed record TargetBinding(TargetBindingKind Kind);
+
+/// <summary>
+/// Recorded on a <see cref="FunctionCall"/> whose callee resolves through <c>__call__</c>.
+/// The emitter reads this to emit <c>obj.Invoke(args)</c> instead of <c>obj(args)</c>.
+/// </summary>
+/// <param name="InvokeMethodName">The CLR method name to emit (always "Invoke").</param>
+/// <param name="ReturnType">The return type of the <c>__call__</c> method.</param>
+public sealed record CallableObjectDispatch(string InvokeMethodName, SemanticType ReturnType);

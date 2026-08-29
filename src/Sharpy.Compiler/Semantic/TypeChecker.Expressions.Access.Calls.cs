@@ -372,6 +372,10 @@ internal partial class TypeChecker
                 }
                 else
                 {
+                    var callableResult = TryResolveCallableObject(calleeType, call, argTypes, kwargTypes, totalArgCount);
+                    if (callableResult != null)
+                        return callableResult;
+
                     AddError($"'{id.Name}' is not callable (type: {calleeType.GetDisplayName()})",
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction,
                         span: call.Function.Span);
@@ -568,6 +572,13 @@ internal partial class TypeChecker
                 return ValidateFunctionSymbolCall(call, delegateInvoke, argTypes, kwargTypes, totalArgCount,
                     isNullConditionalCall, isOptionalNullConditional);
             }
+        }
+
+        // Try __call__ dispatch before giving up
+        {
+            var callableResult = TryResolveCallableObject(calleeType, call, argTypes, kwargTypes, totalArgCount);
+            if (callableResult != null)
+                return callableResult;
         }
 
         // If callee type is Unknown, this is error recovery from a sub-expression.
@@ -4458,6 +4469,63 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Tries to resolve <c>obj(args)</c> through a <c>__call__</c> dunder method on the callee's
+    /// type. Returns the call's return type if <c>__call__</c> is found and validated; null otherwise.
+    /// Records <see cref="CallableObjectDispatch"/> so the emitter emits <c>obj.Invoke(args)</c>.
+    /// </summary>
+    private SemanticType? TryResolveCallableObject(
+        SemanticType calleeType, FunctionCall call,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
+    {
+        if (calleeType is not UserDefinedType { Symbol: TypeSymbol typeSymbol })
+            return null;
+
+        var callMethod = typeSymbol.Methods.FirstOrDefault(m => m.Name == DunderNames.Call);
+        if (callMethod == null)
+            return null;
+
+        var selfOffset = callMethod.Parameters.Count > 0 &&
+                         callMethod.Parameters[0].Name == "self" ? 1 : 0;
+        var paramCount = callMethod.Parameters.Count - selfOffset;
+
+        var optionalCount = callMethod.Parameters.Skip(selfOffset).Count(p => p.DefaultValue != null);
+
+        if (totalArgCount < paramCount - optionalCount || totalArgCount > paramCount)
+        {
+            var expected = optionalCount > 0
+                ? $"{paramCount - optionalCount} to {paramCount}"
+                : $"{paramCount}";
+            AddError(
+                $"'{calleeType.GetDisplayName()}.__call__' expects {expected} argument(s) but {totalArgCount} were given",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.WrongArgumentCount, span: call.Span);
+            return SemanticType.Unknown;
+        }
+
+        for (int i = 0; i < Math.Min(argTypes.Count, paramCount); i++)
+        {
+            var param = callMethod.Parameters[i + selfOffset];
+            if (param.Type != null && argTypes[i] is not UnknownType &&
+                !argTypes[i].IsAssignableTo(param.Type))
+            {
+                AddError(
+                    $"Argument type '{argTypes[i].GetDisplayName()}' is not assignable to parameter '{param.Name}' of type '{param.Type.GetDisplayName()}'",
+                    call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch, span: call.Arguments[i].Span);
+            }
+        }
+
+        var returnType = callMethod.ReturnType ?? SemanticType.Void;
+
+        RecordResolvedCallTarget(call, callMethod);
+        _semanticInfo.SetCallableObjectDispatch(call,
+            new CallableObjectDispatch("Invoke", returnType));
+        _semanticInfo.SetExpressionType(call, returnType);
+
+        return returnType;
     }
 
     /// <summary>

@@ -27,6 +27,17 @@ internal partial class RoslynEmitter
             return GenerateFunctoolsPartialCall(call, partialSpec);
         }
 
+        if (_context.SemanticInfo?.GetCallableObjectDispatch(call) is { } callableDispatch)
+        {
+            var objExpr = GenerateExpression(call.Function);
+            var invokeAccess = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                objExpr,
+                IdentifierName(callableDispatch.InvokeMethodName));
+            var args = call.Arguments.Select(a => Argument(GenerateExpression(a))).ToArray();
+            return InvocationExpression(invokeAccess, ArgumentList(SeparatedList(args)));
+        }
+
         // A parenthesized callee — (foo)(5), (p.method)(5), (identity[int])(5) — wraps the inner
         // expression in Parenthesized. The semantic phase already pinned the call target through the
         // wrapper (CheckExpression recurses through Parenthesized), so unwrap once here and dispatch
