@@ -226,6 +226,8 @@ internal partial class TypeChecker
                             code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: literal.Span);
                     }
+                    if (litType is not UnknownType)
+                        _semanticInfo.SetPatternType(literal, litType);
                     break;
                 }
 
@@ -494,6 +496,9 @@ internal partial class TypeChecker
     {
         CheckPattern(asPattern.Inner, scrutineeType);
         BindAsPatternCapture(asPattern, scrutineeType);
+        var innerType = _semanticInfo.GetPatternType(asPattern.Inner);
+        if (innerType != null)
+            _semanticInfo.SetPatternType(asPattern, innerType);
     }
 
     private void BindAsPatternCapture(
@@ -633,9 +638,29 @@ internal partial class TypeChecker
             return;
         }
 
-        // The isinstance classifier records TypeTestLowering and returns the capture type:
-        // closed for non-generic and filled-from-subject, erased for bare collections on an
-        // object subject, or null for unknown/refused (SPY0345 already reported for open generics).
+        // Erasable collections (list/dict/set): try fill-from-subject FIRST — patterns need
+        // the closed type for capture typing, not the erased interface. The isinstance classifier
+        // erases unconditionally, which is correct for isinstance but wrong for patterns when
+        // the scrutinee provides type arguments (#1299 defect 1).
+        if (typePattern.Type.TypeArguments.Length == 0)
+        {
+            var fillSymbol = _symbolTable.Lookup(typePattern.Type.Name) as TypeSymbol;
+            if (fillSymbol is { IsGeneric: true }
+                && BuiltinNames.IsErasableCollection(fillSymbol.Name)
+                && FillTypeArgumentsFromSubject(fillSymbol, scrutineeType) is { } filledCollection)
+            {
+                _semanticInfo.SetPatternType(typePattern, filledCollection);
+                _semanticInfo.SetTypeTestLowering(typePattern,
+                    new TypeTestLowering(TypeTestLoweringKind.ClosedType, filledCollection));
+                if (scrutineeType is not UnknownType && IsAssignable(scrutineeType, filledCollection))
+                    _semanticInfo.SetPatternTotality(typePattern, true);
+                BindTypePatternCapture(typePattern, filledCollection);
+                return;
+            }
+        }
+
+        // The isinstance classifier handles the remaining cases: non-generic types, erasable
+        // collections on an object subject, user generics with fill-from-subject, and refusals.
         var resolvedType = ClassifyTypeTestAnnotation(
             typePattern.Type, typePattern, scrutineeType, "match pattern",
             CollectionErasure.Allowed,
@@ -693,7 +718,7 @@ internal partial class TypeChecker
             && !IsAssignable(scrutineeType, resolvedType))
         {
             AddError(
-                $"Type pattern '{resolvedType.GetDisplayName()}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                $"Type pattern '{typePattern.Type.Name}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
                 typePattern.LineStart, typePattern.ColumnStart,
                 code: DiagnosticCodes.Semantic.TypePatternIncompatible,
                 span: typePattern.Span);
@@ -784,6 +809,8 @@ internal partial class TypeChecker
                     }
                     return;
                 }
+
+                _semanticInfo.SetPatternType(propertyPattern, classifiedType);
 
                 typeSymbol = classifiedType switch
                 {
@@ -888,6 +915,8 @@ internal partial class TypeChecker
                     }
                     return;
                 }
+
+                _semanticInfo.SetPatternType(positionalPattern, classifiedType);
 
                 typeSymbol = classifiedType switch
                 {
