@@ -577,17 +577,18 @@ def main():
             Name = "snake_case_func",
             Kind = SymbolKind.Function,
             Parameters = new List<ParameterSymbol>(),
-            ReturnType = SemanticType.Void,
-            CodeGenInfo = new CodeGenInfo
-            {
-                CSharpName = "SnakeCaseFunc",
-                OriginalName = "snake_case_func",
-                IsModuleLevel = true
-            }
+            ReturnType = SemanticType.Void
         };
+        var binding = new SemanticBinding();
+        binding.SetCodeGenInfo(funcSymbol, new CodeGenInfo
+        {
+            CSharpName = "SnakeCaseFunc",
+            OriginalName = "snake_case_func",
+            IsModuleLevel = true
+        });
 
         var filePath = CreateTempFile("codegen.spy", "def snake_case_func():\n    pass");
-        var cached = SymbolSerializer.Serialize(funcSymbol, filePath);
+        var cached = SymbolSerializer.Serialize(funcSymbol, filePath, binding);
 
         Assert.NotNull(cached.CodeGenInfo);
         Assert.Equal("SnakeCaseFunc", cached.CodeGenInfo!.CSharpName);

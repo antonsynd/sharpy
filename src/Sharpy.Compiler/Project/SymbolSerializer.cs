@@ -26,18 +26,18 @@ internal static class SymbolSerializer
     /// <summary>
     /// Serializes a Symbol to a CachedSymbol for storage.
     /// </summary>
-    public static CachedSymbol Serialize(Symbol symbol, string filePath)
+    public static CachedSymbol Serialize(Symbol symbol, string filePath, SemanticBinding? binding = null)
     {
         var id = ComputeSymbolId(symbol, filePath);
 
         return symbol switch
         {
-            TypeSymbol ts => SerializeTypeSymbol(ts, id, filePath),
-            FunctionSymbol fs => SerializeFunctionSymbol(fs, id, filePath),
-            VariableSymbol vs => SerializeVariableSymbol(vs, id, filePath),
-            ModuleSymbol ms => SerializeModuleSymbol(ms, id, filePath),
-            TypeAliasSymbol tas => SerializeTypeAliasSymbol(tas, id, filePath),
-            TypeParameterSymbol tps => SerializeTypeParameterSymbol(tps, id, filePath),
+            TypeSymbol ts => SerializeTypeSymbol(ts, id, filePath, binding),
+            FunctionSymbol fs => SerializeFunctionSymbol(fs, id, filePath, binding),
+            VariableSymbol vs => SerializeVariableSymbol(vs, id, filePath, binding),
+            ModuleSymbol ms => SerializeModuleSymbol(ms, id, filePath, binding),
+            TypeAliasSymbol tas => SerializeTypeAliasSymbol(tas, id, filePath, binding),
+            TypeParameterSymbol tps => SerializeTypeParameterSymbol(tps, id, filePath, binding),
             _ => throw new NotSupportedException($"Cannot serialize symbol of type {symbol.GetType().Name}")
         };
     }
@@ -51,32 +51,33 @@ internal static class SymbolSerializer
     public static Symbol Deserialize(
         CachedSymbol cached,
         Dictionary<string, Symbol> symbolRegistry,
-        Func<string, SemanticType>? typeResolver = null)
+        Func<string, SemanticType>? typeResolver = null,
+        SemanticBinding? binding = null)
     {
         typeResolver ??= ResolveTypeFromId;
 
         return cached.Kind switch
         {
-            "Type" => DeserializeTypeSymbol(cached, symbolRegistry, typeResolver),
-            "Function" => DeserializeFunctionSymbol(cached, typeResolver),
-            "Variable" => DeserializeVariableSymbol(cached, typeResolver),
-            "Module" => DeserializeModuleSymbol(cached, symbolRegistry),
-            "TypeAlias" => DeserializeTypeAliasSymbol(cached),
-            "TypeParameter" => DeserializeTypeParameterSymbol(cached),
+            "Type" => DeserializeTypeSymbol(cached, symbolRegistry, typeResolver, binding),
+            "Function" => DeserializeFunctionSymbol(cached, typeResolver, binding),
+            "Variable" => DeserializeVariableSymbol(cached, typeResolver, binding),
+            "Module" => DeserializeModuleSymbol(cached, symbolRegistry, binding),
+            "TypeAlias" => DeserializeTypeAliasSymbol(cached, binding),
+            "TypeParameter" => DeserializeTypeParameterSymbol(cached, binding),
             _ => throw new NotSupportedException($"Cannot deserialize symbol of kind {cached.Kind}")
         };
     }
 
     #region Serialization Methods
 
-    private static CachedSymbol SerializeTypeSymbol(TypeSymbol ts, string id, string filePath)
+    private static CachedSymbol SerializeTypeSymbol(TypeSymbol ts, string id, string filePath, SemanticBinding? binding)
     {
         // Serialize fields as nested CachedSymbols
         List<CachedSymbol>? fields = null;
         if (ts.Fields.Count > 0)
         {
             fields = ts.Fields.Select(f =>
-                SerializeVariableSymbol(f, ComputeSymbolId(f, filePath), filePath)).ToList();
+                SerializeVariableSymbol(f, ComputeSymbolId(f, filePath), filePath, binding)).ToList();
         }
 
         // Serialize methods as nested CachedSymbols
@@ -84,7 +85,7 @@ internal static class SymbolSerializer
         if (ts.Methods.Count > 0)
         {
             methods = ts.Methods.Select(m =>
-                SerializeFunctionSymbol(m, ComputeSymbolId(m, filePath), filePath)).ToList();
+                SerializeFunctionSymbol(m, ComputeSymbolId(m, filePath), filePath, binding)).ToList();
         }
 
         // Serialize constructors as nested CachedSymbols
@@ -92,7 +93,7 @@ internal static class SymbolSerializer
         if (ts.Constructors.Count > 0)
         {
             constructors = ts.Constructors.Select(c =>
-                SerializeFunctionSymbol(c, ComputeSymbolId(c, filePath), filePath)).ToList();
+                SerializeFunctionSymbol(c, ComputeSymbolId(c, filePath), filePath, binding)).ToList();
         }
 
         // Serialize nested types as nested CachedSymbols
@@ -100,7 +101,7 @@ internal static class SymbolSerializer
         if (ts.NestedTypes.Count > 0)
         {
             nestedTypes = ts.NestedTypes.Select(nt =>
-                SerializeTypeSymbol(nt, ComputeSymbolId(nt, nt.DefiningFilePath ?? filePath), nt.DefiningFilePath ?? filePath)).ToList();
+                SerializeTypeSymbol(nt, ComputeSymbolId(nt, nt.DefiningFilePath ?? filePath), nt.DefiningFilePath ?? filePath, binding)).ToList();
         }
 
         return new CachedSymbol
@@ -147,7 +148,7 @@ internal static class SymbolSerializer
             NestedTypes = nestedTypes,
             IsReExport = ts.IsReExport,
             OriginalModule = ts.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(ts.CodeGenInfo),
+            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(ts)),
             Documentation = ts.Documentation,
             TypeParameters = SerializeTypeParameters(ts.TypeParameters),
             // #1444
@@ -205,7 +206,7 @@ internal static class SymbolSerializer
         };
     }
 
-    private static CachedSymbol SerializeFunctionSymbol(FunctionSymbol fs, string id, string filePath)
+    private static CachedSymbol SerializeFunctionSymbol(FunctionSymbol fs, string id, string filePath, SemanticBinding? binding)
     {
         return new CachedSymbol
         {
@@ -231,7 +232,7 @@ internal static class SymbolSerializer
             IsGenerator = fs.IsGenerator,
             IsReExport = fs.IsReExport,
             OriginalModule = fs.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(fs.CodeGenInfo),
+            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(fs)),
             Documentation = fs.Documentation,
             TypeParameters = SerializeTypeParameters(fs.TypeParameters),
             // #1444
@@ -242,7 +243,7 @@ internal static class SymbolSerializer
         };
     }
 
-    private static CachedSymbol SerializeVariableSymbol(VariableSymbol vs, string id, string filePath)
+    private static CachedSymbol SerializeVariableSymbol(VariableSymbol vs, string id, string filePath, SemanticBinding? binding)
     {
         return new CachedSymbol
         {
@@ -262,7 +263,7 @@ internal static class SymbolSerializer
             TypeId = SerializeType(vs.Type),
             IsReExport = vs.IsReExport,
             OriginalModule = vs.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(vs.CodeGenInfo),
+            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(vs)),
             ConstantValue = vs.ConstantValue?.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Documentation = vs.Documentation,
             // #1444
@@ -292,7 +293,7 @@ internal static class SymbolSerializer
         return props;
     }
 
-    private static CachedSymbol SerializeModuleSymbol(ModuleSymbol ms, string id, string filePath)
+    private static CachedSymbol SerializeModuleSymbol(ModuleSymbol ms, string id, string filePath, SemanticBinding? binding)
     {
         return new CachedSymbol
         {
@@ -320,7 +321,7 @@ internal static class SymbolSerializer
             NetNamespaceName = ms.NetNamespaceName,
             IsReExport = ms.IsReExport,
             OriginalModule = ms.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(ms.CodeGenInfo),
+            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(ms)),
             Documentation = ms.Documentation,
             // #1444 — Symbol-level facts, carried on every kind
             DeprecationMessage = ms.DeprecationMessage,
@@ -328,7 +329,7 @@ internal static class SymbolSerializer
         };
     }
 
-    private static CachedSymbol SerializeTypeAliasSymbol(TypeAliasSymbol tas, string id, string filePath)
+    private static CachedSymbol SerializeTypeAliasSymbol(TypeAliasSymbol tas, string id, string filePath, SemanticBinding? binding)
     {
         return new CachedSymbol
         {
@@ -348,7 +349,7 @@ internal static class SymbolSerializer
             // TypeAnnotation is AST-based, we don't serialize it (reconstructed from source on reparse)
             IsReExport = tas.IsReExport,
             OriginalModule = tas.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(tas.CodeGenInfo),
+            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(tas)),
             Documentation = tas.Documentation,
             // #1444 — Symbol-level facts, carried on every kind
             DeprecationMessage = tas.DeprecationMessage,
@@ -356,7 +357,7 @@ internal static class SymbolSerializer
         };
     }
 
-    private static CachedSymbol SerializeTypeParameterSymbol(TypeParameterSymbol tps, string id, string filePath)
+    private static CachedSymbol SerializeTypeParameterSymbol(TypeParameterSymbol tps, string id, string filePath, SemanticBinding? binding)
     {
         return new CachedSymbol
         {
@@ -376,7 +377,7 @@ internal static class SymbolSerializer
             Variance = tps.Variance != TypeParameterVariance.None ? tps.Variance.ToString() : null,
             IsReExport = tps.IsReExport,
             OriginalModule = tps.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(tps.CodeGenInfo),
+            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(tps)),
             Documentation = tps.Documentation,
             // #1444 — Symbol-level facts, carried on every kind
             DeprecationMessage = tps.DeprecationMessage,
@@ -525,26 +526,27 @@ internal static class SymbolSerializer
     private static TypeSymbol DeserializeTypeSymbol(
         CachedSymbol cached,
         Dictionary<string, Symbol> symbolRegistry,
-        Func<string, SemanticType> typeResolver)
+        Func<string, SemanticType> typeResolver,
+        SemanticBinding? binding)
     {
         var typeKind = Enum.Parse<TypeKind>(cached.TypeKind ?? "Class");
         var accessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel);
 
         // Deserialize fields
-        var fields = cached.Fields?.Select(f => DeserializeVariableSymbol(f, typeResolver)).ToList()
+        var fields = cached.Fields?.Select(f => DeserializeVariableSymbol(f, typeResolver, binding)).ToList()
             ?? new List<VariableSymbol>();
 
         // Deserialize methods
-        var methods = cached.Methods?.Select(m => DeserializeFunctionSymbol(m, typeResolver)).ToList()
+        var methods = cached.Methods?.Select(m => DeserializeFunctionSymbol(m, typeResolver, binding)).ToList()
             ?? new List<FunctionSymbol>();
 
         // Deserialize constructors
-        var constructors = cached.Constructors?.Select(c => DeserializeFunctionSymbol(c, typeResolver)).ToList()
+        var constructors = cached.Constructors?.Select(c => DeserializeFunctionSymbol(c, typeResolver, binding)).ToList()
             ?? new List<FunctionSymbol>();
 
         // Deserialize nested types
         var nestedTypes = cached.NestedTypes?
-            .Select(nt => DeserializeTypeSymbol(nt, symbolRegistry, typeResolver))
+            .Select(nt => DeserializeTypeSymbol(nt, symbolRegistry, typeResolver, binding))
             .ToList() ?? new List<TypeSymbol>();
 
         var symbol = new TypeSymbol
@@ -571,7 +573,6 @@ internal static class SymbolSerializer
             NestedTypes = nestedTypes,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
             TypeParameters = DeserializeTypeParameters(cached.TypeParameters),
             UnresolvedBaseName = cached.UnresolvedBaseName,
             UnresolvedBaseTypeArgs = cached.BaseTypeArgs != null && cached.BaseTypeArgs.Count > 0
@@ -587,6 +588,9 @@ internal static class SymbolSerializer
             Events = cached.Events?.Select(e => DeserializeEvent(e, typeResolver)).ToList()
                 ?? new List<EventSymbol>()
         };
+
+        if (cached.CodeGenInfo != null && binding != null)
+            binding.SetCodeGenInfo(symbol, DeserializeCodeGenInfo(cached.CodeGenInfo)!);
 
         // Restore unresolved interface references so Phase 4b/4c resolves them (#1309). Round-trips
         // the written ANNOTATION, not just the name (#1403): a warm build that restored bare names
@@ -613,7 +617,8 @@ internal static class SymbolSerializer
 
     private static FunctionSymbol DeserializeFunctionSymbol(
         CachedSymbol cached,
-        Func<string, SemanticType> typeResolver)
+        Func<string, SemanticType> typeResolver,
+        SemanticBinding? binding)
     {
         var accessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel);
         var parameters = cached.Parameters?.Select(p => DeserializeParameter(p, typeResolver)).ToList()
@@ -641,7 +646,6 @@ internal static class SymbolSerializer
             IsGenerator = cached.IsGenerator,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
             TypeParameters = DeserializeTypeParameters(cached.TypeParameters),
             // #1444
             DeprecationMessage = cached.DeprecationMessage,
@@ -649,13 +653,16 @@ internal static class SymbolSerializer
             IsMustUse = cached.IsMustUse,
             SignatureKey = cached.SignatureKey
         };
+        if (cached.CodeGenInfo != null && binding != null)
+            binding.SetCodeGenInfo(symbol, DeserializeCodeGenInfo(cached.CodeGenInfo)!);
         symbol.Documentation = cached.Documentation;
         return symbol;
     }
 
     private static VariableSymbol DeserializeVariableSymbol(
         CachedSymbol cached,
-        Func<string, SemanticType> typeResolver)
+        Func<string, SemanticType> typeResolver,
+        SemanticBinding? binding)
     {
         var accessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel);
         var props = cached.Properties ?? new Dictionary<string, object>();
@@ -682,7 +689,6 @@ internal static class SymbolSerializer
             HasPropertySetter = GetBoolProperty(props, "HasPropertySetter"),
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
             // #1444
             DeprecationMessage = cached.DeprecationMessage,
             ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel),
@@ -693,6 +699,8 @@ internal static class SymbolSerializer
                 ? System.Numerics.BigInteger.Parse(cached.ConstantValue, System.Globalization.CultureInfo.InvariantCulture)
                 : null
         };
+        if (cached.CodeGenInfo != null && binding != null)
+            binding.SetCodeGenInfo(symbol, DeserializeCodeGenInfo(cached.CodeGenInfo)!);
         symbol.Documentation = cached.Documentation;
         return symbol;
     }
@@ -781,7 +789,8 @@ internal static class SymbolSerializer
 
     private static ModuleSymbol DeserializeModuleSymbol(
         CachedSymbol cached,
-        Dictionary<string, Symbol> symbolRegistry)
+        Dictionary<string, Symbol> symbolRegistry,
+        SemanticBinding? binding)
     {
         var accessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel);
 
@@ -805,17 +814,18 @@ internal static class SymbolSerializer
             NetNamespaceName = cached.NetNamespaceName,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
             // #1444 — Symbol-level facts, carried on every kind
             DeprecationMessage = cached.DeprecationMessage,
             ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel)
         };
+        if (cached.CodeGenInfo != null && binding != null)
+            binding.SetCodeGenInfo(symbol, DeserializeCodeGenInfo(cached.CodeGenInfo)!);
         // ExportedTypes (like Exports) is resolved in the ResolveReferences second pass
         symbol.Documentation = cached.Documentation;
         return symbol;
     }
 
-    private static TypeAliasSymbol DeserializeTypeAliasSymbol(CachedSymbol cached)
+    private static TypeAliasSymbol DeserializeTypeAliasSymbol(CachedSymbol cached, SemanticBinding? binding)
     {
         var accessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel);
 
@@ -834,16 +844,17 @@ internal static class SymbolSerializer
             DeclaringFilePath = cached.FilePath,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
             // #1444 — Symbol-level facts, carried on every kind
             DeprecationMessage = cached.DeprecationMessage,
             ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel)
         };
+        if (cached.CodeGenInfo != null && binding != null)
+            binding.SetCodeGenInfo(symbol, DeserializeCodeGenInfo(cached.CodeGenInfo)!);
         symbol.Documentation = cached.Documentation;
         return symbol;
     }
 
-    private static TypeParameterSymbol DeserializeTypeParameterSymbol(CachedSymbol cached)
+    private static TypeParameterSymbol DeserializeTypeParameterSymbol(CachedSymbol cached, SemanticBinding? binding)
     {
         var accessLevel = Enum.Parse<AccessLevel>(cached.AccessLevel);
         var variance = cached.Variance != null
@@ -866,11 +877,12 @@ internal static class SymbolSerializer
             Variance = variance,
             IsReExport = cached.IsReExport,
             OriginalModule = cached.OriginalModule,
-            CodeGenInfo = DeserializeCodeGenInfo(cached.CodeGenInfo),
             // #1444 — Symbol-level facts, carried on every kind
             DeprecationMessage = cached.DeprecationMessage,
             ExplicitAccessLevel = ParseAccessLevel(cached.ExplicitAccessLevel)
         };
+        if (cached.CodeGenInfo != null && binding != null)
+            binding.SetCodeGenInfo(symbol, DeserializeCodeGenInfo(cached.CodeGenInfo)!);
         symbol.Documentation = cached.Documentation;
         return symbol;
     }

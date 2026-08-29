@@ -83,7 +83,8 @@ internal partial class ProjectCompiler
                     unit.GeneratedCSharp ?? string.Empty,
                     dependencies,
                     unit.ModulePath,
-                    cachedDiagnostics.Count > 0 ? cachedDiagnostics : null);
+                    cachedDiagnostics.Count > 0 ? cachedDiagnostics : null,
+                    _projectModel!.SemanticBinding);
 
                 savedCount++;
             }

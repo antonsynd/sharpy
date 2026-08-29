@@ -314,7 +314,8 @@ internal class IncrementalCompilationCache
         string generatedCSharp,
         List<string> dependencies,
         string? modulePath = null,
-        List<CachedDiagnostic>? diagnostics = null)
+        List<CachedDiagnostic>? diagnostics = null,
+        SemanticBinding? binding = null)
     {
         EnsureFileCacheLoaded();
 
@@ -322,7 +323,7 @@ internal class IncrementalCompilationCache
         var contentHash = File.Exists(filePath) ? ComputeFileHash(filePath) : string.Empty;
 
         var cachedSymbols = symbols
-            .Select(s => SymbolSerializer.Serialize(s, filePath))
+            .Select(s => SymbolSerializer.Serialize(s, filePath, binding))
             .ToList();
 
         // Preserve any generator outputs cached earlier in this build (or carried
@@ -588,7 +589,7 @@ internal class IncrementalCompilationCache
     /// <param name="filePath">The path to the source file.</param>
     /// <param name="symbolRegistry">The registry to populate with restored symbols.</param>
     /// <returns>True if symbols were restored, false if no valid cache.</returns>
-    public bool RestoreSymbols(string filePath, Dictionary<string, Symbol> symbolRegistry)
+    public bool RestoreSymbols(string filePath, Dictionary<string, Symbol> symbolRegistry, SemanticBinding? binding = null)
     {
         var entry = GetFileCache(filePath);
         if (entry == null)
@@ -598,7 +599,7 @@ internal class IncrementalCompilationCache
 
         foreach (var cachedSymbol in entry.Symbols)
         {
-            var symbol = SymbolSerializer.Deserialize(cachedSymbol, symbolRegistry);
+            var symbol = SymbolSerializer.Deserialize(cachedSymbol, symbolRegistry, binding: binding);
             symbolRegistry[cachedSymbol.Id] = symbol;
         }
 

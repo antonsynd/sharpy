@@ -495,8 +495,6 @@ def main() -> None:
 
         // Later-phase products, not declaration facts. An extraction is produced in Pass 1.5 and
         // nothing runs these passes over it, by design.
-        ["Symbol.CodeGenInfo"] = "materialized after type checking for the compilation that EMITS "
-            + "the symbol; an imported declaration is emitted by its own module, not by the importer",
         ["TypeSymbol.BaseType"] = "materialized by InheritanceResolver, which runs over whichever "
             + "object the compilation reaches; compared structurally by the BaseType cells in "
             + "CrossModuleInheritanceTests and pinned by the #1366/#1407 fixtures",
@@ -1051,15 +1049,18 @@ def main() -> None:
             Kind = SymbolKind.Function,
             Parameters = new List<ParameterSymbol>(),
             ReturnType = SemanticType.Void,
-            CodeGenInfo = original,
         };
 
-        var cached = SymbolSerializer.Serialize(symbol, "/test/probe.spy");
-        var restored = (FunctionSymbol)SymbolSerializer.Deserialize(
-            cached, new Dictionary<string, Symbol>(StringComparer.Ordinal));
+        var binding = new SemanticBinding();
+        binding.SetCodeGenInfo(symbol, original);
 
-        restored.CodeGenInfo.Should().NotBeNull("the serializer must preserve CodeGenInfo");
-        var rt = restored.CodeGenInfo!;
+        var cached = SymbolSerializer.Serialize(symbol, "/test/probe.spy", binding);
+        var restored = (FunctionSymbol)SymbolSerializer.Deserialize(
+            cached, new Dictionary<string, Symbol>(StringComparer.Ordinal), binding: binding);
+
+        var rt = binding.GetCodeGenInfo(restored);
+        rt.Should().NotBeNull("the serializer must preserve CodeGenInfo via the binding");
+        var cgi = rt!;
 
         var failures = new List<string>();
         void Check(string prop, object? expected, object? actual)
@@ -1070,27 +1071,27 @@ def main() -> None:
                 failures.Add($"{prop}: expected {Render(expected)} but got {Render(actual)}");
         }
 
-        Check("CSharpName", original.CSharpName, rt.CSharpName);
-        Check("OriginalName", original.OriginalName, rt.OriginalName);
-        Check("Version", original.Version, rt.Version);
-        Check("IsModuleLevel", original.IsModuleLevel, rt.IsModuleLevel);
-        Check("IsConstant", original.IsConstant, rt.IsConstant);
-        Check("HasExecutionOrderIssues", original.HasExecutionOrderIssues, rt.HasExecutionOrderIssues);
-        Check("IsStringEnum", original.IsStringEnum, rt.IsStringEnum);
-        Check("ImportKind", original.ImportKind, rt.ImportKind);
-        Check("OriginalImportName", original.OriginalImportName, rt.OriginalImportName);
-        Check("ClrMethodName", original.ClrMethodName, rt.ClrMethodName);
+        Check("CSharpName", original.CSharpName, cgi.CSharpName);
+        Check("OriginalName", original.OriginalName, cgi.OriginalName);
+        Check("Version", original.Version, cgi.Version);
+        Check("IsModuleLevel", original.IsModuleLevel, cgi.IsModuleLevel);
+        Check("IsConstant", original.IsConstant, cgi.IsConstant);
+        Check("HasExecutionOrderIssues", original.HasExecutionOrderIssues, cgi.HasExecutionOrderIssues);
+        Check("IsStringEnum", original.IsStringEnum, cgi.IsStringEnum);
+        Check("ImportKind", original.ImportKind, cgi.ImportKind);
+        Check("OriginalImportName", original.OriginalImportName, cgi.OriginalImportName);
+        Check("ClrMethodName", original.ClrMethodName, cgi.ClrMethodName);
 
         failures.Should().BeEmpty(
             "a property declared as RoundTrips must survive SymbolSerializer. If the serializer no "
             + "longer writes it, either thread it through or reclassify it as same-file-only with "
             + "a rationale.\nFailed round-trips:\n  " + string.Join("\n  ", failures));
 
-        rt.OverridesClrBaseMember.Should().BeFalse(
+        cgi.OverridesClrBaseMember.Should().BeFalse(
             "OverridesClrBaseMember is same-file-only and must NOT survive the round trip");
-        rt.ForwardingConstructors.Should().BeNull(
+        cgi.ForwardingConstructors.Should().BeNull(
             "ForwardingConstructors is same-file-only and must NOT survive the round trip");
-        rt.SelfInterfaceBridges.Should().BeNull(
+        cgi.SelfInterfaceBridges.Should().BeNull(
             "SelfInterfaceBridges is same-file-only and must NOT survive the round trip");
     }
 
