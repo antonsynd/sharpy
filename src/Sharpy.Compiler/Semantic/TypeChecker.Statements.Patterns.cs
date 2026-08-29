@@ -508,10 +508,12 @@ internal partial class TypeChecker
                 capturedType = patternType;
             else
             {
-                var resolvedType = _typeResolver.ResolveTypeAnnotation(
-                    typeInner.Type, bareGenericFillsFromContext: true);
-                if (resolvedType is not UnknownType)
-                    capturedType = resolvedType;
+                var classified = ClassifyTypeTestAnnotation(
+                    typeInner.Type, typeInner, scrutineeType, "match pattern",
+                    CollectionErasure.Allowed,
+                    openGenericRemedyOverride: BuildPatternOpenGenericRemedy(typeInner.Type));
+                if (classified != null)
+                    capturedType = classified;
             }
         }
 
@@ -598,13 +600,13 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Check a type pattern: resolve the type, handle union cases, validate compatibility,
-    /// and register any binding variable.
+    /// and register any binding variable. Routes through the isinstance classifier so
+    /// <see cref="Semantic.SemanticInfo.SetTypeTestLowering"/> is recorded for every path
+    /// and the emitter reads that fact instead of re-resolving (#1670).
     /// </summary>
     private void CheckTypePattern(TypePattern typePattern, SemanticType scrutineeType)
     {
-        // #1562: try union case probe FIRST, mirroring CheckPositionalPattern:841.
-        // This kills the spurious SPY0202 for `case Idle():` — the variant resolves
-        // before type annotation resolution can fail.
+        // #1562: try union case probe FIRST, mirroring CheckPositionalPattern.
         var earlyUnionCase = TryResolveUnionCaseFromPattern(
             typePattern.Type.Name, scrutineeType);
         if (earlyUnionCase != null)
@@ -612,128 +614,53 @@ internal partial class TypeChecker
             _semanticInfo.SetPatternUnionCase(typePattern, earlyUnionCase);
             var earlyResolved = new UserDefinedType { Name = earlyUnionCase.Name, Symbol = earlyUnionCase };
             _semanticInfo.SetPatternType(typePattern, earlyResolved);
+            _semanticInfo.SetTypeTestLowering(typePattern,
+                new TypeTestLowering(TypeTestLoweringKind.ClosedType, earlyResolved));
             BindTypePatternCapture(typePattern, earlyResolved);
             return;
         }
 
-        // A bare generic name here is fillable from the scrutinee, so it must come back as the bare
-        // symbol for the rule below to apply; the arity diagnostic an annotation would draw (#1331)
-        // would pre-empt SPY0345's better diagnosis (#1235).
-        var resolvedType = _typeResolver.ResolveTypeAnnotation(
-            typePattern.Type, bareGenericFillsFromContext: true);
-
-        // A bare `case list()` against an `array[T]` scrutinee (e.g. a CLR `object?[]`
-        // surfaced from interop such as sqlite3's default row) binds the captured value
-        // as the array itself, so indexing lowers to ArrayHelpers.GetItem. Resolve the
-        // pattern to the scrutinee's array type rather than to `list[T]` (which would
-        // bind the non-generic Sharpy.IList interface that a raw CLR array does not
-        // implement).
+        // Array scrutinee interop: bare `case list()` against `array[T]` resolves to the
+        // array itself so indexing lowers to ArrayHelpers.GetItem.
         if (typePattern.Type.TypeArguments.Length == 0
             && typePattern.Type.Name == BuiltinNames.List
             && scrutineeType is GenericType { Name: BuiltinNames.Array } arrayScrutinee)
         {
             _semanticInfo.SetPatternType(typePattern, arrayScrutinee);
-            if (typePattern.BindingName != null)
+            _semanticInfo.SetTypeTestLowering(typePattern,
+                new TypeTestLowering(TypeTestLoweringKind.ClosedType, arrayScrutinee));
+            BindTypePatternCapture(typePattern, arrayScrutinee);
+            return;
+        }
+
+        // The isinstance classifier records TypeTestLowering and returns the capture type:
+        // closed for non-generic and filled-from-subject, erased for bare collections on an
+        // object subject, or null for unknown/refused (SPY0345 already reported for open generics).
+        var resolvedType = ClassifyTypeTestAnnotation(
+            typePattern.Type, typePattern, scrutineeType, "match pattern",
+            CollectionErasure.Allowed,
+            openGenericRemedyOverride: BuildPatternOpenGenericRemedy(typePattern.Type));
+
+        if (resolvedType == null)
+        {
+            // Classifier returns null for unknown types (no diagnostic) and open-generic
+            // refusals (SPY0345 reported). Distinguish by symbol lookup for SPY0202.
+            var knownSymbol = _symbolTable.Lookup(typePattern.Type.Name) as TypeSymbol;
+            if (knownSymbol == null && !typePattern.Type.IsNameBacktickEscaped)
+                knownSymbol = _typeResolver.LookupModuleQualifiedType(typePattern.Type.Name) as TypeSymbol;
+            if (knownSymbol == null)
             {
-                var arrayBinding = new VariableSymbol
-                {
-                    Name = typePattern.BindingName.Name,
-                    Kind = SymbolKind.Variable,
-                    Type = arrayScrutinee,
-                    IsConstant = false,
-                    DeclarationLine = typePattern.BindingName.LineStart,
-                    DeclarationColumn = typePattern.BindingName.ColumnStart,
-                    NameDeclarationLine = typePattern.BindingName.LineStart,
-                    NameDeclarationColumn = typePattern.BindingName.ColumnStart,
-                    AccessLevel = AccessLevel.Public
-                };
-                _symbolTable.Define(arrayBinding);
-                SemanticBinding.SetVariableType(arrayBinding, arrayScrutinee);
-                _semanticInfo.SetIdentifierSymbol(typePattern.BindingName, arrayBinding);
+                AddError(
+                    $"Unknown type '{typePattern.Type.Name}' in type pattern",
+                    typePattern.LineStart, typePattern.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UndefinedType,
+                    span: typePattern.Span);
             }
             return;
         }
 
-        // Unparameterized collection patterns (e.g., `case list()`, `case dict()`)
-        // against an `object` scrutinee. Fill in default `object` type arguments so
-        // member access (indexing, .items(), etc.) resolves at the semantic level.
-        //
-        // Two resolution paths reach here:
-        //   1. GenericType with zero type args — if TypeResolver happens to produce it.
-        //   2. UserDefinedType backed by the BuiltinRegistry TypeSymbol — the common
-        //      path for bare `dict`/`list`/`set` (zero-arg names skip ResolveGenericType
-        //      and land in the user-defined-type leg of TypeResolver).
-        if (typePattern.Type.TypeArguments.Length == 0 && IsObjectType(scrutineeType))
-        {
-            string? collectionName = null;
-            int arity = 0;
-            TypeSymbol? genericDef = null;
-
-            if (resolvedType is GenericType { TypeArguments.Count: 0 } genericPattern)
-            {
-                collectionName = genericPattern.Name;
-                genericDef = genericPattern.GenericDefinition;
-            }
-            else if (resolvedType is UserDefinedType { Symbol: TypeSymbol ts } && ts.IsGeneric)
-            {
-                collectionName = ts.Name;
-                genericDef = ts;
-            }
-
-            if (collectionName != null)
-            {
-                arity = collectionName switch
-                {
-                    BuiltinNames.List => 1,
-                    BuiltinNames.Set => 1,
-                    BuiltinNames.Dict => 2,
-                    _ => 0
-                };
-            }
-
-            if (arity > 0)
-            {
-                var defaultArgs = new List<SemanticType>(arity);
-                for (var i = 0; i < arity; i++)
-                {
-                    defaultArgs.Add(SemanticType.Object);
-                }
-                resolvedType = new GenericType
-                {
-                    Name = collectionName!,
-                    TypeArguments = defaultArgs,
-                    GenericDefinition = genericDef
-                };
-                _semanticInfo.SetPatternType(typePattern, resolvedType);
-            }
-        }
-
-        // The bare-generic-name rule (#1235) — fill from the scrutinee or refuse. Shared with the
-        // property- and positional-pattern arms; see ApplyBareGenericPatternRule for the rule text.
-        if (ApplyBareGenericPatternRule(typePattern, typePattern.Type, resolvedType, scrutineeType)
-            is not { } appliedPatternType)
-        {
-            return;
-        }
-        resolvedType = appliedPatternType;
-
-        // #1510 (reverts #1358) + #1476: a bare payload TYPE pattern over a tagged-union scrutinee is
-        // a SECOND spelling of a constructor case, and one that hid an ICE. Optional and Result both
-        // match through their constructor cases (`case Some(v):`/`case None():`,
-        // `case Ok(v):`/`case Err(e):`), which are the one spelling; the bare payload form
-        // (`case str():` over `str?`, `case int():` over `int !E`) is refused with a steer to them.
-        //
-        // #1358 had classified `case str():` over `str?` as the synthetic Some case — the owner ruling
-        // (2026-08-13) reverses that: `str` IS assignable to `str?`, so the classification path had
-        // reached code generation as a CS8121 ICE for the shapes it did not fully model, while the
-        // exactly-analogous Result spelling was refused (by accident, since `int` is NOT assignable to
-        // `int !E`). Refusing both, uniformly, removes the second spelling and the ICE at once.
-        //
-        // The NARROWED form never reaches here: under an `is not None` guard the scrutinee's type is
-        // already the payload (not the union), so `if x is not None: match x: case str() as s:` takes
-        // the ordinary type-pattern path and the #1299 unwrap lowering keeps owning it.
-        if (resolvedType is not UnknownType
-            && scrutineeType is OptionalType payloadOptional
+        // #1510: refuse bare payload TYPE pattern over tagged-union scrutinee
+        if (scrutineeType is OptionalType payloadOptional
             && IsAssignable(resolvedType, payloadOptional.UnderlyingType))
         {
             AddError(
@@ -747,8 +674,7 @@ internal partial class TypeChecker
             return;
         }
 
-        if (resolvedType is not UnknownType
-            && scrutineeType is ResultType payloadResult
+        if (scrutineeType is ResultType payloadResult
             && (IsAssignable(resolvedType, payloadResult.OkType)
                 || IsAssignable(resolvedType, payloadResult.ErrorType)))
         {
@@ -762,15 +688,7 @@ internal partial class TypeChecker
             return;
         }
 
-        if (resolvedType is UnknownType)
-        {
-            AddError(
-                $"Unknown type '{typePattern.Type.Name}' in type pattern",
-                typePattern.LineStart, typePattern.ColumnStart,
-                code: DiagnosticCodes.Semantic.UndefinedType,
-                span: typePattern.Span);
-        }
-        else if (scrutineeType is not UnknownType
+        if (scrutineeType is not UnknownType
             && !IsAssignable(resolvedType, scrutineeType)
             && !IsAssignable(scrutineeType, resolvedType))
         {
@@ -780,9 +698,9 @@ internal partial class TypeChecker
                 code: DiagnosticCodes.Semantic.TypePatternIncompatible,
                 span: typePattern.Span);
         }
-        if (_semanticInfo.GetPatternType(typePattern) == null && resolvedType is not UnknownType)
+        if (_semanticInfo.GetPatternType(typePattern) == null)
             _semanticInfo.SetPatternType(typePattern, resolvedType);
-        if (resolvedType is not UnknownType && scrutineeType is not UnknownType
+        if (scrutineeType is not UnknownType
             && IsAssignable(scrutineeType, resolvedType))
         {
             _semanticInfo.SetPatternTotality(typePattern, true);
@@ -817,88 +735,16 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Refuses a bare generic name in a class pattern whose type arguments the scrutinee does not
-    /// determine (#1235). Shares SPY0345's diagnosis with the other type-operand positions but
-    /// <b>not</b> their remedy: the parser rejects type arguments in a pattern (SPY0125), so
-    /// <c>case Box[int]():</c> is not writable and suggesting it would send the user to a spelling the
-    /// compiler refuses. What does work is giving the scrutinee a more specific static type before
-    /// matching, or matching a non-generic base.
+    /// Builds the open-generic remedy text for match patterns. Patterns cannot name type
+    /// arguments (SPY0125), so the remedy steers to an isinstance guard or a non-generic base.
     /// </summary>
-    private void ReportOpenGenericPatternType(TypeAnnotation patternType, TypeSymbol typeSymbol, Text.TextSpan? fallbackSpan)
+    private static string BuildPatternOpenGenericRemedy(TypeAnnotation annotation)
     {
-        // Both suggestions below are executed as fixtures, not assumed. The isinstance guard used to
-        // be excluded here — the narrowed type did not reach the scrutinee, so suggesting it would
-        // have sent the user in a circle — and #1299 fixed exactly that, which makes it the first
-        // remedy to offer: it is the one that keeps the match reading like the code you wrote.
-        var name = patternType.Name;
-        var placeholders = OpenGenericPlaceholders(typeSymbol);
-        ReportOpenGenericTypeOperand(
-            patternType, name, siteNoun: "match pattern",
-            remedy: "Match on a value whose static type supplies them — guard the match with "
-                + $"`if isinstance(x, {name}[{placeholders}]):`, or bind it first with "
-                + $"`v: {name}[{placeholders}] = x as! {name}[{placeholders}]` — or match against a "
-                + "non-generic base type. A pattern cannot name type arguments itself.",
-            fallbackSpan: fallbackSpan);
-    }
-
-    /// <summary>
-    /// The bare-generic-name rule for class patterns (#1235), one copy for all three pattern shapes
-    /// (type, property, positional — the batch originally wired only the type-pattern arm, and the
-    /// other two leaked the open <c>Box&lt;T&gt;</c> as CS0305 behind SPY0908). .NET reifies generics,
-    /// so a bare <c>Box</c> names no runtime type: fill the argument vector from the scrutinee's own
-    /// static type and record the decision as the pattern's type for the emitter.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>One rule for user generics and builtin collections; erasure is the fill's fallback</b>
-    /// (#1299). Collections used to be excluded before the fill, on the reasoning that their
-    /// erasure was the #912 rule and routing them here would add a copy. The residue of that
-    /// boundary was that <c>case list():</c> was REFUSED against a <c>list[int]</c> scrutinee
-    /// (SPY0361) while being accepted against <c>object</c> — a pattern rejected by the very type
-    /// it matches, and the opposite of CPython, where <c>case list():</c> matches a plain list.
-    /// </para>
-    /// <para>
-    /// Moving the exclusion after the fill keeps erasure exactly where it belongs: a non-generic
-    /// scrutinee (<c>object</c>) fills nothing, and for an erasable collection that null fill means
-    /// "erase", not "refuse". Only user generics reach <see cref="ReportOpenGenericPatternType"/>,
-    /// because for them an unfillable bare name genuinely names no runtime type.
-    /// </para>
-    /// </remarks>
-    /// <returns>
-    /// The filled type (recorded on the pattern), <paramref name="resolvedType"/> unchanged when the
-    /// rule does not apply or the collection erases, or <c>null</c> when the pattern was refused and
-    /// checking should stop.
-    /// </returns>
-    private SemanticType? ApplyBareGenericPatternRule(
-        Pattern pattern, TypeAnnotation patternType, SemanticType resolvedType, SemanticType scrutineeType)
-    {
-        if (patternType.TypeArguments.Length != 0)
-            return resolvedType;
-
-        // Key on the RESOLVED symbol rather than the bare spelling, so a qualified
-        // spelling like `case lib.Box():` engages the fill rule identically (#1445).
-        var genericPatternType = (resolvedType as UserDefinedType)?.Symbol
-            ?? _symbolTable.Lookup(patternType.Name) as TypeSymbol;
-        if (genericPatternType is not { IsGeneric: true })
-        {
-            return resolvedType;
-        }
-
-        if (FillTypeArgumentsFromSubject(genericPatternType, scrutineeType) is { } filledPatternType)
-        {
-            _semanticInfo.SetPatternType(pattern, filledPatternType);
-            return filledPatternType;
-        }
-
-        if (BuiltinNames.IsErasableCollection(genericPatternType.Name))
-        {
-            // Nothing to fill from (an object scrutinee): the #912 erasure applies and the
-            // type-pattern arm and the emitter express it.
-            return resolvedType;
-        }
-
-        ReportOpenGenericPatternType(patternType, genericPatternType, pattern.Span);
-        return null;
+        var name = annotation.Name;
+        return "Match on a value whose static type supplies them — guard the match with "
+            + $"`if isinstance(x, {name}[...]):`, or bind it first with "
+            + $"`v: {name}[...] = x as! {name}[...]` — or match against a "
+            + "non-generic base type. A pattern cannot name type arguments itself.";
     }
 
     /// <summary>
@@ -919,32 +765,32 @@ internal partial class TypeChecker
             }
             else
             {
-                var resolvedType = _typeResolver.ResolveTypeAnnotation(
-                    propertyPattern.Type, bareGenericFillsFromContext: true);
-                if (resolvedType is UnknownType)
+                var classifiedType = ClassifyTypeTestAnnotation(
+                    propertyPattern.Type, propertyPattern, scrutineeType, "match pattern",
+                    CollectionErasure.Allowed,
+                    openGenericRemedyOverride: BuildPatternOpenGenericRemedy(propertyPattern.Type));
+                if (classifiedType == null)
                 {
-                    AddError(
-                        $"Unknown type '{propertyPattern.Type.Name}' in property pattern",
-                        propertyPattern.LineStart, propertyPattern.ColumnStart,
-                        code: DiagnosticCodes.Semantic.UndefinedType,
-                        span: propertyPattern.Span);
-                }
-                else
-                {
-                    // The bare-generic-name rule (#1235): fill from the scrutinee or refuse — same rule
-                    // as the type-pattern arm, same recorded channel the emitter reads.
-                    var applied = ApplyBareGenericPatternRule(
-                        propertyPattern, propertyPattern.Type, resolvedType, scrutineeType);
-                    if (applied == null)
-                        return;
-
-                    typeSymbol = applied switch
+                    var knownSymbol = _symbolTable.Lookup(propertyPattern.Type.Name) as TypeSymbol;
+                    if (knownSymbol == null && !propertyPattern.Type.IsNameBacktickEscaped)
+                        knownSymbol = _typeResolver.LookupModuleQualifiedType(propertyPattern.Type.Name) as TypeSymbol;
+                    if (knownSymbol == null)
                     {
-                        UserDefinedType udt => udt.Symbol,
-                        GenericType { GenericDefinition: { } filledDefinition } => filledDefinition,
-                        _ => null
-                    };
+                        AddError(
+                            $"Unknown type '{propertyPattern.Type.Name}' in property pattern",
+                            propertyPattern.LineStart, propertyPattern.ColumnStart,
+                            code: DiagnosticCodes.Semantic.UndefinedType,
+                            span: propertyPattern.Span);
+                    }
+                    return;
                 }
+
+                typeSymbol = classifiedType switch
+                {
+                    UserDefinedType udt => udt.Symbol,
+                    GenericType { GenericDefinition: { } filledDefinition } => filledDefinition,
+                    _ => null
+                };
             }
         }
 
@@ -993,13 +839,12 @@ internal partial class TypeChecker
             }
             // PEP 634: the single sub-pattern matches the WHOLE subject, which at that point
             // is known to be an instance of the builtin — so it binds with the builtin's type,
-            // exactly as `case int() as n:` does. Binding against the scrutinee's static type
-            // instead typed `n` as `object` under an `object` scrutinee (#1653): the value
-            // matched, the type did not.
-            var selfMatchedType = _typeResolver.ResolveTypeAnnotation(
-                positionalPattern.Type, bareGenericFillsFromContext: true);
-            if (selfMatchedType is UnknownType)
-                selfMatchedType = scrutineeType;
+            // exactly as `case int() as n:` does (#1653).
+            var selfMatchedType = ClassifyTypeTestAnnotation(
+                positionalPattern.Type, positionalPattern, scrutineeType, "match pattern",
+                CollectionErasure.Allowed,
+                openGenericRemedyOverride: BuildPatternOpenGenericRemedy(positionalPattern.Type))
+                ?? scrutineeType;
             CheckPattern(positionalPattern.Elements[0], selfMatchedType);
             _semanticInfo.SetPatternType(positionalPattern, selfMatchedType);
             if (selfMatchedType is not UnknownType && scrutineeType is not UnknownType
@@ -1024,47 +869,47 @@ internal partial class TypeChecker
             }
             else
             {
-                var resolvedType = _typeResolver.ResolveTypeAnnotation(
-                    positionalPattern.Type, bareGenericFillsFromContext: true);
-                if (resolvedType is UnknownType)
+                var classifiedType = ClassifyTypeTestAnnotation(
+                    positionalPattern.Type, positionalPattern, scrutineeType, "match pattern",
+                    CollectionErasure.Allowed,
+                    openGenericRemedyOverride: BuildPatternOpenGenericRemedy(positionalPattern.Type));
+                if (classifiedType == null)
                 {
-                    AddError(
-                        $"Unknown type '{positionalPattern.Type.Name}' in positional pattern",
-                        positionalPattern.LineStart, positionalPattern.ColumnStart,
-                        code: DiagnosticCodes.Semantic.UndefinedType,
-                        span: positionalPattern.Span);
+                    var knownSymbol = _symbolTable.Lookup(positionalPattern.Type.Name) as TypeSymbol;
+                    if (knownSymbol == null && !positionalPattern.Type.IsNameBacktickEscaped)
+                        knownSymbol = _typeResolver.LookupModuleQualifiedType(positionalPattern.Type.Name) as TypeSymbol;
+                    if (knownSymbol == null)
+                    {
+                        AddError(
+                            $"Unknown type '{positionalPattern.Type.Name}' in positional pattern",
+                            positionalPattern.LineStart, positionalPattern.ColumnStart,
+                            code: DiagnosticCodes.Semantic.UndefinedType,
+                            span: positionalPattern.Span);
+                    }
+                    return;
                 }
-                else
+
+                typeSymbol = classifiedType switch
                 {
-                    // The bare-generic-name rule (#1235): fill from the scrutinee or refuse — same
-                    // rule as the type-pattern arm, same recorded channel the emitter reads.
-                    var applied = ApplyBareGenericPatternRule(
-                        positionalPattern, positionalPattern.Type, resolvedType, scrutineeType);
-                    if (applied == null)
-                        return;
+                    UserDefinedType udt => udt.Symbol,
+                    GenericType { GenericDefinition: { } filledDefinition } => filledDefinition,
+                    _ => null
+                };
 
-                    typeSymbol = applied switch
+                // For non-union types, check if positional deconstruction is supported
+                if (typeSymbol != null
+                    && typeSymbol.BaseType?.TypeKind != TypeKind.Union
+                    && typeSymbol.TypeKind != TypeKind.Union)
+                {
+                    bool hasDeconstruct = typeSymbol.Methods.Any(m => m.Name == "Deconstruct");
+                    bool hasMatchingFields = typeSymbol.Fields.Count == positionalPattern.Elements.Length;
+                    if (!hasDeconstruct && !hasMatchingFields)
                     {
-                        UserDefinedType udt => udt.Symbol,
-                        GenericType { GenericDefinition: { } filledDefinition } => filledDefinition,
-                        _ => null
-                    };
-
-                    // For non-union types, check if positional deconstruction is supported
-                    if (typeSymbol != null
-                        && typeSymbol.BaseType?.TypeKind != TypeKind.Union
-                        && typeSymbol.TypeKind != TypeKind.Union)
-                    {
-                        bool hasDeconstruct = typeSymbol.Methods.Any(m => m.Name == "Deconstruct");
-                        bool hasMatchingFields = typeSymbol.Fields.Count == positionalPattern.Elements.Length;
-                        if (!hasDeconstruct && !hasMatchingFields)
-                        {
-                            AddError(
-                                $"Type '{typeSymbol.Name}' does not support positional deconstruction (no Deconstruct method and field count {typeSymbol.Fields.Count} does not match pattern element count {positionalPattern.Elements.Length})",
-                                positionalPattern.LineStart, positionalPattern.ColumnStart,
-                                code: DiagnosticCodes.Semantic.PositionalPatternNoDeconstruct,
-                                span: positionalPattern.Span);
-                        }
+                        AddError(
+                            $"Type '{typeSymbol.Name}' does not support positional deconstruction (no Deconstruct method and field count {typeSymbol.Fields.Count} does not match pattern element count {positionalPattern.Elements.Length})",
+                            positionalPattern.LineStart, positionalPattern.ColumnStart,
+                            code: DiagnosticCodes.Semantic.PositionalPatternNoDeconstruct,
+                            span: positionalPattern.Span);
                     }
                 }
             }

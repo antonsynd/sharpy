@@ -219,7 +219,8 @@ internal partial class TypeChecker
         Node lodgeOn,
         SemanticType? subjectType,
         string siteNoun,
-        CollectionErasure erasure)
+        CollectionErasure erasure,
+        string? openGenericRemedyOverride = null)
     {
         // Only a bare NAME can be an open generic, so it is the only shape needing the vector-filling
         // rule. A spelling carrying type arguments, or any nullable/optional/result modifier, names
@@ -301,7 +302,8 @@ internal partial class TypeChecker
 
         ReportOpenGenericTypeOperand(
             annotation, annotation.Name, siteNoun,
-            remedy: ClosedSpellingRemedy($"{annotation.Name}[{OpenGenericPlaceholders(typeSymbol)}]"));
+            remedy: openGenericRemedyOverride
+                ?? ClosedSpellingRemedy($"{annotation.Name}[{OpenGenericPlaceholders(typeSymbol)}]"));
         return null;
     }
 
