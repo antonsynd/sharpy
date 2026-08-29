@@ -1,5 +1,6 @@
 using CsCheck;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
+using Sharpy.TestInfrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -21,117 +22,41 @@ public class OperatorOverloadPropertyTests
     [Fact]
     public void BinaryOperator_DunderCompiles()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenOperators.BinaryOperatorProgram()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "operator_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"Binary operator compilation: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Binary operator pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "BinaryOperator_DunderCompiles");
     }
 
     [Fact]
     public void UnaryOperator_DunderCompiles()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenOperators.UnaryOperatorProgram()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "operator_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"Unary operator compilation: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Unary operator pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "UnaryOperator_DunderCompiles");
     }
 
     [Fact]
     public void ComparisonOperator_DunderCompiles()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenOperators.ComparisonOperatorProgram()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "operator_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"Comparison operator compilation: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Comparison operator pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "ComparisonOperator_DunderCompiles");
     }
 
     [Fact]
     public void OperatorPrecedence_PreservedThroughCompilation()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenOperators.PrecedenceProgram()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "operator_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"Operator precedence compilation: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Operator precedence pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "OperatorPrecedence_PreservedThroughCompilation");
     }
 
     [Fact]

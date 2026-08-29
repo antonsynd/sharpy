@@ -1,5 +1,6 @@
 using CsCheck;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
+using Sharpy.TestInfrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -21,145 +22,50 @@ public class FStringPropertyTests
     [Fact]
     public void FString_WithMethodCalls_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenFStrings.FStringWithMethodCalls()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "fstring_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"F-string method calls: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"F-string method calls pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "FString_WithMethodCalls_CompilesClean");
     }
 
     [Fact]
     public void FString_WithNestedCalls_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenFStrings.FStringWithNestedCalls()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "fstring_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"F-string nested calls: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"F-string nested calls pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "FString_WithNestedCalls_CompilesClean");
     }
 
     [Fact]
     public void FString_WithFormatSpecs_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenFStrings.FStringWithFormatSpecs()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "fstring_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"F-string format specs: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"F-string format specs pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "FString_WithFormatSpecs_CompilesClean");
     }
 
     [Fact]
     public void FString_WithArithmetic_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenFStrings.FStringWithArithmetic()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "fstring_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"F-string arithmetic: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"F-string arithmetic pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "FString_WithArithmetic_CompilesClean");
     }
 
     [Fact]
     public void FString_ComplexCombined_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenFStrings.FStringComplexCombined()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "fstring_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"F-string complex combined: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"F-string complex combined pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "FString_ComplexCombined_CompilesClean");
     }
 }

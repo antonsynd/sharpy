@@ -2,6 +2,7 @@ using CsCheck;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
+using Sharpy.TestInfrastructure;
 
 namespace Sharpy.Compiler.Tests.Properties.Semantic;
 
@@ -21,31 +22,15 @@ public class AsyncPropertyTests
     [Fact]
     public void AsyncFunction_CompilesWithAwait()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenAsync.ModuleWithAsyncFunction(valid: true)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "async_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Async function compilation: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Async function pass rate too low: {passed}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "AsyncFunction_CompilesWithAwait");
     }
 
     [Fact]
@@ -84,35 +69,15 @@ public class AsyncPropertyTests
     [Fact]
     public void AsyncFunction_ReturnTypeInference()
     {
-        int total = 0;
-        int inferred = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenAsync.ModuleWithAsyncFunction(valid: true)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "async_test.spy");
-                    if (result.Success && result.SymbolTable != null)
-                    {
-                        var sym = result.SymbolTable.LookupFunction("fetch_data");
-                        if (sym?.ReturnType != null)
-                            Interlocked.Increment(ref inferred);
-                    }
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Async return type inference: {inferred}/{total} inferred");
-        Assert.True(inferred > total / 3,
-            $"Async return type inference rate too low: {inferred}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "AsyncFunction_ReturnTypeInference");
     }
 
     [Fact]

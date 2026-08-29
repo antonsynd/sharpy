@@ -2,6 +2,7 @@ using CsCheck;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
+using Sharpy.TestInfrastructure;
 
 namespace Sharpy.Compiler.Tests.Properties.Semantic;
 
@@ -21,61 +22,29 @@ public class ExceptionPropertyTests
     [Fact]
     public void TryExcept_CompilesWithValidHandlers()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenExceptions.ModuleWithTryExcept(handlerCount: 1)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "except_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Try/except compilation: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Try/except pass rate too low: {passed}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "TryExcept_CompilesWithValidHandlers");
     }
 
     [Fact]
     public void ExceptHandler_TypeMatching()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenExceptions.ModuleWithRaiseExpression()
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "except_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Exception type matching: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Exception type matching rate too low: {passed}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "ExceptHandler_TypeMatching");
     }
 
     [Fact]
@@ -166,30 +135,14 @@ public class ExceptionPropertyTests
     [Fact]
     public void ExceptionHierarchy_SubtypesAccepted()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenExceptions.ModuleWithExceptionHierarchy()
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "except_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Exception hierarchy: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Exception hierarchy pass rate too low: {passed}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "ExceptionHierarchy_SubtypesAccepted");
     }
 }

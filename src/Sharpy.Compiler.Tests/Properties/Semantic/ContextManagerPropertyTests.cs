@@ -2,6 +2,7 @@ using CsCheck;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
+using Sharpy.TestInfrastructure;
 
 namespace Sharpy.Compiler.Tests.Properties.Semantic;
 
@@ -21,88 +22,31 @@ public class ContextManagerPropertyTests
     [Fact]
     public void ValidContextManager_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenContextManagers.ValidContextManagerProgram()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "context_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"Valid context manager: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Valid context manager pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "ValidContextManager_CompilesClean");
     }
 
     [Fact]
     public void ContextManagerWithAsBinding_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenContextManagers.ContextManagerWithAsBinding()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "context_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"Context manager with as: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Context manager with as pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "ContextManagerWithAsBinding_CompilesClean");
     }
 
     [Fact]
     public void AsyncContextManager_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenContextManagers.AsyncContextManagerProgram()
-            .Sample(source =>
-            {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "context_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
-            }, iter: 50);
-
-        _output.WriteLine($"Async context manager: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Async context manager pass rate too low: {passed}/{total}");
+            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "AsyncContextManager_CompilesClean");
     }
 
     [Fact]

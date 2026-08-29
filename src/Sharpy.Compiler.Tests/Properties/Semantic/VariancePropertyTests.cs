@@ -1,5 +1,6 @@
 using CsCheck;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
+using Sharpy.TestInfrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -21,59 +22,31 @@ public class VariancePropertyTests
     [Fact]
     public void CovariantInterface_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
+        var samples = new List<PropertyCorpus.SampleResult>();
 
         GenVariance.CovariantInterfaceProgram()
             .Sample(source =>
             {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "variance_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, iter: 50);
 
-        _output.WriteLine($"Covariant interface: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Covariant interface pass rate too low: {passed}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "CovariantInterface_CompilesClean");
     }
 
     [Fact]
     public void ContravariantInterface_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
+        var samples = new List<PropertyCorpus.SampleResult>();
 
         GenVariance.ContravariantInterfaceProgram()
             .Sample(source =>
             {
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "variance_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, iter: 50);
 
-        _output.WriteLine($"Contravariant interface: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Contravariant interface pass rate too low: {passed}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "ContravariantInterface_CompilesClean");
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using CsCheck;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
+using Sharpy.TestInfrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -21,31 +22,15 @@ public class InterfacePropertyTests
     [Fact]
     public void InterfaceImplementation_CompilesWhenComplete()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenInterfaces.ModuleWithInterface(methodCount: 0, completeImpl: true)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "iface_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Generated code may have edge cases
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Interface implementation (complete): {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Interface implementation pass rate too low: {passed}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "InterfaceImplementation_CompilesWhenComplete");
     }
 
     [Fact]
@@ -65,7 +50,7 @@ public class InterfacePropertyTests
                     var compiler = new Sharpy.Compiler.Compiler();
                     var result = compiler.Analyze(source, "iface_test.spy");
                     if (!result.Success && result.Diagnostics.GetAll().Any(d =>
-                        d.Code.StartsWith("SPY03") || d.Code.StartsWith("SPY04")))
+                        d.Code != null && (d.Code.StartsWith("SPY03") || d.Code.StartsWith("SPY04"))))
                     {
                         Interlocked.Increment(ref diagnosed);
                     }
@@ -84,91 +69,43 @@ public class InterfacePropertyTests
     [Fact]
     public void ProtocolSynthesis_AddsInterfaceForDunder()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         Gen.OneOfConst("__len__", "__bool__")
             .SelectMany(GenInterfaces.ModuleWithProtocolDunder)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "protocol_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Protocol synthesis: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Protocol synthesis pass rate too low: {passed}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "ProtocolSynthesis_AddsInterfaceForDunder");
     }
 
     [Fact]
     public void InterfaceConflict_DetectedInHierarchy()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenInterfaces.ModuleWithInterfaceHierarchy()
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "hierarchy_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Interface hierarchy: {passed}/{total} passed");
-        Assert.True(passed > total / 4,
-            $"Interface hierarchy pass rate too low: {passed}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "InterfaceConflict_DetectedInHierarchy");
     }
 
     [Fact]
     public void MultipleInterfaces_AllValidated()
     {
-        int total = 0;
-        int passed = 0;
-
+        var samples = new List<PropertyCorpus.SampleResult>();
         GenInterfaces.ModuleWithMultipleInterfaces()
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "multi_iface_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
-        _output.WriteLine($"Multiple interfaces: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Multiple interfaces pass rate too low: {passed}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "MultipleInterfaces_AllValidated");
     }
 }

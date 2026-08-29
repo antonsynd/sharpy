@@ -1,6 +1,7 @@
 using CsCheck;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
+using Sharpy.TestInfrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -22,131 +23,65 @@ public class ClassInheritancePropertyTests
     [Fact]
     public void ClassHierarchy_CompilesClean()
     {
-        int total = 0;
-        int passed = 0;
+        var samples = new List<PropertyCorpus.SampleResult>();
 
         GenClasses.ModuleWithClasses(TypeEnv.WithInheritance, fuel: 2)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref total);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "class_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Class hierarchy compilation: {passed}/{total} passed");
-        Assert.True(passed > total / 3,
-            $"Class hierarchy pass rate too low: {passed}/{total}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "ClassHierarchy_CompilesClean");
     }
 
     [Fact]
     public void DerivedClass_InheritsBaseMembers()
     {
-        int tested = 0;
-        int passed = 0;
+        var samples = new List<PropertyCorpus.SampleResult>();
 
         GenClasses.ModuleWithClasses(TypeEnv.WithInheritance, fuel: 2)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "class_test.spy");
-                    if (result.Success && result.SemanticInfo != null)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Derived class member access: {passed}/{tested} passed");
-        Assert.True(passed > tested / 3,
-            $"Derived class member access rate too low: {passed}/{tested}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "DerivedClass_InheritsBaseMembers");
     }
 
     [Fact]
     public void MethodOverride_PreservesSignature()
     {
-        int tested = 0;
-        int passed = 0;
+        var samples = new List<PropertyCorpus.SampleResult>();
 
         GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "class_test.spy");
-                    if (result.Success)
-                        Interlocked.Increment(ref passed);
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Override signature preservation: {passed}/{tested} passed");
-        Assert.True(passed > tested / 3,
-            $"Override signature preservation rate too low: {passed}/{tested}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "MethodOverride_PreservesSignature");
     }
 
     [Fact]
     public void Constructor_InitializesFieldTypes()
     {
-        int tested = 0;
-        int passed = 0;
+        var samples = new List<PropertyCorpus.SampleResult>();
 
         GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
             .Sample(module =>
             {
                 var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                Interlocked.Increment(ref tested);
-
-                try
-                {
-                    var compiler = new Sharpy.Compiler.Compiler();
-                    var result = compiler.Analyze(source, "class_test.spy");
-                    if (result.Success && result.SymbolTable != null)
-                    {
-                        var classNames = module.Body.OfType<ClassDef>()
-                            .Select(cd => cd.Name).ToList();
-                        var allHaveType = classNames.All(name =>
-                        {
-                            var sym = result.SymbolTable.LookupType(name);
-                            return sym != null;
-                        });
-                        if (allHaveType && classNames.Count > 0)
-                            Interlocked.Increment(ref passed);
-                    }
-                }
-                catch
-                {
-                    // Swallow
-                }
+                samples.Add(PropertyCorpus.CompileSample(source));
             }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
 
-        _output.WriteLine($"Constructor field initialization: {passed}/{tested} passed");
-        Assert.True(passed > tested / 3,
-            $"Constructor field initialization rate too low: {passed}/{tested}");
+        PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
+            "Constructor_InitializesFieldTypes");
     }
 
     [Fact]
