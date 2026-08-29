@@ -6,7 +6,9 @@
 # count reaches 0, delete the entry. Adding a new file or increasing a count
 # requires a new issue reference.
 #
-# Measured @ 4ee7e49d3 (#1640, #1645).
-TypeChecker.Expressions.Access.cs 4 #1640
-TypeChecker.Expressions.cs 2 #1640
-TypeChecker.Expressions.Operators.cs 1 #1640
+# Measured @ 4ee7e49d3 (#1640, #1645); re-cited @ 94d628208 (#1640 drained).
+# Access.cs: :280 module export (#1674), :403/:782/:884 CLR fallbacks (#1678)
+TypeChecker.Expressions.Access.cs 4 #1678
+# Expressions.cs: :299 auto (#1675), :590 type-ref value position (#1676)
+TypeChecker.Expressions.cs 2 #1675
+TypeChecker.Expressions.Operators.cs 1 #1677
