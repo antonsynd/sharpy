@@ -150,7 +150,19 @@ public partial class Parser
             };
         }
 
-        return ParseTryMaybeExpression();
+        var expr = ParseTryMaybeExpression();
+
+        if (Current.Type == TokenType.ColonAssign)
+        {
+            ReportError(
+                "Walrus operator ':=' target must be a simple name, not an attribute or subscript access",
+                expr.LineStart, expr.ColumnStart,
+                DiagnosticCodes.Parser.WalrusTargetRequiresName, span: expr.Span);
+            Advance();
+            ParseWalrusExpression();
+        }
+
+        return expr;
     }
 
     private Expression ParseTryMaybeExpression()

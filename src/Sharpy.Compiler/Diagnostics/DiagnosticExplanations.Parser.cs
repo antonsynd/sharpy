@@ -218,5 +218,20 @@ public static partial class DiagnosticExplanations
             "A bare (unparenthesized) lambda cannot appear as the operand of a unary or binary operator, a conditional test, or a comprehension iterator. CPython's grammar forbids a lambdef in these operand positions, and Sharpy matches it. Parenthesizing the lambda makes it a primary expression, which is allowed anywhere.",
             "y = x or lambda: x",
             "Wrap the lambda in parentheses:\n  y = x or (lambda: x)");
+
+        Add(dict, DiagnosticCodes.Parser.ExceptAsRequiresName, "'except ... as' target must be a name", "Parser",
+            "The 'as' binding in an except clause must be a simple identifier. Attribute access and subscript targets are not allowed — CPython raises SyntaxError for 'except E as p.x' as well.",
+            "except ValueError as p.x:",
+            "Use a simple name and assign the attribute in the handler body:\n  except ValueError as e:\n      p.x = e");
+
+        Add(dict, DiagnosticCodes.Parser.WalrusTargetRequiresName, "Walrus operator target must be a name", "Parser",
+            "The walrus operator ':=' requires its target to be a simple identifier. Attribute access and subscript targets are not allowed — CPython raises 'cannot use assignment expressions with attribute' for 'p.x := val'.",
+            "(p.x := 5)",
+            "Assign the attribute in a separate statement:\n  p.x = 5");
+
+        Add(dict, DiagnosticCodes.Parser.DelStatementNotSupported, "'del' statement is not supported", "Parser",
+            "Sharpy does not support the 'del' statement. To remove a dictionary key, use 'dict.pop(key)'. To remove a list element by index, use 'list.pop(index)'. Unbinding a name or deleting an attribute is not supported (Axiom 1: .NET scoping rules apply).",
+            "del d['key']",
+            "Use the appropriate method:\n  d.pop('key')      # remove a dictionary key\n  xs.pop(0)         # remove a list element by index");
     }
 }

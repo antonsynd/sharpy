@@ -612,12 +612,22 @@ public partial class Parser
                 else if (Current.Type == TokenType.As)
                 {
                     Advance();
-                    var exceptNameToken = Current;
-                    name = ExpectIdentifier();
-                    nameEscaped = exceptNameToken.IsBacktickEscaped;
-                    nameLineStart = exceptNameToken.Line;
-                    nameColumnStart = exceptNameToken.Column;
-                    nameColumnEnd = exceptNameToken.Column + exceptNameToken.Length;
+                    var exceptTarget = ParseStoreTarget();
+                    if (exceptTarget is Identifier exceptId)
+                    {
+                        name = exceptId.Name;
+                        nameEscaped = exceptId.IsNameBacktickEscaped;
+                        nameLineStart = exceptId.LineStart;
+                        nameColumnStart = exceptId.ColumnStart;
+                        nameColumnEnd = exceptId.ColumnEnd;
+                    }
+                    else
+                    {
+                        ReportError(
+                            "'except ... as' target must be a simple name, not an attribute or subscript access",
+                            exceptTarget.LineStart, exceptTarget.ColumnStart,
+                            DiagnosticCodes.Parser.ExceptAsRequiresName, span: exceptTarget.Span);
+                    }
                 }
             }
 

@@ -112,8 +112,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Parser diagnostic codes (SPY0100-SPY0199).
-    /// Active: SPY0100-SPY0141
-    /// Reserved: SPY0142-SPY0199
+    /// Active: SPY0100-SPY0144
+    /// Reserved: SPY0145-SPY0199
     /// </summary>
     public static class Parser
     {
@@ -204,7 +204,15 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0142-SPY0199: Reserved for future parser diagnostics
+        #region Store target refusals (SPY0142-SPY0144)
+
+        public const string ExceptAsRequiresName = "SPY0142";       // Active
+        public const string WalrusTargetRequiresName = "SPY0143";   // Active
+        public const string DelStatementNotSupported = "SPY0144";   // Active
+
+        #endregion
+
+        // SPY0145-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>
