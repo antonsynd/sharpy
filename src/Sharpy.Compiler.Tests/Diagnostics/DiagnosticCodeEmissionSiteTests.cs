@@ -124,8 +124,8 @@ public class DiagnosticCodeEmissionSiteTests
                 activeCodes.Add((match.Groups[1].Value, match.Groups[2].Value));
         }
 
-        Assert.True(activeCodes.Count >= 375,
-            $"Expected ≥375 Active codes, found {activeCodes.Count} — is the regex matching? " +
+        Assert.True(activeCodes.Count >= 374,
+            $"Expected ≥374 Active codes, found {activeCodes.Count} — is the regex matching? " +
             "If codes were retired/reserved, lower this tripwire.");
 
         var diagnosticsDir = Path.Combine(compilerDir, "Diagnostics");

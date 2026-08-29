@@ -113,13 +113,11 @@ public class TransitionHintIntegrationTests
     }
 
     /// <summary>
-    /// SPY0478 joins the toggle by range rather than by registration
-    /// (<c>DiagnosticPublisher.IsTransitionHintCode</c>), so nothing wires it up explicitly —
-    /// which is exactly why it needs pinning: a new hint silently either does or does not honour
-    /// the user-facing off-switch, and only a test says which (#1394).
+    /// SPY0478 was retired when inplace_augassign graduated (#1614).
+    /// This test verifies the hint is no longer emitted.
     /// </summary>
     [Fact]
-    public void AliasedCollectionHint_HonoursTheTransitionHintsToggle()
+    public void AliasedCollectionHint_NotEmittedAfterGraduation()
     {
         const string source = """
             def main() -> None:
@@ -132,19 +130,10 @@ public class TransitionHintIntegrationTests
         var result = _api.Analyze(source);
 
         DiagnosticPublisher.ConvertDiagnostics(result.Diagnostics, sourceText: null, new LspConfiguration())
-            .Should().Contain(
-                d => d.Code.HasValue && d.Code.Value.IsString
-                    && d.Code.Value.String == DiagnosticCodes.Validation.AliasedCollectionAugmentedAssignmentHint,
-                "the hint is published under the default configuration");
-
-        var disabled = new LspConfiguration();
-        disabled.UpdateFrom(JToken.Parse("""{"transitionHints":{"enabled":false}}"""));
-
-        DiagnosticPublisher.ConvertDiagnostics(result.Diagnostics, sourceText: null, disabled)
             .Should().NotContain(
                 d => d.Code.HasValue && d.Code.Value.IsString
                     && d.Code.Value.String == DiagnosticCodes.Validation.AliasedCollectionAugmentedAssignmentHint,
-                "SPY0478 is in the transition-hint range, so the off-switch must reach it");
+                "SPY0478 is retired — inplace_augassign graduated (#1614)");
     }
 
     [Fact]

@@ -142,15 +142,9 @@ public class ClrMemberFidelityMatrixTests
             "from system.collections.generic import Stack, Queue\n\ndef _use() -> None:\n    s = Stack[Queue[int]]()\n    s.push(Queue[int]())\n    _q = s.peek()\n",
             false);
 
-        // ── Mapped generic: List[int] (Sharpy builtin — CLR members via bridge) ──
-
-        yield return new Cell("List[int].count-correct",
-            "def _use() -> None:\n    xs: list[int] = [1, 2, 3]\n    n: int = xs.count\n",
-            false);
-
-        yield return new Cell("List[int].count-wrong",
-            "def _use() -> None:\n    xs: list[int] = [1, 2, 3]\n    x: str = xs.count\n",
-            true);
+        // ── Mapped generic: List[int] — Sharpy surface wins over CLR for list.count (N/A) ──
+        // list[int].count is Sharpy's count(value) method, not CLR's Count property.
+        // list[int].append is fully Sharpy-typed, so List CLR-member cells use Queue instead.
     }
 
     private static string Src(string type, string body) =>

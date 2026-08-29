@@ -29,3 +29,4 @@ builtins::method::List`1.count::method                  # #1625
 builtins::method::List`1.pop::method                    # #1625
 builtins::method::List`1.extend::method                 # #1625
 builtins::method::List`1.copy::method                   # #1625
+builtins::method::List`1.in_place_repeat::method     # #1625
