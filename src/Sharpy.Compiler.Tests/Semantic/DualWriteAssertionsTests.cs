@@ -195,81 +195,6 @@ public class DualWriteAssertionsTests
 
     #endregion
 
-    #region AssertCodeGenInfoConsistency
-
-    [Fact]
-    public void AssertCodeGenInfoConsistency_PassesForConsistentState()
-    {
-        var symbolTable = CreateSymbolTable();
-        var binding = new SemanticBinding();
-
-        var symbol = new TypeSymbol { Name = "my_class", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
-        var info = new CodeGenInfo { CSharpName = "MyClass", OriginalName = "my_class" };
-
-        symbolTable.Define(symbol);
-        binding.SetCodeGenInfo(symbol, info);
-        binding.MaterializeCodeGenInfo();
-
-        DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, binding);
-    }
-
-    [Fact]
-    public void AssertCodeGenInfoConsistency_PassesForSymbolsWithNoCodeGenInfo()
-    {
-        var symbolTable = CreateSymbolTable();
-        var binding = new SemanticBinding();
-
-        var symbol = new TypeSymbol { Name = "Foo", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
-        symbolTable.Define(symbol);
-
-        // No CodeGenInfo set, should pass
-        DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, binding);
-    }
-
-    [Fact]
-    public void AssertCodeGenInfoConsistency_SkipsReExportedSymbols()
-    {
-        var symbolTable = CreateSymbolTable();
-        var binding = new SemanticBinding();
-
-        // Re-exported symbols have their CodeGenInfo from a different compilation's SemanticBinding
-        var reExported = new TypeSymbol
-        {
-            Name = "ReExported",
-            Kind = SymbolKind.Type,
-            TypeKind = TypeKind.Class,
-            IsReExport = true,
-            OriginalModule = "other_module",
-            CodeGenInfo = new CodeGenInfo { CSharpName = "ReExported", OriginalName = "re_exported" }
-        };
-        symbolTable.Define(reExported);
-
-        // Should not throw even though CodeGenInfo is set on Symbol but not in this SemanticBinding
-        DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, binding);
-    }
-
-    [Fact]
-    public void AssertCodeGenInfoConsistency_PassesForMultipleSymbols()
-    {
-        var symbolTable = CreateSymbolTable();
-        var binding = new SemanticBinding();
-
-        var sym1 = new TypeSymbol { Name = "foo", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
-        var sym2 = new FunctionSymbol { Name = "bar", Kind = SymbolKind.Function };
-        var info1 = new CodeGenInfo { CSharpName = "Foo", OriginalName = "foo" };
-        var info2 = new CodeGenInfo { CSharpName = "Bar", OriginalName = "bar" };
-
-        symbolTable.Define(sym1);
-        symbolTable.Define(sym2);
-        binding.SetCodeGenInfo(sym1, info1);
-        binding.SetCodeGenInfo(sym2, info2);
-        binding.MaterializeCodeGenInfo();
-
-        DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, binding);
-    }
-
-    #endregion
-
     #region AssertVariableTypeConsistency
 
     [Fact]
@@ -413,23 +338,6 @@ public class DualWriteAssertionsTests
     }
 
     [Fact]
-    public void AssertCodeGenInfoConsistency_ReverseDirection_PassesAfterMaterialization()
-    {
-        var symbolTable = CreateSymbolTable();
-        var binding = new SemanticBinding();
-
-        var symbol = new TypeSymbol { Name = "my_class", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
-        var info = new CodeGenInfo { CSharpName = "MyClass", OriginalName = "my_class" };
-
-        symbolTable.Define(symbol);
-        binding.SetCodeGenInfo(symbol, info);
-        binding.MaterializeCodeGenInfo();
-
-        // Reverse check: SemanticBinding has CodeGenInfo → Symbol should too
-        DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, binding);
-    }
-
-    [Fact]
     public void AssertVariableTypeConsistency_ReverseDirection_PassesAfterMaterialization()
     {
         var symbolTable = CreateSymbolTable();
@@ -532,7 +440,6 @@ public class DualWriteAssertionsTests
 
         binding.MaterializeCodeGenInfo();
         binding.MaterializeVariableTypes();
-        DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, binding);
         DualWriteAssertions.AssertVariableTypeConsistency(symbolTable, binding);
         binding.FreezeCodeGenInfo();
         binding.FreezeVariableTypes();
@@ -542,7 +449,7 @@ public class DualWriteAssertionsTests
         child.Interfaces.Should().Contain(r => r.Definition == iface);
         field.Type.Should().Be(SemanticType.Str);
         globalVar.Type.Should().Be(SemanticType.Int);
-        child.CodeGenInfo.Should().NotBeNull();
+        binding.GetCodeGenInfo(child).Should().NotBeNull();
     }
 
     #endregion
@@ -591,26 +498,6 @@ public class DualWriteAssertionsTests
             DualWriteAssertions.AssertInheritanceConsistency(symbolTable, binding));
         ex.Message.Should().Contain("materialization missed");
         ex.Message.Should().Contain("Impl");
-    }
-
-    [Fact]
-    public void AssertCodeGenInfoConsistency_ThrowsForMissingMaterialization()
-    {
-        var symbolTable = CreateSymbolTable();
-        var binding = new SemanticBinding();
-
-        var symbol = new TypeSymbol { Name = "MyClass", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
-        var info = new CodeGenInfo { CSharpName = "MyClass", OriginalName = "my_class" };
-
-        symbolTable.Define(symbol);
-        binding.SetCodeGenInfo(symbol, info);
-        // Intentionally skip MaterializeCodeGenInfo()
-
-        // SemanticBinding has CodeGenInfo but Symbol doesn't - should throw
-        var ex = Assert.Throws<InvalidOperationException>(() =>
-            DualWriteAssertions.AssertCodeGenInfoConsistency(symbolTable, binding));
-        ex.Message.Should().Contain("materialization missed");
-        ex.Message.Should().Contain("MyClass");
     }
 
     [Fact]

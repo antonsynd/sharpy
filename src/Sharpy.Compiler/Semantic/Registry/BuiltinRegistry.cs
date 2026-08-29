@@ -86,8 +86,7 @@ internal class BuiltinRegistry
 
     /// <summary>
     /// Copy constructor for per-compilation cloning (#1633). Deep-copies every symbol so that
-    /// <see cref="CodeGenInfo"/> writes by <c>MaterializeCodeGenInfo</c> are per-compilation and
-    /// <see cref="IsBuiltinSymbol"/> answers from the clone's map.
+    /// <see cref="IsBuiltinSymbol"/> answers from the clone's identity map.
     /// </summary>
     private BuiltinRegistry(BuiltinRegistry master)
     {
@@ -123,7 +122,7 @@ internal class BuiltinRegistry
             }
             else
             {
-                var cloned = sym with { CodeGenInfo = null };
+                var cloned = sym with { };
                 _interfaceSymbols[clrType] = cloned;
                 symbolMap[sym] = cloned;
             }
@@ -157,8 +156,7 @@ internal class BuiltinRegistry
 
     /// <summary>
     /// Returns a per-compilation clone whose symbols are independent of the master's.
-    /// <see cref="MaterializeCodeGenInfo"/> writes are isolated; <see cref="IsBuiltinSymbol"/>
-    /// answers from the clone's identity map (#1633).
+    /// <see cref="IsBuiltinSymbol"/> answers from the clone's identity map (#1633).
     /// </summary>
     internal BuiltinRegistry CloneForCompilation()
     {
@@ -184,7 +182,6 @@ internal class BuiltinRegistry
 
         var cloned = type with
         {
-            CodeGenInfo = null,
             Methods = clonedMethods,
             Constructors = clonedConstructors,
             Fields = new List<VariableSymbol>(type.Fields),
@@ -204,7 +201,7 @@ internal class BuiltinRegistry
         // `_functions[canonical]`); the same instance must clone to the same instance.
         if (symbolMap.TryGetValue(fn, out var already))
             return (FunctionSymbol)already;
-        var cloned = fn with { CodeGenInfo = null };
+        var cloned = fn with { };
         symbolMap[fn] = cloned;
         return cloned;
     }

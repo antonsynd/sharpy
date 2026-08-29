@@ -354,7 +354,7 @@ internal partial class RoslynEmitter
         if (resolvedSymbol is not VariableSymbol)
         {
             var symbol = _context.LookupSymbol(name.Name);
-            if (symbol is FunctionSymbol { CodeGenInfo: null }
+            if (symbol is FunctionSymbol fs && GetCodeGenInfo(fs) == null
                 && _context.IsBuiltinFunction(name.Name))
             {
                 return MakeGlobalQualifiedName("Sharpy", "Builtins",

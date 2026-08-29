@@ -105,19 +105,19 @@ public class SemanticBindingMaterializationTests
     #region MaterializeCodeGenInfo
 
     [Fact]
-    public void MaterializeCodeGenInfo_CopiesInfo_ToSymbol()
+    public void MaterializeCodeGenInfo_BridgesFactsInBinding()
     {
         var binding = new SemanticBinding();
         var symbol = new TypeSymbol { Name = "my_class", Kind = SymbolKind.Type, TypeKind = TypeKind.Class };
         var info = new CodeGenInfo { CSharpName = "MyClass", OriginalName = "my_class" };
 
         binding.SetCodeGenInfo(symbol, info);
-        symbol.CodeGenInfo.Should().BeNull("CodeGenInfo should not be set before materialization");
 
         binding.MaterializeCodeGenInfo();
 
-        symbol.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MyClass");
+        var result = binding.GetCodeGenInfo(symbol);
+        result.Should().NotBeNull();
+        result!.CSharpName.Should().Be("MyClass");
     }
 
     [Fact]
@@ -134,10 +134,10 @@ public class SemanticBindingMaterializationTests
 
         binding.MaterializeCodeGenInfo();
 
-        sym1.CodeGenInfo.Should().NotBeNull();
-        sym1.CodeGenInfo!.CSharpName.Should().Be("Foo");
-        sym2.CodeGenInfo.Should().NotBeNull();
-        sym2.CodeGenInfo!.CSharpName.Should().Be("Bar");
+        binding.GetCodeGenInfo(sym1).Should().NotBeNull();
+        binding.GetCodeGenInfo(sym1)!.CSharpName.Should().Be("Foo");
+        binding.GetCodeGenInfo(sym2).Should().NotBeNull();
+        binding.GetCodeGenInfo(sym2)!.CSharpName.Should().Be("Bar");
     }
 
     #endregion

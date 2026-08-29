@@ -191,13 +191,6 @@ public class SemanticBinding
         => _codeGenInfo.ContainsKey(symbol);
 
     /// <summary>
-    /// Removes the CodeGenInfo for a symbol.
-    /// Used during incremental compilation to invalidate stale cached symbols.
-    /// </summary>
-    public bool RemoveCodeGenInfo(Symbol symbol)
-        => _codeGenInfo.TryRemove(symbol, out _);
-
-    /// <summary>
     /// Marks a method symbol as overriding an abstract/virtual member of a CLR-backed base
     /// type (#1122). The fact is bridged onto <see cref="CodeGenInfo.OverridesClrBaseMember"/>
     /// at <see cref="MaterializeCodeGenInfo"/> so code generation emits the <c>override</c>
@@ -294,13 +287,6 @@ public class SemanticBinding
     /// </summary>
     public SemanticType GetVariableType(VariableSymbol symbol)
         => _variableTypes.TryGetValue(symbol, out var type) ? type : SemanticType.Unknown;
-
-    /// <summary>
-    /// Removes the resolved type for a variable symbol.
-    /// Used during incremental compilation to invalidate stale cached symbols.
-    /// </summary>
-    public bool RemoveVariableType(VariableSymbol symbol)
-        => _variableTypes.TryRemove(symbol, out _);
 
     #endregion
 
@@ -413,7 +399,8 @@ public class SemanticBinding
     }
 
     /// <summary>
-    /// Copy CodeGenInfo data from SemanticBinding stores onto Symbol.CodeGenInfo properties.
+    /// Bridges auxiliary CodeGenInfo facts (CLR overrides, forwarding constructors,
+    /// self-interface bridges, synthesized interfaces) into the CodeGenInfo entries.
     /// Called at the CodeGenInfo freeze point.
     /// </summary>
     internal void MaterializeCodeGenInfo()

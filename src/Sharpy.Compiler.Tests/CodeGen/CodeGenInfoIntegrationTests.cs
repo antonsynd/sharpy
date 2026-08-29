@@ -14,7 +14,7 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// </summary>
 public class CodeGenInfoIntegrationTests
 {
-    private (Module module, SymbolTable symbolTable) CompileWithCodeGenInfo(string source)
+    private (Module module, SymbolTable symbolTable, SemanticBinding binding) CompileWithCodeGenInfo(string source)
     {
         var lexer = new Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
         var tokens = lexer.TokenizeAll();
@@ -38,14 +38,12 @@ public class CodeGenInfoIntegrationTests
             SemanticBinding = semanticBinding
         };
 
-        // Enable CodeGenInfo computation
         typeChecker.CheckModule(module, computeCodeGenInfo: true);
 
-        // Materialize CodeGenInfo and VariableType onto Symbol properties
         semanticBinding.MaterializeCodeGenInfo();
         semanticBinding.MaterializeVariableTypes();
 
-        return (module, symbolTable);
+        return (module, symbolTable, semanticBinding);
     }
 
     [Fact]
@@ -54,13 +52,14 @@ public class CodeGenInfoIntegrationTests
         var source = @"
 my_variable: int = 42
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var symbol = symbolTable.Lookup("my_variable") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull("CodeGenInfo should be computed when flag is enabled");
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MyVariable");
-        symbol.CodeGenInfo.IsModuleLevel.Should().BeTrue();
+        var cgi = binding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull("CodeGenInfo should be computed when flag is enabled");
+        cgi!.CSharpName.Should().Be("MyVariable");
+        cgi.IsModuleLevel.Should().BeTrue();
     }
 
     [Fact]
@@ -69,13 +68,14 @@ my_variable: int = 42
         var source = @"
 const MAX_VALUE: int = 100
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var symbol = symbolTable.Lookup("MAX_VALUE") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MAX_VALUE");
-        symbol.CodeGenInfo.IsConstant.Should().BeTrue();
+        var cgi = binding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MAX_VALUE");
+        cgi.IsConstant.Should().BeTrue();
     }
 
     [Fact]
@@ -88,12 +88,13 @@ class my_class:
     def __init__(self, x: int):
         self.x = x
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var typeSymbol = symbolTable.Lookup("my_class") as TypeSymbol;
         typeSymbol.Should().NotBeNull();
-        typeSymbol!.CodeGenInfo.Should().NotBeNull();
-        typeSymbol.CodeGenInfo!.CSharpName.Should().Be("MyClass");
+        var cgi = binding.GetCodeGenInfo(typeSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MyClass");
     }
 
     [Fact]
@@ -103,12 +104,13 @@ class my_class:
 def add_numbers(a: int, b: int) -> int:
     return a + b
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var funcSymbol = symbolTable.Lookup("add_numbers") as FunctionSymbol;
         funcSymbol.Should().NotBeNull();
-        funcSymbol!.CodeGenInfo.Should().NotBeNull();
-        funcSymbol.CodeGenInfo!.CSharpName.Should().Be("AddNumbers");
+        var cgi = binding.GetCodeGenInfo(funcSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("AddNumbers");
     }
 
     [Fact]
@@ -120,12 +122,13 @@ enum color:
     GREEN
     BLUE
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var typeSymbol = symbolTable.Lookup("color") as TypeSymbol;
         typeSymbol.Should().NotBeNull();
-        typeSymbol!.CodeGenInfo.Should().NotBeNull();
-        typeSymbol.CodeGenInfo!.CSharpName.Should().Be("Color");
+        var cgi = binding.GetCodeGenInfo(typeSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("Color");
     }
 
     [Fact]
@@ -135,12 +138,13 @@ enum color:
 interface IDrawable:
     def draw(self) -> None: ...
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var typeSymbol = symbolTable.Lookup("IDrawable") as TypeSymbol;
         typeSymbol.Should().NotBeNull();
-        typeSymbol!.CodeGenInfo.Should().NotBeNull();
-        typeSymbol.CodeGenInfo!.CSharpName.Should().Be("IDrawable");
+        var cgi = binding.GetCodeGenInfo(typeSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("IDrawable");
     }
 
     [Fact]
@@ -151,12 +155,13 @@ struct point:
     x: int
     y: int
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var typeSymbol = symbolTable.Lookup("point") as TypeSymbol;
         typeSymbol.Should().NotBeNull();
-        typeSymbol!.CodeGenInfo.Should().NotBeNull();
-        typeSymbol.CodeGenInfo!.CSharpName.Should().Be("Point");
+        var cgi = binding.GetCodeGenInfo(typeSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("Point");
     }
 
     [Fact]
@@ -170,15 +175,15 @@ def get_value() -> int:
 
 result: int = get_value()
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var symbol = symbolTable.Lookup("result") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        // Function is defined before variable, so no execution order issues
-        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeFalse(
+        var cgi = binding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.HasExecutionOrderIssues.Should().BeFalse(
             "Variable initialized with function call defined earlier should NOT have execution order issues");
-        symbol.CodeGenInfo.IsModuleLevel.Should().BeTrue(
+        cgi.IsModuleLevel.Should().BeTrue(
             "Variable should be emitted as a static field");
     }
 
@@ -190,14 +195,15 @@ result: int = get_value()
 x = 5
 x: int = 10
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var symbol = symbolTable.Lookup("x") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeTrue(
+        var cgi = binding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.HasExecutionOrderIssues.Should().BeTrue(
             "Assignment before declaration is an execution order issue");
-        symbol.CodeGenInfo.IsModuleLevel.Should().BeFalse(
+        cgi.IsModuleLevel.Should().BeFalse(
             "Variable should be emitted as local in Main()");
     }
 
@@ -209,14 +215,15 @@ x: int = 10
 x = 5
 y: int = x
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var symbol = symbolTable.Lookup("y") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeTrue(
+        var cgi = binding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.HasExecutionOrderIssues.Should().BeTrue(
             "Referencing an assignment variable is an execution order issue");
-        symbol.CodeGenInfo.IsModuleLevel.Should().BeFalse(
+        cgi.IsModuleLevel.Should().BeFalse(
             "Variable should be emitted as local in Main()");
     }
 
@@ -227,15 +234,16 @@ y: int = x
 class MyClass:
     my_field: int
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var typeSymbol = symbolTable.Lookup("MyClass") as TypeSymbol;
         typeSymbol.Should().NotBeNull();
 
         var fieldSymbol = typeSymbol!.Fields.FirstOrDefault(f => f.Name == "my_field");
         fieldSymbol.Should().NotBeNull();
-        fieldSymbol!.CodeGenInfo.Should().NotBeNull();
-        fieldSymbol.CodeGenInfo!.CSharpName.Should().Be("MyField");
+        var cgi = binding.GetCodeGenInfo(fieldSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MyField");
     }
 
     [Fact]
@@ -246,14 +254,15 @@ class MyClass:
     def my_method(self) -> None:
         pass
 ";
-        var (module, symbolTable) = CompileWithCodeGenInfo(source);
+        var (module, symbolTable, binding) = CompileWithCodeGenInfo(source);
 
         var typeSymbol = symbolTable.Lookup("MyClass") as TypeSymbol;
         typeSymbol.Should().NotBeNull();
 
         var methodSymbol = typeSymbol!.Methods.FirstOrDefault(m => m.Name == "my_method");
         methodSymbol.Should().NotBeNull();
-        methodSymbol!.CodeGenInfo.Should().NotBeNull();
-        methodSymbol.CodeGenInfo!.CSharpName.Should().Be("MyMethod");
+        var cgi = binding.GetCodeGenInfo(methodSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MyMethod");
     }
 }

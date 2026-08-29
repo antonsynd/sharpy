@@ -125,34 +125,4 @@ public class CodeGenInfoTests
         Assert.True(info.HasExecutionOrderIssues);
     }
 
-    [Fact]
-    public void Symbol_CodeGenInfo_InitiallyNull()
-    {
-        var symbol = new VariableSymbol
-        {
-            Name = "test",
-            Kind = SymbolKind.Variable
-        };
-
-        Assert.Null(symbol.CodeGenInfo);
-    }
-
-    [Fact]
-    public void Symbol_CodeGenInfo_CanBeSetAfterCreation()
-    {
-        var symbol = new VariableSymbol
-        {
-            Name = "test",
-            Kind = SymbolKind.Variable
-        };
-
-        symbol.CodeGenInfo = new CodeGenInfo
-        {
-            CSharpName = "Test",
-            OriginalName = "test"
-        };
-
-        Assert.NotNull(symbol.CodeGenInfo);
-        Assert.Equal("Test", symbol.CodeGenInfo.CSharpName);
-    }
 }

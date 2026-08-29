@@ -10,7 +10,7 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 /// <remarks>
 /// Symbol uses reference-based equality (not value-based) because symbols have mutable
-/// properties (Type, BaseType, CodeGenInfo) that are set after creation during semantic analysis.
+/// properties (Type, BaseType) that are set after creation during semantic analysis.
 /// Using value-based equality (the record default) would make hash codes unstable, causing
 /// dictionary/set lookups to fail silently after mutation. Reference equality makes symbols
 /// safe to use as dictionary keys in any collection without requiring ReferenceEqualityComparer.
@@ -143,23 +143,12 @@ public abstract record Symbol
     /// Null until documentation is populated during name resolution or assembly discovery.
     /// </summary>
     /// <remarks>
-    /// Uses 'internal set' because documentation is populated after symbol creation
-    /// (same pattern as CodeGenInfo). For Sharpy source, populated from AST DocString
+    /// Uses 'internal set' because documentation is populated after symbol creation.
+    /// For Sharpy source, populated from AST DocString
     /// during name resolution. For .NET assemblies, populated from XML doc files
     /// during assembly discovery.
     /// </remarks>
     public string? Documentation { get; internal set; }
-
-    /// <summary>
-    /// Code generation information computed during semantic analysis.
-    /// Null until CodeGenInfo computation pass runs.
-    /// </summary>
-    /// <remarks>
-    /// Uses 'internal set' to allow setting CodeGenInfo after initial symbol creation
-    /// (symbols are created during NameResolver, CodeGenInfo is computed during/after TypeChecker).
-    /// Readers should prefer SemanticBinding.GetCodeGenInfo when available.
-    /// </remarks>
-    public CodeGenInfo? CodeGenInfo { get; internal set; }
 
     /// <summary>
     /// Use reference equality for symbols. Record default (value equality) is unsafe

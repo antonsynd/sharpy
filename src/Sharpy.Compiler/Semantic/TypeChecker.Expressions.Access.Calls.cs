@@ -3878,7 +3878,8 @@ internal partial class TypeChecker
                 // A user-defined function shadowing the builtin name takes over (Python scoping); its
                 // dict parameter is not projected. Builtin collection type names (list/set/tuple) are
                 // reserved, so a user shadow there is not a concern.
-                if (_symbolTable.Lookup(id.Name) is FunctionSymbol { CodeGenInfo: not null })
+                if (_symbolTable.Lookup(id.Name) is FunctionSymbol lookupFs
+                    && SemanticBinding.HasCodeGenInfo(lookupFs))
                     return;
                 break;
 

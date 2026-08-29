@@ -175,7 +175,6 @@ internal class FileCompilationPipeline
     {
         _semanticBinding.MaterializeCodeGenInfo();
         _semanticBinding.MaterializeVariableTypes();
-        DualWriteAssertions.AssertCodeGenInfoConsistency(_symbolTable, _semanticBinding);
         DualWriteAssertions.AssertVariableTypeConsistency(_symbolTable, _semanticBinding);
     }
 

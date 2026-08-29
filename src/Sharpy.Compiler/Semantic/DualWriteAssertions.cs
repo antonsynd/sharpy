@@ -121,45 +121,6 @@ internal static class DualWriteAssertions
     }
 
     /// <summary>
-    /// Verify that after MaterializeCodeGenInfo(), Symbol.CodeGenInfo properties are
-    /// consistent with SemanticBinding stores.
-    /// </summary>
-    internal static void AssertCodeGenInfoConsistency(SymbolTable symbolTable, SemanticBinding semanticBinding)
-    {
-        foreach (var symbol in symbolTable.GlobalScope.GetAllSymbols())
-        {
-            // Skip re-exported symbols (from other modules) - their CodeGenInfo was materialized
-            // in a different compilation's SemanticBinding
-            if (symbol.IsReExport)
-                continue;
-
-            // Forward: Symbol → SemanticBinding
-            if (symbol.CodeGenInfo != null)
-            {
-                var bindingCodeGenInfo = semanticBinding.GetCodeGenInfo(symbol);
-                if (bindingCodeGenInfo == null)
-                {
-                    throw new InvalidOperationException(
-                        $"Symbol '{symbol.Name}' has CodeGenInfo but SemanticBinding.GetCodeGenInfo() returned null (materialization inconsistency). " +
-                        "This is a compiler bug - please report it.");
-                }
-            }
-
-            // Reverse: SemanticBinding → Symbol (catches materialization failures)
-            var sbCodeGenInfo = semanticBinding.GetCodeGenInfo(symbol);
-            if (sbCodeGenInfo != null)
-            {
-                if (symbol.CodeGenInfo == null)
-                {
-                    throw new InvalidOperationException(
-                        $"SemanticBinding has CodeGenInfo for '{symbol.Name}' but Symbol.CodeGenInfo is null (materialization missed). " +
-                        "This is a compiler bug - please report it.");
-                }
-            }
-        }
-    }
-
-    /// <summary>
     /// Verify that after MaterializeVariableTypes(), VariableSymbol.Type properties are
     /// consistent with SemanticBinding stores.
     /// Only checks global-scope variables (fields, module-level vars/consts). Local variables

@@ -413,7 +413,7 @@ internal partial class RoslynEmitter
             // User-defined functions shadow builtins (Python scoping rules)
             var isBuiltin = _context.IsBuiltinFunction(funcName.Name);
             var symbol = _context.LookupSymbol(funcName.Name);
-            if (isBuiltin && symbol is FunctionSymbol { CodeGenInfo: not null })
+            if (isBuiltin && symbol is FunctionSymbol opFs && GetCodeGenInfo(opFs) != null)
                 isBuiltin = false;
 
             if (isBuiltin)

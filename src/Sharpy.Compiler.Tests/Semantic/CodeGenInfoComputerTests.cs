@@ -53,11 +53,12 @@ my_variable: int = 42
 
         var symbol = symbolTable.Lookup("my_variable") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MyVariable");
-        symbol.CodeGenInfo.OriginalName.Should().Be("my_variable");
-        symbol.CodeGenInfo.IsModuleLevel.Should().BeTrue();
-        symbol.CodeGenInfo.IsConstant.Should().BeFalse();
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MyVariable");
+        cgi.OriginalName.Should().Be("my_variable");
+        cgi.IsModuleLevel.Should().BeTrue();
+        cgi.IsConstant.Should().BeFalse();
     }
 
     [Fact]
@@ -76,11 +77,11 @@ MAX_VALUE: int = 100
 
         var symbol = symbolTable.Lookup("MAX_VALUE") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        // ALL_CAPS names preserve their SCREAMING_SNAKE_CASE form
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MAX_VALUE");
-        symbol.CodeGenInfo.IsModuleLevel.Should().BeTrue();
-        symbol.CodeGenInfo.IsConstant.Should().BeFalse();
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MAX_VALUE");
+        cgi.IsModuleLevel.Should().BeTrue();
+        cgi.IsConstant.Should().BeFalse();
     }
 
     [Fact]
@@ -98,10 +99,11 @@ const MY_CONST: int = 100
 
         var symbol = symbolTable.Lookup("MY_CONST") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MY_CONST");
-        symbol.CodeGenInfo.IsModuleLevel.Should().BeTrue();
-        symbol.CodeGenInfo.IsConstant.Should().BeTrue();
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MY_CONST");
+        cgi.IsModuleLevel.Should().BeTrue();
+        cgi.IsConstant.Should().BeTrue();
     }
 
     [Fact]
@@ -119,8 +121,9 @@ class my_class:
 
         var symbol = symbolTable.Lookup("my_class") as TypeSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MyClass");
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MyClass");
     }
 
     [Fact]
@@ -138,8 +141,9 @@ class MyClass:
 
         var symbol = symbolTable.Lookup("MyClass") as TypeSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MyClass");
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MyClass");
     }
 
     [Fact]
@@ -157,8 +161,9 @@ def my_function() -> None:
 
         var symbol = symbolTable.Lookup("my_function") as FunctionSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MyFunction");
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MyFunction");
     }
 
     [Fact]
@@ -176,8 +181,9 @@ interface IMyInterface:
 
         var symbol = symbolTable.Lookup("IMyInterface") as TypeSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("IMyInterface");
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("IMyInterface");
     }
 
     [Fact]
@@ -195,8 +201,9 @@ struct my_struct:
 
         var symbol = symbolTable.Lookup("my_struct") as TypeSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("MyStruct");
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MyStruct");
     }
 
     [Fact]
@@ -216,8 +223,9 @@ enum color:
 
         var symbol = symbolTable.Lookup("color") as TypeSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.CSharpName.Should().Be("Color");
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("Color");
     }
 
     [Fact]
@@ -238,8 +246,9 @@ class MyClass:
 
         var fieldSymbol = typeSymbol!.Fields.FirstOrDefault(f => f.Name == "my_field");
         fieldSymbol.Should().NotBeNull();
-        fieldSymbol!.CodeGenInfo.Should().NotBeNull();
-        fieldSymbol.CodeGenInfo!.CSharpName.Should().Be("MyField");
+        var cgi = semanticBinding.GetCodeGenInfo(fieldSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MyField");
     }
 
     [Fact]
@@ -261,8 +270,9 @@ class MyClass:
 
         var methodSymbol = typeSymbol!.Methods.FirstOrDefault(m => m.Name == "my_method");
         methodSymbol.Should().NotBeNull();
-        methodSymbol!.CodeGenInfo.Should().NotBeNull();
-        methodSymbol.CodeGenInfo!.CSharpName.Should().Be("MyMethod");
+        var cgi = semanticBinding.GetCodeGenInfo(methodSymbol!);
+        cgi.Should().NotBeNull();
+        cgi!.CSharpName.Should().Be("MyMethod");
     }
 
     [Fact]
@@ -284,10 +294,10 @@ result: int = get_value()
 
         var symbol = symbolTable.Lookup("result") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        // Function is defined before variable, so no execution order issues
-        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeFalse();
-        symbol.CodeGenInfo.IsModuleLevel.Should().BeTrue();
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.HasExecutionOrderIssues.Should().BeFalse();
+        cgi.IsModuleLevel.Should().BeTrue();
     }
 
     [Fact]
@@ -306,9 +316,10 @@ x: int = 10
 
         var symbol = symbolTable.Lookup("x") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeTrue();
-        symbol.CodeGenInfo.IsModuleLevel.Should().BeFalse();
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.HasExecutionOrderIssues.Should().BeTrue();
+        cgi.IsModuleLevel.Should().BeFalse();
     }
 
     [Fact]
@@ -327,9 +338,10 @@ y: int = x
 
         var symbol = symbolTable.Lookup("y") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeTrue();
-        symbol.CodeGenInfo.IsModuleLevel.Should().BeFalse();
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.HasExecutionOrderIssues.Should().BeTrue();
+        cgi.IsModuleLevel.Should().BeFalse();
     }
 
     [Fact]
@@ -346,8 +358,9 @@ value: int = 42
 
         var symbol = symbolTable.Lookup("value") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeFalse();
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.HasExecutionOrderIssues.Should().BeFalse();
     }
 
     [Fact]
@@ -364,8 +377,9 @@ const CONST_VALUE: int = 100
 
         var symbol = symbolTable.Lookup("CONST_VALUE") as VariableSymbol;
         symbol.Should().NotBeNull();
-        symbol!.CodeGenInfo.Should().NotBeNull();
-        symbol.CodeGenInfo!.HasExecutionOrderIssues.Should().BeFalse();
+        var cgi = semanticBinding.GetCodeGenInfo(symbol!);
+        cgi.Should().NotBeNull();
+        cgi!.HasExecutionOrderIssues.Should().BeFalse();
     }
 
     [Fact]

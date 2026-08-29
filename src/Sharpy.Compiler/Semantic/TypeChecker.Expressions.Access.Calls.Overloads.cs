@@ -1930,7 +1930,7 @@ internal partial class TypeChecker
         // A user declaration shadowing the builtin name is an ordinary callable.
         var symbol = _symbolTable.Lookup(id.Name);
 
-        if (id.Name == BuiltinNames.Isinstance && symbol is not FunctionSymbol { CodeGenInfo: not null })
+        if (id.Name == BuiltinNames.Isinstance && !(symbol is FunctionSymbol isinstFs && SemanticBinding.HasCodeGenInfo(isinstFs)))
             return ("'isinstance'", $"lambda v: {BuiltinNames.Isinstance}(v, SomeType)");
 
         return null;
