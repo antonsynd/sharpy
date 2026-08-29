@@ -366,7 +366,7 @@ public static class AstFingerprint
             return false;
         for (int i = 0; i < a.Length; i++)
         {
-            if (a[i].Name != b[i].Name)
+            if (!ExpressionEquals(a[i].Target, b[i].Target))
                 return false;
             if (!ExpressionEquals(a[i].ContextExpression, b[i].ContextExpression))
                 return false;

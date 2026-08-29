@@ -1544,9 +1544,9 @@ def bar():
     [Fact]
     public void Position_EscapedWithAndExceptAsNames_ExtentsSpanTheirBackticks()
     {
-        var withItem = Parse("with open(\"f\") as `class`:\n    pass\n")
-            .Body[0].Should().BeOfType<WithStatement>().Subject.Items[0];
-        (withItem.NameColumnEnd - withItem.NameColumnStart).Should().Be("`class`".Length);
+        var withTarget = Parse("with open(\"f\") as `class`:\n    pass\n")
+            .Body[0].Should().BeOfType<WithStatement>().Subject.Items[0].Target.Should().BeOfType<Identifier>().Subject;
+        (withTarget.ColumnEnd - withTarget.ColumnStart).Should().Be("`class`".Length);
 
         var handler = Parse("try:\n    pass\nexcept Exception as `class`:\n    pass\n")
             .Body[0].Should().BeOfType<TryStatement>().Subject.Handlers[0];

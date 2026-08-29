@@ -245,9 +245,9 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                 foreach (var item in withStmt.Items)
                 {
                     readCollector.Visit(item.ContextExpression);
-                    if (item.Name != null)
+                    if (item.Target is Identifier id)
                     {
-                        defined[item.Name] = new VariableInfo(
+                        defined[id.Name] = new VariableInfo(
                             item.LineStart, item.ColumnStart, item.Span, false);
                     }
                 }

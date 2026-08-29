@@ -162,10 +162,10 @@ internal sealed class NamingConventionValidator : ValidatingAstWalker
     {
         foreach (var item in node.Items)
         {
-            if (item.Name != null)
+            if (item.Target is Identifier id)
             {
-                CheckName(item.Name, item.LineStart, item.ColumnStart, item.Span);
-                CheckConvention(item.Name, item.LineStart, item.ColumnStart, item.Span, IdentifierCategory.Variable);
+                CheckName(id.Name, id.LineStart, id.ColumnStart, item.Span);
+                CheckConvention(id.Name, id.LineStart, id.ColumnStart, item.Span, IdentifierCategory.Variable);
             }
         }
 

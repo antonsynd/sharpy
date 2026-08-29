@@ -667,6 +667,15 @@ internal partial class RoslynEmitter
                     }
                 }
                 break;
+
+            case MemberAccess:
+            case IndexAccess:
+                statements.Add(GenerateStore(target, IdentifierName(sourceVar)));
+                break;
+
+            default:
+                throw new InvalidOperationException(
+                    $"ICE: unsupported comprehension loop target kind '{target.GetType().Name}'");
         }
     }
 

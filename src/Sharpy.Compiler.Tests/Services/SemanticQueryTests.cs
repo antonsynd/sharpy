@@ -158,7 +158,7 @@ public class SemanticQueryTests
     public void GetWithItemSymbol_ReturnsSetSymbol()
     {
         var info = new SemanticInfo();
-        var item = new WithItem { ContextExpression = new Identifier { Name = "conn" }, Name = "c" };
+        var item = new WithItem { ContextExpression = new Identifier { Name = "conn" }, Target = new Identifier { Name = "c" } };
         var symbol = new VariableSymbol { Name = "c", Kind = SymbolKind.Variable, Type = SemanticType.Int };
         info.SetWithItemSymbol(item, symbol);
 

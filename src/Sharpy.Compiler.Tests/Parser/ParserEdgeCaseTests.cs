@@ -1105,7 +1105,7 @@ with open('file.txt') as f:
         module.Body[0].Should().BeOfType<WithStatement>();
         var withStmt = (WithStatement)module.Body[0];
         withStmt.Items.Should().HaveCount(1);
-        withStmt.Items[0].Name.Should().Be("f");
+        withStmt.Items[0].Target.Should().BeOfType<Identifier>().Which.Name.Should().Be("f");
         withStmt.Body.Should().HaveCount(1);
     }
 
@@ -1121,8 +1121,8 @@ with open('a.txt') as a, open('b.txt') as b:
         module.Body[0].Should().BeOfType<WithStatement>();
         var withStmt = (WithStatement)module.Body[0];
         withStmt.Items.Should().HaveCount(2);
-        withStmt.Items[0].Name.Should().Be("a");
-        withStmt.Items[1].Name.Should().Be("b");
+        withStmt.Items[0].Target.Should().BeOfType<Identifier>().Which.Name.Should().Be("a");
+        withStmt.Items[1].Target.Should().BeOfType<Identifier>().Which.Name.Should().Be("b");
     }
 
     #endregion

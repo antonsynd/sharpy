@@ -241,10 +241,10 @@ internal sealed partial class UnparseVisitor
                 _w.Write(", ");
             var item = node.Items[i];
             Visit(item.ContextExpression);
-            if (item.Name != null)
+            if (item.Target != null)
             {
                 _w.Write(" as ");
-                _w.Write(item.Name);
+                Visit(item.Target);
             }
         }
         _w.Write(":");

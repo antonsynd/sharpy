@@ -223,7 +223,7 @@ public partial class Parser
             var starColumn = Current.Column;
             var starToken = Current;
             Advance();
-            var operand = ParsePrimary();
+            var operand = ParseStoreTarget();
             return new StarExpression
             {
                 Operand = operand,
@@ -235,7 +235,77 @@ public partial class Parser
             };
         }
 
-        return ParsePrimary();
+        return ParseStoreTarget();
+    }
+
+    /// <summary>
+    /// Parses a store target: a primary expression optionally followed by <c>.attr</c> and
+    /// <c>[index]</c> suffixes. Used by for-statement targets, comprehension targets, and
+    /// <c>with … as</c> targets. Does not accept call <c>()</c> suffixes — you cannot
+    /// assign to a function call result.
+    /// </summary>
+    private Expression ParseStoreTarget()
+    {
+        var expr = ParsePrimary();
+        while (true)
+        {
+            if (!CheckLoopProgress())
+                break;
+
+            if (Current.Type == TokenType.Dot)
+            {
+                Advance();
+                var memberToken = Current;
+                if (Current.Type == TokenType.Identifier || IsKeywordToken(Current.Type))
+                {
+                    var member = Current.Value;
+                    Advance();
+                    expr = new MemberAccess
+                    {
+                        Object = expr,
+                        Member = member,
+                        IsNullConditional = false,
+                        IsMemberBacktickEscaped = memberToken.IsBacktickEscaped,
+                        MemberNameLineStart = memberToken.Line,
+                        MemberNameColumnStart = memberToken.Column,
+                        MemberNameColumnEnd = memberToken.Column + memberToken.Length,
+                        LineStart = expr.LineStart,
+                        ColumnStart = expr.ColumnStart,
+                        LineEnd = Previous.Line,
+                        ColumnEnd = Previous.Column + Previous.Length,
+                        Span = CombineSpans(expr.Span, GetSpanFromToken(Previous))
+                    };
+                }
+                else
+                {
+                    ReportError($"Expected identifier after '.', got {Current.Type}", Current.Line, Current.Column,
+                        DiagnosticCodes.Parser.ExpectedIdentifier, span: CurrentSpan);
+                    break;
+                }
+            }
+            else if (Current.Type == TokenType.LeftBracket)
+            {
+                var bracketToken = Current;
+                Advance();
+                var index = ParseExpression();
+                Expect(TokenType.RightBracket);
+                expr = new IndexAccess
+                {
+                    Object = expr,
+                    Index = index,
+                    LineStart = expr.LineStart,
+                    ColumnStart = expr.ColumnStart,
+                    LineEnd = Previous.Line,
+                    ColumnEnd = Previous.Column + Previous.Length,
+                    Span = CombineSpans(expr.Span, GetSpanFromToken(Previous))
+                };
+            }
+            else
+            {
+                break;
+            }
+        }
+        return expr;
     }
 
     /// <summary>
@@ -352,18 +422,11 @@ public partial class Parser
 
             var contextExpr = ParseExpression();
 
-            string? name = null;
-            int nameLineStart = 0, nameColumnStart = 0, nameColumnEnd = 0;
-            bool nameEscaped = false;
+            Expression? target = null;
             if (Current.Type == TokenType.As)
             {
                 Advance();
-                var nameToken = Current;
-                nameLineStart = nameToken.Line;
-                nameColumnStart = nameToken.Column;
-                nameColumnEnd = nameToken.Column + nameToken.Length;
-                nameEscaped = nameToken.IsBacktickEscaped;
-                name = ExpectIdentifier();
+                target = ParseStoreTarget();
             }
 
             var itemEndLine = Peek(-1).Line;
@@ -372,11 +435,7 @@ public partial class Parser
             items.Add(new WithItem
             {
                 ContextExpression = contextExpr,
-                Name = name,
-                IsNameBacktickEscaped = nameEscaped,
-                NameLineStart = nameLineStart,
-                NameColumnStart = nameColumnStart,
-                NameColumnEnd = nameColumnEnd,
+                Target = target,
                 LineStart = itemStartLine,
                 ColumnStart = itemStartColumn,
                 LineEnd = itemEndLine,

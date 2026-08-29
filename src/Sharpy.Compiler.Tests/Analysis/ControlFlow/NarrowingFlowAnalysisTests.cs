@@ -428,7 +428,7 @@ public class NarrowingFlowAnalysisTests
             Assert_(IsNotNone("x")),
             new WithStatement
             {
-                Items = ImmutableArray.Create(new WithItem { ContextExpression = Id("cm"), Name = "x" }),
+                Items = ImmutableArray.Create(new WithItem { ContextExpression = Id("cm"), Target = Id("x") }),
                 Body = ImmutableArray.Create<Statement>(useInBody)
             });
 

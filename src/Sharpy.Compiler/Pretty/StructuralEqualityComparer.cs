@@ -308,7 +308,9 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             return false;
         for (int i = 0; i < a.Items.Length; i++)
         {
-            if (a.Items[i].Name != b.Items[i].Name)
+            if ((a.Items[i].Target == null) != (b.Items[i].Target == null))
+                return false;
+            if (a.Items[i].Target != null && !Equals(a.Items[i].Target, b.Items[i].Target))
                 return false;
             if (!Equals(a.Items[i].ContextExpression, b.Items[i].ContextExpression))
                 return false;

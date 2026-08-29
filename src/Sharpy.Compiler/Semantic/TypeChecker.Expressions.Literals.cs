@@ -505,6 +505,11 @@ internal partial class TypeChecker
                     ErrorRecoveryReason.Propagated("the comprehension source's element type"));
             }
         }
+        else if (forClause.Target is MemberAccess or IndexAccess)
+        {
+            CheckExpression(forClause.Target);
+            _semanticInfo.SetExpressionType(forClause.Target, elemType);
+        }
         else
         {
             AddError($"Unsupported target type in comprehension for clause",

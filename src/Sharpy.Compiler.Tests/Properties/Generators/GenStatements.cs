@@ -209,7 +209,7 @@ internal static class GenStatements
                 Items = ImmutableArray.Create(new WithItem
                 {
                     ContextExpression = expr,
-                    Name = name
+                    Target = name != null ? new Identifier { Name = name } : null
                 }),
                 Body = body
             });

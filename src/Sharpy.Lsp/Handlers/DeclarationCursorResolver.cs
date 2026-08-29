@@ -199,9 +199,9 @@ internal static class DeclarationCursorResolver
     {
         foreach (var item in w.Items)
         {
-            if (item.Name == null
-                || !IsOnNameExtent(line, col, item.NameLineStart, item.NameColumnStart,
-                    item.NameColumnEnd))
+            if (item.Target is not Identifier dId
+                || !IsOnNameExtent(line, col, dId.LineStart, dId.ColumnStart,
+                    dId.ColumnEnd))
             {
                 continue;
             }
@@ -213,9 +213,9 @@ internal static class DeclarationCursorResolver
             logger?.LogDebug(
                 "DeclarationCursorResolver: no node-keyed symbol for with-as name '{Name}' at {Line}:{Column}; "
                 + "falling back to the declaration scan.",
-                item.Name, item.NameLineStart, item.NameColumnStart);
+                dId.Name, dId.LineStart, dId.ColumnStart);
 
-            return query.FindSymbolByDeclaration(item.Name, item.LineStart, item.ColumnStart);
+            return query.FindSymbolByDeclaration(dId.Name, item.LineStart, item.ColumnStart);
         }
 
         return null;

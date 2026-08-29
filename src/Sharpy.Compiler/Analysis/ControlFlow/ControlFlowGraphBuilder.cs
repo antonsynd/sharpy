@@ -956,8 +956,8 @@ internal class ControlFlowGraphBuilder
         List<string>? keys = null;
         foreach (var item in stmt.Items)
         {
-            if (item.Name != null)
-                (keys ??= new List<string>()).Add(item.Name);
+            if (item.Target is Identifier id)
+                (keys ??= new List<string>()).Add(id.Name);
         }
         return (IReadOnlyList<string>?)keys ?? System.Array.Empty<string>();
     }

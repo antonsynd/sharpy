@@ -304,7 +304,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
             Items = node.Items.Select(item => new WithItem
             {
                 ContextExpression = (Expression)Visit(item.ContextExpression),
-                Name = item.Name
+                Target = item.Target != null ? (Expression)Visit(item.Target) : null
             }).ToImmutableArray(),
             Body = VisitStatements(node.Body)
         };

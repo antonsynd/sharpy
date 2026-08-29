@@ -109,9 +109,9 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
     {
         foreach (var item in node.Items)
         {
-            if (item.Name != null)
+            if (item.Target is Identifier id)
             {
-                Declare(item.Name, item.IsNameBacktickEscaped, item.NameLineStart, item.NameColumnStart);
+                Declare(id.Name, id.IsNameBacktickEscaped, id.LineStart, id.ColumnStart);
             }
         }
 

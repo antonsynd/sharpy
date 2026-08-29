@@ -148,9 +148,9 @@ internal sealed class BuiltinNameShadowingValidator : ValidatingAstWalker
     {
         foreach (var item in node.Items)
         {
-            if (item.Name != null)
+            if (item.Target is Identifier id)
             {
-                Warn(item.Name, item.IsNameBacktickEscaped, item.NameLineStart, item.NameColumnStart,
+                Warn(id.Name, id.IsNameBacktickEscaped, id.LineStart, id.ColumnStart,
                     item.Span, isTypeDeclaration: false);
             }
         }

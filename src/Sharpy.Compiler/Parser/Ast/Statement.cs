@@ -459,7 +459,11 @@ public record WithStatement : Statement
     public override IEnumerable<Node> GetChildNodes()
     {
         foreach (var item in Items)
+        {
             yield return item.ContextExpression;
+            if (item.Target != null)
+                yield return item.Target;
+        }
         foreach (var stmt in Body)
             yield return stmt;
     }
@@ -502,19 +506,14 @@ public record DeferStatement : Statement
 public record WithItem
 {
     public Expression ContextExpression { get; init; } = null!;
-    public string? Name { get; init; }
-    public bool IsNameBacktickEscaped { get; init; }
-    public int NameLineStart { get; init; }
-    public int NameColumnStart { get; init; }
 
     /// <summary>
-    /// Exclusive end column of the name token, recorded as <c>nameToken.Column + nameToken.Length</c>.
-    /// Escape-aware by construction (#1281: <c>Token.Length</c> is the SOURCE length, so a backticked
-    /// name's extent already spans its backticks) — consumers must never rebuild it from
-    /// <c>Name.Length</c> plus a backtick constant (#1454). There is no <c>NameLineEnd</c>:
-    /// identifiers cannot span lines in this lexer, backticked names included.
+    /// The <c>as</c> target — an <see cref="Identifier"/> for <c>with cm() as x:</c>,
+    /// a <see cref="MemberAccess"/> for <c>with cm() as p.x:</c>,
+    /// an <see cref="IndexAccess"/> for <c>with cm() as xs[0]:</c>, or null when
+    /// no <c>as</c> clause is present. Replaces the former <c>Name: string?</c>.
     /// </summary>
-    public int NameColumnEnd { get; init; }
+    public Expression? Target { get; init; }
 
     // Source location
     public int LineStart { get; init; }

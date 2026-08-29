@@ -819,12 +819,12 @@ internal partial class RoslynEmitter
 
         var captureItem = withStmt.Items[0];
         string? resolvedCaptureName = null;
-        if (captureItem.Name != null)
+        if (captureItem.Target is Identifier capId)
         {
             var capSymbol = _context.SemanticInfo?.GetWithItemSymbol(captureItem);
             resolvedCaptureName = capSymbol != null
                 ? GetCSharpNameForSymbol(capSymbol, isNewDeclaration: true)
-                : GetMangledVariableName(captureItem.Name, isNewDeclaration: true, isBacktickEscaped: captureItem.IsNameBacktickEscaped);
+                : GetMangledVariableName(capId.Name, isNewDeclaration: true, isBacktickEscaped: capId.IsNameBacktickEscaped);
         }
         statements = GenerateAssertThrowsStatements(
             call.Arguments[0],
@@ -1023,14 +1023,14 @@ internal partial class RoslynEmitter
     {
         var contextExpr = GenerateExpression(item.ContextExpression);
 
-        if (item.Name != null)
+        if (item.Target is Identifier withId)
         {
             // with expr as name: -> using (var name = expr) { ... }
             // async with expr as name: -> await using (var name = expr) { ... }
             var withSymbol = _context.SemanticInfo?.GetWithItemSymbol(item);
             var varName = withSymbol != null
                 ? GetCSharpNameForSymbol(withSymbol, isNewDeclaration: true)
-                : GetMangledVariableName(item.Name, isNewDeclaration: true, isBacktickEscaped: item.IsNameBacktickEscaped);
+                : GetMangledVariableName(withId.Name, isNewDeclaration: true, isBacktickEscaped: withId.IsNameBacktickEscaped);
 
             var declaration = VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
@@ -1038,6 +1038,22 @@ internal partial class RoslynEmitter
                         .WithInitializer(EqualsValueClause(contextExpr))));
 
             var usingStmt = UsingStatement(declaration, null, innermost is BlockSyntax block ? block : Block(innermost));
+            return isAsync
+                ? usingStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
+                : usingStmt;
+        }
+        else if (item.Target != null)
+        {
+            // with expr as obj.attr: -> using (var __w = expr) { obj.attr = __w; ... }
+            var tempVar = GenerateTempVarName("withTarget");
+            var declaration = VariableDeclaration(IdentifierName("var"))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(tempVar))
+                        .WithInitializer(EqualsValueClause(contextExpr))));
+            var storeStmt = GenerateStore(item.Target, IdentifierName(tempVar));
+            var bodyBlock = innermost is BlockSyntax blk ? blk : Block(innermost);
+            var newBody = Block(new StatementSyntax[] { storeStmt }.Concat(bodyBlock.Statements));
+            var usingStmt = UsingStatement(declaration, null, newBody);
             return isAsync
                 ? usingStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
                 : usingStmt;
@@ -1104,18 +1120,29 @@ internal partial class RoslynEmitter
         if (isAsync)
             enterCall = AwaitExpression(enterCall);
 
-        if (item.Name != null)
+        if (item.Target is Identifier dunId)
         {
             // var asVar = __ctx_N.Enter();  (or await __ctx_N.AenterAsync())
             var withDunderSymbol = _context.SemanticInfo?.GetWithItemSymbol(item);
             var varName = withDunderSymbol != null
                 ? GetCSharpNameForSymbol(withDunderSymbol, isNewDeclaration: true)
-                : GetMangledVariableName(item.Name, isNewDeclaration: true, isBacktickEscaped: item.IsNameBacktickEscaped);
+                : GetMangledVariableName(dunId.Name, isNewDeclaration: true, isBacktickEscaped: dunId.IsNameBacktickEscaped);
             statements.Add(LocalDeclarationStatement(
                 VariableDeclaration(IdentifierName("var"))
                     .WithVariables(SingletonSeparatedList(
                         VariableDeclarator(EscapedIdentifier(varName))
                             .WithInitializer(EqualsValueClause(enterCall))))));
+        }
+        else if (item.Target != null)
+        {
+            // Non-identifier target: var __w = __ctx_N.Enter(); <GenerateStore(target, __w)>;
+            var tempVar = GenerateTempVarName("withTarget");
+            statements.Add(LocalDeclarationStatement(
+                VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(tempVar))
+                            .WithInitializer(EqualsValueClause(enterCall))))));
+            statements.Add(GenerateStore(item.Target, IdentifierName(tempVar)));
         }
         else
         {

@@ -1320,7 +1320,7 @@ internal partial class TypeChecker
 
         public override void VisitWithStatement(WithStatement node)
         {
-            if (node.Items.Any(item => item.Name == _name))
+            if (node.Items.Any(item => item.Target is Identifier id && id.Name == _name))
                 Found = true;
             base.VisitWithStatement(node);
         }
@@ -1668,7 +1668,7 @@ internal partial class TypeChecker
         // For `with assert_raises(E) as exc:`, define the capture variable in the enclosing scope so
         // it's accessible after the with block: codegen emits the capture as a flat statement there
         // rather than inside a block, in every function.
-        if (withStmt.Items.Length == 1 && withStmt.Items[0].Name != null
+        if (withStmt.Items.Length == 1 && withStmt.Items[0].Target is Identifier arId
             && IsAssertRaisesExpression(withStmt.Items[0].ContextExpression))
         {
             var item = withStmt.Items[0];
@@ -1677,20 +1677,20 @@ internal partial class TypeChecker
             var exceptionType = ResolveAssertRaisesExceptionType(item.ContextExpression);
             var varSymbol = new VariableSymbol
             {
-                Name = item.Name!,
+                Name = arId.Name,
                 Kind = SymbolKind.Variable,
-                IsNameBacktickEscaped = item.IsNameBacktickEscaped,
+                IsNameBacktickEscaped = arId.IsNameBacktickEscaped,
                 Type = exceptionType,
                 AccessLevel = AccessLevel.Public,
                 DeclarationLine = item.LineStart,
                 DeclarationColumn = item.ColumnStart,
-                NameDeclarationLine = item.NameLineStart,
-                NameDeclarationColumn = item.NameColumnStart,
-                NameDeclarationColumnEnd = item.NameColumnEnd,
+                NameDeclarationLine = arId.LineStart,
+                NameDeclarationColumn = arId.ColumnStart,
+                NameDeclarationColumnEnd = arId.ColumnEnd,
                 DeclarationSpan = item.Span,
                 DeclaringFilePath = _currentFilePath
             };
-            if (!TryReportNonVariableRedefinition(item.Name!, item.LineStart, item.ColumnStart, item.Span))
+            if (!TryReportNonVariableRedefinition(arId.Name, item.LineStart, item.ColumnStart, item.Span))
             {
                 _symbolTable.Define(varSymbol);
                 SemanticBinding.SetVariableType(varSymbol, exceptionType);
@@ -1736,30 +1736,34 @@ internal partial class TypeChecker
             }
 
             // Skip if already defined in the enclosing scope (assert_raises capture)
-            if (item.Name != null && !IsAssertRaisesExpression(item.ContextExpression))
+            if (item.Target is Identifier withId && !IsAssertRaisesExpression(item.ContextExpression))
             {
                 var varSymbol = new VariableSymbol
                 {
-                    Name = item.Name,
+                    Name = withId.Name,
                     Kind = SymbolKind.Variable,
-                    IsNameBacktickEscaped = item.IsNameBacktickEscaped,
+                    IsNameBacktickEscaped = withId.IsNameBacktickEscaped,
                     Type = asVarType,
                     AccessLevel = AccessLevel.Public,
                     DeclarationLine = item.LineStart,
                     DeclarationColumn = item.ColumnStart,
-                    NameDeclarationLine = item.NameLineStart,
-                    NameDeclarationColumn = item.NameColumnStart,
-                    NameDeclarationColumnEnd = item.NameColumnEnd,
+                    NameDeclarationLine = withId.LineStart,
+                    NameDeclarationColumn = withId.ColumnStart,
+                    NameDeclarationColumnEnd = withId.ColumnEnd,
                     DeclarationSpan = item.Span,
                     DeclaringFilePath = _currentFilePath
                 };
 
-                if (!TryReportNonVariableRedefinition(item.Name, item.LineStart, item.ColumnStart, item.Span))
+                if (!TryReportNonVariableRedefinition(withId.Name, item.LineStart, item.ColumnStart, item.Span))
                 {
                     _symbolTable.Define(varSymbol);
                     SemanticBinding.SetVariableType(varSymbol, asVarType);
                     _semanticInfo.SetWithItemSymbol(item, varSymbol);
                 }
+            }
+            else if (item.Target != null && !IsAssertRaisesExpression(item.ContextExpression))
+            {
+                CheckExpression(item.Target);
             }
         }
 

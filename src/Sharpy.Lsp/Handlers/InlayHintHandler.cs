@@ -243,8 +243,8 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                 case WithStatement withStmt:
                     foreach (var item in withStmt.Items)
                     {
-                        if (item.Name != null)
-                            scope.MarkBound(item.Name);
+                        if (item.Target is Identifier iId)
+                            scope.MarkBound(iId.Name);
                     }
                     CollectInlayHints(withStmt.Body, analysis, range, hints, typeAnnotations, scope);
                     break;

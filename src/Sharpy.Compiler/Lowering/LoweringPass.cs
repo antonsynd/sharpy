@@ -97,12 +97,15 @@ internal sealed partial class LoweringPass
     {
         var children = ImmutableArray.CreateBuilder<IrNode>();
 
-        // WithStatement.GetChildNodes yields all context expressions, then all body statements —
+        // WithStatement.GetChildNodes yields context expressions and targets, then body statements —
         // mirror that order so the opaque children match a plain LowerChildren walk (totality).
         foreach (var item in withStatement.Items)
         {
             var contextExpr = LowerExpression(item.ContextExpression, semanticInfo, state);
             children.Add(contextExpr);
+
+            if (item.Target != null)
+                children.Add(LowerExpression(item.Target, semanticInfo, state));
 
             var kind = semanticInfo.GetContextManagerKindForIr(item.ContextExpression);
             if (kind is { } contextManagerKind)

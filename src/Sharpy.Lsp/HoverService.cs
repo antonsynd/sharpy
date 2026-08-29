@@ -379,10 +379,10 @@ public sealed class HoverService
                 {
                     foreach (var item in withStmt.Items)
                     {
-                        if (item.Name != null &&
-                            line == item.NameLineStart &&
-                            col >= item.NameColumnStart &&
-                            col < item.NameColumnEnd)
+                        if (item.Target is Identifier hId &&
+                            line == hId.LineStart &&
+                            col >= hId.ColumnStart &&
+                            col < hId.ColumnEnd)
                         {
                             var withVarSymbol = analysis.SemanticQuery?.GetWithItemSymbol(item);
                             if (withVarSymbol != null)

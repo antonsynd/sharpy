@@ -755,7 +755,7 @@ public class ControlFlowGraphBuilderTests
                 Items = ImmutableArray.Create(new WithItem
                 {
                     ContextExpression = Id("ctx"),
-                    Name = "f"
+                    Target = Id("f")
                 }),
                 Body = ImmutableArray.Create<Statement>(Pass())
             }

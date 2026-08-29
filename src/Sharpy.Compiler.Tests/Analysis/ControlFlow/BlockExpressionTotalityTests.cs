@@ -28,7 +28,7 @@ public class BlockExpressionTotalityTests
                 Items = ImmutableArray.Create(new WithItem
                 {
                     ContextExpression = ctxExpr,
-                    Name = "f"
+                    Target = Id("f")
                 }),
                 Body = ImmutableArray.Create<Statement>(Pass())
             }
@@ -62,8 +62,8 @@ public class BlockExpressionTotalityTests
             new WithStatement
             {
                 Items = ImmutableArray.Create(
-                    new WithItem { ContextExpression = ctx1, Name = "f1" },
-                    new WithItem { ContextExpression = ctx2, Name = "f2" }
+                    new WithItem { ContextExpression = ctx1, Target = Id("f1") },
+                    new WithItem { ContextExpression = ctx2, Target = Id("f2") }
                 ),
                 Body = ImmutableArray.Create<Statement>(Pass())
             }
