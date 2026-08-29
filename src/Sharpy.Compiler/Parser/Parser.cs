@@ -810,6 +810,22 @@ public partial class Parser
             throw ReportError("Sharpy does not support 'global' — C# scoping rules apply (Axiom 1)", Current.Line, Current.Column, DiagnosticCodes.Parser.RejectedPythonKeyword, span: CurrentSpan);
         if (Current.Type == TokenType.Nonlocal)
             throw ReportError("Sharpy does not support 'nonlocal' — C# scoping rules apply (Axiom 1)", Current.Line, Current.Column, DiagnosticCodes.Parser.RejectedPythonKeyword, span: CurrentSpan);
+        if (Current.Type == TokenType.Del)
+        {
+            var delLine = Current.Line;
+            var delCol = Current.Column;
+            var delSpan = CurrentSpan;
+            Advance();
+            var target = ParseExpression();
+            var steer = target switch
+            {
+                IndexAccess => " — use .pop(key) to remove a dictionary key or .pop(index) for a list element",
+                _ => " — unbinding a name or deleting an attribute is not supported (Axiom 1)"
+            };
+            throw ReportError(
+                $"Sharpy does not support 'del'{steer}",
+                delLine, delCol, DiagnosticCodes.Parser.DelStatementNotSupported, span: delSpan);
+        }
 
         if (Current.Type == TokenType.Match && !IsMatchSoftKeywordCall())
             return ParseMatchStatement();
