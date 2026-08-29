@@ -64,10 +64,6 @@ public class StaticStateConformanceTests
         new Dictionary<(string, string), string>
         {
             // ---- Genuinely runtime-mutable / thread-local (determinism-reviewed, #1036) ----
-            [("Sharpy.Compiler.Semantic.Registry.ModuleRegistry", "_loadedRuntimeNamespaces")] =
-                "Process-global set of runtime namespaces already registered. Monotonic and " +
-                "idempotent (Add-if-absent guard); affects one-time registration side effects, " +
-                "not per-compile output.",
             [("Sharpy.Compiler.Discovery.ClrTypeBridge", "_interfaceListInProgress")] =
                 "[ThreadStatic] re-entrancy guard for recursive interface expansion; lazily " +
                 "created and cleared per traversal, thread-local so it cannot leak across compiles.",
@@ -81,8 +77,6 @@ public class StaticStateConformanceTests
                 "Prefix→decoder table populated once in the static constructor, read-only after.",
             [("Sharpy.Compiler.CodeGen.CollectionTypeRegistry", "_entries")] =
                 "Collection-type metadata table, initialized inline and read-only after.",
-            [("Sharpy.Compiler.CodeGen.TypeSyntaxMapper", "_builtinTypeMap")] =
-                "Builtin→C# type-name map, populated in the static constructor, read-only after.",
             [("Sharpy.Compiler.Diagnostics.DiagnosticExplanations", "_explanations")] =
                 "Diagnostic-code explanation table built once via BuildExplanations(), read-only after.",
             [("Sharpy.Compiler.Discovery.CachedModuleDiscovery", "SharpyToClrNameMap")] =
@@ -95,8 +89,6 @@ public class StaticStateConformanceTests
                 "Return-type override table for known overloads, initialized inline and read-only.",
             [("Sharpy.Compiler.Lexer.Lexer", "Keywords")] =
                 "Keyword→token-type table, initialized inline and read-only after.",
-            [("Sharpy.Compiler.Semantic.CodeGenInfoComputer", "IteratorProtocolReservedNames")] =
-                "Reserved iterator-protocol member names, initialized inline and read-only.",
             [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "PreferredPrimitiveNames")] =
                 "CLR→canonical Sharpy name map for dedup ordering, initialized inline and read-only after (#1667).",
             [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "SeparatelyRegisteredClrTypes")] =
@@ -203,19 +195,12 @@ public class StaticStateConformanceTests
             "If intentional, add an allowlist entry with a determinism justification in " +
             $"StaticStateConformanceTests.Allowlist:\n  {string.Join("\n  ", violations.OrderBy(v => v, StringComparer.Ordinal))}");
 
-        // Keep the allowlist honest: report entries that no longer match a flagged field
-        // (field removed, renamed, or made immutable). This is a soft warning rather than a
-        // hard failure so that legitimate refactors which drop a static table don't break CI;
-        // the load-bearing direction — no NEW unlisted mutable static — is the hard assert above.
         var staleEntries = Allowlist.Keys.Where(k => !matchedAllowlistKeys.Contains(k)).ToList();
-        if (staleEntries.Count > 0)
-        {
-            _output.WriteLine("Stale allowlist entries (no matching flagged field — consider removing):");
-            foreach (var k in staleEntries.OrderBy(k => $"{k.Item1}.{k.Item2}", StringComparer.Ordinal))
-            {
-                _output.WriteLine($"  {k.Item1}.{k.Item2}");
-            }
-        }
+        Assert.True(staleEntries.Count == 0,
+            "Stale allowlist entries (no matching flagged field — remove them):\n  " +
+            string.Join("\n  ", staleEntries
+                .OrderBy(k => $"{k.Item1}.{k.Item2}", StringComparer.Ordinal)
+                .Select(k => $"{k.Item1}.{k.Item2}")));
     }
 
     private static bool IsMutableCollection(Type type)
@@ -252,5 +237,139 @@ public class StaticStateConformanceTests
         }
 
         return $"{name}<{string.Join(", ", type.GetGenericArguments().Select(FriendlyType))}>";
+    }
+
+    // ---- Rule 3: Symbol-vending instance caches reachable from AnalysisCacheEntry ----
+
+    /// <summary>
+    /// Known instance fields reachable from AnalysisCacheEntry whose value type (or a
+    /// generic argument thereof) derives from Symbol. Each entry carries an issue reference
+    /// justifying why the field is acceptable (#1633 root-cause analysis).
+    /// </summary>
+    private static readonly IReadOnlyDictionary<(string Type, string Field), string> SymbolVendingRoster =
+        new Dictionary<(string, string), string>
+        {
+            [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "_types")] =
+                "Dictionary<string, TypeSymbol> — builtin type cache (#1633)",
+            [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "_functions")] =
+                "Dictionary<string, List<FunctionSymbol>> — builtin function cache (#1633)",
+            [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "_pendingInterfacePopulation")] =
+                "List<(TypeSymbol, TypeParameterType[])> — deferred interface work (#1633)",
+            [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "_interfaceSymbols")] =
+                "Dictionary<Type, TypeSymbol> — interface definition cache (#1633)",
+            [("Sharpy.Compiler.Discovery.CachedModuleDiscovery", "_moduleTypeSymbols")] =
+                "ConcurrentDictionary<string, TypeSymbol> — module type symbol cache (#1633)",
+            [("Sharpy.Compiler.Discovery.ClrTypeBridge", "_interfaceSymbolCache")] =
+                "ConcurrentDictionary<Type, TypeSymbol> — interface definition cache (#1633)",
+            [("Sharpy.Compiler.Semantic.Registry.BuiltinRegistry", "_clrTypeCache")] =
+                "ConcurrentDictionary<(string, int), TypeSymbol?> — CLR type lookup cache (#1633)",
+        };
+
+    [Fact]
+    public void AnalysisCacheEntry_SymbolVendingFields_AreRostered()
+    {
+        var compilerAssembly = typeof(Sharpy.Compiler.Compiler).Assembly;
+        var compilerApiType = compilerAssembly.GetType("Sharpy.Compiler.CompilerApi");
+        Assert.NotNull(compilerApiType);
+
+        var cacheEntryType = compilerApiType!.GetNestedType(
+            "AnalysisCacheEntry", BindingFlags.NonPublic);
+        Assert.NotNull(cacheEntryType);
+
+        var symbolBase = compilerAssembly.GetType("Sharpy.Compiler.Semantic.Symbol");
+        Assert.NotNull(symbolBase);
+
+        var found = new HashSet<(string Type, string Field)>();
+        var visited = new HashSet<Type>();
+        var queue = new Queue<Type>();
+        queue.Enqueue(cacheEntryType!);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (!visited.Add(current))
+                continue;
+
+            var fields = current.GetFields(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+
+            foreach (var field in fields)
+            {
+                if (IsCompilerGenerated(field))
+                    continue;
+
+                if (TypeInvolvesSymbol(field.FieldType, symbolBase!))
+                {
+                    var key = (current.FullName ?? current.Name, field.Name);
+                    found.Add(key);
+                }
+
+                EnqueueFieldType(field.FieldType, compilerAssembly, queue);
+            }
+
+            foreach (var prop in current.GetProperties(
+                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+            {
+                EnqueueFieldType(prop.PropertyType, compilerAssembly, queue);
+            }
+        }
+
+        var unlisted = found.Where(f => !SymbolVendingRoster.ContainsKey(f)).ToList();
+        var stale = SymbolVendingRoster.Keys.Where(r => !found.Contains(r)).ToList();
+
+        if (unlisted.Count > 0)
+        {
+            _output.WriteLine("Unlisted Symbol-vending instance fields:");
+            foreach (var u in unlisted.OrderBy(u => $"{u.Type}.{u.Field}", StringComparer.Ordinal))
+                _output.WriteLine($"  {u.Type}.{u.Field}");
+        }
+
+        Assert.True(unlisted.Count == 0,
+            "Rule 3: unlisted Symbol-vending instance fields reachable from AnalysisCacheEntry. " +
+            "Add to SymbolVendingRoster with an issue reference:\n  " +
+            string.Join("\n  ", unlisted
+                .OrderBy(u => $"{u.Type}.{u.Field}", StringComparer.Ordinal)
+                .Select(u => $"{u.Type}.{u.Field}")));
+
+        Assert.True(stale.Count == 0,
+            "Rule 3: stale SymbolVendingRoster entries (field no longer reachable). Remove them:\n  " +
+            string.Join("\n  ", stale
+                .OrderBy(s => $"{s.Type}.{s.Field}", StringComparer.Ordinal)
+                .Select(s => $"{s.Type}.{s.Field}")));
+    }
+
+    private static bool TypeInvolvesSymbol(Type type, Type symbolBase)
+    {
+        if (symbolBase.IsAssignableFrom(type))
+            return true;
+
+        if (type.IsGenericType)
+        {
+            foreach (var arg in type.GetGenericArguments())
+            {
+                if (TypeInvolvesSymbol(arg, symbolBase))
+                    return true;
+            }
+        }
+
+        if (type.IsArray)
+            return TypeInvolvesSymbol(type.GetElementType()!, symbolBase);
+
+        return false;
+    }
+
+    private static void EnqueueFieldType(Type fieldType, Assembly compilerAssembly, Queue<Type> queue)
+    {
+        var concrete = fieldType;
+        if (concrete.IsArray)
+            concrete = concrete.GetElementType()!;
+        if (concrete.IsGenericType)
+        {
+            foreach (var arg in concrete.GetGenericArguments())
+                EnqueueFieldType(arg, compilerAssembly, queue);
+        }
+
+        if (concrete.Assembly == compilerAssembly && !concrete.IsEnum && !concrete.IsAbstract)
+            queue.Enqueue(concrete);
     }
 }
