@@ -254,6 +254,32 @@ public class SemanticInfoMergeConformanceTests
             .Which.Type.Should().Be(BuiltinType.Int);
     }
 
+    /// <summary>
+    /// A callable-reference lowering recorded on one SemanticInfo must survive
+    /// <see cref="SemanticInfo.MergeFrom"/> into another. Codegen reads the callable-reference
+    /// lowering from the merged project-level SemanticInfo; if <c>_callableReferenceLowerings</c>
+    /// were absent from <c>MergeFrom</c>, a builtin function used as a value in an imported module
+    /// would silently emit a bare method group instead of an eta-expanded lambda (#1638).
+    /// </summary>
+    [Fact]
+    public void MergeFrom_CarriesCallableReferenceLowerings()
+    {
+        var perFile = new SemanticInfo();
+        var reference = new Identifier { Name = "len" };
+        perFile.SetCallableReferenceLowering(reference, new CallableReferenceLowering(
+            "Sharpy.Builtins.Len",
+            new[] { (SemanticType)BuiltinType.Str },
+            BuiltinType.Int));
+
+        var project = new SemanticInfo();
+        project.MergeFrom(perFile);
+
+        var merged = project.GetCallableReferenceLowering(reference);
+        merged.Should().NotBeNull("the callable-reference lowering must survive the per-file → project merge");
+        merged!.QualifiedName.Should().Be("Sharpy.Builtins.Len");
+        merged.ReturnType.Should().Be(BuiltinType.Int);
+    }
+
     private static VariableDeclaration? FindDeclaration(Node root, string name)
     {
         if (root is VariableDeclaration declaration && declaration.Name == name)
