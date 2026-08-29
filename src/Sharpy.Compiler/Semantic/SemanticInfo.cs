@@ -2305,7 +2305,7 @@ public enum OperatorLoweringKind
     FlooredModulo,
 }
 
-public sealed record OperatorLowering(OperatorLoweringKind Kind);
+public sealed record OperatorLowering(OperatorLoweringKind Kind, SemanticType? NarrowTo = null);
 
 public enum IterationLoweringKind { EnumValues, StringEnumValues, StringChars }
 public sealed record IterationLowering(IterationLoweringKind Kind);

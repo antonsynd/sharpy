@@ -385,14 +385,23 @@ internal partial class TypeChecker
                 return;
             }
 
+            SemanticType? narrowTo = null;
             if (!resultType.IsAssignableTo(targetType))
             {
-                AddError(
-                    $"Result type '{resultType.GetDisplayName()}' of augmented assignment is not assignable to target type '{targetType.GetDisplayName()}'",
-                    assignment.LineStart,
-                    assignment.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch,
-                    span: assignment.Span);
+                if (targetType is BuiltinType { Name: "int8" or "int16" or "uint8" or "uint16" }
+                    && valueType.IsAssignableTo(targetType))
+                {
+                    narrowTo = targetType;
+                }
+                else
+                {
+                    AddError(
+                        $"Result type '{resultType.GetDisplayName()}' of augmented assignment is not assignable to target type '{targetType.GetDisplayName()}'",
+                        assignment.LineStart,
+                        assignment.ColumnStart,
+                        code: DiagnosticCodes.Semantic.TypeMismatch,
+                        span: assignment.Span);
+                }
             }
 
             // Record operator lowering for augmented assignments (#1623).
@@ -474,6 +483,13 @@ internal partial class TypeChecker
                 && ClassifyFlooredArithmetic(floored, targetType, valueType) is { } flooredKind)
             {
                 _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(flooredKind));
+            }
+
+            if (narrowTo != null)
+            {
+                var existing = _semanticInfo.GetOperatorLowering(assignment);
+                var kind = existing?.Kind ?? OperatorLoweringKind.Native;
+                _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(kind, narrowTo));
             }
 
             if (Features.IsEnabled("inplace_augassign")

@@ -740,7 +740,7 @@ internal partial class RoslynEmitter
     /// <param name="valueAst">Original AST value expression (for type inference)</param>
     private ExpressionSyntax GenerateAugmentedValue(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right, Expression? targetAst = null, Expression? valueAst = null, Assignment? assignNode = null)
     {
-        return op switch
+        var result = op switch
         {
             // x **= y → checked integer power for integral operands, Math.Pow otherwise —
             // decided by the binary `**` routing wrapper this site shares, so it cannot miss an
@@ -792,6 +792,16 @@ internal partial class RoslynEmitter
             // All other operators use simple binary expressions
             _ => GenerateAugmentedBinaryExpression(op, left, right, targetAst, assignNode)
         };
+
+        if (assignNode != null
+            && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.NarrowTo is { } narrowTo)
+        {
+            result = CastExpression(
+                _typeMapper.MapSemanticType(narrowTo),
+                ParenthesizedExpression(result));
+        }
+
+        return result;
     }
 
     private ExpressionSyntax GenerateAugmentedBinaryExpression(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right, Expression? sourceAst = null, Assignment? assignNode = null)
