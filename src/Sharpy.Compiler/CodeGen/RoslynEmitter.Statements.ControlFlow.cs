@@ -1389,17 +1389,25 @@ internal partial class RoslynEmitter
         var catchClauses = GenerateCatchClauses(tryStmt.Handlers);
         var finallyClause = GenerateFinallyClause(tryStmt.FinallyBody);
 
-        var tryCatchFinally = TryStatement(tryBlock, List(catchClauses), finallyClause);
-
-        // Generate: if (__trySucceeded) { else_body }
         var elseBlock = GenerateSuiteBlock(tryStmt.ElseBody);
         var elseIf = IfStatement(IdentifierName(flagName), elseBlock);
 
-        // Return a block containing all statements: flag + try + else-if
         var allStatements = new List<StatementSyntax>();
         allStatements.Add(flagDecl);
-        allStatements.Add(tryCatchFinally);
-        allStatements.Add(elseIf);
+
+        if (finallyClause != null)
+        {
+            // Python runs else BEFORE finally, and a return/exception in else is
+            // finally-guarded. Nest: try { try{body;ok=true}catch{…}; if(ok){else} } finally{fin}
+            var innerTry = TryStatement(tryBlock, List(catchClauses), null);
+            var outerBody = Block(innerTry, elseIf);
+            allStatements.Add(TryStatement(outerBody, default, finallyClause));
+        }
+        else
+        {
+            allStatements.Add(TryStatement(tryBlock, List(catchClauses), null));
+            allStatements.Add(elseIf);
+        }
 
         // If the else body returns a value, add a dead-code throw to satisfy C#'s
         // reachability analysis. __trySucceeded is always true after a successful try,
