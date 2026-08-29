@@ -510,7 +510,7 @@ public sealed class AstNormalizer : AstVisitor<Node>
         Zero(node) with { Literal = (Expression)Visit(node.Literal) };
 
     public override Node VisitTypePattern(TypePattern node) =>
-        Zero(node) with { Type = NormalizeType(node.Type)!, BindingName = node.BindingName != null ? (Identifier)Visit(node.BindingName) : null };
+        Zero(node) with { Type = NormalizeType(node.Type)! };
 
     public override Node VisitUnionCasePattern(UnionCasePattern node) =>
         Zero(node) with { UnionType = NormalizeType(node.UnionType), FieldPatterns = VisitPatterns(node.FieldPatterns) };

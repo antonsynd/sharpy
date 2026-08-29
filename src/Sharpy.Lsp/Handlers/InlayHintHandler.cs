@@ -303,9 +303,6 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                 if (semanticInfo?.GetPatternUnionCase(binding) == null)
                     scope.MarkBound(binding.Name.Name);
                 break;
-            case TypePattern { BindingName: { } bindingName }:
-                scope.MarkBound(bindingName.Name);
-                break;
             case StarPattern { Capture: { } capture }:
                 MarkPatternBound(capture, scope, semanticInfo);
                 break;

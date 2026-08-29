@@ -150,17 +150,6 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
         base.VisitBindingPattern(node);
     }
 
-    public override void VisitTypePattern(TypePattern node)
-    {
-        if (node.BindingName != null)
-        {
-            Declare(node.BindingName.Name, node.BindingName.IsNameBacktickEscaped,
-                node.BindingName.LineStart, node.BindingName.ColumnStart);
-        }
-
-        base.VisitTypePattern(node);
-    }
-
     public override void VisitAsPattern(AsPattern node)
     {
         Declare(node.Name.Name, node.Name.IsNameBacktickEscaped,

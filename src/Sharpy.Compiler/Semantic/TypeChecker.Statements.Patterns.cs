@@ -621,7 +621,7 @@ internal partial class TypeChecker
             _semanticInfo.SetPatternType(typePattern, earlyResolved);
             _semanticInfo.SetTypeTestLowering(typePattern,
                 new TypeTestLowering(TypeTestLoweringKind.ClosedType, earlyResolved));
-            BindTypePatternCapture(typePattern, earlyResolved);
+    
             return;
         }
 
@@ -634,7 +634,7 @@ internal partial class TypeChecker
             _semanticInfo.SetPatternType(typePattern, arrayScrutinee);
             _semanticInfo.SetTypeTestLowering(typePattern,
                 new TypeTestLowering(TypeTestLoweringKind.ClosedType, arrayScrutinee));
-            BindTypePatternCapture(typePattern, arrayScrutinee);
+
             return;
         }
 
@@ -654,7 +654,7 @@ internal partial class TypeChecker
                     new TypeTestLowering(TypeTestLoweringKind.ClosedType, filledCollection));
                 if (scrutineeType is not UnknownType && IsAssignable(scrutineeType, filledCollection))
                     _semanticInfo.SetPatternTotality(typePattern, true);
-                BindTypePatternCapture(typePattern, filledCollection);
+
                 return;
             }
         }
@@ -730,33 +730,7 @@ internal partial class TypeChecker
         {
             _semanticInfo.SetPatternTotality(typePattern, true);
         }
-        BindTypePatternCapture(typePattern, resolvedType);
-    }
 
-    /// <summary>
-    /// Defines the <c>as</c> capture of a type pattern (<c>case str() as s:</c>) at
-    /// <paramref name="capturedType"/>, the pattern's own resolved type.
-    /// </summary>
-    private void BindTypePatternCapture(TypePattern typePattern, SemanticType capturedType)
-    {
-        if (typePattern.BindingName == null)
-            return;
-
-        var newSymbol = new VariableSymbol
-        {
-            Name = typePattern.BindingName.Name,
-            Kind = SymbolKind.Variable,
-            Type = capturedType,
-            IsConstant = false,
-            DeclarationLine = typePattern.BindingName.LineStart,
-            DeclarationColumn = typePattern.BindingName.ColumnStart,
-            NameDeclarationLine = typePattern.BindingName.LineStart,
-            NameDeclarationColumn = typePattern.BindingName.ColumnStart,
-            AccessLevel = AccessLevel.Public
-        };
-        _symbolTable.Define(newSymbol);
-        SemanticBinding.SetVariableType(newSymbol, capturedType);
-        _semanticInfo.SetIdentifierSymbol(typePattern.BindingName, newSymbol);
     }
 
     /// <summary>

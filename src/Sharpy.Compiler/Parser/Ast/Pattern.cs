@@ -91,30 +91,17 @@ public record TypePattern : Pattern
     /// </summary>
     public TypeAnnotation Type { get; init; } = null!;
 
-    /// <summary>
-    /// Optional variable to bind the casted value to.
-    /// Deprecated: new code uses <see cref="AsPattern"/> wrapping a TypePattern instead.
-    /// Retained for backward compatibility until all consumers are migrated.
-    /// </summary>
-    public Identifier? BindingName { get; init; }
-
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {
         base.ValidateInvariants();
         Debug.Assert(Type != null, "TypePattern.Type cannot be null");
-        if (BindingName != null)
-        {
-            Debug.Assert(!string.IsNullOrEmpty(BindingName.Name),
-                "TypePattern.BindingName.Name cannot be null or empty");
-        }
     }
 
     /// <inheritdoc/>
     public override IEnumerable<Node> GetChildNodes()
     {
-        if (BindingName != null)
-            yield return BindingName;
+        yield return Type;
     }
 }
 

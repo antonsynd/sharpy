@@ -341,14 +341,6 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                 }
                 break;
 
-            case TypePattern typePattern:
-                if (typePattern.BindingName != null && !parameters.Contains(typePattern.BindingName.Name))
-                {
-                    defined[typePattern.BindingName.Name] = new VariableInfo(
-                        typePattern.LineStart, typePattern.ColumnStart, typePattern.Span, false);
-                }
-                break;
-
             case OrPattern orPattern:
                 foreach (var alt in orPattern.Alternatives)
                     CollectDefinitionsFromPattern(alt, defined, parameters);

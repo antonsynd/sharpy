@@ -28,11 +28,6 @@ internal sealed partial class UnparseVisitor
     {
         WriteTypeAnnotation(node.Type);
         _w.Write("()");
-        if (node.BindingName != null)
-        {
-            _w.Write(" as ");
-            Visit(node.BindingName);
-        }
     }
 
     public override void VisitUnionCasePattern(UnionCasePattern node)

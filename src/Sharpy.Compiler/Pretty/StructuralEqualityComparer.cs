@@ -107,7 +107,7 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             WildcardPattern => true,
             BindingPattern a => BindingPatternEquals(a, (BindingPattern)y),
             LiteralPattern a => Equals(a.Literal, ((LiteralPattern)y).Literal),
-            TypePattern a => TypeAnnotationEquals(a.Type, ((TypePattern)y).Type) && NullableNodeEquals(a.BindingName, ((TypePattern)y).BindingName),
+            TypePattern a => TypeAnnotationEquals(a.Type, ((TypePattern)y).Type),
             UnionCasePattern a => UnionCasePatternEquals(a, (UnionCasePattern)y),
             TuplePattern a => NodesEqual(a.Elements, ((TuplePattern)y).Elements),
             ListPattern a => ListPatternEquals(a, (ListPattern)y),
