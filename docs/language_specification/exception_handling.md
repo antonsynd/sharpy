@@ -91,9 +91,28 @@ finally:
     cleanup()
 ```
 
+When both `else` and `finally` are present, `else` runs **before** `finally` — matching Python's ordering. An exception raised in the `else` block is not caught by this statement's `except` handlers; it propagates past them, but `finally` still executes.
+
+```python
+def example() -> int:
+    x: int = 0
+    try:
+        x = 10
+    except ValueError:
+        print("caught")
+    else:
+        print("else")    # runs first (no exception)
+        return x
+    finally:
+        print("finally")  # runs second (always)
+    return 0
+
+# prints: else, finally — then returns 10
+```
+
 *Implementation:*
 - *try/except/finally: ✅ Native - `try`/`catch`/`finally`*
-- *else clause: 🔄 Lowered - Boolean flag pattern*
+- *else clause: 🔄 Lowered - Boolean flag pattern, nested inside the finally-protected region when both clauses are present*
 
 ## Raise Statement
 
