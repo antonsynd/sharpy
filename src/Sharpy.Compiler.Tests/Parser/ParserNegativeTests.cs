@@ -697,7 +697,7 @@ z = 3";
     {
         var source = "with something as:\n    pass";
         var errors = ParseExpectingError(source);
-        errors.Should().Contain("Expected identifier");
+        errors.Should().Contain("Unexpected token: Colon");
     }
 
     [Fact]

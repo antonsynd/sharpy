@@ -1695,6 +1695,7 @@ internal partial class TypeChecker
                 _symbolTable.Define(varSymbol);
                 SemanticBinding.SetVariableType(varSymbol, exceptionType);
                 _semanticInfo.SetWithItemSymbol(item, varSymbol);
+                _semanticInfo.SetIdentifierSymbol(arId, varSymbol);
             }
         }
 
@@ -1759,6 +1760,7 @@ internal partial class TypeChecker
                     _symbolTable.Define(varSymbol);
                     SemanticBinding.SetVariableType(varSymbol, asVarType);
                     _semanticInfo.SetWithItemSymbol(item, varSymbol);
+                    _semanticInfo.SetIdentifierSymbol(withId, varSymbol);
                 }
             }
             else if (item.Target != null && !IsAssertRaisesExpression(item.ContextExpression))
