@@ -1069,14 +1069,15 @@ internal class TypeInferenceService
     {
         // Bitwise not on integers
         if (TypeUtils.IsInteger(operand) && op == UnaryOperator.BitwiseNot)
-            return operand;
+            return ApplyIntegerFloor(operand);
 
         // Numeric unary operators
         if (TypeUtils.IsNumeric(operand))
         {
             return op switch
             {
-                UnaryOperator.Plus or UnaryOperator.Minus => operand,
+                UnaryOperator.Plus or UnaryOperator.Minus =>
+                    TypeUtils.IsInteger(operand) ? ApplyIntegerFloor(operand) : operand,
                 _ => null
             };
         }
@@ -1579,13 +1580,24 @@ internal class TypeInferenceService
         //   Math.Pow returns double, but we cast back to the promoted integer type
         // - Any float involvement → Double
         if (TypeUtils.IsInteger(left) && TypeUtils.IsInteger(right))
-            return InferNumericResultType(left, right) ?? left;
+            return InferNumericResultType(left, right) ?? ApplyIntegerFloor(left);
         return SemanticType.Double;
     }
 
     private static SemanticType? InferNumericResultType(SemanticType left, SemanticType right)
     {
-        return PrimitiveCatalog.GetPromotedType(left, right);
+        var promoted = PrimitiveCatalog.GetPromotedType(left, right);
+        return promoted != null ? ApplyIntegerFloor(promoted) : null;
+    }
+
+    // C# promotes all narrow integers (int8, int16, uint8, uint16) to int in
+    // arithmetic, bitwise, and unary operations.  Match that so the checker's
+    // result type agrees with what the CLR actually produces (#1666).
+    private static SemanticType ApplyIntegerFloor(SemanticType type)
+    {
+        if (type is BuiltinType { Name: "int8" or "int16" or "uint8" or "uint16" })
+            return SemanticType.Int;
+        return type;
     }
 
     private Type? GetClrType(SemanticType type)
