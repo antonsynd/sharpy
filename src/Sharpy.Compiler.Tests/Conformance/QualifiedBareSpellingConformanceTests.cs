@@ -435,6 +435,13 @@ def main() -> None:
     print(mk().sides)
 "), null),
 
+        new("value", "generic", s => Two($@"{s.Imports("Box")}
+
+def main() -> None:
+    mk = {s.Ref("Box")}[int]
+    print(mk(7).get())
+"), null),
+
         // ---- call (construction, and a type-alias call via #1527's transparency) ----
         new("call", "plain", s => Two($@"{s.Imports("Circle")}
 
@@ -442,7 +449,13 @@ def main() -> None:
     print({s.Ref("Circle")}().sides)
 "), null),
 
-        new("call", "alias", s => Two($@"{s.Imports("Handle")}
+        new("call", "generic", s => Two($@"{s.Imports("Box")}
+
+def main() -> None:
+    print({s.Ref("Box")}[int](7).get())
+"), null),
+
+        new("call", "canonical-alias", s => Two($@"{s.Imports("Handle")}
 
 def main() -> None:
     print({s.Ref("Handle")}(""42""))
@@ -543,6 +556,186 @@ def main() -> None:
             + "Divergent cells:\n"
             + string.Join("\n", offenders.Select(o => o.Describe()))
             + "\nFull report: .claude/tmp/qualified-bare-conformance-report.json");
+    }
+
+    // --- Totality: position × shape coverage ----------------------------------------------------
+
+    private static readonly string[] KnownPositions =
+    {
+        "annotation", "baseList", "typeTest", "typeTestCast", "typeTestExcept",
+        "constraint", "typeAlias", "pattern", "declSiteAnnotation", "nested",
+        "valuePattern", "value", "call",
+    };
+
+    private static readonly string[] KnownShapes =
+    {
+        "plain", "generic", "canonical-alias", "user-alias",
+    };
+
+    /// <summary>
+    /// (position::shape) pairs that are structurally impossible or already covered by another
+    /// position's alias-specific test. Each entry explains WHY the combination is absent.
+    /// </summary>
+    private static readonly Dictionary<string, string> NotApplicable = new(StringComparer.Ordinal)
+    {
+        // --- generic shape: impossible or out-of-scope ---
+        ["typeTestExcept::generic"] =
+            "test library has no generic exception type; Sharpy exceptions are non-parametric",
+        ["nested::generic"] =
+            "Registry is not generic; generic-outer + nested-type interaction is orthogonal to the qualified/bare contract",
+        ["valuePattern::generic"] =
+            "enums are not generic in Sharpy",
+
+        // --- canonical-alias (Handle = int): a non-generic type alias ---
+        // The typeAlias position tests alias resolution specifically; in other positions the
+        // alias resolves transparently to its target type (int), and the qualified/bare path
+        // is the same one the typeAlias position already exercises.
+        ["annotation::canonical-alias"] =
+            "alias annotation resolution tested by typeAlias::plain (Handle); same TypeResolver path",
+        ["baseList::canonical-alias"] =
+            "Handle resolves to int — cannot inherit from a primitive",
+        ["typeTest::canonical-alias"] =
+            "Handle resolves to int — not a valid isinstance target",
+        ["typeTestCast::canonical-alias"] =
+            "Handle resolves to int — not a valid as? target",
+        ["typeTestExcept::canonical-alias"] =
+            "Handle resolves to int — not an exception type",
+        ["constraint::canonical-alias"] =
+            "Handle resolves to int — type parameter bounds require class types",
+        ["typeAlias::canonical-alias"] =
+            "typeAlias::plain IS Handle (a non-generic alias) — the position already tests this shape",
+        ["pattern::canonical-alias"] =
+            "Handle resolves to int — not a valid class pattern",
+        ["declSiteAnnotation::canonical-alias"] =
+            "declSiteAnnotation tests the ModuleLoader extraction path, which is type-shape-agnostic; covered by plain/generic",
+        ["nested::canonical-alias"] =
+            "type aliases have no nested types",
+        ["valuePattern::canonical-alias"] =
+            "type aliases are not enums",
+        ["value::canonical-alias"] =
+            "Handle = int — primitive constructor references use PrimitiveConversionResolver, not the qualified/bare resolution path",
+        // call::canonical-alias is a SCENARIO (was call::alias)
+
+        // --- user-alias (Pair[T] = tuple[T, T]): a generic type alias ---
+        ["annotation::user-alias"] =
+            "alias annotation resolution tested by typeAlias::generic (Pair); same TypeResolver path",
+        ["baseList::user-alias"] =
+            "Pair resolves to tuple — cannot inherit from a structural type",
+        ["typeTest::user-alias"] =
+            "Pair resolves to tuple — not a valid isinstance target",
+        ["typeTestCast::user-alias"] =
+            "Pair resolves to tuple — not a valid as? target",
+        ["typeTestExcept::user-alias"] =
+            "Pair resolves to tuple — not an exception type",
+        ["constraint::user-alias"] =
+            "Pair resolves to tuple — type parameter bounds require class types",
+        ["typeAlias::user-alias"] =
+            "typeAlias::generic IS Pair (a generic alias) — the position already tests this shape",
+        ["pattern::user-alias"] =
+            "Pair resolves to tuple — not a valid class pattern",
+        ["declSiteAnnotation::user-alias"] =
+            "declSiteAnnotation tests the ModuleLoader extraction path, which is type-shape-agnostic; covered by plain/generic",
+        ["nested::user-alias"] =
+            "type aliases have no nested types",
+        ["valuePattern::user-alias"] =
+            "type aliases are not enums",
+        ["value::user-alias"] =
+            "Pair resolves to tuple — structural types have no constructor reference",
+        ["call::user-alias"] =
+            "Pair resolves to tuple — structural types are not directly callable",
+    };
+
+    [Fact]
+    public void EveryPositionShapePair_IsCoveredOrDeclaredNA()
+    {
+        var scenarioKeys = Scenarios
+            .Select(s => $"{s.Position}::{s.Shape}")
+            .ToHashSet(StringComparer.Ordinal);
+
+        var missing = new List<string>();
+        var covered = 0;
+        var na = 0;
+
+        foreach (var position in KnownPositions)
+        {
+            foreach (var shape in KnownShapes)
+            {
+                var key = $"{position}::{shape}";
+                if (scenarioKeys.Contains(key))
+                    covered++;
+                else if (NotApplicable.ContainsKey(key))
+                    na++;
+                else
+                    missing.Add(key);
+            }
+        }
+
+        _output.WriteLine($"Positions: {KnownPositions.Length}  Shapes: {KnownShapes.Length}  "
+            + $"Cartesian: {KnownPositions.Length * KnownShapes.Length}");
+        _output.WriteLine($"Covered: {covered}  N/A: {na}  Missing: {missing.Count}");
+
+        foreach (var (key, reason) in NotApplicable.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+            _output.WriteLine($"  N/A  {key} — {reason}");
+
+        Assert.True(missing.Count == 0,
+            $"{missing.Count} (position × shape) pair(s) have no scenario and no N/A declaration — "
+            + "add a scenario or declare N/A with a reason in NotApplicable:\n  "
+            + string.Join("\n  ", missing));
+
+        Assert.True(scenarioKeys.All(k =>
+                KnownPositions.Any(p => k.StartsWith(p + "::", StringComparison.Ordinal))),
+            "a scenario references a position not in KnownPositions — add it");
+    }
+
+    [Fact]
+    public void ConversionResolverCallSites_RestrictedToKnownFiles()
+    {
+        var compilerDir = FindCompilerSourceDirectory();
+        var resolverFile = Path.Combine(compilerDir, "Semantic", "PrimitiveConversionResolver.cs");
+
+        var knownFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            Path.Combine(compilerDir, "Semantic", "TypeChecker.Expressions.cs"),
+            Path.Combine(compilerDir, "Semantic", "TypeChecker.Expressions.Access.Calls.cs"),
+        };
+
+        var patterns = new[] { "IsPrimitiveConversion(", "PrimitiveConversionResolver.ResolveOverloads(" };
+        var violations = new List<string>();
+
+        foreach (var file in Directory.GetFiles(compilerDir, "*.cs", SearchOption.AllDirectories))
+        {
+            if (string.Equals(file, resolverFile, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var content = File.ReadAllText(file);
+            foreach (var pattern in patterns)
+            {
+                if (content.Contains(pattern, StringComparison.Ordinal) && !knownFiles.Contains(file))
+                    violations.Add($"{Path.GetFileName(file)}: references {pattern}");
+            }
+        }
+
+        _output.WriteLine($"Scanned {Directory.GetFiles(compilerDir, "*.cs", SearchOption.AllDirectories).Length} files; "
+            + $"violations: {violations.Count}");
+
+        Assert.True(violations.Count == 0,
+            "PrimitiveConversionResolver call sites must be restricted to TypeChecker.Expressions.cs and "
+            + "TypeChecker.Expressions.Access.Calls.cs — a new call site needs a qualified/bare scenario:\n  "
+            + string.Join("\n  ", violations));
+    }
+
+    private static string FindCompilerSourceDirectory()
+    {
+        var current = AppContext.BaseDirectory;
+        while (current != null)
+        {
+            var candidate = Path.Combine(current, "src", "Sharpy.Compiler");
+            if (Directory.Exists(candidate))
+                return candidate;
+            current = Directory.GetParent(current)?.FullName;
+        }
+
+        return Path.Combine(AppContext.BaseDirectory, "src", "Sharpy.Compiler");
     }
 
     // --- Measurement ---------------------------------------------------------------------------
