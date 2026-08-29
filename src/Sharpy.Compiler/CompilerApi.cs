@@ -40,25 +40,6 @@ public sealed class CompilerApi
     private AnalysisCacheEntry? _analysisCache;
 
     /// <summary>
-    /// Test-only: when true, <see cref="GetOrBuildAnalysisContext"/> returns the master
-    /// <see cref="BuiltinRegistry"/> without cloning, exposing any
-    /// <c>MaterializeCodeGenInfo</c> writes to the shared symbols (#1633).
-    /// </summary>
-    internal bool BypassRegistryCloneForTests { get; set; }
-
-    /// <summary>
-    /// Test-only: returns the master <see cref="BuiltinRegistry"/> held by the analysis
-    /// cache, or <c>null</c> if the cache is cold.
-    /// </summary>
-    internal BuiltinRegistry? GetCachedBuiltinsForTests()
-    {
-        lock (_analysisCacheLock)
-        {
-            return _analysisCache?.Builtins;
-        }
-    }
-
-    /// <summary>
     /// Creates a new CompilerApi with default settings.
     /// </summary>
     public CompilerApi() : this(null, null, null) { }
@@ -612,10 +593,9 @@ public sealed class CompilerApi
     /// Returns a cached <see cref="AnalysisCacheEntry"/> when the reference, module-path, and
     /// package-reference set is unchanged (path + mtime identity), or builds a fresh one and
     /// caches it. The compile path bypasses this entirely — H5/H6/H9 make per-call fresh
-    /// registries essential there. On a cache hit the returned <see cref="BuiltinRegistry"/> is a
-    /// per-compilation clone (#1633) so that <c>MaterializeCodeGenInfo</c> writes never reach
-    /// the master — <c>DualWriteAssertions.AssertCodeGenInfoConsistency</c> would throw on a
-    /// second compilation if the master's symbols carried state from the first.
+    /// registries essential there. <c>MaterializeCodeGenInfo</c> folds bridge tables into
+    /// the <see cref="Semantic.SemanticBinding"/> without writing to symbols (#1633), so the
+    /// cached <see cref="BuiltinRegistry"/> is returned directly — no per-compilation clone.
     /// </summary>
     internal (ModuleRegistry? Registry, BuiltinRegistry Builtins) GetOrBuildAnalysisContext(
         ProjectConfig config)
@@ -625,13 +605,7 @@ public sealed class CompilerApi
         lock (_analysisCacheLock)
         {
             if (_analysisCache != null && _analysisCache.Key.SequenceEqual(key))
-                // Clone the cached registry so MaterializeCodeGenInfo writes are
-                // per-compilation and DualWriteAssertions never see a prior compilation's
-                // state (#1633).
-                return (_analysisCache.Registry,
-                    BypassRegistryCloneForTests
-                        ? _analysisCache.Builtins
-                        : _analysisCache.Builtins.CloneForCompilation());
+                return (_analysisCache.Registry, _analysisCache.Builtins);
         }
 
         var builtins = new BuiltinRegistry(_logger);
