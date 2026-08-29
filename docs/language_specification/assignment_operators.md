@@ -52,7 +52,54 @@ b: int8 = 3
 c: int = a + b      # OK: store in int
 ```
 
+## Augmented Assignment on Collections
+
+When the target of `+=`, `|=`, `&=`, `-=`, `^=`, or `*=` is a mutable collection
+(`list`, `set`, `dict`), the operation **mutates the receiver in place** — every
+alias sees the change. This matches CPython's `__iadd__`/`__ior__`/etc. semantics.
+
+| Operator | Collection | Method called |
+|----------|-----------|---------------|
+| `+=` | `list[T]` | `Extend(other)` |
+| `*=` | `list[T]` | `InPlaceRepeat(n)` |
+| `\|=` | `set[T]` | `Update(other)` |
+| `&=` | `set[T]` | `IntersectionUpdate(other)` |
+| `-=` | `set[T]` | `DifferenceUpdate(other)` |
+| `^=` | `set[T]` | `SymmetricDifferenceUpdate(other)` |
+| `\|=` | `dict[K,V]` | `Update(other)` |
+
+```python
+xs: list[int] = [1, 2]
+ys = xs              # alias
+xs += [3, 4]
+print(xs)            # [1, 2, 3, 4]
+print(ys)            # [1, 2, 3, 4] — same object, mutated in place
+print(xs is ys)      # True
+```
+
+### Targets
+
+Augmented collection assignment works on identifier, attribute (`self.xs`), and
+index (`d[k]`) targets. The index expression is evaluated exactly once.
+
+### Narrowed receivers
+
+If the receiver was narrowed via `isinstance`, augmented assignment is refused
+(SPY0276) because the mutation may invalidate the narrowing. The steer suggests
+rebinding through a temporary:
+
+```python
+# tmp = xs; tmp += [...]; xs = tmp  # workaround for narrowed receivers
+```
+
+### Immutable collections
+
+For immutable types like `frozenset`, `+=`/`|=` etc. rebind the target (creating
+a new object) rather than mutating — aliases are **not** updated.
+
 *Implementation*
 - *✅ Native - Direct mapping (except `**=` and `//=` which are lowered).*
 - *🔄 Augmented narrowing: the `NarrowTo` pass inserts an implicit cast when the
   RHS is assignable to the target's narrow type.*
+- *🔄 In-place collection mutation: the classifier routes mutable collection
+  receivers to the corresponding mutation method instead of rebinding.*
