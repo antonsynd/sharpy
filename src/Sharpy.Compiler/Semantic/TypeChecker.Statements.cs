@@ -388,7 +388,8 @@ internal partial class TypeChecker
             SemanticType? narrowTo = null;
             if (!resultType.IsAssignableTo(targetType))
             {
-                if (targetType is BuiltinType { Name: "int8" or "int16" or "uint8" or "uint16" }
+                if ((targetType == SemanticType.SByte || targetType == SemanticType.Byte
+                        || targetType == SemanticType.Short || targetType == SemanticType.UShort)
                     && valueType.IsAssignableTo(targetType))
                 {
                     narrowTo = targetType;

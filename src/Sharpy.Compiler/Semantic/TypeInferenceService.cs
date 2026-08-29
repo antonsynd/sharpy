@@ -1595,7 +1595,8 @@ internal class TypeInferenceService
     // result type agrees with what the CLR actually produces (#1666).
     private static SemanticType ApplyIntegerFloor(SemanticType type)
     {
-        if (type is BuiltinType { Name: "int8" or "int16" or "uint8" or "uint16" })
+        if (type == SemanticType.SByte || type == SemanticType.Byte
+            || type == SemanticType.Short || type == SemanticType.UShort)
             return SemanticType.Int;
         return type;
     }

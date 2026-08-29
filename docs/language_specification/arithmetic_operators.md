@@ -325,6 +325,38 @@ When binary arithmetic operators (`+`, `-`, `*`) operate on different numeric ty
 3. **Mixed integer/float**: Integer is promoted to the float type
 4. **Decimal is special**: Can mix with integers, but not with `float32`/`float64`
 
+### Narrow-width integer promotion floor
+
+Narrow integer types (`int8`, `uint8`, `int16`, `uint16`) are promoted to `int32`
+in every arithmetic expression — the result of `int8 + int8` is `int32`, not
+`int8`. This follows .NET's own promotion rules (C# spec §12.4.7) and prevents
+silent overflow: `int8` can hold 127, so `100 + 100` would wrap.
+
+A plain store back into a narrow target is refused:
+
+```python
+a: int8 = 5
+b: int8 = 3
+# c: int8 = a + b  # SPY0220: 'int' is not assignable to 'int8'
+c: int = a + b      # OK: int32 result stored in int
+```
+
+Augmented assignment (`+=`, `-=`, etc.) **narrows** when the right-hand side is
+implicitly convertible to the target's narrow type — the same rule C# applies to
+compound assignments (C# spec §12.21.4):
+
+```python
+x: int8 = 5
+y: int8 = 3
+x += y              # OK: augmented assignment narrows (both operands are int8)
+
+i: int = 3
+# x += i            # SPY0220: 'int' is not assignable to 'int8'
+```
+
+The rule applies uniformly to all narrow widths and all arithmetic operators:
+unary `-` and `~` also promote to `int32`, and `**` follows the same floor.
+
 *Note: Python itself has only `int`, `float` (equivalent to Sharpy's `int32` and `float64` which have aliases `int` and `float`), and `complex` as built-in numeric types. Sharpy's rules handle .NET's richer type system (`int8`, `int16`, `int64`, ..., `float32` vs `float64`, `decimal`) while maintaining Python-like simplicity.*
 
 ```python
