@@ -51,11 +51,8 @@ Prompts follow. Paste the **Ground rules** block above into each.
 ```
 Refute the claim "every defect class in docs/design/gap-discovery-contracts.md is retired or ratcheting toward zero." HEAD = <sha>.
 
-1. Census. Count lines (excluding blank/comment lines) in every allowlist and report `count @ <sha> (measured)`:
-   src/Sharpy.Compiler.Tests/Conformance/{generic-reference,interop,metamorphic,path-agreement,qualified-bare,rewrite-shadowing,differential-exec}-allowlist.txt
-   src/Sharpy.Compiler.Tests/Project/warm-diagnostic-fidelity-allowlist.txt
-   src/Sharpy.Lsp.Tests/Conformance/frontend-parity-allowlist.txt
-   plus the EmitterCarrierOnly ratchet array in src/Sharpy.Compiler.Tests/CodeGen/EmitterCarrierOnlyConformanceTests.cs (`Ratchet =`).
+1. Census. Enumerate every allowlist by glob: `find src -name '*allowlist*.txt' -not -path '*/bin/*' -not -path '*/obj/*'`. Count lines (excluding blank/comment lines) in each and report `count @ <sha> (measured)`.
+   Also count the EmitterCarrierOnly ratchet array in src/Sharpy.Compiler.Tests/CodeGen/EmitterCarrierOnlyConformanceTests.cs (`Ratchet =`) and the DeliberatelyPermissive ratchet in src/Sharpy.Compiler.Tests/Conformance/deliberately-permissive-allowlist.txt.
    Trend against (a) the "Starting census (measured @ 8bacf3d34)" table in docs/design/spy0908-policy.md and (b) the previous audit at <path>. A count that rose without a cited issue is Critical.
 2. Stale entries (drain-on-fix debt). For each allowlist entry, resolve its issue reference (`gh issue view N --json state,title`, unsandboxed). An entry citing a CLOSED issue is a stale entry — the fix should have deleted it in the same commit. An entry with no issue reference is a contract violation. List both.
 3. Unclosed classes. `gh issue list --state open --search "SPY0908" --limit 200` and the same for "CS0", "CS1", "ICE", "silently". Group the results BY CLASS using the meta-class table in verification-contract.md §1 (SPY0908 as a net / silent wrong behavior / qualified-bare & alias / position missing a shared check / warm≠cold / vacuous instrument). Output is a class table (class → member issues → standing harness or "none"), not an issue list. A class with ≥2 open members and no standing harness is Critical.
@@ -197,7 +194,7 @@ Report structure:
 | Metric | Value | Previous audit | Trend |
 |--------|-------|----------------|-------|
 | Gate: passed / failed / skipped | | | |
-| Allowlist entries — generic-reference / interop / metamorphic / path-agreement / rewrite-shadowing / warm-diagnostic-fidelity / qualified-bare / differential-exec / frontend-parity / EmitterCarrierOnly ratchet | | spy0908-policy.md census @ 8bacf3d34 | |
+| Allowlist entries — generic-reference / interop / metamorphic / path-agreement / rewrite-shadowing / warm-diagnostic-fidelity / qualified-bare / differential-exec / frontend-parity / deliberately-permissive / EmitterCarrierOnly ratchet | | spy0908-policy.md census @ 8bacf3d34 | |
 | Stale allowlist / ratchet entries (closed issue) | | | |
 | Allowlist entries with no issue ref | | | |
 | Open SPY0908/CS-leak issues, by class | | | |
