@@ -207,7 +207,7 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | `__aiter__(self)` | Not supported yet | Complex feature |
 | `__anext__(self)` | Not supported yet | Complex feature |
 | `__await__(self)` | Not supported yet | Complex feature |
-| `__call__` | Not supported | C# has no callable object protocol; use explicit `Invoke()` method |
+| `__call__(self, ...) -> T` | Supported | Callable objects: `obj(args)` dispatches to `obj.Invoke(args)`. Explicit `obj.__call__()` is refused (SPY0427) |
 | `__ceil__(self) -> float` | Not supported | `Math.Ceiling()` doesn't dispatch to this |
 | `__complex__(self) -> complex` | Not supported | Use explicit conversion methods |
 | `__copy__(self) -> T` | Not supported | Use `ICloneable.Clone()` or explicit copy methods |

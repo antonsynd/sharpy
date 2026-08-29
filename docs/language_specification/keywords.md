@@ -50,7 +50,7 @@ The following are reserved keywords in Sharpy:
 | `yield` | Generators |
 | `async` | Async programming |
 | `await` | Async programming |
-| `del` | Delete statement |
+| `del` | Refused (SPY0144); see [del_statement.md](del_statement.md) |
 | `delegate` | Delegate type declaration |
 | `super` | Base class method access |
 | `union` | Union type declaration |
