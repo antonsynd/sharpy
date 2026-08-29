@@ -1196,8 +1196,8 @@ internal partial class RoslynEmitter
     /// instantiation via boxing adapters, so they are the correct target for <c>isinstance</c>
     /// type tests and the resulting narrowing cast against an <c>object</c> receiver — a closed
     /// generic like <c>Sharpy.List&lt;object&gt;</c> would only match (and only cast from) that
-    /// exact instantiation. Mirrors the <c>case list()</c> pattern lowering in
-    /// <see cref="GeneratePattern"/>.
+    /// exact instantiation. The pattern path now reads <see cref="TypeTestLowering"/> via
+    /// <see cref="MapTypeTestTarget"/>, same as <c>isinstance</c>/<c>is</c>/<c>as?</c>.
     /// </summary>
     internal static NameSyntax? TryMapBuiltinCollectionToNonGenericInterface(string sharpyTypeName) =>
         sharpyTypeName switch

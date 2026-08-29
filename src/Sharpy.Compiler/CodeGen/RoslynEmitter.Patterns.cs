@@ -836,22 +836,12 @@ internal partial class RoslynEmitter
             return DeclarationPattern(arrayTypeSyntax, designation);
         }
 
-        if (typePattern.Type.TypeArguments.Length == 0 && IsObjectType(scrutineeType))
-        {
-            var nonGenericInterface = typePattern.Type.Name switch
-            {
-                BuiltinNames.List => MakeGlobalQualifiedName("Sharpy", "IList"),
-                BuiltinNames.Dict => MakeGlobalQualifiedName("Sharpy", "IDict"),
-                BuiltinNames.Set => MakeGlobalQualifiedName("Sharpy", "ISet"),
-                _ => null
-            };
-            if (nonGenericInterface != null)
-                return DeclarationPattern(nonGenericInterface, designation);
-        }
-
-        var typeSyntax = _context.SemanticInfo?.GetPatternType(typePattern) is { } decidedPatternType
-            ? _typeMapper.MapSemanticType(decidedPatternType)
-            : _typeMapper.MapType(typePattern.Type);
+        var typeTestLowering = _context.SemanticInfo?.GetTypeTestLowering(typePattern);
+        var typeSyntax = typeTestLowering != null
+            ? MapTypeTestTarget(typeTestLowering)
+            : _context.SemanticInfo?.GetPatternType(typePattern) is { } decidedPatternType
+                ? _typeMapper.MapSemanticType(decidedPatternType)
+                : _typeMapper.MapType(typePattern.Type);
         return DeclarationPattern(typeSyntax, designation);
     }
 }
