@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -64,7 +66,7 @@ internal static class ClrTypeHelper
     }
 
     // Caches (CLR type, Sharpy member name) -> matching generic instance method definitions.
-    private static readonly ConcurrentDictionary<(Type, string), MethodInfo[]> _genericInstanceMethodCache = new();
+    private static readonly ConcurrentDictionary<(Type, string), ImmutableArray<MethodInfo>> _genericInstanceMethodCache = new();
 
     /// <summary>
     /// Returns the public instance generic-method <em>definitions</em> on <paramref name="clrType"/>
@@ -76,7 +78,7 @@ internal static class ClrTypeHelper
     /// Only generic-method <em>definitions</em> are returned (<c>IsGenericMethodDefinition</c>), since the
     /// reference supplies its own explicit type arguments; empty when none match.
     /// </summary>
-    internal static MethodInfo[] ResolveGenericInstanceMethods(Type clrType, string memberName)
+    internal static ImmutableArray<MethodInfo> ResolveGenericInstanceMethods(Type clrType, string memberName)
     {
         if (_genericInstanceMethodCache.TryGetValue((clrType, memberName), out var cached))
             return cached;
@@ -85,7 +87,7 @@ internal static class ClrTypeHelper
         var matches = clrType.GetMethods(flags)
             .Where(m => m.IsGenericMethodDefinition
                 && NameMangler.ToSharpyName(m.Name, ReverseNameContext.Method) == memberName)
-            .ToArray();
+            .ToImmutableArray();
 
         _genericInstanceMethodCache[(clrType, memberName)] = matches;
         return matches;
@@ -94,7 +96,7 @@ internal static class ClrTypeHelper
     // Caches CLR type -> every name a member reference on it could legitimately denote: each public
     // member's verbatim CLR name plus its reverse-mangled Sharpy form. A null value memoizes a
     // reflection failure (inconclusive), which callers must treat as "cannot prove absence".
-    private static readonly ConcurrentDictionary<Type, HashSet<string>?> _memberNameSurfaceCache = new();
+    private static readonly ConcurrentDictionary<Type, FrozenSet<string>?> _memberNameSurfaceCache = new();
 
     /// <summary>
     /// Returns every name a Sharpy member reference on <paramref name="clrType"/> could denote — each
@@ -111,7 +113,7 @@ internal static class ClrTypeHelper
     /// emitter (#974). The set doubles as the candidate pool for a "did you mean" suggestion.
     /// </para>
     /// </summary>
-    internal static IReadOnlyCollection<string>? GetMemberNameSurface(Type clrType)
+    internal static IReadOnlySet<string>? GetMemberNameSurface(Type clrType)
     {
         return _memberNameSurfaceCache.GetOrAdd(clrType, static t =>
         {
@@ -130,7 +132,7 @@ internal static class ClrTypeHelper
                 return null;
             }
 
-            return names;
+            return names.ToFrozenSet(StringComparer.Ordinal);
         });
     }
 
@@ -147,7 +149,7 @@ internal static class ClrTypeHelper
     }
 
     // Caches assembly -> the verbatim and reverse-mangled names of every extension method it declares.
-    private static readonly ConcurrentDictionary<Assembly, HashSet<string>> _extensionMethodNameCache = new();
+    private static readonly ConcurrentDictionary<Assembly, FrozenSet<string>> _extensionMethodNameCache = new();
 
     /// <summary>
     /// Returns the verbatim and reverse-mangled names of every extension method declared in
@@ -157,7 +159,7 @@ internal static class ClrTypeHelper
     /// permissiveness (Anton's rule, #1141) and only names nothing can supply are rejected. Assemblies
     /// that cannot be inspected contribute no names.
     /// </summary>
-    internal static IReadOnlyCollection<string> GetExtensionMethodNames(Assembly assembly)
+    internal static IReadOnlySet<string> GetExtensionMethodNames(Assembly assembly)
     {
         return _extensionMethodNameCache.GetOrAdd(assembly, static asm =>
         {
@@ -170,7 +172,7 @@ internal static class ClrTypeHelper
             catch (Exception ex) when (ex is ReflectionTypeLoadException or TypeLoadException
                                           or FileNotFoundException or NotSupportedException)
             {
-                return names;
+                return names.ToFrozenSet(StringComparer.Ordinal);
             }
 
             foreach (var type in types)
@@ -191,7 +193,7 @@ internal static class ClrTypeHelper
                 }
             }
 
-            return names;
+            return names.ToFrozenSet(StringComparer.Ordinal);
         });
     }
 

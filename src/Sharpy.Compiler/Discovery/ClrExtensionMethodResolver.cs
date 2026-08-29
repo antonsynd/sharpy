@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -70,13 +71,13 @@ internal static class ClrExtensionMethodResolver
     /// Sharpy member name (and verbatim CLR name) -> the generic extension methods on the surface that
     /// could supply it. Built once; the surface is a fixed set of framework types.
     /// </summary>
-    private static readonly Lazy<Dictionary<string, List<MethodInfo>>> _byName = new(BuildIndex);
+    private static readonly Lazy<Dictionary<string, IReadOnlyList<MethodInfo>>> _byName = new(BuildIndex);
 
     private static readonly ConcurrentDictionary<Type, Type[]> _ancestorCache = new();
 
-    private static Dictionary<string, List<MethodInfo>> BuildIndex()
+    private static Dictionary<string, IReadOnlyList<MethodInfo>> BuildIndex()
     {
-        var index = new Dictionary<string, List<MethodInfo>>(StringComparer.Ordinal);
+        var mutable = new Dictionary<string, List<MethodInfo>>(StringComparer.Ordinal);
 
         foreach (var surface in SurfaceTypes)
         {
@@ -91,13 +92,16 @@ internal static class ClrExtensionMethodResolver
                 if (method.GetParameters().Length == 0)
                     continue;
 
-                Register(index, method.Name, method);
+                Register(mutable, method.Name, method);
                 var sharpyName = NameMangler.ToSharpyName(method.Name, ReverseNameContext.Method);
                 if (!string.Equals(sharpyName, method.Name, StringComparison.Ordinal))
-                    Register(index, sharpyName, method);
+                    Register(mutable, sharpyName, method);
             }
         }
 
+        var index = new Dictionary<string, IReadOnlyList<MethodInfo>>(mutable.Count, StringComparer.Ordinal);
+        foreach (var kv in mutable)
+            index[kv.Key] = new ReadOnlyCollection<MethodInfo>(kv.Value);
         return index;
     }
 

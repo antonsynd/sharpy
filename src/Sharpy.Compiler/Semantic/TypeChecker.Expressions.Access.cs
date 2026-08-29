@@ -1756,7 +1756,7 @@ internal partial class TypeChecker
     /// </summary>
     private bool ClrInstanceMemberMayExist(
         TypeSymbol ownerSymbol, SemanticType ownerType, string memberName,
-        out Type? reflectionType, out IReadOnlyCollection<string>? clrNames)
+        out Type? reflectionType, out IReadOnlySet<string>? clrNames)
     {
         reflectionType = null;
         clrNames = null;
