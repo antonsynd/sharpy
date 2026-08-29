@@ -95,10 +95,6 @@ internal partial class RoslynEmitter : ICodeEmitter
     /// </summary>
     private readonly List<LocalDeclarationStatementSyntax> _walrusPreDeclarations = new();
 
-    // Target type context for collection literal type inference
-    // Set before generating expressions that need target type information
-    private TypeAnnotation? _targetTypeContext;
-
     // Resolved return type of the function/method currently being generated.
     // Used so that a bare `return None` against an Optional<T> return type emits
     // Optional<T>.None rather than a bare `null` (which won't convert to the struct).

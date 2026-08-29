@@ -43,19 +43,8 @@ internal partial class RoslynEmitter
         // Add initializer if present
         if (varDecl.InitialValue != null)
         {
-            // Set target type context for collection literal type inference
-            // e.g., books: list[Book] = [] needs the element type from the annotation
-            var previousTargetType = _targetTypeContext;
-            _targetTypeContext = varDecl.Type;
-            try
-            {
-                var initExpr = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
-                variable = variable.WithInitializer(EqualsValueClause(initExpr));
-            }
-            finally
-            {
-                _targetTypeContext = previousTargetType;
-            }
+            var initExpr = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
+            variable = variable.WithInitializer(EqualsValueClause(initExpr));
         }
 
         var declaration = VariableDeclaration(fieldType)
@@ -351,17 +340,8 @@ internal partial class RoslynEmitter
         var fieldVariable = VariableDeclarator(EscapedIdentifier(backingFieldName));
         if (autoProp.DefaultValue != null)
         {
-            var previousTargetType = _targetTypeContext;
-            _targetTypeContext = autoProp.Type;
-            try
-            {
-                var initExpr = GenerateExpression(autoProp.DefaultValue);
-                fieldVariable = fieldVariable.WithInitializer(EqualsValueClause(initExpr));
-            }
-            finally
-            {
-                _targetTypeContext = previousTargetType;
-            }
+            var initExpr = GenerateExpression(autoProp.DefaultValue);
+            fieldVariable = fieldVariable.WithInitializer(EqualsValueClause(initExpr));
         }
 
         var fieldDeclaration = FieldDeclaration(
@@ -749,18 +729,9 @@ internal partial class RoslynEmitter
         // Add initializer if default value is present
         if (propDef.DefaultValue != null)
         {
-            var previousTargetType = _targetTypeContext;
-            _targetTypeContext = propDef.Type;
-            try
-            {
-                var initExpr = GenerateExpression(propDef.DefaultValue);
-                property = property.WithInitializer(EqualsValueClause(initExpr))
-                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
-            }
-            finally
-            {
-                _targetTypeContext = previousTargetType;
-            }
+            var initExpr = GenerateExpression(propDef.DefaultValue);
+            property = property.WithInitializer(EqualsValueClause(initExpr))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
 
         return property;
@@ -800,17 +771,8 @@ internal partial class RoslynEmitter
         var fieldVariable = VariableDeclarator(EscapedIdentifier(backingFieldName));
         if (propDef.DefaultValue != null)
         {
-            var previousTargetType = _targetTypeContext;
-            _targetTypeContext = propDef.Type;
-            try
-            {
-                var initExpr = GenerateInitializerValue(propDef.DefaultValue, propDef.Type);
-                fieldVariable = fieldVariable.WithInitializer(EqualsValueClause(initExpr));
-            }
-            finally
-            {
-                _targetTypeContext = previousTargetType;
-            }
+            var initExpr = GenerateInitializerValue(propDef.DefaultValue, propDef.Type);
+            fieldVariable = fieldVariable.WithInitializer(EqualsValueClause(initExpr));
         }
 
         yield return FieldDeclaration(

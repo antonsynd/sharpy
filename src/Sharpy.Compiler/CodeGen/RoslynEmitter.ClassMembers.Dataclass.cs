@@ -57,18 +57,9 @@ internal partial class RoslynEmitter
         // Add default value initializer if present
         if (varDecl.InitialValue != null)
         {
-            var previousTargetType = _targetTypeContext;
-            _targetTypeContext = varDecl.Type;
-            try
-            {
-                var initExpr = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
-                propDecl = propDecl.WithInitializer(EqualsValueClause(initExpr))
-                    .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
-            }
-            finally
-            {
-                _targetTypeContext = previousTargetType;
-            }
+            var initExpr = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
+            propDecl = propDecl.WithInitializer(EqualsValueClause(initExpr))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
 
         return propDecl;

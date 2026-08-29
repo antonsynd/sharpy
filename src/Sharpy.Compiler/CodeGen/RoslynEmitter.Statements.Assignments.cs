@@ -895,20 +895,9 @@ internal partial class RoslynEmitter
         ExpressionSyntax? initialValue = null;
         if (varDecl.InitialValue != null)
         {
-            // Set target type context for collection literal type inference
-            // This allows list/dict/set literals to use the declared type
-            var previousTargetType = _targetTypeContext;
-            _targetTypeContext = varDecl.Type;
-            try
-            {
-                // `x: T? = None` (direct bare None) must produce Optional<T>.None.
-                initialValue = TryGenerateBareNoneForOptional(varDecl.InitialValue, declaredType)
-                    ?? GenerateExpression(varDecl.InitialValue);
-            }
-            finally
-            {
-                _targetTypeContext = previousTargetType;
-            }
+            // `x: T? = None` (direct bare None) must produce Optional<T>.None.
+            initialValue = TryGenerateBareNoneForOptional(varDecl.InitialValue, declaredType)
+                ?? GenerateExpression(varDecl.InitialValue);
         }
 
         // The declared name is the symbol's recorded spelling — for a local const too. The
@@ -1092,19 +1081,9 @@ internal partial class RoslynEmitter
         VariableDeclaratorSyntax declarator;
         if (varDecl.InitialValue != null)
         {
-            // Set target type context for collection literal type inference
-            var previousTargetType = _targetTypeContext;
-            _targetTypeContext = varDecl.Type;
-            try
-            {
-                var value = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
-                declarator = VariableDeclarator(EscapedIdentifier(varName))
-                    .WithInitializer(EqualsValueClause(value));
-            }
-            finally
-            {
-                _targetTypeContext = previousTargetType;
-            }
+            var value = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
+            declarator = VariableDeclarator(EscapedIdentifier(varName))
+                .WithInitializer(EqualsValueClause(value));
         }
         else
         {

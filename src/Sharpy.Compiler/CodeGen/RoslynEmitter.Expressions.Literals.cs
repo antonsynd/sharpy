@@ -29,17 +29,8 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateListLiteral(ListLiteral list)
     {
         // new Sharpy.List<T> { elem1, elem2, elem3 }
-        // Prefer the target-type annotation when present: `xs: list[Base] = [Derived()]` must
-        // emit `new Sharpy.List<Base>` so C#'s invariant generic assignment succeeds. The
-        // SemanticInfo type reflects the element-inferred type (List<Derived>), which is correct
-        // for Sharpy's covariant list semantics but breaks the C# emitter.
         TypeSyntax elementType;
-        if (_targetTypeContext is { Name: BuiltinNames.List } targetList
-            && targetList.TypeArguments.Length > 0)
-        {
-            elementType = _typeMapper.MapType(targetList.TypeArguments[0]);
-        }
-        else if (GetExpressionSemanticType(list) is GenericType listSemType &&
+        if (GetExpressionSemanticType(list) is GenericType listSemType &&
             listSemType.Name == BuiltinNames.List &&
             listSemType.TypeArguments.Count > 0 &&
             listSemType.TypeArguments[0] is not UnknownType)
@@ -58,7 +49,7 @@ internal partial class RoslynEmitter
         // always has plain elements (no spread builder needed).
         if (_context.Ir.StackAllocatedLiterals.Contains(list))
         {
-            var arrayElements = list.Elements.Select(elem => GenerateWithNestedTargetType(elem, _targetTypeContext));
+            var arrayElements = list.Elements.Select(elem => GenerateExpression(elem));
             return ArrayCreationExpression(
                     ArrayType(elementType)
                         .WithRankSpecifiers(SingletonList(
@@ -77,7 +68,7 @@ internal partial class RoslynEmitter
             return GenerateSpreadCollectionBuilder(list.Elements, listType, listInfo!.SpreadMethodName, listInfo.AddMethodName);
         }
 
-        var elements = list.Elements.Select(elem => GenerateWithNestedTargetType(elem, _targetTypeContext));
+        var elements = list.Elements.Select(elem => GenerateExpression(elem));
 
         return ObjectCreationExpression(listType)
             .WithArgumentList(ArgumentList())
@@ -90,13 +81,7 @@ internal partial class RoslynEmitter
     {
         // new System.Collections.Generic.Dictionary<K,V> { { key1, value1 }, { key2, value2 } }
         TypeSyntax keyType, valueType;
-        if (_targetTypeContext is { Name: BuiltinNames.Dict } targetDict
-            && targetDict.TypeArguments.Length >= 2)
-        {
-            keyType = _typeMapper.MapType(targetDict.TypeArguments[0]);
-            valueType = _typeMapper.MapType(targetDict.TypeArguments[1]);
-        }
-        else if (GetExpressionSemanticType(dict) is GenericType dictSemType &&
+        if (GetExpressionSemanticType(dict) is GenericType dictSemType &&
             dictSemType.Name == BuiltinNames.Dict &&
             dictSemType.TypeArguments.Count >= 2 &&
             dictSemType.TypeArguments[0] is not UnknownType &&
@@ -120,27 +105,10 @@ internal partial class RoslynEmitter
             return GenerateSpreadDictBuilder(dict.Entries, dictType, dictInfo!.SpreadMethodName);
         }
 
-        var valueTargetType = _targetTypeContext?.Name == BuiltinNames.Dict
-            && _targetTypeContext.TypeArguments.Length >= 2
-            ? _targetTypeContext.TypeArguments[1]
-            : null;
         var initializers = dict.Entries.Select(entry =>
         {
             var keyExpr = GenerateExpression(entry.Key!);
-            ExpressionSyntax valExpr;
-            if (valueTargetType != null
-                && entry.Value is ListLiteral or SetLiteral or DictLiteral or TupleLiteral)
-            {
-                var prev = _targetTypeContext;
-                _targetTypeContext = valueTargetType;
-                try
-                { valExpr = GenerateExpression(entry.Value); }
-                finally { _targetTypeContext = prev; }
-            }
-            else
-            {
-                valExpr = GenerateExpression(entry.Value);
-            }
+            var valExpr = GenerateExpression(entry.Value);
             return InitializerExpression(SyntaxKind.ComplexElementInitializerExpression,
                 SeparatedList(new[] { keyExpr, valExpr }));
         });
@@ -184,12 +152,7 @@ internal partial class RoslynEmitter
     {
         // new Sharpy.Set<T> { elem1, elem2, elem3 }
         TypeSyntax elementType;
-        if (_targetTypeContext is { Name: BuiltinNames.Set } targetSet
-            && targetSet.TypeArguments.Length > 0)
-        {
-            elementType = _typeMapper.MapType(targetSet.TypeArguments[0]);
-        }
-        else if (GetExpressionSemanticType(set) is GenericType setSemType &&
+        if (GetExpressionSemanticType(set) is GenericType setSemType &&
             setSemType.Name == BuiltinNames.Set &&
             setSemType.TypeArguments.Count > 0 &&
             setSemType.TypeArguments[0] is not UnknownType)
@@ -210,7 +173,7 @@ internal partial class RoslynEmitter
             return GenerateSpreadCollectionBuilder(set.Elements, setType, setInfo!.SpreadMethodName, setInfo.AddMethodName);
         }
 
-        var elements = set.Elements.Select(elem => GenerateWithNestedTargetType(elem, _targetTypeContext));
+        var elements = set.Elements.Select(elem => GenerateExpression(elem));
 
         return ObjectCreationExpression(setType)
             .WithArgumentList(ArgumentList())
@@ -1334,32 +1297,4 @@ internal partial class RoslynEmitter
         return IdentifierName(tempName);
     }
 
-    /// <summary>
-    /// Generates an expression for a collection element, propagating the target type context
-    /// for nested collection literals (e.g., list[list[int]] = [[1, 2], [3, 4]]).
-    /// If the element is itself a collection literal and the parent target type has type arguments,
-    /// the inner element's target type is set to the parent's first type argument.
-    /// </summary>
-    private ExpressionSyntax GenerateWithNestedTargetType(Expression element, TypeAnnotation? parentTargetType)
-    {
-        if (parentTargetType == null ||
-            parentTargetType.TypeArguments.Length == 0 ||
-            element is not (ListLiteral or SetLiteral or DictLiteral or TupleLiteral))
-        {
-            return GenerateExpression(element);
-        }
-
-        var innerTargetType = parentTargetType.TypeArguments[0];
-
-        var previousTargetType = _targetTypeContext;
-        _targetTypeContext = innerTargetType;
-        try
-        {
-            return GenerateExpression(element);
-        }
-        finally
-        {
-            _targetTypeContext = previousTargetType;
-        }
-    }
 }

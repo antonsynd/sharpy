@@ -163,25 +163,12 @@ internal partial class RoslynEmitter
                 }
                 else
                 {
-                    // Set target type context for collection literal inference (e.g., self.items = [])
-                    var previousTargetType = _targetTypeContext;
                     var hasFieldType = fieldTypeMapping.TryGetValue(memberAccess.Member, out var fieldType);
-                    if (hasFieldType)
-                    {
-                        _targetTypeContext = fieldType;
-                    }
-                    try
-                    {
-                        // `self.field = None` for an Optional<T> field → Optional<T>.None.
-                        assignValue = (hasFieldType
-                                ? GenerateInitializerValue(assign.Value, fieldType)
-                                : null)
-                            ?? GenerateExpression(assign.Value);
-                    }
-                    finally
-                    {
-                        _targetTypeContext = previousTargetType;
-                    }
+                    // `self.field = None` for an Optional<T> field → Optional<T>.None.
+                    assignValue = (hasFieldType
+                            ? GenerateInitializerValue(assign.Value, fieldType)
+                            : null)
+                        ?? GenerateExpression(assign.Value);
 
                     // Method group → Optional<delegate> field needs an explicit delegate cast
                     assignValue = ApplyOptionalDelegateConversion(
@@ -276,24 +263,15 @@ internal partial class RoslynEmitter
                     ? (GetCodeGenInfo(fieldSymbol)?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped))
                     : NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped);
 
-                var previousTargetType = _targetTypeContext;
-                _targetTypeContext = fieldDecl.Type;
-                try
-                {
-                    var defaultExpr = GenerateInitializerValue(fieldDecl.InitialValue!, fieldDecl.Type);
-                    parameterlessStatements.Add(ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                ThisExpression(),
-                                IdentifierName(propName)),
-                            defaultExpr)));
-                }
-                finally
-                {
-                    _targetTypeContext = previousTargetType;
-                }
+                var defaultExpr = GenerateInitializerValue(fieldDecl.InitialValue!, fieldDecl.Type);
+                parameterlessStatements.Add(ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            ThisExpression(),
+                            IdentifierName(propName)),
+                        defaultExpr)));
             }
 
             constructors.Add(ConstructorDeclaration(EscapedIdentifier(className))
@@ -317,17 +295,8 @@ internal partial class RoslynEmitter
             // Add default value if present
             if (fieldDecl.InitialValue != null)
             {
-                var previousTargetType = _targetTypeContext;
-                _targetTypeContext = fieldDecl.Type;
-                try
-                {
-                    var defaultExpr = GenerateInitializerValue(fieldDecl.InitialValue, fieldDecl.Type);
-                    param = param.WithDefault(EqualsValueClause(defaultExpr));
-                }
-                finally
-                {
-                    _targetTypeContext = previousTargetType;
-                }
+                var defaultExpr = GenerateInitializerValue(fieldDecl.InitialValue, fieldDecl.Type);
+                param = param.WithDefault(EqualsValueClause(defaultExpr));
             }
 
             parameters.Add(param);

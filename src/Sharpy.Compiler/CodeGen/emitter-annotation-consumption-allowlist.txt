@@ -2,6 +2,5 @@
 # methods. Each entry cites the issue that removes the calls; when a fix drops the
 # count, update the entry in the same commit (stale entries fail the ratchet).
 # Format: FileName Count #IssueRef
-RoslynEmitter.Expressions.Literals.cs 4 #1671
 RoslynEmitter.Expressions.Operators.cs 1 #1670
 RoslynEmitter.Patterns.cs 7 #1670
