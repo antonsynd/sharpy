@@ -1019,9 +1019,13 @@ public class RoslynEmitterStatementTests
         Assert.Contains("catch (Exception)", result);
         Assert.Contains("finally", result);
         Assert.Contains("Cleanup();", result);
-        // Check for else execution after try-catch-finally
+        // Else runs BEFORE finally (Python ordering): the if(__trySucceeded_) block
+        // is nested inside the finally-protected region, not after it.
         Assert.Contains("if (__trySucceeded_", result);
         Assert.Contains("Success();", result);
+        var elsePos = result.IndexOf("if (__trySucceeded_", StringComparison.Ordinal);
+        var finallyPos = result.IndexOf("finally", result.IndexOf("catch", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.True(elsePos < finallyPos, "else block must appear before finally in the generated C#");
     }
 
     #endregion

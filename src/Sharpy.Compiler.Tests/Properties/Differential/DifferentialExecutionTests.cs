@@ -493,6 +493,308 @@ public class DifferentialExecutionTests : IntegrationTestBase
                 print(2 ** 10)
                 print(divmod(17, 5))
                 """),
+
+            // --- try/else/finally execution-order corpus (#1669) ---
+            // The 7 probes below have both else AND finally: reverting the nesting fix
+            // makes them red (old order: try,finally,else; Python: try,else,finally).
+
+            ("try_else_finally_order_normal", """
+                try:
+                    print("try")
+                except Exception:
+                    print("except")
+                else:
+                    print("else")
+                finally:
+                    print("finally")
+                """),
+            ("try_else_finally_order_caught", """
+                try:
+                    print("try")
+                    raise ValueError("x")
+                except ValueError:
+                    print("except")
+                else:
+                    print("else")
+                finally:
+                    print("finally")
+                """),
+            ("try_else_finally_order_uncaught", """
+                try:
+                    try:
+                        print("try")
+                        raise RuntimeError("boom")
+                    except ValueError:
+                        print("except")
+                    else:
+                        print("else")
+                    finally:
+                        print("finally")
+                except RuntimeError:
+                    print("outer caught")
+                """),
+            ("try_else_finally_order_return_try", """
+                def f() -> int:
+                    try:
+                        print("try")
+                        return 1
+                    except Exception:
+                        print("except")
+                    else:
+                        print("else")
+                    finally:
+                        print("finally")
+                    return 0
+                print(f())
+                """),
+            ("try_else_finally_order_return_else", """
+                def g() -> int:
+                    try:
+                        print("try")
+                    except Exception:
+                        print("except")
+                    else:
+                        print("else")
+                        return 42
+                    finally:
+                        print("finally")
+                    return 0
+                print(g())
+                """),
+            ("try_else_finally_order_exc_in_else", """
+                try:
+                    try:
+                        print("try")
+                    except Exception:
+                        print("except")
+                    else:
+                        print("else")
+                        raise RuntimeError("from else")
+                    finally:
+                        print("finally")
+                except RuntimeError:
+                    print("outer caught")
+                """),
+            ("try_else_finally_order_break", """
+                for i in range(3):
+                    try:
+                        print("try", i)
+                        if i == 1:
+                            break
+                    except Exception:
+                        print("except")
+                    else:
+                        print("else")
+                    finally:
+                        print("finally")
+                print("after")
+                """),
+
+            // --- try/else (no finally) ---
+
+            ("try_else_order_normal", """
+                try:
+                    print("try")
+                except Exception:
+                    print("except")
+                else:
+                    print("else")
+                """),
+            ("try_else_order_caught", """
+                try:
+                    print("try")
+                    raise ValueError("x")
+                except ValueError:
+                    print("except")
+                else:
+                    print("else")
+                """),
+            ("try_else_order_return_else", """
+                def h() -> int:
+                    try:
+                        print("try")
+                    except Exception:
+                        print("except")
+                    else:
+                        print("else")
+                        return 1
+                    return 0
+                print(h())
+                """),
+            ("try_else_order_exc_in_else", """
+                try:
+                    try:
+                        print("try")
+                    except ValueError:
+                        print("except")
+                    else:
+                        print("else")
+                        raise RuntimeError("from else")
+                except RuntimeError:
+                    print("outer caught")
+                """),
+            ("try_else_order_uncaught", """
+                try:
+                    try:
+                        print("try")
+                        raise RuntimeError("boom")
+                    except ValueError:
+                        print("except")
+                    else:
+                        print("else")
+                except RuntimeError:
+                    print("outer caught")
+                """),
+            ("try_else_order_return_try", """
+                def j() -> int:
+                    try:
+                        print("try")
+                        return 1
+                    except Exception:
+                        print("except")
+                    else:
+                        print("else")
+                    return 0
+                print(j())
+                """),
+
+            // --- try/finally (no else) ---
+
+            ("try_finally_order_normal", """
+                try:
+                    print("try")
+                finally:
+                    print("finally")
+                """),
+            ("try_finally_order_caught", """
+                try:
+                    print("try")
+                    raise ValueError("x")
+                except ValueError:
+                    print("except")
+                finally:
+                    print("finally")
+                """),
+            ("try_finally_order_uncaught", """
+                try:
+                    try:
+                        print("try")
+                        raise RuntimeError("boom")
+                    finally:
+                        print("finally")
+                except RuntimeError:
+                    print("outer caught")
+                """),
+            ("try_finally_order_return", """
+                def k() -> int:
+                    try:
+                        print("try")
+                        return 1
+                    finally:
+                        print("finally")
+                print(k())
+                """),
+            ("try_finally_order_break", """
+                for i in range(3):
+                    try:
+                        print("try", i)
+                        if i == 1:
+                            break
+                    finally:
+                        print("finally")
+                print("after")
+                """),
+            ("try_finally_order_continue", """
+                for i in range(3):
+                    try:
+                        print("try", i)
+                        if i == 0:
+                            continue
+                    finally:
+                        print("finally")
+                print("after")
+                """),
+
+            // --- try/else/finally continue variant ---
+
+            ("try_else_finally_order_continue", """
+                for i in range(2):
+                    try:
+                        print("try", i)
+                        if i == 0:
+                            continue
+                    except Exception:
+                        print("except")
+                    else:
+                        print("else")
+                    finally:
+                        print("finally")
+                print("after")
+                """),
+
+            // --- for-else ---
+
+            ("for_else_normal", """
+                for i in range(3):
+                    print("loop", i)
+                else:
+                    print("for-else")
+                """),
+            ("for_else_break", """
+                for i in range(3):
+                    if i == 1:
+                        break
+                    print("loop", i)
+                else:
+                    print("for-else")
+                print("after")
+                """),
+            ("for_else_exception", """
+                try:
+                    for i in range(3):
+                        if i == 2:
+                            raise ValueError("stop")
+                        print("loop", i)
+                    else:
+                        print("for-else")
+                except ValueError:
+                    print("caught")
+                """),
+
+            // --- while-else ---
+
+            ("while_else_normal", """
+                i: int = 0
+                while i < 3:
+                    print("loop", i)
+                    i += 1
+                else:
+                    print("while-else")
+                """),
+            ("while_else_break", """
+                i: int = 0
+                while i < 3:
+                    if i == 1:
+                        break
+                    print("loop", i)
+                    i += 1
+                else:
+                    print("while-else")
+                print("after")
+                """),
+            ("while_else_exception", """
+                try:
+                    i: int = 0
+                    while i < 3:
+                        if i == 2:
+                            raise ValueError("stop")
+                        print("loop", i)
+                        i += 1
+                    else:
+                        print("while-else")
+                except ValueError:
+                    print("caught")
+                """),
         };
 
         var list = new List<Program>(items.Length);
