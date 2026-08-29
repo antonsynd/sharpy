@@ -1095,17 +1095,14 @@ internal partial class TypeChecker
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Handles <see cref="BuiltinType"/> receivers directly (#1291) and constructed CLR generics
-    /// (#1640) via <see cref="TryGetClrType"/>. For non-builtin receivers, only METHOD resolution
-    /// is attempted — property resolution is skipped because codegen's zero-arg-call collapse
-    /// (<c>.count()</c> → <c>.Count</c>) requires the member to stay permissive.
+    /// Handles every CLR-origin receiver via <see cref="Discovery.ClrMemberTypeResolver"/>: BuiltinType,
+    /// GenericType (mapped and unmapped), UserDefinedType with ClrType, and inherited CLR members.
+    /// Both Pythonic (reverse-mangled) and verbatim CLR name spellings are accepted (#1640).
     /// </para>
     /// <para>
-    /// Only the PRESENT case is answered. A member that reflects nothing keeps today's Unknown
-    /// rather than drawing a refusal — a bogus member is still an ICE at emission (CS1061 behind
-    /// SPY0908), which is worth fixing, but refusing here would also refuse anything codegen can
-    /// resolve by a route this method does not know about, and a false refusal is worse than the
-    /// ICE it replaces.
+    /// Properties in callee position (<c>s.count()</c>) are declined so the call seam handles
+    /// them via the zero-arg-call-onto-property collapse; in value position they are typed and
+    /// the CLR property name is recorded for codegen.
     /// </para>
     /// </remarks>
     private SemanticType? BclMemberTypeOnBuiltinReceiver(MemberAccess memberAccess, SemanticType receiverType)
@@ -1122,6 +1119,10 @@ internal partial class TypeChecker
         {
             clrType = TryGetClrType(receiverType);
         }
+        else if (receiverType is UserDefinedType { Symbol.ClrType: not null } udt)
+        {
+            clrType = udt.Symbol.ClrType;
+        }
         else
         {
             return null;
@@ -1132,74 +1133,37 @@ internal partial class TypeChecker
             return null;
         }
 
-        var methodName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member);
-        if (methodName != null)
+        var resolver = new Discovery.ClrMemberTypeResolver(_bclGenericMethodBridge);
+        var resolution = resolver.Resolve(clrType, memberAccess.Member);
+
+        switch (resolution)
         {
-            var methods = clrType.GetMethods(System.Reflection.BindingFlags.Public
-                    | System.Reflection.BindingFlags.Instance
-                    | System.Reflection.BindingFlags.Static)
-                .Where(m => m.Name == methodName && !m.IsGenericMethodDefinition)
-                .ToList();
+            case Discovery.ClrMemberResolution.Method m:
+                _semanticInfo.SetResolvedClrMemberName(memberAccess, m.ClrName);
+                return m.Type;
 
-            // A METHOD member is a callable, so its type is a FunctionType — returning the return
-            // type directly would make `s.to_upper()` report "'str' is not callable". Only an
-            // unambiguous signature is described: with several overloads, which one applies is a
-            // call-site decision this method does not make.
-            if (methods.Count != 1)
-            {
+            case Discovery.ClrMemberResolution.MethodGroup:
                 return null;
-            }
 
-            var returnType = _bclGenericMethodBridge.MapClrTypeToSemanticType(methods[0].ReturnType);
-            if (returnType is UnknownType)
-            {
-                return null;
-            }
-
-            // A char-returning method is declined HERE so the call seam types it instead (#1291). The
-            // conversion to str belongs on the CALL node — the value that carries the char — and this
-            // seam describes the method group, which has no value to convert. Declining costs nothing:
-            // the call seam re-selects the same single overload by arity.
-            if (ClrCharProjection(returnType) != null)
-            {
-                return null;
-            }
-
-            var parameterTypes = new List<SemanticType>();
-            foreach (var parameter in methods[0].GetParameters())
-            {
-                var mapped = _bclGenericMethodBridge.MapClrTypeToSemanticType(parameter.ParameterType);
-                if (mapped is UnknownType)
-                {
+            case Discovery.ClrMemberResolution.Property prop:
+                // In callee position, decline so the call seam handles it via the
+                // zero-arg-call-onto-property collapse (#1640).
+                if (ReferenceEquals(memberAccess, _currentCallCallee))
                     return null;
-                }
 
-                parameterTypes.Add(mapped);
-            }
+                _semanticInfo.SetResolvedClrMemberName(memberAccess, prop.ClrName);
+                return ProjectClrChar(memberAccess, prop.Type);
 
-            return new FunctionType { ParameterTypes = parameterTypes, ReturnType = returnType };
-        }
-
-        // Property resolution is BuiltinType-only: a GenericType receiver's properties collide with
-        // codegen's zero-arg-call collapse (`.count()` → `.Count`), so typing the property here would
-        // make the call node see a non-callable int32 instead of staying permissive (#1640).
-        if (receiverType is BuiltinType)
-        {
-            var propertyName = Discovery.ClrTypeHelper.ResolveClrPropertyName(clrType, memberAccess.Member);
-            if (propertyName != null
-                && clrType.GetProperty(propertyName) is { } property)
-            {
-                var propertyType = _bclGenericMethodBridge.MapClrTypeToSemanticType(property.PropertyType);
-                if (propertyType is UnknownType)
-                {
+            case Discovery.ClrMemberResolution.Field field:
+                if (ReferenceEquals(memberAccess, _currentCallCallee))
                     return null;
-                }
 
-                return ProjectClrChar(memberAccess, propertyType);
-            }
+                _semanticInfo.SetResolvedClrMemberName(memberAccess, field.ClrName);
+                return field.Type;
+
+            default:
+                return null;
         }
-
-        return null;
     }
 
     /// <summary>
