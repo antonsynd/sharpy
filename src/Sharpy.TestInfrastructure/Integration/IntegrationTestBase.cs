@@ -550,9 +550,7 @@ public abstract class IntegrationTestBase
             // Discover all .spy files in the directory (including subdirectories for packages).
             // Directory.GetFiles order is filesystem-dependent; sort ordinally so the test
             // harness compiles in the same deterministic order as ProjectFileParser.Load (#1032).
-            var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
-                .Where(f => !Compiler.Diagnostics.CrashBundleWriter.IsNonSourceSegment(
-                    Path.GetRelativePath(projectDir, f)))
+            var sourceFiles = SourceGlob.EnumerateSourceFiles(projectDir, "*.spy", SearchOption.AllDirectories)
                 .OrderBy(f => f, StringComparer.Ordinal)
                 .ToList();
 
@@ -1042,7 +1040,7 @@ public abstract class IntegrationTestBase
         if (!Directory.Exists(nativeDir))
             return;
 
-        foreach (var file in Directory.GetFiles(nativeDir))
+        foreach (var file in SourceGlob.EnumerateArtifacts(nativeDir, "*"))
         {
             var destFile = Path.Combine(destDir, Path.GetFileName(file));
             if (!File.Exists(destFile))

@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.TestInfrastructure.Integration;
@@ -103,7 +104,7 @@ public static class FixtureDiscoveryHelper
 
             if (hasMainSpy || hasMainExpected || hasMainError)
             {
-                var spyFilesCount = Directory.GetFiles(dir, "*.spy", SearchOption.AllDirectories)
+                var spyFilesCount = SourceGlob.EnumerateSourceFiles(dir, "*.spy", SearchOption.AllDirectories)
                     .Count(f => !IsNonCorpus(basePath, f));
                 if (spyFilesCount > 1)
                 {
@@ -114,7 +115,7 @@ public static class FixtureDiscoveryHelper
 
         var processedDirectories = new HashSet<string>();
 
-        foreach (var spyFile in Directory.EnumerateFiles(basePath, "*.spy", SearchOption.AllDirectories))
+        foreach (var spyFile in SourceGlob.EnumerateSourceFiles(basePath, "*.spy", SearchOption.AllDirectories))
         {
             if (IsNonCorpus(basePath, spyFile))
             {

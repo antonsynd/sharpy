@@ -3,6 +3,7 @@ using SharpyLexer = Sharpy.Compiler.Lexer.Lexer;
 using SharpyParser = Sharpy.Compiler.Parser.Parser;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Project;
 
 namespace Sharpy.Compiler.Benchmarks;
 
@@ -103,7 +104,7 @@ public class ThroughputBenchmarks
     {
         var corpusDir = Path.Combine(AppContext.BaseDirectory, "Corpus");
 
-        var files = Directory.GetFiles(corpusDir, "*.spy").OrderBy(f => f, StringComparer.Ordinal).ToArray();
+        var files = SourceGlob.EnumerateSourceFiles(corpusDir, "*.spy", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.Ordinal).ToArray();
         _names = files.Select(Path.GetFileName).ToArray()!;
         _sources = files.Select(File.ReadAllText).ToArray();
         _lineCount = _sources.Sum(s => s.Split('\n').Length);
@@ -182,7 +183,7 @@ public class LexerBenchmarks
         _largeCorpusLineCount = _largeCorpusSource.Split('\n').Length;
 
         // Combined corpus for even larger tokenization
-        var files = Directory.GetFiles(corpusDir, "*.spy");
+        var files = SourceGlob.EnumerateSourceFiles(corpusDir, "*.spy", SearchOption.TopDirectoryOnly).ToArray();
         var sources = files.Select(File.ReadAllText);
         _combinedSource = string.Join("\n\n", sources);
         _combinedLineCount = _combinedSource.Split('\n').Length;

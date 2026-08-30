@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 
@@ -93,7 +94,7 @@ internal static class CliHelpers
         }
         else
         {
-            var perModuleAssemblies = Directory.GetFiles(coreDir, "Sharpy.Stdlib.*.dll");
+            var perModuleAssemblies = SourceGlob.EnumerateArtifacts(coreDir, "Sharpy.Stdlib.*.dll").ToArray();
             if (perModuleAssemblies.Length > 0)
             {
                 refs.AddRange(perModuleAssemblies);
