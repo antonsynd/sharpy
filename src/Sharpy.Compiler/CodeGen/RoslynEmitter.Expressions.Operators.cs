@@ -775,20 +775,21 @@ internal partial class RoslynEmitter
 
         if (coercion.Mode == CastFailureMode.Null)
         {
-            // The `as?` form writes T non-nullable while `to T?` carries IsOptional; stripping
-            // IsOptional here yields the same base type T for both. When the checker classified the
-            // target (#1235) that decision wins, so a bare generic name is the closed type the source
-            // determined rather than an open one — CS0305, twice, since this syntax is used in both
-            // the type pattern and the Optional<T> argument below.
+            // The base type T of `value as? T` is decided in semantic analysis for EVERY spelling:
+            // the classifier records it for a name that denotes a runtime type (#1235), and
+            // CheckTypeCoercion records the stripped base type for the nullable/optional/result
+            // spellings the classifier declines (#1670). This syntax is used twice below (the type
+            // pattern and the Optional<T> argument), and re-deriving it from the annotation here is
+            // what emitted the unspellable open generic (CS0305) — so a missing fact is an ICE, not
+            // a fallback (Critical Rule 2).
             var baseTypeSyntax = _context.SemanticInfo?.GetTypeTestLowering(coercion.TargetType) is { } targetLowering
                 ? MapTypeTestTarget(targetLowering)
-                : _typeMapper.MapType(new TypeAnnotation
-                {
-                    Name = coercion.TargetType.Name,
-                    IsNameBacktickEscaped = coercion.TargetType.IsNameBacktickEscaped,
-                    TypeArguments = coercion.TargetType.TypeArguments,
-                    IsOptional = false
-                });
+                : throw new InvalidOperationException(
+                    $"No type-test lowering was recorded for the cast target "
+                    + $"'{coercion.TargetType.Name}' at line {coercion.LineStart}, column "
+                    + $"{coercion.ColumnStart}. CheckTypeCoercion records one for every target it "
+                    + "accepts; a missing fact is a compiler bug, not a case for re-deriving the "
+                    + "type from the written annotation (#1670).");
 
             var numericLowering = _context.SemanticInfo?.GetTypeCoercionLowering(coercion);
             if (numericLowering != null)

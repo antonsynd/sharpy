@@ -506,20 +506,14 @@ internal partial class TypeChecker
     {
         var capturedType = capturedTypeOverride ?? scrutineeType;
 
-        if (capturedTypeOverride == null && asPattern.Inner is TypePattern typeInner)
+        if (capturedTypeOverride == null && asPattern.Inner is TypePattern typeInner
+            && _semanticInfo.GetPatternType(typeInner) is { } patternType)
         {
-            var patternType = _semanticInfo.GetPatternType(typeInner);
-            if (patternType != null)
-                capturedType = patternType;
-            else
-            {
-                var classified = ClassifyTypeTestAnnotation(
-                    typeInner.Type, typeInner, scrutineeType, "match pattern",
-                    CollectionErasure.Allowed,
-                    openGenericRemedyOverride: BuildPatternOpenGenericRemedy(typeInner.Type));
-                if (classified != null)
-                    capturedType = classified;
-            }
+            // The inner pattern has already been classified by the CheckPattern call above —
+            // ClassifyPatternClassTest records a type on every class pattern it accepts — so this
+            // READS that fact instead of classifying a second time. Classifying twice reported the
+            // same refusal twice and lodged the lowering twice (#1670).
+            capturedType = patternType;
         }
 
         var newSymbol = new VariableSymbol
@@ -604,8 +598,154 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Classifies the type a class pattern names — <c>case T():</c>, <c>case T(sub):</c> and
+    /// <c>case T{…}:</c> alike — and records every fact the validators and the emitter later read
+    /// off the pattern node: the type-test lowering, the pattern's type, and the test's totality
+    /// (#1670).
+    /// <para>
+    /// <b>One helper because the three arms are one rule</b> (owner ruling Q1, #1670): a class
+    /// pattern is STATIC, exactly like <c>isinstance</c> — the scrutinee's static type decides, and
+    /// nothing is reflected at run time. A bare erasable collection name is FILLED from the
+    /// scrutinee when the scrutinee determines the vector (<c>list[int]</c> × <c>case list(xs):</c>
+    /// tests <c>Sharpy.List&lt;int&gt;</c> and captures <c>list[int]</c>), ERASED to the non-generic
+    /// protocol interface when it does not (<c>object</c> × <c>case list(xs):</c> tests
+    /// <c>Sharpy.IList</c> and captures <c>list[object]</c>), and REFUSED when the two types are
+    /// provably disjoint (<c>str</c> × <c>case list(xs):</c> → SPY0361). Whichever arm the pattern
+    /// was written in cannot change that answer, which is exactly what went wrong: the positional
+    /// arm reached codegen with the annotation and emitted <c>Sharpy.List&lt;object&gt;</c> against
+    /// an <c>object</c> subject, so <c>case list(xs):</c> silently took the <c>_</c> arm.
+    /// </para>
+    /// <para>
+    /// The fill is tried BEFORE the erasure the <c>isinstance</c> classifier applies: a boolean site
+    /// only answers yes/no, but a pattern BINDS the subject, so a scrutinee that determines the
+    /// vector must give the capture its element type rather than <c>object</c>.
+    /// </para>
+    /// <para>
+    /// Null means stop — either the classifier reported the refusal (SPY0345 for an open generic
+    /// nothing fills), or the name denotes no type and SPY0202 is reported here. There is
+    /// deliberately no <c>?? scrutineeType</c> fallback: that fallback turned <c>case bytearray(v):</c>
+    /// into an irrefutable <c>case object v:</c> that matched an <c>int</c> (#1670).
+    /// </para>
+    /// </summary>
+    /// <param name="annotation">The type as written in the pattern.</param>
+    /// <param name="lodgeOn">The PATTERN node the facts are keyed on — walkers never visit
+    /// <see cref="TypePattern.Type"/>, so a fact lodged on the annotation would strand.</param>
+    /// <param name="scrutineeType">The static type of the value being matched.</param>
+    /// <param name="patternNoun">How SPY0202 names this position ("type pattern", …).</param>
+    /// <returns>The type the pattern tests against, or null when the pattern was refused.</returns>
+    private SemanticType? ClassifyPatternClassTest(
+        TypeAnnotation annotation,
+        Pattern lodgeOn,
+        SemanticType scrutineeType,
+        string patternNoun)
+    {
+        SemanticType? testType = null;
+
+        if (annotation.TypeArguments.Length == 0)
+        {
+            // Array scrutinee interop: bare `case list()` against `array[T]` tests the array itself,
+            // so indexing the capture lowers to ArrayHelpers.GetItem.
+            if (annotation.Name == BuiltinNames.List
+                && !annotation.IsNameBacktickEscaped
+                && scrutineeType is GenericType { Name: BuiltinNames.Array } arrayScrutinee)
+            {
+                testType = arrayScrutinee;
+            }
+            else if (_symbolTable.Lookup(annotation.Name) is TypeSymbol { IsGeneric: true } fillSymbol
+                && BuiltinNames.IsErasableCollection(fillSymbol.Name)
+                && FillTypeArgumentsFromSubject(fillSymbol, scrutineeType) is { } filledCollection)
+            {
+                testType = filledCollection;
+            }
+
+            if (testType != null)
+            {
+                _semanticInfo.SetTypeTestLowering(
+                    lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, testType));
+            }
+        }
+
+        testType ??= ClassifyTypeTestAnnotation(
+            annotation, lodgeOn, scrutineeType, "match pattern",
+            CollectionErasure.Allowed,
+            openGenericRemedyOverride: BuildPatternOpenGenericRemedy(annotation));
+
+        if (testType == null)
+        {
+            // The classifier records nothing for a name it cannot resolve and reports nothing for it
+            // either (it also returns null AFTER reporting SPY0345), so SPY0202 is this site's to
+            // raise — and only when the name really resolves to no type.
+            var knownSymbol = _symbolTable.Lookup(annotation.Name) as TypeSymbol;
+            if (knownSymbol == null && !annotation.IsNameBacktickEscaped)
+                knownSymbol = _typeResolver.LookupModuleQualifiedType(annotation.Name) as TypeSymbol;
+            if (knownSymbol == null)
+            {
+                AddError(
+                    $"Unknown type '{annotation.Name}' in {patternNoun}",
+                    lodgeOn.LineStart, lodgeOn.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UndefinedType,
+                    span: lodgeOn.Span);
+            }
+            return null;
+        }
+
+        // #1510: a tagged-union scrutinee is matched through its cases, never through the payload's
+        // type — `case Some(v):`/`case None():`, not `case int():`.
+        if (scrutineeType is OptionalType payloadOptional
+            && IsAssignable(testType, payloadOptional.UnderlyingType))
+        {
+            AddError(
+                $"An Optional scrutinee cannot be matched with the payload type pattern " +
+                $"'{testType.GetDisplayName()}'. Match through the constructor cases instead: " +
+                "'case Some(v):' for a present value and 'case None():' for absence " +
+                "(or narrow first with 'if x is not None:').",
+                lodgeOn.LineStart, lodgeOn.ColumnStart,
+                code: DiagnosticCodes.Validation.PayloadTypePatternOverUnion,
+                span: lodgeOn.Span);
+            return null;
+        }
+
+        if (scrutineeType is ResultType payloadResult
+            && (IsAssignable(testType, payloadResult.OkType)
+                || IsAssignable(testType, payloadResult.ErrorType)))
+        {
+            AddError(
+                $"A Result scrutinee cannot be matched with the payload type pattern " +
+                $"'{testType.GetDisplayName()}'. Match through the constructor cases instead: " +
+                "'case Ok(v):' for success and 'case Err(e):' for failure.",
+                lodgeOn.LineStart, lodgeOn.ColumnStart,
+                code: DiagnosticCodes.Validation.PayloadTypePatternOverUnion,
+                span: lodgeOn.Span);
+            return null;
+        }
+
+        // Provably disjoint: no value of the scrutinee's type can be an instance of the tested type,
+        // so the arm is dead. Refused statically here rather than left to CS8121 behind SPY0908.
+        if (scrutineeType is not UnknownType
+            && !IsAssignable(testType, scrutineeType)
+            && !IsAssignable(scrutineeType, testType))
+        {
+            AddError(
+                $"Type pattern '{annotation.Name}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
+                lodgeOn.LineStart, lodgeOn.ColumnStart,
+                code: DiagnosticCodes.Semantic.TypePatternIncompatible,
+                span: lodgeOn.Span);
+        }
+
+        _semanticInfo.SetPatternType(lodgeOn, testType);
+        if (scrutineeType is not UnknownType
+            && testType is not UnknownType
+            && IsAssignable(scrutineeType, testType))
+        {
+            _semanticInfo.SetPatternTotality(lodgeOn, true);
+        }
+
+        return testType;
+    }
+
+    /// <summary>
     /// Check a type pattern: resolve the type, handle union cases, validate compatibility,
-    /// and register any binding variable. Routes through the isinstance classifier so
+    /// and register any binding variable. Routes through the shared class-pattern classifier so
     /// <see cref="Semantic.SemanticInfo.SetTypeTestLowering"/> is recorded for every path
     /// and the emitter reads that fact instead of re-resolving (#1670).
     /// </summary>
@@ -619,118 +759,22 @@ internal partial class TypeChecker
             _semanticInfo.SetPatternUnionCase(typePattern, earlyUnionCase);
             var earlyResolved = new UserDefinedType { Name = earlyUnionCase.Name, Symbol = earlyUnionCase };
             _semanticInfo.SetPatternType(typePattern, earlyResolved);
+
+            // `case Some():` over an Optional scrutinee lowers to the (has-value, payload)
+            // deconstruction, so the type the emitted pattern TESTS is the payload, not the case
+            // symbol — recording the case symbol here is what emitted `case (true, Some _)` and
+            // CS0246 behind SPY0908 (#1670). Every other union case tests the case type itself.
+            var earlyTestType = earlyUnionCase.Name == WellKnownCaseNames.Some
+                && scrutineeType is OptionalType earlyOptional
+                    ? earlyOptional.UnderlyingType
+                    : earlyResolved;
             _semanticInfo.SetTypeTestLowering(typePattern,
-                new TypeTestLowering(TypeTestLoweringKind.ClosedType, earlyResolved));
-    
-            return;
-        }
-
-        // Array scrutinee interop: bare `case list()` against `array[T]` resolves to the
-        // array itself so indexing lowers to ArrayHelpers.GetItem.
-        if (typePattern.Type.TypeArguments.Length == 0
-            && typePattern.Type.Name == BuiltinNames.List
-            && scrutineeType is GenericType { Name: BuiltinNames.Array } arrayScrutinee)
-        {
-            _semanticInfo.SetPatternType(typePattern, arrayScrutinee);
-            _semanticInfo.SetTypeTestLowering(typePattern,
-                new TypeTestLowering(TypeTestLoweringKind.ClosedType, arrayScrutinee));
+                new TypeTestLowering(TypeTestLoweringKind.ClosedType, earlyTestType));
 
             return;
         }
 
-        // Erasable collections (list/dict/set): try fill-from-subject FIRST — patterns need
-        // the closed type for capture typing, not the erased interface. The isinstance classifier
-        // erases unconditionally, which is correct for isinstance but wrong for patterns when
-        // the scrutinee provides type arguments (#1299 defect 1).
-        if (typePattern.Type.TypeArguments.Length == 0)
-        {
-            var fillSymbol = _symbolTable.Lookup(typePattern.Type.Name) as TypeSymbol;
-            if (fillSymbol is { IsGeneric: true }
-                && BuiltinNames.IsErasableCollection(fillSymbol.Name)
-                && FillTypeArgumentsFromSubject(fillSymbol, scrutineeType) is { } filledCollection)
-            {
-                _semanticInfo.SetPatternType(typePattern, filledCollection);
-                _semanticInfo.SetTypeTestLowering(typePattern,
-                    new TypeTestLowering(TypeTestLoweringKind.ClosedType, filledCollection));
-                if (scrutineeType is not UnknownType && IsAssignable(scrutineeType, filledCollection))
-                    _semanticInfo.SetPatternTotality(typePattern, true);
-
-                return;
-            }
-        }
-
-        // The isinstance classifier handles the remaining cases: non-generic types, erasable
-        // collections on an object subject, user generics with fill-from-subject, and refusals.
-        var resolvedType = ClassifyTypeTestAnnotation(
-            typePattern.Type, typePattern, scrutineeType, "match pattern",
-            CollectionErasure.Allowed,
-            openGenericRemedyOverride: BuildPatternOpenGenericRemedy(typePattern.Type));
-
-        if (resolvedType == null)
-        {
-            // Classifier returns null for unknown types (no diagnostic) and open-generic
-            // refusals (SPY0345 reported). Distinguish by symbol lookup for SPY0202.
-            var knownSymbol = _symbolTable.Lookup(typePattern.Type.Name) as TypeSymbol;
-            if (knownSymbol == null && !typePattern.Type.IsNameBacktickEscaped)
-                knownSymbol = _typeResolver.LookupModuleQualifiedType(typePattern.Type.Name) as TypeSymbol;
-            if (knownSymbol == null)
-            {
-                AddError(
-                    $"Unknown type '{typePattern.Type.Name}' in type pattern",
-                    typePattern.LineStart, typePattern.ColumnStart,
-                    code: DiagnosticCodes.Semantic.UndefinedType,
-                    span: typePattern.Span);
-            }
-            return;
-        }
-
-        // #1510: refuse bare payload TYPE pattern over tagged-union scrutinee
-        if (scrutineeType is OptionalType payloadOptional
-            && IsAssignable(resolvedType, payloadOptional.UnderlyingType))
-        {
-            AddError(
-                $"An Optional scrutinee cannot be matched with the payload type pattern " +
-                $"'{resolvedType.GetDisplayName()}'. Match through the constructor cases instead: " +
-                "'case Some(v):' for a present value and 'case None():' for absence " +
-                "(or narrow first with 'if x is not None:').",
-                typePattern.LineStart, typePattern.ColumnStart,
-                code: DiagnosticCodes.Validation.PayloadTypePatternOverUnion,
-                span: typePattern.Span);
-            return;
-        }
-
-        if (scrutineeType is ResultType payloadResult
-            && (IsAssignable(resolvedType, payloadResult.OkType)
-                || IsAssignable(resolvedType, payloadResult.ErrorType)))
-        {
-            AddError(
-                $"A Result scrutinee cannot be matched with the payload type pattern " +
-                $"'{resolvedType.GetDisplayName()}'. Match through the constructor cases instead: " +
-                "'case Ok(v):' for success and 'case Err(e):' for failure.",
-                typePattern.LineStart, typePattern.ColumnStart,
-                code: DiagnosticCodes.Validation.PayloadTypePatternOverUnion,
-                span: typePattern.Span);
-            return;
-        }
-
-        if (scrutineeType is not UnknownType
-            && !IsAssignable(resolvedType, scrutineeType)
-            && !IsAssignable(scrutineeType, resolvedType))
-        {
-            AddError(
-                $"Type pattern '{typePattern.Type.Name}' is incompatible with scrutinee type '{scrutineeType.GetDisplayName()}'",
-                typePattern.LineStart, typePattern.ColumnStart,
-                code: DiagnosticCodes.Semantic.TypePatternIncompatible,
-                span: typePattern.Span);
-        }
-        if (_semanticInfo.GetPatternType(typePattern) == null)
-            _semanticInfo.SetPatternType(typePattern, resolvedType);
-        if (scrutineeType is not UnknownType
-            && IsAssignable(scrutineeType, resolvedType))
-        {
-            _semanticInfo.SetPatternTotality(typePattern, true);
-        }
-
+        ClassifyPatternClassTest(typePattern.Type, typePattern, scrutineeType, "type pattern");
     }
 
     /// <summary>
@@ -764,27 +808,10 @@ internal partial class TypeChecker
             }
             else
             {
-                var classifiedType = ClassifyTypeTestAnnotation(
-                    propertyPattern.Type, propertyPattern, scrutineeType, "match pattern",
-                    CollectionErasure.Allowed,
-                    openGenericRemedyOverride: BuildPatternOpenGenericRemedy(propertyPattern.Type));
+                var classifiedType = ClassifyPatternClassTest(
+                    propertyPattern.Type, propertyPattern, scrutineeType, "property pattern");
                 if (classifiedType == null)
-                {
-                    var knownSymbol = _symbolTable.Lookup(propertyPattern.Type.Name) as TypeSymbol;
-                    if (knownSymbol == null && !propertyPattern.Type.IsNameBacktickEscaped)
-                        knownSymbol = _typeResolver.LookupModuleQualifiedType(propertyPattern.Type.Name) as TypeSymbol;
-                    if (knownSymbol == null)
-                    {
-                        AddError(
-                            $"Unknown type '{propertyPattern.Type.Name}' in property pattern",
-                            propertyPattern.LineStart, propertyPattern.ColumnStart,
-                            code: DiagnosticCodes.Semantic.UndefinedType,
-                            span: propertyPattern.Span);
-                    }
                     return;
-                }
-
-                _semanticInfo.SetPatternType(propertyPattern, classifiedType);
 
                 typeSymbol = classifiedType switch
                 {
@@ -840,19 +867,14 @@ internal partial class TypeChecker
             }
             // PEP 634: the single sub-pattern matches the WHOLE subject, which at that point
             // is known to be an instance of the builtin — so it binds with the builtin's type,
-            // exactly as `case int() as n:` does (#1653).
-            var selfMatchedType = ClassifyTypeTestAnnotation(
-                positionalPattern.Type, positionalPattern, scrutineeType, "match pattern",
-                CollectionErasure.Allowed,
-                openGenericRemedyOverride: BuildPatternOpenGenericRemedy(positionalPattern.Type))
-                ?? scrutineeType;
+            // exactly as `case int() as n:` does (#1653). The type it binds with is the CLASSIFIED
+            // one, identical to what `case list() as xs:` binds: erased on an `object` subject,
+            // filled on a closed one, refused when disjoint (#1670).
+            var selfMatchedType = ClassifyPatternClassTest(
+                positionalPattern.Type, positionalPattern, scrutineeType, "positional pattern");
+            if (selfMatchedType == null)
+                return;
             CheckPattern(positionalPattern.Elements[0], selfMatchedType);
-            _semanticInfo.SetPatternType(positionalPattern, selfMatchedType);
-            if (selfMatchedType is not UnknownType && scrutineeType is not UnknownType
-                && IsAssignable(scrutineeType, selfMatchedType))
-            {
-                _semanticInfo.SetPatternTotality(positionalPattern, true);
-            }
             return;
         }
 
@@ -870,27 +892,10 @@ internal partial class TypeChecker
             }
             else
             {
-                var classifiedType = ClassifyTypeTestAnnotation(
-                    positionalPattern.Type, positionalPattern, scrutineeType, "match pattern",
-                    CollectionErasure.Allowed,
-                    openGenericRemedyOverride: BuildPatternOpenGenericRemedy(positionalPattern.Type));
+                var classifiedType = ClassifyPatternClassTest(
+                    positionalPattern.Type, positionalPattern, scrutineeType, "positional pattern");
                 if (classifiedType == null)
-                {
-                    var knownSymbol = _symbolTable.Lookup(positionalPattern.Type.Name) as TypeSymbol;
-                    if (knownSymbol == null && !positionalPattern.Type.IsNameBacktickEscaped)
-                        knownSymbol = _typeResolver.LookupModuleQualifiedType(positionalPattern.Type.Name) as TypeSymbol;
-                    if (knownSymbol == null)
-                    {
-                        AddError(
-                            $"Unknown type '{positionalPattern.Type.Name}' in positional pattern",
-                            positionalPattern.LineStart, positionalPattern.ColumnStart,
-                            code: DiagnosticCodes.Semantic.UndefinedType,
-                            span: positionalPattern.Span);
-                    }
                     return;
-                }
-
-                _semanticInfo.SetPatternType(positionalPattern, classifiedType);
 
                 typeSymbol = classifiedType switch
                 {

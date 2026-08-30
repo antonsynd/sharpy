@@ -2,5 +2,11 @@
 # methods. Each entry cites the issue that removes the calls; when a fix drops the
 # count, update the entry in the same commit (stale entries fail the ratchet).
 # Format: FileName Count #IssueRef
-RoslynEmitter.Expressions.Operators.cs 1 #1670
-RoslynEmitter.Patterns.cs 7 #1670
+#
+# EMPTY — every expression/pattern generator reads a materialized fact (#1670).
+# The single exempt reader is MapClassifiedTypeOperand (named by
+# EmitterTypeAnnotationConsumptionTests): it is the MODEL for fact-first reading and
+# its fallback arm is unreachable defence-in-depth for the retired `x is T` node.
+# Every other former fallback now throws: a missing fact is a compiler bug, not a
+# licence to re-derive the type from the written syntax. A new entry needs a filed
+# issue; a budget above the actual count fails the ratchet (drain on fix).

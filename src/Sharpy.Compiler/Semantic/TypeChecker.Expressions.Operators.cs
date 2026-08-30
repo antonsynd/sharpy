@@ -1233,6 +1233,29 @@ internal partial class TypeChecker
             siteNoun: "cast",
             erasure: CollectionErasure.Disallowed);
 
+        // A nullable/optional/result SPELLING (`x as? str | None`, `x as? str !int`) is declined by
+        // the classifier on purpose — the wrapper decides the value's shape, and the written name
+        // adds nothing to that decision. The emitter still has to name the BASE type for the type
+        // test it emits, so the base type is recorded here rather than re-derived from the
+        // annotation in CodeGen: that was the last annotation-shaped read left in the expression
+        // generators (Critical Rule 2, #1670).
+        if (decidedTarget == null && coercion.Mode == CastFailureMode.Null)
+        {
+            var baseAnnotation = coercion.TargetType with
+            {
+                IsOptional = false,
+                IsCSharpNullable = false,
+                ErrorType = null
+            };
+            var baseTargetType = _typeResolver.ResolveTypeAnnotation(baseAnnotation);
+            if (baseTargetType is not UnknownType)
+            {
+                _semanticInfo.SetTypeTestLowering(
+                    coercion.TargetType,
+                    new TypeTestLowering(TypeTestLoweringKind.ClosedType, baseTargetType));
+            }
+        }
+
         // Resolve the target type. For the Null failure mode (`as?`) the operator supplies the
         // optionality, so the non-nullable target is promoted to T? here to form the result type.
         var targetAnnotation = coercion.TargetType;

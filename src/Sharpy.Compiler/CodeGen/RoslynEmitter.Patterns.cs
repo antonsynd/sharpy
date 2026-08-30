@@ -426,13 +426,14 @@ internal partial class RoslynEmitter
 
             case PropertyPattern propertyPattern:
                 {
-                    // Same read as the type-pattern arm (#1235): a bare generic name had its argument
-                    // vector filled from the scrutinee and recorded as the pattern's type; mapping the
-                    // written annotation is only right when nothing was decided.
-                    var typeSyntax = _context.SemanticInfo?.GetPatternType(propertyPattern) is { } decidedPropertyType
-                        ? _typeMapper.MapSemanticType(decidedPropertyType)
+                    // Same read as every other class-pattern arm (#1670): the union case when the
+                    // checker resolved one, otherwise the recorded type-test lowering.
+                    var propertyUnionCase = _context.SemanticInfo?.GetPatternUnionCase(propertyPattern);
+                    var typeSyntax = propertyUnionCase != null
+                        ? BuildUnionCaseTypeSyntax(propertyUnionCase, scrutineeType)
                         : propertyPattern.Type != null
-                            ? _typeMapper.MapType(propertyPattern.Type) : null;
+                            ? PatternTestTypeSyntax(propertyPattern, propertyPattern.Type)
+                            : null;
                     var subPatterns = new List<SubpatternSyntax>();
                     foreach (var field in propertyPattern.Fields)
                     {
@@ -455,30 +456,26 @@ internal partial class RoslynEmitter
                         && SelfMatchingBuiltins.IsSelfMatching(positionalPattern.Type.Name)
                         && positionalPattern.Elements.Length == 1)
                     {
+                        // All three sub-arms test the SAME type, so all three read the same recorded
+                        // lowering (#1670). Reading GetPatternType here instead emitted the erased
+                        // CAPTURE type `Sharpy.List<object>` where the test is `Sharpy.IList`, and
+                        // `case list(xs):` on an `object` subject silently took the `_` arm.
+                        var selfTypeSyntax = PatternTestTypeSyntax(positionalPattern, positionalPattern.Type);
                         var innerElement = positionalPattern.Elements[0];
                         if (innerElement is BindingPattern bp)
                         {
                             var selfVarName = GetMangledVariableName(bp.Name, isNewDeclaration: true);
-                            var selfTypeSyntax = _context.SemanticInfo?.GetPatternType(positionalPattern) is { } decidedSelfType
-                                ? _typeMapper.MapSemanticType(decidedSelfType)
-                                : _typeMapper.MapType(positionalPattern.Type);
                             return DeclarationPattern(selfTypeSyntax,
                                 SingleVariableDesignation(Identifier(selfVarName)));
                         }
                         if (innerElement is WildcardPattern)
                         {
-                            var selfTypeSyntax = _context.SemanticInfo?.GetPatternType(positionalPattern) is { } decidedWildType
-                                ? _typeMapper.MapSemanticType(decidedWildType)
-                                : _typeMapper.MapType(positionalPattern.Type);
                             return DeclarationPattern(selfTypeSyntax, DiscardDesignation());
                         }
                         var innerPat = GenerateMatchPattern(
                             innerElement, memberGuards, ref matchVarCounter, scrutineeType);
-                        var typeSyn = _context.SemanticInfo?.GetPatternType(positionalPattern) is { } decidedInnerType
-                            ? _typeMapper.MapSemanticType(decidedInnerType)
-                            : _typeMapper.MapType(positionalPattern.Type);
                         return BinaryPattern(SyntaxKind.AndPattern,
-                            DeclarationPattern(typeSyn, DiscardDesignation()),
+                            DeclarationPattern(selfTypeSyntax, DiscardDesignation()),
                             innerPat);
                     }
 
@@ -496,11 +493,10 @@ internal partial class RoslynEmitter
                             positionalPattern, unionCase, scrutineeType, memberGuards, ref matchVarCounter);
                     }
 
-                    // Same read as the type-pattern arm (#1235) — see the property-pattern case above.
-                    var typeSyntax = _context.SemanticInfo?.GetPatternType(positionalPattern) is { } decidedPositionalType
-                        ? _typeMapper.MapSemanticType(decidedPositionalType)
-                        : positionalPattern.Type != null
-                            ? _typeMapper.MapType(positionalPattern.Type) : null;
+                    // Same read as the type-pattern arm (#1670) — see the property-pattern case above.
+                    var typeSyntax = positionalPattern.Type != null
+                        ? PatternTestTypeSyntax(positionalPattern, positionalPattern.Type)
+                        : null;
 
                     // Look up the type symbol to get field names for positional-to-property mapping
                     TypeSymbol? typeSymbol = null;
@@ -806,9 +802,7 @@ internal partial class RoslynEmitter
 
         if (unionCase?.Name == WellKnownCaseNames.Some && scrutineeType is OptionalType)
         {
-            var payloadTypeSyntax = _context.SemanticInfo?.GetPatternType(typePattern) is { } payloadType
-                ? _typeMapper.MapSemanticType(payloadType)
-                : _typeMapper.MapType(typePattern.Type);
+            var payloadTypeSyntax = PatternTestTypeSyntax(typePattern, typePattern.Type);
 
             var payloadPattern = DeclarationPattern(payloadTypeSyntax, designation);
 
@@ -827,21 +821,44 @@ internal partial class RoslynEmitter
             return DeclarationPattern(caseTypeSyntax, designation);
         }
 
-        if (typePattern.Type.TypeArguments.Length == 0
-            && typePattern.Type.Name == BuiltinNames.List
-            && _context.SemanticInfo?.GetPatternType(typePattern)
-                is GenericType { Name: BuiltinNames.Array } arrayPatternType)
-        {
-            var arrayTypeSyntax = _typeMapper.MapSemanticType(arrayPatternType);
-            return DeclarationPattern(arrayTypeSyntax, designation);
-        }
+        // The array-scrutinee decision (`case list()` against `array[T]`) is no longer taken here:
+        // the checker records it as a ClosedType lowering naming the array, which the shared read
+        // below maps identically (#1670).
+        return DeclarationPattern(PatternTestTypeSyntax(typePattern, typePattern.Type), designation);
+    }
 
-        var typeTestLowering = _context.SemanticInfo?.GetTypeTestLowering(typePattern);
-        var typeSyntax = typeTestLowering != null
-            ? MapTypeTestTarget(typeTestLowering)
-            : _context.SemanticInfo?.GetPatternType(typePattern) is { } decidedPatternType
-                ? _typeMapper.MapSemanticType(decidedPatternType)
-                : _typeMapper.MapType(typePattern.Type);
-        return DeclarationPattern(typeSyntax, designation);
+    /// <summary>
+    /// The C# type a class pattern tests against — READ, never derived (Critical Rule 2, #1670).
+    /// <para>
+    /// One reader for the type-pattern arm, all three positional self-matching sub-arms
+    /// (binding / wildcard / inner pattern) and the property-pattern arm, because they emit one
+    /// test. The recorded <see cref="TypeTestLowering"/> is consulted FIRST and the recorded pattern
+    /// type only as its narrower sibling: the two differ exactly where the difference matters — an
+    /// erased builtin collection tests <c>Sharpy.IList</c> while it CAPTURES <c>list[object]</c>, and
+    /// reading the capture type here is what emitted <c>case Sharpy.List&lt;object&gt; xs:</c> for
+    /// <c>case list(xs):</c> over an <c>object</c> subject, an arm that never matched.
+    /// </para>
+    /// <para>
+    /// A missing fact throws rather than falling back to the written annotation: semantic analysis
+    /// records one on every class pattern it accepts (<c>TypeChecker.ClassifyPatternClassTest</c>),
+    /// so its absence is a compiler bug, and the annotation fallback is precisely the Rule 2
+    /// violation this reader exists to remove — it is how the unspellable open generic
+    /// <c>Sharpy.List</c> (CS0305) reached the C# compiler.
+    /// </para>
+    /// </summary>
+    private TypeSyntax PatternTestTypeSyntax(Pattern pattern, TypeAnnotation annotation)
+    {
+        if (_context.SemanticInfo?.GetTypeTestLowering(pattern) is { } lowering)
+            return MapTypeTestTarget(lowering);
+
+        if (_context.SemanticInfo?.GetPatternType(pattern) is { } decidedPatternType)
+            return _typeMapper.MapSemanticType(decidedPatternType);
+
+        throw new InvalidOperationException(
+            $"No type-test lowering and no pattern type were recorded for the class pattern "
+            + $"'{annotation.Name}' at line {pattern.LineStart}, column {pattern.ColumnStart}. "
+            + "Semantic analysis records both on every class pattern it accepts "
+            + "(TypeChecker.ClassifyPatternClassTest); a missing fact is a compiler bug, not a case "
+            + "for re-deriving the type from the written annotation (#1670).");
     }
 }
