@@ -7,6 +7,11 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-08-30
+
+### Changed
+- No extension-facing changes; version bumped with the toolchain. Toolchain-side: in-place augmented assignment on collections graduated (SPY0478 retired); `try`/`else` without `except` is SPY0145; `del` reports one steer per target; CLR members are typed from reflection on every receiver kind, including their declared nullability (`T?` → `T | None`); stores are checked against the declared type; class patterns on generic builtins are decided by one classifier; augmented narrowing admits in-range constants.
+
 ## [0.16.1] - 2026-08-19
 
 ### Changed
