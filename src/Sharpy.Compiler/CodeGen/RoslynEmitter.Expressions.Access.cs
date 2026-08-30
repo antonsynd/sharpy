@@ -34,7 +34,12 @@ internal partial class RoslynEmitter
                 SyntaxKind.SimpleMemberAccessExpression,
                 objExpr,
                 IdentifierName(callableDispatch.InvokeMethodName));
-            var args = call.Arguments.Select(a => Argument(GenerateExpression(a))).ToArray();
+            // The resolved __call__ symbol drives the SAME argument generator every other call arm
+            // uses, so keyword arguments become named arguments and a reordered (`*args` /
+            // keyword-only) C# signature is respected. Emitting only the positional list dropped
+            // every keyword argument on the floor — CS7036 behind SPY0908 (#1672).
+            var callableTarget = _context.SemanticInfo?.GetCallTarget(call);
+            var args = GenerateReorderedCallArguments(call, callableTarget);
             return InvocationExpression(invokeAccess, ArgumentList(SeparatedList(args)));
         }
 

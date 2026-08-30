@@ -376,8 +376,10 @@ internal partial class TypeChecker
                     if (callableResult != null)
                         return callableResult;
 
+                    // SPY0230 (not callable), not SPY0201 (undefined function): the name IS bound —
+                    // its type simply has no __call__ and is not a function or delegate (#1672).
                     AddError($"'{id.Name}' is not callable (type: {calleeType.GetDisplayName()})",
-                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction,
+                        call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NotCallable,
                         span: call.Function.Span);
                     return SemanticType.Unknown;
                 }
@@ -601,8 +603,10 @@ internal partial class TypeChecker
         }
         else
         {
+            // SPY0230, the twin of the identifier-callee arm above: the expression evaluated to a
+            // type that is not callable, which is not the same thing as an undefined function.
             AddError($"Expression of type '{calleeType.GetDisplayName()}' is not callable",
-                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.UndefinedFunction,
+                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NotCallable,
                 span: call.Function.Span);
         }
         return SemanticType.Unknown;
@@ -2181,24 +2185,50 @@ internal partial class TypeChecker
     /// Returns null if no overloads are found.
     /// </summary>
     private List<FunctionSymbol>? FindMethodOverloadsInHierarchy(TypeSymbol type, string methodName)
-    {
-        // Check the type itself
-        if (type.MethodOverloads.TryGetValue(methodName, out var overloads) && overloads.Count > 0)
-            return overloads;
+        => FindOverloadsInHierarchy(type, methodName,
+            static (t, n) => t.MethodOverloads.TryGetValue(n, out var overloads) && overloads.Count > 0
+                ? overloads
+                : null);
 
-        // Check base class chain using TypeHierarchyService
+    /// <summary>
+    /// Finds the overload set for a DUNDER name walking the type hierarchy, or <c>null</c>.
+    ///
+    /// <para>Dunder overloads are deliberately kept out of <see cref="TypeSymbol.MethodOverloads"/>
+    /// — <c>NameResolver</c> files an operator dunder under <see cref="TypeSymbol.OperatorMethods"/>
+    /// and a protocol dunder (including <c>__call__</c>) under
+    /// <see cref="TypeSymbol.ProtocolMethods"/>. A lookup that reads only <c>MethodOverloads</c> is
+    /// therefore blind to every dunder overload set, which is how <c>obj(args)</c> on a class with
+    /// two <c>__call__</c> declarations resolved to whichever was written first (#1672).</para>
+    /// </summary>
+    private List<FunctionSymbol>? FindDunderOverloadsInHierarchy(TypeSymbol type, string dunderName)
+        => FindOverloadsInHierarchy(type, dunderName, static (t, n) =>
+            t.ProtocolMethods.TryGetValue(n, out var protocolOverloads) && protocolOverloads.Count > 0
+                ? protocolOverloads
+                : t.OperatorMethods.TryGetValue(n, out var operatorOverloads) && operatorOverloads.Count > 0
+                    ? operatorOverloads
+                    : null);
+
+    /// <summary>
+    /// The one hierarchy walk both overload lookups share: the type itself, then its base-class
+    /// chain, then its interfaces (the last handles interface-typed variables and interface methods
+    /// not reachable through the base chain, #364). Only the per-type dictionary differs.
+    /// </summary>
+    private List<FunctionSymbol>? FindOverloadsInHierarchy(
+        TypeSymbol type, string name, Func<TypeSymbol, string, List<FunctionSymbol>?> lookup)
+    {
+        if (lookup(type, name) is { } own)
+            return own;
+
         foreach (var baseType in TypeHierarchyService.GetAllBaseTypes(type, SemanticBinding))
         {
-            if (baseType.MethodOverloads.TryGetValue(methodName, out overloads) && overloads.Count > 0)
-                return overloads;
+            if (lookup(baseType, name) is { } inherited)
+                return inherited;
         }
 
-        // Check interfaces — handles interface-typed variables and interface
-        // methods not found via base class chain (#364)
         foreach (var iface in TypeHierarchyService.GetAllInterfaces(type, SemanticBinding))
         {
-            if (iface.MethodOverloads.TryGetValue(methodName, out overloads) && overloads.Count > 0)
-                return overloads;
+            if (lookup(iface, name) is { } fromInterface)
+                return fromInterface;
         }
 
         return null;
@@ -4747,50 +4777,95 @@ internal partial class TypeChecker
     /// Tries to resolve <c>obj(args)</c> through a <c>__call__</c> dunder method on the callee's
     /// type. Returns the call's return type if <c>__call__</c> is found and validated; null otherwise.
     /// Records <see cref="CallableObjectDispatch"/> so the emitter emits <c>obj.Invoke(args)</c>.
+    ///
+    /// <para><c>obj(args)</c> IS the member call <c>obj.__call__(args)</c>, so it resolves through
+    /// the same machinery <c>obj.m(args)</c> does rather than a private re-implementation of it
+    /// (#1672): <see cref="FindMethodOverloadsInHierarchy"/> and
+    /// <see cref="TypeHierarchyService.FindMethod"/> for the base/interface walk,
+    /// <see cref="ResolveOverloadCore"/> for the overload set, and
+    /// <see cref="ValidateCallArguments"/> for arity, defaults, <c>*args</c>, keyword names and
+    /// argument types. The hand-rolled loop this replaced saw only the type's OWN methods, took the
+    /// first same-named candidate, and never read <paramref name="kwargTypes"/> at all — so an
+    /// inherited <c>__call__</c> was "not callable", a keyword argument reached codegen unbound
+    /// (CS7036 behind SPY0908), <c>*args</c> was an arity error, and an overload pair resolved to
+    /// whichever member was declared first.</para>
+    ///
+    /// <para>Writing <c>obj.__call__(args)</c> explicitly stays refused (SPY0427,
+    /// <c>dunder_invocation_rules.md</c>) — that refusal is on the member-access seam and is
+    /// unaffected by this route.</para>
     /// </summary>
     private SemanticType? TryResolveCallableObject(
         SemanticType calleeType, FunctionCall call,
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
     {
-        if (calleeType is not UserDefinedType { Symbol: TypeSymbol typeSymbol })
+        TypeSymbol? typeSymbol;
+        List<SemanticType>? typeArgs = null;
+        if (calleeType is UserDefinedType { Symbol: { } udt })
+        {
+            typeSymbol = udt;
+        }
+        else if (calleeType is GenericType)
+        {
+            var (resolved, resolvedTypeArgs) = ResolveBuiltinTypeInfo(calleeType);
+            typeSymbol = resolved;
+            typeArgs = resolvedTypeArgs;
+        }
+        else
+        {
+            return null;
+        }
+
+        if (typeSymbol == null)
             return null;
 
-        var callMethod = typeSymbol.Methods.FirstOrDefault(m => m.Name == DunderNames.Call);
+        Func<SemanticType, SemanticType>? typeSubstitution = null;
+        if (typeArgs != null && typeSymbol.TypeParameters.Count > 0)
+        {
+            var capturedTypeSymbol = typeSymbol;
+            var capturedTypeArgs = typeArgs;
+            typeSubstitution = t => SubstituteTypeParameters(t, capturedTypeSymbol.TypeParameters, capturedTypeArgs);
+        }
+
+        FunctionSymbol? callMethod;
+        var overloads = FindDunderOverloadsInHierarchy(typeSymbol, DunderNames.Call);
+        if (overloads is { Count: > 1 })
+        {
+            var kwNames = ExtractKeywordArgNames(call);
+            var (matchingOverload, arityCandidates, isAmbiguous) = ResolveOverloadCore(
+                new OverloadResolutionContext(overloads, totalArgCount, argTypes,
+                    SkipSelfParam: true, TypeSubstitution: typeSubstitution,
+                    SkipUnknownTypes: true, KeywordArgNames: kwNames, Call: call));
+
+            if (isAmbiguous || matchingOverload == null)
+            {
+                ReportOverloadError(DunderNames.Call, call, isAmbiguous, arityCandidates, totalArgCount);
+                return SemanticType.Unknown;
+            }
+
+            callMethod = matchingOverload;
+        }
+        else
+        {
+            (callMethod, _) = TypeHierarchyService.FindMethod(typeSymbol, DunderNames.Call, SemanticBinding);
+        }
+
         if (callMethod == null)
             return null;
 
-        var selfOffset = callMethod.Parameters.Count > 0 &&
-                         callMethod.Parameters[0].Name == "self" ? 1 : 0;
-        var paramCount = callMethod.Parameters.Count - selfOffset;
+        // The call site writes no receiver, so `self` is not one of its arguments — the same
+        // skipLeading rule the member seam applies when it types `obj.m` as a FunctionType.
+        var selfOffset = callMethod.Parameters.Count > 0
+                         && callMethod.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+        var parameters = selfOffset == 0
+            ? (IReadOnlyList<ParameterSymbol>)callMethod.Parameters
+            : callMethod.Parameters.Skip(selfOffset).ToList();
 
-        var optionalCount = callMethod.Parameters.Skip(selfOffset).Count(p => p.DefaultValue != null);
-
-        if (totalArgCount < paramCount - optionalCount || totalArgCount > paramCount)
-        {
-            var expected = optionalCount > 0
-                ? $"{paramCount - optionalCount} to {paramCount}"
-                : $"{paramCount}";
-            AddError(
-                $"'{calleeType.GetDisplayName()}.__call__' expects {expected} argument(s) but {totalArgCount} were given",
-                call.LineStart, call.ColumnStart,
-                code: DiagnosticCodes.Semantic.WrongArgumentCount, span: call.Span);
-            return SemanticType.Unknown;
-        }
-
-        for (int i = 0; i < Math.Min(argTypes.Count, paramCount); i++)
-        {
-            var param = callMethod.Parameters[i + selfOffset];
-            if (param.Type != null && argTypes[i] is not UnknownType &&
-                !argTypes[i].IsAssignableTo(param.Type))
-            {
-                AddError(
-                    $"Argument type '{argTypes[i].GetDisplayName()}' is not assignable to parameter '{param.Name}' of type '{param.Type.GetDisplayName()}'",
-                    call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch, span: call.Arguments[i].Span);
-            }
-        }
+        ValidateCallArguments(call, parameters, argTypes, kwargTypes, totalArgCount,
+            clrParameterNames: callMethod.ClrMethodName != null);
 
         var returnType = callMethod.ReturnType ?? SemanticType.Void;
+        if (typeSubstitution != null)
+            returnType = typeSubstitution(returnType);
 
         RecordResolvedCallTarget(call, callMethod);
         _semanticInfo.SetCallableObjectDispatch(call,
