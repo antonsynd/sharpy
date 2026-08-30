@@ -1666,3 +1666,42 @@ class TestXmlEntitiesAndKeywordScoping:
     def test_global_prefix_is_stripped_everywhere(self):
         assert _fixup_prose("see global::Sharpy.List") == "see Sharpy.List"
         assert _fixup_prose("`global::Sharpy.List`") == "`Sharpy.List`"
+
+
+# ---------------------------------------------------------------------------
+# EditorBrowsable(Never) members are not public surface (#1614 InPlaceRepeat)
+# ---------------------------------------------------------------------------
+
+
+def test_editor_browsable_never_member_is_skipped(tmp_path: Path) -> None:
+    src = textwrap.dedent(
+        """
+        namespace Sharpy
+        {
+            public partial class List<T>
+            {
+                /// <summary>Extend the list.</summary>
+                public void Extend(IEnumerable<T> items) { }
+
+                /// <summary>Compiler-only mutator for `list *=`.</summary>
+                [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+                public void InPlaceRepeat(int n) { }
+
+                [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+                /// <summary>Attribute above the doc block is seen too.</summary>
+                public int HiddenCount { get; }
+
+                /// <summary>Visible property.</summary>
+                public int Count { get; }
+            }
+        }
+        """
+    )
+    f = tmp_path / "List.Methods.cs"
+    f.write_text(src)
+    names = [m.name for m in parse_cs_file(f)]
+    assert "extend" in names
+    assert "count" in names
+    # Mutation: drop `_is_hidden_from_surface` from any member site -> this goes red.
+    assert "in_place_repeat" not in names
+    assert "hidden_count" not in names

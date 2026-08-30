@@ -548,6 +548,36 @@ def _is_skippable(name: str, doc_lines: list[str]) -> bool:
     return False
 
 
+def _collect_attribute_lines(lines: list[str], decl_index: int) -> list[str]:
+    """Collect the C# attribute lines (`[...]`) that immediately precede a declaration.
+
+    Walks backwards over attributes, comments and blank lines the same way
+    ``_collect_doc_lines`` does, so an attribute above or below the doc block is seen.
+    """
+    attrs: list[str] = []
+    i = decl_index - 1
+    while i >= 0:
+        stripped = lines[i].strip()
+        if stripped.startswith("["):
+            attrs.insert(0, stripped)
+            i -= 1
+        elif stripped.startswith("///") or stripped.startswith("//") or stripped.startswith("#") or stripped == "":
+            i -= 1
+        else:
+            break
+    return attrs
+
+
+def _is_hidden_from_surface(attr_lines: list[str]) -> bool:
+    """A member marked ``[EditorBrowsable(EditorBrowsableState.Never)]`` is not public surface.
+
+    Sharpy.Core uses the attribute for compiler-only mutators (e.g. ``List<T>.InPlaceRepeat``,
+    the ``list *=`` lowering, #1614); the interop sweep skips them for the same reason.
+    """
+    text = " ".join(attr_lines)
+    return "EditorBrowsable" in text and "Never" in text
+
+
 def _collect_doc_lines(lines: list[str], decl_index: int) -> list[str]:
     """Collect XML doc comment lines preceding a declaration."""
     doc_lines = []
@@ -951,7 +981,7 @@ def parse_cs_file(
         if const_match:
             ctype, cname, cval = const_match.groups()
             doc_lines = _collect_doc_lines(lines, i)
-            if not _is_skippable(cname, doc_lines):
+            if not _is_skippable(cname, doc_lines) and not _is_hidden_from_surface(_collect_attribute_lines(lines, i)):
                 doc = _parse_xml_doc(doc_lines)
                 members.append(
                     DocMember(
@@ -991,7 +1021,7 @@ def parse_cs_file(
                 continue
 
             doc_lines = _collect_doc_lines(lines, i)
-            if _is_skippable(mname, doc_lines):
+            if _is_skippable(mname, doc_lines) or _is_hidden_from_surface(_collect_attribute_lines(lines, i)):
                 i = end_i + 1
                 continue
 
@@ -1049,7 +1079,7 @@ def parse_cs_file(
             if prop_match:
                 modifiers, ptype, pname = prop_match.groups()
                 doc_lines = _collect_doc_lines(lines, i)
-                if not _is_skippable(pname, doc_lines):
+                if not _is_skippable(pname, doc_lines) and not _is_hidden_from_surface(_collect_attribute_lines(lines, i)):
                     doc = _parse_xml_doc(doc_lines)
                     members.append(
                         DocMember(
