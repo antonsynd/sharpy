@@ -261,6 +261,15 @@ public class InteropConformanceTests
                             continue;
                         }
 
+                        // [EditorBrowsable(Never)] marks a compiler-only member (List<T>.InPlaceRepeat,
+                        // the `list *=` lowering, #1614): not public surface, so not a sweep cell —
+                        // the stdlib doc generator applies the same rule (build_tools, #1614).
+                        if (IsHiddenFromSurface(clrType, group.Key))
+                        {
+                            RecordNotAttempted(moduleName, $"{typeInfo.Name}.{group.Key}", "method", PosMethod, "EditorBrowsable(Never): compiler-only member, not public surface");
+                            continue;
+                        }
+
                         membersEnumerated++;
                         // Instance methods now accept explicit type args (recv.m[T](…) →
                         // recv.M<T>(…), #1133), so a generic instance method renders and is
@@ -965,6 +974,27 @@ public class InteropConformanceTests
     }
 
     /// <summary>True when the name is a plain identifier (letters/digits/underscore, no leading digit).</summary>
+    /// <summary>
+    /// True when every CLR method reached under <paramref name="pythonicName"/> on
+    /// <paramref name="clrType"/> is marked <c>[EditorBrowsable(EditorBrowsableState.Never)]</c> —
+    /// a compiler-only member that is not part of the module's public surface.
+    /// </summary>
+    private static bool IsHiddenFromSurface(Type? clrType, string pythonicName)
+    {
+        if (clrType == null)
+            return false;
+
+        var clrName = NameMangler.ToPascalCase(pythonicName);
+        var candidates = clrType
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
+            .Where(m => string.Equals(m.Name, clrName, StringComparison.Ordinal))
+            .ToList();
+
+        return candidates.Count > 0 && candidates.All(m =>
+            m.GetCustomAttribute<System.ComponentModel.EditorBrowsableAttribute>()?.State
+                == System.ComponentModel.EditorBrowsableState.Never);
+    }
+
     private static bool IsIdentifier(string name)
     {
         if (string.IsNullOrEmpty(name) || char.IsDigit(name[0]))
