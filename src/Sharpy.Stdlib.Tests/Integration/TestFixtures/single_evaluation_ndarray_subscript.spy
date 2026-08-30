@@ -1,0 +1,53 @@
+# NdArray subscript bounds evaluate exactly once (#1689, #1226, #1665).
+# Extension of the single_evaluation_* family to the NdArray lowering route:
+# SliceSpec.At (multi-axis index), GenerateSliceSpec (multi-axis slice), and
+# single-axis NdArray.Slice. Python evaluates subscript bounds left-to-right,
+# each exactly once — verified with python3 -c against numpy.
+import numpy as np
+
+class Counter:
+    value: int
+    def __init__(self):
+        self.value = 0
+
+c: Counter = Counter()
+
+def probe_i() -> int:
+    c.value += 1
+    print("probe_i")
+    return 1
+
+def probe_s() -> int:
+    c.value += 1
+    print("probe_s")
+    return 0
+
+def probe_e() -> int:
+    c.value += 1
+    print("probe_e")
+    return 2
+
+def main() -> None:
+    a = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0]])
+
+    # Cell 1: Multi-axis At arm — a[probe_i(), 1:3]
+    # probe_i evaluates once via SliceSpec.At
+    c.value = 0
+    r1 = a[probe_i(), 1:3]
+    print(r1.size)
+    print(c.value)
+
+    # Cell 2: Multi-axis GenerateSliceSpec — a[probe_s():probe_e(), :]
+    # probe_s and probe_e each evaluate once, left-to-right
+    c.value = 0
+    r2 = a[probe_s():probe_e(), :]
+    print(r2.size)
+    print(c.value)
+
+    # Cell 3: Single-axis on 1-D ndarray — b[probe_s():probe_e()]
+    # Routes through SliceLoweringKind.NdArray -> GenerateSliceSpec
+    b = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    c.value = 0
+    r3 = b[probe_s():probe_e()]
+    print(r3.size)
+    print(c.value)

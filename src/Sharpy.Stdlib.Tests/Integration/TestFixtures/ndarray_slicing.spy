@@ -1,13 +1,8 @@
 # Ported from src/Sharpy.Stdlib.Tests/NdArraySlicingTests.cs.
 # Covers multi-axis slicing (a[start:stop, ...]), GetRow, GetColumn, and view
-# strides.
-#
-# Key constraint: a *single-axis* slice on an ndarray (e.g. a[1:4]) does NOT
-# reach NdArray.Slice — the compiler routes single-axis subscript slicing through
-# the generic Sharpy.Slice.GetSlice helper, which has no ndarray overload, so it
-# fails to compile. Only multi-axis slices (a[r0:r1, c0:c1]) emit NdArray.Slice
-# calls. The original 1-D Slice tests are therefore re-expressed as slices over
-# axis 1 of a 1xN array, which is semantically equivalent.
+# strides. The 1-D tests here use axis-1 slices of 1xN arrays to exercise
+# multi-axis lowering; single-axis 1-D slicing (a[1:4]) is covered by
+# ndarray_single_axis_slice_1608.spy.
 #
 # Omitted tests (cannot be expressed in .spy):
 #   - SliceSpec_* (DefaultIsAll, ZeroStep_Throws, Equality): exercise the
@@ -17,9 +12,9 @@
 #     GetColumn_ModifiesOriginal: verify view aliasing by mutating an element
 #     through the indexer setter, which is unreachable from .spy (setter value
 #     type is the generic T).
-#   - Slice_WrongSliceCount_Throws: passes one slice to a 2-D array. A single-axis
-#     slice never reaches NdArray.Slice (see note above), so the IndexError path
-#     cannot be triggered from .spy.
+#   - Slice_WrongSliceCount_Throws: passes one slice to a 2-D array; the
+#     single-axis path lowers to NdArray.Slice with one SliceSpec, which throws
+#     IndexError at runtime because Slice requires one spec per dimension.
 #   - Slice_Null_Throws: passes null to Slice; null is unreachable (Axiom 3).
 #   - GetRow_OutOfRange / GetColumn_OutOfRange / GetRow_NotTwoDimensional /
 #     GetColumn_NotTwoDimensional are ported as separate .runtime-error fixtures.
