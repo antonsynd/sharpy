@@ -68,16 +68,22 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
                 span: pattern.Span);
         }
 
-        // Type subsumption: an unguarded total type pattern whose recorded type contains
-        // a later unguarded arm's recorded type (#1651 sibling). Patterns that are fully
-        // irrefutable are handled above; this catches partial totality (e.g., `case int()`
-        // over an `object` scrutinee subsumes `case 99:`).
+        // Type subsumption: an earlier UNGUARDED arm that matches every value of its recorded type
+        // makes any later arm whose recorded type is contained in it unreachable (#1651 sibling,
+        // #1672). Fully irrefutable patterns are reported by the loop above; this loop catches the
+        // arm that is total only WITHIN its own type — `case int():` over an `object` scrutinee
+        // subsumes a later `case 99:`, which reached the C# compiler as CS8120 behind SPY0908.
+        //
+        // Totality against the SCRUTINEE is deliberately not the gate: `case int():` over `object`
+        // is not total, which is exactly why these arms went unreported. The requirement is that the
+        // earlier pattern refutes on its TYPE ALONE (CoversItsRecordedType) — a literal or a
+        // refutable sub-pattern also refutes on a value, and then the later arm stays reachable.
         for (int i = 0; i < arms.Count - 1; i++)
         {
             var (pattern, guard) = arms[i];
             if (guard != null) continue;
             if (ExhaustivenessHelper.IsIrrefutable(pattern, context.SemanticInfo)) continue;
-            if (!IsTypeTotalPattern(pattern, context.SemanticInfo)) continue;
+            if (!CoversItsRecordedType(pattern, context.SemanticInfo)) continue;
 
             var earlierType = GetPatternRecordedType(pattern, context.SemanticInfo);
             if (earlierType == null) continue;
@@ -90,7 +96,10 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
                 {
                     AddError(
                         context,
-                        $"Type '{earlierType.GetDisplayName()}' in earlier arm subsumes '{laterType!.GetDisplayName()}' pattern",
+                        $"This arm is unreachable: an earlier arm matches every "
+                        + $"'{earlierType.GetDisplayName()}', which covers this "
+                        + $"'{laterType!.GetDisplayName()}' pattern. Move this arm before it, or "
+                        + "guard the earlier arm",
                         arms[j].Pattern.LineStart, arms[j].Pattern.ColumnStart,
                         code: DiagnosticCodes.ValidationOverflow.IrrefutablePatternNotLast,
                         span: arms[j].Pattern.Span);
@@ -111,6 +120,29 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
         };
     }
 
+    /// <summary>
+    /// Whether the pattern matches EVERY value of the type recorded for it — i.e. its only ground
+    /// for refusing a value is the type test itself.
+    /// <para>
+    /// This is the subsumption rule's left-hand side. <c>case int():</c> and <c>case int(n):</c>
+    /// qualify (the sub-pattern binds, it does not filter), <c>case Box(a, b):</c> qualifies, and
+    /// <c>case 99:</c>, <c>case int(99):</c> and <c>case Box(1, b):</c> do NOT — each refutes on a
+    /// value as well as on a type, so a later arm of the same type is still reachable.
+    /// </para>
+    /// </summary>
+    private static bool CoversItsRecordedType(Pattern pattern, SemanticInfo? info)
+    {
+        return pattern switch
+        {
+            TypePattern => true,
+            AsPattern asp => CoversItsRecordedType(asp.Inner, info),
+            PositionalPattern pp =>
+                pp.Elements.All(e => ExhaustivenessHelper.IsIrrefutable(e, info)),
+            PropertyPattern prop => prop.Fields.Length == 0,
+            _ => false
+        };
+    }
+
     private static SemanticType? GetPatternRecordedType(Pattern pattern, SemanticInfo? info)
     {
         return pattern switch
@@ -123,10 +155,25 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
         };
     }
 
+    /// <summary>
+    /// Whether every value the later arm can match is already matched by the earlier arm.
+    /// <para>
+    /// A pattern is a RUNTIME type test, so containment here is exact for a builtin: <c>case
+    /// float():</c> does not match a boxed <c>int</c>, even though <c>int</c> is implicitly
+    /// convertible to <c>float</c> and therefore assignable to it. Using assignability for that
+    /// pair would refuse <c>case float(): … case 1:</c>, which runs and prints the literal's arm
+    /// (verified against python3 3.12, which prints the same). Reference types keep assignability,
+    /// which is where inheritance lives.
+    /// </para>
+    /// </summary>
     private static bool TypeSubsumes(SemanticType? earlierType, SemanticType? laterType)
     {
         if (earlierType == null || laterType == null)
             return false;
+        if (earlierType is UnknownType || laterType is UnknownType)
+            return false;
+        if (earlierType is BuiltinType || laterType is BuiltinType)
+            return earlierType.Equals(laterType);
         return laterType.IsAssignableTo(earlierType);
     }
 
