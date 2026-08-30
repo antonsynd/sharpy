@@ -148,4 +148,63 @@ def main():
             string.Join("\n", result.CompilationErrors));
         result.StandardOutput.Trim().Should().Be("a");
     }
+
+    /// <summary>
+    /// MergeFrom execution-level cell (#1695): the builtin callable reference (len) is
+    /// recorded in lib.spy's per-file SemanticInfo. The callable-reference lowering must
+    /// survive the per-file → project merge for the emitter to read it.
+    /// </summary>
+    [Fact]
+    public void MultiFile_BuiltinReference_InLibFunction_Executes()
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("BuiltinRefLibSide")
+            .AddSourceFile("lib.spy", @"
+def shortest_word(words: list[str]) -> str:
+    return min(words, key=len)
+")
+            .AddSourceFile("main.spy", @"
+from lib import shortest_word
+
+def main():
+    print(shortest_word([""ccc"", ""a"", ""bb""]))
+")
+            .CreateProjectFile();
+
+        var result = helper.CompileAndExecute();
+        result.Success.Should().BeTrue(
+            "builtin callable reference in lib.spy must survive MergeFrom; errors: " +
+            string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Trim().Should().Be("a");
+    }
+
+    /// <summary>
+    /// MergeFrom execution-level cell (#1695): len returned as a callable value from
+    /// lib.spy. The callable-reference lowering for len is recorded in lib's per-file
+    /// SemanticInfo and must survive the merge for the emitter to read it.
+    /// </summary>
+    [Fact]
+    public void MultiFile_BuiltinReference_ReturnedAsValue_Executes()
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("BuiltinRefReturnedValue")
+            .AddSourceFile("lib.spy", @"
+def get_measure() -> (str) -> int:
+    return len
+")
+            .AddSourceFile("main.spy", @"
+from lib import get_measure
+
+def main():
+    f: (str) -> int = get_measure()
+    print(f(""hello""))
+")
+            .CreateProjectFile();
+
+        var result = helper.CompileAndExecute();
+        result.Success.Should().BeTrue(
+            "builtin callable reference returned from lib.spy must survive MergeFrom; errors: " +
+            string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Trim().Should().Be("5");
+    }
 }
