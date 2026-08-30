@@ -1,0 +1,5 @@
+KnownRed: CS0161 — `return` as the sole exit of a `with` body whose context manager declares the
+4-arg __exit__ fails codegen with SPY0908 (CS0161: not all code paths return a value). Measured at
+c68a2683d; the no-arg twin (exit_order_dunder1_sole_return) is green, so the defect is in the
+suppression-capable lowering. Delete this file when the ICE is fixed — the .expected already holds
+python3's measured trace.

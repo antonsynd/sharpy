@@ -1,0 +1,34 @@
+# with-statement execution order (#1669), row 2 of 3: the 4-arg `__exit__` form, which sees the
+# exception and can suppress it by returning True.
+# Cell: normal completion — __exit__ sees no exception.
+#
+# Not expressible in the differential corpus (see exit_order_dunder1_normal.spy for why): the
+# `Exception?` annotation the 4-arg form requires is a CPython SyntaxError. The python3 program
+# below is the semantic equivalent, and its measured trace is what .expected pins.
+#
+# python3 equivalent:
+#   class Tracked:
+#       def __enter__(self):
+#           print("enter")
+#           return 1
+#       def __exit__(self, exc_type, exc_val, exc_tb):
+#           print("exit", exc_val is not None)
+#           return False
+#   with Tracked():
+#       print("inside")
+#   print("after")
+#   # measured: enter / inside / exit False / after
+
+class Tracked:
+    def __enter__(self) -> int:
+        print("enter")
+        return 1
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        print("exit " + str(exc_val is not None))
+        return False
+
+def main() -> None:
+    with Tracked():
+        print("inside")
+    print("after")

@@ -497,6 +497,23 @@ public class DifferentialExecutionTests : IntegrationTestBase
             // --- try/else/finally execution-order corpus (#1669) ---
             // The 7 probes below have both else AND finally: reverting the nesting fix
             // makes them red (old order: try,finally,else; Python: try,else,finally).
+            //
+            // There are deliberately NO `with` cells here, and there cannot be. A hand-picked
+            // program is run verbatim by both arms, and no user-defined context manager can be
+            // spelled so that both accept it (all three measured at c68a2683d):
+            //   * Sharpy's no-arg `__exit__(self)` is a CPython TypeError — CPython calls
+            //     `__exit__` with three arguments.
+            //   * The 4-arg form's parameters must be annotated (SPY0226 otherwise) and the
+            //     annotations must be nullable (`type?`/`Exception?`/`object?`), and `T?` is a
+            //     CPython SyntaxError.
+            //   * `def __exit__(self, *args)` satisfies neither: SPY0226 on `args`, and the
+            //     protocol accepts only 1 or 4 declared parameters.
+            // The IDisposable form has no CPython analogue at all. Consistently, the fixture
+            // arm's shared-subset filter rejects every `with` (sharpy-only-node:WithStatement)
+            // and every ClassDef. The `with` execution-order matrix therefore lives where a
+            // trace can be pinned instead of compared:
+            // TestFixtures/context_managers/exit_order_* (#1669), whose headers quote the
+            // equivalent python3 program and its measured output.
 
             ("try_else_finally_order_normal", """
                 try:

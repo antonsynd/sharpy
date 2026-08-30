@@ -1,0 +1,44 @@
+# with-statement execution order (#1669), row 2, the cell that does NOT work today.
+# Cell: return as the SOLE exit of a `with` body whose context manager has a 4-arg __exit__.
+#
+# KnownRed: CS0161 — lead files the issue. Measured at c68a2683d:
+#   error[SPY0908]: internal error: generated C# failed to compile
+#     (CS0161: 'SoleReturn3arg.Sole()': not all code paths return a value)
+# The 4-arg lowering wraps the body so C# cannot see the return as exhaustive. The no-arg form of
+# the same shape compiles and runs (exit_order_dunder1_sole_return), which isolates the defect to
+# the suppression-capable lowering rather than to `with` + `return` in general.
+#
+# The .expected below is python3's measured trace, not Sharpy's current behaviour — delete the
+# .skip sidecar when the ICE is fixed and this cell becomes the regression test.
+#
+# python3 equivalent:
+#   class Tracked:
+#       def __enter__(self):
+#           print("enter")
+#           return 1
+#       def __exit__(self, exc_type, exc_val, exc_tb):
+#           print("exit", exc_val is not None)
+#           return False
+#   def sole():
+#       with Tracked():
+#           print("inside")
+#           return 9
+#   print(sole())
+#   # measured: enter / inside / exit False / 9
+
+class Tracked:
+    def __enter__(self) -> int:
+        print("enter")
+        return 1
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        print("exit " + str(exc_val is not None))
+        return False
+
+def sole() -> int:
+    with Tracked():
+        print("inside")
+        return 9
+
+def main() -> None:
+    print(sole())

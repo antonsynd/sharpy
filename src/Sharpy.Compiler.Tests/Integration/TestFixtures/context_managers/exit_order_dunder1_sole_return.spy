@@ -1,0 +1,39 @@
+# with-statement execution order (#1669), row 1 of 3: the no-arg `__exit__` form.
+# Cell: return as the SOLE exit of the body — the positive control for the 4-arg cell of the same shape, which is a known CS0161 ICE (see exit_order_dunder4_sole_return.skip).
+#
+# These cells cannot live in the DifferentialExecutionTests corpus: its shared-subset filter
+# rejects both `with` (sharpy-only-node:WithStatement) and every class definition, and no
+# user-defined context manager can be spelled identically in both languages anyway (Sharpy's
+# no-arg `__exit__` is a TypeError in CPython, and the 4-arg form's `Exception?` annotation is a
+# CPython SyntaxError). The trace below is therefore pinned here and checked by hand against the
+# equivalent python3 program, whose measured output is quoted with each cell.
+#
+# python3 equivalent (a `__exit__(self, exc_type, exc_val, exc_tb)` that only cleans up):
+#   class Simple:
+#       def __enter__(self):
+#           print("enter")
+#           return 1
+#       def __exit__(self, exc_type, exc_val, exc_tb):
+#           print("exit")
+#   def sole():
+#       with Simple():
+#           print("inside")
+#           return 9
+#   print(sole())
+#   # measured: enter / inside / exit / 9
+
+class Simple:
+    def __enter__(self) -> int:
+        print("enter")
+        return 1
+
+    def __exit__(self) -> None:
+        print("exit")
+
+def sole() -> int:
+    with Simple():
+        print("inside")
+        return 9
+
+def main() -> None:
+    print(sole())

@@ -1,0 +1,36 @@
+# with-statement execution order (#1669), row 2 of 3: the 4-arg `__exit__` form, which sees the
+# exception and can suppress it by returning True.
+# Cell: __exit__ returns True — the exception is suppressed and execution continues after the block.
+#
+# Not expressible in the differential corpus (see exit_order_dunder1_normal.spy for why): the
+# `Exception?` annotation the 4-arg form requires is a CPython SyntaxError. The python3 program
+# below is the semantic equivalent, and its measured trace is what .expected pins.
+#
+# python3 equivalent:
+#   class Suppressor:
+#       def __enter__(self):
+#           print("enter")
+#           return 1
+#       def __exit__(self, exc_type, exc_val, exc_tb):
+#           print("exit", exc_val is not None)
+#           return True
+#   with Suppressor():
+#       print("inside")
+#       raise ValueError("boom")
+#   print("after with")
+#   # measured: enter / inside / exit True / after with
+
+class Suppressor:
+    def __enter__(self) -> int:
+        print("enter")
+        return 1
+
+    def __exit__(self, exc_type: object?, exc_val: Exception?, exc_tb: object?) -> bool:
+        print("exit " + str(exc_val is not None))
+        return True
+
+def main() -> None:
+    with Suppressor():
+        print("inside")
+        raise ValueError("boom")
+    print("after with")

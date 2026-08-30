@@ -1,0 +1,18 @@
+# with-statement execution order (#1669), row 3 of 3: the IDisposable form — no dunders at all,
+# so `with` lowers to `using` and only the cleanup half of the protocol exists (there is no
+# `__enter__`, hence no "enter" line, and Dispose cannot suppress an exception).
+# Cell: normal completion.
+#
+# CPython has no IDisposable, so this row has no byte-identical python3 twin at all; the trace
+# below is the row-1 trace minus the "enter" line, which is the whole semantic difference.
+
+from System import IDisposable
+
+class Res(IDisposable):
+    def dispose(self) -> None:
+        print("dispose")
+
+def main() -> None:
+    with Res():
+        print("inside")
+    print("after")
