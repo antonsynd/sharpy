@@ -29,6 +29,12 @@ class CM:
         return 42
     def __exit__(self) -> None:
         pass
+
+class CMPair:
+    def __enter__(self) -> tuple[int, str]:
+        return (1, ""two"")
+    def __exit__(self) -> None:
+        pass
 ";
 
     // ── Assignment position ──
@@ -87,6 +93,38 @@ def main() -> None:
         var result = CompileAndExecute(source);
         result.Success.Should().BeTrue();
         result.StandardOutput.Should().Contain("1 2");
+    }
+
+    [Fact]
+    public void TupleElement_Attribute()
+    {
+        // Not N/A: a tuple unpack target is any store target, not only a name — python3 binds
+        // p.x=1, p.y=2 here and Sharpy has always emitted it through GenerateStore's recursive
+        // unpacking. The "tuple unpack targets are names" premise was simply false (#1672 E2).
+        var source = Preamble + @"
+def main() -> None:
+    p: Box = Box(0)
+    q: Box = Box(0)
+    p.value, q.value = 1, 2
+    print(p.value, q.value)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Contain("1 2");
+    }
+
+    [Fact]
+    public void TupleElement_Index()
+    {
+        var source = Preamble + @"
+def main() -> None:
+    xs: list[int] = [0, 0]
+    xs[0], xs[1] = 3, 4
+    print(xs[0], xs[1])
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Contain("3 4");
     }
 
     [Fact]
@@ -269,7 +307,52 @@ def main() -> None:
         result.StandardOutput.Should().Contain("42");
     }
 
-    // With-as + tuple: N/A — would need CM to return a tuple, and Python's `with CM() as (a, b)` is uncommon
+    [Fact]
+    public void WithAs_Tuple()
+    {
+        // "Uncommon" was never a reason to call a cell N/A — python3 binds a=1, b="two" here when
+        // __enter__ returns the pair, and the parser has accepted the target since fbfe27503. The
+        // cell was N/A on a false premise while the binder reported SPY0200 on every name (#1672 E2).
+        var source = Preamble + @"
+def main() -> None:
+    with CMPair() as (a, b):
+        print(a)
+        print(b)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Contain("1");
+        result.StandardOutput.Should().Contain("two");
+    }
+
+    [Fact]
+    public void WithAs_Tuple_ArityMismatch_Refused()
+    {
+        var source = Preamble + @"
+def main() -> None:
+    with CMPair() as (a, b, c):
+        print(a)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+            "a tuple target whose arity does not match __enter__'s tuple is refused, not bound");
+    }
+
+    [Fact]
+    public void WithAs_Tuple_NonTupleEnter_Refused()
+    {
+        var source = Preamble + @"
+def main() -> None:
+    with CM() as (a, b):
+        print(a)
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.InvalidTupleUnpacking,
+            "__enter__ returns int here, so there is nothing to unpack");
+    }
+
     // With-as + starred: N/A — not a meaningful pattern
 
     // ── Except-as position — REFUSED ──
@@ -440,12 +523,14 @@ def main() -> None:
     // Del + starred: N/A — `del *a` is a SyntaxError in python3 as well
 
     // ── N/A cells documentation ──
-    // The following cells are N/A (not applicable) and intentionally untested:
-    //   - Tuple element × attribute/index: tuple unpack targets are names in Sharpy
+    // The following cells are N/A (not applicable) and intentionally untested. "Uncommon" is not a
+    // reason — an N/A must be a cell that cannot exist. Three former N/A entries (tuple element ×
+    // attribute, tuple element × index, with-as × tuple) were N/A on false premises and are now
+    // running cells above (#1672 E2).
     //   - Starred × attribute/index: starred unpack target is always a name
     //   - For statement + starred: Python does not support `for *rest, last in ...`
     //   - Comprehension + starred: Python does not support starred targets in comprehension for-clauses
-    //   - With-as + tuple/starred: uncommon patterns, no parser support
+    //   - With-as + starred: `with CM() as *rest` is a SyntaxError in Python too
     //   - Except-as + tuple/starred: Python itself refuses these
     //   - Walrus + tuple/starred: walrus is always a single-name binding
     //   - Del + starred: `del *a` is a SyntaxError in python3 as well

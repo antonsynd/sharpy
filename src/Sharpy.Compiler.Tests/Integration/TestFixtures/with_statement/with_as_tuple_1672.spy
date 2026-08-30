@@ -1,0 +1,12 @@
+class CMPair:
+    def __enter__(self) -> tuple[int, str]:
+        return (1, "two")
+
+    def __exit__(self) -> None:
+        pass
+
+
+def main() -> None:
+    with CMPair() as (a, b):
+        print(a)
+        print(b)
