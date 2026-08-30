@@ -71,7 +71,7 @@ internal sealed class ClrMemberTypeResolver
 
             if (Matches(prop.Name, memberName, ReverseNameContext.Property))
             {
-                if (!TryMapFaithfully(prop.PropertyType, out var propType))
+                if (!TryMapFaithfully(prop.PropertyType, ClrDeclaredNullability.DeclaresNullable(prop), out var propType))
                     return ClrMemberResolution.Inconclusive;
 
                 var clrPropertyName = prop.Name;
@@ -84,7 +84,7 @@ internal sealed class ClrMemberTypeResolver
         {
             if (Matches(field.Name, memberName, ReverseNameContext.Property))
             {
-                if (!TryMapFaithfully(field.FieldType, out var fieldType))
+                if (!TryMapFaithfully(field.FieldType, ClrDeclaredNullability.DeclaresNullable(field), out var fieldType))
                     return ClrMemberResolution.Inconclusive;
 
                 return new ClrMemberResolution.Field(fieldType!, field.Name);
@@ -137,6 +137,8 @@ internal sealed class ClrMemberTypeResolver
     /// <item><b>Open generics.</b> Reflecting a STATIC member on an unconstructed definition yields
     /// the definition's own type parameters — <c>dict.fromkeys</c> came back as
     /// <c>dict[str, V]</c>, a type with a free variable no destination can accept.</item>
+    /// <item><b>Declared nullability.</b> The mapped type is wrapped in <see cref="NullableType"/> when the
+    /// member declares <c>T?</c> — read from the member, never from the Type (#1705).</item>
     /// <item><b>A scalar <c>char</c>.</b> Sharpy reads a CLR char as a one-character <c>str</c> at
     /// a call's RESULT (#1291), but a char-typed member is also written as a char ARGUMENT:
     /// <c>IoPath.DirectorySeparatorChar</c> feeds <c>trim_end(char, char)</c> in
@@ -145,7 +147,7 @@ internal sealed class ClrMemberTypeResolver
     /// that owns the conversion, not to the member's type.</item>
     /// </list>
     /// </remarks>
-    private bool TryMapFaithfully(Type clrType, out SemanticType? mapped)
+    private bool TryMapFaithfully(Type clrType, bool declaredNullable, out SemanticType? mapped)
     {
         mapped = null;
 
@@ -156,7 +158,9 @@ internal sealed class ClrMemberTypeResolver
         if (candidate is UnknownType)
             return false;
 
-        mapped = candidate;
+        // The reflected Type is NRT-blind; the member's own declaration says whether null is a
+        // value of it (#1705).
+        mapped = ClrDeclaredNullability.Apply(candidate, declaredNullable);
         return true;
     }
 
@@ -165,7 +169,7 @@ internal sealed class ClrMemberTypeResolver
         if (methods.Count == 1)
         {
             var method = methods[0];
-            if (!TryMapFaithfully(method.ReturnType, out var returnType))
+            if (!TryMapFaithfully(method.ReturnType, ClrDeclaredNullability.DeclaresNullableReturn(method), out var returnType))
                 return ClrMemberResolution.Inconclusive;
 
             // A char-returning method is declined so the call seam handles
@@ -193,7 +197,7 @@ internal sealed class ClrMemberTypeResolver
             var parameterTypes = new List<SemanticType>();
             foreach (var parameter in parameters)
             {
-                if (!TryMapFaithfully(parameter.ParameterType, out var mapped))
+                if (!TryMapFaithfully(parameter.ParameterType, ClrDeclaredNullability.DeclaresNullableArgument(parameter), out var mapped))
                     return ClrMemberResolution.Inconclusive;
                 parameterTypes.Add(mapped!);
             }

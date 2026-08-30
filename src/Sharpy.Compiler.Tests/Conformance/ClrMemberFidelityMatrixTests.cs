@@ -48,7 +48,19 @@ public class ClrMemberFidelityMatrixTests
         TypeMismatch,
 
         /// <summary>The member does not exist: SPY0203, from the checker — never SPY0908.</summary>
-        AbsentMember
+        AbsentMember,
+
+        /// <summary>
+        /// SPY0220 whose offending type is spelled nullable (<c>'str?' to</c>): the member's declared
+        /// <c>T?</c> reached the recorded type (#1705).
+        /// </summary>
+        TypeMismatchNullable,
+
+        /// <summary>SPY0220 whose offending type is NOT spelled nullable — the non-nullable twin (#1705).</summary>
+        TypeMismatchNonNullable,
+
+        /// <summary>A <c>None</c> store into a member declared non-nullable: SPY0229 from the checker (#1705).</summary>
+        NoneRefused
     }
 
     private sealed record Cell(string Label, string Source, Expect Expect);
@@ -101,6 +113,20 @@ public class ClrMemberFidelityMatrixTests
                 case Expect.AbsentMember when !errors.Any(d => d.Code == DiagnosticCodes.Semantic.UndefinedMember):
                     failures.Add($"{cell.Label}: expected SPY0203, got {Describe(errors)}");
                     break;
+
+                case Expect.TypeMismatchNullable when !errors.Any(d =>
+                        d.Code == DiagnosticCodes.Semantic.TypeMismatch && d.Message.Contains(NullableSpelling)):
+                    failures.Add($"{cell.Label}: expected SPY0220 naming a nullable type, got {Describe(errors)}");
+                    break;
+
+                case Expect.TypeMismatchNonNullable when !errors.Any(d =>
+                        d.Code == DiagnosticCodes.Semantic.TypeMismatch && !d.Message.Contains(NullableSpelling)):
+                    failures.Add($"{cell.Label}: expected SPY0220 naming a non-nullable type, got {Describe(errors)}");
+                    break;
+
+                case Expect.NoneRefused when !errors.Any(d => d.Code == DiagnosticCodes.Semantic.NullabilityViolation):
+                    failures.Add($"{cell.Label}: expected SPY0229, got {Describe(errors)}");
+                    break;
             }
         }
 
@@ -115,6 +141,12 @@ public class ClrMemberFidelityMatrixTests
             string.Join("\n", failures.Select(f => "  " + f)));
     }
 
+    /// <summary>
+    /// How SPY0220 spells a nullable source type: <c>Cannot assign type 'str?' to …</c>. The code
+    /// alone cannot tell <c>str?</c> from <c>str</c>, and that spelling IS the #1705 contract.
+    /// </summary>
+    private const string NullableSpelling = "?' to";
+
     private static string Describe(IReadOnlyList<CompilerDiagnostic> errors)
         => errors.Count == 0
             ? "no error at all (the member is still Unknown, which is assignable to anything)"
@@ -127,6 +159,18 @@ public class ClrMemberFidelityMatrixTests
     /// </summary>
     private static IEnumerable<NotApplicable> NotApplicableCells()
     {
+        yield return new NotApplicable("nrt.static-method-parameter-{nullable,nonnullable}-none",
+            "a `None` argument is not checked against the parameter's nullability at any CLR call "
+            + "seam — `Environment.get_environment_variable(None)` (declared `string`) compiles today, "
+            + "so a nullable-parameter cell (`Debug.fail(None)`, declared `string?`) and its "
+            + "non-nullable twin both pass vacuously. The parameter arm of #1705 needs the refusal "
+            + "before it can be measured; MapClrParameterType already carries the declared state.");
+
+        yield return new NotApplicable("nrt.static-property-nullable-store (IPrincipal)",
+            "`Thread.current_principal` is declared `IPrincipal?`, and an interface the bridge cannot "
+            + "map makes the resolver Inconclusive (permissive) — the pair measured nothing; the "
+            + "static-store cells use `CultureInfo.default_thread_current_culture` (`CultureInfo?`) instead.");
+
         yield return new NotApplicable("Vector2.x-field-correct",
             "the CONSTRUCTOR ICEs first — a float literal bound to a CLR `float` (Single) parameter "
             + "is CS1503 behind SPY0908 (#1688), so no Vector2 value can be built to read a field "
@@ -440,6 +484,37 @@ public class ClrMemberFidelityMatrixTests
 
         yield return new Cell("DateTime.static-bogus-pythonic",
             SrcSystem("DateTime", "print(DateTime.no_such_member_xyz)"), Expect.AbsentMember);
+
+        // ── Declared NRT nullability (#1705) ──
+        // A reflected Type is NRT-blind, so a member's `T?` must be read from the MEMBER. Axes:
+        // receiver {static, instance} × member {property, method return, parameter} × declaration
+        // {nullable, non-nullable twin} × position {read, None store}. The `-wrong` store cells are the
+        // positive controls proving the member is typed at all (a permissive Unknown accepts both).
+        yield return new Cell("nrt.static-property-nullable-read",
+            SrcSystem("Environment", "n: int = Environment.process_path"), Expect.TypeMismatchNullable);
+        yield return new Cell("nrt.static-property-nonnullable-read",
+            SrcSystem("Environment", "n: int = Environment.current_directory"), Expect.TypeMismatchNonNullable);
+        yield return new Cell("nrt.static-property-nullable-store-none",
+            SrcFrom("system.globalization", "CultureInfo", "CultureInfo.default_thread_current_culture = None"), Expect.Compiles);
+        yield return new Cell("nrt.static-property-nullable-store-wrong",
+            SrcFrom("system.globalization", "CultureInfo", "CultureInfo.default_thread_current_culture = 1"), Expect.TypeMismatch);
+        yield return new Cell("nrt.static-property-nonnullable-store-none",
+            SrcFrom("system.globalization", "CultureInfo", "CultureInfo.current_culture = None"), Expect.NoneRefused);
+        yield return new Cell("nrt.instance-property-nullable-read",
+            SrcFrom("system.io", "DirectoryInfo", "d = DirectoryInfo(\".\")\n    n: int = d.parent"), Expect.TypeMismatchNullable);
+        yield return new Cell("nrt.instance-property-nonnullable-read",
+            SrcFrom("system.io", "DirectoryInfo", "d = DirectoryInfo(\".\")\n    n: int = d.full_name"), Expect.TypeMismatchNonNullable);
+        yield return new Cell("nrt.instance-property-nullable-store-none",
+            SrcFrom("system.threading", "Thread", "t: Thread = Thread.current_thread\n    t.name = None"), Expect.Compiles);
+        yield return new Cell("nrt.instance-property-nullable-store-wrong",
+            SrcFrom("system.threading", "Thread", "t: Thread = Thread.current_thread\n    t.name = 1"), Expect.TypeMismatch);
+        yield return new Cell("nrt.static-method-group-return-nullable",
+            SrcSystem("Environment", "n: int = Environment.get_environment_variable(\"SHARPY_NRT\")"), Expect.TypeMismatchNullable);
+        yield return new Cell("nrt.static-method-single-return-nullable",
+            SrcFrom("system.io", "Directory", "n: int = Directory.get_parent(\".\")"), Expect.TypeMismatchNullable);
+        yield return new Cell("nrt.static-method-single-return-nonnullable",
+            SrcFrom("system.io", "Directory", "n: int = Directory.get_current_directory()"), Expect.TypeMismatchNonNullable);
+
     }
 
     private static string Src(string type, string body) =>
@@ -450,6 +525,9 @@ public class ClrMemberFidelityMatrixTests
 
     private static string SrcSystem(string type, string body) =>
         $"from system import {type}\n\ndef _use() -> None:\n    {body}\n";
+
+    private static string SrcFrom(string ns, string type, string body) =>
+        $"from {ns} import {type}\n\ndef _use() -> None:\n    {body}\n";
 
     private static string SrcInherited(string body) =>
         "from system.collections.generic import List\n\nclass IntList(List[int]):\n    pass\n\n"

@@ -54,6 +54,32 @@ def call_dotnet_api(value: int | None) -> None:
 items: list[str | None] = dotnet_list_with_nulls()
 ```
 
+### Declared Nullability of .NET Members
+
+A .NET member's type is read from its **declaration**, not from the runtime `Type`: a member
+declared with a nullable reference type (`string? Name`, `Dict<string, string>? Proxies`,
+`DirectoryInfo? Parent`, a `string?` return or parameter) is typed `T | None`, and a member declared
+non-nullable is typed `T`. `None` may be stored into the former and is refused (SPY0229) for the
+latter — the same answer C# gives.
+
+```python
+from system import Environment
+from system.threading import Thread
+
+def main() -> None:
+    home: str | None = Environment.get_environment_variable("HOME")  # declared `string?`
+    cwd: str = Environment.current_directory                         # declared `string`
+    Thread.current_thread.name = None                                # `string? Name` accepts None
+    print(home is not None, len(cwd) > 0)
+```
+
+```
+True True
+```
+
+Only the top-level declaration is read: `List<string?>` is `list[str]`. An assembly compiled without
+nullable annotations reports no state, and its members are typed non-nullable.
+
 **Do NOT use `T | None` for Sharpy-native optionals.** Use `T?` (which desugars to `Optional[T]`) instead:
 
 ```python
