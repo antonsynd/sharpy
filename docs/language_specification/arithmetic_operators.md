@@ -34,8 +34,9 @@ operands:
 |----------|-------------|----------|
 | Both `int` | `int32` | Floored (toward negative infinity) |
 | Any `long` operand (with `int` or `long`) | `int64` | Floored (toward negative infinity) |
-| Narrow signed integers (`int8`, `int16`) | Promoted type (typically `int32`) | Floored (toward negative infinity) |
-| Narrow unsigned integers (`uint8`, `uint16`, `uint32`) | Promoted type | Floored (toward negative infinity) |
+| Narrow signed integers (`int8`, `int16`) | `int32` | Floored (toward negative infinity) |
+| Narrow unsigned integers (`uint8`, `uint16`) | `int32` | Floored (toward negative infinity) |
+| Both `uint32` | `int64` | Floored — see [Unsigned result widths](#unsigned-result-widths) |
 | Both `uint64` | `uint64` | Floored (= truncated, since both operands are non-negative) |
 | Any float type | Same float type | Floored (toward negative infinity) |
 | Mixed integer and float | Float type of the float operand | Floored (toward negative infinity) |
@@ -149,7 +150,9 @@ The return type depends on the operands:
 
 | Operands | Result Type | Remainder sign |
 |----------|-------------|----------------|
-| Any integer types | Same integer type (`int32`/`int64`) | Sign of the divisor (floored) |
+| `int32`, `int64` and the narrow widths (`int8`, `uint8`, `int16`, `uint16`) | `int32`, or `int64` if either operand is `int64` | Sign of the divisor (floored) |
+| Both `uint32` | `int64` | Sign of the divisor — see [Unsigned result widths](#unsigned-result-widths) |
+| Both `uint64` | `uint64` | Sign of the divisor (both operands are non-negative) |
 | Any float type | Same float type | Sign of the divisor (floored) |
 | Mixed integer and float | Float type of the float operand | Sign of the divisor (floored) |
 | Both `decimal` | `decimal` | **Sign of the dividend** (native `%`, truncated) |
@@ -221,6 +224,7 @@ silently saturates or loses precision:
 | Constant `int ** int` (non-negative exponent) | Folded at compile time. Result is typed `int` if it fits, widened to `long` if it fits `long`; otherwise compile error **SPY0328** (`IntegerPowerOverflow`). |
 | Non-constant integer `**` (non-negative exponent) | Checked exponentiation-by-squaring (`Sharpy.Builtins.CheckedIntPow`); raises `OverflowError` on overflow. Results are exact across the full `long` range (no `Math.Pow` rounding above 2^53). |
 | Integer `**` negative exponent | Truncating `Math.Pow` double path (`int ** int` stays `int`, e.g. `2 ** -1` is `0`). |
+| Unsigned 32-/64-bit operands (`uint32`, `uint64`) | Evaluated — and typed — as `int64`: `Sharpy.Builtins.CheckedIntPow` has `(int, int)` and `(long, long)` overloads only, so there is no unsigned arm to bind. |
 | Any float operand | `Math.Pow(x, y)`, result is float. |
 
 ## Constant Integer Arithmetic
@@ -342,20 +346,61 @@ c: int = a + b      # OK: int32 result stored in int
 ```
 
 Augmented assignment (`+=`, `-=`, etc.) **narrows** when the right-hand side is
-implicitly convertible to the target's narrow type — the same rule C# applies to
-compound assignments (C# spec §12.21.4):
+implicitly convertible to the target's type — a narrow-or-equal width or an
+in-range integer constant — or when the operator is a shift. This is C#'s own
+compound-assignment rule (C# spec §12.21.4); see
+[Augmented Narrowing Rule](assignment_operators.md#augmented-narrowing-rule) for
+the full table.
 
 ```python
 x: int8 = 5
 y: int8 = 3
-x += y              # OK: augmented assignment narrows (both operands are int8)
+x += y              # OK: narrows (both operands are int8)
+x += 1              # OK: narrows (1 is in int8's range)
 
 i: int = 3
 # x += i            # SPY0220: 'int' is not assignable to 'int8'
+# x += 300          # SPY0220: 300 is not in int8's range
 ```
 
 The rule applies uniformly to all narrow widths and all arithmetic operators:
 unary `-` and `~` also promote to `int32`, and `**` follows the same floor.
+
+### Unsigned result widths
+
+`uint32` and `uint64` are not narrow — they do not promote to `int32` — but four
+operators still produce a **different** type than their operands, because the
+predefined operator (or the lowering's overload set) has no unsigned arm at that
+width. The result type is always the type the generated C# actually produces:
+
+| Expression | Result type | Why |
+|------------|-------------|-----|
+| `uint32 + - * & \| ^ << >>` , `~uint32` | `uint32` | C# has predefined `uint` operators |
+| `uint32 // uint32`, `uint32 % uint32` | `int64` | Lowered to `Builtins.FloorDiv`/`FloorMod`, whose overloads are `(int, int)`, `(long, long)`, `(ulong, ulong)`, float and double — a `uint` pair binds the `long` one |
+| `uint32 ** uint32` | `int64` | `Builtins.CheckedIntPow` has `(int, int)` and `(long, long)` overloads only |
+| `-uint32` | `int64` | C# §12.9.3: unary `-` is predefined for `int`, `long`, `float`, `double`, `decimal`; a `uint` operand widens to `long` |
+| `uint64 // uint64`, `uint64 % uint64`, `~uint64` | `uint64` | These lowerings *do* have a `ulong` overload |
+| `uint64 ** uint64` | `int64` | No `ulong` power overload |
+| `-uint64` | ❌ **SPY0223** | C# has no unary `-` for `ulong` at all (CS0023); cast to `int64` first |
+
+```python
+a: uint32 = 7
+b: uint32 = 2
+print(a + b)        # 9   (uint32)
+print(~a)           # 4294967288 (uint32)
+q: int64 = a // b   # int64 destination, not uint32
+print(q)            # 3
+print(-a)           # -7  (int64)
+# c: uint32 = a // b  # SPY0220: 'int64' is not assignable to 'uint32'
+
+g: uint64 = 7
+h: uint64 = 2
+print(g // h)       # 3   (uint64 — the ulong overload exists)
+# print(-g)         # SPY0223: type 'uint64' does not support unary operator '-'
+```
+
+The augmented forms narrow back into the target by the same §12.21.4 rule, so
+`a //= b` and `a **= b` on `uint32` are accepted and store a `uint32`.
 
 *Note: Python itself has only `int`, `float` (equivalent to Sharpy's `int32` and `float64` which have aliases `int` and `float`), and `complex` as built-in numeric types. Sharpy's rules handle .NET's richer type system (`int8`, `int16`, `int64`, ..., `float32` vs `float64`, `decimal`) while maintaining Python-like simplicity.*
 
