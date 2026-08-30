@@ -47,21 +47,48 @@ internal static class MustAssignDataflow
         foreach (var pred in block.ExceptionPredecessors)
             inSet.IntersectWith(inSets[pred]);
 
-        // A block-scoped binder (for-target, with-as) ends here: for those names, the state is
-        // whatever the binder's block was entered with — the binder itself never assigned the
-        // outer name (BasicBlock.RebindScopeEntry).
-        if (block.RebindScopeEntry is { } scopeEntry)
+        // One or more block-scoped binders (for-target, with-as, except-as) end here: for those
+        // names, the state is whatever the binder's block was entered with — the binder itself
+        // never assigned the outer name (BasicBlock.RebindScopeEntries).
+        if (block.RebindScopeEntries.Count > 0)
+            ApplyScopeExits(block, inSet, inSets);
+
+        return inSet;
+    }
+
+    /// <summary>
+    /// Restores every name bound by a binder block that goes out of scope at
+    /// <paramref name="block"/> to the state the binder was ENTERED with. When several binders end
+    /// at the same block (sibling <c>except</c> handlers reaching one merge/finally block) a name
+    /// bound by more than one of them is restored as assigned only if EVERY such binder was entered
+    /// with it assigned — the must-assign lattice meets, it never joins.
+    /// </summary>
+    private static void ApplyScopeExits(
+        BasicBlock block,
+        HashSet<string> inSet,
+        IReadOnlyDictionary<BasicBlock, HashSet<string>> inSets)
+    {
+        // Only sibling binders can disagree about a name, so the bookkeeping set is allocated
+        // solely for the multi-binder case.
+        HashSet<string>? unassignedByASibling =
+            block.RebindScopeEntries.Count > 1 ? new HashSet<string>() : null;
+
+        foreach (var scopeEntry in block.RebindScopeEntries)
         {
             var entryState = inSets[scopeEntry];
             foreach (var name in scopeEntry.EntryRebinds)
             {
-                if (entryState.Contains(name))
+                if (entryState.Contains(name) && unassignedByASibling?.Contains(name) != true)
+                {
                     inSet.Add(name);
+                }
                 else
+                {
                     inSet.Remove(name);
+                    unassignedByASibling?.Add(name);
+                }
             }
         }
-        return inSet;
     }
 
     /// <summary>

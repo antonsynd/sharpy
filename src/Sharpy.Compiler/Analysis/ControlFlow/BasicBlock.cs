@@ -107,14 +107,19 @@ internal sealed class BasicBlock
     public IReadOnlyList<string> EntryRebinds { get; internal set; } = System.Array.Empty<string>();
 
     /// <summary>
-    /// The block whose <see cref="EntryRebinds"/> go out of scope at this block's entry — the
+    /// The blocks whose <see cref="EntryRebinds"/> go out of scope at this block's entry — the
     /// <c>for</c> body for the loop's exit/else blocks, the <c>with … as</c> body for the block that
-    /// follows the statement. A rebound name is a block-scoped binder in Sharpy (#1647), so a
-    /// must-assign analysis restores, for those names, the state the binder's block was ENTERED with:
-    /// an outer bare local is assigned after the block only if it was assigned before it (#1635).
-    /// Null for ordinary blocks.
+    /// follows the statement, and every <c>except E as e</c> handler for the block where handler
+    /// scope ends (the <c>finally</c> block when the statement has one, otherwise the try's merge
+    /// block). A rebound name is a block-scoped binder in Sharpy (#1647), so a must-assign analysis
+    /// restores, for those names, the state the binder's block was ENTERED with: an outer bare local
+    /// is assigned after the block only if it was assigned before it (#1635). Several binders can
+    /// end at one block (sibling <c>except</c> handlers), so this is a list; a name bound by more
+    /// than one of them is restored as assigned only when EVERY binder that binds it was entered
+    /// with it assigned. Empty for ordinary blocks (#1672 DA, #1668).
     /// </summary>
-    public BasicBlock? RebindScopeEntry { get; internal set; }
+    public IReadOnlyList<BasicBlock> RebindScopeEntries { get; internal set; } =
+        System.Array.Empty<BasicBlock>();
 
     /// <summary>
     /// The source span of the first statement in this block (for diagnostics).

@@ -606,7 +606,7 @@ internal class ControlFlowGraphBuilder
         // must not survive into the loop (#1042). The binder is block-scoped, so the exit and else
         // blocks restore the pre-loop state for those names (#1635).
         bodyBlock.EntryRebinds = CollectBindingKeys(stmt.Target);
-        exitBlock.RebindScopeEntry = bodyBlock;
+        exitBlock.RebindScopeEntries = new[] { bodyBlock };
 
         // Connect current block to header
         Connect(_currentBlock, headerBlock);
@@ -619,7 +619,7 @@ internal class ControlFlowGraphBuilder
         {
             // With else clause: normal exit goes to else block, break goes to exit
             elseBlock = CreateBlock("for_else");
-            elseBlock.RebindScopeEntry = bodyBlock;
+            elseBlock.RebindScopeEntries = new[] { bodyBlock };
             loopExitTarget = elseBlock;
         }
         else
@@ -689,6 +689,11 @@ internal class ControlFlowGraphBuilder
 
         // Build handlers
         var handlerExitBlocks = new List<BasicBlock>();
+        // The `except E as e` binder is block-scoped (#1647): its name goes out of scope where the
+        // handler ends, so the block that follows every handler restores the pre-try state for it
+        // (#1672 DA). Without this the handler's binding flowed out of the try whenever the try's
+        // normal exit was dead (`try: raise …`), crediting an outer bare local of the same name.
+        var handlerBinderBlocks = new List<BasicBlock>();
         foreach (var handler in stmt.Handlers)
         {
             var typeName = handler.ExceptionType switch
@@ -704,7 +709,10 @@ internal class ControlFlowGraphBuilder
             ConnectException(tryBlock, handlerBlock);
 
             if (!string.IsNullOrEmpty(handler.Name))
+            {
                 handlerBlock.EntryRebinds = new[] { handler.Name };
+                handlerBinderBlocks.Add(handlerBlock);
+            }
 
             // Push handler context for bare raise
             _handlerStack.Push(handlerBlock);
@@ -739,6 +747,9 @@ internal class ControlFlowGraphBuilder
         {
             var finallyBlock = CreateBlock("finally");
 
+            // Handler scope ends before `finally` runs: the handler names are not visible there.
+            finallyBlock.RebindScopeEntries = handlerBinderBlocks;
+
             // Normal path: try (or else) → finally
             var normalExit = elseExitBlock ?? tryExitBlock;
             if (normalExit.Terminator == null)
@@ -769,6 +780,9 @@ internal class ControlFlowGraphBuilder
         }
         else
         {
+            // No finally: handler scope ends at the merge block.
+            mergeBlock.RebindScopeEntries = handlerBinderBlocks;
+
             // No finally: connect normal path to merge
             var normalExit = elseExitBlock ?? tryExitBlock;
             if (normalExit.Terminator == null)
@@ -855,7 +869,7 @@ internal class ControlFlowGraphBuilder
         if (_currentBlock.Terminator == null)
         {
             var withExitBlock = CreateBlock("with_exit");
-            withExitBlock.RebindScopeEntry = withBodyBlock;
+            withExitBlock.RebindScopeEntries = new[] { withBodyBlock };
             Connect(_currentBlock, withExitBlock);
             _currentBlock.Terminator = new BranchTerminator(withExitBlock);
             _currentBlock = withExitBlock;
