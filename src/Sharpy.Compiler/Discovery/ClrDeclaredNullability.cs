@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Reflection;
 using Sharpy.Compiler.Semantic;
 
@@ -35,6 +36,9 @@ internal static class ClrDeclaredNullability
     /// <summary>Whether reading the property yields a value declared nullable, or writing one accepts null.</summary>
     internal static bool DeclaresNullable(PropertyInfo property)
     {
+        if (DeclaredAsGenericParameter(property, m => ((PropertyInfo)m).PropertyType))
+            return false;
+
         var info = Create(() => Context.Create(property));
         return info?.ReadState == NullabilityState.Nullable || info?.WriteState == NullabilityState.Nullable;
     }
@@ -42,17 +46,58 @@ internal static class ClrDeclaredNullability
     /// <summary>Whether reading the field yields a value declared nullable, or writing one accepts null.</summary>
     internal static bool DeclaresNullable(FieldInfo field)
     {
+        if (DeclaredAsGenericParameter(field, m => ((FieldInfo)m).FieldType))
+            return false;
+
         var info = Create(() => Context.Create(field));
         return info?.ReadState == NullabilityState.Nullable || info?.WriteState == NullabilityState.Nullable;
     }
 
     /// <summary>Whether the method's return value is declared nullable.</summary>
     internal static bool DeclaresNullableReturn(MethodInfo method)
-        => Create(() => Context.Create(method.ReturnParameter))?.ReadState == NullabilityState.Nullable;
+        => !DeclaredAsGenericParameter(method, m => ((MethodInfo)m).ReturnType)
+            && Create(() => Context.Create(method.ReturnParameter))?.ReadState == NullabilityState.Nullable;
 
     /// <summary>Whether the parameter accepts a null argument by declaration.</summary>
     internal static bool DeclaresNullableArgument(ParameterInfo parameter)
-        => Create(() => Context.Create(parameter))?.WriteState == NullabilityState.Nullable;
+        => !(parameter.Member is MethodBase method
+                && DeclaredAsGenericParameter(method, m => ((MethodBase)m).GetParameters()[parameter.Position].ParameterType))
+            && Create(() => Context.Create(parameter))?.WriteState == NullabilityState.Nullable;
+
+    /// <summary>
+    /// Whether the member's type, as DECLARED on its generic type or method definition, is or contains
+    /// a generic parameter (<c>T Peek()</c> on <c>Stack&lt;T&gt;</c>). Such a member's nullability is
+    /// the type ARGUMENT's annotation, which a runtime-constructed <see cref="System.Type"/> does not
+    /// carry — <see cref="NullabilityInfoContext"/> then answers <see cref="NullabilityState.Nullable"/>
+    /// for an unconstrained <c>T</c>, and <c>Stack[Queue[int]].peek()</c> came back <c>Queue[int]?</c>.
+    /// The reflected type is the only honest answer there, so the annotation is not consulted.
+    /// </summary>
+    private static bool DeclaredAsGenericParameter(MemberInfo member, System.Func<MemberInfo, Type> declaredTypeOf)
+    {
+        try
+        {
+            if (member is MethodInfo { IsGenericMethod: true, IsGenericMethodDefinition: false } constructedMethod
+                && declaredTypeOf(constructedMethod.GetGenericMethodDefinition()).ContainsGenericParameters)
+                return true;
+
+            if (member.DeclaringType is { IsConstructedGenericType: true } constructed)
+            {
+                var definition = constructed.GetGenericTypeDefinition();
+                var declared = definition
+                    .GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                    .FirstOrDefault(m => m.MetadataToken == member.MetadataToken && m.Module == member.Module);
+                return declared != null && declaredTypeOf(declared).ContainsGenericParameters;
+            }
+        }
+        catch (System.Exception ex) when (ex is System.NotSupportedException or System.InvalidOperationException
+                                              or System.ArgumentException)
+        {
+            // A member reflection cannot map back to its definition keeps the reflected type.
+            return true;
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// The member's mapped type with its declared nullability applied: wrapped in

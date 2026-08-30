@@ -45,6 +45,10 @@ compile::errors/walrus_type_annotation_error
 compile::errors/parser_recovery_consecutive_errors
 compile::pattern_matching/as_on_unparenthesized_alternative_syntax_error_1663
 compile::errors/del_rejected
+compile::errors/del_attribute_rejected
+compile::errors/del_slice_rejected
+compile::errors/del_nested_index_rejected
+compile::errors/del_target_list_mixed
 compile::expressions/dict_spread_call
 compile::errors/inline_non_stub_body
 compile::async/async_invalid_keyword_error

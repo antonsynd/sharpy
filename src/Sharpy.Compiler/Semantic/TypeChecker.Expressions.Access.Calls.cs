@@ -5901,8 +5901,11 @@ internal partial class TypeChecker
             var spellings = candidates
                 .Select(c => c.GetParameters())
                 .Where(ps => position < ps.Length)
-                .Select(ps => MapClrParameterType(ps[position])?.GetDisplayName()
-                              ?? Shared.ClrNameHelper.StripArity(ps[position].ParameterType.Name))
+                // The cast TARGET is the parameter's underlying type: a `string?` parameter is
+                // disambiguated by casting to `str` (`str?` would read as Optional) (#1705).
+                .Select(ps => MapClrParameterType(ps[position]) is { } formal
+                    ? (formal is NullableType nullable ? nullable.UnderlyingType : formal).GetDisplayName()
+                    : Shared.ClrNameHelper.StripArity(ps[position].ParameterType.Name))
                 .Distinct(StringComparer.Ordinal)
                 .ToList();
             if (spellings.Count > 1)
