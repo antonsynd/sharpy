@@ -1,0 +1,12 @@
+# Positive control for SPY0145: the full try/except/else/finally shape (the example in
+# docs/language_specification/exception_handling.md) still runs, and else runs before
+# finally, matching python3.
+def main() -> None:
+    try:
+        print("try")
+    except ValueError:
+        print("except")
+    else:
+        print("else")
+    finally:
+        print("finally")

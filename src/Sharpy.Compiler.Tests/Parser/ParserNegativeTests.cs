@@ -482,10 +482,42 @@ public class ParserNegativeTests
     #region Invalid Exception Handling
 
     [Fact]
-    public void AllowsTryWithoutExceptOrFinally()
+    public void RejectsTryWithoutExceptOrFinally()
     {
-        // This is a semantic error, not a parse error
+        // Was AllowsTryWithoutExceptOrFinally, which documented the parser accepting a shape
+        // C# cannot express: the emitter built `try { } ` with neither catch nor finally and
+        // Roslyn rejected it as SPY0599. Try-statement shape is a parser decision (#1669).
+        // python3: "SyntaxError: expected 'except' or 'finally' block".
         var source = "try:\n    pass";
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("requires an 'except' handler or a 'finally' clause");
+    }
+
+    [Fact]
+    public void RejectsTryElseWithoutExcept()
+    {
+        // `else` runs only when the try body completed without raising, which is meaningless
+        // without a handler; python3 refuses it with the same SyntaxError.
+        var source = "try:\n    pass\nelse:\n    pass";
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("'else' in a try statement requires at least one 'except' handler");
+    }
+
+    [Fact]
+    public void RejectsTryElseFinallyWithoutExcept()
+    {
+        // The finally clause does not rescue the else: this is the shape that regressed into
+        // SPY0599 when try/else lowering started nesting an inner try (#1669).
+        var source = "try:\n    pass\nelse:\n    pass\nfinally:\n    pass";
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("'else' in a try statement requires at least one 'except' handler");
+    }
+
+    [Fact]
+    public void AcceptsTryFinallyWithoutExcept()
+    {
+        // Positive control for the two refusals above: finally alone is a valid shape.
+        var source = "try:\n    pass\nfinally:\n    pass";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
         module.Body[0].Should().BeOfType<TryStatement>();

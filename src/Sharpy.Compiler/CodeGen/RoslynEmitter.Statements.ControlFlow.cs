@@ -1376,6 +1376,18 @@ internal partial class RoslynEmitter
 
     private StatementSyntax GenerateTry(TryStatement tryStmt)
     {
+        // C# has no try block without a catch or finally. Both unlowerable shapes --
+        // a try with neither handlers nor finally, and an else clause with no handlers
+        // (whose lowering nests an inner try that would carry neither) -- are refused by
+        // the parser as SPY0145. Fail loudly here rather than emitting C# that Roslyn
+        // rejects as "Expected catch or finally" (SPY0599).
+        if (tryStmt.Handlers.Length == 0
+            && (tryStmt.ElseBody.Length > 0 || tryStmt.FinallyBody.Length == 0))
+        {
+            throw new InvalidOperationException(
+                "try/else without handlers must be refused by the parser (SPY0145)");
+        }
+
         // If there's an else clause, we need to use a flag pattern:
         // bool __trySucceeded = false;
         // try { ... __trySucceeded = true; }

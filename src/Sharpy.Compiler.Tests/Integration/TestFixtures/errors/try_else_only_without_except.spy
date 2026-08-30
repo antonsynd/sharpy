@@ -1,0 +1,6 @@
+# try/else with neither an except handler nor a finally clause.
+def main() -> None:
+    try:
+        print("try")
+    else:
+        print("else")

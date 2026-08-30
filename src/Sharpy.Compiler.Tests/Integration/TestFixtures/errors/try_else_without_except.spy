@@ -1,0 +1,10 @@
+# try/else with no except handler: C# has no try block without catch or finally, so the
+# shape must be refused by the parser (SPY0145) instead of surfacing as a generated-C#
+# syntax error (SPY0599). python3: "SyntaxError: expected 'except' or 'finally' block".
+def main() -> None:
+    try:
+        print("try")
+    else:
+        print("else")
+    finally:
+        print("finally")

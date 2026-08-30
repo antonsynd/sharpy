@@ -824,19 +824,24 @@ def foo():
     #region Exception Handling Errors
 
     [Fact]
-    public void DocumentsTryWithoutExceptOrFinallyBehavior()
+    public void TryWithoutExceptOrFinallyIsARefusalInTheParserNotTheTypeChecker()
     {
+        // Was DocumentsTryWithoutExceptOrFinallyBehavior, which recorded that nothing enforced
+        // the except/finally requirement. Nothing downstream can: C# has no try block without a
+        // catch or finally, so the shape has to be refused where shape is decided — the parser
+        // (SPY0145, #1669). The type checker still sees nothing, and that is now correct.
         var source = @"
 def foo():
     try:
         x: int = 1
     # missing except or finally
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module, isEntryPoint: false);
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var parser = new global::Sharpy.Compiler.Parser.Parser(lexer.TokenizeAll(), NullLogger.Instance);
+        parser.ParseModule();
 
-        // Try statement validation doesn't enforce except/finally requirement
-        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+        parser.Diagnostics.GetErrors().Should().Contain(d =>
+            d.Code == DiagnosticCodes.Parser.TryRequiresExceptOrFinally);
     }
 
     [Fact]

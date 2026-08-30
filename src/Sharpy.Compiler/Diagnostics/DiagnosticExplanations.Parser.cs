@@ -233,5 +233,10 @@ public static partial class DiagnosticExplanations
             "Sharpy does not support the 'del' statement. To remove a dictionary key, use 'dict.pop(key)'. To remove a list element by index, use 'list.pop(index)'. Unbinding a name or deleting an attribute is not supported (Axiom 1: .NET scoping rules apply).",
             "del d['key']",
             "Use the appropriate method:\n  d.pop('key')      # remove a dictionary key\n  xs.pop(0)         # remove a list element by index");
+
+        Add(dict, DiagnosticCodes.Parser.TryRequiresExceptOrFinally, "'try' statement requires an 'except' handler or a 'finally' clause", "Parser",
+            "A 'try' statement must have at least one 'except' handler or a 'finally' clause. An 'else' clause alone is not enough: 'else' runs only when the try body completes without raising, which is meaningless without a handler. CPython raises \"SyntaxError: expected 'except' or 'finally' block\" for both shapes, and Sharpy refuses them in the parser for the same reason.",
+            "try:\n    load()\nelse:\n    print(\"ok\")",
+            "Add an 'except' handler (or a 'finally' clause):\n  try:\n      load()\n  except ValueError:\n      print(\"failed\")\n  else:\n      print(\"ok\")");
     }
 }

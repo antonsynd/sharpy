@@ -112,8 +112,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Parser diagnostic codes (SPY0100-SPY0199).
-    /// Active: SPY0100-SPY0144
-    /// Reserved: SPY0145-SPY0199
+    /// Active: SPY0100-SPY0145
+    /// Reserved: SPY0146-SPY0199
     /// </summary>
     public static class Parser
     {
@@ -212,7 +212,13 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0145-SPY0199: Reserved for future parser diagnostics
+        #region Try statement shape (SPY0145)
+
+        public const string TryRequiresExceptOrFinally = "SPY0145";  // Active
+
+        #endregion
+
+        // SPY0146-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>

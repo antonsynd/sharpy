@@ -696,8 +696,14 @@ public partial class Parser
 
         // else clause (runs if no exception raised in try block)
         var elseBody = new List<Statement>();
+        var elseLine = 0;
+        var elseColumn = 0;
+        Text.TextSpan? elseSpan = null;
         if (Current.Type == TokenType.Else)
         {
+            elseLine = Current.Line;
+            elseColumn = Current.Column;
+            elseSpan = CurrentSpan;
             Advance();
             Expect(TokenType.Colon);
             ExpectNewline();
@@ -717,6 +723,38 @@ public partial class Parser
             finallyBody = ParseBlock();
             Expect(TokenType.Dedent);
             endToken = Previous;
+        }
+
+        // Try-statement shape is decided here, never by Roslyn: C# has no try block
+        // without a catch or finally, so a shape the emitter cannot lower must be
+        // refused as a parse error rather than surfacing as a generated-C# syntax
+        // error (SPY0599). CPython refuses both shapes with
+        // "SyntaxError: expected 'except' or 'finally' block".
+        if (handlers.Count == 0)
+        {
+            if (elseBody.Count > 0)
+            {
+                throw ReportError(
+                    "'else' in a try statement requires at least one 'except' handler "
+                        + "(python3: expected 'except' or 'finally' block)",
+                    elseLine,
+                    elseColumn,
+                    DiagnosticCodes.Parser.TryRequiresExceptOrFinally,
+                    span: elseSpan
+                );
+            }
+
+            if (finallyBody.Count == 0)
+            {
+                throw ReportError(
+                    "a 'try' statement requires an 'except' handler or a 'finally' clause "
+                        + "(python3: expected 'except' or 'finally' block)",
+                    startLine,
+                    startColumn,
+                    DiagnosticCodes.Parser.TryRequiresExceptOrFinally,
+                    span: GetSpanFromTokens(startToken, startToken)
+                );
+            }
         }
 
         return new TryStatement

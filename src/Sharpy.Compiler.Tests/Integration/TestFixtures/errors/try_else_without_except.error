@@ -1,0 +1,3 @@
+'else' in a try statement requires at least one 'except' handler @7:5
+!SPY0599
+!count 1

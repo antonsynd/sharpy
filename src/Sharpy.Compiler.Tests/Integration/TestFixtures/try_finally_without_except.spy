@@ -1,0 +1,7 @@
+# Positive control for SPY0145: try/finally with NO except handler is a valid shape and
+# must keep running. If the SPY0145 refusal ever over-fires, this fixture goes red.
+def main() -> None:
+    try:
+        print("try")
+    finally:
+        print("finally")
