@@ -12,6 +12,30 @@ with open("in.txt") as input, open("out.txt", "w") as output:
     output.write(input.read())
 ```
 
+## `as` Targets
+
+The `as` clause accepts any **store target**, not only a name — the same set the `for` statement
+accepts: a name, an attribute, an index, or a tuple of targets.
+
+```python
+class CMPair:
+    def __enter__(self) -> tuple[int, str]:
+        return (1, "two")
+
+    def __exit__(self) -> None:
+        pass
+
+
+def main() -> None:
+    with CMPair() as (a, b):     # tuple target: binds a = 1, b = "two"
+        print(a)
+        print(b)
+```
+
+A tuple target requires `__enter__` (or `__aenter__`) to return a tuple of the same arity;
+anything else is `SPY0239` (*invalid tuple unpacking*). A **starred** target (`as *rest`) is not
+a target at all — Python rejects it as a `SyntaxError` and so does Sharpy.
+
 ## Supported Protocols
 
 Sharpy supports two context manager protocols:

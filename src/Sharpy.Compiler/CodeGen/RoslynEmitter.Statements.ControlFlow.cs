@@ -1019,6 +1019,35 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generates a C# using statement for IDisposable/IAsyncDisposable context managers.
     /// </summary>
+    /// <summary>
+    /// Stores the context value into a non-identifier <c>as</c> target, keeping EVERY statement the
+    /// store produces inside the <c>with</c>'s own scope.
+    ///
+    /// <para><see cref="GenerateStore"/>'s tuple arm emits a temp plus one declaration per element
+    /// and hoists all but the last into <c>_hoistedStatements</c> — a channel the ordinary
+    /// statement dispatcher flushes as flat siblings of the ENCLOSING statement. For a comprehension
+    /// or a for-loop that lands in the same block; for a <c>with</c> it lands outside the
+    /// <c>using</c>/try, above the temp the store reads, so <c>with CM() as (a, b)</c> emitted
+    /// <c>var __t2 = __withTarget_1;</c> before <c>__withTarget_1</c> existed (CS0103 behind
+    /// SPY0908). Draining the channel here puts those statements where their temp is in scope
+    /// (#1672 E2).</para>
+    /// </summary>
+    private List<StatementSyntax> GenerateWithTargetStore(Expression target, ExpressionSyntax value)
+    {
+        var mark = _hoistedStatements.Count;
+        var store = GenerateStore(target, value);
+
+        var statements = new List<StatementSyntax>();
+        if (_hoistedStatements.Count > mark)
+        {
+            statements.AddRange(_hoistedStatements.GetRange(mark, _hoistedStatements.Count - mark));
+            _hoistedStatements.RemoveRange(mark, _hoistedStatements.Count - mark);
+        }
+
+        statements.Add(store);
+        return statements;
+    }
+
     private StatementSyntax GenerateWithDisposable(WithItem item, StatementSyntax innermost, bool isAsync)
     {
         var contextExpr = GenerateExpression(item.ContextExpression);
@@ -1050,9 +1079,9 @@ internal partial class RoslynEmitter
                 .WithVariables(SingletonSeparatedList(
                     VariableDeclarator(Identifier(tempVar))
                         .WithInitializer(EqualsValueClause(contextExpr))));
-            var storeStmt = GenerateStore(item.Target, IdentifierName(tempVar));
+            var storeStmts = GenerateWithTargetStore(item.Target, IdentifierName(tempVar));
             var bodyBlock = innermost is BlockSyntax blk ? blk : Block(innermost);
-            var newBody = Block(new StatementSyntax[] { storeStmt }.Concat(bodyBlock.Statements));
+            var newBody = Block(storeStmts.Concat(bodyBlock.Statements));
             var usingStmt = UsingStatement(declaration, null, newBody);
             return isAsync
                 ? usingStmt.WithAwaitKeyword(Token(SyntaxKind.AwaitKeyword))
@@ -1142,7 +1171,7 @@ internal partial class RoslynEmitter
                     .WithVariables(SingletonSeparatedList(
                         VariableDeclarator(Identifier(tempVar))
                             .WithInitializer(EqualsValueClause(enterCall))))));
-            statements.Add(GenerateStore(item.Target, IdentifierName(tempVar)));
+            statements.AddRange(GenerateWithTargetStore(item.Target, IdentifierName(tempVar)));
         }
         else
         {

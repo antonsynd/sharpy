@@ -1784,6 +1784,33 @@ internal partial class TypeChecker
                     _semanticInfo.SetIdentifierSymbol(withId, varSymbol);
                 }
             }
+            // `with CM() as (a, b):` binds the names of a tuple target, exactly as `for a, b in …`
+            // does — python3 binds a=1, b=2 when __enter__ returns (1, "two"). The parser accepts
+            // the target and the emitter already lowers it (GenerateStore's TupleLiteral arm), so
+            // the binder is the only piece that was missing: without it every name in the target
+            // was SPY0200 "Undefined identifier" at its first use (#1672 E2). The shared tuple
+            // binder is the same one the for-statement uses, so nesting and per-element error
+            // recovery behave identically.
+            else if (item.Target is TupleLiteral withTuple && !IsAssertRaisesExpression(item.ContextExpression))
+            {
+                if (asVarType is not TupleType asTupleType)
+                {
+                    AddError($"Cannot unpack non-tuple type '{asVarType.GetDisplayName()}' into tuple target in with statement",
+                        withTuple.LineStart, withTuple.ColumnStart,
+                        code: DiagnosticCodes.Semantic.InvalidTupleUnpacking, span: withTuple.Span);
+                }
+                else if (withTuple.Elements.Length != asTupleType.ElementTypes.Count)
+                {
+                    AddError($"Cannot unpack {asTupleType.ElementTypes.Count} values into {withTuple.Elements.Length} variables in with statement",
+                        withTuple.LineStart, withTuple.ColumnStart,
+                        code: DiagnosticCodes.Semantic.InvalidTupleUnpacking, span: withTuple.Span);
+                }
+                else
+                {
+                    DefineForLoopTupleTargets(withTuple.Elements, asTupleType.ElementTypes);
+                    _semanticInfo.SetExpressionType(withTuple, asTupleType);
+                }
+            }
             else if (item.Target != null && !IsAssertRaisesExpression(item.ContextExpression))
             {
                 CheckExpression(item.Target);
