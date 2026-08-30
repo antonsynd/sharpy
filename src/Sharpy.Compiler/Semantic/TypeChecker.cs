@@ -105,6 +105,15 @@ internal partial class TypeChecker
     // Semantic/ScopedValue.cs, #1218); stored as a node reference so nested calls restore correctly.
     private Expression? _currentCallCallee;
 
+    // What the CLR member-type resolver answered for each member access it was asked about, keyed by
+    // node identity. Two consumers read it: the call seam, which turns a CALLEE-position property or
+    // field into the call's type plus the zero-arg collapse (`s.count()`), and the permissive
+    // channel, whose reason string names the resolver's own verdict rather than the whole seam
+    // (#1640). Not SemanticInfo: nothing downstream of type checking reads it — the FACTS codegen
+    // needs (the resolved CLR name, the property-call lowering) are materialized separately.
+    private readonly Dictionary<MemberAccess, Discovery.ClrMemberResolution> _clrMemberResolutions =
+        new(ReferenceEqualityComparer.Instance);
+
     // The qualifier expression of the MemberAccess currently being checked (`memberAccess.Object`).
     // A generic TYPE reference is legal there — `Box[int].of(42)`, `Comparer[int].create(f)` name the
     // type a static member is reached through, they do not use it as a value — so the SPY0339

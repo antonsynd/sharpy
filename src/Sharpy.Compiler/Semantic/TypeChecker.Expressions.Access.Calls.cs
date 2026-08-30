@@ -531,6 +531,14 @@ internal partial class TypeChecker
             // resolutions above declined, so every call one of them owns keeps that owner's check.
             if (funcSymbol == null && calleeType is UnknownType)
             {
+                // A zero-arg call onto a CLR PROPERTY (`s.count()`, `DateTime.now()`) is legal Sharpy
+                // and lowers to the property access itself. The member seam resolved the property but
+                // declined to type the callee (a property is not callable), so the type belongs here,
+                // on the call node — with the collapse recorded for the emitter. One decision for
+                // every receiver kind, instance and static alike (#1640).
+                if (ClrPropertyCallType(call, memberAccessCall) is { } propertyCallType)
+                    return propertyCallType;
+
                 CheckClrInstanceMethodCall(call, memberAccessCall, argTypes, kwargTypes);
 
                 // Same channel, the other half of the same silence: nothing typed this call either, so
@@ -2525,6 +2533,32 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// The type of a zero-argument call whose callee resolved to a CLR property or field
+    /// (<c>s.count()</c>, <c>sb.length()</c>, <c>DateTime.now()</c>), or null when the callee is
+    /// anything else. Records the zero-arg-call-onto-property collapse the emitter reads, so the
+    /// generated C# is the property access and the call's type is the property's type (#1640).
+    /// </summary>
+    /// <remarks>
+    /// Before this, the member seam declined a callee-position property and nothing typed the call:
+    /// it stayed Unknown, assignable to anything, so <c>x: str = s.count()</c> reached Roslyn as
+    /// CS0029 behind SPY0908 — the compiler reporting its own bug for an ordinary type error. The
+    /// STATIC spelling did not even emit: <c>DateTime.now()</c> wrote <c>DateTime.Now()</c> and came
+    /// back CS1955, because the collapse was recorded only inside the discovered-user-type route.
+    /// </remarks>
+    private SemanticType? ClrPropertyCallType(FunctionCall call, MemberAccess memberAccess)
+    {
+        if (call.Arguments.Length != 0 || call.KeywordArguments.Length != 0)
+            return null;
+
+        if (ClrCalleeValueMember(memberAccess) is not { } member)
+            return null;
+
+        _semanticInfo.SetClrPropertyCallLowering(call);
+        _semanticInfo.SetResolvedClrMemberName(memberAccess, member.ClrName);
+        return ProjectClrChar(call, member.Type);
     }
 
     private static bool IsClrPropertyOnType(TypeSymbol typeSymbol, string memberName)

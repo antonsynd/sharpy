@@ -391,6 +391,16 @@ internal partial class TypeChecker
                     return SemanticType.Unknown;
                 }
 
+                // Nothing was DISCOVERED into the symbol — for a raw BCL shadow (StringBuilder,
+                // DateTime, Random, Environment) that is every member, because discovery populates
+                // no members for them at all. Reflection is the surface the emitter will bind
+                // against, so it is the surface the type comes from: the same resolver every other
+                // CLR-origin receiver uses, in both spellings and for static and instance receivers
+                // alike (#1640). Runs AFTER the absence proof above, so a refusal stays a refusal,
+                // and BEFORE the permissive channel, so a typed member never reaches it.
+                if (ClrMemberTypeFromReflection(memberAccess, udt.Symbol.ClrType) is { } reflectedType)
+                    return reflectedType;
+
                 // Before falling through to the permissive channel, check whether the
                 // member is only accessible through an explicitly-implemented interface.
                 // If so, record the interface-cast lowering for codegen (#1572).
@@ -401,7 +411,7 @@ internal partial class TypeChecker
                 // user-defined type with different members.
                 MarkExpressionAsErrorRecovery(memberAccess,
                     ErrorRecoveryReason.DeliberatelyPermissive(
-                        "a CLR shadow of a user type may declare members discovery did not see"));
+                        PermissiveClrMemberReason(memberAccess)));
                 return SemanticType.Unknown;
             }
 
@@ -780,7 +790,7 @@ internal partial class TypeChecker
         // type checker. Mark as error recovery to suppress SPY0907 false positives.
         MarkExpressionAsErrorRecovery(memberAccess,
             ErrorRecoveryReason.DeliberatelyPermissive(
-                "codegen resolves this receiver's members through CLR discovery"));
+                PermissiveClrMemberReason(memberAccess)));
         return SemanticType.Unknown;
     }
 
@@ -880,9 +890,18 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // The ancestor's discovered surface did not have it and the proof did not refuse it, so the
+        // same reflection question a DIRECT receiver of that ancestor gets is asked here too — on the
+        // ancestor instantiated at the written arguments, which is what codegen will bind against
+        // (`class IntList(List[int])` reaches System.Collections.Generic.List<int>'s members). Before
+        // the permissive channel, so an inherited CLR member is typed rather than Unknown (#1640).
+        if (ClrReceiverTypeOf(InstantiatedTypeOf(ancestor), requireUndiscoveredSurface: false) is { } ancestorClrType
+            && ClrMemberTypeFromReflection(memberAccess, ancestorClrType) is { } reflectedInherited)
+            return Substitute(reflectedInherited);
+
         MarkExpressionAsErrorRecovery(memberAccess,
             ErrorRecoveryReason.DeliberatelyPermissive(
-                "codegen resolves an inherited CLR member through discovery on the base type"));
+                PermissiveClrMemberReason(memberAccess)));
         return SemanticType.Unknown;
     }
 
@@ -1018,43 +1037,23 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Whether the GenericType's CLR definition is a collection type that
-    /// <see cref="Discovery.ClrTypeBridge.MapGenericTypeCore"/> maps to a Sharpy builtin.
-    /// These types already have working call-site resolution for their members, so
-    /// <see cref="BclMemberTypeOnBuiltinReceiver"/> must NOT type them — doing so changes
-    /// the error diagnostics for argument-type and arity mismatches (#1640).
+    /// Whether the bridge COLLAPSES this receiver's CLR definition onto a Sharpy builtin
+    /// (<c>list</c>, <c>dict</c>, <c>set</c>, …) rather than keeping its CLR identity. Such a
+    /// receiver already has working call-site resolution for its members, so
+    /// <see cref="BclMemberTypeOnBuiltinReceiver"/> must NOT type them — doing so changes the
+    /// error diagnostics for argument-type and arity mismatches (#1640).
     /// </summary>
     /// <remarks>
-    /// Keep in sync with the explicit arms of <c>MapGenericTypeCore</c> in
-    /// <c>ClrTypeBridge.cs</c>.
+    /// The question is ASKED of <see cref="Discovery.ClrTypeBridge.MapsToSharpyBuiltin"/>, the one
+    /// place that decides it, rather than re-listed here behind a "keep in sync" comment — the
+    /// hand-list is the drift defect #1640 names. The list said <c>List&lt;T&gt;</c>,
+    /// <c>Dictionary&lt;K,V&gt;</c> and <c>HashSet&lt;T&gt;</c> were collapsed; since #1517 they are
+    /// not (they keep the honest CLR identity), so asking the bridge also un-shadows their members.
     /// </remarks>
     private bool IsExplicitlyMappedCollectionReceiver(GenericType gt)
     {
         var defClr = GenericDefinitionOf(gt)?.ClrType;
-        if (defClr == null || !defClr.IsGenericTypeDefinition)
-            return false;
-
-        if (defClr == typeof(List<>)
-            || defClr == typeof(Dictionary<,>)
-            || defClr == typeof(HashSet<>)
-            || defClr == typeof(IList<>)
-            || defClr == typeof(ICollection<>)
-            || defClr == typeof(IDictionary<,>)
-            || defClr == typeof(ISet<>)
-            || defClr == typeof(IReadOnlyList<>)
-            || defClr == typeof(IReadOnlyCollection<>)
-            || defClr == typeof(System.Collections.ObjectModel.ReadOnlyCollection<>)
-            || defClr == typeof(IReadOnlyDictionary<,>)
-            || defClr == typeof(IEnumerable<>)
-            || defClr == typeof(System.Threading.Tasks.Task<>))
-            return true;
-
-        var fn = defClr.FullName;
-        return fn == Discovery.ClrTypeBridge.SpecialCases.SharpyListFullName
-            || fn == Discovery.ClrTypeBridge.SpecialCases.SharpyDictFullName
-            || fn == Discovery.ClrTypeBridge.SpecialCases.SharpySetFullName
-            || fn == Discovery.ClrTypeBridge.SpecialCases.SharpyFrozenSetFullName
-            || fn == Discovery.ClrTypeBridge.SpecialCases.SharpyFrozenDictFullName;
+        return defClr != null && _bclGenericMethodBridge.MapsToSharpyBuiltin(defClr);
     }
 
     /// <summary>
@@ -1107,64 +1106,182 @@ internal partial class TypeChecker
     /// </remarks>
     private SemanticType? BclMemberTypeOnBuiltinReceiver(MemberAccess memberAccess, SemanticType receiverType)
     {
-        Type? clrType;
-        if (receiverType is BuiltinType bt)
-        {
-            clrType = bt.ClrType;
-        }
-        else if (receiverType is GenericType gt
-            && !IsExplicitlyMappedCollectionReceiver(gt)
-            && GenericDefinitionOf(gt) is { ClrType: not null } def
-            && def.Methods.Count == 0)
-        {
-            clrType = TryGetClrType(receiverType);
-        }
-        else if (receiverType is UserDefinedType { Symbol.ClrType: not null } udt)
-        {
-            clrType = udt.Symbol.ClrType;
-        }
-        else
-        {
-            return null;
-        }
-
+        var clrType = ClrReceiverTypeOf(receiverType);
         if (clrType == null)
         {
             return null;
         }
 
+        return ClrMemberTypeFromReflection(memberAccess, clrType);
+    }
+
+    /// <summary>
+    /// The CLR type whose member surface a receiver reaches, or null for a receiver this seam does
+    /// not own. One switch, so every arm of <see cref="CheckMemberAccessCore"/> asks the resolver
+    /// about the same set of receivers (#1640).
+    /// </summary>
+    /// <param name="requireUndiscoveredSurface">
+    /// When true (the default), a constructed generic whose definition symbol DID discover methods is
+    /// left to the discovered surface. The inherited-member arm passes false: it has already looked
+    /// through the ancestor's discovered members and missed, so reflection is the only surface left.
+    /// </param>
+    private Type? ClrReceiverTypeOf(SemanticType receiverType, bool requireUndiscoveredSurface = true)
+    {
+        if (receiverType is BuiltinType bt)
+        {
+            return bt.ClrType;
+        }
+
+        if (receiverType is GenericType gt
+            && !IsExplicitlyMappedCollectionReceiver(gt)
+            && GenericDefinitionOf(gt) is { ClrType: not null } def
+            && (!requireUndiscoveredSurface || def.Methods.Count == 0))
+        {
+            return TryGetClrType(receiverType);
+        }
+
+        if (receiverType is UserDefinedType { Symbol.ClrType: not null } udt)
+        {
+            return udt.Symbol.ClrType;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Types <paramref name="memberAccess"/> from the reflected surface of <paramref name="clrType"/>,
+    /// or returns null when reflection does not decide it. The single typing seam every CLR-origin
+    /// receiver arm routes through (#1640).
+    /// </summary>
+    private SemanticType? ClrMemberTypeFromReflection(MemberAccess memberAccess, Type clrType)
+    {
         var resolver = new Discovery.ClrMemberTypeResolver(_bclGenericMethodBridge);
-        var resolution = resolver.Resolve(clrType, memberAccess.Member);
+        var resolution = resolver.Resolve(clrType, memberAccess.Member, ClrReceiverKindOf(memberAccess));
+        _clrMemberResolutions[memberAccess] = resolution;
 
         switch (resolution)
         {
             case Discovery.ClrMemberResolution.Method m:
                 _semanticInfo.SetResolvedClrMemberName(memberAccess, m.ClrName);
+
+                // CALLS are the call seam's business, not this one. Typing the callee here would
+                // route the call through generic FunctionType validation and REPLACE the CLR-shaped
+                // diagnostics CheckClrInstanceMethodCall/ClrStaticCallType give it — "Function
+                // expects 1 arguments but got 0" for "'List.add' expects 1 argument but got 0"
+                // (measured on interop/clr_call_arity_refused and clr_static_call_arity_1451). The
+                // call's TYPE still comes from reflection, at that seam. In VALUE position there is
+                // no call to own, so the method reference is typed here (#1640).
+                if (ReferenceEquals(memberAccess, _currentCallCallee))
+                    return null;
+
                 return m.Type;
 
             case Discovery.ClrMemberResolution.MethodGroup:
+                // Selecting among overloads needs the call's arguments, which this seam cannot see.
+                // Declined here and answered at the call seam, where the arity that selects exactly
+                // one candidate is in hand (#1243's rule).
                 return null;
 
             case Discovery.ClrMemberResolution.Property prop:
-                // In callee position, decline so the call seam handles it via the
-                // zero-arg-call-onto-property collapse (#1640).
+                // A zero-arg CALL onto a property (`s.count()`) is legal Sharpy and lowers to the
+                // property access. The member itself is not callable, so the type belongs on the
+                // CALL node: recorded here, consumed by the call seam, which also records the
+                // collapse the emitter reads (#1640).
+                _semanticInfo.SetResolvedClrMemberName(memberAccess, prop.ClrName);
                 if (ReferenceEquals(memberAccess, _currentCallCallee))
                     return null;
 
-                _semanticInfo.SetResolvedClrMemberName(memberAccess, prop.ClrName);
                 return ProjectClrChar(memberAccess, prop.Type);
 
             case Discovery.ClrMemberResolution.Field field:
+                _semanticInfo.SetResolvedClrMemberName(memberAccess, field.ClrName);
                 if (ReferenceEquals(memberAccess, _currentCallCallee))
                     return null;
 
-                _semanticInfo.SetResolvedClrMemberName(memberAccess, field.ClrName);
                 return field.Type;
 
             default:
                 return null;
         }
     }
+
+    /// <summary>
+    /// The CLR type a receiver INHERITS its member surface from, instantiated at the arguments the
+    /// base clause pinned — <c>class IntList(List[int])</c> reaches
+    /// <c>System.Collections.Generic.List&lt;int&gt;</c>. Null when the receiver has no CLR ancestor
+    /// or owns its CLR type directly (which <see cref="ClrReceiverTypeOf"/> already answers).
+    /// The derived spelling reaches the same members as the direct one, so it gets the same types
+    /// (#1409, #1640).
+    /// </summary>
+    private Type? InheritedClrReceiverTypeOf(SemanticType receiverType)
+    {
+        var (symbol, typeArguments) = receiverType switch
+        {
+            UserDefinedType { Symbol: TypeSymbol udtSymbol } =>
+                (udtSymbol, (IReadOnlyList<SemanticType>)Array.Empty<SemanticType>()),
+            GenericType { GenericDefinition: { ClrType: null } definition } generic =>
+                (definition, generic.TypeArguments),
+            _ => (null, Array.Empty<SemanticType>())
+        };
+
+        if (symbol == null || symbol.ClrType != null)
+            return null;
+
+        var ancestor = GenericInstantiationWalker.FindClrAncestor(
+            symbol, typeArguments, SemanticBinding, _typeResolver);
+
+        return ancestor == null
+            ? null
+            : ClrReceiverTypeOf(InstantiatedTypeOf(ancestor), requireUndiscoveredSurface: false);
+    }
+
+    /// <summary>
+    /// Whether the receiver spelling names a VALUE or the TYPE itself — <c>dt.year</c> against
+    /// <c>DateTime.max_value</c>. C# binds disjoint member sets for the two, so the resolver is
+    /// asked the same question the emitted code will be.
+    /// </summary>
+    private Discovery.ClrReceiverKind ClrReceiverKindOf(MemberAccess memberAccess)
+    {
+        var receiver = memberAccess.Object;
+        var isTypeName = (receiver is Identifier id && _semanticInfo.GetIdentifierSymbol(id) is TypeSymbol)
+            || _semanticInfo.IsTypeReference(receiver);
+
+        return isTypeName ? Discovery.ClrReceiverKind.StaticType : Discovery.ClrReceiverKind.Instance;
+    }
+
+    /// <summary>
+    /// The property or field a CALLEE-position member access resolved to, or null when it resolved
+    /// to something else. The call seam reads this to type <c>s.count()</c> as the property's type
+    /// and record the zero-arg-call collapse for the emitter (#1640).
+    /// </summary>
+    private (SemanticType Type, string ClrName)? ClrCalleeValueMember(MemberAccess memberAccess)
+        => _clrMemberResolutions.TryGetValue(memberAccess, out var resolution)
+            ? resolution switch
+            {
+                Discovery.ClrMemberResolution.Property p => (p.Type, p.ClrName),
+                Discovery.ClrMemberResolution.Field f => (f.Type, f.ClrName),
+                _ => ((SemanticType, string)?)null
+            }
+            : null;
+
+    /// <summary>
+    /// Why a CLR-origin member access reached the permissive channel after the resolver was asked.
+    /// The reason is the resolver's own verdict, so the allowlist entry describes the residual class
+    /// rather than the whole seam (#1678).
+    /// </summary>
+    private string PermissiveClrMemberReason(MemberAccess memberAccess)
+        => _clrMemberResolutions.TryGetValue(memberAccess, out var resolution)
+            ? resolution switch
+            {
+                Discovery.ClrMemberResolution.MethodGroup =>
+                    "a multi-overload CLR method group has no single function type in value position (#1678)",
+                Discovery.ClrMemberResolution.InconclusiveResult =>
+                    "reflection could not map this CLR member's type (#1678)",
+                _ =>
+                    "the member is absent from the reflected surface but the #1141 proof kept it "
+                    + "(an extension method or a spelling the proof models may still bind it) (#1678)",
+            }
+            : "the receiver's CLR type is not one this seam resolves (#1678)";
 
     /// <summary>
     /// Returns true (and emits SPY0215) when <paramref name="memberAccess"/> references a CLR-only
@@ -1223,22 +1340,29 @@ internal partial class TypeChecker
             return null;
         }
 
-        if (_semanticInfo.GetExpressionType(memberAccess.Object) is not BuiltinType { ClrType: { } clrType })
+        // A STATIC receiver keeps its own seam (ClrStaticCallType, #1402) — this one answers for
+        // values, so the two do not compete for the same call.
+        if (ClrReceiverKindOf(memberAccess) == Discovery.ClrReceiverKind.StaticType)
         {
             return null;
         }
 
-        var methodName = Discovery.ClrTypeHelper.ResolveClrMethodName(clrType, memberAccess.Member);
-        if (methodName == null)
+        var receiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
+        if (receiverType == null
+            || (ClrReceiverTypeOf(receiverType) ?? InheritedClrReceiverTypeOf(receiverType)) is not { } clrType)
         {
             return null;
         }
 
+        // Both spellings, one rule: `s.Peek()` and `s.peek()` name the same CLR method, and an
+        // overload GROUP the member seam declined is selected here by the call's arity (#1640).
         var candidates = clrType.GetMethods(System.Reflection.BindingFlags.Public
                 | System.Reflection.BindingFlags.Instance
                 | System.Reflection.BindingFlags.Static)
-            .Where(m => m.Name == methodName
-                && !m.IsGenericMethodDefinition
+            .Where(m => !m.IsGenericMethodDefinition
+                && !m.IsSpecialName
+                && (m.Name == memberAccess.Member
+                    || NameMangler.ToSharpyName(m.Name, ReverseNameContext.Method) == memberAccess.Member)
                 && m.GetParameters().Length == argTypes.Count)
             .ToList();
 
@@ -1253,6 +1377,7 @@ internal partial class TypeChecker
             return null;
         }
 
+        _semanticInfo.SetResolvedClrMemberName(memberAccess, candidates[0].Name);
         return ProjectClrChar(call, returnType);
     }
 
@@ -2005,6 +2130,44 @@ internal partial class TypeChecker
                 _semanticInfo.SetExpressionType(memberAccess, nestedUdt);
                 _semanticInfo.MarkTypeReference(memberAccess);
                 return nestedUdt;
+            }
+
+            // The STATIC arm of the CLR receiver family: `DateTime.max_value`,
+            // `Environment.processor_count`, `DateTime.now()`. Discovery populates no members for a
+            // raw BCL shadow, so every lookup above misses and the reference used to leave the
+            // checker untyped — `x: str = Environment.processor_count` reached Roslyn as CS0029
+            // behind SPY0908, and `DateTime.now()` as CS1955 because nothing collapsed the zero-arg
+            // call onto the property. Same resolver, same both-spellings rule as every instance arm,
+            // asked with the STATIC half of the surface — the half C# will bind (#1640).
+            if (typeSym.ClrType != null)
+            {
+                if (ClrMemberTypeFromReflection(memberAccess, typeSym.ClrType) is { } staticMemberType)
+                {
+                    _semanticInfo.SetExpressionType(memberAccess, staticMemberType);
+                    return staticMemberType;
+                }
+
+                // Reflection can PROVE the name is on neither half of the surface, and when it can,
+                // falling through left a typo to come back as CS0117 behind SPY0908 — a compiler-bug
+                // report for a misspelling. Same #1141 proof the instance arms use, so an extension
+                // method or an unmodelled spelling still keeps the permissive channel.
+                if (_clrMemberResolutions.TryGetValue(memberAccess, out var staticResolution)
+                    && staticResolution is Discovery.ClrMemberResolution.AbsentResult
+                    && ClrReflectionProvesMemberAbsent(
+                        new UserDefinedType { Name = typeSym.Name, Symbol = typeSym },
+                        memberAccess.Member, out var staticSuggestion))
+                {
+                    var staticAbsentMessage = $"Type '{typeSym.Name}' has no member '{memberAccess.Member}'";
+                    if (staticSuggestion != null)
+                        staticAbsentMessage += $". Did you mean '{staticSuggestion}'?";
+
+                    AddError(staticAbsentMessage,
+                        memberAccess.LineStart, memberAccess.ColumnStart,
+                        code: DiagnosticCodes.Semantic.UndefinedMember,
+                        span: memberAccess.Span,
+                        data: SuggestionData(staticSuggestion));
+                    return SemanticType.Unknown;
+                }
             }
         }
 

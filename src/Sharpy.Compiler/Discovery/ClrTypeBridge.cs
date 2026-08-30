@@ -362,6 +362,63 @@ internal class ClrTypeBridge
             : mapped;
     }
 
+    // Answers of MapsToSharpyBuiltin, memoized per generic definition. The probe constructs a
+    // throwaway instantiation, so caching keeps the member seam's per-access question cheap.
+    private static readonly ConcurrentDictionary<Type, bool> _mapsToSharpyBuiltinCache = new();
+
+    /// <summary>
+    /// Whether instantiations of <paramref name="genericDefinition"/> are COLLAPSED by this bridge
+    /// onto a Sharpy builtin collection (or onto <c>Task[T]</c>) rather than kept at their own CLR
+    /// identity — i.e. whether the bridge, not raw reflection, owns what a member reference on such
+    /// a receiver means (#1640).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The answer is PROBED from <see cref="MapGenericTypeCore"/> itself rather than restated: a
+    /// throwaway instantiation is mapped and the result's shape is read. That is the point — the
+    /// caller (<c>TypeChecker.IsExplicitlyMappedCollectionReceiver</c>) previously re-listed the
+    /// bridge's arms behind a "keep in sync" comment, which is the hand-list defect #1640 names.
+    /// A definition with no arm of its own reaches the general fallback, which keeps the CLR name
+    /// (<c>Stack</c>, <c>Dictionary</c>) — so it answers false and its members are reflection-typed.
+    /// </para>
+    /// <para>
+    /// <c>List&lt;T&gt;</c>, <c>Dictionary&lt;K,V&gt;</c> and <c>HashSet&lt;T&gt;</c> answer FALSE:
+    /// since #1517 their arms keep the honest CLR identity (<c>Name = "List"</c> with a
+    /// <c>GenericDefinition</c>), so a member on them is an ordinary CLR member. The Sharpy WRAPPERS
+    /// (<c>Sharpy.List&lt;T&gt;</c> and friends) answer true, because <c>list</c>/<c>dict</c>/
+    /// <c>set</c> have a Sharpy surface that owns their members' diagnostics.
+    /// </para>
+    /// </remarks>
+    internal bool MapsToSharpyBuiltin(Type genericDefinition)
+    {
+        if (genericDefinition is not { IsGenericTypeDefinition: true })
+            return false;
+
+        return _mapsToSharpyBuiltinCache.GetOrAdd(genericDefinition, definition =>
+        {
+            Type probe;
+            try
+            {
+                probe = definition.MakeGenericType(
+                    Enumerable.Repeat(typeof(object), definition.GetGenericArguments().Length).ToArray());
+            }
+            catch (Exception ex) when (ex is ArgumentException or TypeLoadException or NotSupportedException)
+            {
+                // A constrained definition (`where T : struct`) cannot be probed with `object`.
+                // Every collapsing arm below is unconstrained, so "cannot probe" means "no arm".
+                return false;
+            }
+
+            return MapGenericTypeCore(probe) switch
+            {
+                GenericType collapsed => collapsed.Name is BuiltinNames.List or BuiltinNames.Dict
+                    or BuiltinNames.Set or BuiltinNames.FrozenSet or BuiltinNames.FrozenDict,
+                TaskType => true,
+                _ => false
+            };
+        });
+    }
+
     private SemanticType MapGenericTypeCore(Type clrType)
     {
         var genericDef = clrType.GetGenericTypeDefinition();
