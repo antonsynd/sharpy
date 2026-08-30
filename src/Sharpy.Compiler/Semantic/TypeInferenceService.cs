@@ -323,9 +323,13 @@ internal class TypeInferenceService
             {
                 BinaryOperator.Add or
                 BinaryOperator.Subtract or
-                BinaryOperator.Multiply or
+                BinaryOperator.Multiply => InferNumericResultType(left, right),
+
+                // `//` and `%` are lowered to Builtins.FloorDiv/FloorMod CALLS, so their result
+                // is the return type of the overload C# binds — not the promotion of the operand
+                // types (#1666).
                 BinaryOperator.FloorDivide or
-                BinaryOperator.Modulo => InferNumericResultType(left, right),
+                BinaryOperator.Modulo => ApplyFlooredCallWidth(InferNumericResultType(left, right)),
 
                 // Division: any decimal operand defers to promotion, everything else is
                 // float64 (Python semantics). Promotion answers decimal for decimal ⊗ decimal
@@ -1076,6 +1080,17 @@ internal class TypeInferenceService
         {
             return op switch
             {
+                // Unary `-` on an unsigned operand is NOT the identity on width (§12.9.3): the
+                // predefined operators are `-(int)`, `-(long)`, `-(float)`, `-(double)`,
+                // `-(decimal)`, so a `uint` operand widens to `long` — verified: `(-someUint)`
+                // has CLR type System.Int64 — and a `ulong` operand matches NO operator at all,
+                // which C# reports as CS0023. Typing `-u32` as uint32 made every store of it
+                // SPY0908/CS0266, and `-u64` reached the emitter and ICEd with CS0023 (#1666).
+                UnaryOperator.Minus when operand == SemanticType.UInt => SemanticType.Long,
+                UnaryOperator.Minus when operand == SemanticType.ULong => null,
+
+                // Unary `+` keeps its operand's width for both unsigned types (`+(uint)` and
+                // `+(ulong)` are predefined), so it does not share the arms above.
                 UnaryOperator.Plus or UnaryOperator.Minus =>
                     TypeUtils.IsInteger(operand) ? ApplyIntegerFloor(operand) : operand,
                 _ => null
@@ -1580,7 +1595,7 @@ internal class TypeInferenceService
         //   Math.Pow returns double, but we cast back to the promoted integer type
         // - Any float involvement → Double
         if (TypeUtils.IsInteger(left) && TypeUtils.IsInteger(right))
-            return InferNumericResultType(left, right) ?? ApplyIntegerFloor(left);
+            return ApplyIntegerPowWidth(InferNumericResultType(left, right) ?? ApplyIntegerFloor(left));
         return SemanticType.Double;
     }
 
@@ -1589,6 +1604,40 @@ internal class TypeInferenceService
         var promoted = PrimitiveCatalog.GetPromotedType(left, right);
         return promoted != null ? ApplyIntegerFloor(promoted) : null;
     }
+
+    /// <summary>
+    /// The result width of a <c>//</c> or <c>%</c> whose promoted operand type is
+    /// <c>uint32</c>: <c>int64</c>, because those two operators are lowered to
+    /// <c>Builtins.FloorDiv</c>/<c>FloorMod</c> CALLS and the overload set is
+    /// {<c>int</c>, <c>long</c>, <c>ulong</c>, <c>float</c>, <c>double</c>} — there is no
+    /// <c>uint</c> arm, and C# binds the <c>(long, long)</c> one (§12.6.4.7 makes a signed
+    /// conversion target beat an unsigned one). Verified by compiling that overload set against
+    /// a <c>uint</c> pair: the call's type is <c>System.Int64</c>. Recording <c>uint32</c> was a
+    /// type the emitter could not honor — <c>q: uint32 = a // b</c> was SPY0908/CS0266 (#1666).
+    /// <para>
+    /// Every other width already agrees with its overload: the narrow widths are floored to
+    /// <c>int</c> by <see cref="ApplyIntegerFloor"/> and bind <c>(int, int)</c>; <c>int64</c> and
+    /// <c>uint64</c> have their own overloads (the <c>ulong</c> one from #1662).
+    /// </para>
+    /// </summary>
+    private static SemanticType? ApplyFlooredCallWidth(SemanticType? promoted)
+        => promoted == SemanticType.UInt ? SemanticType.Long : promoted;
+
+    /// <summary>
+    /// The result width of an integer <c>**</c>: <c>int64</c> for an unsigned 32- or 64-bit
+    /// promoted type, unchanged otherwise. <c>**</c> is lowered to
+    /// <c>Builtins.CheckedIntPow</c>, whose only overloads are <c>(int, int)</c> and
+    /// <c>(long, long)</c> (<c>Pow.cs:83/:132</c>); an unsigned operand pair has no arm of its
+    /// own, so it is evaluated — and must therefore be TYPED — as <c>int64</c>. Before this,
+    /// <c>uint32 ** uint32</c> and <c>uint64 ** uint64</c> were typed as their operand and lowered
+    /// to the <c>(int, int)</c> overload, which is SPY0908/CS0266 in both directions (#1666).
+    /// A <c>uint64</c> base above 2^63 wraps in the <c>(long)</c> operand cast — the corner
+    /// #1700 tracks, whose cure is a <c>CheckedIntPow(ulong, ulong)</c> overload.
+    /// </summary>
+    private static SemanticType ApplyIntegerPowWidth(SemanticType promoted)
+        => promoted == SemanticType.UInt || promoted == SemanticType.ULong
+            ? SemanticType.Long
+            : promoted;
 
     // C# promotes all narrow integers (int8, int16, uint8, uint16) to int in
     // arithmetic, bitwise, and unary operations.  Match that so the checker's
