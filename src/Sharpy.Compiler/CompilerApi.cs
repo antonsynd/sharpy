@@ -621,6 +621,49 @@ public sealed class CompilerApi
         return (registry, builtins);
     }
 
+    /// <summary>
+    /// Test-only: the master <see cref="BuiltinRegistry"/> the analysis cache currently holds, or
+    /// null when no analysis context has been built yet. Since the clone was retired (#1633) this
+    /// IS the registry every analysis through this instance is handed, which is what makes it
+    /// snapshot-able by <c>MasterRegistryImmutabilityTests</c> — and what makes a write to one of
+    /// its symbols a cross-analysis hazard.
+    /// </summary>
+    internal BuiltinRegistry? CachedBuiltinsForTests
+    {
+        get { lock (_analysisCacheLock) { return _analysisCache?.Builtins; } }
+    }
+
+    /// <summary>
+    /// Test-only companion to <see cref="CachedBuiltinsForTests"/>: the cached
+    /// <see cref="ModuleRegistry"/>, whose module symbols are shared the same way.
+    /// </summary>
+    internal ModuleRegistry? CachedModuleRegistryForTests
+    {
+        get { lock (_analysisCacheLock) { return _analysisCache?.Registry; } }
+    }
+
+    /// <summary>
+    /// Test-only: builds and caches the analysis context that the path-less
+    /// <see cref="Analyze(string, CompilerOptions, CancellationToken)"/> overload would build,
+    /// WITHOUT running an analysis. A guard that snapshots the master after the first analysis
+    /// cannot see a write made BY that analysis — the first use is handed the master directly —
+    /// so the baseline has to be takeable before any entry point runs.
+    /// </summary>
+    internal BuiltinRegistry PrimeAnalysisContextForTests(CompilerOptions? options = null)
+    {
+        var opts = WithMergedReferences(options ?? CompilerOptionsFactory.ForLibraryAnalysis());
+        var config = SyntheticProject.BuildConfig(
+            string.Empty, "<source>", opts, _logger, preserveTrivia: true, nullifyEntryFilePath: true);
+        return GetOrBuildAnalysisContext(config).Builtins;
+    }
+
+    /// <summary>
+    /// Test-only: the same priming for the project path, whose cache key comes from the project's
+    /// own references and module paths.
+    /// </summary>
+    internal BuiltinRegistry PrimeAnalysisContextForTests(ProjectConfig config)
+        => GetOrBuildAnalysisContext(config).Builtins;
+
     internal IReadOnlyList<(string Path, long Ticks)> BuildAnalysisCacheKey(ProjectConfig config)
     {
         var parts = new List<(string Path, long Ticks)>();
