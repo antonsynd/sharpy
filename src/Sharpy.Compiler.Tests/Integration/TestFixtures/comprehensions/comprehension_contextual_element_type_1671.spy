@@ -1,0 +1,22 @@
+class Base:
+    def kind(self) -> str:
+        return "base"
+
+
+class Derived(Base):
+    def kind(self) -> str:
+        return "derived"
+
+
+def main() -> None:
+    xs: list[Base] = [Derived() for _ in range(2)]
+    xs.append(Base())
+    print(len(xs))
+
+    ss: set[Base] = {Derived() for _ in range(2)}
+    ss.add(Base())
+    print(len(ss))
+
+    d: dict[str, Base] = {str(i): Derived() for i in range(2)}
+    d["z"] = Base()
+    print(len(d))
