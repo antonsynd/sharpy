@@ -1,6 +1,7 @@
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
+using Sharpy.Compiler.Project;
 
 namespace Sharpy.Compiler;
 
@@ -241,7 +242,7 @@ internal static class RuntimeClosureResolver
         var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         try
         {
-            foreach (var file in Directory.EnumerateFiles(directory, "*.dll"))
+            foreach (var file in SourceGlob.EnumerateArtifacts(directory, "*.dll"))
             {
                 index[Path.GetFileNameWithoutExtension(file)] = file;
             }
@@ -315,7 +316,7 @@ internal static class RuntimeClosureResolver
                 if (!Directory.Exists(nativeDirectory))
                     continue;
 
-                var nativeFiles = Directory.EnumerateFiles(nativeDirectory).ToList();
+                var nativeFiles = SourceGlob.EnumerateArtifacts(nativeDirectory, "*").ToList();
                 if (nativeFiles.Count == 0)
                     continue;
 

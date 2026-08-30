@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using System.Threading;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Project;
 
 namespace Sharpy.Compiler.Discovery.Caching;
 
@@ -238,7 +239,7 @@ internal class OverloadIndexCache
 
         if (Directory.Exists(_cacheDirectory))
         {
-            foreach (var file in Directory.GetFiles(_cacheDirectory, "*.json.gz"))
+            foreach (var file in SourceGlob.EnumerateArtifacts(_cacheDirectory, "*.json.gz"))
             {
                 try
                 {
@@ -259,7 +260,7 @@ internal class OverloadIndexCache
     private void CleanupOldCaches(string assemblyName, string currentCacheKey)
     {
         var pattern = $"{assemblyName.ToLowerInvariant()}-*.json.gz";
-        var oldFiles = Directory.GetFiles(_cacheDirectory, pattern);
+        var oldFiles = SourceGlob.EnumerateArtifacts(_cacheDirectory, pattern).ToArray();
         var threshold = TimeSpan.FromDays(7);
         var now = DateTime.UtcNow;
 
@@ -299,7 +300,7 @@ internal class OverloadIndexCache
             };
         }
 
-        var files = Directory.GetFiles(_cacheDirectory, "*.json.gz");
+        var files = SourceGlob.EnumerateArtifacts(_cacheDirectory, "*.json.gz").ToArray();
         var totalSize = files.Sum(f => new FileInfo(f).Length);
 
         return new CacheInfo

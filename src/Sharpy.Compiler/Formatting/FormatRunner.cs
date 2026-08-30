@@ -1,5 +1,6 @@
 using System.Text;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Project;
 
 namespace Sharpy.Compiler.Formatting;
 
@@ -78,9 +79,7 @@ public static class FormatRunner
             return Array.Empty<string>();
         }
 
-        var results = Directory.EnumerateFiles(directoryPath, "*.spy", SearchOption.AllDirectories)
-            .Where(f => !Diagnostics.CrashBundleWriter.IsNonSourceSegment(
-                Path.GetRelativePath(directoryPath, f)))
+        var results = SourceGlob.EnumerateSourceFiles(directoryPath, "*.spy", SearchOption.AllDirectories)
             .ToList();
         results.Sort(StringComparer.Ordinal);
         return results;

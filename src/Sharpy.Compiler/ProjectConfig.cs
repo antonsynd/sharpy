@@ -1,8 +1,7 @@
 using System.Xml.Linq;
-using Microsoft.Extensions.FileSystemGlobbing;
-using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Project;
 
 namespace Sharpy.Compiler;
 
@@ -472,33 +471,6 @@ public static class ProjectFileParser
         return projectFiles[0];
     }
 
-    /// <summary>
-    /// Resolve glob patterns to actual file paths with support for Exclude patterns
-    /// </summary>
     private static List<string> ResolveGlobPattern(string baseDirectory, string includePattern, string? excludePattern = null)
-    {
-        var matcher = new Matcher();
-        matcher.AddInclude(includePattern);
-
-        // Add exclude patterns if specified
-        if (!string.IsNullOrWhiteSpace(excludePattern))
-        {
-            // Support multiple exclude patterns separated by semicolons
-            var excludePatterns = excludePattern.Split(';', StringSplitOptions.RemoveEmptyEntries);
-            foreach (var pattern in excludePatterns)
-            {
-                matcher.AddExclude(pattern.Trim());
-            }
-        }
-
-        var directoryInfo = new DirectoryInfo(baseDirectory);
-        var result = matcher.Execute(new DirectoryInfoWrapper(directoryInfo));
-
-        return result.Files
-            .Select(f => Path.GetFullPath(Path.Combine(baseDirectory, f.Path)))
-            .Where(File.Exists)
-            .Where(f => !Diagnostics.CrashBundleWriter.IsNonSourceSegment(
-                Path.GetRelativePath(baseDirectory, f)))
-            .ToList();
-    }
+        => SourceGlob.ResolveGlob(baseDirectory, includePattern, excludePattern);
 }

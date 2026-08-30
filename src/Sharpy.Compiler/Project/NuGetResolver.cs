@@ -143,7 +143,7 @@ internal static class NuGetResolver
             return dlls;
         }
 
-        foreach (var dll in Directory.GetFiles(tfmDir, "*.dll"))
+        foreach (var dll in SourceGlob.EnumerateArtifacts(tfmDir, "*.dll"))
         {
             dlls.Add(dll);
         }
@@ -365,6 +365,6 @@ internal static class NuGetResolver
         }
 
         var directories = Directory.GetDirectories(libDir);
-        return directories.FirstOrDefault(d => Directory.GetFiles(d, "*.dll").Length > 0);
+        return directories.FirstOrDefault(d => SourceGlob.EnumerateArtifacts(d, "*.dll").Any());
     }
 }
