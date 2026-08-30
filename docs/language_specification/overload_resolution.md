@@ -25,6 +25,37 @@ The same betterness rules apply to all resolution sites. What differs between si
 shape* (how the candidate list and argument types are gathered), documented under
 [The three resolution engines](#the-three-resolution-engines).
 
+## Argument types are computed before candidates are considered
+
+Each argument's type is computed from the argument alone. A **candidate set** contributes no
+contextual (expected) type to any argument: a collection literal, a comprehension, or any other
+context-sensitive expression takes its contextual type only from a **resolved** target — a callee
+with exactly one candidate, or a parameter of an overload that has already been chosen.
+
+This is what makes resolution independent of declaration order. Were an unresolved candidate
+allowed to type the argument, the recorded type would then decide which candidate is applicable
+and better, and the answer would depend on which `def` was written first:
+
+```python
+def h(v: list[float]) -> str:
+    return "float"
+
+def h(v: list[int]) -> str:
+    return "int"
+
+def main() -> None:
+    print(h([1, 2]))   # int — the literal is list[int], the exact match wins
+```
+
+Swapping the two declarations prints `int` as well. The same holds for `set` and `dict` literals,
+for comprehensions, and for every candidate-set source: overloaded module functions (imported or
+module-qualified), overloaded instance methods, overloaded builtins, and reflected .NET method
+groups such as `statistics.mean`, whose `list[int]` overload binds `mean([1, 2, 3])`.
+
+A callee with a **single** candidate is a resolved target, so contextual typing applies there in
+full — `def g(v: list[Base])` accepts `g([Derived(), Derived()])`, with the literal recorded as
+`list[Base]`.
+
 ## Applicability
 
 A candidate is applicable to a call when **all** of the following hold:

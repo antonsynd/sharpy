@@ -1118,7 +1118,9 @@ internal partial class TypeChecker
     /// <summary>
     /// The CLR type whose member surface a receiver reaches, or null for a receiver this seam does
     /// not own. One switch, so every arm of <see cref="CheckMemberAccessCore"/> asks the resolver
-    /// about the same set of receivers (#1640).
+    /// about the same set of receivers (#1640). <c>CalleeDenotesOverloadSet</c> counts reflected
+    /// overloads through the same resolution, so it can never disagree with
+    /// <see cref="BclMemberTypeOnBuiltinReceiver"/> about which receivers are CLR-backed (#1671).
     /// </summary>
     /// <param name="requireUndiscoveredSurface">
     /// When true (the default), a constructed generic whose definition symbol DID discover methods is

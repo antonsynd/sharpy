@@ -3703,6 +3703,26 @@ internal partial class TypeChecker
         FunctionCall call, Expression callee, FunctionSymbol? earlyFuncSymbol, int earlyParamOffset,
         FunctionType? calleeFunctionType)
     {
+        // #1671: a COLLECTION LITERAL (or comprehension) written as an argument may take its
+        // contextual type only from a RESOLVED callee. `earlyFuncSymbol` and `calleeFunctionType`
+        // are one arbitrary candidate's signature when the callee names an overload set — the
+        // first `mean` of `statistics.mean(list[float] | list[int] | list[long])`, the first `m` of
+        // two same-named methods — so recording the literal with that candidate's element type
+        // lets the candidate type the argument and then lets that type select the overload,
+        // making the answer depend on declaration order. Such an argument is left to type from its
+        // own elements, and `overload_resolution.md`'s applicability + betterness decide.
+        //
+        // The gate is on the literal, not on the expectation: a lambda or a method-group argument
+        // has no type WITHOUT its expectation and is re-resolved after inference by the deferred
+        // machinery (#1161, #1589), so those keep the expectation they have always had. Evaluated
+        // only when such an argument is present, so the predicate's CLR-reflection arm stays off
+        // the path of every ordinary call.
+        var hasContextTypedCollectionArgument =
+            call.Arguments.Any(TakesContextualCollectionType)
+            || call.KeywordArguments.Any(k => TakesContextualCollectionType(k.Value));
+        var calleeDenotesOverloadSet =
+            hasContextTypedCollectionArgument && CalleeDenotesOverloadSet(callee, call);
+
         var argTypes = new List<SemanticType>();
         // #1009: map(lambda, iter1, iter2, ...) needs the lambda's parameter types inferred
         // from the iterables' element types so an unannotated multi-iterable map closes its
@@ -3759,17 +3779,28 @@ internal partial class TypeChecker
                     continue;
                 }
 
-                if (earlyFuncSymbol != null && argIdx + earlyParamOffset < earlyFuncSymbol.Parameters.Count)
+                var noCandidateExpectation = calleeDenotesOverloadSet
+                    && TakesContextualCollectionType(call.Arguments[argIdx]);
+
+                if (!noCandidateExpectation
+                    && earlyFuncSymbol != null && argIdx + earlyParamOffset < earlyFuncSymbol.Parameters.Count)
                 {
                     var paramType = earlyFuncSymbol.Parameters[argIdx + earlyParamOffset].Type;
                     _expectedType = paramType is UnknownType ? null : paramType;
                     _parameterTypedArgument = ParameterTypedArgumentOf(paramType, call.Arguments[argIdx]);
                 }
-                else if (calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)
+                else if (!noCandidateExpectation
+                    && calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)
                 {
                     var paramType = calleeFunctionType.ParameterTypes[argIdx];
                     _expectedType = paramType is UnknownType ? null : paramType;
                     _parameterTypedArgument = ParameterTypedArgumentOf(paramType, call.Arguments[argIdx]);
+                }
+                else if (noCandidateExpectation)
+                {
+                    // The ENCLOSING context's expectation is not this argument's parameter type
+                    // either, and leaving it in place would type the literal from it.
+                    _expectedType = null;
                 }
                 argTypes.Add(CheckExpression(call.Arguments[argIdx]));
                 _expectedType = previousExpectedType;
@@ -3797,7 +3828,11 @@ internal partial class TypeChecker
             var previousExpectedType = _expectedType;
             var previousParameterTypedArgument = _parameterTypedArgument;
             _parameterTypedArgument = null;
-            if (earlyFuncSymbol != null)
+            if (calleeDenotesOverloadSet && TakesContextualCollectionType(kwarg.Value))
+            {
+                _expectedType = null;
+            }
+            else if (earlyFuncSymbol != null)
             {
                 var param = FindKeywordParameter(earlyFuncSymbol.Parameters, kwarg.Name);
                 if (param != null)
@@ -4115,6 +4150,206 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// Whether <paramref name="argument"/> is an expression whose recorded type an enclosing
+    /// expected type can OVERRIDE: a non-empty collection literal or comprehension. Such an
+    /// expression has a type of its own (its elements'), and #1671 lets a contextual type replace
+    /// it — which is exactly the override an unresolved candidate must not make.
+    ///
+    /// <para>An EMPTY literal is excluded: it has no type of its own, so its contextual type is
+    /// not an override but its only source (<see cref="TryInferEmptyCollectionType"/>), and denying
+    /// it would turn working calls into SPY0227.</para>
+    /// </summary>
+    private static bool TakesContextualCollectionType(Expression argument) =>
+        UnwrapParenthesized(argument) switch
+        {
+            ListLiteral list => list.Elements.Length > 0,
+            SetLiteral set => set.Elements.Length > 0,
+            DictLiteral dict => dict.Entries.Length > 0,
+            TupleLiteral tuple => tuple.Elements.Length > 0,
+            ListComprehension or SetComprehension or DictComprehension or DictSpreadComprehension => true,
+            _ => false
+        };
+
+    /// <summary>
+    /// Whether <paramref name="callee"/> denotes an overload <b>set</b> rather than one resolved
+    /// target. This is the gate on contextual (expected-type) information flowing into a call's
+    /// arguments: a literal's contextual type may come only from a RESOLVED target — a single
+    /// candidate, or an overload already chosen — never from a candidate set (#1671).
+    ///
+    /// <para>Without the gate the checker records an argument's type from whichever candidate the
+    /// name happened to bind to, and overload resolution then selects on that recorded type: with
+    /// <c>def h(xs: list[float])</c> declared before <c>def h(xs: list[int])</c>, <c>h([1, 2])</c>
+    /// bound the <c>float</c> overload purely because it was written first, while the same two
+    /// declarations in the other order bound the <c>int</c> one. Argument types are computed from
+    /// the arguments alone; applicability and betterness (<c>overload_resolution.md</c>) then run
+    /// on those types.</para>
+    ///
+    /// <para>The candidate sets consulted are the ones the resolution routes themselves read:
+    /// user and imported function overloads (<see cref="SymbolTable.LookupFunctionOverloads"/>),
+    /// builtin overloads (<see cref="Registry.BuiltinRegistry.GetFunctionOverloads"/>), module
+    /// exports (<see cref="LookupModuleFunctionOverloads"/>), instance methods
+    /// (<see cref="LookupInstanceMethodOverloads"/>) and reflected CLR method groups.</para>
+    /// </summary>
+    /// <summary>
+    /// Whether <paramref name="callee"/> denotes an overload <b>set</b> rather than one resolved
+    /// target. This is the gate on contextual (expected-type) information flowing into a call's
+    /// arguments: a literal's contextual type may come only from a RESOLVED target — a single
+    /// candidate, or an overload already chosen — never from a candidate set (#1671).
+    ///
+    /// <para>Without the gate the checker records an argument's type from whichever candidate the
+    /// name happened to bind to, and overload resolution then selects on that recorded type: with
+    /// <c>def h(xs: list[float])</c> declared before <c>def h(xs: list[int])</c>, <c>h([1, 2])</c>
+    /// bound the <c>float</c> overload purely because it was written first, while the same two
+    /// declarations in the other order bound the <c>int</c> one. Argument types are computed from
+    /// the arguments alone; applicability and betterness (<c>overload_resolution.md</c>) then run
+    /// on those types.</para>
+    ///
+    /// <para>The candidate sets consulted are the ones the resolution routes themselves read:
+    /// user and imported function overloads (<see cref="SymbolTable.LookupFunctionOverloads"/>),
+    /// builtin overloads (<see cref="Registry.BuiltinRegistry.GetFunctionOverloads"/>), module
+    /// exports (<see cref="LookupModuleFunctionOverloads"/>), instance methods
+    /// (<see cref="LookupInstanceMethodOverloads"/>) and reflected CLR method groups.</para>
+    /// </summary>
+    /// <summary>
+    /// Whether the bare name <paramref name="name"/> is answered by more than one declaration —
+    /// a user/imported overload list, or a builtin overload set the name actually denotes (a user
+    /// symbol shadowing a builtin name is its own, single target: SPY0212's rule). Unlike
+    /// <see cref="CalleeDenotesOverloadSet"/> this asks nothing about the call site, because its
+    /// caller holds an ARBITRARILY bound member of the set rather than the applicable one.
+    /// </summary>
+    private bool NameDenotesMultipleDeclarations(string name, FunctionSymbol bound)
+    {
+        if (_symbolTable.LookupFunctionOverloads(name) is { Count: > 1 })
+            return true;
+
+        var builtinOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(name);
+        return builtinOverloads is { Count: > 1 } && builtinOverloads.Contains(bound);
+    }
+
+    private bool CalleeDenotesOverloadSet(Expression callee, FunctionCall call)
+    {
+        switch (callee)
+        {
+            case Identifier id:
+            {
+                if (IsUnresolvedSet(_symbolTable.LookupFunctionOverloads(id.Name), call))
+                    return true;
+
+                // A builtin overload set counts only when the bare spelling actually denotes it:
+                // a user symbol that shadows the name is its own, single target (SPY0212's rule).
+                var builtinOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
+                if (builtinOverloads is { Count: > 1 })
+                {
+                    var bound = _symbolTable.Lookup(id.Name) as FunctionSymbol;
+                    return (bound == null || builtinOverloads.Contains(bound))
+                        && IsUnresolvedSet(builtinOverloads, call);
+                }
+
+                return false;
+            }
+
+            case MemberAccess memberAccess:
+            {
+                var rawReceiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
+                if (rawReceiverType == null)
+                    return false;
+                // Same receiver chain ResolveUserMethodOverload walks, so the set consulted here is
+                // the set that will actually resolve the call.
+                var receiverType = UnwrapCallTarget(rawReceiverType);
+
+                if (IsUnresolvedSet(LookupModuleFunctionOverloads(receiverType, memberAccess.Member), call))
+                    return true;
+                if (IsUnresolvedSet(LookupInstanceMethodOverloads(receiverType, memberAccess.Member), call))
+                    return true;
+
+                // Reflected CLR overloads on a CLR-backed receiver — the same method group
+                // BclMemberTypeOnBuiltinReceiver declines to type (ClrMemberResolution.MethodGroup),
+                // reached through the one receiver→CLR-type resolution both share.
+                if ((ClrReceiverTypeOf(receiverType) ?? InheritedClrReceiverTypeOf(receiverType)) is { } clrReceiver)
+                {
+                    var resolver = new Discovery.ClrMemberTypeResolver(_bclGenericMethodBridge);
+                    return resolver.Resolve(clrReceiver, memberAccess.Member)
+                            is Discovery.ClrMemberResolution.MethodGroup group
+                        && ArityApplicableCount(group.Candidates, call) > 1;
+                }
+
+                return false;
+            }
+
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Whether <paramref name="candidates"/> still holds more than one candidate after the ONE
+    /// applicability test that needs no argument types: arity.
+    ///
+    /// <para>Arity is syntactic — the call site's argument count is known before any argument is
+    /// checked. When exactly one candidate can accept that count, the callee is resolved by arity
+    /// alone and no argument type can change the selection, so its parameter types are a resolved
+    /// target's and may be pushed as expectations (this is what keeps the deferred callable-argument
+    /// selection of #1589 working for <c>map(bytes, sizes)</c>: only the two-argument <c>map</c>
+    /// accepts two arguments). When two or more survive, the selection depends on the argument
+    /// types, and those types must not be derived from any candidate (#1671).</para>
+    ///
+    /// <para>A spread argument (<c>f(*xs)</c>) expands to an unknown number of arguments, so arity
+    /// narrows nothing and the whole set counts.</para>
+    /// </summary>
+    private static bool IsUnresolvedSet(IReadOnlyList<FunctionSymbol>? candidates, FunctionCall call)
+        => candidates is { Count: > 1 } && ArityApplicableCount(candidates, call) > 1;
+
+    private static int CallSiteArgumentCount(FunctionCall call)
+        => call.Arguments.Length + call.KeywordArguments.Length;
+
+    private static int ArityApplicableCount(IReadOnlyList<FunctionSymbol> candidates, FunctionCall call)
+    {
+        if (call.Arguments.Any(a => a is SpreadElement))
+            return candidates.Count;
+
+        var argCount = CallSiteArgumentCount(call);
+        var applicable = 0;
+        foreach (var candidate in candidates)
+        {
+            // `self` is never one of the call's arguments; the parameter lists of instance methods
+            // carry it, module functions and builtins do not.
+            var parameters = candidate.Parameters.Count > 0
+                && candidate.Parameters[0].Name == PythonNames.Self
+                    ? candidate.Parameters.Skip(1).ToList()
+                    : (IReadOnlyList<ParameterSymbol>)candidate.Parameters;
+
+            var required = parameters.Count(p => !p.HasDefault && !p.IsVariadic);
+            var isVariadic = parameters.Any(p => p.IsVariadic);
+            if (isVariadic ? argCount >= required : argCount >= required && argCount <= parameters.Count)
+                applicable++;
+        }
+
+        return applicable;
+    }
+
+    private static int ArityApplicableCount(
+        IReadOnlyList<System.Reflection.MethodInfo> candidates, FunctionCall call)
+    {
+        if (call.Arguments.Any(a => a is SpreadElement))
+            return candidates.Count;
+
+        var argCount = CallSiteArgumentCount(call);
+        var applicable = 0;
+        foreach (var candidate in candidates)
+        {
+            var parameters = candidate.GetParameters();
+            var isVariadic = parameters.Length > 0
+                && parameters[^1].IsDefined(typeof(System.ParamArrayAttribute), inherit: false);
+            var required = parameters.Count(p => !p.IsOptional)
+                - (isVariadic ? 1 : 0);
+            if (isVariadic ? argCount >= required : argCount >= required && argCount <= parameters.Length)
+                applicable++;
+        }
+
+        return applicable;
+    }
+
+    /// <summary>
     /// Resolves the function symbol early for constructor inference on arguments.
     /// For simple identifier calls (foo(Some(42))), looks up the function before
     /// checking arguments, allowing _expectedType to be set per-parameter.
@@ -4139,6 +4374,9 @@ internal partial class TypeChecker
             // Only use early resolution for non-generic, non-overloaded functions.
             // Generic functions need argument types first for inference.
             // Overloaded builtins need argument types for resolution.
+            // (What this symbol may and may not contribute to a context-sensitive argument is
+            // decided at the one seam that pushes expectations — see CheckCallArguments' #1671
+            // gate — so this arm keeps its original, unrelated job.)
             var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(earlyId.Name);
             if (overloads == null || overloads.Count <= 1 || !overloads.Contains(fs))
             {
