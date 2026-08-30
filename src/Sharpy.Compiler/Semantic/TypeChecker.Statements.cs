@@ -203,6 +203,18 @@ internal partial class TypeChecker
                         _semanticInfo.SetExpressionType(assignment.Value, SemanticType.Float32);
                         inferredType = SemanticType.Float32;
                     }
+                    else if (IsImplicitConstantConversion(assignment.Value, inferredType, boundExisting))
+                    {
+                        // Same parity for integers: `x8: int8 = 1; x8 = 7` is the §10.2.11 constant
+                        // conversion the declaration position already performs, and the C# it emits
+                        // (`x8 = 7;` on an `sbyte`) compiles as written (#1698). Unlike the float32
+                        // case the VALUE is not re-typed — C# converts the constant itself — but the
+                        // variable must keep its declared width: the rebinding below records
+                        // `inferredType` as the new binding's type, and leaving it `int32` would
+                        // make every later read of `x8` lie about the `sbyte` local the emitter
+                        // assigned into (`ys: list[int8] = [x8]` became SPY0220).
+                        inferredType = boundExisting;
+                    }
                     else
                     {
                         AddError(
@@ -385,16 +397,17 @@ internal partial class TypeChecker
                 return;
             }
 
+            // The augmented-narrowing decision — one point, every target kind, every operator
+            // (#1666). `TryNarrowAugmentedResult` is C#'s §12.21.4 rule; when it declines, the
+            // SPY0220 below is the answer, and it is the same answer for `x8 += i` (a variable
+            // RHS) and `x8 += 300` (an out-of-range constant) as it was before the rule existed.
             SemanticType? narrowTo = null;
             if (!resultType.IsAssignableTo(targetType))
             {
-                if ((targetType == SemanticType.SByte || targetType == SemanticType.Byte
-                        || targetType == SemanticType.Short || targetType == SemanticType.UShort)
-                    && valueType.IsAssignableTo(targetType))
-                {
-                    narrowTo = targetType;
-                }
-                else
+                narrowTo = TryNarrowAugmentedResult(
+                    assignment.Operator, targetType, valueType, resultType, assignment.Value);
+
+                if (narrowTo == null)
                 {
                     AddError(
                         $"Result type '{resultType.GetDisplayName()}' of augmented assignment is not assignable to target type '{targetType.GetDisplayName()}'",
@@ -502,8 +515,13 @@ internal partial class TypeChecker
         }
 
         // Otherwise, check as a regular simple assignment
-        // Use assignmentTargetType (declared type) for fields where narrowing may differ
-        if (!IsAssignable(valueType, assignmentTargetType))
+        // Use assignmentTargetType (declared type) for fields where narrowing may differ.
+        // An in-range integer constant converts here exactly as it does at a declaration — the
+        // attribute, index and dict-value store positions all land on this one check, so
+        // `b.n8 = 7`, `xs[0] = 7` and `d["a"] = 7` narrow to a narrow-integer destination the
+        // same way `n8: int8 = 7` does (#1698, §10.2.11).
+        if (!IsAssignable(valueType, assignmentTargetType)
+            && !IsImplicitConstantConversion(assignment.Value, valueType, assignmentTargetType))
         {
             if (valueType is VoidType && assignmentTargetType is not NullableType and not OptionalType)
             {
@@ -852,7 +870,11 @@ internal partial class TypeChecker
             var returnType = CheckExpression(returnStmt.Value);
             _expectedType = previousExpectedType;
             RecordSequenceMaterialization(returnStmt.Value, returnType, _currentFunctionReturnType);
-            if (!IsAssignable(returnType, _currentFunctionReturnType))
+            // `return 7` from a `-> int8` is the §10.2.11 constant conversion, the same one the
+            // declaration and argument positions perform; the emitted `return 7;` compiles as
+            // written (#1698).
+            if (!IsAssignable(returnType, _currentFunctionReturnType)
+                && !IsImplicitConstantConversion(returnStmt.Value, returnType, _currentFunctionReturnType))
             {
                 AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
                     returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue,

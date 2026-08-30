@@ -703,6 +703,71 @@ internal partial class TypeChecker
         return constant.Sign >= 0 && constant < (System.Numerics.BigInteger.One << target.SizeInBits);
     }
 
+    /// <summary>
+    /// The ONE decision behind <c>x op= y</c> on an integer target whose binary result is wider
+    /// than the target: whether C# would narrow the result back into the target, in which case the
+    /// checker records <c>NarrowTo</c> and the emitter casts the desugared value (#1666).
+    /// Returns the type to narrow to, or <c>null</c> — the caller then reports SPY0220.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// ECMA-334 §12.21.4 (compound assignment): <c>x op= y</c> with a predefined operator is
+    /// evaluated as <c>x = (T)(x op y)</c> when the operator's result is <em>explicitly</em>
+    /// convertible to <c>T</c> (the type of <c>x</c>) and <em>either</em> <c>y</c> is implicitly
+    /// convertible to <c>T</c> <em>or the operator is a shift operator</em>. Both halves are
+    /// implemented here, and both were verified against a <c>net10.0</c> compilation:
+    /// <c>sbyte b = 127; b += 1;</c> gives <c>-128</c>; <c>byte u = 0; u -= 1;</c> gives
+    /// <c>255</c>; <c>b &lt;&lt;= 1000</c> and <c>b &lt;&lt;= i</c> compile; <c>b += 1000</c> is
+    /// CS0031 and <c>b += i</c> is CS0266.
+    /// </para>
+    /// <para>
+    /// The shift carve-out is not an exception the language invents: the right operand of a shift
+    /// is a COUNT, not a value of the target's type, so requiring it to fit the target would refuse
+    /// <c>x8 &lt;&lt;= 2</c> — a shift by a literal — while admitting <c>x8 += 2</c>. Axiom 1
+    /// (.NET first) settles it at zero cost: the rule is C#'s, spelled once.
+    /// </para>
+    /// <para>
+    /// Deliberately integer-only. C# narrows compound assignment for every numeric target, but the
+    /// owner's ruling (2026-08-28) is scoped to integer targets, and admitting
+    /// <c>f: float32; f += 1.0</c> here would be a language change nobody ruled — it stays SPY0220,
+    /// as measured at c68a2683d.
+    /// </para>
+    /// <para>
+    /// Target kind does not appear in this decision, and that is the point: identifier, attribute,
+    /// index and dict-value targets all reach it because the caller is the single augmented-result
+    /// check in <c>CheckAssignment</c>, and the recorded <c>NarrowTo</c> travels on the
+    /// <see cref="Assignment"/> node, which every emitter target-kind arm routes through
+    /// <c>GenerateAugmentedValue</c>.
+    /// </para>
+    /// </remarks>
+    private SemanticType? TryNarrowAugmentedResult(
+        AssignmentOperator op,
+        SemanticType targetType,
+        SemanticType valueType,
+        SemanticType resultType,
+        Expression? value)
+    {
+        // "Explicitly convertible result" — between integer primitives an explicit conversion
+        // always exists, so this reduces to: both the result and the target are integers. A
+        // non-primitive target (a user type with operator methods, a generic) is not this rule's
+        // subject and keeps the SPY0220 it has always drawn.
+        if (!Registry.PrimitiveCatalog.IsInteger(targetType) || !Registry.PrimitiveCatalog.IsInteger(resultType))
+            return null;
+
+        // Shift: the count never has to fit the target (§12.21.4's own carve-out).
+        if (op is AssignmentOperator.LeftShiftAssign or AssignmentOperator.RightShiftAssign)
+            return targetType;
+
+        // Standard implicit conversion — narrow-or-equal width, e.g. `x8 += y8`, `u32 //= v32`.
+        if (valueType.IsAssignableTo(targetType))
+            return targetType;
+
+        // §10.2.11 constant conversion — `x8 += 1`, `x8 %= 2`, `u8 -= 1`. Same helper, same
+        // range check and same const-reference folding the declaration position uses (#1355), so
+        // `const L: int = 100` then `x8 += L` narrows and `x8 += 300` does not.
+        return IsImplicitConstantConversion(value, valueType, targetType) ? targetType : null;
+    }
+
     private bool IsAssignable(SemanticType source, SemanticType target)
     {
         // Allow assignment to UnknownType to avoid cascading errors
