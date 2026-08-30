@@ -1,5 +1,6 @@
 using System.Reflection;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -32,6 +33,7 @@ public class CfgStatementTotalityTests
         nameof(RaiseStatement),
         nameof(MatchStatement),
         nameof(DecoratedStatement),
+        nameof(DeferStatement),
     };
 
     private static readonly HashSet<string> NoOpStatements = new()
@@ -55,7 +57,6 @@ public class CfgStatementTotalityTests
         nameof(AssertStatement),
         nameof(PassStatement),
         nameof(YieldStatement),
-        nameof(DeferStatement),
         nameof(UnionDef),
         nameof(DelegateDef),
         nameof(EventDef),
@@ -100,6 +101,42 @@ public class CfgStatementTotalityTests
 
         Assert.Empty(unclassified);
         Assert.Empty(phantom);
+    }
+
+    /// <summary>
+    /// Simple statements that have their own explicit case arm in BuildStatement rather than
+    /// falling through to the default. Their bodies still call AddStatement, so they remain
+    /// classified Simple — but the scanner will find them.
+    /// </summary>
+    private static readonly HashSet<string> ExplicitSimple = new()
+    {
+        nameof(YieldStatement),
+    };
+
+    [Fact]
+    public void SwitchArms_MatchClassification()
+    {
+        var switchArms = SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Analysis/ControlFlow/ControlFlowGraphBuilder.cs",
+            "BuildStatement");
+
+        Assert.NotEmpty(switchArms);
+
+        var cfNotInSwitch = ControlFlowStatements.Except(switchArms).ToList();
+        Assert.True(cfNotInSwitch.Count == 0,
+            $"ControlFlowStatements missing from switch: {string.Join(", ", cfNotInSwitch)}");
+
+        var noOpNotInSwitch = NoOpStatements.Except(switchArms).ToList();
+        Assert.True(noOpNotInSwitch.Count == 0,
+            $"NoOpStatements missing from switch: {string.Join(", ", noOpNotInSwitch)}");
+
+        var expected = new HashSet<string>(ControlFlowStatements);
+        expected.UnionWith(NoOpStatements);
+        expected.UnionWith(ExplicitSimple);
+        Assert.True(switchArms.SetEquals(expected),
+            $"Switch arms differ from expected.\n" +
+            $"  Extra in switch: {string.Join(", ", switchArms.Except(expected))}\n" +
+            $"  Missing from switch: {string.Join(", ", expected.Except(switchArms))}");
     }
 
     [Fact]

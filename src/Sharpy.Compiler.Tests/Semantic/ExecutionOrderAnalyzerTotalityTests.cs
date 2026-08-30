@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -121,6 +122,27 @@ public class ExecutionOrderAnalyzerTotalityTests
 
         Assert.Empty(unclassified);
         Assert.Empty(phantom);
+    }
+
+    [Fact]
+    public void SwitchArms_MatchHandledClassification()
+    {
+        var switchArms = SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Semantic/ExecutionOrderAnalyzer.cs",
+            "CollectReferencedIdentifiers");
+
+        Assert.NotEmpty(switchArms);
+
+        var handledNotInSwitch = Handled.Except(switchArms).ToList();
+        Assert.True(handledNotInSwitch.Count == 0,
+            $"Handled types missing from switch: {string.Join(", ", handledNotInSwitch)}");
+
+        var allClassified = new HashSet<string>(Handled);
+        allClassified.UnionWith(Leaf);
+        allClassified.UnionWith(NotReachable);
+        var unclassifiedArms = switchArms.Except(allClassified).ToList();
+        Assert.True(unclassifiedArms.Count == 0,
+            $"Switch arms not classified: {string.Join(", ", unclassifiedArms)}");
     }
 
     [Fact]

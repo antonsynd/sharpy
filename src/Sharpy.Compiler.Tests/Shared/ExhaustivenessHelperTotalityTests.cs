@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -95,6 +96,44 @@ public class ExhaustivenessHelperTotalityTests
 
         Assert.Empty(unclassified);
         Assert.Empty(phantom);
+    }
+
+    [Fact]
+    public void SwitchArms_MatchCoverageContributing()
+    {
+        var switchArms = SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Shared/ExhaustivenessHelper.cs",
+            "CollectCoveredCases");
+
+        Assert.NotEmpty(switchArms);
+
+        var covNotInSwitch = CoverageContributing.Except(switchArms).ToList();
+        Assert.True(covNotInSwitch.Count == 0,
+            $"CoverageContributing types missing from CollectCoveredCases switch: {string.Join(", ", covNotInSwitch)}");
+
+        var allClassified = new HashSet<string>(CoverageContributing);
+        allClassified.UnionWith(IrrefutableOnly);
+        allClassified.UnionWith(NoCoverage);
+        var unclassifiedArms = switchArms.Except(allClassified).ToList();
+        Assert.True(unclassifiedArms.Count == 0,
+            $"CollectCoveredCases switch arms not classified: {string.Join(", ", unclassifiedArms)}");
+    }
+
+    [Fact]
+    public void SwitchArms_MatchIsIrrefutable()
+    {
+        var switchArms = SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Shared/ExhaustivenessHelper.cs",
+            "IsIrrefutable");
+
+        Assert.NotEmpty(switchArms);
+
+        var allClassified = new HashSet<string>(CoverageContributing);
+        allClassified.UnionWith(IrrefutableOnly);
+        allClassified.UnionWith(NoCoverage);
+        var unclassifiedArms = switchArms.Except(allClassified).ToList();
+        Assert.True(unclassifiedArms.Count == 0,
+            $"IsIrrefutable switch arms not classified: {string.Join(", ", unclassifiedArms)}");
     }
 
     [Fact]
