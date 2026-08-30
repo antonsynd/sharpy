@@ -414,7 +414,7 @@ that denote one can be tested:
 |----------|--------|
 | `case list(xs):`, `case dict(d):`, `case set(s):` | tested per the table above |
 | `case int(n):`, `case str(s):`, `case float(f):`, `case bool(b):`, `case bytes(b):` | closed test on the primitive |
-| `case tuple(v):`, `case frozenset(v):` | **SPY0345** — generic types with no type-erased protocol interface, so nothing determines their type arguments and there is no single runtime type to test |
+| `case tuple(v):`, `case frozenset(v):` | **SPY0345** — generic types with no type-erased protocol interface, so nothing determines their type arguments and there is no single runtime type to test (spec-vs-implementation tracked in #1693) |
 | `case range(x):`, `case bytearray(v):` | **SPY0202** — the name denotes no registered type |
 | `case list[int](xs):` | **SPY0125** — a pattern cannot name type arguments; write `case list(xs):` and let the scrutinee supply the vector |
 
