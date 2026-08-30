@@ -534,4 +534,141 @@ def main() -> None:
     //   - Except-as + tuple/starred: Python itself refuses these
     //   - Walrus + tuple/starred: walrus is always a single-name binding
     //   - Del + starred: `del *a` is a SyntaxError in python3 as well
+
+    // ── Declared-type stores (#1706) ──
+    // A store is checked against the target's DECLARED type; the assigned value's type and
+    // control-flow facts are READ narrowings. Axes: target {local, self.field, obj.field,
+    // tuple-element attribute} × narrowing source {prior store, assert, if-block} × store {None,
+    // wider subtype}. The two controls at the end prove (a) a non-nullable declaration still refuses
+    // None and (b) reads DO narrow to the stored value's type — both are what a permissive cure
+    // would silently lose.
+
+    private const string NullableBoxPreamble = @"
+class NBox:
+    v: str | None = None
+    def clear_if_set(self) -> None:
+        if self.v is not None:
+            self.v = None
+";
+
+    [Fact]
+    public void DeclaredTypeStore_Local_NoneAfterValueStore()
+    {
+        var result = CompileAndExecute(@"
+def main() -> None:
+    x: str | None = None
+    x = ""a""
+    x = None
+    print(x is None)
+");
+        result.Success.Should().BeTrue(result.StandardError);
+        result.StandardOutput.Should().Contain("True");
+    }
+
+    [Fact]
+    public void DeclaredTypeStore_Local_WiderDeclaredObjectRebindsAcrossTypes()
+    {
+        var result = CompileAndExecute(@"
+def main() -> None:
+    x: object = 1
+    x = ""a""
+    x = 2
+    print(x)
+");
+        result.Success.Should().BeTrue(result.StandardError);
+        result.StandardOutput.Should().Contain("2");
+    }
+
+    [Fact]
+    public void DeclaredTypeStore_Local_NoneAfterAssertNarrowing()
+    {
+        var result = CompileAndExecute(@"
+def main() -> None:
+    x: str | None = None
+    x = ""a""
+    assert x is not None
+    x = None
+    print(x is None)
+");
+        result.Success.Should().BeTrue(result.StandardError);
+        result.StandardOutput.Should().Contain("True");
+    }
+
+    [Fact]
+    public void DeclaredTypeStore_SelfField_InsideNarrowingBlock()
+    {
+        var result = CompileAndExecute(NullableBoxPreamble + @"
+def main() -> None:
+    b: NBox = NBox()
+    b.v = ""a""
+    b.clear_if_set()
+    print(b.v is None)
+");
+        result.Success.Should().BeTrue(result.StandardError);
+        result.StandardOutput.Should().Contain("True");
+    }
+
+    [Fact]
+    public void DeclaredTypeStore_ObjField_NoneAfterAssertNarrowing()
+    {
+        var result = CompileAndExecute(NullableBoxPreamble + @"
+def main() -> None:
+    b: NBox = NBox()
+    b.v = ""a""
+    assert b.v is not None
+    b.v = None
+    print(b.v is None)
+");
+        result.Success.Should().BeTrue(result.StandardError);
+        result.StandardOutput.Should().Contain("True");
+    }
+
+    [Fact]
+    public void DeclaredTypeStore_TupleElementAttribute_InsideIsinstanceNarrowing()
+    {
+        // The value is assignable to the DECLARED `object` but not to the isinstance-narrowed `int`;
+        // BASE 6e2b68812 refused it (SPY0220 "'str' to 'int32' in tuple unpacking"). A `None` element
+        // cannot be the discriminator here: a None inside a tuple-literal RHS is its own class
+        // (`var __t = (null, 1)`, CS0815 behind SPY0908 — #1707).
+        var result = CompileAndExecute(@"
+class OBox:
+    v: object = 0
+
+def main() -> None:
+    b: OBox = OBox()
+    if isinstance(b.v, int):
+        b.v, n = ""s"", 1
+        print(b.v, n)
+");
+        result.Success.Should().BeTrue(result.StandardError);
+        result.StandardOutput.Should().Contain("s 1");
+    }
+
+    [Fact]
+    public void DeclaredTypeStore_Control_NonNullableDeclarationStillRefusesNone()
+    {
+        var result = CompileAndExecute(@"
+def main() -> None:
+    y: str = ""a""
+    y = None
+");
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.NullabilityViolation,
+            "the declared type is `str`; None is not a value of it");
+    }
+
+    [Fact]
+    public void DeclaredTypeStore_Control_ReadsNarrowToTheStoredValue()
+    {
+        var result = CompileAndExecute(@"
+def main() -> None:
+    x: str | None = None
+    x = ""a""
+    n: int = x
+");
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.TypeMismatch && d.Message.Contains("'str' to"),
+            "after `x = \"a\"` a READ of x is the narrowed `str`, not the declared `str | None`");
+    }
 }

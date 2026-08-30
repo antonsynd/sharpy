@@ -16,6 +16,11 @@ internal partial class TypeChecker
 {
     private SemanticType CheckMemberAccess(MemberAccess memberAccess)
     {
+        // A plain-store TARGET is typed by its declaration, never by a read narrowing: the store
+        // writes the declared slot, and the stored value is what the NEXT read narrows to (#1706).
+        if (ReferenceEquals(memberAccess, _plainStoreTarget))
+            return CheckMemberAccessCore(memberAccess);
+
         // Type-test operands (`x.f is (not) None`, isinstance subjects) read the raw member value —
         // the node's own narrowing must not apply (its receiver still narrows normally).
         var narrowingKey = ReferenceEquals(memberAccess, _typeTestOperand)
@@ -2382,6 +2387,13 @@ internal partial class TypeChecker
     /// index accesses inside the target (<c>b[c[0]] = v</c>) are reads.
     /// </summary>
     private IndexStoreTarget? _indexStoreTarget;
+
+    /// <summary>
+    /// The expression a plain (non-augmented) assignment or tuple-unpacking element is storing INTO
+    /// while its target is being checked; a member access that is this node is typed by its
+    /// declaration with no read narrowing applied (#1706).
+    /// </summary>
+    private Expression? _plainStoreTarget;
 
     /// <summary>An index-access assignment target and whether the assignment also reads it.</summary>
     private sealed record IndexStoreTarget(IndexAccess Target, bool IsAugmented)

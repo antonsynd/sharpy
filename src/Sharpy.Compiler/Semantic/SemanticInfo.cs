@@ -1282,6 +1282,20 @@ public class SemanticInfo : ISemanticQuery
         _rebindingPredecessors[rebinding] = predecessor;
     }
 
+    /// <summary>
+    /// The binding <paramref name="variable"/> was DECLARED as — the root of its rebinding chain, or
+    /// itself when it was never rebound. Predecessor lookups only, so a store check costs one walk
+    /// up the chain rather than <see cref="GetBindingChain"/>'s forward scan (#1706).
+    /// </summary>
+    public VariableSymbol GetRootBinding(VariableSymbol variable)
+    {
+        var root = variable;
+        var guard = _rebindingPredecessors.Count + 1;
+        while (_rebindingPredecessors.TryGetValue(root, out var previous) && guard-- > 0)
+            root = previous;
+        return root;
+    }
+
     /// <inheritdoc/>
     public IReadOnlyList<VariableSymbol> GetBindingChain(Symbol symbol)
     {

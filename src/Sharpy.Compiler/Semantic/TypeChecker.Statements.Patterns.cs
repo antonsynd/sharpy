@@ -1394,8 +1394,10 @@ internal partial class TypeChecker
             {
                 // For more complex targets (like attributes), just check type compatibility.
                 // An index-access element (`b[k], y = …`) is checked in STORE position (#1620).
+                // An attribute element is a plain store: declared member type, no read narrowing (#1706).
                 SemanticType targetElemType;
                 using (ScopedValue.Push(ref _indexStoreTarget, IndexStoreTarget.Of(targetElem)))
+                using (ScopedValue.Push(ref _plainStoreTarget, targetElem))
                     targetElemType = CheckExpression(targetElem);
                 if (!IsAssignable(valueElemType, targetElemType))
                 {

@@ -39,6 +39,34 @@ if isinstance(x, int) or isinstance(x, str):
   `is None` (see [#1079])
 - Narrowing only affects the scope of the conditional block
 
+## Stores Use the Declared Type
+
+Narrowing describes what a **read** sees. A **store** is checked against the target's declared
+type — the slot the emitted C# writes — never against the narrowed type of the previous value or
+of an enclosing `assert`/`if`. After a store, reads narrow to the stored value's type.
+
+```python
+class Box:
+    v: str | None = None
+
+def main() -> None:
+    x: str | None = None
+    x = "a"                 # reads of x now see str
+    n: int = len(x)         # no None check needed
+    x = None                # the store is checked against the declared str | None
+    b: Box = Box()
+    b.v = "a"
+    assert b.v is not None  # narrows reads of b.v to str
+    b.v = None              # the store writes the declared slot
+    print(n, x is None, b.v is None)
+```
+
+```
+1 True True
+```
+
+A non-nullable declaration is unaffected: `y: str = "a"; y = None` is SPY0229.
+
 ## `isinstance` is call syntax, not a value
 
 `isinstance` is a compile-time narrowing construct rather than an ordinary function. It must be

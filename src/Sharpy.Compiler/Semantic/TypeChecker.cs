@@ -414,6 +414,16 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The type a variable was DECLARED with — its root binding's type — which is what a STORE into
+    /// it is checked against. A plain rebinding versions the binding by the assigned value's type so
+    /// that reads narrow (`x: str | None = None; x = "a"` reads `str`), but the emitted C# local keeps
+    /// its declared type, so the next store (`x = None`, `x = 2` into an `object`) is a write into the
+    /// declared slot, never into the previous value's type (#1706).
+    /// </summary>
+    private SemanticType DeclaredBindingType(VariableSymbol symbol)
+        => GetVariableType(_semanticInfo.GetRootBinding(symbol));
+
+    /// <summary>
     /// Gets diagnostics from type checking, type resolution, and validation pipeline.
     /// </summary>
     public DiagnosticBag Diagnostics => _diagnostics;

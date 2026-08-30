@@ -119,14 +119,15 @@ internal partial class TypeChecker
             // This enables Python-like behavior where variables can be reassigned to different types
             // Set expected type for constructor inference if the variable was previously declared
             var previousExpectedType2 = _expectedType;
+            // The expectation, like the check below, is the DECLARED binding type (#1706).
             if (existingSymbol is VariableSymbol existingVarSym)
             {
-                var existingType = GetVariableType(existingVarSym);
+                var existingType = DeclaredBindingType(existingVarSym);
                 _expectedType = existingType is UnknownType ? null : existingType;
             }
             else if (parentSymbol is VariableSymbol parentVarSym)
             {
-                var parentType = GetVariableType(parentVarSym);
+                var parentType = DeclaredBindingType(parentVarSym);
                 _expectedType = parentType is UnknownType ? null : parentType;
             }
             var inferredType = CheckExpression(assignment.Value);
@@ -154,7 +155,7 @@ internal partial class TypeChecker
             if (inferredType is VoidType)
             {
                 var boundVoidTarget = (existingSymbol ?? parentSymbol) as VariableSymbol;
-                if (boundVoidTarget != null && GetVariableType(boundVoidTarget) is { } keptType
+                if (boundVoidTarget != null && DeclaredBindingType(boundVoidTarget) is { } keptType
                     && keptType is not UnknownType)
                 {
                     // Keeping the type is only legitimate when None is a legal value of it —
@@ -190,9 +191,14 @@ internal partial class TypeChecker
             // type-changing rebinding produced uncompilable C#: `z: float32 = 1.0f; z = w` was CS0266
             // and `z = "hello"` was CS0029, both surfacing as SPY0908 internal errors. A diagnostic at
             // the assignment is the honest report of what the compiler can actually do.
+            //
+            // The binding the store is checked against is the DECLARED one — the root of the rebinding
+            // chain — not the previous value's version: `x: str | None = None; x = "a"; x = None` and
+            // `x: object = 1; x = "a"; x = 2` both write the declared C# local (#1706). The new
+            // version below still takes the value's type, which is what makes later READS narrow.
             if (existingSymbol is VariableSymbol boundSymbol)
             {
-                var boundExisting = GetVariableType(boundSymbol);
+                var boundExisting = DeclaredBindingType(boundSymbol);
                 if (boundExisting is not UnknownType
                     && inferredType is not UnknownType
                     && !IsAssignable(inferredType, boundExisting))
@@ -325,27 +331,17 @@ internal partial class TypeChecker
         }
 
         // Check target and value types. An index-access target is checked in STORE position (#1620).
+        // A plain-store target is typed by its DECLARATION: a member access in store position takes
+        // no read narrowing (`assert b.v is not None; b.v = None` writes the declared `str | None`),
+        // so the check and the expectation (`self.x = Some(v)` inside `if self.x is not None:`) both
+        // see the declared slot — every receiver, not only `self`, and every declared type (#1706).
+        // An augmented target is also read, so it keeps the narrowed read.
         SemanticType targetType;
         using (ScopedValue.Push(ref _indexStoreTarget, IndexStoreTarget.Of(assignment)))
+        using (ScopedValue.Push(ref _plainStoreTarget,
+            assignment.Operator == AssignmentOperator.Assign ? assignment.Target : null))
             targetType = CheckExpression(assignment.Target);
-        // For assignments to self.field, use the DECLARED field type rather than the
-        // narrowed type. When a field like `x: int?` is narrowed to `int` inside
-        // `if x is not None:`, we still need `Some(v)` to resolve as `int?` and the
-        // assignment `self.x = Some(v)` to be valid (assigning int? to the int? field).
         var assignmentTargetType = targetType;
-        if (assignment.Target is MemberAccess { Object: Identifier selfAccess } targetMa
-            && selfAccess.Name == PythonNames.Self
-            && _currentClass != null)
-        {
-            var fieldSymbol = _currentClass.Fields
-                .FirstOrDefault(f => f.Name == targetMa.Member);
-            if (fieldSymbol != null)
-            {
-                var declaredType = fieldSymbol.Type;
-                if (declaredType is OptionalType || declaredType is ResultType || declaredType is NullableType)
-                    assignmentTargetType = declaredType;
-            }
-        }
         // Set expected type for constructor inference (Some/None()/Ok/Err)
         var previousExpectedType = _expectedType;
         _expectedType = assignmentTargetType is UnknownType ? null : assignmentTargetType;
