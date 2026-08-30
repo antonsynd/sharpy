@@ -379,6 +379,7 @@ public sealed class HoverService
                 {
                     foreach (var item in withStmt.Items)
                     {
+                        // Identifier-only: non-identifier targets bind no name (#1697).
                         if (item.Target is Identifier hId &&
                             line == hId.LineStart &&
                             col >= hId.ColumnStart &&

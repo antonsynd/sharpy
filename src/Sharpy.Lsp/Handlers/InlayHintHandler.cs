@@ -243,6 +243,7 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                 case WithStatement withStmt:
                     foreach (var item in withStmt.Items)
                     {
+                        // Identifier-only: non-identifier targets bind no name (#1697).
                         if (item.Target is Identifier iId)
                             scope.MarkBound(iId.Name);
                     }

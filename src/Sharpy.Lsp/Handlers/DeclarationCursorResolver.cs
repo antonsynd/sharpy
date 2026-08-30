@@ -199,6 +199,7 @@ internal static class DeclarationCursorResolver
     {
         foreach (var item in w.Items)
         {
+            // Identifier-only: non-identifier targets bind no name (#1697).
             if (item.Target is not Identifier dId
                 || !IsOnNameExtent(line, col, dId.LineStart, dId.ColumnStart,
                     dId.ColumnEnd))

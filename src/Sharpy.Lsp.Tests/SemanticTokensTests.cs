@@ -822,4 +822,47 @@ def main():
     }
 
     #endregion
+
+    #region With-item target tokens (#1697)
+
+    [Fact]
+    public void WithStatement_IdentifierTarget_GetsParameterToken()
+    {
+        // Line 0: "def foo(x: int):"
+        // Line 1: "    with cm() as x:"
+        // Line 2: "        print(x)"
+        // The "x" in "as x" (line 1) should produce a TParameter usage-site token.
+        //     with cm() as x:
+        //     0123456789012345678
+        // x at column 17 (0-based)
+        var tokens = CollectTokensFrom(
+            "def foo(x: int):\n    with cm() as x:\n        print(x)");
+        var paramOnWithLine = tokens.Where(t => t.TokenType == TParameter && t.Line == 1).ToList();
+        paramOnWithLine.Should().ContainSingle(
+            "the with-as identifier target 'x' should produce a parameter usage-site token");
+        paramOnWithLine[0].Col.Should().Be(17,
+            "'x' target starts at column 18 (1-based) -> 17 (0-based)");
+    }
+
+    [Fact]
+    public void WithStatement_MemberAccessTarget_GetsParameterTokenForObject()
+    {
+        // Line 0: "def foo(p: int):"
+        // Line 1: "    with cm() as p.x:"
+        // Line 2: "        print(p)"
+        // After the fix, "p" in "as p.x" (line 1) should produce a TParameter token
+        // because CollectExpressionTokens recurses into MemberAccess.Object.
+        //     with cm() as p.x:
+        //     0123456789012345678
+        // p at column 17 (0-based)
+        var tokens = CollectTokensFrom(
+            "def foo(p: int):\n    with cm() as p.x:\n        print(p)");
+        var paramOnWithLine = tokens.Where(t => t.TokenType == TParameter && t.Line == 1).ToList();
+        paramOnWithLine.Should().ContainSingle(
+            "the with-as member-access target's object 'p' should produce a parameter usage-site token");
+        paramOnWithLine[0].Col.Should().Be(17,
+            "'p' object starts at column 18 (1-based) -> 17 (0-based)");
+    }
+
+    #endregion
 }

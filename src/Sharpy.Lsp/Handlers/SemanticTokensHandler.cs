@@ -296,7 +296,11 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
 
             case WithStatement withStmt:
                 foreach (var item in withStmt.Items)
+                {
                     CollectExpressionTokens(item.ContextExpression, tokens, parameterNames, semanticQuery);
+                    if (item.Target != null)
+                        CollectExpressionTokens(item.Target, tokens, parameterNames, semanticQuery);
+                }
                 CollectStatementList(withStmt.Body, tokens, parameterNames, semanticQuery);
                 break;
 

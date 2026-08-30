@@ -10,6 +10,12 @@ using IOPath = System.IO.Path;
 
 namespace Sharpy.Lsp.Tests.Analysis;
 
+/// <remarks>
+/// This harness checks crash-freedom and aggregate identifier coverage across the fixture
+/// corpus. It cannot assert per-property token presence (e.g. "with-as targets emit tokens")
+/// because it sweeps whole files without statement-property granularity. Per-property
+/// with-item target coverage is in SemanticTokensTests (#1697).
+/// </remarks>
 [Trait("Category", "GapDiscovery")]
 public class SemanticTokenCoverageTests
 {
