@@ -1,14 +1,24 @@
 # DeliberatelyPermissive site ratchet — each entry records:
-#   filename  count  issue-reference
+#   filename  count  issue-ref [issue-ref ...]
 #
-# Every entry must reference an issue explaining why the sites are permissive.
-# When a site is resolved (the type is now tracked), drain the count. When the
-# count reaches 0, delete the entry. Adding a new file or increasing a count
-# requires a new issue reference.
+# ONE issue reference PER SITE, in the file's site order: grouping several sites under a single
+# issue is how a renumbering passes for a fix (#1640's four Access.cs sites were all re-cited to
+# #1678 while one of them was a module-export site that #1674 owns). The ratchet enforces
+# refs.Count == count, so a site cannot be hidden behind its neighbour's issue.
 #
-# Measured @ 4ee7e49d3 (#1640, #1645); re-cited @ 94d628208 (#1640 drained).
-# Access.cs: :280 module export (#1674), :403/:782/:884 CLR fallbacks (#1678)
-TypeChecker.Expressions.Access.cs 4 #1678
+# When a site is resolved (the type is now tracked), drain the count AND delete its ref. When the
+# count reaches 0, delete the entry. Adding a new file or increasing a count requires a new issue.
+#
+# Measured @ 4ee7e49d3 (#1640, #1645); re-cited per site @ #1640's resolver commit.
+#
+# Access.cs sites, in file order:
+#   :280 a module export of an unhandled symbol kind        -> #1674
+#   :413 CLR-origin receiver AFTER ClrMemberTypeResolver    -> #1678 (method group in value
+#        position, reflection inconclusive, or a name the #1141 proof kept)
+#   :792 general tail: a receiver kind the resolver declines -> #1678
+#   :903 inherited CLR member AFTER the resolver             -> #1678
+TypeChecker.Expressions.Access.cs 4 #1674 #1678 #1678 #1678
 # Expressions.cs: :299 auto (#1675), :590 type-ref value position (#1676)
-TypeChecker.Expressions.cs 2 #1675
+TypeChecker.Expressions.cs 2 #1675 #1676
+# Operators.cs: :1194 conditional without an LCA (#1677)
 TypeChecker.Expressions.Operators.cs 1 #1677

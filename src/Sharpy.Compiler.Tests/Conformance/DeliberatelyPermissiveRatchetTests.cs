@@ -14,7 +14,7 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <c>object</c> and any mismatch surfaces as SPY0908, not SPY0220.
 ///
 /// <para>
-/// The allowlist records the current per-file counts with an issue reference. Any INCREASE
+/// The allowlist records the current per-file counts with ONE ISSUE REFERENCE PER SITE. Any INCREASE
 /// (a new DP site) fails CI — the author must either resolve the type (preferred) or add a
 /// justified allowlist entry with an issue reference. Any DECREASE (a fixed site) must drain
 /// the corresponding allowlist count, or the stale entry fails CI.
@@ -72,6 +72,17 @@ public class DeliberatelyPermissiveRatchetTests
                 violations.Add($"GREW {file}: {count} site(s), allowlist says {entry.Count} — resolve the new site(s) or update the allowlist with an issue reference");
         }
 
+        // One issue PER SITE. Grouping sites under a single issue is how a renumbering passes for a
+        // fix: #1640's four Access.cs sites were all re-cited to #1678 even though one of them is a
+        // module-export site that a different class (#1674) owns, and the count alone could not tell.
+        foreach (var (file, entry) in allowlist)
+        {
+            if (entry.IssueRefs.Count != entry.Count)
+                violations.Add(
+                    $"UNCITED {file}: {entry.Count} site(s) but {entry.IssueRefs.Count} issue reference(s) — "
+                    + "list one issue per site, in file order, so no site hides behind its neighbour's issue");
+        }
+
         var stale = new List<string>();
         foreach (var (file, entry) in allowlist)
         {
@@ -99,7 +110,7 @@ public class DeliberatelyPermissiveRatchetTests
             string.Join("\n", stale.Select(s => "  " + s)));
     }
 
-    private sealed record AllowlistEntry(int Count, string IssueRef);
+    private sealed record AllowlistEntry(int Count, IReadOnlyList<string> IssueRefs);
 
     private static Dictionary<string, AllowlistEntry> LoadAllowlist()
     {
@@ -121,9 +132,9 @@ public class DeliberatelyPermissiveRatchetTests
             var file = parts[0];
             if (!int.TryParse(parts[1], out var count))
                 continue;
-            var issueRef = parts[2];
+            var issueRefs = parts.Skip(2).Where(p => p.StartsWith("#", StringComparison.Ordinal)).ToList();
 
-            result[file] = new AllowlistEntry(count, issueRef);
+            result[file] = new AllowlistEntry(count, issueRefs);
         }
 
         return result;
