@@ -163,7 +163,7 @@ namespace Sharpy
                 return null;
             }
 
-            string pathEnv = rawPath;
+            string pathEnv = rawPath!;
             if (pathEnv.Length == 0)
             {
                 return null;
@@ -177,7 +177,7 @@ namespace Sharpy
             if (isWindows)
             {
                 var rawExt = global::System.Environment.GetEnvironmentVariable("PATHEXT");
-                string extValue = rawExt != null ? rawExt : "";
+                string extValue = rawExt != null ? rawExt! : "";
                 if (extValue.Length > 0)
                 {
                     extensions = new Sharpy.List<string>(global::Sharpy.StringExtensions.Split(extValue, ";"));

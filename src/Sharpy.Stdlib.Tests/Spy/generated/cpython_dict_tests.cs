@@ -585,7 +585,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (227, 5) - (227, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Sharpy.Dict<int, int> c = a.Copy();
 #line (228, 5) - (228, 11) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
-                c = c | b;
+                c.Update(b);
 #line (229, 5) - (229, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.Dict<int, int>() { { 0, 0 }, { 1, 1 }, { 2, 2 }, { 3, 3 } }, c);
 #line hidden

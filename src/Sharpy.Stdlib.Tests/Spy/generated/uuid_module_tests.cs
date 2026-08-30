@@ -100,7 +100,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (35, 5) - (35, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/uuid/uuid_module_tests.spy"
                 Xunit.Assert.Equal("12345678123456781234567812345678", id.Hex);
 #line (36, 5) - (36, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/uuid/uuid_module_tests.spy"
-                Xunit.Assert.Equal(32, global::Sharpy.Builtins.Len(id.Hex));
+                Xunit.Assert.Equal(32, id.Hex.Length);
 #line hidden
             }
 

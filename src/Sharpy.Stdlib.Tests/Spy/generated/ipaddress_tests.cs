@@ -295,7 +295,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (137, 5) - (137, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 Xunit.Assert.NotNull(addr.Ipv4Mapped);
 #line (138, 5) - (138, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
-                Xunit.Assert.Equal("192.168.1.1", global::Sharpy.Builtins.Str(addr.Ipv4Mapped));
+                Xunit.Assert.Equal("192.168.1.1", global::Sharpy.Builtins.Str(addr.Ipv4Mapped!));
 #line hidden
             }
 

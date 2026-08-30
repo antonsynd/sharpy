@@ -221,7 +221,7 @@ namespace Sharpy
                         throw new Error("Accepted connection has no remote endpoint.");
                     }
 
-                    global::System.Net.IPEndPoint remoteEp = (global::System.Net.IPEndPoint)remote;
+                    global::System.Net.IPEndPoint remoteEp = (global::System.Net.IPEndPoint)remote!;
                     Socket conn = new Socket(accepted);
                     return (conn, (remoteEp.Address.ToString(), remoteEp.Port));
                 }
@@ -382,7 +382,7 @@ namespace Sharpy
                         return 0;
                     }
 
-                    return (int)opt;
+                    return (int)opt!;
                 }
                 catch (global::System.Net.Sockets.SocketException ex)
                 {
@@ -484,7 +484,7 @@ namespace Sharpy
                     throw new Error("Socket is not bound to an address.");
                 }
 
-                global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)endpoint;
+                global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)endpoint!;
                 return (ep.Address.ToString(), ep.Port);
             }
 
@@ -499,7 +499,7 @@ namespace Sharpy
                     throw new Error("Socket is not connected.");
                 }
 
-                global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)endpoint;
+                global::System.Net.IPEndPoint ep = (global::System.Net.IPEndPoint)endpoint!;
                 return (ep.Address.ToString(), ep.Port);
             }
 
@@ -508,7 +508,7 @@ namespace Sharpy
             /// </summary>
             public int Fileno()
             {
-                return (int)this._Socket.Handle.ToInt64();
+                return global::Sharpy.NumericCheckedCast.ToInt(this._Socket.Handle.ToInt64());
             }
 
             /// <summary>

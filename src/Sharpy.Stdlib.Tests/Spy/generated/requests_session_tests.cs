@@ -283,9 +283,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (163, 5) - (163, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
                 Xunit.Assert.NotNull(s.Proxies);
 #line (164, 5) - (164, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
-                Xunit.Assert.Equal("http://proxy.example.com:8080", s.Proxies["http"]);
+                Xunit.Assert.Equal("http://proxy.example.com:8080", s.Proxies!["http"]);
 #line (165, 5) - (165, 73) 16 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
-                Xunit.Assert.Equal("http://secure-proxy.example.com:8443", s.Proxies["https"]);
+                Xunit.Assert.Equal("http://secure-proxy.example.com:8443", s.Proxies!["https"]);
 #line hidden
             }
 
@@ -327,7 +327,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (182, 5) - (182, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
                 Xunit.Assert.NotNull(s.Proxies);
 #line (183, 5) - (183, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/requests/requests_session_tests.spy"
-                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(s.Proxies));
+                Xunit.Assert.Equal(0, global::Sharpy.Builtins.Len(s.Proxies!));
 #line hidden
             }
         }

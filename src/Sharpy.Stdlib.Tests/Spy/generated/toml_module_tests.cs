@@ -796,7 +796,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (340, 5) - (340, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.Contains("column", global::Sharpy.Builtins.Str(ex));
 #line (341, 5) - (341, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
-                Xunit.Assert.True(global::Sharpy.Builtins.Len(ex.Msg) > 0);
+                Xunit.Assert.True(ex.Msg.Length > 0);
 #line (342, 5) - (342, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.Contains("invalid", ex.Doc);
 #line hidden

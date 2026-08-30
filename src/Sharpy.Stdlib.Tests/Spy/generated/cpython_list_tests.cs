@@ -713,28 +713,15 @@ namespace Sharpy.Stdlib.Tests.Spy
                     1
                 };
 #line (326, 5) - (326, 12) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-                u = u + new Sharpy.List<int>()
-#line hidden
-                {
-                };
+                u.Extend(new Sharpy.List<int>() { });
 #line (327, 5) - (327, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 0, 1 }, u);
 #line (328, 5) - (328, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-                u = u + new Sharpy.List<int>()
-#line hidden
-                {
-                    2,
-                    3
-                };
+                u.Extend(new Sharpy.List<int>() { 2, 3 });
 #line (329, 5) - (329, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 0, 1, 2, 3 }, u);
 #line (330, 5) - (330, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
-                u = u + new Sharpy.List<int>()
-#line hidden
-                {
-                    4,
-                    5
-                };
+                u.Extend(new Sharpy.List<int>() { 4, 5 });
 #line (331, 5) - (331, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                 Xunit.Assert.Equal(new Sharpy.List<int>() { 0, 1, 2, 3, 4, 5 }, u);
 #line hidden

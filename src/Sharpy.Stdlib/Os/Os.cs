@@ -101,7 +101,7 @@ namespace Sharpy
             var parent = global::System.IO.Path.GetDirectoryName(path);
             if (parent != null)
             {
-                if (parent.Length > 0 && !global::System.IO.Directory.Exists(parent))
+                if (parent!.Length > 0 && !global::System.IO.Directory.Exists(parent!))
                 {
                     throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
                 }
@@ -202,7 +202,7 @@ namespace Sharpy
                 return null;
             }
 
-            return result;
+            return result!;
         }
 
         /// <summary>
@@ -216,7 +216,7 @@ namespace Sharpy
                 return @default;
             }
 
-            return result;
+            return result!;
         }
 
         /// <summary>

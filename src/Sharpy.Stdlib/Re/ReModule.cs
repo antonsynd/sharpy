@@ -668,7 +668,7 @@ namespace Sharpy
                     foreach (var __loopVar_4 in names)
                     {
                         var name = __loopVar_4;
-                        if (!name.Isdigit())
+                        if (!global::Sharpy.StringExtensions.Isdigit(name))
                         {
                             this._Groupindex[name] = this._Regex.GroupNumberFromName(name);
                         }
@@ -789,7 +789,7 @@ namespace Sharpy
                 foreach (var __loopVar_5 in names)
                 {
                     var name = __loopVar_5;
-                    if (!name.Isdigit())
+                    if (!global::Sharpy.StringExtensions.Isdigit(name))
                     {
                         global::System.Text.RegularExpressions.Group g = this._Match.Groups[name];
                         result[name] = g.Success ? g.Value : null;

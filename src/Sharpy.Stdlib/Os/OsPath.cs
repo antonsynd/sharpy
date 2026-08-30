@@ -145,7 +145,7 @@ namespace Sharpy
                 return "";
             }
 
-            return result;
+            return result!;
         }
 
         /// <summary>

@@ -59,7 +59,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (23, 5) - (23, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 Xunit.Assert.NotNull(zone);
 #line (24, 5) - (24, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.True(global::Sharpy.Builtins.Len(zone.Key) > 0);
+                Xunit.Assert.True(zone.Key.Length > 0);
 #line hidden
             }
 
@@ -71,7 +71,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (29, 5) - (29, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 Xunit.Assert.NotNull(zone);
 #line (30, 5) - (30, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
-                Xunit.Assert.True(global::Sharpy.Builtins.Len(zone.Key) > 0);
+                Xunit.Assert.True(zone.Key.Length > 0);
 #line hidden
             }
 

@@ -862,7 +862,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (431, 5) - (431, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.NotNull(retrieved);
 #line (432, 5) - (432, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("root", retrieved.Tag);
+                Xunit.Assert.Equal("root", retrieved!.Tag);
 #line hidden
             }
 
@@ -1067,7 +1067,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (526, 5) - (526, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.NotNull(treeRoot);
 #line (527, 5) - (527, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                string s = xml.Tostring(treeRoot);
+                string s = xml.Tostring(treeRoot!);
 #line (528, 5) - (528, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.Contains("\n", s);
 #line hidden
@@ -1259,7 +1259,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (625, 5) - (625, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.NotNull(root);
 #line (626, 5) - (626, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("root", root.Tag);
+                Xunit.Assert.Equal("root", root!.Tag);
 #line (627, 5) - (627, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 os.Remove(tempFile);
 #line hidden
@@ -1275,9 +1275,9 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (633, 5) - (633, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 Xunit.Assert.NotNull(root);
 #line (634, 5) - (634, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal("doc", root.Tag);
+                Xunit.Assert.Equal("doc", root!.Tag);
 #line (635, 5) - (635, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
-                Xunit.Assert.Equal(1, root.Len());
+                Xunit.Assert.Equal(1, root!.Len());
 #line hidden
             }
 
