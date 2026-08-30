@@ -4298,7 +4298,7 @@ internal partial class TypeChecker
                 if ((ClrReceiverTypeOf(receiverType) ?? InheritedClrReceiverTypeOf(receiverType)) is { } clrReceiver)
                 {
                     var resolver = new Discovery.ClrMemberTypeResolver(_bclGenericMethodBridge);
-                    return resolver.Resolve(clrReceiver, memberAccess.Member)
+                    return resolver.Resolve(clrReceiver, memberAccess.Member, ClrReceiverKindOf(memberAccess))
                             is Discovery.ClrMemberResolution.MethodGroup group
                         && ArityApplicableCount(group.Candidates, call) > 1;
                 }
