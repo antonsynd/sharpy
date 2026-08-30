@@ -1,0 +1,6 @@
+# python3: `xs = [1, 2, 3, 4]; del xs[1:3]` leaves [1, 4]. A slice target is not a
+# subscript pop, so it steers to a rebuild rather than to .pop() or to slice assignment
+# (which is itself refused as SPY0225).
+def main() -> None:
+    xs: list[int] = [1, 2, 3, 4]
+    del xs[1:3]

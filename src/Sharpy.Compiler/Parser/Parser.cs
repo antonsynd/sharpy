@@ -772,6 +772,18 @@ public partial class Parser
         return stmt;
     }
 
+    /// <summary>
+    /// The shape-specific steer appended to the SPY0144 'del' refusal. Each target shape
+    /// has its own cure, so the steer is chosen per target, not once for the statement.
+    /// </summary>
+    private static string DelSteerFor(Expression target) => target switch
+    {
+        SliceAccess => " — remove a range by rebuilding the list: xs = xs[:i] + xs[j:]",
+        IndexAccess or MultiAxisAccess =>
+            " — use .pop(key) to remove a dictionary key or .pop(index) for a list element",
+        _ => " — unbinding a name or deleting an attribute is not supported (Axiom 1)"
+    };
+
     private Statement ParseStatementCore()
     {
         // Decorators (for functions, classes, structs)
@@ -816,14 +828,40 @@ public partial class Parser
             var delCol = Current.Column;
             var delSpan = CurrentSpan;
             Advance();
-            var target = ParseExpression();
-            var steer = target switch
+
+            // `del` takes a target *list* (`del a, xs[0]` deletes both), and the cure
+            // depends on the shape of each target. Report one diagnostic per target at
+            // that target's own span so a mixed list steers each one correctly.
+            // ReportError records the diagnostic and returns the exception, so every
+            // target is lodged before the single throw unwinds the parse.
+            var delTargets = new List<Expression> { ParseExpression() };
+            _lastLoopPosition = -1;
+            while (Current.Type == TokenType.Comma)
             {
-                IndexAccess => " — use .pop(key) to remove a dictionary key or .pop(index) for a list element",
-                _ => " — unbinding a name or deleting an attribute is not supported (Axiom 1)"
-            };
-            throw ReportError(
-                $"Sharpy does not support 'del'{steer}",
+                if (!CheckLoopProgress())
+                    break;
+                Advance();
+                if (Current.Type == TokenType.Newline || Current.Type == TokenType.Eof)
+                    break;  // trailing comma: `del a,`
+                delTargets.Add(ParseExpression());
+            }
+
+            ParserAbortException? delAbort = null;
+            foreach (var target in delTargets)
+            {
+                var steer = DelSteerFor(target);
+                var atTarget = target.Span.HasValue && target.LineStart > 0;
+                delAbort = ReportError(
+                    $"Sharpy does not support 'del'{steer}",
+                    atTarget ? target.LineStart : delLine,
+                    atTarget ? target.ColumnStart : delCol,
+                    DiagnosticCodes.Parser.DelStatementNotSupported,
+                    span: atTarget ? target.Span : delSpan);
+            }
+
+            throw delAbort ?? ReportError(
+                "Sharpy does not support 'del'"
+                    + " — unbinding a name or deleting an attribute is not supported (Axiom 1)",
                 delLine, delCol, DiagnosticCodes.Parser.DelStatementNotSupported, span: delSpan);
         }
 

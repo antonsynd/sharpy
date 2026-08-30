@@ -1,0 +1,5 @@
+# A chained subscript is still a subscript: the steer is the pop steer, anchored at the
+# whole target rather than at the `del` keyword.
+def main() -> None:
+    d: dict[str, dict[str, int]] = {"a": {"b": 1}}
+    del d["a"]["b"]

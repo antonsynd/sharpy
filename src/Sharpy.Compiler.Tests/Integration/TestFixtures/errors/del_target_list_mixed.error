@@ -1,0 +1,3 @@
+Sharpy does not support 'del' — unbinding a name or deleting an attribute is not supported (Axiom 1) @7:9
+Sharpy does not support 'del' — use .pop(key) to remove a dictionary key or .pop(index) for a list element @7:12
+!count 2

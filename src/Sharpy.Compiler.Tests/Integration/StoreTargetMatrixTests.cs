@@ -369,8 +369,75 @@ def main() -> None:
             $"del {desc} should produce SPY0144");
     }
 
-    // Del + tuple: N/A — `del a, b` would need a parser extension beyond the current refusal
-    // Del + starred: N/A — not meaningful
+    [Fact]
+    public void Del_Slice_Refused_SPY0144_WithRebuildSteer()
+    {
+        // python3: `xs = [1, 2, 3, 4]; del xs[1:3]` leaves [1, 4]. A slice is not a subscript
+        // pop, so the steer names the rebuild — not .pop(), and not slice assignment, which is
+        // itself refused (SPY0225).
+        var source = Preamble + @"
+def main() -> None:
+    xs: list[int] = [1, 2, 3, 4]
+    del xs[1:3]
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse("del of a slice should be refused");
+        result.RawDiagnostics.Should().Contain(d =>
+            d.Code == DiagnosticCodes.Parser.DelStatementNotSupported
+            && d.Message.Contains("rebuilding the list", StringComparison.Ordinal),
+            "a slice target steers to a rebuild, not to .pop()");
+    }
+
+    [Fact]
+    public void Del_TargetList_ReportsOnePerTarget_WithPerTargetSteers()
+    {
+        // `del` takes a target *list*: python3 runs `del a, xs[0]` as two deletions. One
+        // diagnostic chosen from the outer node would steer one of the two targets wrongly,
+        // so each target is reported at its own span with its own steer (#1672).
+        var source = Preamble + @"
+def main() -> None:
+    a: int = 1
+    xs: list[int] = [10, 20]
+    del a, xs[0]
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse("del of a target list should be refused");
+
+        var delDiagnostics = result.RawDiagnostics
+            .Where(d => d.Code == DiagnosticCodes.Parser.DelStatementNotSupported)
+            .ToList();
+
+        delDiagnostics.Should().HaveCount(2, "one SPY0144 per target, not one for the statement");
+        delDiagnostics.Should().Contain(d => d.Message.Contains("unbinding a name", StringComparison.Ordinal),
+            "the name target keeps the Axiom 1 steer");
+        delDiagnostics.Should().Contain(d => d.Message.Contains(".pop(index)", StringComparison.Ordinal),
+            "the index target gets the pop steer even though it is not the first target");
+    }
+
+    [Fact]
+    public void Del_TargetList_IndexFirst_StillSteersEachTarget()
+    {
+        // The mirror ordering: picking the steer from the outer node made the order decide the
+        // message, so both orderings are cells.
+        var source = Preamble + @"
+def main() -> None:
+    a: int = 1
+    xs: list[int] = [10, 20]
+    del xs[0], a
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse("del of a target list should be refused");
+
+        var delDiagnostics = result.RawDiagnostics
+            .Where(d => d.Code == DiagnosticCodes.Parser.DelStatementNotSupported)
+            .ToList();
+
+        delDiagnostics.Should().HaveCount(2);
+        delDiagnostics.Should().Contain(d => d.Message.Contains(".pop(index)", StringComparison.Ordinal));
+        delDiagnostics.Should().Contain(d => d.Message.Contains("unbinding a name", StringComparison.Ordinal));
+    }
+
+    // Del + starred: N/A — `del *a` is a SyntaxError in python3 as well
 
     // ── N/A cells documentation ──
     // The following cells are N/A (not applicable) and intentionally untested:
@@ -381,5 +448,5 @@ def main() -> None:
     //   - With-as + tuple/starred: uncommon patterns, no parser support
     //   - Except-as + tuple/starred: Python itself refuses these
     //   - Walrus + tuple/starred: walrus is always a single-name binding
-    //   - Del + tuple/starred: would need a parser extension beyond the current refusal
+    //   - Del + starred: `del *a` is a SyntaxError in python3 as well
 }

@@ -1,0 +1,2 @@
+Sharpy does not support 'del' — remove a range by rebuilding the list: xs = xs[:i] + xs[j:] @6:9
+!count 1

@@ -1,0 +1,10 @@
+# Deleting an attribute has no .NET equivalent (Axiom 1) — no pop steer applies.
+class P:
+    x: int
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+def main() -> None:
+    p: P = P(1)
+    del p.x

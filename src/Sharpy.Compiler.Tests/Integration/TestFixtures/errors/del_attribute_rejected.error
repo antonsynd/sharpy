@@ -1,0 +1,2 @@
+Sharpy does not support 'del' — unbinding a name or deleting an attribute is not supported (Axiom 1) @10:9
+!count 1

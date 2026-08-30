@@ -1,0 +1,2 @@
+Sharpy does not support 'del' — use .pop(key) to remove a dictionary key or .pop(index) for a list element @5:9
+!count 1

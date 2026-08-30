@@ -1,0 +1,7 @@
+# `del` takes a target list, and each target earns its own steer: python3 runs
+# `del a, xs[0]` as two deletions, so Sharpy reports one SPY0144 per target rather than
+# picking a single steer from the outer tuple node.
+def main() -> None:
+    a: int = 1
+    xs: list[int] = [10, 20]
+    del a, xs[0]

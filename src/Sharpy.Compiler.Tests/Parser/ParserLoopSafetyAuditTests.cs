@@ -280,8 +280,11 @@ public class ParserLoopSafetyAuditTests
         // Total should be approximately 40 based on the plan
         var totalLoops = totalWhileLoops + totalDoWhileLoops;
 
-        // Allow some variance but flag significant changes
+        // Allow some variance but flag significant changes. The ceiling is a drift ratchet, not
+        // a correctness bound — what makes a loop safe is asserted by
+        // AllParserLoops_ShouldBeProtectedOrStructurallySafe above. Raised from 100 to 105 when
+        // the `del` target-list loop landed (#1672); that loop is CheckLoopProgress-guarded.
         totalLoops.Should().BeGreaterThan(30, "Parser should have a reasonable number of loops");
-        totalLoops.Should().BeLessThan(100, "Unexpectedly high loop count - verify new loops are protected");
+        totalLoops.Should().BeLessThan(105, "Unexpectedly high loop count - verify new loops are protected");
     }
 }
