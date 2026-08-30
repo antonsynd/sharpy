@@ -68,7 +68,8 @@ public class DiagnosticCodeEmissionSiteTests
         foreach (var line in File.ReadAllLines(codesFile))
         {
             var match = CodeConstPattern.Match(line);
-            if (!match.Success) continue;
+            if (!match.Success)
+                continue;
 
             var fieldName = match.Groups[1].Value;
             var code = match.Groups[2].Value;
@@ -94,9 +95,12 @@ public class DiagnosticCodeEmissionSiteTests
                 violations.Add($"{code} ({fieldName}): multiple status labels");
             }
 
-            if (hasActive) active++;
-            if (hasReserved) reserved++;
-            if (hasRetired) retired++;
+            if (hasActive)
+                active++;
+            if (hasReserved)
+                reserved++;
+            if (hasRetired)
+                retired++;
         }
 
         _output.WriteLine($"Census: {active + reserved + retired} total = {active} Active + {reserved} Reserved + {retired} Retired");

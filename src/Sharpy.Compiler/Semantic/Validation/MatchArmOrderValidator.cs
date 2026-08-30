@@ -81,16 +81,21 @@ internal class MatchArmOrderValidator : SemanticValidatorBase
         for (int i = 0; i < arms.Count - 1; i++)
         {
             var (pattern, guard) = arms[i];
-            if (guard != null) continue;
-            if (ExhaustivenessHelper.IsIrrefutable(pattern, context.SemanticInfo)) continue;
-            if (!CoversItsRecordedType(pattern, context.SemanticInfo)) continue;
+            if (guard != null)
+                continue;
+            if (ExhaustivenessHelper.IsIrrefutable(pattern, context.SemanticInfo))
+                continue;
+            if (!CoversItsRecordedType(pattern, context.SemanticInfo))
+                continue;
 
             var earlierType = GetPatternRecordedType(pattern, context.SemanticInfo);
-            if (earlierType == null) continue;
+            if (earlierType == null)
+                continue;
 
             for (int j = i + 1; j < arms.Count; j++)
             {
-                if (arms[j].Guard != null) continue;
+                if (arms[j].Guard != null)
+                    continue;
                 var laterType = GetPatternRecordedType(arms[j].Pattern, context.SemanticInfo);
                 if (TypeSubsumes(earlierType, laterType))
                 {

@@ -4261,50 +4261,50 @@ internal partial class TypeChecker
         switch (callee)
         {
             case Identifier id:
-            {
-                if (IsUnresolvedSet(_symbolTable.LookupFunctionOverloads(id.Name), call))
-                    return true;
-
-                // A builtin overload set counts only when the bare spelling actually denotes it:
-                // a user symbol that shadows the name is its own, single target (SPY0212's rule).
-                var builtinOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
-                if (builtinOverloads is { Count: > 1 })
                 {
-                    var bound = _symbolTable.Lookup(id.Name) as FunctionSymbol;
-                    return (bound == null || builtinOverloads.Contains(bound))
-                        && IsUnresolvedSet(builtinOverloads, call);
-                }
+                    if (IsUnresolvedSet(_symbolTable.LookupFunctionOverloads(id.Name), call))
+                        return true;
 
-                return false;
-            }
+                    // A builtin overload set counts only when the bare spelling actually denotes it:
+                    // a user symbol that shadows the name is its own, single target (SPY0212's rule).
+                    var builtinOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
+                    if (builtinOverloads is { Count: > 1 })
+                    {
+                        var bound = _symbolTable.Lookup(id.Name) as FunctionSymbol;
+                        return (bound == null || builtinOverloads.Contains(bound))
+                            && IsUnresolvedSet(builtinOverloads, call);
+                    }
+
+                    return false;
+                }
 
             case MemberAccess memberAccess:
-            {
-                var rawReceiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
-                if (rawReceiverType == null)
-                    return false;
-                // Same receiver chain ResolveUserMethodOverload walks, so the set consulted here is
-                // the set that will actually resolve the call.
-                var receiverType = UnwrapCallTarget(rawReceiverType);
-
-                if (IsUnresolvedSet(LookupModuleFunctionOverloads(receiverType, memberAccess.Member), call))
-                    return true;
-                if (IsUnresolvedSet(LookupInstanceMethodOverloads(receiverType, memberAccess.Member), call))
-                    return true;
-
-                // Reflected CLR overloads on a CLR-backed receiver — the same method group
-                // BclMemberTypeOnBuiltinReceiver declines to type (ClrMemberResolution.MethodGroup),
-                // reached through the one receiver→CLR-type resolution both share.
-                if ((ClrReceiverTypeOf(receiverType) ?? InheritedClrReceiverTypeOf(receiverType)) is { } clrReceiver)
                 {
-                    var resolver = new Discovery.ClrMemberTypeResolver(_bclGenericMethodBridge);
-                    return resolver.Resolve(clrReceiver, memberAccess.Member, ClrReceiverKindOf(memberAccess))
-                            is Discovery.ClrMemberResolution.MethodGroup group
-                        && ArityApplicableCount(group.Candidates, call) > 1;
-                }
+                    var rawReceiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
+                    if (rawReceiverType == null)
+                        return false;
+                    // Same receiver chain ResolveUserMethodOverload walks, so the set consulted here is
+                    // the set that will actually resolve the call.
+                    var receiverType = UnwrapCallTarget(rawReceiverType);
 
-                return false;
-            }
+                    if (IsUnresolvedSet(LookupModuleFunctionOverloads(receiverType, memberAccess.Member), call))
+                        return true;
+                    if (IsUnresolvedSet(LookupInstanceMethodOverloads(receiverType, memberAccess.Member), call))
+                        return true;
+
+                    // Reflected CLR overloads on a CLR-backed receiver — the same method group
+                    // BclMemberTypeOnBuiltinReceiver declines to type (ClrMemberResolution.MethodGroup),
+                    // reached through the one receiver→CLR-type resolution both share.
+                    if ((ClrReceiverTypeOf(receiverType) ?? InheritedClrReceiverTypeOf(receiverType)) is { } clrReceiver)
+                    {
+                        var resolver = new Discovery.ClrMemberTypeResolver(_bclGenericMethodBridge);
+                        return resolver.Resolve(clrReceiver, memberAccess.Member, ClrReceiverKindOf(memberAccess))
+                                is Discovery.ClrMemberResolution.MethodGroup group
+                            && ArityApplicableCount(group.Candidates, call) > 1;
+                    }
+
+                    return false;
+                }
 
             default:
                 return false;

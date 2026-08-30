@@ -436,7 +436,8 @@ public class MasterRegistryImmutabilityTests
             foreach (var property in PropertiesOf(symbol.GetType()))
             {
                 object? value;
-                try { value = property.GetValue(symbol); }
+                try
+                { value = property.GetValue(symbol); }
                 catch { continue; }
                 if (value is null || value is string)
                     continue;
@@ -462,7 +463,8 @@ public class MasterRegistryImmutabilityTests
             foreach (var field in FieldsOf(node.GetType()))
             {
                 object? value;
-                try { value = field.GetValue(node); }
+                try
+                { value = field.GetValue(node); }
                 catch { continue; }
                 if (value is null || value is string)
                     continue;
@@ -499,7 +501,8 @@ public class MasterRegistryImmutabilityTests
         private static IEnumerable<object?> Enumerate(IEnumerable enumerable)
         {
             IEnumerator enumerator;
-            try { enumerator = enumerable.GetEnumerator(); }
+            try
+            { enumerator = enumerable.GetEnumerator(); }
             catch { yield break; }
 
             while (true)
@@ -549,7 +552,8 @@ public class MasterRegistryImmutabilityTests
             foreach (var property in PropertiesOf(symbol.GetType()))
             {
                 string digest;
-                try { digest = Digest(property.GetValue(symbol), 0); }
+                try
+                { digest = Digest(property.GetValue(symbol), 0); }
                 catch (Exception ex) { digest = $"<threw {ex.GetType().Name}>"; }
                 yield return (property.Name, digest);
             }
@@ -600,7 +604,8 @@ public class MasterRegistryImmutabilityTests
                 var parts = PropertiesOf(type).Select(p =>
                 {
                     string inner;
-                    try { inner = Digest(p.GetValue(value), depth + 1); }
+                    try
+                    { inner = Digest(p.GetValue(value), depth + 1); }
                     catch (Exception ex) { inner = $"<threw {ex.GetType().Name}>"; }
                     return $"{p.Name}={inner}";
                 });

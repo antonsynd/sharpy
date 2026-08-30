@@ -85,7 +85,8 @@ public static class PropertyCorpus
 
     private static string TruncateSource(string source, int maxLen)
     {
-        if (source.Length <= maxLen) return source;
+        if (source.Length <= maxLen)
+            return source;
         return source[..maxLen] + "\n... (truncated)";
     }
 }
