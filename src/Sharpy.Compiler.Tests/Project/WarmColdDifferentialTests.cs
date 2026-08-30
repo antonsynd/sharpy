@@ -52,27 +52,33 @@ def main() -> None:
     s.no_such_member()
 ";
 
+    // The nested receiver is reached through an UNMAPPED CLR generic (Stack[Queue[int]] -> peek()),
+    // not through a Sharpy list. `list[Queue[int]]` was a workaround for the member type of an
+    // unmapped generic being Unknown, which made `s.peek()` unusable as a receiver; the resolver
+    // types it now, so the harness measures the shape it is about (#1640).
     private const string NestedProviderSource = @"
-from System.Collections.Generic import Queue
+from System.Collections.Generic import Stack, Queue
 
-def make() -> list[Queue[int]]:
-    return [Queue[int]()]
+def make() -> Stack[Queue[int]]:
+    s = Stack[Queue[int]]()
+    s.push(Queue[int]())
+    return s
 ";
 
     private const string NestedValidMain = @"
 from provider import make
 
 def main() -> None:
-    xs = make()
-    xs[0].enqueue(1)
+    s = make()
+    s.peek().enqueue(1)
 ";
 
     private const string NestedBogusMain = @"
 from provider import make
 
 def main() -> None:
-    xs = make()
-    xs[0].no_such_member()
+    s = make()
+    s.peek().no_such_member()
 ";
 
     [Fact]
@@ -80,9 +86,10 @@ def main() -> None:
         => AssertRefusalIsWarmColdIdentical("WarmColdAbsence", ProviderSource, ValidMain, BogusMain);
 
     /// <summary>
-    /// The receiver is a type ARGUMENT of the cache-served signature (<c>list[Queue[int]]</c> →
-    /// <c>xs[0]</c> → <c>Queue[int]</c>), so the fallback must hold for a generic restored one level
-    /// down, not only for the signature's outer type.
+    /// The receiver is a type ARGUMENT of the cache-served signature (<c>Stack[Queue[int]]</c> →
+    /// <c>s.peek()</c> → <c>Queue[int]</c>), so the fallback must hold for a generic restored one
+    /// level down, not only for the signature's outer type — and the path down is itself a member
+    /// on an unmapped CLR generic, which is the receiver kind this harness is about (#1640).
     /// </summary>
     [Fact]
     public void AbsenceGate_RefusesBogusMemberOnNestedGeneric_WarmEqualsCold()

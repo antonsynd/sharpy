@@ -1255,9 +1255,22 @@ public class InteropConformanceTests
             "from system.collections.generic import Stack\n\ndef _use() -> None:\n    s = Stack[int]()\n    n: int = s.count\n",
             false);
 
+        // The wrong-type TWIN of the cell above. Without it that cell passes vacuously: a correct
+        // destination accepts the reflected type AND accepts Unknown, so it cannot tell the two
+        // apart — only a destination the reflected type must REJECT can (#1640).
+        yield return new FidelityCell("Stack[int].count-wrong-type",
+            "from system.collections.generic import Stack\n\ndef _use() -> None:\n    s = Stack[int]()\n    x: str = s.count\n",
+            true, "Cannot assign type 'int32'");
+
         yield return new FidelityCell("Stack[Queue[int]].peek-nested",
             "from system.collections.generic import Stack, Queue\n\ndef _use() -> None:\n    s = Stack[Queue[int]]()\n    s.push(Queue[int]())\n    _q = s.peek()\n",
             false);
+
+        // The nested cell's twin: `_q` is unannotated, so the cell above accepts any type at all.
+        // A str destination is what proves the element type came back as Queue[int].
+        yield return new FidelityCell("Stack[Queue[int]].peek-nested-wrong-type",
+            "from system.collections.generic import Stack, Queue\n\ndef _use() -> None:\n    s = Stack[Queue[int]]()\n    s.push(Queue[int]())\n    x: str = s.peek()\n",
+            true, "Cannot assign type 'Queue[int32]'");
     }
 
     [Fact]
