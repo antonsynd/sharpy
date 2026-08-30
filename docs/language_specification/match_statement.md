@@ -160,7 +160,7 @@ if condition:
 | Member access | `case Color.RED:` | `case Color.RED:` | ✅ Implemented |
 | Guard clause | `case x if x > 0:` | `when` clause | ✅ Implemented |
 | Type with binding | `case int() as n:` | `case int n:` | ✅ Implemented |
-| Self-matching builtin | `case int(n):` | `case int n:` | ✅ Implemented — PEP 634: `bool bytearray bytes dict float frozenset int list set str tuple` take exactly one positional sub-pattern, matched against the whole subject (SPY0363 otherwise) |
+| Self-matching builtin | `case int(n):` | `case int n:` | ✅ Implemented — PEP 634: a builtin name takes exactly one positional sub-pattern, matched against the whole subject (SPY0363 otherwise). Which names denote a testable type is a separate question — see [Positional Capture on Collections](#positional-capture-on-collections-listxs-dictd-sets) |
 | `as` binding | `case <pattern> as n:` | `case <pattern> and var n` | ✅ Implemented — `as` is the outermost combinator: `case A() \| B() as n:` binds `n` to whichever alternative matched |
 | Or | `case "a" \| "b":` | `case "a" or "b":` | ✅ Implemented |
 | Property | `case Point(x=0):` | `case Point { X: 0 }:` | ✅ Implemented |
@@ -321,7 +321,7 @@ def process(value: object) -> None:
 
 **Interop note:** Raw .NET `Dictionary<K, V>` boxed as `object` does **not** match bare `case dict()`, because the runtime check is against `Sharpy.IDict` (which only `Sharpy.Dict<K, V>` implements). Sharpy values flow through Sharpy collections; this is an intentional Axiom 1 resolution.
 
-**Runtime check (`list`/`set`):** Currently checked against `System.Collections.IList` and `System.Collections.IEnumerable` respectively. Pending dedicated `IList`/`ISet` protocol interfaces (#876, #877).
+**Runtime check (`list`/`set`):** `case list()` checks against `Sharpy.IList` and `case set()` against `Sharpy.ISet` — the dedicated non-generic protocol interfaces (#876, #877), the same shape as `dict`. Every closed instantiation implements them, so the test is independent of the type arguments.
 
 **Pattern Forms:**
 
@@ -330,6 +330,96 @@ def process(value: object) -> None:
 | Property | `Point(x=0, y=y)` | Extract by property name | ✅ Implemented |
 | Positional | `Point(0, y)` | Extract by position (field order) | ✅ Implemented |
 | Type with binding | `int() as n` | Check type and bind entire value | ✅ Implemented |
+| Positional capture | `list(xs)` | Check type and bind entire value | ✅ Implemented — see below |
+
+### Positional Capture on Collections (`list(xs)`, `dict(d)`, `set(s)`)
+
+A collection name may take a single positional sub-pattern. Per PEP 634 that sub-pattern matches the
+**whole subject**, so `case list(xs):` is the same test as `case list() as xs:` and binds the same
+value:
+
+```python
+def check(o: object) -> None:
+    match o:
+        case list(xs):
+            xs.append(3)
+            print(len(xs))
+        case _:
+            print("not a list")
+```
+
+The type the pattern **tests** and the type the capture **gets** are both decided from the
+scrutinee's static type. A class pattern is static, exactly like `isinstance`: no reflection happens
+at run time, and the same three outcomes apply.
+
+| Scrutinee | Test emitted | Capture type |
+|-----------|--------------|--------------|
+| `object` | `Sharpy.IList` — erased to the protocol interface | `list[object]` |
+| `list[int]` | `Sharpy.List<int>` — filled from the subject | `list[int]` |
+| `str`, `dict[str, int]`, any type no list can be | refused: **SPY0361** | — |
+
+```python
+def erased(o: object) -> None:
+    match o:
+        case list(xs):
+            print(len(xs))      # xs: list[object]
+        case _:
+            print("miss")
+
+def closed(xs: list[int]) -> None:
+    match xs:
+        case list(ys):
+            n: int = ys[0]      # ys: list[int] — the element type survives the match
+            print(n)
+        case _:
+            print("miss")
+
+def impossible(s: str) -> None:
+    match s:
+        case list(xs):          # SPY0361: a str is never a list, so this arm is dead code
+            print(len(xs))
+        case _:
+            print("miss")
+```
+
+The answer does not depend on where the pattern is written. It is the same at the top level, nested
+in a sequence pattern, and nested in a class positional pattern:
+
+```python
+class Box:
+    value: object
+
+    def __init__(self, value: object):
+        self.value = value
+
+def seq(xs: list[object]) -> None:
+    match xs:
+        case [list(inner), int(n)]:
+            print(f"seq {len(inner)} {n}")
+        case _:
+            print("miss")
+
+def boxed(b: Box) -> None:
+    match b:
+        case Box(list(xs)):
+            print(f"box {len(xs)}")
+        case _:
+            print("miss")
+```
+
+**Which names may head a class pattern.** A class pattern names a *registered type*, and only names
+that denote one can be tested:
+
+| Spelling | Result |
+|----------|--------|
+| `case list(xs):`, `case dict(d):`, `case set(s):` | tested per the table above |
+| `case int(n):`, `case str(s):`, `case float(f):`, `case bool(b):`, `case bytes(b):` | closed test on the primitive |
+| `case tuple(v):`, `case frozenset(v):` | **SPY0345** — generic types with no type-erased protocol interface, so nothing determines their type arguments and there is no single runtime type to test |
+| `case range(x):`, `case bytearray(v):` | **SPY0202** — the name denotes no registered type |
+| `case list[int](xs):` | **SPY0125** — a pattern cannot name type arguments; write `case list(xs):` and let the scrutinee supply the vector |
+
+A refusal is the honest answer at these spellings, not a limitation to route around: `.NET` reifies
+generics, so an open name denotes nothing to test against.
 
 ## Guard Patterns
 
@@ -426,6 +516,61 @@ def kind2(x: int) -> str:
             return "int"
         case 99:           # error: total class pattern 'int()' makes remaining patterns unreachable
             return "ninety-nine"
+        case _:
+            return "other"
+```
+
+**Subsumption.** Totality for the scrutinee is not the only way an arm shadows a later one. An
+unguarded arm that matches **every value of its own type** — `case int():`, `case int(n):`,
+`case int() as n:` — makes any later arm whose type is contained in it unreachable, even when that
+arm is not total for the scrutinee. Over an `object` scrutinee `case int():` is not total, yet it
+still matches every `int`, so a later `case 99:` can never run (SPY0700). The rule requires the
+earlier arm to refute on its **type alone**: a literal refutes on a value as well, so `case 99:`
+first leaves `case int():` behind it reachable.
+
+```python
+# SPY0700 — `case 99:` is unreachable behind an arm that matches every int
+def kind(x: object) -> str:
+    match x:
+        case int():
+            return "int"
+        case 99:           # error: an earlier arm matches every 'int32'
+            return "ninety-nine"
+        case _:
+            return "other"
+
+# OK — the literal refutes on a value, so the type arm behind it is still reachable
+def kind2(x: object) -> str:
+    match x:
+        case 99:
+            return "ninety-nine"
+        case int():
+            return "int"
+        case _:
+            return "other"
+
+# OK — a guarded arm decides nothing statically
+def kind3(x: object, deep: bool) -> str:
+    match x:
+        case int() if deep:
+            return "int"
+        case 99:
+            return "ninety-nine"
+        case _:
+            return "other"
+```
+
+A pattern is a **runtime** type test, so subsumption is exact for the builtin types: `case float():`
+does not match a boxed `int` even though `int` is implicitly convertible to `float`, and this runs —
+printing `one`, as CPython does:
+
+```python
+def kind4(x: object) -> str:
+    match x:
+        case float():
+            return "float"
+        case 1:
+            return "one"
         case _:
             return "other"
 ```
