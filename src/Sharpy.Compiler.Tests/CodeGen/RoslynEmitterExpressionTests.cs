@@ -1351,14 +1351,21 @@ public class RoslynEmitterExpressionTests
     [Fact]
     public void GenerateExpression_TypeCoercion_NullableValueType_GeneratesIsPattern()
     {
-        // Arrange: value to int? → value is int _temp ? Optional<int>.Some(_temp) : default
-        // The parser sets Mode from the target's nullability for `to`-forms (#1029).
+        // Arrange: value as? int → value is int _temp ? Optional<int>.Some(_temp) : default.
+        // `as?` supplies the failure mode, so the target is written non-nullable (a written `?` is
+        // SPY0334). The emitter is a pure translator: the base type comes from the TypeTestLowering
+        // CheckTypeCoercion records, so the test records it (#1670).
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "obj" },
-            TargetType = new TypeAnnotation { Name = "int", IsOptional = true },
+            TargetType = new TypeAnnotation { Name = "int" },
             Mode = CastFailureMode.Null
         };
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetTypeTestLowering(
+            expr.TargetType,
+            new TypeTestLowering(TypeTestLoweringKind.ClosedType, new BuiltinType { Name = "int", ClrType = typeof(int) }));
+        _context.SemanticInfo = semanticInfo;
 
         // Act
         var result = InvokeGenerateExpression(expr);
@@ -1375,14 +1382,21 @@ public class RoslynEmitterExpressionTests
     [Fact]
     public void GenerateExpression_TypeCoercion_NullableReferenceType_GeneratesIsPattern()
     {
-        // Arrange: value to str? → value is string _temp ? Optional<string>.Some(_temp) : default
-        // The parser sets Mode from the target's nullability for `to`-forms (#1029).
+        // Arrange: value as? str → value is string _temp ? Optional<string>.Some(_temp) : default.
+        // `as?` supplies the failure mode, so the target is written non-nullable (a written `?` is
+        // SPY0334). The emitter is a pure translator: the base type comes from the TypeTestLowering
+        // CheckTypeCoercion records, so the test records it (#1670).
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "obj" },
-            TargetType = new TypeAnnotation { Name = "str", IsOptional = true },
+            TargetType = new TypeAnnotation { Name = "str" },
             Mode = CastFailureMode.Null
         };
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetTypeTestLowering(
+            expr.TargetType,
+            new TypeTestLowering(TypeTestLoweringKind.ClosedType, new BuiltinType { Name = "str", ClrType = typeof(string) }));
+        _context.SemanticInfo = semanticInfo;
 
         // Act
         var result = InvokeGenerateExpression(expr);
@@ -1398,14 +1412,21 @@ public class RoslynEmitterExpressionTests
     [Fact]
     public void GenerateExpression_TypeCoercion_NullableUserType_GeneratesIsPattern()
     {
-        // Arrange: value to Dog? → value is Dog _temp ? Optional<Dog>.Some(_temp) : default
-        // The parser sets Mode from the target's nullability for `to`-forms (#1029).
+        // Arrange: value as? Dog → value is Dog _temp ? Optional<Dog>.Some(_temp) : default.
+        // `as?` supplies the failure mode, so the target is written non-nullable (a written `?` is
+        // SPY0334). The emitter is a pure translator: the base type comes from the TypeTestLowering
+        // CheckTypeCoercion records, so the test records it (#1670).
         var expr = new TypeCoercion
         {
             Value = new Identifier { Name = "animal" },
-            TargetType = new TypeAnnotation { Name = "Dog", IsOptional = true },
+            TargetType = new TypeAnnotation { Name = "Dog" },
             Mode = CastFailureMode.Null
         };
+        var semanticInfo = new SemanticInfo();
+        semanticInfo.SetTypeTestLowering(
+            expr.TargetType,
+            new TypeTestLowering(TypeTestLoweringKind.ClosedType, new UserDefinedType { Name = "Dog" }));
+        _context.SemanticInfo = semanticInfo;
 
         // Act
         var result = InvokeGenerateExpression(expr);
