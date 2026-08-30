@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Formatting;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 using Xunit;
@@ -43,9 +44,7 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
             var entryPointFile = FindEntryPoint(projectDir);
             Output.WriteLine($"Entry point: {entryPointFile}");
 
-            var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
-                .Where(f => !Compiler.Diagnostics.CrashBundleWriter.IsNonSourceSegment(
-                    Path.GetRelativePath(projectDir, f)))
+            var sourceFiles = SourceGlob.EnumerateSourceFiles(projectDir, "*.spy", SearchOption.AllDirectories)
                 .ToArray();
             Output.WriteLine("=== Source Files ===");
             foreach (var sourceFile in sourceFiles)
@@ -416,7 +415,7 @@ public abstract class FileBasedIntegrationTestsBase : IntegrationTestBase
         if (File.Exists(Path.Combine(projectDir, $"{dirName}.spy")))
             return $"{dirName}.spy";
 
-        var spyFiles = Directory.GetFiles(projectDir, "*.spy").OrderBy(f => f).ToList();
+        var spyFiles = SourceGlob.EnumerateSourceFiles(projectDir, "*.spy", SearchOption.TopDirectoryOnly).OrderBy(f => f).ToList();
         if (spyFiles.Count > 0)
             return Path.GetFileName(spyFiles[0]);
 

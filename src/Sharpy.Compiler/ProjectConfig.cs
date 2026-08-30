@@ -454,7 +454,7 @@ public static class ProjectFileParser
     /// </summary>
     public static string? FindProjectFile(string directory)
     {
-        var projectFiles = Directory.GetFiles(directory, "*.spyproj", SearchOption.TopDirectoryOnly);
+        var projectFiles = SourceGlob.EnumerateArtifacts(directory, "*.spyproj").ToArray();
 
         if (projectFiles.Length == 0)
         {

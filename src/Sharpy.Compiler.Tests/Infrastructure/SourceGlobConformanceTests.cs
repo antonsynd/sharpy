@@ -1,20 +1,22 @@
 using System.Text.RegularExpressions;
-using Sharpy.Compiler.Diagnostics;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Sharpy.Compiler.Tests.Infrastructure;
 
 /// <summary>
-/// #1660: every <c>*.spy</c> glob with <see cref="System.IO.SearchOption.AllDirectories"/>
-/// must filter through <see cref="CrashBundleWriter.IsNonSourceSegment"/> so stale build
-/// output and crash-bundle copies are never treated as sources.
+/// #1696: every file/glob enumeration in production code must route through
+/// <see cref="Project.SourceGlob"/> so the <c>IsNonSourceSegment</c> predicate
+/// (#1660) is applied consistently for source files, and artifact enumeration
+/// is auditable in one place.
 ///
-/// This test scans the source text of every assembly that globs <c>*.spy</c> and asserts
-/// that the <c>IsNonSourceSegment</c> helper name appears on the same statement or the
-/// preceding line. It cannot use reflection (the call sites are method bodies), so it
-/// relies on a text pattern — intentionally brittle to force a conscious review of any
-/// new glob site.
+/// Scans the five production projects for raw <c>Directory.EnumerateFiles</c>,
+/// <c>Directory.GetFiles</c>, and <c>new Matcher(</c> calls. Only
+/// <c>SourceGlob.cs</c> itself may contain these. Test projects keep the
+/// existing #1660 predicate rule (test bodies enumerate their own temp dirs).
+/// <c>Sharpy.Stdlib</c> and <c>Sharpy.Core</c> are excluded: their
+/// <c>Directory</c> calls implement Python-facing runtime semantics (e.g.
+/// <c>os.listdir</c>), not compiler enumeration.
 /// </summary>
 public class SourceGlobConformanceTests
 {
@@ -25,58 +27,81 @@ public class SourceGlobConformanceTests
         _output = output;
     }
 
-    private static readonly Regex GlobPattern = new(
-        @"""[*]\.spy"".*AllDirectories|AllDirectories.*""[*]\.spy""",
+    private static readonly Regex RawEnumerationPattern = new(
+        @"\bDirectory\s*\.\s*(EnumerateFiles|GetFiles)\b|"
+        + @"\bSystem\s*\.\s*IO\s*\.\s*Directory\s*\.\s*(EnumerateFiles|GetFiles)\b|"
+        + @"\bnew\s+Matcher\s*\(",
         RegexOptions.Compiled);
 
-    private static readonly string[] AllowedWithoutFilter =
+    private static readonly string[] ProductionProjects =
     [
-        // FixtureDiscoveryHelper delegates to IsNonSourceSegment via IsNonCorpus
-        "FixtureDiscoveryHelper.cs",
+        "Sharpy.Compiler",
+        "Sharpy.Cli",
+        "Sharpy.Lsp",
+        "Sharpy.TestInfrastructure",
+        "Sharpy.Compiler.Benchmarks",
     ];
 
+    private const string SeamFile = "SourceGlob.cs";
+
     [Fact]
-    public void Every_SpyGlob_WithAllDirectories_Uses_IsNonSourceSegment()
+    public void No_Raw_Enumeration_Outside_SourceGlob_In_Production_Projects()
     {
         var repoRoot = FindRepoRoot();
         var violations = new List<string>();
 
-        foreach (var csFile in Directory.EnumerateFiles(
-            Path.Combine(repoRoot, "src"), "*.cs", SearchOption.AllDirectories))
+        foreach (var project in ProductionProjects)
         {
-            if (csFile.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") ||
-                csFile.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+            var projectDir = Path.Combine(repoRoot, "src", project);
+            if (!Directory.Exists(projectDir))
                 continue;
 
-            var fileName = Path.GetFileName(csFile);
-            if (AllowedWithoutFilter.Contains(fileName))
-                continue;
-
-            var lines = File.ReadAllLines(csFile);
-            for (int i = 0; i < lines.Length; i++)
+            foreach (var csFile in Directory.EnumerateFiles(
+                projectDir, "*.cs", SearchOption.AllDirectories))
             {
-                if (!GlobPattern.IsMatch(lines[i]))
+                if (csFile.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") ||
+                    csFile.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
                     continue;
 
-                var window = string.Join("\n", lines.Skip(Math.Max(0, i - 1)).Take(5));
-                if (!window.Contains("IsNonSourceSegment") && !window.Contains("IsNonCorpus"))
+                var fileName = Path.GetFileName(csFile);
+                if (fileName == SeamFile)
+                    continue;
+
+                var lines = File.ReadAllLines(csFile);
+                for (int i = 0; i < lines.Length; i++)
                 {
-                    var relative = Path.GetRelativePath(repoRoot, csFile);
-                    violations.Add($"{relative}:{i + 1}");
+                    var trimmed = lines[i].TrimStart();
+                    if (trimmed.StartsWith("//") || trimmed.StartsWith("///"))
+                        continue;
+
+                    if (RawEnumerationPattern.IsMatch(lines[i]))
+                    {
+                        var relative = Path.GetRelativePath(repoRoot, csFile);
+                        violations.Add($"{relative}:{i + 1}: {trimmed}");
+                    }
                 }
             }
         }
 
         if (violations.Count > 0)
         {
-            _output.WriteLine("Glob sites missing IsNonSourceSegment filter:");
+            _output.WriteLine("Raw Directory.EnumerateFiles/GetFiles/new Matcher( outside SourceGlob.cs:");
             foreach (var v in violations)
                 _output.WriteLine($"  {v}");
         }
 
         Assert.True(violations.Count == 0,
-            "*.spy glob with AllDirectories without IsNonSourceSegment filter (#1660). " +
+            "Raw file/glob enumeration outside SourceGlob.cs (#1696). " +
             $"Sites: {string.Join(", ", violations)}");
+    }
+
+    [Fact]
+    public void SourceGlob_Exists()
+    {
+        var repoRoot = FindRepoRoot();
+        var seamPath = Path.Combine(repoRoot, "src", "Sharpy.Compiler", "Project", SeamFile);
+        Assert.True(File.Exists(seamPath),
+            $"SourceGlob.cs must exist at {seamPath} (#1696)");
     }
 
     private static string FindRepoRoot()
