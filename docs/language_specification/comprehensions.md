@@ -119,6 +119,37 @@ short_lengths = {len(word) for word in ["apple", "banana", "cherry"] if len(word
 *Implementation*
 - *🔄 Lowered - `.Select(...)` wrapped in `new Sharpy.Set<T>(...)`*
 
+## Contextual Element Type
+
+A comprehension is a collection whose elements are written once, so it takes its element type from
+the enclosing context exactly as the corresponding collection **literal** does: when the expected
+type is a same-kind collection and the produced element is assignable to its element type, the
+**expected** type is the comprehension's type. Spelling a value as a comprehension rather than a
+literal never changes what it is assignable to.
+
+```python
+class Base:
+    def kind(self) -> str:
+        return "base"
+
+
+class Derived(Base):
+    def kind(self) -> str:
+        return "derived"
+
+
+def main() -> None:
+    xs: list[Base] = [Derived() for _ in range(2)]   # list[Base], not list[Derived]
+    xs.append(Base())
+    print(len(xs))                                   # 3
+```
+
+The rule applies in every expected-type position — declaration, assignment to an existing binding,
+`return`, and argument position — and to all three forms (list, set, dict). It does not weaken type
+checking: an element that is *not* assignable to the expected element type is still `SPY0220`
+(`xs: list[int] = [Derived() for _ in range(2)]` is rejected). The expected type must come from a
+resolved target; see [Overload Resolution](overload_resolution.md#argument-types-are-computed-before-candidates-are-considered).
+
 ## Comprehension Variable Scoping
 
 Variables declared in comprehensions are scoped to that comprehension and do not leak into the enclosing scope:

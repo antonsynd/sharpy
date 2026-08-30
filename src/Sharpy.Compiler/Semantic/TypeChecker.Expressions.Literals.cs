@@ -286,8 +286,45 @@ internal partial class TypeChecker
         return tupleType;
     }
 
+    /// <summary>
+    /// The element expectation a comprehension of kind <paramref name="collectionName"/> takes from
+    /// the enclosing context, or <c>null</c> when the context expects something else (or nothing).
+    ///
+    /// <para>A comprehension is a collection literal whose elements are written once, so it obeys
+    /// the SAME contextual-typing rule as <c>[…]</c>, <c>{…}</c> and <c>{k: v}</c> (#1671): when the
+    /// expected type is a same-kind collection and the produced element is assignable to its
+    /// element type, the EXPECTED type is what gets recorded. Without it,
+    /// <c>xs: list[Base] = [Derived() for _ in range(2)]</c> recorded <c>list[Derived]</c> and
+    /// emitted <c>List&lt;Derived&gt;</c> into a <c>List&lt;Base&gt;</c> slot — CS0029 behind
+    /// SPY0908 for list and set, SPY0220 for dict. The expectation is read BEFORE the comprehension
+    /// scope's own expressions are checked and is captured here so the clause walk (whose iterables
+    /// are not the comprehension's elements) cannot be typed by it.</para>
+    /// </summary>
+    private IReadOnlyList<SemanticType>? ComprehensionElementExpectations(
+        string collectionName, int expectedArgCount)
+    {
+        return _expectedType is GenericType expected
+            && expected.Name == collectionName
+            && expected.TypeArguments.Count == expectedArgCount
+            ? expected.TypeArguments
+            : null;
+    }
+
+    /// <summary>
+    /// Records <paramref name="expectation"/> as the comprehension's element type when the produced
+    /// element is assignable to it; otherwise keeps the produced type so assignability decides
+    /// (a mistyped comprehension stays SPY0220). The comprehension twin of the collection literals'
+    /// <c>AllAssignableTo</c> arm (#1671).
+    /// </summary>
+    private SemanticType ContextualElementType(SemanticType produced, SemanticType? expectation)
+    {
+        return expectation != null && IsAssignable(produced, expectation) ? expectation : produced;
+    }
+
     private SemanticType CheckListComprehension(ListComprehension listComp)
     {
+        var expectations = ComprehensionElementExpectations(BuiltinNames.List, 1);
+
         _symbolTable.EnterScope("list-comprehension");
         CheckComprehensionClauses(listComp.Clauses);
 
@@ -300,7 +337,10 @@ internal partial class TypeChecker
         }
         else
         {
+            var previousExpected = _expectedType;
+            _expectedType = expectations?[0];
             elementType = CheckExpression(listComp.Element);
+            _expectedType = previousExpected;
         }
 
         _symbolTable.ExitScope();
@@ -308,12 +348,17 @@ internal partial class TypeChecker
         return new GenericType
         {
             Name = BuiltinNames.List,
-            TypeArguments = new List<SemanticType> { elementType }
+            TypeArguments = new List<SemanticType>
+            {
+                ContextualElementType(elementType, expectations?[0])
+            }
         };
     }
 
     private SemanticType CheckSetComprehension(SetComprehension setComp)
     {
+        var expectations = ComprehensionElementExpectations(BuiltinNames.Set, 1);
+
         _symbolTable.EnterScope("set-comprehension");
         CheckComprehensionClauses(setComp.Clauses);
 
@@ -326,7 +371,10 @@ internal partial class TypeChecker
         }
         else
         {
+            var previousExpected = _expectedType;
+            _expectedType = expectations?[0];
             elementType = CheckExpression(setComp.Element);
+            _expectedType = previousExpected;
         }
 
         _symbolTable.ExitScope();
@@ -334,24 +382,37 @@ internal partial class TypeChecker
         return new GenericType
         {
             Name = BuiltinNames.Set,
-            TypeArguments = new List<SemanticType> { elementType }
+            TypeArguments = new List<SemanticType>
+            {
+                ContextualElementType(elementType, expectations?[0])
+            }
         };
     }
 
     private SemanticType CheckDictComprehension(DictComprehension dictComp)
     {
+        var expectations = ComprehensionElementExpectations(BuiltinNames.Dict, 2);
+
         _symbolTable.EnterScope("dict-comprehension");
         CheckComprehensionClauses(dictComp.Clauses);
 
+        var previousExpected = _expectedType;
+        _expectedType = expectations?[0];
         var keyType = CheckExpression(dictComp.Key);
+        _expectedType = expectations?[1];
         var valueType = CheckExpression(dictComp.Value);
+        _expectedType = previousExpected;
 
         _symbolTable.ExitScope();
 
         return new GenericType
         {
             Name = BuiltinNames.Dict,
-            TypeArguments = new List<SemanticType> { keyType, valueType }
+            TypeArguments = new List<SemanticType>
+            {
+                ContextualElementType(keyType, expectations?[0]),
+                ContextualElementType(valueType, expectations?[1])
+            }
         };
     }
 
