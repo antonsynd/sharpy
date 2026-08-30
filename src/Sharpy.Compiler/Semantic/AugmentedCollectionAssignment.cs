@@ -3,29 +3,21 @@ using Sharpy.Compiler.Parser.Ast;
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// Classifies an augmented assignment whose target is a mutable collection (#1394, #1428).
+/// Classifies an augmented assignment whose target is a mutable collection (#1394, #1428, #1614).
 /// </summary>
 /// <remarks>
 /// <para>
 /// CPython's `s |= {3}` calls `__ior__` and mutates in place, so every name bound to that set sees
-/// the change. Sharpy compiles augmented assignment on a collection to a REBINDING of the target
-/// (spec: <c>assignment_operators.md</c>), so a second binding keeps the old value.
+/// the change. Since <c>inplace_augassign</c> graduated (#1614) Sharpy does the same: an augmented
+/// assignment on a list/set/dict lowers to the mutating method this table names
+/// (<c>extend</c>, <c>update</c>, <c>difference_update</c>, …; spec:
+/// <c>assignment_operators.md</c> "Augmented assignment on collections"). The SPY0478 transition
+/// hint that used to warn about the rebind-vs-mutation divergence is retired.
 /// </para>
 /// <para>
-/// This is the ONE-DOOR classifier shared by both the SPY0478 transition hint (#1394) and the
-/// <c>inplace_augassign</c> experimental lowering (#1428). The hint asks "classification matches
-/// AND a second binding exists"; the lowering keys on the classification alone — mutation-vs-rebind
-/// semantics must not depend on whether an alias happens to exist. The hint's suggested mutator
-/// comes from the same table, which fixes the prior bug where <c>s -= t</c> was steered to
-/// <c>update</c> instead of <c>difference_update</c>.
-/// </para>
-/// <para>
-/// <b>Precision is deliberately relaxed.</b> The precise question is whether a second binding is
-/// LIVE at the assignment, which is a backward dataflow analysis; no liveness or def-use analysis
-/// exists in this codebase (<c>Analysis/ControlFlow/</c> has only forward analyses). So this asks
-/// the cheap structural question — does a second binding to this variable exist anywhere in the
-/// enclosing function — which over-approximates: a hint can fire where the alias is already dead.
-/// For a hint that is the right direction to be wrong in, and true liveness is the follow-up.
+/// This is the ONE-DOOR classifier: the lowering keys on the classification alone — mutation
+/// semantics never depend on whether an alias happens to exist — and the mutator name comes from
+/// the same table, so <c>s -= t</c> lowers to <c>difference_update</c>, never <c>update</c>.
 /// </para>
 /// </remarks>
 internal static class AugmentedCollectionAssignment
@@ -77,86 +69,4 @@ internal static class AugmentedCollectionAssignment
         };
     }
 
-    /// <summary>
-    /// Whether <paramref name="node"/> is an augmented assignment on a mutable collection with a
-    /// second binding to the target visible in <paramref name="enclosingBody"/>.
-    /// </summary>
-    public static bool IsAliasObservable(
-        Assignment node,
-        SemanticType? targetType,
-        IReadOnlyList<Statement>? enclosingBody)
-    {
-        if (Classify(node, targetType) is null)
-            return false;
-
-        return node.Target is Identifier target
-            && enclosingBody != null
-            && HasSecondBinding(enclosingBody, target.Name);
-    }
-
-    /// <summary>
-    /// Whether some binding in the body puts this variable and a DIFFERENT name on one object —
-    /// <c>t = s</c> or <c>s = t</c>, in either the annotated-declaration or the bare-assignment
-    /// spelling. BOTH spellings matter: <c>t: set[int] = s</c> parses as a
-    /// <see cref="VariableDeclaration"/>, not an <see cref="Assignment"/>, and it is the spelling
-    /// the issue's own repro uses — searching only assignments made the query answer "no alias"
-    /// for the exact program the hint exists for.
-    /// </summary>
-    private static bool HasSecondBinding(IReadOnlyList<Statement> body, string name)
-    {
-        foreach (var statement in Walk(body))
-        {
-            var (boundName, sourceExpr) = statement switch
-            {
-                Assignment { Operator: AssignmentOperator.Assign, Target: Identifier t } a
-                    => (t.Name, a.Value),
-                VariableDeclaration v => (v.Name, v.InitialValue),
-                _ => (null, null),
-            };
-
-            if (boundName == null || sourceExpr is not Identifier source)
-                continue;
-
-            // `t = s` — another name takes this object; or `s = t` — this name takes another's.
-            var bindsFromUs = string.Equals(source.Name, name, StringComparison.Ordinal)
-                && !string.Equals(boundName, name, StringComparison.Ordinal);
-            var bindsUsFrom = string.Equals(boundName, name, StringComparison.Ordinal)
-                && !string.Equals(source.Name, name, StringComparison.Ordinal);
-
-            if (bindsFromUs || bindsUsFrom)
-                return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Yields every statement in the body, descending into the block-bearing statements an
-    /// aliasing assignment can hide in. Nested function bodies are excluded: they are their own
-    /// scope, as they are for the emitter's slot table.
-    /// </summary>
-    private static IEnumerable<Statement> Walk(IReadOnlyList<Statement> body)
-    {
-        foreach (var statement in body)
-        {
-            yield return statement;
-
-            foreach (var nested in statement switch
-            {
-                IfStatement s => s.ThenBody.Concat(s.ElseBody)
-                    .Concat(s.ElifClauses.SelectMany(e => (IEnumerable<Statement>)e.Body)),
-                WhileStatement s => s.Body.Concat(s.ElseBody),
-                ForStatement s => s.Body.Concat(s.ElseBody),
-                WithStatement s => (IEnumerable<Statement>)s.Body,
-                TryStatement s => s.Body.Concat(s.Handlers.SelectMany(h => (IEnumerable<Statement>)h.Body))
-                    .Concat(s.ElseBody).Concat(s.FinallyBody),
-                MatchStatement s => s.Cases.SelectMany(c => (IEnumerable<Statement>)c.Body),
-                _ => Enumerable.Empty<Statement>(),
-            })
-            {
-                foreach (var inner in Walk(new[] { nested }))
-                    yield return inner;
-            }
-        }
-    }
 }

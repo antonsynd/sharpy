@@ -87,7 +87,6 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     public override void VisitAssignment(Assignment node)
     {
         CheckStructValueSemantics(node);
-        CheckAliasedCollectionAugmentedAssignment(node);
         base.VisitAssignment(node);
     }
 
@@ -359,11 +358,6 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
     // ──────────────────────────────────────────────────────────────────────
     // SPY0476 — Negative tuple index hint
     // ──────────────────────────────────────────────────────────────────────
-
-    // Retired (#1614): inplace_augassign graduated — augmented assignment on collections
-    // now always mutates in place, so the rebind-vs-mutation divergence no longer exists.
-    // SPY0478 is never emitted. The method is kept as a no-op stub so callers don't break.
-    private void CheckAliasedCollectionAugmentedAssignment(Assignment node) { }
 
     private void CheckNegativeTupleIndex(IndexAccess node)
     {

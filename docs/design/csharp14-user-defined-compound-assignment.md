@@ -5,6 +5,12 @@ gate `inplace_augassign` landed at `4dcbec5ea` as a behavioral flag (no SPY0331)
 mutation call on every TFM (D4 of plan-55f329); the C# 14 instance operator remains open for
 direct C# consumers of Sharpy.Core. Gated-period questions tracked on the graduation issue.
 **Gates:** graduation tracker (see below).
+**Closed 2026-08-29 (#1614 graduated at `26af3c586`):** the mutation call is the permanent mechanism
+on every TFM; the C# 14 instance `operator +=` is declined for the compiler path (it would bifurcate
+semantics across `net10.0`/`netstandard2.1` for no compiler-side gain). Attribute/index targets and
+`list *=` shipped with the graduation; SPY0478 is retired; the flag is a no-op kept for one release
+(#1679). Nothing below is graduation-blocking any more — the section is kept as the record of the
+probes that settled the mechanism.
 
 ## Why this exists
 

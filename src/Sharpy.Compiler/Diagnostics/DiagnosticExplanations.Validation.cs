@@ -236,6 +236,18 @@ public static partial class DiagnosticExplanations
             "Add an '__eq__(self, other: object) -> bool' method:\nclass Foo:\n    x: int\n    def __eq__(self, other: object) -> bool:\n        return False\n    def __hash__(self) -> int:\n        return self.x");
 
 #pragma warning disable CS0618
+        Add(dict, DiagnosticCodes.Validation.AliasedCollectionAugmentedAssignmentHint,
+            "Retired: augmented assignment on a collection now mutates in place",
+            "Validation",
+            "This diagnostic is no longer emitted. It was a transition hint from the period when " +
+            "`xs += [1]` / `s |= {3}` / `d |= other` rebound the target instead of mutating it, so a " +
+            "second binding kept the old value. Since `inplace_augassign` graduated (#1614) augmented " +
+            "assignment on a list, set or dict lowers to the in-place mutator (`extend`, `update`, " +
+            "`difference_update`, ...) on every target framework, matching CPython's `__iadd__`-family " +
+            "semantics, and every alias observes the change.",
+            "xs: list[int] = [1, 2]\nt: list[int] = xs\nxs += [3]\nprint(t)   # [1, 2, 3] — t sees the mutation",
+            "No action needed; the code is retired and never reported.");
+
         Add(dict, DiagnosticCodes.Validation.UnsupportedDunderReversed,
             "__reversed__ now fully supported via generators",
             "Validation",
@@ -601,18 +613,6 @@ public static partial class DiagnosticExplanations
             "want shared mutation.",
             "@struct\nclass Point:\n    x: int = 0\n\np = Point()\nq = p          # copy — q.x = 5 won't change p.x\nq.x = 5",
             "Use `ref` parameters for in-place mutation, or model the type as a class if reference semantics are required.");
-
-        Add(dict, DiagnosticCodes.Validation.AliasedCollectionAugmentedAssignmentHint,
-            "Augmented assignment on a collection rebinds; it does not mutate through an alias",
-            "Validation",
-            "In CPython, `s |= {3}` on a set (or `xs += [1]` on a list, `d |= other` on a dict) calls the in-place " +
-            "dunder and mutates the object, so every other name bound to it sees the change. Sharpy compiles " +
-            "augmented assignment on a collection to a rebinding of the target, so a second binding keeps the old " +
-            "value. The hint fires only where a second binding is actually visible, because that is the only " +
-            "situation in which the difference is observable. The method forms (`.update()`, `.extend()`, " +
-            "`.add()`) mutate in place in both languages and never draw this hint.",
-            "s: set[int] = {1, 2}\nt: set[int] = s\ns |= {3}\n# CPython: len(t) == 3 (t sees the mutation)\n# Sharpy:  len(t) == 2 (s was rebound)",
-            "Use the mutating method — `s.update({3})`, `xs.extend([1])` — when other bindings must see the change.");
 
         Add(dict, DiagnosticCodes.Validation.HomogeneousVariadicHint,
             "Variadic parameters in Sharpy are homogeneous and statically typed",

@@ -1,6 +1,7 @@
-# Gated in-place augmented assignment on collections (#1428). With inplace_augassign enabled,
-# the six operator×type cells mutate through aliases — CPython semantics. The frozenset control
-# still rebinds (CPython rebinds there too). Every value observed through the alias.
+# In-place augmented assignment on collections (#1428, graduated #1614 — the former .features
+# sidecar is gone because the flag is a no-op). The six operator×type cells mutate through aliases,
+# CPython semantics. The frozenset control still rebinds (CPython rebinds there too). Every value
+# observed through the alias.
 
 def main() -> None:
     # list +=
