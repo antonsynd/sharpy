@@ -1,0 +1,12 @@
+class Doubler:
+    def __call__(self, x: int) -> int:
+        return x * 2
+
+
+class Tripler(Doubler):
+    pass
+
+
+def main() -> None:
+    t: Tripler = Tripler()
+    print(t(21))

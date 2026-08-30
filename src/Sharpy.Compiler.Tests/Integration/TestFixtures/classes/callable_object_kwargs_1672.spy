@@ -1,0 +1,19 @@
+class Greeter:
+    def __call__(self, name: str, greeting: str = "hello") -> str:
+        return greeting + " " + name
+
+
+class Summer:
+    def __call__(self, *args: int) -> int:
+        total: int = 0
+        for a in args:
+            total += a
+        return total
+
+
+def main() -> None:
+    g: Greeter = Greeter()
+    print(g(name="bob"))
+    print(g("bob", greeting="yo"))
+    s: Summer = Summer()
+    print(s(1, 2, 3))
