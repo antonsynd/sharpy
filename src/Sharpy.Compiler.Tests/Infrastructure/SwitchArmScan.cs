@@ -65,6 +65,54 @@ public static class SwitchArmScan
     }
 
     /// <summary>
+    /// Returns the set of type names matched by case patterns, scoped to methods
+    /// inside the containing type whose metadata name matches <paramref name="containingTypeName"/>.
+    /// Use arity-qualified names (e.g. "AstVisitor" vs "AstVisitor`1") to discriminate
+    /// overloads in different generic classes sharing the same identifier.
+    /// </summary>
+    public static IReadOnlySet<string> CaseTypeNames(
+        string repoRelativePath, string methodName, string containingTypeName)
+    {
+        var root = ParseFile(repoRelativePath);
+        var methods = FindMethodsInType(root, methodName, containingTypeName, repoRelativePath);
+        var typeNames = new HashSet<string>();
+        bool foundSwitch = false;
+
+        foreach (var method in methods)
+        {
+            foreach (var switchStmt in method.DescendantNodes().OfType<SwitchStatementSyntax>())
+            {
+                foundSwitch = true;
+                foreach (var section in switchStmt.Sections)
+                {
+                    foreach (var label in section.Labels)
+                    {
+                        CollectTypeNamesFromSwitchLabel(label, typeNames);
+                    }
+                }
+            }
+
+            foreach (var switchExpr in method.DescendantNodes().OfType<SwitchExpressionSyntax>())
+            {
+                foundSwitch = true;
+                foreach (var arm in switchExpr.Arms)
+                {
+                    CollectTypeNamesFromPattern(arm.Pattern, typeNames);
+                }
+            }
+        }
+
+        if (!foundSwitch)
+        {
+            throw new InvalidOperationException(
+                $"No switch statement or expression found in method '{methodName}' " +
+                $"in type '{containingTypeName}' in '{repoRelativePath}'.");
+        }
+
+        return typeNames;
+    }
+
+    /// <summary>
     /// Returns the whitespace-normalized pattern text for each arm of every switch
     /// expression AND every pattern case label of every switch statement in the named
     /// method. For tuple-pattern switches (e.g. AugmentedCollectionAssignment.Classify)
@@ -146,6 +194,38 @@ public static class SwitchArmScan
         }
 
         return methods;
+    }
+
+    private static IReadOnlyList<MethodDeclarationSyntax> FindMethodsInType(
+        CompilationUnitSyntax root, string methodName, string containingTypeName,
+        string repoRelativePath)
+    {
+        var methods = root.DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .Where(m => m.Identifier.Text == methodName)
+            .Where(m =>
+            {
+                var enclosing = m.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+                return enclosing != null && GetMetadataName(enclosing) == containingTypeName;
+            })
+            .ToList();
+
+        if (methods.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"Method '{methodName}' in type '{containingTypeName}' " +
+                $"not found in '{repoRelativePath}'.");
+        }
+
+        return methods;
+    }
+
+    private static string GetMetadataName(TypeDeclarationSyntax type)
+    {
+        var name = type.Identifier.Text;
+        if (type.TypeParameterList != null && type.TypeParameterList.Parameters.Count > 0)
+            return $"{name}`{type.TypeParameterList.Parameters.Count}";
+        return name;
     }
 
     private static void CollectTypeNamesFromSwitchLabel(SwitchLabelSyntax label, HashSet<string> typeNames)
