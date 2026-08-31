@@ -1,0 +1,7 @@
+# #1714 no-churn positive control: OptionalType keeps 'T?'. Paired with nullable_display_spy0220 —
+# the pair pins both directions of the display contract at the diagnostic level.
+x: int? = Some(42)
+y: int = x
+
+def main() -> None:
+    pass

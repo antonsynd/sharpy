@@ -1,0 +1,8 @@
+# #1714: NullableType's diagnostic spelling is 'T | None', distinct from OptionalType's 'T?'.
+# With the collision present, this file and its optional_display_spy0220 twin printed byte-identical
+# messages ('int32?'); the substring below did not appear, so this fixture discriminates.
+x: int | None = None
+y: int = x
+
+def main() -> None:
+    pass

@@ -1,0 +1,15 @@
+# #1714 annotation surface: a diagnostic must quote the user's own spelling — 'int | None',
+# not 'int'. Before the TypeAnnotationHelper fix this message printed "got 'int'.", byte-identical
+# to a plain `int` annotation (the nullable flag was dropped); the substring below did not appear,
+# so this fixture discriminates. Twin: context_manager_exit_3arg_invalid_types (Optional spelling,
+# the no-churn positive control).
+class Bad:
+    def __enter__(self) -> Bad:
+        return self
+
+    def __exit__(self, exc_type: object?, exc_val: int | None, exc_tb: object?) -> bool:
+        return False
+
+def main():
+    with Bad():
+        print("inside")
