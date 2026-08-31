@@ -113,4 +113,53 @@ public class PropertyCorpusTests
             Assert.NotNull(s.ErrorCodes);
         });
     }
+
+    /// <summary>
+    /// Standing guard for the #1711 cure: the racy hand-rolled accumulator pattern
+    /// (a plain sample list filled from inside a CsCheck .Sample callback, which runs
+    /// on threads = logical CPUs by default) must never reappear under Properties/.
+    /// The one-time "grep returns 0" recorded in the migration commit body regresses
+    /// silently; this test enforces it on every run.
+    /// </summary>
+    [Fact]
+    public void NoPlainSampleResultListAccumulators_UnderProperties()
+    {
+        // Split so this guard's own source is not a match for the pattern it hunts —
+        // the positive control below must be carried by the real synthetic-sample
+        // tests in this file, never by the guard itself.
+        var pattern = "new List<PropertyCorpus." + "SampleResult>";
+
+        var repoRoot = FindRepoRoot();
+        var propertiesDir = Path.Combine(
+            repoRoot, "src", "Sharpy.Compiler.Tests", "Properties");
+
+        var offenders = Directory.GetFiles(propertiesDir, "*.cs", SearchOption.AllDirectories)
+            .Where(f => File.ReadAllText(f).Contains(pattern))
+            .Select(f => Path.GetRelativePath(repoRoot, f))
+            .OrderBy(f => f)
+            .ToList();
+
+        Assert.True(offenders.Count == 0,
+            $"Plain SampleResult list accumulators under Properties/ — migrate to " +
+            $"PropertyCorpus.CompileAll:\n  {string.Join("\n  ", offenders)}");
+
+        // Positive control: the same probe finds the pattern in this file's own
+        // synthetic-sample tests, proving it detects the spelling it hunts.
+        var self = Path.Combine(
+            repoRoot, "src", "Sharpy.Compiler.Tests", "Infrastructure", "PropertyCorpusTests.cs");
+        Assert.Contains(pattern, File.ReadAllText(self));
+    }
+
+    private static string FindRepoRoot()
+    {
+        var current = AppContext.BaseDirectory;
+        while (current != null)
+        {
+            if (Directory.Exists(Path.Combine(current, ".git"))
+                || File.Exists(Path.Combine(current, ".git")))
+                return current;
+            current = Directory.GetParent(current)?.FullName;
+        }
+        throw new InvalidOperationException("Repository root not found.");
+    }
 }
