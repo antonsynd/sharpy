@@ -26,7 +26,7 @@ internal static class SharpySourceGenerator
             GenericType gt => FormatGenericType(gt),
             UserDefinedType udt => udt.Name,
             OptionalType opt => $"{FormatTypeAnnotation(opt.UnderlyingType)}?",
-            NullableType nt => $"{FormatTypeAnnotation(nt.UnderlyingType)}?",
+            NullableType nt => $"{FormatTypeAnnotation(nt.UnderlyingType)} | None",
             TupleType tt => FormatTupleType(tt),
             FunctionType ft => FormatFunctionType(ft),
             VoidType => "None",

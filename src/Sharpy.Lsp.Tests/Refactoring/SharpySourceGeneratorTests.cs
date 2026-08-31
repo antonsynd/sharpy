@@ -53,11 +53,36 @@ public class SharpySourceGeneratorTests
     }
 
     [Fact]
-    public void FormatTypeAnnotation_NullableType_ReturnsTypeWithQuestionMark()
+    public void FormatTypeAnnotation_NullableType_ReturnsUnionWithNone()
     {
         var nullableStr = new NullableType { UnderlyingType = (BuiltinType)SemanticType.Str };
         var result = SharpySourceGenerator.FormatTypeAnnotation(nullableStr);
-        result.Should().Be("str?");
+        result.Should().Be("str | None");
+    }
+
+    [Fact]
+    public void FormatTypeAnnotation_WrapperKinds_PairwiseDistinct()
+    {
+        // The #1714 contract at the source-writing surface: no two behaviorally distinct
+        // wrapper kinds may format to the same Sharpy annotation text. NullableType vs
+        // OptionalType is the pair that collided ('str?' for both) before this guard.
+        var int64 = new BuiltinType { Name = "int64" };
+        var wrappers = new (string Label, SemanticType Type)[]
+        {
+            ("OptionalType", new OptionalType { UnderlyingType = int64 }),
+            ("NullableType", new NullableType { UnderlyingType = int64 }),
+            ("ResultType", new ResultType { OkType = int64, ErrorType = int64 }),
+            ("TaskType", new TaskType { ResultType = int64 }),
+            ("GenericType(list)", new GenericType { Name = "list", TypeArguments = new System.Collections.Generic.List<SemanticType> { int64 } }),
+        };
+
+        var seen = new System.Collections.Generic.Dictionary<string, string>();
+        foreach (var (label, type) in wrappers)
+        {
+            var text = SharpySourceGenerator.FormatTypeAnnotation(type);
+            seen.Should().NotContainKey(text, $"{label} must not collide with {(seen.TryGetValue(text, out var other) ? other : "?")}");
+            seen[text] = label;
+        }
     }
 
     [Fact]
