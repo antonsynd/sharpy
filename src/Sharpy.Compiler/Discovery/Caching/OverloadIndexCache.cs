@@ -239,7 +239,10 @@ internal class OverloadIndexCache
 
         if (Directory.Exists(_cacheDirectory))
         {
-            foreach (var file in SourceGlob.EnumerateArtifacts(_cacheDirectory, "*.json.gz"))
+            // Materialize before deleting: enumerating a directory lazily while File.Delete
+            // mutates it can skip entries or throw (the pre-#1696 Directory.GetFiles was eager;
+            // the sibling in CleanupOldCaches keeps .ToArray() for the same reason).
+            foreach (var file in SourceGlob.EnumerateArtifacts(_cacheDirectory, "*.json.gz").ToArray())
             {
                 try
                 {

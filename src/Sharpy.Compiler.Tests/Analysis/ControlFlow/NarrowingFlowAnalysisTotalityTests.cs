@@ -178,6 +178,46 @@ public class NarrowingFlowAnalysisTotalityTests
             $"  Missing from switch: {string.Join(", ", RecursedByCollectAssignedKeys.Except(switchArms))}");
     }
 
+    /// <summary>
+    /// Refined-arm pinning: a type-name scan collapses every <c>BinaryOp { … }</c>
+    /// refinement to "BinaryOp", so deleting ONE of the refined arms leaves the
+    /// type-level guards green. Pattern texts are pinned verbatim (whitespace-normalized)
+    /// so an arm deletion, operator change, or added refinement fails here.
+    /// </summary>
+    private static readonly string[] RecognizeArmPatterns =
+    {
+        "Parenthesized paren",
+        "UnaryOp { Operator: UnaryOperator.Not } notOp",
+        "BinaryOp { Operator: BinaryOperator.And } andOp",
+        "BinaryOp { Operator: BinaryOperator.Or } orOp",
+    };
+
+    private static readonly string[] RecognizeLeafArmPatterns =
+    {
+        "BinaryOp { Operator: BinaryOperator.IsNot, Right: NoneLiteral } isNot",
+        "BinaryOp { Operator: BinaryOperator.NotEqual, Right: NoneLiteral } notEq",
+        "BinaryOp { Operator: BinaryOperator.Is, Right: NoneLiteral } isOp",
+        "BinaryOp { Operator: BinaryOperator.Equal, Right: NoneLiteral } eq",
+        "FunctionCall call",
+        "FunctionCall qualifiedCall",
+    };
+
+    [Fact]
+    public void RefinedArms_MatchPinnedPatterns()
+    {
+        var recognizeArms = SwitchArmScan.ArmPatternTexts(SourceFile, "Recognize");
+        Assert.NotEmpty(recognizeArms);
+        Assert.Equal(
+            RecognizeArmPatterns.OrderBy(x => x, StringComparer.Ordinal),
+            recognizeArms.OrderBy(x => x, StringComparer.Ordinal));
+
+        var leafArms = SwitchArmScan.ArmPatternTexts(SourceFile, "RecognizeLeaf");
+        Assert.NotEmpty(leafArms);
+        Assert.Equal(
+            RecognizeLeafArmPatterns.OrderBy(x => x, StringComparer.Ordinal),
+            leafArms.OrderBy(x => x, StringComparer.Ordinal));
+    }
+
     [Fact]
     public void ClassificationSets_AreDisjoint_WithUnrecognized()
     {

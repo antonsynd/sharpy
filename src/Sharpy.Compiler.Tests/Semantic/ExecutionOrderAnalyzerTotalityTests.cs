@@ -47,15 +47,27 @@ public class ExecutionOrderAnalyzerTotalityTests
     };
 
     /// <summary>
-    /// Expression types that are leaf literals and don't reference any identifiers.
+    /// Expression types with an EXPLICIT no-op arm in the switch ("Literals don't
+    /// reference identifiers"): handled, contributing nothing by design. Reconciled
+    /// from the switch when the arms==roster assertion became SetEquals — these five
+    /// were rostered as fall-through Leaf while the switch names them (the same
+    /// roster/switch disagreement as the CfgStatementTotalityTests DeferStatement tell).
     /// </summary>
-    private static readonly HashSet<string> Leaf = new()
+    private static readonly HashSet<string> HandledNoOp = new()
     {
         nameof(IntegerLiteral),
         nameof(FloatLiteral),
         nameof(StringLiteral),
         nameof(BooleanLiteral),
         nameof(NoneLiteral),
+    };
+
+    /// <summary>
+    /// Expression types that are leaf literals with NO arm — they fall through the
+    /// switch and reference no identifiers.
+    /// </summary>
+    private static readonly HashSet<string> Leaf = new()
+    {
         nameof(EllipsisLiteral),
         nameof(BytesLiteralExpression),
         nameof(SuperExpression),
@@ -99,6 +111,7 @@ public class ExecutionOrderAnalyzerTotalityTests
             .ToList();
 
         var allClassified = new HashSet<string>(Handled);
+        allClassified.UnionWith(HandledNoOp);
         allClassified.UnionWith(Leaf);
         allClassified.UnionWith(NotReachable);
 
@@ -109,6 +122,7 @@ public class ExecutionOrderAnalyzerTotalityTests
         foreach (var name in concreteExpressions)
         {
             var group = Handled.Contains(name) ? "HANDLED"
+                : HandledNoOp.Contains(name) ? "HANDLED-NO-OP"
                 : Leaf.Contains(name) ? "LEAF"
                 : NotReachable.Contains(name) ? "NOT-REACHABLE"
                 : "*** UNCLASSIFIED ***";
@@ -133,16 +147,14 @@ public class ExecutionOrderAnalyzerTotalityTests
 
         Assert.NotEmpty(switchArms);
 
-        var handledNotInSwitch = Handled.Except(switchArms).ToList();
-        Assert.True(handledNotInSwitch.Count == 0,
-            $"Handled types missing from switch: {string.Join(", ", handledNotInSwitch)}");
-
-        var allClassified = new HashSet<string>(Handled);
-        allClassified.UnionWith(Leaf);
-        allClassified.UnionWith(NotReachable);
-        var unclassifiedArms = switchArms.Except(allClassified).ToList();
-        Assert.True(unclassifiedArms.Count == 0,
-            $"Switch arms not classified: {string.Join(", ", unclassifiedArms)}");
+        // SetEquals, not subset: an arm ADDED for a type rostered Leaf/NotReachable is
+        // drift the roster must acknowledge, exactly as a deleted Handled arm is.
+        var expectedArms = new HashSet<string>(Handled);
+        expectedArms.UnionWith(HandledNoOp);
+        Assert.True(switchArms.SetEquals(expectedArms),
+            $"CollectReferencedIdentifiers switch arms differ from Handled+HandledNoOp.\n" +
+            $"  Extra in switch: {string.Join(", ", switchArms.Except(expectedArms))}\n" +
+            $"  Missing from switch: {string.Join(", ", expectedArms.Except(switchArms))}");
     }
 
     [Fact]
@@ -151,9 +163,13 @@ public class ExecutionOrderAnalyzerTotalityTests
         var handledAndLeaf = Handled.Intersect(Leaf).ToList();
         var handledAndNr = Handled.Intersect(NotReachable).ToList();
         var leafAndNr = Leaf.Intersect(NotReachable).ToList();
+        var noOpOverlap = HandledNoOp.Intersect(Handled)
+            .Concat(HandledNoOp.Intersect(Leaf))
+            .Concat(HandledNoOp.Intersect(NotReachable)).ToList();
 
         Assert.Empty(handledAndLeaf);
         Assert.Empty(handledAndNr);
         Assert.Empty(leafAndNr);
+        Assert.Empty(noOpOverlap);
     }
 }

@@ -107,17 +107,26 @@ public class ExhaustivenessHelperTotalityTests
 
         Assert.NotEmpty(switchArms);
 
-        var covNotInSwitch = CoverageContributing.Except(switchArms).ToList();
-        Assert.True(covNotInSwitch.Count == 0,
-            $"CoverageContributing types missing from CollectCoveredCases switch: {string.Join(", ", covNotInSwitch)}");
-
-        var allClassified = new HashSet<string>(CoverageContributing);
-        allClassified.UnionWith(IrrefutableOnly);
-        allClassified.UnionWith(NoCoverage);
-        var unclassifiedArms = switchArms.Except(allClassified).ToList();
-        Assert.True(unclassifiedArms.Count == 0,
-            $"CollectCoveredCases switch arms not classified: {string.Join(", ", unclassifiedArms)}");
+        // SetEquals, not subset: an arm added for a pattern rostered elsewhere is drift.
+        Assert.True(switchArms.SetEquals(CoverageContributing),
+            $"CollectCoveredCases switch arms differ from CoverageContributing roster.\n" +
+            $"  Extra in switch: {string.Join(", ", switchArms.Except(CoverageContributing))}\n" +
+            $"  Missing from switch: {string.Join(", ", CoverageContributing.Except(switchArms))}");
     }
+
+    /// <summary>
+    /// The patterns IsIrrefutable dispatches on (its switch-expression arms); every other
+    /// pattern falls to the `_ => false` discard by design.
+    /// </summary>
+    private static readonly HashSet<string> IsIrrefutableArms = new()
+    {
+        nameof(WildcardPattern),
+        nameof(BindingPattern),
+        nameof(AsPattern),
+        nameof(TypePattern),
+        nameof(OrPattern),
+        nameof(GuardPattern),
+    };
 
     [Fact]
     public void SwitchArms_MatchIsIrrefutable()
@@ -128,12 +137,13 @@ public class ExhaustivenessHelperTotalityTests
 
         Assert.NotEmpty(switchArms);
 
-        var allClassified = new HashSet<string>(CoverageContributing);
-        allClassified.UnionWith(IrrefutableOnly);
-        allClassified.UnionWith(NoCoverage);
-        var unclassifiedArms = switchArms.Except(allClassified).ToList();
-        Assert.True(unclassifiedArms.Count == 0,
-            $"IsIrrefutable switch arms not classified: {string.Join(", ", unclassifiedArms)}");
+        // Pinned arm set, SetEquals: the previous subset assertion could not fail on
+        // arm REMOVAL (every remaining arm stayed classified). Everything else falls
+        // to the `_ => false` discard by design.
+        Assert.True(switchArms.SetEquals(IsIrrefutableArms),
+            $"IsIrrefutable switch arms differ from the pinned roster.\n" +
+            $"  Extra in switch: {string.Join(", ", switchArms.Except(IsIrrefutableArms))}\n" +
+            $"  Missing from switch: {string.Join(", ", IsIrrefutableArms.Except(switchArms))}");
     }
 
     [Fact]

@@ -66,8 +66,13 @@ public static class SwitchArmScan
 
     /// <summary>
     /// Returns the whitespace-normalized pattern text for each arm of every switch
-    /// expression in the named method. For tuple-pattern switches
-    /// (e.g. AugmentedCollectionAssignment.Classify).
+    /// expression AND every pattern case label of every switch statement in the named
+    /// method. For tuple-pattern switches (e.g. AugmentedCollectionAssignment.Classify)
+    /// and for refined-pattern arms that a type-name scan collapses (e.g. the six
+    /// <c>BinaryOp { … }</c> arms of NarrowingConditionInterpreter — deleting one leaves
+    /// the type name present, so only pattern-text pinning catches it).
+    /// Discard arms (<c>_</c>) and <c>default:</c> labels: the discard is included
+    /// (switch expressions), the default label is not a pattern and is skipped.
     /// </summary>
     public static IReadOnlyList<string> ArmPatternTexts(string repoRelativePath, string methodName)
     {
@@ -87,12 +92,24 @@ public static class SwitchArmScan
                     texts.Add(normalized);
                 }
             }
+
+            foreach (var switchStmt in method.DescendantNodes().OfType<SwitchStatementSyntax>())
+            {
+                foundSwitch = true;
+                foreach (var section in switchStmt.Sections)
+                {
+                    foreach (var label in section.Labels.OfType<CasePatternSwitchLabelSyntax>())
+                    {
+                        texts.Add(NormalizeWhitespace(label.Pattern.ToString()));
+                    }
+                }
+            }
         }
 
         if (!foundSwitch)
         {
             throw new InvalidOperationException(
-                $"No switch expression found in method '{methodName}' " +
+                $"No switch expression or statement found in method '{methodName}' " +
                 $"in '{repoRelativePath}'.");
         }
 

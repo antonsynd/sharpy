@@ -31,9 +31,15 @@ public class SourceGlobConformanceTests
         _output = output;
     }
 
+    // Matches the METHOD NAME, not the receiver: this catches Directory.X, the
+    // System.IO-qualified spelling, DirectoryInfo instance calls, and a receiver
+    // wrapped onto the previous line — all with one pattern. The scan is still
+    // per-line (comment lines are skipped above); a call whose method name itself
+    // is split across lines would evade it — no such spelling survives
+    // `dotnet format`, and the recorded mutations cover the live spellings.
     private static readonly Regex RawEnumerationPattern = new(
-        @"\bDirectory\s*\.\s*(EnumerateFiles|GetFiles|EnumerateDirectories|GetDirectories)\b|"
-        + @"\bSystem\s*\.\s*IO\s*\.\s*Directory\s*\.\s*(EnumerateFiles|GetFiles|EnumerateDirectories|GetDirectories)\b|"
+        @"\b(EnumerateFiles|GetFiles|EnumerateDirectories|GetDirectories"
+        + @"|EnumerateFileSystemEntries|GetFileSystemEntries)\s*\(|"
         + @"\bnew\s+Matcher\s*\(",
         RegexOptions.Compiled);
 
