@@ -207,4 +207,40 @@ def main():
             string.Join("\n", result.CompilationErrors));
         result.StandardOutput.Trim().Should().Be("5");
     }
+
+    /// <summary>
+    /// The DISCRIMINATING MergeFrom cell (#1695): when the recorded lowering is missing, the
+    /// emitter falls back to the legacy qualified method-group path
+    /// (RoslynEmitter.Expressions.cs, the branch after GetCallableReferenceLowering), which
+    /// happens to produce working C# for the two cells above (their delegate types are
+    /// satisfied by overload conversion). This cell uses the #1638 shape — <c>len</c> as a
+    /// callable over <c>bytes</c> — where the method group satisfies no overload
+    /// (CS0123 behind SPY0908), so dropping the <c>_callableReferenceLowerings</c> row from
+    /// <c>SemanticInfo.MergeFrom</c> turns exactly this cell red.
+    /// </summary>
+    [Fact]
+    public void MultiFile_BuiltinReference_FallbackBreakingShape_Executes()
+    {
+        using var helper = new ProjectCompilationHelper(Output);
+        helper.WithRootNamespace("BuiltinRefFallbackBreaking")
+            .AddSourceFile("lib.spy", @"
+def measured() -> list[int]:
+    sizes: list[int32] = [2, 3]
+    return list(map(len, map(bytes, sizes)))
+")
+            .AddSourceFile("main.spy", @"
+from lib import measured
+
+def main():
+    print(measured())
+")
+            .CreateProjectFile();
+
+        var result = helper.CompileAndExecute();
+        result.Success.Should().BeTrue(
+            "len-over-bytes callable reference in lib.spy must survive MergeFrom " +
+            "(the method-group fallback cannot compile this shape); errors: " +
+            string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Trim().Should().Be("[2, 3]");
+    }
 }
