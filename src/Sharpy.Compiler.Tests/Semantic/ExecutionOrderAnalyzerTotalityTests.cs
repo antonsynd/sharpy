@@ -157,6 +157,115 @@ public class ExecutionOrderAnalyzerTotalityTests
             $"  Missing from switch: {string.Join(", ", expectedArms.Except(switchArms))}");
     }
 
+    // ── CollectDeclarationNames (Statement axis) ──
+
+    /// <summary>
+    /// Statement types with a case arm in CollectDeclarationNames —
+    /// they contribute a name to _typeAndFunctionNames or _constVariables.
+    /// </summary>
+    private static readonly HashSet<string> DeclCollected = new()
+    {
+        nameof(ClassDef),
+        nameof(StructDef),
+        nameof(FunctionDef),
+        nameof(EnumDef),
+        nameof(InterfaceDef),
+        nameof(VariableDeclaration),
+    };
+
+    /// <summary>
+    /// Statement types that declare a name but are deliberately not collected
+    /// because they are future-syntax, experimental, or handled by other passes.
+    /// Each entry needs a justification string.
+    /// </summary>
+    private static readonly Dictionary<string, string> DeclDeclaresNameNotCollected = new()
+    {
+        [nameof(TypeAlias)] = "type alias names resolved by a separate alias pass",
+        [nameof(UnionDef)] = "future syntax — discriminated unions resolved separately",
+        [nameof(DelegateDef)] = "future syntax — delegate types resolved separately",
+        [nameof(EventDef)] = "future syntax — events resolved separately",
+    };
+
+    /// <summary>
+    /// Statement types that do not declare a module-level name —
+    /// the default fall-through is correct for them.
+    /// </summary>
+    private static readonly HashSet<string> DeclNoDeclaredName = new()
+    {
+        nameof(ExpressionStatement),
+        nameof(DecoratedStatement),
+        nameof(Assignment),
+        nameof(AssertStatement),
+        nameof(PassStatement),
+        nameof(BreakStatement),
+        nameof(BreakWithFlagStatement),
+        nameof(ContinueStatement),
+        nameof(ReturnStatement),
+        nameof(YieldStatement),
+        nameof(RaiseStatement),
+        nameof(IfStatement),
+        nameof(WhileStatement),
+        nameof(ForStatement),
+        nameof(TryStatement),
+        nameof(WithStatement),
+        nameof(DeferStatement),
+        nameof(MatchStatement),
+        nameof(ImportStatement),
+        nameof(FromImportStatement),
+        nameof(PropertyDef),
+    };
+
+    [Fact]
+    public void AllConcreteStatementSubtypes_AreClassifiedForDeclarations()
+    {
+        var statementBaseType = typeof(Statement);
+        var concrete = statementBaseType.Assembly
+            .GetTypes()
+            .Where(t => t.IsSubclassOf(statementBaseType) && !t.IsAbstract && t.IsPublic)
+            .Select(t => t.Name)
+            .ToHashSet();
+
+        var allClassified = new HashSet<string>(DeclCollected);
+        allClassified.UnionWith(DeclDeclaresNameNotCollected.Keys);
+        allClassified.UnionWith(DeclNoDeclaredName);
+
+        var unclassified = concrete.Except(allClassified).OrderBy(n => n).ToList();
+        var phantom = allClassified.Except(concrete).OrderBy(n => n).ToList();
+
+        if (unclassified.Count > 0)
+            _output.WriteLine($"Unclassified: {string.Join(", ", unclassified)}");
+        if (phantom.Count > 0)
+            _output.WriteLine($"Phantom: {string.Join(", ", phantom)}");
+
+        Assert.Empty(unclassified);
+        Assert.Empty(phantom);
+    }
+
+    [Fact]
+    public void CollectDeclarationNames_SwitchArms_MatchCollectedClassification()
+    {
+        var switchArms = SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Semantic/ExecutionOrderAnalyzer.cs",
+            "CollectDeclarationNames");
+
+        Assert.True(switchArms.SetEquals(DeclCollected),
+            $"CollectDeclarationNames switch arms differ from DeclCollected.\n" +
+            $"  Extra in switch: {string.Join(", ", switchArms.Except(DeclCollected))}\n" +
+            $"  Missing from switch: {string.Join(", ", DeclCollected.Except(switchArms))}");
+    }
+
+    [Fact]
+    public void DeclarationClassificationSets_AreDisjoint()
+    {
+        var overlap1 = DeclCollected.Intersect(DeclDeclaresNameNotCollected.Keys).ToList();
+        var overlap2 = DeclCollected.Intersect(DeclNoDeclaredName).ToList();
+        var overlap3 = DeclDeclaresNameNotCollected.Keys.Intersect(DeclNoDeclaredName).ToList();
+
+        Assert.Empty(overlap1);
+        Assert.Empty(overlap2);
+        Assert.Empty(overlap3);
+    }
+
     [Fact]
     public void ClassificationSets_AreDisjoint()
     {
