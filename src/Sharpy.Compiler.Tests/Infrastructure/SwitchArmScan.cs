@@ -113,6 +113,25 @@ public static class SwitchArmScan
     }
 
     /// <summary>
+    /// Counts the switch statements and switch expressions inside the methods selected by
+    /// (methodName, containingTypeName). Exists so self-tests can prove the containing-type
+    /// filter actually discriminates: while the two AstVisitor.Visit overloads' arm ROSTERS
+    /// coincide (94 == 94), a filter regression that silently merged the overloads is
+    /// invisible to roster assertions — but the void overload holds exactly one switch
+    /// STATEMENT and the generic overload exactly one switch EXPRESSION, so these counts
+    /// tell the two scans apart (plan-e31e76 verify-round warning).
+    /// </summary>
+    public static (int SwitchStatements, int SwitchExpressions) DispatchFormCounts(
+        string repoRelativePath, string methodName, string containingTypeName)
+    {
+        var root = ParseFile(repoRelativePath);
+        var methods = FindMethodsInType(root, methodName, containingTypeName, repoRelativePath);
+        var statements = methods.Sum(m => m.DescendantNodes().OfType<SwitchStatementSyntax>().Count());
+        var expressions = methods.Sum(m => m.DescendantNodes().OfType<SwitchExpressionSyntax>().Count());
+        return (statements, expressions);
+    }
+
+    /// <summary>
     /// Returns the whitespace-normalized pattern text for each arm of every switch
     /// expression AND every pattern case label of every switch statement in the named
     /// method. For tuple-pattern switches (e.g. AugmentedCollectionAssignment.Classify)

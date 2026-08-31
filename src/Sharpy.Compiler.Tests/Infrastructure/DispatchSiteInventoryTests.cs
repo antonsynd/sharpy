@@ -1,4 +1,5 @@
-using System.Text.RegularExpressions;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -8,6 +9,19 @@ namespace Sharpy.Compiler.Tests.Infrastructure;
 /// Standing inventory of hand-rolled AST dispatch switches in the compiler.
 /// Every site must carry a rostered justification; a new unguarded dispatch
 /// fails this test, preventing the #1694/#1709 vacuity class from recurring.
+///
+/// The scan is a Roslyn parse (plan-e31e76 Phase 3 Task 5), not a line regex:
+/// it finds every switch STATEMENT and switch EXPRESSION whose scrutinee is an
+/// identifier named node/stmt/pattern/expr, keyed "path::Type.Method" with
+/// metadata-style type names (arity-suffixed), so line drift is harmless, the
+/// expression form (`node switch`) is visible, and the two AstVisitor.Visit
+/// overloads are separate sites. Roster matching is exact-key, both directions:
+/// an unrostered site fails, and a phantom roster row (site gone) fails —
+/// entries drain on fix.
+///
+/// Scope: identifier-named scrutinees in src/Sharpy.Compiler only. AST dispatch
+/// over differently-named scrutinees and src/Sharpy.Lsp sites are tracked by the
+/// widening issue filed from the plan-e31e76 verification round.
 /// </summary>
 public class DispatchSiteInventoryTests
 {
@@ -15,113 +29,201 @@ public class DispatchSiteInventoryTests
 
     public DispatchSiteInventoryTests(ITestOutputHelper output) => _output = output;
 
-    private static readonly Regex SwitchPattern =
-        new(@"switch\s*\((node|stmt|pattern|expr)\)", RegexOptions.Compiled);
+    private static readonly HashSet<string> ScrutineeNames = new() { "node", "stmt", "pattern", "expr" };
 
     /// <summary>
-    /// Maps "relative_path::method_or_enclosing_context" → justification category.
-    /// The key uses "::" as a separator, making it resilient to line drift.
+    /// Maps "relative_path::Type.Method" → justification category. Categories:
+    ///   guarded-by:&lt;TestClass&gt;      — a totality test asserts scan-vs-roster for the site
+    ///   documented-by-design:&lt;where&gt; — deliberately partial dispatch, contract recorded there
+    ///   walker-default-contract      — validator whose default-ignore is contractual
+    ///   refusal-net:&lt;TestClass&gt;      — a conformance net covers the dispatch
+    ///   pending-guard:#&lt;issue&gt;       — no guard/contract/net yet; the row cites its tracking
+    ///                                  issue and drains when one lands (allowlist discipline)
     /// </summary>
     private static readonly Dictionary<string, string> Roster = new()
     {
-        // ── guarded-by: totality tests that assert scan-vs-roster ──
-        ["Parser/Ast/AstVisitor.cs::Visit"] = "guarded-by:AstVisitorTotalityTests",
-        ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::BuildStatement"] = "guarded-by:CfgStatementTotalityTests",
-        ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::CollectPatternBindingKeysInto"] = "guarded-by:CfgPatternBindingTotalityTests",
-        ["Semantic/ExecutionOrderAnalyzer.cs::CollectReferencedIdentifiers"] = "guarded-by:ExecutionOrderAnalyzerTotalityTests",
-        ["Semantic/ExecutionOrderAnalyzer.cs::CollectDeclarationNames"] = "guarded-by:ExecutionOrderAnalyzerTotalityTests",
-        ["Semantic/CodeGenInfoComputer.cs"] = "guarded-by:CodeGenInfoComputerTotalityTests",
-        ["Semantic/TypeChecker.cs"] = "guarded-by:TypeCheckerClrTypeTotalityTests",
-        ["Semantic/TypeChecker.Statements.cs"] = "guarded-by:TypeCheckerClrTypeTotalityTests",
-        ["Semantic/TypeChecker.Statements.Patterns.cs"] = "guarded-by:TypeCheckerClrTypeTotalityTests",
-        ["Semantic/TypeChecker.Expressions.Access.Lambdas.cs"] = "guarded-by:TypeCheckerClrTypeTotalityTests",
-        ["Shared/ExhaustivenessHelper.cs::CollectCoveredCases"] = "guarded-by:ExhaustivenessHelperTotalityTests",
-        ["Semantic/IntegerConstantEvaluator.cs"] = "guarded-by:IntegerConstantEvaluatorTotalityTests",
+        // ── guarded-by: a totality test asserts scan-vs-roster for the method ──
+        ["Parser/Ast/AstVisitor.cs::AstVisitor.Visit"] = "guarded-by:AstVisitorTotalityTests",
+        ["Parser/Ast/AstVisitor.cs::AstVisitor`1.Visit"] = "guarded-by:AstVisitorTotalityTests",
+        ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::ControlFlowGraphBuilder.BuildStatement"] = "guarded-by:CfgStatementTotalityTests",
+        ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::ControlFlowGraphBuilder.CollectPatternBindingKeysInto"] = "guarded-by:CfgPatternBindingTotalityTests",
+        ["Semantic/ExecutionOrderAnalyzer.cs::ExecutionOrderAnalyzer.CollectReferencedIdentifiers"] = "guarded-by:ExecutionOrderAnalyzerTotalityTests",
+        ["Semantic/ExecutionOrderAnalyzer.cs::ExecutionOrderAnalyzer.CollectDeclarationNames"] = "guarded-by:ExecutionOrderAnalyzerTotalityTests",
+        ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.ComputeForModule"] = "guarded-by:CodeGenInfoComputerTotalityTests",
+        ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.DetectModuleLevelCollisions"] = "guarded-by:CodeGenInfoComputerTotalityTests",
+        ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.ProcessTypeMembers"] = "guarded-by:CodeGenInfoComputerTotalityTests",
+        ["Shared/ExhaustivenessHelper.cs::ExhaustivenessHelper.CollectCoveredCases"] = "guarded-by:ExhaustivenessHelperTotalityTests",
+        ["Shared/ExhaustivenessHelper.cs::ExhaustivenessHelper.IsIrrefutable"] = "guarded-by:ExhaustivenessHelperTotalityTests",
 
-        // ── documented-by-design: deliberately partial dispatch ──
-        ["Lowering/IrTreeRewriter.cs::RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:~18-25",
-        ["Lowering/Passes/ComprehensionFusionPass.cs"] = "documented-by-design:Parser/Ast/Types.cs:~18-25",
-        ["Lowering/Passes/ConstFoldPass.cs"] = "documented-by-design:Parser/Ast/Types.cs:~18-25",
-        ["Lowering/Passes/StackCollectionsPass.cs"] = "documented-by-design:Parser/Ast/Types.cs:~18-25",
-        ["Parser/Ast/Types.cs"] = "documented-by-design:Parser/Ast/Types.cs:~18-25",
+        // ── documented-by-design: deliberately partial dispatch, contract recorded at the cited location ──
+        ["Lowering/IrTreeRewriter.cs::IrTreeRewriter.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:~15-28",
+        ["Lowering/Passes/ComprehensionFusionPass.cs::ComprehensionFusionPass.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:~15-28",
+        ["Lowering/Passes/ConstFoldPass.cs::ConstFoldPass.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:~15-28",
+        ["Lowering/Passes/StackCollectionsPass.cs::StackCollectionsPass.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:~15-28",
+        ["Semantic/TypeChecker.Expressions.cs::TypeChecker.CheckExpression"] = "documented-by-design:HandleUnrecognizedExpression-default",
 
         // ── walker-default-contract: validators whose default-ignore is contractual ──
-        ["Semantic/Validation/DefaultParameterValidator.cs"] = "walker-default-contract",
-        ["Semantic/Validation/EqualityContractValidator.cs"] = "walker-default-contract",
-        ["Semantic/Validation/EventValidator.cs"] = "walker-default-contract",
-        ["Semantic/Validation/FinalFieldValidator.cs"] = "walker-default-contract",
-        ["Semantic/Validation/GeneratorValidator.cs"] = "walker-default-contract",
-        ["Semantic/Validation/InterfaceConflictValidator.cs"] = "walker-default-contract",
-        ["Semantic/Validation/ModuleLevelValidator.cs"] = "walker-default-contract",
-        ["Semantic/Validation/PropertyValidator.cs"] = "walker-default-contract",
-        ["Semantic/Validation/SignatureValidator.cs"] = "walker-default-contract",
-        ["Semantic/Validation/UnusedVariableValidator.cs"] = "walker-default-contract",
-        ["Semantic/Validation/VarianceValidator.cs"] = "walker-default-contract",
+        ["Semantic/Validation/DecoratorValidator.cs::DecoratorValidator.IsCompileTimeConstant"] = "walker-default-contract",
+        ["Semantic/Validation/DefaultParameterValidator.cs::DefaultParameterValidator.CollectIdentifierNamesInto"] = "walker-default-contract",
+        ["Semantic/Validation/DefaultParameterValidator.cs::DefaultParameterValidator.IsCompileTimeConstant"] = "walker-default-contract",
+        ["Semantic/Validation/DefaultParameterValidator.cs::DefaultParameterValidator.IsMutableDefault"] = "walker-default-contract",
+        ["Semantic/Validation/EqualityContractValidator.cs::EqualityContractValidator.Validate"] = "walker-default-contract",
+        ["Semantic/Validation/EventValidator.cs::EventValidator.TypeStatementName"] = "walker-default-contract",
+        ["Semantic/Validation/EventValidator.cs::EventValidator.ValidateTypeStatement"] = "walker-default-contract",
+        ["Semantic/Validation/FinalFieldValidator.cs::FinalFieldValidator.GetChildStatements"] = "walker-default-contract",
+        ["Semantic/Validation/FinalFieldValidator.cs::FinalFieldValidator.ValidateModuleStatement"] = "walker-default-contract",
+        ["Semantic/Validation/GeneratorValidator.cs::GeneratorValidator.Validate"] = "walker-default-contract",
+        ["Semantic/Validation/InterfaceConflictValidator.cs::InterfaceConflictValidator.Validate"] = "walker-default-contract",
+        ["Semantic/Validation/MatchArmOrderValidator.cs::MatchArmOrderValidator.CoversItsRecordedType"] = "walker-default-contract",
+        ["Semantic/Validation/MatchArmOrderValidator.cs::MatchArmOrderValidator.GetPatternRecordedType"] = "walker-default-contract",
+        ["Semantic/Validation/MatchArmOrderValidator.cs::MatchArmOrderValidator.IsTypeTotalPattern"] = "walker-default-contract",
+        ["Semantic/Validation/ModuleLevelValidator.cs::ModuleLevelValidator.Validate"] = "walker-default-contract",
+        ["Semantic/Validation/PropertyValidator.cs::PropertyValidator.GetChildStatements"] = "walker-default-contract",
+        ["Semantic/Validation/SignatureValidator.cs::SignatureValidator.ValidateTopLevelStatement"] = "walker-default-contract",
+        ["Semantic/Validation/UnusedVariableValidator.cs::UnusedVariableValidator.CollectDefinitionsFromPattern"] = "walker-default-contract",
+        ["Semantic/Validation/UnusedVariableValidator.cs::UnusedVariableValidator.CollectFromStatement"] = "walker-default-contract",
+        ["Semantic/Validation/VarianceValidator.cs::VarianceValidator.Validate"] = "walker-default-contract",
+        ["Semantic/Validation/VarianceValidator.cs::VarianceValidator.WalkFunctionsForVariance"] = "walker-default-contract",
 
-        // ── refusal-net: conformance tests cover the dispatch ──
-        ["CodeGen/CodeValidator.cs"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.ClassMembers.cs"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.ModuleClass.cs"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Operators.cs"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Patterns.cs"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["Parser/Parser.Primaries.cs"] = "refusal-net:parser-tests",
+        // ── refusal-net: a named conformance/behavioral net covers the dispatch ──
+        ["CodeGen/CodeValidator.cs::CodeValidator.ValidateNode"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateClassMembers"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembers"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroup"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroupOrLambda"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Expressions.cs::RoslynEmitter.GenerateExpressionCore"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Expressions.Literals.cs::RoslynEmitter.DeriveExpressionText"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateModuleMembers"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateParametrizeMemberDataProperties"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateStatement"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.CollectReferencedIdentifiers"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.ContainsSuperExpressionInExpression"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.ContainsSuperExpressionInStatement"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.TransformStatementForLoopElse"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Patterns.cs::RoslynEmitter.GenerateMatchPattern"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Statements.Assignments.cs::RoslynEmitter.IsRepeatableOperand"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Statements.cs::RoslynEmitter.GenerateBodyStatements"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.Statements.cs::RoslynEmitter.IsCompileTimeLiteral"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["CodeGen/RoslynEmitter.TypeDeclarations.cs::RoslynEmitter.GenerateAttributeArgumentExpression"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
+        ["Parser/Parser.cs::Parser.ParseDecoratedStatement"] = "refusal-net:parser-tests",
+        ["Parser/Parser.Primaries.cs::Parser.ContainsPlaceholderIdentifier"] = "refusal-net:parser-tests",
+        ["Parser/Parser.Primaries.cs::Parser.ReplacePlaceholders"] = "refusal-net:parser-tests",
+        ["Pretty/UnparseVisitor.cs::UnparseVisitor.GetExpressionPrecedence"] = "refusal-net:UnparseIdempotencePropertyTests",
+        ["Semantic/IntegerConstantEvaluator.cs::IntegerConstantEvaluator.TryGetConstantInteger"] = "refusal-net:IntegerConstantEvaluatorTests",
+
+        // ── pending-guard: no guard, no documented contract, no named net — tracked by the
+        //    cited issue; a row drains when one of the above lands (#1716) ──
+        ["Project/GeneratorContextBuilder.cs::GeneratorContextBuilder.ExtractLiteralValue"] = "pending-guard:#1716",
+        ["Project/ProjectCompiler.Generators.cs::ProjectCompiler.IntegrateGeneratedSource"] = "pending-guard:#1716",
+        ["Semantic/ModuleLoader.cs::ModuleLoader.ExtractNestedTypes"] = "pending-guard:#1716",
+        ["Semantic/TypeChecker.cs::TypeChecker.ReferencesUnfoldedConst"] = "pending-guard:#1716",
+        ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.DescribeTypeOperand"] = "pending-guard:#1716",
+        ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.IsLiteralStringExpression"] = "pending-guard:#1716",
+        ["Semantic/TypeChecker.Expressions.Access.Lambdas.cs::TypeChecker.InferParamTypesFromSubExpression"] = "pending-guard:#1716",
+        ["Semantic/TypeChecker.Expressions.Access.Lambdas.cs::TypeChecker.TryResolveExpressionType"] = "pending-guard:#1716",
+        ["Semantic/TypeChecker.Statements.cs::TypeChecker.CheckDeferBodyControlFlow"] = "pending-guard:#1716",
+        ["Semantic/TypeChecker.Statements.Patterns.cs::TypeChecker.CheckPattern"] = "pending-guard:#1716",
+        ["Services/CompilerInvariants.cs::CompilerInvariants.WarnIfUnknownTypes"] = "pending-guard:#1716",
+        ["Shared/AstHelper.cs::AstHelper.ContainsWalrusExpression"] = "pending-guard:#1716",
+        ["Shared/AstHelper.cs::AstHelper.ExtractNarrowingKey"] = "pending-guard:#1716",
+        ["Shared/ExhaustivenessHelper.cs::ExhaustivenessHelper.DescribeIrrefutable"] = "pending-guard:#1716",
     };
 
     [Fact]
-    public void AllDispatchSites_AreRostered()
+    public void AllDispatchSites_MatchRosterExactly()
     {
-        var repoRoot = FindRepoRoot();
-        var compilerDir = Path.Combine(repoRoot, "src", "Sharpy.Compiler");
-        var csFiles = Directory.GetFiles(compilerDir, "*.cs", SearchOption.AllDirectories)
-            .Where(f => !f.Contains(Path.Combine("bin", "")) && !f.Contains(Path.Combine("obj", "")))
-            .ToList();
+        var sites = ScanSites();
 
-        var unrostered = new List<string>();
+        var missing = sites.Except(Roster.Keys).OrderBy(s => s).ToList();
+        var phantom = Roster.Keys.Except(sites).OrderBy(s => s).ToList();
 
-        foreach (var file in csFiles)
-        {
-            var relativePath = Path.GetRelativePath(compilerDir, file).Replace('\\', '/');
-            var lines = File.ReadAllLines(file);
-
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (!SwitchPattern.IsMatch(lines[i]))
-                    continue;
-
-                var matched = Roster.Keys.Any(key => relativePath.StartsWith(key.Split("::")[0])
-                    && (key.Contains("::") ? LinesNearMethodContaining(lines, i, key.Split("::")[1]) : true));
-
-                if (!matched)
-                {
-                    unrostered.Add($"{relativePath}:{i + 1} — {lines[i].Trim()}");
-                }
-            }
-        }
-
-        foreach (var site in unrostered)
+        foreach (var site in missing)
             _output.WriteLine($"UNROSTERED: {site}");
+        foreach (var row in phantom)
+            _output.WriteLine($"PHANTOM ROSTER ROW: {row}");
 
-        Assert.Empty(unrostered);
+        Assert.True(missing.Count == 0 && phantom.Count == 0,
+            $"Dispatch-site scan and roster differ.\n" +
+            $"Unrostered sites (add a row with a justification):\n  {string.Join("\n  ", missing)}\n" +
+            $"Phantom roster rows (site no longer exists — drain the row):\n  {string.Join("\n  ", phantom)}");
     }
 
     [Fact]
-    public void EveryJustificationCategory_HasAtLeastOneSite()
+    public void EveryJustificationCategory_HasAtLeastOneSite_AndAllJustificationsWellFormed()
     {
-        var categories = Roster.Values.Select(v => v.Split(':')[0]).Distinct().ToList();
-        Assert.Contains("guarded-by", categories);
-        Assert.Contains("documented-by-design", categories);
-        Assert.Contains("walker-default-contract", categories);
-        Assert.Contains("refusal-net", categories);
+        // Positive control with an external expectation: the four categories are
+        // enumerated HERE, not derived from the roster, so an emptied category or
+        // a free-text typo in a justification fails.
+        string[] required = { "guarded-by", "documented-by-design", "walker-default-contract", "refusal-net", "pending-guard" };
+
+        var byCategory = Roster.Values
+            .GroupBy(v => v.Split(':')[0])
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        foreach (var category in required)
+            Assert.True(byCategory.ContainsKey(category), $"Category '{category}' has no rostered site.");
+
+        foreach (var (site, justification) in Roster)
+        {
+            var category = justification.Split(':')[0];
+            Assert.True(required.Contains(category),
+                $"Roster row '{site}' has malformed justification '{justification}'.");
+            if (category is "guarded-by" or "refusal-net" or "documented-by-design")
+            {
+                Assert.True(justification.Contains(':') && justification.Split(':', 2)[1].Length > 0,
+                    $"Roster row '{site}' category '{category}' must name its guard/contract.");
+            }
+            if (category is "pending-guard")
+            {
+                Assert.True(justification.Contains(":#"),
+                    $"Roster row '{site}' is pending-guard and must cite its tracking issue (e.g. pending-guard:#1716).");
+            }
+        }
     }
 
-    private static bool LinesNearMethodContaining(string[] lines, int switchLine, string methodHint)
+    private static HashSet<string> ScanSites()
     {
-        for (int i = Math.Max(0, switchLine - 30); i <= switchLine; i++)
+        var repoRoot = FindRepoRoot();
+        var compilerDir = Path.Combine(repoRoot, "src", "Sharpy.Compiler");
+        var sites = new HashSet<string>();
+
+        foreach (var file in Directory.GetFiles(compilerDir, "*.cs", SearchOption.AllDirectories))
         {
-            if (lines[i].Contains(methodHint))
-                return true;
+            if (file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                || file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+                continue;
+
+            var relativePath = Path.GetRelativePath(compilerDir, file).Replace('\\', '/');
+            var root = CSharpSyntaxTree.ParseText(File.ReadAllText(file)).GetCompilationUnitRoot();
+
+            foreach (var stmt in root.DescendantNodes().OfType<SwitchStatementSyntax>())
+            {
+                if (stmt.Expression is IdentifierNameSyntax id && ScrutineeNames.Contains(id.Identifier.Text))
+                    sites.Add($"{relativePath}::{EnclosingContext(stmt)}");
+            }
+
+            foreach (var expr in root.DescendantNodes().OfType<SwitchExpressionSyntax>())
+            {
+                if (expr.GoverningExpression is IdentifierNameSyntax id && ScrutineeNames.Contains(id.Identifier.Text))
+                    sites.Add($"{relativePath}::{EnclosingContext(expr)}");
+            }
         }
-        return false;
+
+        return sites;
+    }
+
+    private static string EnclosingContext(Microsoft.CodeAnalysis.SyntaxNode node)
+    {
+        var method = node.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+        var type = node.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+
+        var typeName = type == null
+            ? "<top-level>"
+            : type.TypeParameterList is { Parameters.Count: > 0 }
+                ? $"{type.Identifier.Text}`{type.TypeParameterList.Parameters.Count}"
+                : type.Identifier.Text;
+
+        return $"{typeName}.{method?.Identifier.Text ?? "<no-method>"}";
     }
 
     private static string FindRepoRoot()

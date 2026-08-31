@@ -70,6 +70,23 @@ public class SwitchArmScanTests
     }
 
     [Fact]
+    public void CaseTypeNames_PerContainingType_FilterDiscriminatesByDispatchForm()
+    {
+        // The two Visit overloads' rosters coincide (94 == 94), so roster assertions cannot
+        // detect a filter regression that silently merges the overloads (the plan-e31e76
+        // verify-round warning). The overloads differ in dispatch FORM: the void overload is
+        // one switch STATEMENT, the generic overload one switch EXPRESSION. A merged
+        // (filter-ignoring) scan reports both forms for both filters.
+        var voidForms = SwitchArmScan.DispatchFormCounts(
+            "src/Sharpy.Compiler/Parser/Ast/AstVisitor.cs", "Visit", "AstVisitor");
+        var genericForms = SwitchArmScan.DispatchFormCounts(
+            "src/Sharpy.Compiler/Parser/Ast/AstVisitor.cs", "Visit", "AstVisitor`1");
+
+        Assert.Equal((1, 0), voidForms);
+        Assert.Equal((0, 1), genericForms);
+    }
+
+    [Fact]
     public void CaseTypeNames_PerContainingType_OverloadsAreSeparate()
     {
         var voidArms = SwitchArmScan.CaseTypeNames(

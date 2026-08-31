@@ -184,6 +184,15 @@ public class ExecutionOrderAnalyzerTotalityTests
         [nameof(UnionDef)] = "future syntax — discriminated unions resolved separately",
         [nameof(DelegateDef)] = "future syntax — delegate types resolved separately",
         [nameof(EventDef)] = "future syntax — events resolved separately",
+        // A DecoratedStatement wrapping a FunctionDef/ClassDef DOES declare the wrapped name
+        // (DetectBasicIssues unwraps it; CollectDeclarationNames does not). Probed benign at
+        // f77a775d5 (plan-e31e76 verify round): a @suppress-decorated module-level def
+        // referenced from an earlier initializer compiles and runs identically to its
+        // undecorated control — the symbol-table fallback in DetectUseBeforeDefinition masks
+        // the uncollected name — and the const arm is unreachable because SPY0322 refuses
+        // decorators on module-level variable declarations.
+        [nameof(DecoratedStatement)] = "wrapped def/class name uncollected but masked by the "
+            + "symbol-table fallback (probed); const arm unreachable via SPY0322",
     };
 
     /// <summary>
@@ -193,7 +202,6 @@ public class ExecutionOrderAnalyzerTotalityTests
     private static readonly HashSet<string> DeclNoDeclaredName = new()
     {
         nameof(ExpressionStatement),
-        nameof(DecoratedStatement),
         nameof(Assignment),
         nameof(AssertStatement),
         nameof(PassStatement),
