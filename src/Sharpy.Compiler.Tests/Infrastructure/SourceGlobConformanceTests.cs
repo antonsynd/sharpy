@@ -13,7 +13,10 @@ namespace Sharpy.Compiler.Tests.Infrastructure;
 /// Scans the five production projects for raw <c>Directory.EnumerateFiles</c>,
 /// <c>Directory.GetFiles</c>, and <c>new Matcher(</c> calls. Only
 /// <c>SourceGlob.cs</c> itself may contain these. Test projects keep the
-/// existing #1660 predicate rule (test bodies enumerate their own temp dirs).
+/// existing #1660 predicate rule — enforced by
+/// <see cref="Every_TestProject_SpyGlob_WithAllDirectories_Uses_IsNonSourceSegment"/>
+/// below (test bodies may enumerate their own temp dirs, but a <c>*.spy</c> sweep
+/// with <c>AllDirectories</c> must filter).
 /// <c>Sharpy.Stdlib</c> and <c>Sharpy.Core</c> are excluded: their
 /// <c>Directory</c> calls implement Python-facing runtime semantics (e.g.
 /// <c>os.listdir</c>), not compiler enumeration.
@@ -31,6 +34,10 @@ public class SourceGlobConformanceTests
         @"\bDirectory\s*\.\s*(EnumerateFiles|GetFiles)\b|"
         + @"\bSystem\s*\.\s*IO\s*\.\s*Directory\s*\.\s*(EnumerateFiles|GetFiles)\b|"
         + @"\bnew\s+Matcher\s*\(",
+        RegexOptions.Compiled);
+
+    private static readonly Regex SpyGlobPattern = new(
+        @"""[*]\.spy"".*AllDirectories|AllDirectories.*""[*]\.spy""",
         RegexOptions.Compiled);
 
     private static readonly string[] ProductionProjects =
@@ -92,6 +99,67 @@ public class SourceGlobConformanceTests
 
         Assert.True(violations.Count == 0,
             "Raw file/glob enumeration outside SourceGlob.cs (#1696). " +
+            $"Sites: {string.Join(", ", violations)}");
+    }
+
+    /// <summary>
+    /// The #1660 rule for everything OUTSIDE the production projects (which the structural
+    /// scan above bans from raw enumeration entirely): a <c>*.spy</c> glob with
+    /// <c>AllDirectories</c> must apply <c>IsNonSourceSegment</c>/<c>IsNonCorpus</c> (or route
+    /// through <c>SourceGlob</c>) on the same statement or an adjacent line, so stale build
+    /// output and crash-bundle copies are never treated as sources by test sweeps. Restores
+    /// the BASE-era guard that the #1696 rewrite replaced, scoped to the projects the
+    /// structural scan does not reach.
+    /// </summary>
+    [Fact]
+    public void Every_TestProject_SpyGlob_WithAllDirectories_Uses_IsNonSourceSegment()
+    {
+        var repoRoot = FindRepoRoot();
+        var violations = new List<string>();
+        var srcRoot = Path.Combine(repoRoot, "src");
+
+        foreach (var projectDir in Directory.EnumerateDirectories(srcRoot))
+        {
+            var projectName = Path.GetFileName(projectDir);
+            if (ProductionProjects.Contains(projectName))
+                continue; // covered by the total raw-enumeration ban above
+            if (projectName is "Sharpy.Core" or "Sharpy.Stdlib")
+                continue; // Python-facing runtime semantics, not compiler input discovery
+
+            foreach (var csFile in Directory.EnumerateFiles(
+                projectDir, "*.cs", SearchOption.AllDirectories))
+            {
+                if (csFile.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") ||
+                    csFile.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+                    continue;
+
+                var lines = File.ReadAllLines(csFile);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    if (!SpyGlobPattern.IsMatch(lines[i]))
+                        continue;
+
+                    var window = string.Join("\n", lines.Skip(Math.Max(0, i - 1)).Take(5));
+                    if (!window.Contains("IsNonSourceSegment")
+                        && !window.Contains("IsNonCorpus")
+                        && !window.Contains("SourceGlob."))
+                    {
+                        var relative = Path.GetRelativePath(repoRoot, csFile);
+                        violations.Add($"{relative}:{i + 1}");
+                    }
+                }
+            }
+        }
+
+        if (violations.Count > 0)
+        {
+            _output.WriteLine("Glob sites missing IsNonSourceSegment filter:");
+            foreach (var v in violations)
+                _output.WriteLine($"  {v}");
+        }
+
+        Assert.True(violations.Count == 0,
+            "*.spy glob with AllDirectories without IsNonSourceSegment/IsNonCorpus filter (#1660). " +
             $"Sites: {string.Join(", ", violations)}");
     }
 

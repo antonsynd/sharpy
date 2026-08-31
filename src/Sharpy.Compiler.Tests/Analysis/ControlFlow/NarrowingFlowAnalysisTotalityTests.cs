@@ -6,11 +6,14 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Analysis.ControlFlow;
 
 /// <summary>
-/// Totality guard for <c>NarrowingConditionInterpreter.Recognize</c> and
-/// <c>NarrowingConditionInterpreter.RecognizeLeaf</c>: every concrete
+/// Totality guard for <c>NarrowingConditionInterpreter.Recognize</c>,
+/// <c>NarrowingConditionInterpreter.RecognizeLeaf</c>, and
+/// <c>NarrowingFlowAnalysis.CollectAssignedKeys</c>: every concrete
 /// <see cref="Expression"/> subtype must be classified as recognized (has a dedicated
-/// arm in one of the two methods) or unrecognized-by-design (falls through to the
-/// default, returning an empty sequence or delegating to RecognizeLeaf). A new
+/// arm in one of the two interpreter methods) or unrecognized-by-design (falls through
+/// to the default, returning an empty sequence or delegating to RecognizeLeaf); the
+/// CollectAssignedKeys recursion arms are cross-checked against its switch (its default
+/// arm contributes via <c>AstHelper.ExtractNarrowingKey</c> by design). A new
 /// Expression subtype that is not listed here will fail this test (#1694).
 /// </summary>
 public class NarrowingFlowAnalysisTotalityTests
@@ -149,6 +152,30 @@ public class NarrowingFlowAnalysisTotalityTests
             $"RecognizeLeaf switch arms differ from expected.\n" +
             $"  Extra in switch: {string.Join(", ", switchArms.Except(RecognizedByRecognizeLeaf))}\n" +
             $"  Missing from switch: {string.Join(", ", RecognizedByRecognizeLeaf.Except(switchArms))}");
+    }
+
+    /// <summary>
+    /// Recursion-shell arms of <c>CollectAssignedKeys</c> (NarrowingFlowAnalysis.cs): every
+    /// other Expression falls to the default arm, which contributes via
+    /// <c>AstHelper.ExtractNarrowingKey</c> — that fallthrough is the design, so the guard
+    /// pins exactly the dedicated arms.
+    /// </summary>
+    private static readonly HashSet<string> RecursedByCollectAssignedKeys = new()
+    {
+        nameof(Parenthesized),
+        nameof(TupleLiteral),
+    };
+
+    [Fact]
+    public void CollectAssignedKeys_SwitchArms_MatchClassification()
+    {
+        var switchArms = SwitchArmScan.CaseTypeNames(SourceFile, "CollectAssignedKeys");
+        Assert.NotEmpty(switchArms);
+
+        Assert.True(switchArms.SetEquals(RecursedByCollectAssignedKeys),
+            $"CollectAssignedKeys switch arms differ from expected.\n" +
+            $"  Extra in switch: {string.Join(", ", switchArms.Except(RecursedByCollectAssignedKeys))}\n" +
+            $"  Missing from switch: {string.Join(", ", RecursedByCollectAssignedKeys.Except(switchArms))}");
     }
 
     [Fact]

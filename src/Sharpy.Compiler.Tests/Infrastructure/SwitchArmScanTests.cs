@@ -25,7 +25,7 @@ public class SwitchArmScanTests
     }
 
     [Fact]
-    public void ArmPatternTexts_ReturnsNonEmptyList_ForSwitchExpression()
+    public void CaseTypeNames_WorksOnSwitchExpressions()
     {
         var arms = SwitchArmScan.CaseTypeNames(
             "src/Sharpy.Compiler/Shared/ExhaustivenessHelper.cs",
@@ -33,5 +33,16 @@ public class SwitchArmScanTests
 
         Assert.NotEmpty(arms);
         Assert.Contains("WildcardPattern", arms);
+    }
+
+    [Fact]
+    public void ArmPatternTexts_ReturnsNormalizedArms_ForTuplePatternSwitch()
+    {
+        var arms = SwitchArmScan.ArmPatternTexts(
+            "src/Sharpy.Compiler/Semantic/AugmentedCollectionAssignment.cs",
+            "Classify");
+
+        Assert.NotEmpty(arms);
+        Assert.Contains("(AssignmentOperator.OrAssign, GenericType { Name: \"dict\" })", arms);
     }
 }

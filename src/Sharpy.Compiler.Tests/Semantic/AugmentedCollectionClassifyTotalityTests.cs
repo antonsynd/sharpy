@@ -30,6 +30,13 @@ public class AugmentedCollectionClassifyTotalityTests
         "(AssignmentOperator.OrAssign, GenericType { Name: \"dict\" })",
     };
 
+    /// <summary>
+    /// The discard arm is the documented refusal for every non-mutating pair — including all
+    /// frozenset rows: frozenset is excluded by design because augmented assignment REBINDS
+    /// there (verified with python3, <c>f |= {3}</c> rebinds — see the remark on
+    /// <c>AugmentedCollectionAssignment.Classify</c>, AugmentedCollectionAssignment.cs:41),
+    /// so Sharpy already agrees with CPython without a mutation lowering.
+    /// </summary>
     private static readonly HashSet<string> RefusalArms = new()
     {
         "_",
