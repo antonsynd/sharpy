@@ -14,6 +14,14 @@ internal static class SourceGlob
                 Path.GetRelativePath(baseDir, f)));
     }
 
+    internal static IEnumerable<string> EnumerateSourceDirectories(
+        string baseDir, string pattern, SearchOption option)
+    {
+        return Directory.EnumerateDirectories(baseDir, pattern, option)
+            .Where(d => !CrashBundleWriter.IsNonSourceSegment(
+                Path.GetRelativePath(baseDir, d)));
+    }
+
     internal static List<string> ResolveGlob(
         string baseDir, string includePattern, string? excludePattern = null)
     {
@@ -43,5 +51,10 @@ internal static class SourceGlob
     internal static IEnumerable<string> EnumerateArtifacts(string dir, string pattern)
     {
         return Directory.EnumerateFiles(dir, pattern);
+    }
+
+    internal static string[] EnumerateArtifactDirectories(string dir)
+    {
+        return Directory.GetDirectories(dir);
     }
 }

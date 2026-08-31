@@ -364,7 +364,7 @@ internal static class NuGetResolver
                 return path;
         }
 
-        var directories = Directory.GetDirectories(libDir);
+        var directories = SourceGlob.EnumerateArtifactDirectories(libDir);
         return directories.FirstOrDefault(d => SourceGlob.EnumerateArtifacts(d, "*.dll").Any());
     }
 }

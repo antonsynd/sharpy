@@ -91,7 +91,7 @@ public static class FixtureDiscoveryHelper
 
         // First pass: identify all multi-file test root directories
         var multiFileTestRoots = new HashSet<string>();
-        foreach (var dir in Directory.EnumerateDirectories(basePath, "*", SearchOption.AllDirectories))
+        foreach (var dir in SourceGlob.EnumerateSourceDirectories(basePath, "*", SearchOption.AllDirectories))
         {
             if (IsNonCorpus(basePath, dir))
             {

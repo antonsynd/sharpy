@@ -11,8 +11,9 @@ namespace Sharpy.Compiler.Tests.Infrastructure;
 /// is auditable in one place.
 ///
 /// Scans the five production projects for raw <c>Directory.EnumerateFiles</c>,
-/// <c>Directory.GetFiles</c>, and <c>new Matcher(</c> calls. Only
-/// <c>SourceGlob.cs</c> itself may contain these. Test projects keep the
+/// <c>Directory.GetFiles</c>, <c>Directory.EnumerateDirectories</c>,
+/// <c>Directory.GetDirectories</c>, and <c>new Matcher(</c> calls. Only
+/// <c>SourceGlob.cs</c> itself (path-scoped) may contain these. Test projects keep the
 /// existing #1660 predicate rule — enforced by
 /// <see cref="Every_TestProject_SpyGlob_WithAllDirectories_Uses_IsNonSourceSegment"/>
 /// below (test bodies may enumerate their own temp dirs, but a <c>*.spy</c> sweep
@@ -31,8 +32,8 @@ public class SourceGlobConformanceTests
     }
 
     private static readonly Regex RawEnumerationPattern = new(
-        @"\bDirectory\s*\.\s*(EnumerateFiles|GetFiles)\b|"
-        + @"\bSystem\s*\.\s*IO\s*\.\s*Directory\s*\.\s*(EnumerateFiles|GetFiles)\b|"
+        @"\bDirectory\s*\.\s*(EnumerateFiles|GetFiles|EnumerateDirectories|GetDirectories)\b|"
+        + @"\bSystem\s*\.\s*IO\s*\.\s*Directory\s*\.\s*(EnumerateFiles|GetFiles|EnumerateDirectories|GetDirectories)\b|"
         + @"\bnew\s+Matcher\s*\(",
         RegexOptions.Compiled);
 
@@ -49,7 +50,9 @@ public class SourceGlobConformanceTests
         "Sharpy.Compiler.Benchmarks",
     ];
 
-    private const string SeamFile = "SourceGlob.cs";
+    // Path-scoped, not basename-scoped: a decoy file named SourceGlob.cs elsewhere in a
+    // production project must NOT be exempt from the scan.
+    private const string SeamPath = "src/Sharpy.Compiler/Project/SourceGlob.cs";
 
     [Fact]
     public void No_Raw_Enumeration_Outside_SourceGlob_In_Production_Projects()
@@ -70,8 +73,9 @@ public class SourceGlobConformanceTests
                     csFile.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
                     continue;
 
-                var fileName = Path.GetFileName(csFile);
-                if (fileName == SeamFile)
+                var relativePath = Path.GetRelativePath(repoRoot, csFile)
+                    .Replace(Path.DirectorySeparatorChar, '/');
+                if (relativePath == SeamPath)
                     continue;
 
                 var lines = File.ReadAllLines(csFile);
@@ -167,7 +171,8 @@ public class SourceGlobConformanceTests
     public void SourceGlob_Exists()
     {
         var repoRoot = FindRepoRoot();
-        var seamPath = Path.Combine(repoRoot, "src", "Sharpy.Compiler", "Project", SeamFile);
+        var seamPath = Path.Combine(repoRoot,
+            SeamPath.Replace('/', Path.DirectorySeparatorChar));
         Assert.True(File.Exists(seamPath),
             $"SourceGlob.cs must exist at {seamPath} (#1696)");
     }
