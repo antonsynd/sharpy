@@ -51,8 +51,9 @@ public class ClrMemberFidelityMatrixTests
         AbsentMember,
 
         /// <summary>
-        /// SPY0220 whose offending type is spelled nullable (<c>'str?' to</c>): the member's declared
-        /// <c>T?</c> reached the recorded type (#1705).
+        /// SPY0220 whose offending type is spelled nullable (<c>'str | None' to</c> since #1714
+        /// gave NullableType its own display spelling): the member's declared nullable reached
+        /// the recorded type (#1705).
         /// </summary>
         TypeMismatchNullable,
 
