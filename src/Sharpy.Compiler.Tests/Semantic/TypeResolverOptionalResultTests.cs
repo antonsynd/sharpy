@@ -326,7 +326,7 @@ public class TypeResolverOptionalResultTests
         var annotation = new TypeAnnotation { Name = "int", IsCSharpNullable = true };
         var type = resolver.ResolveTypeAnnotation(annotation);
 
-        type.GetDisplayName().Should().Contain("?");
+        type.GetDisplayName().Should().Contain("| None");
     }
 
     #endregion

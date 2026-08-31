@@ -522,7 +522,7 @@ public class InteropConformanceTests
         yield return new ReRepresentationCell("nullable->union", "scalar-value-payload",
             "def _twice(v: int) -> int:\n    return v * 2\n\n\n"
             + "def _use() -> None:\n    x: int | None = 5\n    _y = _twice(x)\n",
-            false, "Cannot pass argument of type 'int32?' to parameter of type 'int32'");
+            false, "Cannot pass argument of type 'int32 | None' to parameter of type 'int32'");
 
         // A REFERENCE payload stays loose on purpose: `string?` IS `string` at runtime, and
         // tagged_unions_optional.md documents the looseness. This cell must never flip.

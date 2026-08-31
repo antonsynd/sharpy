@@ -142,10 +142,9 @@ public class ClrMemberFidelityMatrixTests
     }
 
     /// <summary>
-    /// How SPY0220 spells a nullable source type: <c>Cannot assign type 'str?' to …</c>. The code
-    /// alone cannot tell <c>str?</c> from <c>str</c>, and that spelling IS the #1705 contract.
+    /// How SPY0220 spells a nullable source type: <c>Cannot assign type 'str | None' to …</c>.
     /// </summary>
-    private const string NullableSpelling = "?' to";
+    private const string NullableSpelling = "| None' to";
 
     private static string Describe(IReadOnlyList<CompilerDiagnostic> errors)
         => errors.Count == 0
