@@ -86,28 +86,28 @@ public class DispatchSiteInventoryTests
         ["Semantic/Validation/VarianceValidator.cs::VarianceValidator.WalkFunctionsForVariance"] = "walker-default-contract",
 
         // ── refusal-net: a named conformance/behavioral net covers the dispatch ──
-        ["CodeGen/CodeValidator.cs::CodeValidator.ValidateNode"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateClassMembers"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembers"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroup"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroupOrLambda"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Expressions.cs::RoslynEmitter.GenerateExpressionCore"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Expressions.Literals.cs::RoslynEmitter.DeriveExpressionText"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateModuleMembers"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateParametrizeMemberDataProperties"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateStatement"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.CollectReferencedIdentifiers"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.ContainsSuperExpressionInExpression"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.ContainsSuperExpressionInStatement"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.TransformStatementForLoopElse"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Patterns.cs::RoslynEmitter.GenerateMatchPattern"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Statements.Assignments.cs::RoslynEmitter.IsRepeatableOperand"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Statements.cs::RoslynEmitter.GenerateBodyStatements"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.Statements.cs::RoslynEmitter.IsCompileTimeLiteral"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["CodeGen/RoslynEmitter.TypeDeclarations.cs::RoslynEmitter.GenerateAttributeArgumentExpression"] = "refusal-net:EmitterCarrierOnlyConformanceTests",
-        ["Parser/Parser.cs::Parser.ParseDecoratedStatement"] = "refusal-net:parser-tests",
-        ["Parser/Parser.Primaries.cs::Parser.ContainsPlaceholderIdentifier"] = "refusal-net:parser-tests",
-        ["Parser/Parser.Primaries.cs::Parser.ReplacePlaceholders"] = "refusal-net:parser-tests",
+        ["CodeGen/CodeValidator.cs::CodeValidator.ValidateNode"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateClassMembers"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembers"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroup"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroupOrLambda"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Expressions.cs::RoslynEmitter.GenerateExpressionCore"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Expressions.Literals.cs::RoslynEmitter.DeriveExpressionText"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateModuleMembers"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateParametrizeMemberDataProperties"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateStatement"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.CollectReferencedIdentifiers"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.ContainsSuperExpressionInExpression"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.ContainsSuperExpressionInStatement"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.TransformStatementForLoopElse"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Patterns.cs::RoslynEmitter.GenerateMatchPattern"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Statements.Assignments.cs::RoslynEmitter.IsRepeatableOperand"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Statements.cs::RoslynEmitter.GenerateBodyStatements"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.Statements.cs::RoslynEmitter.IsCompileTimeLiteral"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.TypeDeclarations.cs::RoslynEmitter.GenerateAttributeArgumentExpression"] = "refusal-net:FileBasedIntegrationTests",
+        ["Parser/Parser.cs::Parser.ParseDecoratedStatement"] = "refusal-net:FileBasedIntegrationTests",
+        ["Parser/Parser.Primaries.cs::Parser.ContainsPlaceholderIdentifier"] = "refusal-net:FileBasedIntegrationTests",
+        ["Parser/Parser.Primaries.cs::Parser.ReplacePlaceholders"] = "refusal-net:FileBasedIntegrationTests",
         ["Pretty/UnparseVisitor.cs::UnparseVisitor.GetExpressionPrecedence"] = "refusal-net:UnparseIdempotencePropertyTests",
         ["Semantic/IntegerConstantEvaluator.cs::IntegerConstantEvaluator.TryGetConstantInteger"] = "refusal-net:IntegerConstantEvaluatorTests",
 
@@ -179,6 +179,73 @@ public class DispatchSiteInventoryTests
                     $"Roster row '{site}' is pending-guard and must cite its tracking issue (e.g. pending-guard:#1716).");
             }
         }
+    }
+
+    /// <summary>
+    /// A justification is a claim, not a label: `guarded-by:X`/`refusal-net:X` must name a test
+    /// class that EXISTS, and a `guarded-by` test must actually scan the site it is credited
+    /// with (its source references the site's file and method). Before this fact the roster
+    /// carried a `guarded-by:IntegerConstantEvaluatorTotalityTests` row — a class that never
+    /// existed — which is the #1709 laundering defect reproduced inside its own closing harness.
+    /// </summary>
+    [Fact]
+    public void GuardCitations_ResolveToRealTests_AndGuardedByTestsScanTheirSite()
+    {
+        var repoRoot = FindRepoRoot();
+        var testsDir = Path.Combine(repoRoot, "src", "Sharpy.Compiler.Tests");
+        var testAssemblyTypes = typeof(DispatchSiteInventoryTests).Assembly.GetTypes()
+            .Select(t => t.Name)
+            .ToHashSet();
+
+        var testSourceCache = new Dictionary<string, string?>();
+        string? FindTestSource(string className)
+        {
+            if (testSourceCache.TryGetValue(className, out var cached))
+                return cached;
+            var hit = Directory.GetFiles(testsDir, "*.cs", SearchOption.AllDirectories)
+                .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                    && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+                .FirstOrDefault(f => File.ReadAllText(f).Contains($"class {className}"));
+            testSourceCache[className] = hit;
+            return hit;
+        }
+
+        var violations = new List<string>();
+        foreach (var (site, justification) in Roster)
+        {
+            var parts = justification.Split(':', 2);
+            if (parts[0] is not ("guarded-by" or "refusal-net"))
+                continue;
+            var cited = parts[1];
+
+            if (!testAssemblyTypes.Contains(cited))
+            {
+                violations.Add($"{site} cites '{cited}' — no such test class in the assembly");
+                continue;
+            }
+
+            if (parts[0] == "guarded-by")
+            {
+                var sourcePath = FindTestSource(cited);
+                if (sourcePath == null)
+                {
+                    violations.Add($"{site} cites '{cited}' — test source not found under Compiler.Tests");
+                    continue;
+                }
+                var testSource = File.ReadAllText(sourcePath);
+                var pathPart = site.Split("::")[0];
+                var fileName = Path.GetFileName(pathPart);
+                var methodName = site.Split("::")[1].Split('.')[^1];
+                if (!testSource.Contains(fileName) || !testSource.Contains($"\"{methodName}\""))
+                {
+                    violations.Add($"{site} cites '{cited}' — that test's source does not scan "
+                        + $"{fileName} :: \"{methodName}\" (unbacked guarded-by claim)");
+                }
+            }
+        }
+
+        Assert.True(violations.Count == 0,
+            $"Unbacked guard citations:\n  {string.Join("\n  ", violations)}");
     }
 
     private static HashSet<string> ScanSites()

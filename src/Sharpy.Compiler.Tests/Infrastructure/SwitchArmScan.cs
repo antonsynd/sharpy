@@ -26,42 +26,9 @@ public static class SwitchArmScan
     public static IReadOnlySet<string> CaseTypeNames(string repoRelativePath, string methodName)
     {
         var root = ParseFile(repoRelativePath);
-        var methods = FindMethods(root, methodName, repoRelativePath);
-        var typeNames = new HashSet<string>();
-        bool foundSwitch = false;
-
-        foreach (var method in methods)
-        {
-            foreach (var switchStmt in method.DescendantNodes().OfType<SwitchStatementSyntax>())
-            {
-                foundSwitch = true;
-                foreach (var section in switchStmt.Sections)
-                {
-                    foreach (var label in section.Labels)
-                    {
-                        CollectTypeNamesFromSwitchLabel(label, typeNames);
-                    }
-                }
-            }
-
-            foreach (var switchExpr in method.DescendantNodes().OfType<SwitchExpressionSyntax>())
-            {
-                foundSwitch = true;
-                foreach (var arm in switchExpr.Arms)
-                {
-                    CollectTypeNamesFromPattern(arm.Pattern, typeNames);
-                }
-            }
-        }
-
-        if (!foundSwitch)
-        {
-            throw new InvalidOperationException(
-                $"No switch statement or expression found in method '{methodName}' " +
-                $"in '{repoRelativePath}'.");
-        }
-
-        return typeNames;
+        return CollectCaseTypeNames(
+            FindMethods(root, methodName, repoRelativePath),
+            $"method '{methodName}' in '{repoRelativePath}'");
     }
 
     /// <summary>
@@ -74,7 +41,19 @@ public static class SwitchArmScan
         string repoRelativePath, string methodName, string containingTypeName)
     {
         var root = ParseFile(repoRelativePath);
-        var methods = FindMethodsInType(root, methodName, containingTypeName, repoRelativePath);
+        return CollectCaseTypeNames(
+            FindMethodsInType(root, methodName, containingTypeName, repoRelativePath),
+            $"method '{methodName}' in type '{containingTypeName}' in '{repoRelativePath}'");
+    }
+
+    /// <summary>
+    /// Shared collection body for both CaseTypeNames overloads — one seam, so the filtered
+    /// and unfiltered scans cannot drift apart (the two bodies were verbatim copies before,
+    /// a mirrored site inside the anti-mirroring infrastructure).
+    /// </summary>
+    private static IReadOnlySet<string> CollectCaseTypeNames(
+        IReadOnlyList<MethodDeclarationSyntax> methods, string context)
+    {
         var typeNames = new HashSet<string>();
         bool foundSwitch = false;
 
@@ -105,8 +84,7 @@ public static class SwitchArmScan
         if (!foundSwitch)
         {
             throw new InvalidOperationException(
-                $"No switch statement or expression found in method '{methodName}' " +
-                $"in type '{containingTypeName}' in '{repoRelativePath}'.");
+                $"No switch statement or expression found in {context}.");
         }
 
         return typeNames;
