@@ -1,1 +1,1 @@
-Cannot assign type 'object?' to variable of type 'bool' @14:5
+Cannot assign type 'object | None' to variable of type 'bool' @14:5

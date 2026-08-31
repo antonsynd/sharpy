@@ -267,6 +267,26 @@ public class HoverTests : IDisposable
     }
 
     [Fact]
+    public async Task Hover_NullableBinding_DisplaysUnionWithNone()
+    {
+        var source = "x: int | None = 5";
+        _workspace.OpenDocument("file:///test_nullable_hover.spy", source, 1);
+
+        var analysis = await _workspace.GetAnalysisAsync("file:///test_nullable_hover.spy");
+        analysis.Should().NotBeNull();
+        analysis!.SemanticQuery.Should().NotBeNull();
+
+        // "x: int | None = 5" — variable at line 1, col 1
+        var varDecl = _api.FindNodeOfType<VariableDeclaration>(analysis.Ast!, 1, 1);
+        varDecl.Should().NotBeNull("should find the variable declaration on line 1");
+
+        var symbol = analysis.SemanticQuery!.GetDeclarationSymbol(varDecl!) as VariableSymbol;
+        symbol.Should().NotBeNull("should find the variable symbol for 'x'");
+        symbol!.Type.Should().BeOfType<NullableType>();
+        symbol.Type.GetDisplayName().Should().Be("int32 | None");
+    }
+
+    [Fact]
     public async Task Hover_OverMethodDef_InsideClass_ResolvesSymbol()
     {
         var source = "class Dog:\n    def bark(self) -> str:\n        return \"woof\"\ndef main():\n    pass";

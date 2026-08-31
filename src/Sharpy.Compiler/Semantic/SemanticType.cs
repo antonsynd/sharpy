@@ -557,7 +557,7 @@ public sealed record NullableType : SemanticType
 {
     public SemanticType UnderlyingType { get; init; } = SemanticType.Unknown;
 
-    public override string GetDisplayName() => $"{UnderlyingType.GetDisplayName()}?";
+    public override string GetDisplayName() => $"{UnderlyingType.GetDisplayName()} | None";
 
     public override bool IsNullable => true;
 
