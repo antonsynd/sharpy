@@ -1,8 +1,8 @@
 using CsCheck;
+using Sharpy.TestInfrastructure;
 using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
-using Sharpy.TestInfrastructure;
 
 namespace Sharpy.Compiler.Tests.Properties.Semantic;
 
@@ -22,9 +22,7 @@ public class ContextManagerPropertyTests
     [Fact]
     public void ValidContextManager_CompilesClean()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenContextManagers.ValidContextManagerProgram()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenContextManagers.ValidContextManagerProgram(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "ValidContextManager_CompilesClean");
     }
@@ -32,9 +30,7 @@ public class ContextManagerPropertyTests
     [Fact]
     public void ContextManagerWithAsBinding_CompilesClean()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenContextManagers.ContextManagerWithAsBinding()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenContextManagers.ContextManagerWithAsBinding(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "ContextManagerWithAsBinding_CompilesClean");
     }
@@ -42,9 +38,7 @@ public class ContextManagerPropertyTests
     [Fact]
     public void AsyncContextManager_CompilesClean()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenContextManagers.AsyncContextManagerProgram()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenContextManagers.AsyncContextManagerProgram(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "AsyncContextManager_CompilesClean");
     }

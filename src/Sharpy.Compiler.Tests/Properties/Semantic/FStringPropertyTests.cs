@@ -1,8 +1,7 @@
-using CsCheck;
-using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Sharpy.TestInfrastructure;
 using Xunit;
 using Xunit.Abstractions;
+using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 
 namespace Sharpy.Compiler.Tests.Properties.Semantic;
 
@@ -22,9 +21,7 @@ public class FStringPropertyTests
     [Fact]
     public void FString_WithMethodCalls_CompilesClean()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenFStrings.FStringWithMethodCalls()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenFStrings.FStringWithMethodCalls(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "FString_WithMethodCalls_CompilesClean");
     }
@@ -32,9 +29,7 @@ public class FStringPropertyTests
     [Fact]
     public void FString_WithNestedCalls_CompilesClean()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenFStrings.FStringWithNestedCalls()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenFStrings.FStringWithNestedCalls(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "FString_WithNestedCalls_CompilesClean");
     }
@@ -42,9 +37,7 @@ public class FStringPropertyTests
     [Fact]
     public void FString_WithFormatSpecs_CompilesClean()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenFStrings.FStringWithFormatSpecs()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenFStrings.FStringWithFormatSpecs(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "FString_WithFormatSpecs_CompilesClean");
     }
@@ -52,9 +45,7 @@ public class FStringPropertyTests
     [Fact]
     public void FString_WithArithmetic_CompilesClean()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenFStrings.FStringWithArithmetic()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenFStrings.FStringWithArithmetic(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "FString_WithArithmetic_CompilesClean");
     }
@@ -62,9 +53,7 @@ public class FStringPropertyTests
     [Fact]
     public void FString_ComplexCombined_CompilesClean()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenFStrings.FStringComplexCombined()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenFStrings.FStringComplexCombined(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "FString_ComplexCombined_CompilesClean");
     }

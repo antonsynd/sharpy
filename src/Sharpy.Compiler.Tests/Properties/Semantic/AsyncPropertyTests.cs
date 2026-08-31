@@ -22,13 +22,9 @@ public class AsyncPropertyTests
     [Fact]
     public void AsyncFunction_CompilesWithAwait()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenAsync.ModuleWithAsyncFunction(valid: true)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        var samples = PropertyCorpus.CompileAll(
+            GenAsync.ModuleWithAsyncFunction(valid: true),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "AsyncFunction_CompilesWithAwait");
     }
@@ -69,13 +65,9 @@ public class AsyncPropertyTests
     [Fact]
     public void AsyncFunction_ReturnTypeInference()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenAsync.ModuleWithAsyncFunction(valid: true)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        var samples = PropertyCorpus.CompileAll(
+            GenAsync.ModuleWithAsyncFunction(valid: true),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "AsyncFunction_ReturnTypeInference");
     }

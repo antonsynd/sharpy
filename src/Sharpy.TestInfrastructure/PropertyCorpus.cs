@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using CsCheck;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -28,12 +30,25 @@ public static class PropertyCorpus
         Assert.True(samples.Count > 0, $"{testLabel}: no samples were generated");
 
         var failures = new List<(int Index, string Source, IReadOnlyList<string> Codes)>();
+        var corrupted = new List<(int Index, string Detail)>();
         int passed = 0;
         int allowed = 0;
 
         for (int i = 0; i < samples.Count; i++)
         {
             var s = samples[i];
+            if (s == null)
+            {
+                corrupted.Add((i, $"null sample slot at index {i} — concurrent collection bug in the caller"));
+                continue;
+            }
+
+            if (s.ErrorCodes == null)
+            {
+                corrupted.Add((i, $"null ErrorCodes at index {i} — source:\n{TruncateSource(s.Source, 300)}"));
+                continue;
+            }
+
             if (s.Passed)
             {
                 passed++;
@@ -50,6 +65,12 @@ public static class PropertyCorpus
             failures.Add((i, s.Source, s.ErrorCodes));
         }
 
+        if (corrupted.Count > 0)
+        {
+            var report = string.Join("\n", corrupted.Select(c => c.Detail));
+            Assert.Fail($"{testLabel}: {corrupted.Count} corrupted sample(s) detected:\n{report}");
+        }
+
         output.WriteLine($"{testLabel}: {passed} passed, {allowed} allowed, " +
                          $"{failures.Count} failed / {samples.Count} total");
 
@@ -60,6 +81,30 @@ public static class PropertyCorpus
                 TruncateSource(f.Source, 500)));
             Assert.Fail($"{testLabel}: {failures.Count} sample(s) failed unexpectedly:\n\n{report}");
         }
+    }
+
+    /// <summary>
+    /// Runs a CsCheck sample loop over a source-string generator, accumulating
+    /// results thread-safely. Returns the collected samples.
+    /// </summary>
+    public static IReadOnlyList<SampleResult> CompileAll(Gen<string> gen, int iter)
+    {
+        var bag = new ConcurrentQueue<SampleResult>();
+        gen.Sample(source => bag.Enqueue(CompileSample(source)), iter: iter);
+        return bag.ToArray();
+    }
+
+    /// <summary>
+    /// Runs a CsCheck sample loop over a generator of <typeparamref name="T"/>,
+    /// converting each sample to source via <paramref name="toSource"/> before compiling.
+    /// </summary>
+    public static IReadOnlyList<SampleResult> CompileAll<T>(
+        Gen<T> gen, Func<T, string> toSource, int iter)
+    {
+        var bag = new ConcurrentQueue<SampleResult>();
+        gen.Sample(item => bag.Enqueue(CompileSample(toSource(item))),
+            print: toSource, iter: iter);
+        return bag.ToArray();
     }
 
     /// <summary>

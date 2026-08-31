@@ -22,13 +22,9 @@ public class ExceptionPropertyTests
     [Fact]
     public void TryExcept_CompilesWithValidHandlers()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenExceptions.ModuleWithTryExcept(handlerCount: 1)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        var samples = PropertyCorpus.CompileAll(
+            GenExceptions.ModuleWithTryExcept(handlerCount: 1),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "TryExcept_CompilesWithValidHandlers");
     }
@@ -36,13 +32,9 @@ public class ExceptionPropertyTests
     [Fact]
     public void ExceptHandler_TypeMatching()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenExceptions.ModuleWithRaiseExpression()
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        var samples = PropertyCorpus.CompileAll(
+            GenExceptions.ModuleWithRaiseExpression(),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "ExceptHandler_TypeMatching");
     }
@@ -135,13 +127,9 @@ public class ExceptionPropertyTests
     [Fact]
     public void ExceptionHierarchy_SubtypesAccepted()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenExceptions.ModuleWithExceptionHierarchy()
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        var samples = PropertyCorpus.CompileAll(
+            GenExceptions.ModuleWithExceptionHierarchy(),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "ExceptionHierarchy_SubtypesAccepted");
     }

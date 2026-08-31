@@ -22,13 +22,9 @@ public class InterfacePropertyTests
     [Fact]
     public void InterfaceImplementation_CompilesWhenComplete()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenInterfaces.ModuleWithInterface(methodCount: 0, completeImpl: true)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        var samples = PropertyCorpus.CompileAll(
+            GenInterfaces.ModuleWithInterface(methodCount: 0, completeImpl: true),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "InterfaceImplementation_CompilesWhenComplete");
     }
@@ -69,14 +65,10 @@ public class InterfacePropertyTests
     [Fact]
     public void ProtocolSynthesis_AddsInterfaceForDunder()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        Gen.OneOfConst("__len__", "__bool__")
-            .SelectMany(GenInterfaces.ModuleWithProtocolDunder)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        var samples = PropertyCorpus.CompileAll(
+            Gen.OneOfConst("__len__", "__bool__")
+                .SelectMany(GenInterfaces.ModuleWithProtocolDunder),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "ProtocolSynthesis_AddsInterfaceForDunder");
     }
@@ -84,13 +76,9 @@ public class InterfacePropertyTests
     [Fact]
     public void InterfaceConflict_DetectedInHierarchy()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenInterfaces.ModuleWithInterfaceHierarchy()
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        var samples = PropertyCorpus.CompileAll(
+            GenInterfaces.ModuleWithInterfaceHierarchy(),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "InterfaceConflict_DetectedInHierarchy");
     }
@@ -98,13 +86,9 @@ public class InterfacePropertyTests
     [Fact]
     public void MultipleInterfaces_AllValidated()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenInterfaces.ModuleWithMultipleInterfaces()
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
+        var samples = PropertyCorpus.CompileAll(
+            GenInterfaces.ModuleWithMultipleInterfaces(),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "MultipleInterfaces_AllValidated");
     }

@@ -1,6 +1,6 @@
 using CsCheck;
-using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Sharpy.TestInfrastructure;
+using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -22,14 +22,7 @@ public class VariancePropertyTests
     [Fact]
     public void CovariantInterface_CompilesClean()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-
-        GenVariance.CovariantInterfaceProgram()
-            .Sample(source =>
-            {
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, iter: 50);
-
+        var samples = PropertyCorpus.CompileAll(GenVariance.CovariantInterfaceProgram(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "CovariantInterface_CompilesClean");
     }
@@ -37,14 +30,7 @@ public class VariancePropertyTests
     [Fact]
     public void ContravariantInterface_CompilesClean()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-
-        GenVariance.ContravariantInterfaceProgram()
-            .Sample(source =>
-            {
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, iter: 50);
-
+        var samples = PropertyCorpus.CompileAll(GenVariance.ContravariantInterfaceProgram(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "ContravariantInterface_CompilesClean");
     }

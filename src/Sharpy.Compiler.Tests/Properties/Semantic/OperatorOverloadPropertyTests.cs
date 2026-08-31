@@ -1,6 +1,6 @@
 using CsCheck;
-using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Sharpy.TestInfrastructure;
+using Sharpy.Compiler.Tests.Properties.Generators.Typed;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -22,9 +22,7 @@ public class OperatorOverloadPropertyTests
     [Fact]
     public void BinaryOperator_DunderCompiles()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenOperators.BinaryOperatorProgram()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenOperators.BinaryOperatorProgram(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "BinaryOperator_DunderCompiles");
     }
@@ -32,9 +30,7 @@ public class OperatorOverloadPropertyTests
     [Fact]
     public void UnaryOperator_DunderCompiles()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenOperators.UnaryOperatorProgram()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenOperators.UnaryOperatorProgram(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "UnaryOperator_DunderCompiles");
     }
@@ -42,9 +38,7 @@ public class OperatorOverloadPropertyTests
     [Fact]
     public void ComparisonOperator_DunderCompiles()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenOperators.ComparisonOperatorProgram()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenOperators.ComparisonOperatorProgram(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "ComparisonOperator_DunderCompiles");
     }
@@ -52,9 +46,7 @@ public class OperatorOverloadPropertyTests
     [Fact]
     public void OperatorPrecedence_PreservedThroughCompilation()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-        GenOperators.PrecedenceProgram()
-            .Sample(source => samples.Add(PropertyCorpus.CompileSample(source)), iter: 50);
+        var samples = PropertyCorpus.CompileAll(GenOperators.PrecedenceProgram(), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "OperatorPrecedence_PreservedThroughCompilation");
     }

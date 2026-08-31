@@ -23,15 +23,9 @@ public class ClassInheritancePropertyTests
     [Fact]
     public void ClassHierarchy_CompilesClean()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-
-        GenClasses.ModuleWithClasses(TypeEnv.WithInheritance, fuel: 2)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
+        var samples = PropertyCorpus.CompileAll(
+            GenClasses.ModuleWithClasses(TypeEnv.WithInheritance, fuel: 2),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "ClassHierarchy_CompilesClean");
     }
@@ -39,15 +33,9 @@ public class ClassInheritancePropertyTests
     [Fact]
     public void DerivedClass_InheritsBaseMembers()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-
-        GenClasses.ModuleWithClasses(TypeEnv.WithInheritance, fuel: 2)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
+        var samples = PropertyCorpus.CompileAll(
+            GenClasses.ModuleWithClasses(TypeEnv.WithInheritance, fuel: 2),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "DerivedClass_InheritsBaseMembers");
     }
@@ -55,15 +43,9 @@ public class ClassInheritancePropertyTests
     [Fact]
     public void MethodOverride_PreservesSignature()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-
-        GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
+        var samples = PropertyCorpus.CompileAll(
+            GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "MethodOverride_PreservesSignature");
     }
@@ -71,15 +53,9 @@ public class ClassInheritancePropertyTests
     [Fact]
     public void Constructor_InitializesFieldTypes()
     {
-        var samples = new List<PropertyCorpus.SampleResult>();
-
-        GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2)
-            .Sample(module =>
-            {
-                var source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
-                samples.Add(PropertyCorpus.CompileSample(source));
-            }, print: m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
-
+        var samples = PropertyCorpus.CompileAll(
+            GenClasses.ModuleWithClasses(TypeEnv.Default, fuel: 2),
+            m => Sharpy.Compiler.Pretty.Unparser.Unparse(m), iter: 50);
         PropertyCorpus.AssertAllPassOrAllowed(samples, allowedCodes: null, _output,
             "Constructor_InitializesFieldTypes");
     }

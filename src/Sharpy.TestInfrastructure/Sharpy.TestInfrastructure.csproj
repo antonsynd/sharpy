@@ -12,6 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CsCheck" Version="4.8.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
   </ItemGroup>
 
