@@ -27,6 +27,11 @@ def probe_e() -> int:
     print("probe_e")
     return 2
 
+def probe_st() -> int:
+    c.value += 1
+    print("probe_st")
+    return 2
+
 def main() -> None:
     a = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0]])
 
@@ -50,4 +55,13 @@ def main() -> None:
     c.value = 0
     r3 = b[probe_s():probe_e()]
     print(r3.size)
+    print(c.value)
+
+    # Cell 4: Single-axis with STEP on 1-D ndarray — b[probe_s():probe_e():probe_st()]
+    # The step bound is a third independent splice in GenerateSliceSpec (:2284);
+    # start/stop-only cells stay green under a step double-splice (#1689 F-1).
+    # probe_e returns 2 here so the slice is b[0:2:2] -> one element.
+    c.value = 0
+    r4 = b[probe_s():probe_e():probe_st()]
+    print(r4.size)
     print(c.value)
