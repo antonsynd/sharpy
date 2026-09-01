@@ -300,4 +300,90 @@ def main() -> None:
     }
 
     #endregion
+
+    #region Operator Section Refusal Net (#1716 — TryResolveExpressionType / InferParamTypesFromSubExpression defaults)
+
+    [Fact]
+    public void OperatorSection_FunctionCallOperand_RefusesSPY0343()
+    {
+        var source = @"
+def main():
+    xs: list[int] = [1, 2, 3]
+    f = (_ > len(xs))
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors()
+            .Should().Contain(e => e.Code == DiagnosticCodes.Semantic.UnresolvedLambdaParameterType);
+        typeChecker.Diagnostics.GetErrors()
+            .Should().NotContain(e => e.Code == DiagnosticCodes.Infrastructure.UnexpectedUnknownType);
+    }
+
+    [Fact]
+    public void OperatorSection_AndOrChainWithFunctionCall_InfersFromLiteralSide()
+    {
+        var source = @"
+def is_valid(n: int) -> bool:
+    return n > 0
+
+def main():
+    f = (_ > 0 and is_valid(5))
+    result: bool = f(3)
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OperatorSection_MemberAccessOperand_RefusesSPY0343()
+    {
+        var source = @"
+class Filter:
+    limit: int
+    def __init__(self, limit: int):
+        self.limit = limit
+    def make_pred(self):
+        f = (_ > self.limit)
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors()
+            .Should().Contain(e => e.Code == DiagnosticCodes.Semantic.UnresolvedLambdaParameterType);
+        typeChecker.Diagnostics.GetErrors()
+            .Should().NotContain(e => e.Code == DiagnosticCodes.Infrastructure.UnexpectedUnknownType);
+    }
+
+    [Fact]
+    public void OperatorSection_ComparisonWithIntLiteral_InfersType()
+    {
+        var source = @"
+def main():
+    f = (_ > 2)
+    result: bool = f(5)
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OperatorSection_ArithmeticWithIntLiteral_InfersType()
+    {
+        var source = @"
+def main():
+    f = (_ * 2)
+    result: int = f(5)
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+    }
+
+    #endregion
 }
