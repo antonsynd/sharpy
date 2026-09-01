@@ -87,19 +87,26 @@ internal static class AstHelper
 
     /// <summary>
     /// Checks whether an expression tree contains a walrus (assignment) expression.
+    /// Walks the full descendant tree via <see cref="Node.GetChildNodes"/>, stopping at
+    /// <see cref="LambdaExpression"/> boundaries (walrus in a lambda binds in lambda scope).
     /// </summary>
     public static bool ContainsWalrusExpression(Expression expr)
     {
-        return expr switch
+        return ContainsWalrusInDescendants(expr);
+    }
+
+    private static bool ContainsWalrusInDescendants(Node node)
+    {
+        if (node is WalrusExpression)
+            return true;
+        if (node is LambdaExpression)
+            return false;
+        foreach (var child in node.GetChildNodes())
         {
-            WalrusExpression => true,
-            BinaryOp binOp => ContainsWalrusExpression(binOp.Left) || ContainsWalrusExpression(binOp.Right),
-            UnaryOp unaryOp => ContainsWalrusExpression(unaryOp.Operand),
-            FunctionCall call => ContainsWalrusExpression(call.Function) || call.Arguments.Any(ContainsWalrusExpression),
-            ComparisonChain cmp => cmp.Operands.Any(ContainsWalrusExpression),
-            Parenthesized paren => ContainsWalrusExpression(paren.Expression),
-            _ => false
-        };
+            if (ContainsWalrusInDescendants(child))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>

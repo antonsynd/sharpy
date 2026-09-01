@@ -1,0 +1,8 @@
+def check(k: str = "") -> bool:
+    return len(k.strip()) > 0
+
+def main():
+    xs: list[str] = [" a ", " b ", "   "]
+    while check(k=(s := xs.pop(0))):
+        print(s.strip())
+    print("done", len(xs))

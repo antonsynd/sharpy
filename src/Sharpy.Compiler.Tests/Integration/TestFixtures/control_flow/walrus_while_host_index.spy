@@ -1,0 +1,6 @@
+def main():
+    d: dict[str, int] = {"x": 1, "y": 2, "z": 0}
+    ks: list[str] = ["x", "y", "z"]
+    while d[(k := ks.pop(0))]:
+        print(k)
+    print("done", len(ks))

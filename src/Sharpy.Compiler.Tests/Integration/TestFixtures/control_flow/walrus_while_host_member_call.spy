@@ -1,0 +1,5 @@
+def main():
+    xs: list[str] = [" a ", " b ", "   "]
+    while (s := xs.pop(0)).strip():
+        print(s.strip())
+    print("done", len(xs))

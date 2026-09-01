@@ -1,0 +1,5 @@
+def main():
+    xs: list[int] = [1, 2, 0]
+    while [(n := xs.pop(0))][0]:
+        print(n)
+    print("done", len(xs))
