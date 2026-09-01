@@ -9,7 +9,8 @@
     <IsTestProject>true</IsTestProject>
     <!-- Suppress nullable warnings in tests - test framework handles assertion failures -->
     <!-- CS1718: intentional self-comparison in equality tests -->
-    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618;CS1718</NoWarn>
+    <!-- VSTHRD200: inherited from OmniSharp analyzers via Sharpy.Lsp ProjectReference (#1715) -->
+    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618;CS1718;VSTHRD200</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Sharpy.Compiler/Sharpy.Compiler.csproj" />
+    <ProjectReference Include="../Sharpy.Lsp/Sharpy.Lsp.csproj" />
     <ProjectReference Include="../Sharpy.TestInfrastructure/Sharpy.TestInfrastructure.csproj" />
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj">
       <Aliases>SharpyRT</Aliases>
