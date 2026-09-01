@@ -338,6 +338,72 @@ def main():
     }
 
     [Fact]
+    public void GeneratorEmittingInterfaceWithBaseClause_IsRefusedWithSPY0555()
+    {
+        var helper = CreateHelper();
+
+        helper.AddSourceFile("gen.spy", @"
+from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
+
+class AddIface(SourceGenerator):
+    def generate(self, context: GeneratorContext) -> GeneratorOutput:
+        return GeneratorOutput('interface IChild(ISized):\n    pass\n')
+");
+
+        helper.AddSourceFile("main.spy", @"
+from gen import AddIface
+
+@[AddIface]
+class Point:
+    x: int
+
+def main():
+    print('hello')
+");
+
+        helper.WithRootNamespace("GenIfaceBaseTest").WithEntryPoint("main.spy")
+            .WithRuntimeReferences().CreateProjectFile();
+        var result = helper.Compile();
+
+        Assert.False(result.Success, "a generated interface with a base clause must be refused");
+        Assert.Contains(result.Diagnostics.GetErrors(),
+            e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.GeneratorUnsupportedShape);
+    }
+
+    [Fact]
+    public void GeneratorEmittingDecoratedClassWithBaseClause_IsRefusedWithSPY0555()
+    {
+        var helper = CreateHelper();
+
+        helper.AddSourceFile("gen.spy", @"
+from sharpy.generators import SourceGenerator, GeneratorContext, GeneratorOutput
+
+class AddDecorated(SourceGenerator):
+    def generate(self, context: GeneratorContext) -> GeneratorOutput:
+        return GeneratorOutput('@[staticmethod]\nclass GenChild(Point):\n    pass\n')
+");
+
+        helper.AddSourceFile("main.spy", @"
+from gen import AddDecorated
+
+@[AddDecorated]
+class Point:
+    x: int
+
+def main():
+    print('hello')
+");
+
+        helper.WithRootNamespace("GenDecoratedBaseTest").WithEntryPoint("main.spy")
+            .WithRuntimeReferences().CreateProjectFile();
+        var result = helper.Compile();
+
+        Assert.False(result.Success, "a decorated generated class with a base clause must be refused");
+        Assert.Contains(result.Diagnostics.GetErrors(),
+            e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.GeneratorUnsupportedShape);
+    }
+
+    [Fact]
     public void DiagnosticCodes_GeneratorCodesExist()
     {
         Assert.Equal("SPY0550", Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.GeneratorExecutionError);

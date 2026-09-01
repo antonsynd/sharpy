@@ -502,10 +502,12 @@ internal partial class ProjectCompiler
             bool hasUnsupportedShape = false;
             foreach (var stmt in module.Body)
             {
-                IReadOnlyList<Parser.Ast.TypeAnnotation>? bases = stmt switch
+                var inner = stmt.UnwrapDecorated();
+                IReadOnlyList<Parser.Ast.TypeAnnotation>? bases = inner switch
                 {
                     Parser.Ast.ClassDef cd => cd.BaseClasses,
                     Parser.Ast.StructDef sd => sd.BaseClasses,
+                    Parser.Ast.InterfaceDef id => id.BaseInterfaces,
                     _ => null
                 };
                 if (bases is { Count: > 0 })
