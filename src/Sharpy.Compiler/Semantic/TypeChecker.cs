@@ -690,10 +690,13 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// True when <paramref name="diagnostic"/> may be silenced by <c>@suppress</c>: any
-    /// non-error diagnostic, plus a warning that <c>-Werror</c> promoted to an error (recognized
-    /// via the original severity stamped into <see cref="DiagnosticBag.OriginalSeverityDataKey"/>).
-    /// A genuine error is never suppressible.
+    /// Returns true when <paramref name="expr"/> references a constant whose value
+    /// has not yet been folded (ConstantValue is null). Used to raise SPY0278
+    /// (CircularConstantReference) for circular constant references. The default
+    /// (false) is conservative: an expression kind not enumerated here is treated as
+    /// not referencing an unfolded constant, which means a cycle through that kind
+    /// produces no SPY0278 — the wrong-diagnostic shape, not silent-wrong-output.
+    /// Pinned by ConstantCycleDetectionTests.
     /// </summary>
     private bool ReferencesUnfoldedConst(Expression expr)
     {
@@ -712,6 +715,12 @@ internal partial class TypeChecker
         }
     }
 
+    /// <summary>
+    /// True when <paramref name="diagnostic"/> may be silenced by <c>@suppress</c>: any
+    /// non-error diagnostic, plus a warning that <c>-Werror</c> promoted to an error (recognized
+    /// via the original severity stamped into <see cref="DiagnosticBag.OriginalSeverityDataKey"/>).
+    /// A genuine error is never suppressible.
+    /// </summary>
     private static bool IsSuppressibleSeverity(CompilerDiagnostic diagnostic)
     {
         if (!diagnostic.IsError)
