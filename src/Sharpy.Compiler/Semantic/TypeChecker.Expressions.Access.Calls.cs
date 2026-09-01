@@ -4903,8 +4903,14 @@ internal partial class TypeChecker
         }
     }
 
+    /// <summary>
+    /// PEP 675 LiteralString acceptance: string literal, <c>+</c> of literals, parentheses transparent.
+    /// Not accepted: <c>"a" * 3</c>, f-strings, implicit concatenation (<c>"a" "b"</c>).
+    /// </summary>
     private static bool IsLiteralStringExpression(Expression expr)
     {
+        // #1170 canonical-form contract: parentheses are transparent
+        expr = AstHelper.UnwrapParenthesized(expr);
         return expr switch
         {
             StringLiteral => true,
