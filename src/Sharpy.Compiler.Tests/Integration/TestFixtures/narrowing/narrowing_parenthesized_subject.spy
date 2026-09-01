@@ -1,0 +1,4 @@
+def main():
+    x: str | None = "abc"
+    if (x) is not None:
+        print(x.upper())

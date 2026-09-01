@@ -37,6 +37,16 @@ internal static class AstHelper
     /// For simple identifiers, returns the name. For subscript expressions like arr[i], returns "arr[i]".
     /// For member access like self.value, returns "self.value".
     /// Returns null if the expression contains unsupported node types.
+    ///
+    /// <para><b>Canonical-input contract:</b> callers pass unwrapped expressions — parenthesized
+    /// wrappers are stripped by upstream unwrap points before the expression reaches this method:
+    /// <c>NarrowingConditionInterpreter.Recognize</c> (NarrowingFlowAnalysis.cs) and
+    /// <c>CollectAssignedKeys</c> (NarrowingFlowAnalysis.cs). This method does not handle
+    /// <see cref="Parenthesized"/> — adding such an arm would mask a missing upstream unwrap.</para>
+    ///
+    /// <para><b>Consumers:</b> <c>ControlFlowGraphBuilder</c>, <c>NarrowingFlowAnalysis</c>
+    /// (Recognize path, two call sites; CollectAssignedKeys default arm), <c>TypeChecker</c>
+    /// (via private wrapper), <c>RoslynEmitter</c> (delegate).</para>
     /// </summary>
     public static string? ExtractNarrowingKey(Expression expr)
     {
@@ -73,6 +83,9 @@ internal static class AstHelper
     /// Extracts a stable key component for a subscript index. Handles integer literals (including
     /// negated ones) and string literals as constants, and identifiers / nested subscripts /
     /// member accesses via <see cref="ExtractNarrowingKey"/>. Returns null for anything else.
+    ///
+    /// <para>Shares the canonical-input contract of <see cref="ExtractNarrowingKey"/>: callers
+    /// pass unwrapped expressions; this method does not handle <see cref="Parenthesized"/>.</para>
     /// </summary>
     private static string? ExtractIndexComponentKey(Expression index)
     {
