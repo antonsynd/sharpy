@@ -357,6 +357,8 @@ public static class CompilerInvariants
         {
             foreach (var expr in unexpectedUnknowns)
             {
+                // Message rendering only: name for the SPY0907 diagnostic message. The default is the
+                // type's CLR name; no semantic decision keys on this switch.
                 var nodeName = expr switch
                 {
                     Parser.Ast.Identifier id => id.Name,

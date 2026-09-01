@@ -1951,6 +1951,10 @@ internal partial class TypeChecker
         return root is Identifier rootId && _symbolTable.Lookup(rootId.Name) is ModuleSymbol;
     }
 
+    /// <summary>
+    /// Message rendering only: qualified path for diagnostic messages. The default is the
+    /// leaf member name; no semantic decision keys on this switch.
+    /// </summary>
     private static string DescribeMemberPath(MemberAccess memberAccess) => memberAccess.Object switch
     {
         Identifier objectId => $"{objectId.Name}.{memberAccess.Member}",
@@ -2220,7 +2224,10 @@ internal partial class TypeChecker
         return false;
     }
 
-    /// <summary>How to name a callable reference in a diagnostic.</summary>
+    /// <summary>
+    /// Message rendering only: how to name a callable reference in a diagnostic. The default
+    /// is a generic placeholder; no semantic decision keys on this switch.
+    /// </summary>
     private static string DescribeReference(Expression reference) => reference switch
     {
         Identifier id => id.Name,

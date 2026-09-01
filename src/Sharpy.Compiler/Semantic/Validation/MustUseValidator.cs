@@ -73,8 +73,9 @@ internal sealed class MustUseValidator : ValidatingAstWalker
     /// <summary>
     /// Returns the SPY0480 message when the statement is a bare method-group reference the
     /// TypeChecker elided to a no-op (#1617). The statement has no effect at all, so the
-    /// reference is almost certainly a missing call. Reads the recorded
-    /// <see cref="StatementLowering"/> fact rather than re-deriving the method-group class.
+    /// reference is almost certainly a missing call. Message rendering only: the name switch
+    /// chooses the diagnostic wording; the default is a generic placeholder and no semantic
+    /// decision keys on this switch.
     /// </summary>
     private string? ElidedMethodGroupMessage(ExpressionStatement node)
     {

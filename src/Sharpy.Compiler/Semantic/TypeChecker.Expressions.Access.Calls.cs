@@ -995,8 +995,9 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Best-effort textual rendering of a type-position expression for the multi-type diagnostic.
-    /// Falls back to a placeholder when the expression is not a simple name.
+    /// Message rendering only: best-effort textual rendering of a type-position expression for
+    /// the multi-type diagnostic. The default is a generic placeholder; no semantic decision
+    /// keys on this switch.
     /// </summary>
     private static string DescribeTypeOperand(Expression expr) => expr switch
     {

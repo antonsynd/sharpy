@@ -773,8 +773,9 @@ public partial class Parser
     }
 
     /// <summary>
-    /// The shape-specific steer appended to the SPY0144 'del' refusal. Each target shape
-    /// has its own cure, so the steer is chosen per target, not once for the statement.
+    /// Message rendering only: shape-specific steer appended to the SPY0144 'del' refusal.
+    /// Each target shape has its own cure; the default is a generic message. No semantic
+    /// decision keys on this switch.
     /// </summary>
     private static string DelSteerFor(Expression target) => target switch
     {
