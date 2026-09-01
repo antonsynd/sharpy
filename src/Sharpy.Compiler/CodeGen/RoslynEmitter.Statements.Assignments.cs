@@ -58,8 +58,10 @@ internal partial class RoslynEmitter
 
         var value = GenerateExpression(assign.Value);
 
+        var effectiveTarget = Shared.AstHelper.UnwrapParenthesized(assign.Target);
+
         // Handle simple identifier assignment
-        if (assign.Target is Identifier name)
+        if (effectiveTarget is Identifier name)
         {
             // Assigning to the accessor's named incoming value REBINDS that value the way a Python
             // parameter rebinds — it does not declare a new local. The read side maps the name onto
@@ -102,7 +104,7 @@ internal partial class RoslynEmitter
                     // Use the symbol's type (authoritative since semantic analysis) or the
                     // target expression type.
                     var assignTargetType = (symbol is VariableSymbol varSym ? GetVariableType(varSym) : null)
-                        ?? GetExpressionSemanticType(assign.Target)
+                        ?? GetExpressionSemanticType(effectiveTarget)
                         ?? (symbol as VariableSymbol)?.Type;
                     var bareNoneValue = TryGenerateBareNoneForOptional(assign.Value, assignTargetType);
                     if (bareNoneValue != null)
@@ -186,7 +188,7 @@ internal partial class RoslynEmitter
                 // becomes a double evaluation.
                 var readExpr = ApplyNarrowedReadLowering(name, EscapedIdentifierName(varName));
 
-                var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, assign.Target, assign.Value, assign);
+                var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, effectiveTarget, assign.Value, assign);
 
                 return ExpressionStatement(
                     AssignmentExpression(
@@ -197,7 +199,7 @@ internal partial class RoslynEmitter
         }
 
         // Handle index assignment: arr[0] = value
-        if (assign.Target is IndexAccess indexAccess)
+        if (effectiveTarget is IndexAccess indexAccess)
         {
             var mutationMethod = _context.SemanticInfo?.GetAugmentedAssignMutation(assign);
             if (mutationMethod != null)
@@ -258,7 +260,7 @@ internal partial class RoslynEmitter
                         Argument(obj),
                         Argument(index));
 
-                var augmented = GenerateAugmentedValue(assign.Operator, getItem, value, assign.Target, assign.Value, assign);
+                var augmented = GenerateAugmentedValue(assign.Operator, getItem, value, effectiveTarget, assign.Value, assign);
 
                 return ExpressionStatement(
                     arrayHelpersSetItem.AddArgumentListArguments(
@@ -273,7 +275,7 @@ internal partial class RoslynEmitter
 
             var augmentedValue = assign.Operator == AssignmentOperator.Assign
                 ? value
-                : GenerateAugmentedValue(assign.Operator, elementAccess, value, assign.Target, assign.Value, assign);
+                : GenerateAugmentedValue(assign.Operator, elementAccess, value, effectiveTarget, assign.Value, assign);
 
             return ExpressionStatement(
                 AssignmentExpression(
@@ -283,7 +285,7 @@ internal partial class RoslynEmitter
         }
 
         // Handle member assignment: obj.field = value
-        if (assign.Target is MemberAccess memberAccess)
+        if (effectiveTarget is MemberAccess memberAccess)
         {
             var mutationMethod = _context.SemanticInfo?.GetAugmentedAssignMutation(assign);
             if (mutationMethod != null)
@@ -340,11 +342,11 @@ internal partial class RoslynEmitter
 
             // Method group → Optional<delegate> field needs an explicit delegate cast.
             // `obj.field = None` for an Optional<T> field must produce Optional<T>.None.
-            var targetMemberType = GetExpressionSemanticType(assign.Target);
+            var targetMemberType = GetExpressionSemanticType(effectiveTarget);
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
                 ? TryGenerateBareNoneForOptional(assign.Value, targetMemberType)
                     ?? ApplyOptionalDelegateConversion(assign.Value, value, targetMemberType)
-                : GenerateAugmentedValue(assign.Operator, target, value, assign.Target, assign.Value, assign);
+                : GenerateAugmentedValue(assign.Operator, target, value, effectiveTarget, assign.Value, assign);
 
             return ExpressionStatement(
                 AssignmentExpression(
@@ -354,7 +356,7 @@ internal partial class RoslynEmitter
         }
 
         // Handle tuple unpacking: x, y = 1, 2
-        if (assign.Target is TupleLiteral tuple)
+        if (effectiveTarget is TupleLiteral tuple)
         {
             // Star unpacking: first, *rest = items
             if (tuple.Elements.Any(e => e is StarExpression))
@@ -556,7 +558,7 @@ internal partial class RoslynEmitter
             return unpackStmts[^1];
         }
 
-        return GenerateStore(assign.Target, value);
+        return GenerateStore(effectiveTarget, value);
     }
 
     private SyntaxKind GetAugmentedAssignmentOperator(AssignmentOperator op)
@@ -1473,6 +1475,9 @@ internal partial class RoslynEmitter
                         _hoistedStatements.Add(stmts[i]);
                     return stmts[^1];
                 }
+
+            case Parenthesized paren:
+                return GenerateStore(Shared.AstHelper.UnwrapParenthesized(paren), value);
 
             default:
                 return EmitNotImplementedStatement(

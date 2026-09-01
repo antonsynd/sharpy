@@ -1,0 +1,7 @@
+# Parenthesized assignment targets — redundant parens never change meaning (#1170 contract).
+# python3 verified: (a) = 1 / (b, c) = (2, 3) / ((d)) = 4 all accepted.
+def main():
+    (a) = 1
+    (b, c) = (2, 3)
+    ((d)) = 4
+    print(a, b, c, d)

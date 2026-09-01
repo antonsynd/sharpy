@@ -1822,7 +1822,7 @@ internal partial class TypeChecker
     /// </summary>
     private bool IsValidAssignmentTarget(Expression target)
     {
-        return target switch
+        return UnwrapParenthesized(target) switch
         {
             Identifier => true,
             MemberAccess => true,
