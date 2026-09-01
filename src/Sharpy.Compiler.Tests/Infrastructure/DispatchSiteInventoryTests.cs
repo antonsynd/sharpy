@@ -190,7 +190,7 @@ public class DispatchSiteInventoryTests
         ["Semantic/ModuleLoader.cs::ModuleLoader.ExtractNestedTypes"] = "pending-guard:#1716",
         ["Semantic/TypeChecker.cs::TypeChecker.ReferencesUnfoldedConst"] = "pending-guard:#1716",
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.DescribeTypeOperand"] = "pending-guard:#1716",
-        ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.IsLiteralStringExpression"] = "IsLiteralStringExpressionTotalityTests.ArmPatterns_MatchRoster",
+        ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.IsLiteralStringExpression"] = "guarded-by:IsLiteralStringExpressionTotalityTests",
         ["Semantic/TypeChecker.Expressions.Access.Lambdas.cs::TypeChecker.InferParamTypesFromSubExpression"] = "pending-guard:#1716",
         ["Semantic/TypeChecker.Expressions.Access.Lambdas.cs::TypeChecker.TryResolveExpressionType"] = "pending-guard:#1716",
         ["Semantic/TypeChecker.Statements.cs::TypeChecker.CheckDeferBodyControlFlow"] = "pending-guard:#1716",
