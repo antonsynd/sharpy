@@ -147,6 +147,22 @@ public class ExhaustivenessHelperTotalityTests
     }
 
     [Fact]
+    public void DescribeIrrefutable_Arms_MirrorIsIrrefutable_MinusGuardPattern()
+    {
+        var describeArms = SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Shared/ExhaustivenessHelper.cs",
+            "DescribeIrrefutable");
+
+        var expectedArms = new HashSet<string>(IsIrrefutableArms);
+        expectedArms.Remove(nameof(GuardPattern));
+
+        Assert.True(describeArms.SetEquals(expectedArms),
+            $"DescribeIrrefutable arms must equal IsIrrefutable arms minus GuardPattern.\n" +
+            $"  Extra in DescribeIrrefutable: {string.Join(", ", describeArms.Except(expectedArms))}\n" +
+            $"  Missing from DescribeIrrefutable: {string.Join(", ", expectedArms.Except(describeArms))}");
+    }
+
+    [Fact]
     public void ClassificationSets_AreDisjoint()
     {
         var covAndIrr = CoverageContributing.Intersect(IrrefutableOnly).ToList();
