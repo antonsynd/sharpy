@@ -85,31 +85,31 @@ internal partial class DecoratorValidator
     /// </summary>
     private void ValidateLruCacheMaxSizeValue(Expression value, string definitionName)
     {
-        switch (value)
+        var literal = AstHelper.TryGetLiteralValue(value);
+
+        if (literal == AstHelper.NoneValue)
+            return;
+
+        if (value is IntegerLiteral)
+            return;
+
+        if (value is UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral })
         {
-            case NoneLiteral:
-                return;
-            case IntegerLiteral:
-                // Integer literals from the parser are always non-negative; the unary
-                // minus case is handled below as a separate AST node.
-                return;
-            case UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral }:
-                AddError(
-                    $"'@lru_cache' on '{definitionName}' requires a non-negative 'maxsize' value.",
-                    value.LineStart,
-                    value.ColumnStart,
-                    code: DiagnosticCodes.Validation.LruCacheInvalidMaxSize,
-                    span: value.Span);
-                return;
-            default:
-                AddError(
-                    $"'@lru_cache' on '{definitionName}' requires 'maxsize' to be an integer literal or None.",
-                    value.LineStart,
-                    value.ColumnStart,
-                    code: DiagnosticCodes.Validation.LruCacheInvalidMaxSize,
-                    span: value.Span);
-                return;
+            AddError(
+                $"'@lru_cache' on '{definitionName}' requires a non-negative 'maxsize' value.",
+                value.LineStart,
+                value.ColumnStart,
+                code: DiagnosticCodes.Validation.LruCacheInvalidMaxSize,
+                span: value.Span);
+            return;
         }
+
+        AddError(
+            $"'@lru_cache' on '{definitionName}' requires 'maxsize' to be an integer literal or None.",
+            value.LineStart,
+            value.ColumnStart,
+            code: DiagnosticCodes.Validation.LruCacheInvalidMaxSize,
+            span: value.Span);
     }
 
     /// <summary>

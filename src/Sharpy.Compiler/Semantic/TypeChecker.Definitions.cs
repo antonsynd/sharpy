@@ -958,32 +958,23 @@ internal partial class TypeChecker
         if (lruDecorator.Arguments.Length == 0 && lruDecorator.KeywordArguments.Length == 0)
             return (true, 128);
 
-        // Single keyword: @lru_cache(maxsize=N) or @lru_cache(maxsize=None)
-        if (lruDecorator.KeywordArguments.Length == 1
-            && lruDecorator.KeywordArguments[0].Name == "maxsize")
-        {
-            var value = lruDecorator.KeywordArguments[0].Value;
-            return value switch
-            {
-                NoneLiteral => (true, null),
-                IntegerLiteral intLit when int.TryParse(intLit.Value.Replace("_", "", System.StringComparison.Ordinal), out var n) => (true, (int?)n),
-                _ => (true, 128),
-            };
-        }
+        Expression? argExpr =
+            lruDecorator.KeywordArguments.Length == 1
+                && lruDecorator.KeywordArguments[0].Name == "maxsize"
+                ? lruDecorator.KeywordArguments[0].Value
+            : lruDecorator.Arguments.Length == 1
+                ? lruDecorator.Arguments[0]
+            : null;
 
-        // Single positional: @lru_cache(N) or @lru_cache(None)
-        if (lruDecorator.Arguments.Length == 1)
-        {
-            var value = lruDecorator.Arguments[0];
-            return value switch
-            {
-                NoneLiteral => (true, null),
-                IntegerLiteral intLit when int.TryParse(intLit.Value.Replace("_", "", System.StringComparison.Ordinal), out var n) => (true, (int?)n),
-                _ => (true, 128),
-            };
-        }
+        if (argExpr == null)
+            return (true, 128);
 
-        // Malformed (DecoratorValidator already reported); fall back to default.
+        var literal = AstHelper.TryGetLiteralValue(argExpr);
+        if (literal == AstHelper.NoneValue)
+            return (true, null);
+        if (argExpr is IntegerLiteral && literal is string rawInt
+            && int.TryParse(rawInt.Replace("_", "", System.StringComparison.Ordinal), out var n))
+            return (true, (int?)n);
         return (true, 128);
     }
 

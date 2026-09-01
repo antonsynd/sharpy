@@ -2,6 +2,7 @@ extern alias SharpyRT;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Project;
 
@@ -195,14 +196,9 @@ internal class GeneratorContextBuilder
 
     private static object ExtractLiteralValue(Expression expr)
     {
-        return expr switch
-        {
-            StringLiteral s => s.Value,
-            IntegerLiteral i => i.Value,
-            FloatLiteral f => f.Value,
-            BooleanLiteral b => b.Value,
-            NoneLiteral => null!,
-            _ => expr.ToString() ?? ""
-        };
+        var value = AstHelper.TryGetLiteralValue(expr);
+        if (value == AstHelper.NoneValue)
+            return null!;
+        return value ?? expr.ToString() ?? "";
     }
 }

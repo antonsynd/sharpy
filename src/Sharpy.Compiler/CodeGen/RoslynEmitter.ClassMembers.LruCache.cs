@@ -48,38 +48,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Extracts the bounded maxsize from <c>@lru_cache(maxsize=N)</c> / positional form,
-    /// or <c>null</c> for the unbounded <c>@cache</c> and <c>@lru_cache(maxsize=None)</c>
-    /// forms. Mirrors <c>TypeChecker.ExtractCacheConfig</c>; the validator has already
-    /// rejected malformed shapes, so the fall-through default is safe.
-    /// </summary>
-    private static int? GetLruCacheMaxSize(FunctionDef func)
-    {
-        if (func.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Cache))
-            return null;
-
-        var lru = func.Decorators.FirstOrDefault(d => !d.IsBracketAttribute && d.Name == DecoratorNames.LruCache);
-        if (lru == null)
-            return 128;
-
-        if (lru.Arguments.Length == 0 && lru.KeywordArguments.Length == 0)
-            return 128;
-
-        Expression? value =
-            lru.KeywordArguments.FirstOrDefault(kw => kw.Name == "maxsize")?.Value
-            ?? (lru.Arguments.Length == 1 ? lru.Arguments[0] : null);
-
-        return value switch
-        {
-            NoneLiteral => null,
-            IntegerLiteral intLit when int.TryParse(
-                intLit.Value.Replace("_", "", System.StringComparison.Ordinal),
-                out var n) => n,
-            _ => 128,
-        };
-    }
-
-    /// <summary>
     /// Generates the cache field, the renamed original method, the public wrapper, and
     /// the <c>*CacheInfo</c>/<c>*CacheClear</c> accessors for a memoized function.
     /// </summary>
@@ -173,7 +141,12 @@ internal partial class RoslynEmitter
             GenericName(Identifier("LruCache"))
                 .WithTypeArgumentList(TypeArgumentList(SeparatedList(new[] { keyType, returnType }))));
 
-        var maxSize = GetLruCacheMaxSize(func);
+        var funcSymbol = _currentTypeSymbol?.Methods.FirstOrDefault(m =>
+                m.Name == func.Name && m.DeclarationLine == func.LineStart)
+            ?? _context.SymbolTable.LookupFunctionOverloads(func.Name)
+                ?.FirstOrDefault(o => o.DeclarationLine == func.LineStart)
+            ?? _context.LookupSymbol(func.Name) as FunctionSymbol;
+        var maxSize = funcSymbol?.CacheMaxSize;
 
         members.Add(GenerateLruCacheField(cacheFieldName, lruCacheType, maxSize, isStatic));
         members.Add(GenerateRenamedOriginalMethod(func, privateName, isStatic));

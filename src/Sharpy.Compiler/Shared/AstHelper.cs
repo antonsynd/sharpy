@@ -246,6 +246,29 @@ internal static class AstHelper
             && (body[0] is PassStatement || TryGetEllipsisStub(body[0], out _));
     }
 
+    public static readonly object NoneValue = new();
+
+    public static object? TryGetLiteralValue(Expression expr)
+    {
+        return expr switch
+        {
+            StringLiteral s => s.Value,
+            IntegerLiteral i => i.Value,
+            FloatLiteral f when double.TryParse(
+                f.Value.Replace("_", "", StringComparison.Ordinal),
+                NumberStyles.Float, CultureInfo.InvariantCulture, out var d) => d,
+            BooleanLiteral b => b.Value,
+            NoneLiteral => NoneValue,
+            UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral negInt }
+                => "-" + negInt.Value,
+            UnaryOp { Operator: UnaryOperator.Minus, Operand: FloatLiteral negFloat }
+                when double.TryParse(
+                    negFloat.Value.Replace("_", "", StringComparison.Ordinal),
+                    NumberStyles.Float, CultureInfo.InvariantCulture, out var nd) => -nd,
+            _ => null,
+        };
+    }
+
     private static string? ExtractMemberAccessNarrowingKey(MemberAccess ma)
     {
         var objectKey = ExtractNarrowingKey(ma.Object);
