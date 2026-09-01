@@ -209,7 +209,7 @@ public class DispatchSiteInventoryTests
         ["Analysis/ControlFlow/NarrowingFlowAnalysis.cs::NarrowingConditionInterpreter.DescribeTupleTypeExpression"] = "pending-guard:#1716",
         ["Analysis/ControlFlow/NarrowingFlowAnalysis.cs::NarrowingConditionInterpreter.DescribeTypeExpression"] = "pending-guard:#1716",
         // GetLruCacheMaxSize deleted: emitter reads FunctionSymbol.CacheMaxSize (#1716)
-        ["Semantic/TypeChecker.cs::TypeChecker.CheckStatementCore"] = "pending-guard:#1716",
+        ["Semantic/TypeChecker.cs::TypeChecker.CheckStatementCore"] = "guarded-by:CheckStatementCoreTotalityTests",
         ["Semantic/TypeChecker.Definitions.cs::TypeChecker.DetectGeneratorAttributes"] = "pending-guard:#1716",
         // TypeChecker.ExtractCacheConfig: dispatch moved to AstHelper.TryGetLiteralValue (#1716)
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.MarkTypeFactoryArguments"] = "pending-guard:#1716",
@@ -223,7 +223,7 @@ public class DispatchSiteInventoryTests
         ["Semantic/TypeChecker.Expressions.Access.cs::TypeChecker.ClassifyListBacking"] = "pending-guard:#1716",
         ["Semantic/TypeChecker.Expressions.Access.cs::TypeChecker.TryFlattenDottedName"] = "pending-guard:#1716",
         ["Semantic/TypeChecker.Expressions.Access.Lambdas.cs::TypeChecker.TryInferLambdaParamTypesFromBody"] = "pending-guard:#1716",
-        ["Semantic/TypeChecker.Expressions.Literals.cs::TypeChecker.CheckComprehensionClauses"] = "pending-guard:#1716",
+        ["Semantic/TypeChecker.Expressions.Literals.cs::TypeChecker.CheckComprehensionClauses"] = "guarded-by:ComprehensionClauseDispatchTotalityTests",
         ["Semantic/TypeChecker.Statements.cs::ReassignmentFinder.TargetBindsName"] = "pending-guard:#1716",
         ["Semantic/TypeChecker.Statements.Patterns.cs::TypeChecker.CollectPatternBindingNames"] = "pending-guard:#1716",
         ["Semantic/TypeChecker.Utilities.cs::TypeChecker.GetAssignmentTargetDescription"] = "documented-by-design:Semantic/TypeChecker.Utilities.cs:GetAssignmentTargetDescription",
@@ -244,9 +244,9 @@ public class DispatchSiteInventoryTests
         ["Services/ReplSession.cs::ReplSession.IsModuleLevelStatement"] = "pending-guard:#1716",
         ["Shared/AssertRaisesForm.cs::AssertRaisesForm.NamesTheMarker"] = "pending-guard:#1716",
         ["Shared/AstHelper.cs::AstHelper.ExtractIndexComponentKey"] = "guarded-by:NarrowingKeyTotalityTests",
-        ["Pretty/StructuralEqualityComparer.cs::StructuralEqualityComparer.Equals"] = "pending-guard:#1716",
+        ["Pretty/StructuralEqualityComparer.cs::StructuralEqualityComparer.Equals"] = "guarded-by:StructuralEqualityComparerTotalityTests",
         ["Pretty/UnparseVisitor.cs::UnparseVisitor.NeedsTrailingCommaInParens"] = "pending-guard:#1716",
-        ["Lowering/Passes/ComprehensionFusionPass.cs::ComprehensionFusionPass.QualifiesForProductPreallocation"] = "pending-guard:#1716",
+        ["Lowering/Passes/ComprehensionFusionPass.cs::ComprehensionFusionPass.QualifiesForProductPreallocation"] = "guarded-by:ComprehensionClauseDispatchTotalityTests",
 
         // ══════════════════════════════════════════════════════════════════════
         // LSP sites — all keyed with "Sharpy.Lsp/" prefix
