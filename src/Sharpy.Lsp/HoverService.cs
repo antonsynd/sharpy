@@ -157,6 +157,12 @@ public sealed class HoverService
                 => (i.NameLineStart, i.NameColumnStart, i.NameColumnEnd),
             EnumDef e when IsOnHeaderName(cursorLine, cursorCol, e.NameLineStart, e.NameColumnStart, e.NameColumnEnd)
                 => (e.NameLineStart, e.NameColumnStart, e.NameColumnEnd),
+            UnionDef u when IsOnHeaderName(cursorLine, cursorCol, u.NameLineStart, u.NameColumnStart, u.NameColumnEnd)
+                => (u.NameLineStart, u.NameColumnStart, u.NameColumnEnd),
+            DelegateDef d when IsOnHeaderName(cursorLine, cursorCol, d.NameLineStart, d.NameColumnStart, d.NameColumnEnd)
+                => (d.NameLineStart, d.NameColumnStart, d.NameColumnEnd),
+            EventDef ev when IsOnHeaderName(cursorLine, cursorCol, ev.NameLineStart, ev.NameColumnStart, ev.NameColumnEnd)
+                => (ev.NameLineStart, ev.NameColumnStart, ev.NameColumnEnd),
             AwaitExpression aw
                 => (aw.LineStart, aw.ColumnStart, aw.ColumnStart + 5), // "await"
             ReturnStatement ret
@@ -582,6 +588,99 @@ public sealed class HoverService
                     return null;
                 }
 
+            // Declaration heads that were silent (plan-950124 Phase 2 remediation): the union /
+            // delegate / event kinds resolve exactly like the class-like arms above.
+            case UnionDef unionDef:
+                {
+                    if (!IsOnHeaderName(line, col, unionDef.NameLineStart, unionDef.NameColumnStart, unionDef.NameColumnEnd))
+                        break;
+
+                    var typeSymbol = analysis.SymbolTable?.LookupType(unionDef.Name);
+                    if (typeSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
+                    break;
+                }
+
+            case DelegateDef delegateDef:
+                {
+                    // Parameters are not child nodes (like FunctionDef's), so the delegate is
+                    // innermost on them too.
+                    var param = delegateDef.Parameters.FirstOrDefault(p =>
+                        IsPositionInRange(line, col, p.LineStart, p.ColumnStart, p.LineEnd, p.ColumnEnd));
+                    if (param != null)
+                        return SymbolFormatter.FormatParameterWithDocs(param.Name, param.Type != null
+                            ? query.GetTypeAnnotation(param.Type) : null);
+
+                    if (!IsOnHeaderName(line, col, delegateDef.NameLineStart, delegateDef.NameColumnStart, delegateDef.NameColumnEnd))
+                        break;
+
+                    var typeSymbol = analysis.SymbolTable?.LookupType(delegateDef.Name);
+                    if (typeSymbol != null)
+                        return SymbolFormatter.FormatSymbolWithDocs(typeSymbol);
+                    break;
+                }
+
+            case EventDef eventDef:
+                {
+                    // Mirrors the PropertyDef arm: parameters first (function-style events), then
+                    // the declared delegate type under the cursor, then the event itself.
+                    var param = eventDef.Parameters.FirstOrDefault(p =>
+                        IsPositionInRange(line, col, p.LineStart, p.ColumnStart, p.LineEnd, p.ColumnEnd));
+                    if (param != null)
+                        return SymbolFormatter.FormatParameterWithDocs(param.Name, param.Type != null
+                            ? query.GetTypeAnnotation(param.Type) : null);
+
+                    if (eventDef.Type != null)
+                    {
+                        var typeHover = TryFormatTypeAnnotation(analysis, query, eventDef.Type, line, col);
+                        if (typeHover != null)
+                            return typeHover;
+                    }
+
+                    var eventType = eventDef.Type != null
+                        ? query.GetTypeAnnotation(eventDef.Type)
+                        : LookupEventOnType(analysis, line, col, eventDef.Name)?.Type;
+                    var typeStr = eventType?.GetDisplayName() ?? "unknown";
+                    return $"```sharpy\n(event) {eventDef.Name}: {typeStr}\n```";
+                }
+
+            case TryStatement tryStmt:
+                {
+                    // `except T as name`: neither the handler nor its name is a child node, so
+                    // the try statement is innermost on both — mirror the WithStatement arm.
+                    foreach (var handler in tryStmt.Handlers)
+                    {
+                        if (handler.ExceptionType != null)
+                        {
+                            var typeHover = TryFormatTypeAnnotation(analysis, query, handler.ExceptionType, line, col);
+                            if (typeHover != null)
+                                return typeHover;
+                        }
+
+                        if (handler.Name != null &&
+                            line == handler.NameLineStart &&
+                            col >= handler.NameColumnStart &&
+                            col < handler.NameColumnEnd)
+                        {
+                            var handlerSymbol = query.GetExceptHandlerSymbol(handler);
+                            if (handlerSymbol != null)
+                                return SymbolFormatter.FormatSymbolWithDocs(handlerSymbol);
+                        }
+                    }
+                    break;
+                }
+
+            // A TypeAnnotation is normally not exposed to traversal (its owner resolves it), but
+            // TypePattern yields its Type as a child, so the annotation itself can be innermost.
+            case TypeAnnotation typeAnnotation:
+                return TryFormatTypeAnnotation(analysis, query, typeAnnotation, line, col);
+
+            // Pattern head: a class pattern's type is a TypeAnnotation that is NOT a child node,
+            // so the pattern is innermost on it. (PositionalPattern heads name union cases, which
+            // the semantic layer records no type for — #1735 — so there is nothing to delegate to.)
+            case PropertyPattern { Type: { } propertyType }:
+                return TryFormatTypeAnnotation(analysis, query, propertyType, line, col);
+
             case Expression expr:
                 {
                     var type = query.GetEffectiveType(expr);
@@ -698,6 +797,15 @@ public sealed class HoverService
             return null;
         var typeSymbol = analysis.SymbolTable?.LookupType(typeName);
         return typeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldName);
+    }
+
+    private EventSymbol? LookupEventOnType(SemanticResult analysis, int line, int col, string eventName)
+    {
+        var typeName = FindEnclosingTypeName(analysis, line, col);
+        if (typeName == null)
+            return null;
+        var typeSymbol = analysis.SymbolTable?.LookupType(typeName);
+        return typeSymbol?.Events.FirstOrDefault(e => e.Name == eventName);
     }
 
     private static string FormatTypeAliasFromAst(TypeAlias typeAlias)
@@ -838,6 +946,9 @@ public sealed class HoverService
         EnumDef e => e.Decorators,
         VariableDeclaration v => v.Decorators,
         PropertyDef p => p.Decorators,
+        // The parser attaches decorators to unions and events too (Parser.cs "Attach decorators").
+        UnionDef u => u.Decorators,
+        EventDef ev => ev.Decorators,
         _ => null
     };
 
@@ -847,6 +958,8 @@ public sealed class HoverService
         StructDef s => s.Body,
         InterfaceDef i => i.Body,
         PropertyDef p => p.Body,
+        // A union body holds methods — decorated members like a class body's.
+        UnionDef u => u.Body,
         _ => null
     };
 

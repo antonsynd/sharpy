@@ -593,4 +593,85 @@ public class HoverServiceTests
         decoratedHover.Should().Be(undecoratedHover,
             "decorated from-import hover must be byte-identical to the undecorated twin");
     }
+
+    // ── Dispatch-totality probes (plan-950124 Phase 2 — HoverDispatchTotalityTests) ──
+    // Justified-default probes pair an absence with a positive control on the same input;
+    // the cells after them are misses the probe found, fixed by delegating arms (no hover → hover).
+
+    [Fact]
+    public void PassStatement_YieldsNoHover_WhileSiblingReturnDoes()
+    {
+        var result = _api.Analyze("def f() -> int:\n    pass\n    return 1");
+        _hoverService.GetHoverMarkdown(result, 2, 5).Should().BeNull(
+            "a keyword-only statement has nothing to describe");
+        _hoverService.GetHoverMarkdown(result, 3, 5).Should().NotBeNull().And.Contain("return",
+            "positive control: the keyword statement with an operand hovers on the same input");
+    }
+
+    [Fact]
+    public void WalrusExpression_FallsToTheExpressionArm_TypeHoverOnTheTarget()
+    {
+        var result = _api.Analyze("def f() -> None:\n    if (n := 5) > 3:\n        print(n)");
+        // Column 9 is `n`: the walrus target is a string, not a child node, so the walrus itself
+        // is innermost there and the base Expression arm answers with its type.
+        _hoverService.GetHoverMarkdown(result, 2, 9).Should().NotBeNull().And.Contain("int");
+        _hoverService.GetHoverMarkdown(result, 3, 15).Should().NotBeNull().And.Contain("n",
+            "positive control: the identifier usage resolves through the Identifier arm");
+    }
+
+    [Fact]
+    public void UnionDef_HeaderName_ShowsTheUnionType()
+    {
+        var result = _api.Analyze(
+            "union Shape:\n    case Circle(r: float)\n\ndef main() -> None:\n    s: Shape = Shape.Circle(1.0)\n    print(s)");
+        _hoverService.GetHoverMarkdown(result, 1, 7).Should().NotBeNull().And.Contain("(union) Shape");
+    }
+
+    [Fact]
+    public void DelegateDef_HeaderNameAndParameter_Hover()
+    {
+        var result = _api.Analyze("delegate Cb(v: int) -> None\n\ndef main() -> None:\n    pass");
+        _hoverService.GetHoverMarkdown(result, 1, 10).Should().NotBeNull().And.Contain("(delegate) Cb");
+        _hoverService.GetHoverMarkdown(result, 1, 13).Should().NotBeNull().And.Contain("v",
+            "the delegate's parameter hovers like a function's");
+    }
+
+    [Fact]
+    public void EventDef_NameAndDeclaredType_Hover()
+    {
+        var result = _api.Analyze(
+            "delegate Cb(v: int) -> None\n\nclass Box:\n    event on_change: Cb\n\ndef main() -> None:\n    pass");
+        var onName = _hoverService.GetHoverMarkdown(result, 4, 11);
+        onName.Should().NotBeNull().And.Contain("(event) on_change");
+        onName.Should().Contain("Cb", "the event's declared delegate type is part of its signature");
+        _hoverService.GetHoverMarkdown(result, 4, 22).Should().NotBeNull().And.Contain("(delegate) Cb",
+            "the event's declared type resolves like a variable's annotation");
+    }
+
+    [Fact]
+    public void ExceptHandler_AsNameAndExceptionType_Hover()
+    {
+        var result = _api.Analyze(
+            "def f() -> None:\n    try:\n        pass\n    except ValueError as err:\n        print(err)");
+        _hoverService.GetHoverMarkdown(result, 4, 26).Should().NotBeNull().And.Contain("err",
+            "the except-bound name resolves through GetExceptHandlerSymbol like a with-as target");
+        _hoverService.GetHoverMarkdown(result, 4, 12).Should().NotBeNull().And.Contain("ValueError",
+            "the handler's exception type resolves like any type annotation");
+    }
+
+    [Fact]
+    public void TypePattern_TypeAnnotationIsInnermost_HoversTheType()
+    {
+        var result = _api.Analyze(
+            "class Point:\n    x: int = 0\n\ndef f(o: object) -> None:\n    match o:\n        case Point():\n            pass\n        case _:\n            pass");
+        _hoverService.GetHoverMarkdown(result, 6, 14).Should().NotBeNull().And.Contain("Point");
+    }
+
+    [Fact]
+    public void PropertyPattern_TypeHead_HoversTheClass()
+    {
+        var result = _api.Analyze(
+            "class Point:\n    x: int = 0\n\ndef f(p: Point) -> None:\n    match p:\n        case Point(x=px):\n            print(px)\n        case _:\n            pass");
+        _hoverService.GetHoverMarkdown(result, 6, 14).Should().NotBeNull().And.Contain("Point");
+    }
 }
