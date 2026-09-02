@@ -83,7 +83,7 @@ public class InlayHintDispatchTotalityTests
             CollectInlayHintsDefault);
     }
 
-    // ── MarkPatternBound: Pattern universe (16) ──
+    // ── MarkPatternBound: Pattern universe (15) ──
 
     private static readonly HashSet<string> MarkPatternBoundArms = new()
     {
@@ -93,7 +93,6 @@ public class InlayHintDispatchTotalityTests
         nameof(ListPattern),
         nameof(PositionalPattern),
         nameof(PropertyPattern),
-        nameof(UnionCasePattern),
         nameof(OrPattern),
         nameof(AndPattern),
         nameof(AsPattern),

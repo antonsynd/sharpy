@@ -9,7 +9,6 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Xunit;
 using AstFunctionType = Sharpy.Compiler.Parser.Ast.FunctionType;
-using AstTupleType = Sharpy.Compiler.Parser.Ast.TupleType;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
@@ -379,86 +378,6 @@ public class TypeSyntaxMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         result.ToString().Should().Be("global::System.Action");
-    }
-
-    #endregion
-
-    #region Tuple Type Tests
-
-    [Fact]
-    public void MapTupleType_EmptyTuple_ReturnsValueTuple()
-    {
-        // Arrange
-        var tupleType = new AstTupleType
-        {
-            ElementTypes = ImmutableArray<TypeAnnotation>.Empty
-        };
-
-        // Act
-        var result = _typeMapper.MapTupleType(tupleType);
-
-        // Assert
-        result.ToString().Should().Be("global::System.ValueTuple");
-    }
-
-    [Fact]
-    public void MapTupleType_SingleElement_ReturnsElementType()
-    {
-        // Arrange
-        var tupleType = new AstTupleType
-        {
-            ElementTypes = new List<TypeAnnotation>
-            {
-                new TypeAnnotation { Name = "int" }
-            }.ToImmutableArray()
-        };
-
-        // Act
-        var result = _typeMapper.MapTupleType(tupleType);
-
-        // Assert
-        result.ToString().Should().Be("int");
-    }
-
-    [Fact]
-    public void MapTupleType_TwoElements_ReturnsValueTupleIntString()
-    {
-        // Arrange
-        var tupleType = new AstTupleType
-        {
-            ElementTypes = new List<TypeAnnotation>
-            {
-                new TypeAnnotation { Name = "int" },
-                new TypeAnnotation { Name = "str" }
-            }.ToImmutableArray()
-        };
-
-        // Act
-        var result = _typeMapper.MapTupleType(tupleType);
-
-        // Assert
-        result.ToString().Should().Be("global::System.ValueTuple<int,string>");
-    }
-
-    [Fact]
-    public void MapTupleType_NamedElements_ReturnsCSharpNamedTuple()
-    {
-        // Arrange
-        var tupleType = new AstTupleType
-        {
-            ElementTypes = new List<TypeAnnotation>
-            {
-                new TypeAnnotation { Name = "float" },
-                new TypeAnnotation { Name = "float" }
-            }.ToImmutableArray(),
-            ElementNames = ImmutableArray.Create<string?>("x", "y")
-        };
-
-        // Act
-        var result = _typeMapper.MapTupleType(tupleType);
-
-        // Assert
-        result.ToString().Should().Be("(doublex,doubley)");
     }
 
     #endregion

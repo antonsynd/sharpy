@@ -139,7 +139,6 @@ public class HoverDispatchTotalityTests
         [nameof(TypePattern)] = "CONTRACTUAL: exposes its TypeAnnotation as a child, so the annotation node is innermost and the TypeAnnotation arm answers",
         [nameof(WildcardPattern)] = "CONTRACTUAL: `_` binds nothing and names nothing",
         [nameof(MemberAccessPattern)] = "MISS #1735: records only Parts (strings) — no name extent to hover on, so `case Color.RED:` shows nothing while `Color.RED` in expression position resolves",
-        [nameof(UnionCasePattern)] = "UNREACHABLE: never constructed by the parser (defined, visited and type-checked only) — `case Shape.Circle(r):` parses as a PositionalPattern whose Type names the case",
         [nameof(PositionalPattern)] = "MISS #1735: its Type names a union case (`case Circle(r):`), for which the semantic layer records no type and LookupType finds nothing — a delegating arm returned null on every input (measured), so none is claimed",
         [nameof(AndPattern)] = StructuralPattern,
         [nameof(OrPattern)] = StructuralPattern,

@@ -918,48 +918,6 @@ internal class TypeSyntaxMapper
     }
 
     /// <summary>
-    /// Maps a TupleType to a C# ValueTuple type
-    /// </summary>
-    public TypeSyntax MapTupleType(Parser.Ast.TupleType tupleType)
-    {
-        if (tupleType.ElementTypes.IsEmpty)
-        {
-            // Empty tuple
-            return RoslynEmitter.MakeGlobalQualifiedName("System", "ValueTuple");
-        }
-
-        var elementTypes = tupleType.ElementTypes
-            .Select(MapType)
-            .ToArray();
-
-        // For single element, it's just the type (not a tuple)
-        if (elementTypes.Length == 1)
-        {
-            return elementTypes[0];
-        }
-
-        // Named tuples use C# tuple syntax with element names: (double x, double y)
-        if (!tupleType.ElementNames.IsEmpty)
-        {
-            var elements = elementTypes.Select((type, i) =>
-            {
-                var element = TupleElement(type);
-                var name = tupleType.ElementNames[i];
-                if (name != null)
-                {
-                    element = element.WithIdentifier(RoslynEmitter.EscapedIdentifier(name));
-                }
-                return element;
-            });
-
-            return SyntaxFactory.TupleType(SeparatedList(elements));
-        }
-
-        // Use ValueTuple<T1, T2, ...>
-        return QualifiedGenericName("System.ValueTuple", globalQualified: true, elementTypes);
-    }
-
-    /// <summary>
     /// Creates a Sharpy collection type with element type
     /// </summary>
     public TypeSyntax CreateCollectionType(string collectionName, TypeSyntax elementType)

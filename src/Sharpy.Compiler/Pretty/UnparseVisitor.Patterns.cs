@@ -30,27 +30,6 @@ internal sealed partial class UnparseVisitor
         _w.Write("()");
     }
 
-    public override void VisitUnionCasePattern(UnionCasePattern node)
-    {
-        if (node.UnionType != null)
-        {
-            WriteTypeAnnotation(node.UnionType);
-            _w.Write(".");
-        }
-        _w.Write(node.CaseName);
-        if (!node.FieldPatterns.IsEmpty)
-        {
-            _w.Write("(");
-            for (int i = 0; i < node.FieldPatterns.Length; i++)
-            {
-                if (i > 0)
-                    _w.Write(", ");
-                Visit(node.FieldPatterns[i]);
-            }
-            _w.Write(")");
-        }
-    }
-
     public override void VisitTuplePattern(TuplePattern node)
     {
         _w.Write("(");

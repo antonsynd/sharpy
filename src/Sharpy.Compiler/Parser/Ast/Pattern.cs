@@ -7,12 +7,11 @@ namespace Sharpy.Compiler.Parser.Ast;
 // PATTERN AST NODES
 // Pattern matching for match expressions/statements.
 //
-// Implemented patterns (parser + semantic + codegen): WildcardPattern,
-// BindingPattern, LiteralPattern, MemberAccessPattern, TuplePattern,
-// OrPattern, RelationalPattern, TypePattern, PropertyPattern, PositionalPattern.
-//
-// Forward-declared patterns (no pipeline support yet):
-// UnionCasePattern, ListPattern, AndPattern, GuardPattern.
+// All 15 concrete pattern kinds are parser-constructed and handled:
+// WildcardPattern, BindingPattern, LiteralPattern, TypePattern,
+// MemberAccessPattern, TuplePattern, ListPattern, StarPattern, OrPattern,
+// AndPattern, GuardPattern, AsPattern, RelationalPattern, PropertyPattern,
+// PositionalPattern.
 // =============================================================================
 
 /// <summary>
@@ -127,42 +126,6 @@ public record MemberAccessPattern : Pattern
 #endregion
 
 #region Compound Patterns
-
-/// <summary>
-/// Union case pattern - matches a specific case of a union type.
-/// </summary>
-/// <example>
-/// case Ok(value)      // Destructuring case
-/// case None           // Singleton case
-/// </example>
-public record UnionCasePattern : Pattern
-{
-    /// <summary>
-    /// The union type (if qualified, e.g., Result.Ok).
-    /// </summary>
-    public TypeAnnotation? UnionType { get; init; }
-
-    /// <summary>
-    /// The case name to match.
-    /// </summary>
-    public string CaseName { get; init; } = "";
-
-    /// <summary>
-    /// Patterns to match against the case fields.
-    /// </summary>
-    public ImmutableArray<Pattern> FieldPatterns { get; init; } = ImmutableArray<Pattern>.Empty;
-
-    /// <inheritdoc/>
-    public override void ValidateInvariants()
-    {
-        base.ValidateInvariants();
-        Debug.Assert(!string.IsNullOrEmpty(CaseName), "UnionCasePattern.CaseName cannot be null or empty");
-        Debug.Assert(FieldPatterns != null, "UnionCasePattern.FieldPatterns cannot be null");
-    }
-
-    /// <inheritdoc/>
-    public override IEnumerable<Node> GetChildNodes() => FieldPatterns;
-}
 
 /// <summary>
 /// Tuple pattern - matches tuple structure.

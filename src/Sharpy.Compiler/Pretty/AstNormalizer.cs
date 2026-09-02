@@ -512,9 +512,6 @@ public sealed class AstNormalizer : AstVisitor<Node>
     public override Node VisitTypePattern(TypePattern node) =>
         Zero(node) with { Type = NormalizeType(node.Type)! };
 
-    public override Node VisitUnionCasePattern(UnionCasePattern node) =>
-        Zero(node) with { UnionType = NormalizeType(node.UnionType), FieldPatterns = VisitPatterns(node.FieldPatterns) };
-
     public override Node VisitTuplePattern(TuplePattern node) =>
         Zero(node) with { Elements = VisitPatterns(node.Elements) };
 

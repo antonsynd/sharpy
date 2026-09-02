@@ -30,8 +30,7 @@ internal static class GenPatterns
             AndPat(ctx),
             GuardPat(ctx),
             RelationalPat(),
-            PropertyPat(ctx),
-            UnionCasePat(ctx));
+            PropertyPat(ctx));
 
     public static Gen<WildcardPattern> Wildcard() =>
         Gen.Const(new WildcardPattern());
@@ -114,13 +113,4 @@ internal static class GenPatterns
             Pattern(ctx.Burn()),
             (name, pat) => new PropertyPatternField { Name = name, Pattern = pat });
 
-    public static Gen<UnionCasePattern> UnionCasePat(GenContext ctx) =>
-        Gen.Select(
-            GenIdentifier.ClassName,
-            Pattern(ctx.Burn()).Array[0, 2],
-            (caseName, fields) => new UnionCasePattern
-            {
-                CaseName = caseName,
-                FieldPatterns = fields.ToImmutableArray()
-            });
 }

@@ -23,7 +23,6 @@ public class CfgPatternBindingTotalityTests
         nameof(PositionalPattern),
         nameof(PropertyPattern),
         nameof(GuardPattern),
-        nameof(UnionCasePattern),
     };
 
     private static readonly HashSet<string> NonBinding = new()

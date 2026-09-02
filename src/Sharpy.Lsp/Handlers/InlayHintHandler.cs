@@ -351,10 +351,6 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                 foreach (var field in property.Fields)
                     MarkPatternBound(field.Pattern, scope, semanticInfo);
                 break;
-            case UnionCasePattern unionCase:
-                foreach (var field in unionCase.FieldPatterns)
-                    MarkPatternBound(field, scope, semanticInfo);
-                break;
             case OrPattern orPattern:
                 foreach (var alternative in orPattern.Alternatives)
                     MarkPatternBound(alternative, scope, semanticInfo);

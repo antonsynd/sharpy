@@ -24,9 +24,8 @@ namespace Sharpy.Compiler.Parser.Ast;
 /// separate change with its own test burden.
 /// </para>
 /// <para>
-/// The sibling annotation records in this file (<see cref="FunctionType"/>,
-/// <see cref="TupleType"/>) stay base-less; the asymmetry is intentional, as nothing keys a
-/// node-keyed channel by them.
+/// The sibling annotation record in this file (<see cref="FunctionType"/>) stays base-less;
+/// the asymmetry is intentional, as nothing keys a node-keyed channel by it.
 /// </para>
 /// </remarks>
 public record TypeAnnotation : Node
@@ -98,19 +97,4 @@ public record FunctionType
     /// Character offset-based span. May be null if not tracked.
     /// </summary>
     public Text.TextSpan? Span { get; init; }
-}
-
-/// <summary>
-/// Tuple type annotation (tuple[int, str, float] or tuple[x: float, y: float])
-/// </summary>
-public record TupleType
-{
-    public ImmutableArray<TypeAnnotation> ElementTypes { get; init; } = ImmutableArray<TypeAnnotation>.Empty;
-
-    /// <summary>
-    /// Element names for named tuples. Empty for unnamed tuples.
-    /// When present, must have the same count as ElementTypes.
-    /// Null entries indicate unnamed elements (not allowed when any are named).
-    /// </summary>
-    public ImmutableArray<string?> ElementNames { get; init; } = ImmutableArray<string?>.Empty;
 }

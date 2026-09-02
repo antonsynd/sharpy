@@ -284,9 +284,6 @@ public abstract class AstVisitor
             case TypePattern n:
                 VisitTypePattern(n);
                 break;
-            case UnionCasePattern n:
-                VisitUnionCasePattern(n);
-                break;
             case TuplePattern n:
                 VisitTuplePattern(n);
                 break;
@@ -521,7 +518,6 @@ public abstract class AstVisitor
     public virtual void VisitBindingPattern(BindingPattern node) => VisitPattern(node);
     public virtual void VisitLiteralPattern(LiteralPattern node) => VisitPattern(node);
     public virtual void VisitTypePattern(TypePattern node) => VisitPattern(node);
-    public virtual void VisitUnionCasePattern(UnionCasePattern node) => VisitPattern(node);
     public virtual void VisitTuplePattern(TuplePattern node) => VisitPattern(node);
     public virtual void VisitListPattern(ListPattern node) => VisitPattern(node);
     public virtual void VisitStarPattern(StarPattern node) => VisitPattern(node);
@@ -676,7 +672,6 @@ public abstract class AstVisitor<T>
             BindingPattern n => VisitBindingPattern(n),
             LiteralPattern n => VisitLiteralPattern(n),
             TypePattern n => VisitTypePattern(n),
-            UnionCasePattern n => VisitUnionCasePattern(n),
             TuplePattern n => VisitTuplePattern(n),
             ListPattern n => VisitListPattern(n),
             StarPattern n => VisitStarPattern(n),
@@ -884,7 +879,6 @@ public abstract class AstVisitor<T>
     public virtual T VisitBindingPattern(BindingPattern node) => VisitPattern(node);
     public virtual T VisitLiteralPattern(LiteralPattern node) => VisitPattern(node);
     public virtual T VisitTypePattern(TypePattern node) => VisitPattern(node);
-    public virtual T VisitUnionCasePattern(UnionCasePattern node) => VisitPattern(node);
     public virtual T VisitTuplePattern(TuplePattern node) => VisitPattern(node);
     public virtual T VisitListPattern(ListPattern node) => VisitPattern(node);
     public virtual T VisitStarPattern(StarPattern node) => VisitPattern(node);

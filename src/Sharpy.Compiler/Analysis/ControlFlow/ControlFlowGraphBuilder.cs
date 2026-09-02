@@ -954,10 +954,6 @@ internal class ControlFlowGraphBuilder
             case GuardPattern gp:
                 CollectPatternBindingKeysInto(gp.Inner, keys);
                 break;
-            case UnionCasePattern ucp:
-                foreach (var fp in ucp.FieldPatterns)
-                    CollectPatternBindingKeysInto(fp, keys);
-                break;
         }
     }
 

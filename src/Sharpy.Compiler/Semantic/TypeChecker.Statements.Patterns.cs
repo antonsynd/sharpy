@@ -569,10 +569,6 @@ internal partial class TypeChecker
                     foreach (var f in prop.Fields)
                         Walk(f.Pattern);
                     break;
-                case UnionCasePattern uc:
-                    foreach (var f in uc.FieldPatterns)
-                        Walk(f);
-                    break;
                 case ListPattern l:
                     foreach (var e in l.Elements)
                         Walk(e);

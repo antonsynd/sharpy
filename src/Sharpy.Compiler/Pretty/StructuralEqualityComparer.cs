@@ -108,7 +108,6 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
             BindingPattern a => BindingPatternEquals(a, (BindingPattern)y),
             LiteralPattern a => Equals(a.Literal, ((LiteralPattern)y).Literal),
             TypePattern a => TypeAnnotationEquals(a.Type, ((TypePattern)y).Type),
-            UnionCasePattern a => UnionCasePatternEquals(a, (UnionCasePattern)y),
             TuplePattern a => NodesEqual(a.Elements, ((TuplePattern)y).Elements),
             ListPattern a => ListPatternEquals(a, (ListPattern)y),
             StarPattern a => NullableNodeEquals(a.Capture, ((StarPattern)y).Capture),
@@ -473,11 +472,6 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
 
     private bool BindingPatternEquals(BindingPattern a, BindingPattern b) =>
         Equals(a.Name, b.Name) && NullableTypeEquals(a.Type, b.Type);
-
-    private bool UnionCasePatternEquals(UnionCasePattern a, UnionCasePattern b) =>
-        a.CaseName == b.CaseName
-        && NullableTypeEquals(a.UnionType, b.UnionType)
-        && NodesEqual(a.FieldPatterns, b.FieldPatterns);
 
     private bool ListPatternEquals(ListPattern a, ListPattern b) =>
         NodesEqual(a.Elements, b.Elements);

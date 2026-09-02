@@ -48,7 +48,6 @@ public class ExhaustivenessHelperTotalityTests
     /// </summary>
     private static readonly HashSet<string> NoCoverage = new()
     {
-        nameof(UnionCasePattern),
         nameof(TuplePattern),
         nameof(RelationalPattern),
         nameof(ListPattern),

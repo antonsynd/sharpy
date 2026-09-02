@@ -519,20 +519,6 @@ for x in items:
     }
 
     [Fact]
-    public void ValidateInvariants_ValidUnionCasePattern_PassesValidation()
-    {
-        // Arrange
-        var pattern = new UnionCasePattern
-        {
-            CaseName = "Ok",
-            FieldPatterns = ImmutableArray.Create<Pattern>(new WildcardPattern())
-        };
-
-        // Act & Assert - should not throw
-        AstValidator.ValidateNode(pattern);
-    }
-
-    [Fact]
     public void ValidateInvariants_ValidTuplePattern_PassesValidation()
     {
         // Arrange
