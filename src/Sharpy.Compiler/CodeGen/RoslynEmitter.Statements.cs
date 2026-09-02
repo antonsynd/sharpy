@@ -8,6 +8,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Sharpy.Compiler.CodeGen.EmittedTreePrecedence;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -558,8 +559,8 @@ internal partial class RoslynEmitter
                     MakeGlobalQualifiedName("System", "Math"),
                     IdentifierName("Abs")))
                 .AddArgumentListArguments(Argument(
-                    BinaryExpression(SyntaxKind.SubtractExpression, actual, expected)));
-            var condition = BinaryExpression(SyntaxKind.LessThanOrEqualExpression, absExpr, delta);
+                    Binary(SyntaxKind.SubtractExpression, actual, expected)));
+            var condition = Binary(SyntaxKind.LessThanOrEqualExpression, absExpr, delta);
             return ExpressionStatement(InvocationExpression(
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
@@ -755,7 +756,7 @@ internal partial class RoslynEmitter
 
         var lhs = GenerateExpression(call.Arguments[0]);
         var rhs = GenerateExpression(call.Arguments[1]);
-        var comparison = BinaryExpression(compareKind, lhs, rhs);
+        var comparison = Binary(compareKind, lhs, rhs);
         var message = LiteralExpression(
             SyntaxKind.StringLiteralExpression,
             Literal($"Expected first argument {opSymbol} second argument"));

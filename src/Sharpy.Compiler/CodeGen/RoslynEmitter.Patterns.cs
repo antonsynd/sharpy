@@ -7,6 +7,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Sharpy.Compiler.CodeGen.EmittedTreePrecedence;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -23,7 +24,7 @@ internal partial class RoslynEmitter
         if (_context.SemanticInfo?.GetMatchScrutineeLowering(matchStmt.Scrutinee) is
             { Kind: MatchScrutineeLoweringKind.CastToNullableObject })
         {
-            scrutineeExpr = CastExpression(
+            scrutineeExpr = Cast(
                 NullableType(PredefinedType(Token(SyntaxKind.ObjectKeyword))),
                 scrutineeExpr);
         }
@@ -304,7 +305,7 @@ internal partial class RoslynEmitter
                             ExpressionSyntax comparison;
                             if (alt is MemberAccessPattern ma)
                             {
-                                comparison = BinaryExpression(
+                                comparison = Binary(
                                     SyntaxKind.EqualsExpression,
                                     IdentifierName(tempVarName),
                                     GenerateMemberAccessValue(ma));
@@ -319,7 +320,7 @@ internal partial class RoslynEmitter
                             {
                                 // For literals in mixed or-patterns, generate equality comparison
                                 var altExpr = GenerateExpression(litPat.Literal);
-                                comparison = BinaryExpression(
+                                comparison = Binary(
                                     SyntaxKind.EqualsExpression,
                                     IdentifierName(tempVarName),
                                     altExpr);
@@ -334,7 +335,7 @@ internal partial class RoslynEmitter
                             }
                             orGuard = orGuard == null
                                 ? comparison
-                                : BinaryExpression(SyntaxKind.LogicalOrExpression, orGuard, comparison);
+                                : Binary(SyntaxKind.LogicalOrExpression, orGuard, comparison);
                         }
                         if (orGuard != null)
                             memberGuards.Add(orGuard);
@@ -417,7 +418,7 @@ internal partial class RoslynEmitter
                     // This handles both top-level and nested (e.g., inside TuplePattern) cases.
                     var tempVarName = $"{PatternMatchTempPrefix}{matchVarCounter++}";
                     var memberValue = GenerateMemberAccessValue(memberAccess);
-                    memberGuards.Add(BinaryExpression(
+                    memberGuards.Add(Binary(
                         SyntaxKind.EqualsExpression,
                         IdentifierName(tempVarName),
                         memberValue));
@@ -745,7 +746,7 @@ internal partial class RoslynEmitter
         {
             combined = combined == null
                 ? guard
-                : BinaryExpression(SyntaxKind.LogicalAndExpression, combined, guard);
+                : Binary(SyntaxKind.LogicalAndExpression, combined, guard);
         }
 
         if (userGuardExpr != null)
@@ -753,7 +754,7 @@ internal partial class RoslynEmitter
             var userGuard = WrapTruthinessIfNeeded(GenerateExpression(userGuardExpr), userGuardExpr);
             combined = combined == null
                 ? userGuard
-                : BinaryExpression(SyntaxKind.LogicalAndExpression, combined, userGuard);
+                : Binary(SyntaxKind.LogicalAndExpression, combined, userGuard);
         }
 
         return combined;
@@ -765,7 +766,7 @@ internal partial class RoslynEmitter
         if (_context.SemanticInfo?.GetMatchScrutineeLowering(matchExpr.Scrutinee) is
             { Kind: MatchScrutineeLoweringKind.CastToNullableObject })
         {
-            scrutineeExpr = CastExpression(
+            scrutineeExpr = Cast(
                 NullableType(PredefinedType(Token(SyntaxKind.ObjectKeyword))),
                 scrutineeExpr);
         }

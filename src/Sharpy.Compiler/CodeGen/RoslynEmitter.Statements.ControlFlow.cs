@@ -9,6 +9,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Sharpy.Compiler.CodeGen.EmittedTreePrecedence;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -258,7 +259,7 @@ internal partial class RoslynEmitter
             && negIsinstCall.Arguments.Length == 2)
         {
             var subject = GenerateExpression(negIsinstCall.Arguments[0]);
-            var isCheck = BinaryExpression(
+            var isCheck = Binary(
                 SyntaxKind.IsExpression, subject, MapTestAssertTypeOperand(negIsinstCall.Arguments[1]));
             return ExpressionStatement(InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, xunitAssert, IdentifierName("False")))

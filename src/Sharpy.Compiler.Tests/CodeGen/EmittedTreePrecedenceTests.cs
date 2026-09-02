@@ -353,6 +353,118 @@ public class EmittedTreePrecedenceTests
         result.Should().BeSameAs(name);
     }
 
+    // --- Factories: each routes its operand slots through Operand() (#1727 sibling seams) ---
+
+    [Fact]
+    [Trait("Category", "Infrastructure")]
+    public void Binary_ParenthesizesLowerPrecedenceLeftOperand()
+    {
+        // Python groups `a & b == c` as (a & b) == c; C# ranks & below ==, so the tree must print it.
+        var c = Name("c");
+        var tree = EmittedTreePrecedence.Binary(SyntaxKind.EqualsExpression,
+            BinaryExpression(SyntaxKind.BitwiseAndExpression, Name("a"), Name("b")), c);
+
+        tree.Left.Should().BeOfType<ParenthesizedExpressionSyntax>();
+        tree.Right.IsIncrementallyIdenticalTo(c).Should().BeTrue("a primary operand passes through untouched");
+        tree.NormalizeWhitespace().ToFullString().Should().Be("(a & b) == c");
+    }
+
+    [Fact]
+    [Trait("Category", "Infrastructure")]
+    public void Member_ParenthesizesCompositeReceiver()
+    {
+        var sum = BinaryExpression(SyntaxKind.AddExpression, Name("xs"), Name("ys"));
+        EmittedTreePrecedence.Member(sum, "Contains").Expression.Should().BeOfType<ParenthesizedExpressionSyntax>();
+        var xs = Name("xs");
+        EmittedTreePrecedence.Member(xs, "Contains").Expression.IsIncrementallyIdenticalTo(xs).Should().BeTrue("an identifier receiver passes through untouched");
+        EmittedTreePrecedence.Member(InvocationExpression(Name("f")), "Count").Expression.Should().BeOfType<InvocationExpressionSyntax>();
+    }
+
+    [Fact]
+    [Trait("Category", "Infrastructure")]
+    public void Cast_ParenthesizesBinaryOperand_AndUnaryMinusUnderAmbiguousTypeOnly()
+    {
+        var sum = BinaryExpression(SyntaxKind.AddExpression, Name("n"), Name("m"));
+        EmittedTreePrecedence.Cast(PredefinedType(Token(SyntaxKind.LongKeyword)), sum)
+            .Expression.Should().BeOfType<ParenthesizedExpressionSyntax>();
+
+        var negative = PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, Name("x"));
+        EmittedTreePrecedence.Cast(IdentifierName("Foo"), negative)
+            .Expression.Should().BeOfType<ParenthesizedExpressionSyntax>("(Foo)-x reads as subtraction");
+        EmittedTreePrecedence.Cast(PredefinedType(Token(SyntaxKind.IntKeyword)), negative)
+            .Expression.IsIncrementallyIdenticalTo(negative).Should().BeTrue("(int)-x is a cast");
+        EmittedTreePrecedence.Cast(NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))), negative)
+            .Expression.IsIncrementallyIdenticalTo(negative).Should().BeTrue("(int?)-x is a cast");
+        EmittedTreePrecedence.Cast(QualifiedName(AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), IdentifierName("Sharpy")), IdentifierName("Foo")), negative)
+            .Expression.Should().BeOfType<ParenthesizedExpressionSyntax>("(global::Sharpy.Foo)-x reads as subtraction (Roslyn ScanCast: names are ambiguous, only predefined/nullable/array/pointer/tuple are not)");
+    }
+
+    [Fact]
+    [Trait("Category", "Infrastructure")]
+    public void PrefixAndPostfix_ParenthesizeCompositeOperands()
+    {
+        var conditional = ConditionalExpression(Name("a"), Name("b"), Name("c"));
+        var comparison = BinaryExpression(SyntaxKind.EqualsExpression, Name("a"), Name("b"));
+
+        EmittedTreePrecedence.Prefix(SyntaxKind.LogicalNotExpression, comparison)
+            .Operand.Should().BeOfType<ParenthesizedExpressionSyntax>();
+        EmittedTreePrecedence.Prefix(SyntaxKind.LogicalNotExpression, InvocationExpression(Name("f")))
+            .Operand.Should().BeOfType<InvocationExpressionSyntax>();
+        EmittedTreePrecedence.Postfix(SyntaxKind.SuppressNullableWarningExpression, conditional)
+            .Operand.Should().BeOfType<ParenthesizedExpressionSyntax>();
+        EmittedTreePrecedence.Postfix(SyntaxKind.SuppressNullableWarningExpression, Name("x"))
+            .Operand.Should().BeOfType<IdentifierNameSyntax>();
+    }
+
+    [Fact]
+    [Trait("Category", "Infrastructure")]
+    public void ConditionalIsPatternAwaitElementAndConditionalAccess_ParenthesizeCompositeOperands()
+    {
+        var conditional = ConditionalExpression(Name("a"), Name("b"), Name("c"));
+        var sum = BinaryExpression(SyntaxKind.AddExpression, Name("a"), Name("b"));
+
+        EmittedTreePrecedence.Conditional(conditional, Name("x"), Name("y"))
+            .Condition.Should().BeOfType<ParenthesizedExpressionSyntax>();
+        EmittedTreePrecedence.Conditional(sum, Name("x"), Name("y"))
+            .Condition.IsIncrementallyIdenticalTo(sum).Should().BeTrue("a binary test binds tighter than ?:");
+        EmittedTreePrecedence.IsPattern(conditional, ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression)))
+            .Expression.Should().BeOfType<ParenthesizedExpressionSyntax>();
+        EmittedTreePrecedence.IsPattern(sum, ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression)))
+            .Expression.IsIncrementallyIdenticalTo(sum).Should().BeTrue("additive binds tighter than `is`");
+        EmittedTreePrecedence.Await(conditional).Expression.Should().BeOfType<ParenthesizedExpressionSyntax>();
+        EmittedTreePrecedence.Element(sum).Expression.Should().BeOfType<ParenthesizedExpressionSyntax>();
+        EmittedTreePrecedence.ConditionalAccess(conditional, MemberBindingExpression(IdentifierName("m")))
+            .Expression.Should().BeOfType<ParenthesizedExpressionSyntax>();
+    }
+
+    // --- Violations walkers added for the postfix and switch-governing slots ---
+
+    [Fact]
+    [Trait("Category", "Infrastructure")]
+    public void ConditionalUnderPostfixNullForgiving_Flagged()
+    {
+        var tree = PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression,
+            ConditionalExpression(Name("a"), Name("b"), Name("c")));
+
+        var violations = EmittedTreePrecedence.Violations(WrapInCompilationUnit(tree));
+
+        violations.Should().ContainSingle()
+            .Which.Slot.Should().Be(OperandSlot.PostfixOperand);
+    }
+
+    [Fact]
+    [Trait("Category", "Infrastructure")]
+    public void ConditionalUnderSwitchGoverning_Flagged()
+    {
+        var tree = SwitchExpression(ConditionalExpression(Name("a"), Name("b"), Name("c")))
+            .WithArms(SingletonSeparatedList(SwitchExpressionArm(DiscardPattern(), Name("d"))));
+
+        var violations = EmittedTreePrecedence.Violations(WrapInCompilationUnit(tree));
+
+        violations.Should().ContainSingle()
+            .Which.Slot.Should().Be(OperandSlot.SwitchGoverning);
+    }
+
     // --- PrecedenceOf ---
 
     [Theory]
@@ -417,7 +529,7 @@ public class EmittedTreePrecedenceTests
         var text = tree.NormalizeWhitespace().ToFullString();
         var reparsed = SyntaxFactory.ParseExpression(text);
 
-        bool sameShape = KindShapeMatches(tree, reparsed);
+        bool sameShape = PrecedenceCrossCheck.KindShapeMatches(tree, reparsed);
 
         if (!hasViolations)
         {
@@ -516,35 +628,79 @@ public class EmittedTreePrecedenceTests
                     BinaryExpression(SyntaxKind.LessThanExpression, IdentifierName("a"), IdentifierName("b")))),
             false
         };
-    }
 
-    private static bool KindShapeMatches(SyntaxNode original, SyntaxNode reparsed)
-    {
-        var origKind = NormalizeKind(original.Kind());
-        var reparsedKind = NormalizeKind(reparsed.Kind());
-
-        if (origKind != reparsedKind)
-            return false;
-
-        var origChildren = original.ChildNodes().OfType<ExpressionSyntax>().ToList();
-        var reparsedChildren = reparsed.ChildNodes().OfType<ExpressionSyntax>().ToList();
-
-        if (origChildren.Count != reparsedChildren.Count)
-            return false;
-
-        for (int i = 0; i < origChildren.Count; i++)
+        // Bitwise-vs-equality: Python groups `a & b == c` as (a & b) == c, C# as a & (b == c).
+        yield return new object[]
         {
-            if (!KindShapeMatches(origChildren[i], reparsedChildren[i]))
-                return false;
-        }
+            "bitwise-and-under-equals",
+            BinaryExpression(
+                SyntaxKind.EqualsExpression,
+                BinaryExpression(SyntaxKind.BitwiseAndExpression, IdentifierName("a"), IdentifierName("b")),
+                IdentifierName("c")),
+            true
+        };
 
-        return true;
-    }
+        // Cast disambiguation (§12.9.7 / Roslyn ScanCast): which cast types are "must be a type".
+        yield return new object[]
+        {
+            "unary-minus-under-plain-name-cast",
+            CastExpression(IdentifierName("Foo"), PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, IdentifierName("x"))),
+            true
+        };
+        yield return new object[]
+        {
+            "unary-minus-under-nullable-int-cast",
+            CastExpression(NullableType(PredefinedType(Token(SyntaxKind.IntKeyword))),
+                PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))),
+            false
+        };
+        yield return new object[]
+        {
+            "unary-minus-under-nullable-name-cast",
+            CastExpression(NullableType(IdentifierName("Foo")),
+                PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, IdentifierName("x"))),
+            false
+        };
+        yield return new object[]
+        {
+            "unary-minus-under-array-cast",
+            CastExpression(ArrayType(PredefinedType(Token(SyntaxKind.IntKeyword)))
+                    .WithRankSpecifiers(SingletonList(ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(OmittedArraySizeExpression())))),
+                PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, IdentifierName("x"))),
+            false
+        };
+        yield return new object[]
+        {
+            // Roslyn refuted the first draft's assumption that an alias-qualified name is "must be a
+            // type": `(global::Sharpy.Foo)-x` reparses as a subtraction, like every other name form.
+            "unary-minus-under-alias-qualified-cast",
+            CastExpression(QualifiedName(AliasQualifiedName(IdentifierName(Token(SyntaxKind.GlobalKeyword)), IdentifierName("Sharpy")), IdentifierName("Foo")),
+                PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, IdentifierName("x"))),
+            true
+        };
+        yield return new object[]
+        {
+            "unary-minus-under-qualified-name-cast",
+            CastExpression(QualifiedName(IdentifierName("A"), IdentifierName("B")),
+                PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, IdentifierName("x"))),
+            true
+        };
 
-    private static SyntaxKind NormalizeKind(SyntaxKind kind)
-    {
-        // QualifiedName ↔ MemberAccess benign equivalence
-        return kind == SyntaxKind.QualifiedName ? SyntaxKind.SimpleMemberAccessExpression : kind;
+        // Postfix and switch-governing slots.
+        yield return new object[]
+        {
+            "conditional-under-null-forgiving",
+            PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression,
+                ConditionalExpression(IdentifierName("a"), IdentifierName("b"), IdentifierName("c"))),
+            true
+        };
+        yield return new object[]
+        {
+            "conditional-under-switch-governing",
+            SwitchExpression(ConditionalExpression(IdentifierName("a"), IdentifierName("b"), IdentifierName("c")))
+                .WithArms(SingletonSeparatedList(SwitchExpressionArm(DiscardPattern(), IdentifierName("d")))),
+            true
+        };
     }
 
     private static SyntaxNode WrapInCompilationUnit(ExpressionSyntax expr)

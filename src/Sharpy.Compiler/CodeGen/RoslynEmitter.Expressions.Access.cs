@@ -8,6 +8,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Sharpy.Compiler.CodeGen.EmittedTreePrecedence;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -201,7 +202,7 @@ internal partial class RoslynEmitter
                 && _context.SemanticInfo?.GetTypeTestLowering(call.Arguments[1]) is { } typeTest)
             {
                 var value = GenerateExpression(call.Arguments[0]);
-                return BinaryExpression(SyntaxKind.IsExpression, value, MapTypeTestTarget(typeTest));
+                return Binary(SyntaxKind.IsExpression, value, MapTypeTestTarget(typeTest));
             }
 
             // Check if this is a type instantiation (calling a class or struct constructor)
@@ -267,9 +268,7 @@ internal partial class RoslynEmitter
                 if (funcName.Name == "len" && call.Arguments.Length == 1
                     && GetExpressionSemanticType(call.Arguments[0]) == SemanticType.Str)
                 {
-                    return MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        allArgs[0].Expression,
-                        IdentifierName("Length"));
+                    return Member(allArgs[0].Expression, "Length");
                 }
 
                 // Use explicit AliasQualifiedName to handle all expression contexts (f-strings, etc.)
@@ -603,13 +602,13 @@ internal partial class RoslynEmitter
                 if (binaryKind != null && call.Arguments.Length == 1)
                 {
                     var arg = GenerateExpression(call.Arguments[0]);
-                    return BinaryExpression(binaryKind.Value, obj, arg);
+                    return Binary(binaryKind.Value, obj, arg);
                 }
 
                 var unaryKind = DunderMapping.TryGetUnaryExpressionKind(memberAccess.Member);
                 if (unaryKind != null && call.Arguments.Length == 0)
                 {
-                    return PrefixUnaryExpression(unaryKind.Value, obj);
+                    return Prefix(unaryKind.Value, obj);
                 }
             }
 
@@ -673,7 +672,7 @@ internal partial class RoslynEmitter
             if (defaultMethodInterface != null)
             {
                 var castExpr = ParenthesizedExpression(
-                    CastExpression(IdentifierName(defaultMethodInterface), obj));
+                    Cast(IdentifierName(defaultMethodInterface), obj));
                 var castMethodAccess = MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
                     castExpr,
@@ -1359,9 +1358,7 @@ internal partial class RoslynEmitter
             // safeObj.IsSome ? safeObj.Unwrap().Method(args) : Optional<T>.None
             var methodCall = InvocationExpression(
                 MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            safeObj, IdentifierName(ProtocolConstants.Unwrap)))
+                    InvocationExpression(Member(safeObj, ProtocolConstants.Unwrap))
                         .WithArgumentList(ArgumentList()),
                     IdentifierName(methodName)))
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
@@ -1369,7 +1366,7 @@ internal partial class RoslynEmitter
             ExpressionSyntax cond = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                 ParenthesizedExpression(safeObj), IdentifierName("IsSome"));
             if (capture != null)
-                cond = BinaryExpression(SyntaxKind.LogicalAndExpression, capture, cond);
+                cond = Binary(SyntaxKind.LogicalAndExpression, capture, cond);
 
             // Determine the Optional type and whether to wrap the true branch.
             // Case 1: callType is OptionalType — the method itself returns Optional<T>
@@ -1394,7 +1391,7 @@ internal partial class RoslynEmitter
                 trueBranch = WrapInOptionalSome(methodCall, objOptType);
                 falseExpr = GenerateOptionalNone(objOptType);
             }
-            return ConditionalExpression(cond, trueBranch, falseExpr);
+            return Conditional(cond, trueBranch, falseExpr);
         }
 
         // Generate: obj?.Method(args)
@@ -1404,7 +1401,7 @@ internal partial class RoslynEmitter
         var invocation = InvocationExpression(memberBinding)
             .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
 
-        return ConditionalAccessExpression(obj, invocation);
+        return ConditionalAccess(obj, invocation);
     }
 
     /// <summary>
@@ -1496,7 +1493,7 @@ internal partial class RoslynEmitter
                         IdentifierName("Sharpy")),
                     GenericName("IReverseEnumerable")
                         .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(typeArg))));
-                var castExpr = CastExpression(iReverseType, allArgs[0].Expression);
+                var castExpr = Cast(iReverseType, allArgs[0].Expression);
                 allArgs[0] = Argument(castExpr);
             }
         }
@@ -1606,7 +1603,7 @@ internal partial class RoslynEmitter
             if (memberAccess.Member == "value")
             {
                 // enum_instance.value -> (int)enum_instance
-                return CastExpression(
+                return Cast(
                     PredefinedType(Token(SyntaxKind.IntKeyword)),
                     obj);
             }
@@ -1663,12 +1660,10 @@ internal partial class RoslynEmitter
                 ExpressionSyntax cond = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                     ParenthesizedExpression(safeObj), IdentifierName("IsSome"));
                 if (capture != null)
-                    cond = BinaryExpression(SyntaxKind.LogicalAndExpression, capture, cond);
+                    cond = Binary(SyntaxKind.LogicalAndExpression, capture, cond);
 
                 var trueExpr = (ExpressionSyntax)MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            safeObj, IdentifierName(ProtocolConstants.Unwrap)))
+                    InvocationExpression(Member(safeObj, ProtocolConstants.Unwrap))
                         .WithArgumentList(ArgumentList()),
                     member);
 
@@ -1690,12 +1685,12 @@ internal partial class RoslynEmitter
                     wrappedTrue = WrapInOptionalSome(trueExpr, propObjOptType);
                     falseExpr = GenerateOptionalNone(propObjOptType);
                 }
-                result = ConditionalExpression(cond, wrappedTrue, falseExpr);
+                result = Conditional(cond, wrappedTrue, falseExpr);
             }
             else
             {
                 // obj?.member
-                result = ConditionalAccessExpression(obj,
+                result = ConditionalAccess(obj,
                     MemberBindingExpression(member));
             }
         }
@@ -2016,7 +2011,7 @@ internal partial class RoslynEmitter
             var args = new List<ArgumentSyntax>();
             foreach (var elem in tuple.Elements)
                 args.Add(Argument(GenerateExpression(elem)));
-            return ApplyNarrowedReadLowering(indexAccess, ElementAccessExpression(objExprSpread)
+            return ApplyNarrowedReadLowering(indexAccess, Element(objExprSpread)
                 .AddArgumentListArguments(args.ToArray()));
         }
 
@@ -2046,13 +2041,10 @@ internal partial class RoslynEmitter
             // Provably non-negative list access: xs[i] -> xs.GetItemUnchecked(i), skipping the
             // negative-index Normalize the ordinary indexer runs (#1052). The TypeChecker proved
             // the index is >= 0; bounds are still enforced by GetItemUnchecked.
-            IndexAccessLowering.NativeUnchecked => InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        objExpr,
-                        IdentifierName("GetItemUnchecked")))
+            IndexAccessLowering.NativeUnchecked => InvocationExpression(Member(objExpr, "GetItemUnchecked"))
                 .AddArgumentListArguments(Argument(index)),
 
-            _ => ElementAccessExpression(objExpr)
+            _ => Element(objExpr)
                 .AddArgumentListArguments(Argument(index))
         };
 
@@ -2091,10 +2083,7 @@ internal partial class RoslynEmitter
             // NdArray slicing is per-axis: a[1:4] → a.Slice(new SliceSpec((int?)1, (int?)4)).
             // Slice() requires one spec per dimension, so a single-axis slice of a higher-rank
             // array throws IndexError at runtime (unlike numpy, which pads the trailing axes).
-            SliceLoweringKind.NdArray => InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        obj,
-                        IdentifierName("Slice")))
+            SliceLoweringKind.NdArray => InvocationExpression(Member(obj, "Slice"))
                 .AddArgumentListArguments(Argument(
                     GenerateSliceSpec(sliceAccess.Start, sliceAccess.Stop, sliceAccess.Step))),
 
@@ -2105,7 +2094,7 @@ internal partial class RoslynEmitter
 
             // #1610: user __getitem__(slice) → obj[new Slice(start, stop, step)]
             SliceLoweringKind.UserProtocol =>
-                ElementAccessExpression(obj)
+                Element(obj)
                 .AddArgumentListArguments(Argument(
                     GenerateNewSlice(sliceAccess.Start, sliceAccess.Stop, sliceAccess.Step))),
 
@@ -2152,8 +2141,7 @@ internal partial class RoslynEmitter
             ?? throw new InvalidOperationException("Tuple slice lowering has no element indices");
 
         var args = indices.Select(i =>
-            Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                obj, IdentifierName($"Item{i + 1}")))).ToArray();
+            Argument(Member(obj, $"Item{i + 1}"))).ToArray();
 
         return InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
@@ -2169,13 +2157,13 @@ internal partial class RoslynEmitter
     {
         var nullableInt = NullableType(PredefinedType(Token(SyntaxKind.IntKeyword)));
         var start = startExpr != null
-            ? (ExpressionSyntax)CastExpression(nullableInt, GenerateExpression(startExpr))
+            ? (ExpressionSyntax)Cast(nullableInt, GenerateExpression(startExpr))
             : LiteralExpression(SyntaxKind.NullLiteralExpression);
         var stop = stopExpr != null
-            ? (ExpressionSyntax)CastExpression(nullableInt, GenerateExpression(stopExpr))
+            ? (ExpressionSyntax)Cast(nullableInt, GenerateExpression(stopExpr))
             : LiteralExpression(SyntaxKind.NullLiteralExpression);
         var step = stepExpr != null
-            ? (ExpressionSyntax)CastExpression(nullableInt, GenerateExpression(stepExpr))
+            ? (ExpressionSyntax)Cast(nullableInt, GenerateExpression(stepExpr))
             : LiteralExpression(SyntaxKind.NullLiteralExpression);
 
         return ObjectCreationExpression(MakeGlobalQualifiedName("Sharpy", "Slice"))
@@ -2212,7 +2200,7 @@ internal partial class RoslynEmitter
                     foreach (var dim in multiAxis.Dimensions)
                         args.Add(Argument(GenerateExpression(dim.Index!)));
                     return ApplyNarrowedReadLowering(multiAxis,
-                        ElementAccessExpression(obj)
+                        Element(obj)
                             .AddArgumentListArguments(args.ToArray()));
                 }
             case MultiAxisAccessKind.SliceCall:
@@ -2244,10 +2232,7 @@ internal partial class RoslynEmitter
         }
 
         return ApplyNarrowedReadLowering(multiAxis,
-            InvocationExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    obj,
-                    IdentifierName("Slice")))
+            InvocationExpression(Member(obj, "Slice"))
                 .AddArgumentListArguments(sliceArgs.ToArray()));
     }
 
@@ -2272,16 +2257,16 @@ internal partial class RoslynEmitter
         var args = new List<ArgumentSyntax>();
 
         args.Add(Argument(start != null
-            ? CastExpression(nullableInt, GenerateExpression(start))
+            ? Cast(nullableInt, GenerateExpression(start))
             : LiteralExpression(SyntaxKind.NullLiteralExpression)));
 
         args.Add(Argument(stop != null
-            ? CastExpression(nullableInt, GenerateExpression(stop))
+            ? Cast(nullableInt, GenerateExpression(stop))
             : LiteralExpression(SyntaxKind.NullLiteralExpression)));
 
         if (step != null)
         {
-            args.Add(Argument(CastExpression(nullableInt, GenerateExpression(step))));
+            args.Add(Argument(Cast(nullableInt, GenerateExpression(step))));
         }
 
         return ObjectCreationExpression(

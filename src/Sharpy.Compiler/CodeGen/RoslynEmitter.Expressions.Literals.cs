@@ -8,6 +8,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Sharpy.Compiler.CodeGen.EmittedTreePrecedence;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -381,7 +382,7 @@ internal partial class RoslynEmitter
                 else if (!string.IsNullOrEmpty(part.FormatSpec) && IsPercentFormat(part.FormatSpec, out var percentPrecision))
                 {
                     // Generate: value * 100
-                    var multipliedExpr = BinaryExpression(
+                    var multipliedExpr = Binary(
                         SyntaxKind.MultiplyExpression,
                         GenerateExpression(part.Expression),
                         LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(100)));
@@ -447,9 +448,7 @@ internal partial class RoslynEmitter
                             else
                             {
                                 // Right-align (default): PadLeft
-                                formatted = InvocationExpression(
-                                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                        formatted, IdentifierName("PadLeft")))
+                                formatted = InvocationExpression(Member(formatted, "PadLeft"))
                                     .WithArgumentList(ArgumentList(SeparatedList(new[]
                                     {
                                         Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression,
@@ -466,9 +465,7 @@ internal partial class RoslynEmitter
                         // Underscore grouping: f"{x:_}" ->
                         //   $"{x.ToString("N0", System.Globalization.CultureInfo.InvariantCulture).Replace(",", "_")}"
                         var innerExpr = GenerateExpression(part.Expression);
-                        var toStringCall = InvocationExpression(
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                innerExpr, IdentifierName("ToString")))
+                        var toStringCall = InvocationExpression(Member(innerExpr, "ToString"))
                             .WithArgumentList(ArgumentList(SeparatedList(new[]
                             {
                                 Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
@@ -481,9 +478,7 @@ internal partial class RoslynEmitter
                                         IdentifierName("CultureInfo")),
                                     IdentifierName("InvariantCulture")))
                             })));
-                        var replaceCall = InvocationExpression(
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                toStringCall, IdentifierName("Replace")))
+                        var replaceCall = InvocationExpression(Member(toStringCall, "Replace"))
                             .WithArgumentList(ArgumentList(SeparatedList(new[]
                             {
                                 Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
@@ -501,18 +496,14 @@ internal partial class RoslynEmitter
                         ExpressionSyntax toStringExpr;
                         if (!string.IsNullOrEmpty(result.FormatString))
                         {
-                            toStringExpr = InvocationExpression(
-                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                    innerExpr, IdentifierName("ToString")))
+                            toStringExpr = InvocationExpression(Member(innerExpr, "ToString"))
                                 .WithArgumentList(ArgumentList(SingletonSeparatedList(
                                     Argument(LiteralExpression(SyntaxKind.StringLiteralExpression,
                                         Literal(result.FormatString))))));
                         }
                         else
                         {
-                            toStringExpr = InvocationExpression(
-                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                    innerExpr, IdentifierName("ToString")))
+                            toStringExpr = InvocationExpression(Member(innerExpr, "ToString"))
                                 .WithArgumentList(ArgumentList());
                         }
                         var alignCall = InvocationExpression(
@@ -983,7 +974,7 @@ internal partial class RoslynEmitter
                 var exprType = GetExpressionSemanticType(part.Expression);
                 if (exprType is BuiltinType { IsValueType: true })
                 {
-                    valueExpr = CastExpression(
+                    valueExpr = Cast(
                         PredefinedType(Token(SyntaxKind.ObjectKeyword)),
                         valueExpr);
                 }

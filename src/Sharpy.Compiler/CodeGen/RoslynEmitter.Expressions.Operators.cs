@@ -7,6 +7,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Sharpy.Compiler.CodeGen.EmittedTreePrecedence;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -94,11 +95,11 @@ internal partial class RoslynEmitter
                 if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
                     == OperatorLoweringKind.TrueDivisionCastLeft)
                 {
-                    return BinaryExpression(SyntaxKind.DivideExpression,
+                    return Binary(SyntaxKind.DivideExpression,
                         CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
                         right);
                 }
-                return BinaryExpression(SyntaxKind.DivideExpression, left, right);
+                return Binary(SyntaxKind.DivideExpression, left, right);
 
             case BinaryOperator.FloorDivide:
                 // x // y → floor division with Python semantics (toward negative infinity).
@@ -130,20 +131,15 @@ internal partial class RoslynEmitter
                 return GenerateMatMulCall(left, right);
 
             case BinaryOperator.In:
-                // x in y → y.Contains(x)
-                return InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        right,
-                        IdentifierName("Contains")))
+                // x in y → y.Contains(x); the container is a receiver, so a composite (`xs + ys`,
+                // `d1 | d2`) is parenthesized by the seam (#1727 sibling cell).
+                return InvocationExpression(Member(right, "Contains"))
                     .AddArgumentListArguments(Argument(left));
 
             case BinaryOperator.NotIn:
                 // x not in y → !y.Contains(x)
-                return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
-                    InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            right,
-                            IdentifierName("Contains")))
+                return Prefix(SyntaxKind.LogicalNotExpression,
+                    InvocationExpression(Member(right, "Contains"))
                         .AddArgumentListArguments(Argument(left)));
 
             case BinaryOperator.Is:
@@ -152,12 +148,9 @@ internal partial class RoslynEmitter
                     if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
                         == OperatorLoweringKind.OptionalNoneTest)
                     {
-                        return MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            left,
-                            IdentifierName("IsNone"));
+                        return Member(left, "IsNone");
                     }
-                    return BinaryExpression(SyntaxKind.EqualsExpression,
+                    return Binary(SyntaxKind.EqualsExpression,
                         left,
                         LiteralExpression(SyntaxKind.NullLiteralExpression));
                 }
@@ -175,16 +168,13 @@ internal partial class RoslynEmitter
                     if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
                         == OperatorLoweringKind.OptionalNoneTest)
                     {
-                        return MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            left,
-                            IdentifierName("IsSome"));
+                        return Member(left, "IsSome");
                     }
-                    return BinaryExpression(SyntaxKind.NotEqualsExpression,
+                    return Binary(SyntaxKind.NotEqualsExpression,
                         left,
                         LiteralExpression(SyntaxKind.NullLiteralExpression));
                 }
-                return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                return Prefix(SyntaxKind.LogicalNotExpression,
                     InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             PredefinedType(Token(SyntaxKind.ObjectKeyword)),
@@ -212,7 +202,7 @@ internal partial class RoslynEmitter
                                 ParenthesizedExpression(left), IdentifierName("UnwrapOr")))
                             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(right))));
                     }
-                    return BinaryExpression(SyntaxKind.CoalesceExpression, left, right);
+                    return Binary(SyntaxKind.CoalesceExpression, left, right);
                 }
 
             case BinaryOperator.Multiply:
@@ -236,7 +226,7 @@ internal partial class RoslynEmitter
             var logicalKind = binOp.Operator == BinaryOperator.And
                 ? SyntaxKind.LogicalAndExpression
                 : SyntaxKind.LogicalOrExpression;
-            return BinaryExpression(logicalKind, wrappedLeft, wrappedRight);
+            return Binary(logicalKind, wrappedLeft, wrappedRight);
         }
 
         // Standard binary operators
@@ -293,7 +283,9 @@ internal partial class RoslynEmitter
                 ParenthesizedExpression(right));
         }
 
-        return BinaryExpression(kind, left, right);
+        // The parser groups by Python precedence; C# ranks `&`/`|`/`^` below `==` where Python ranks
+        // them above, so `a & b == c` must print as `(a & b) == c` — the seam decides per edge.
+        return Binary(kind, left, right);
     }
 
     /// <summary>
@@ -322,10 +314,7 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateMatMulCall(ExpressionSyntax left, ExpressionSyntax right)
     {
         var methodName = DunderMapping.ResolveCSharpName(DunderNames.MatMul) ?? "MatMul";
-        return InvocationExpression(
-            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                left,
-                IdentifierName(methodName)))
+        return InvocationExpression(Member(left, methodName))
             .AddArgumentListArguments(Argument(right));
     }
 
@@ -458,9 +447,7 @@ internal partial class RoslynEmitter
         if (unaryOp.Operator == UnaryOperator.Not)
         {
             var wrapped = WrapTruthinessIfNeeded(operand, unaryOp.Operand);
-            if (wrapped is BinaryExpressionSyntax)
-                wrapped = ParenthesizedExpression(wrapped);
-            return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, wrapped);
+            return Prefix(SyntaxKind.LogicalNotExpression, wrapped);
         }
 
         var kind = unaryOp.Operator switch
@@ -478,7 +465,7 @@ internal partial class RoslynEmitter
                 DiagnosticCodes.CodeGen.UnsupportedOperator, unaryOp.LineStart, unaryOp.ColumnStart);
         }
 
-        return PrefixUnaryExpression(kind, operand);
+        return Prefix(kind, operand);
     }
 
     private static bool IsComparisonSyntaxKind(SyntaxKind kind)
@@ -526,11 +513,11 @@ internal partial class RoslynEmitter
                     LiteralExpression(SyntaxKind.NullLiteralExpression));
                 if (kind == SyntaxKind.NotEqualsExpression)
                     nullPattern = UnaryPattern(Token(SyntaxKind.NotKeyword), nullPattern);
-                return IsPatternExpression(operand, nullPattern);
+                return IsPattern(operand, nullPattern);
             }
 
             if (equalityLowering is BinaryOpLowering.NativeOperator or BinaryOpLowering.NoneCheck)
-                return BinaryExpression(kind, left, right);
+                return Binary(kind, left, right);
 
             ExpressionSyntax equalsInvocation;
             switch (equalityLowering)
@@ -555,10 +542,7 @@ internal partial class RoslynEmitter
                         break;
                     }
                 case BinaryOpLowering.EqualsCallInstance:
-                    equalsInvocation = InvocationExpression(
-                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                left,
-                                IdentifierName("Equals")))
+                    equalsInvocation = InvocationExpression(Member(left, "Equals"))
                         .AddArgumentListArguments(Argument(right));
                     break;
                 case BinaryOpLowering.EqualsCallStatic:
@@ -601,17 +585,14 @@ internal partial class RoslynEmitter
                 }
             case OperatorLoweringKind.TypeParameterCompareTo:
                 {
-                    var compareToCall = InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            left,
-                            IdentifierName("CompareTo")))
+                    var compareToCall = InvocationExpression(Member(left, "CompareTo"))
                         .AddArgumentListArguments(Argument(right));
                     return BinaryExpression(kind,
                         compareToCall,
                         LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)));
                 }
             default:
-                return BinaryExpression(kind, left, right);
+                return Binary(kind, left, right);
         }
     }
 
@@ -677,7 +658,7 @@ internal partial class RoslynEmitter
                 // This evaluates expr once, binds to __cmp_N, and returns the value
                 right = ParenthesizedExpression(
                     ConditionalExpression(
-                        IsPatternExpression(
+                        IsPattern(
                             rightExpr,
                             VarPattern(SingleVariableDesignation(Identifier(tempNames[i + 1]!)))),
                         IdentifierName(tempNames[i + 1]!),
@@ -749,7 +730,7 @@ internal partial class RoslynEmitter
         var whenTrue = GenerateExpression(cond.ThenValue);
         var whenFalse = GenerateExpression(cond.ElseValue);
 
-        return ConditionalExpression(test, whenTrue, whenFalse);
+        return Conditional(test, whenTrue, whenFalse);
     }
 
     private ExpressionSyntax GenerateTypeCoercion(TypeCoercion coercion)
@@ -831,7 +812,7 @@ internal partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName(tempName)))));
 
             return ConditionalExpression(
-                IsPatternExpression(
+                IsPattern(
                     value,
                     DeclarationPattern(
                         baseTypeSyntax,
@@ -853,7 +834,7 @@ internal partial class RoslynEmitter
             }
 
             var targetType = MapClassifiedTypeOperand(coercion.TargetType);
-            return CastExpression(targetType, value);
+            return Cast(targetType, value);
         }
     }
 
@@ -919,7 +900,7 @@ internal partial class RoslynEmitter
         var value = GenerateExpression(check.Value);
         var checkType = MapClassifiedTypeOperand(check.CheckType);
 
-        return BinaryExpression(
+        return Binary(
             SyntaxKind.IsExpression,
             value,
             checkType);

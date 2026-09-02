@@ -8,6 +8,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Sharpy.Compiler.CodeGen.EmittedTreePrecedence;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -865,7 +866,7 @@ internal partial class RoslynEmitter
                 ParenthesizedExpression(right));
         }
 
-        return BinaryExpression(kind, left, right);
+        return Binary(kind, left, right);
     }
 
     /// <summary>
@@ -878,12 +879,12 @@ internal partial class RoslynEmitter
             && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind
                 == OperatorLoweringKind.OptionalCoalesceBothOptional)
         {
-            return ConditionalExpression(
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, left, IdentifierName("IsSome")),
+            return Conditional(
+                Member(left, "IsSome"),
                 left,
                 right);
         }
-        return BinaryExpression(SyntaxKind.CoalesceExpression, left, right);
+        return Binary(SyntaxKind.CoalesceExpression, left, right);
     }
 
     /// <summary>
@@ -896,11 +897,11 @@ internal partial class RoslynEmitter
             && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind
                 == OperatorLoweringKind.TrueDivisionCastLeft)
         {
-            return BinaryExpression(SyntaxKind.DivideExpression,
+            return Binary(SyntaxKind.DivideExpression,
                 CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
                 right);
         }
-        return BinaryExpression(SyntaxKind.DivideExpression, left, right);
+        return Binary(SyntaxKind.DivideExpression, left, right);
     }
 
     private StatementSyntax GenerateVariableDeclaration(VariableDeclaration varDecl)

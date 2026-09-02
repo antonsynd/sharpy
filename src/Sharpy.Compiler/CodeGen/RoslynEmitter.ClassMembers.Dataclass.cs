@@ -4,6 +4,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Sharpy.Compiler.CodeGen.EmittedTreePrecedence;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -294,7 +295,7 @@ internal partial class RoslynEmitter
         var expr = GenerateSingleFieldEquals(fields[0]);
         for (int i = 1; i < fields.Count; i++)
         {
-            expr = BinaryExpression(
+            expr = Binary(
                 SyntaxKind.LogicalAndExpression,
                 expr,
                 GenerateSingleFieldEquals(fields[i]));

@@ -7,6 +7,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Sharpy.Compiler.CodeGen.EmittedTreePrecedence;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -85,14 +86,14 @@ internal partial class RoslynEmitter
 
             var count = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
-                ParenthesizedExpression(CastExpression(
+                ParenthesizedExpression(Cast(
                     MakeGlobalQualifiedName("Sharpy", "ISized"),
                     GenerateExpression(forClause.Iterator))),
                 IdentifierName("Count"));
 
             product = product is null
                 ? count
-                : BinaryExpression(SyntaxKind.MultiplyExpression, product, count);
+                : Binary(SyntaxKind.MultiplyExpression, product, count);
         }
 
         return ArgumentList(SingletonSeparatedList(Argument(product!)));

@@ -527,7 +527,7 @@ internal partial class RoslynEmitter
             case NarrowedReadKind.NullForgiving:
                 // Reference-type nullable (string?, MyClass?, etc.) → !
                 // C# only auto-narrows locals after null checks, not fields.
-                return PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression, expr);
+                return Postfix(SyntaxKind.SuppressNullableWarningExpression, expr);
 
             case NarrowedReadKind.UnwrapOptional:
                 // Optional<T> → .Unwrap()
@@ -553,9 +553,9 @@ internal partial class RoslynEmitter
                     // this read — which also proves it is non-null. Assert that to C#'s nullable flow
                     // with `!` so unboxing casts over nullable receivers (e.g. `(long)obj` where obj
                     // is object?) compile warning-clean (CS8605).
-                    return ParenthesizedExpression(CastExpression(
+                    return ParenthesizedExpression(Cast(
                         castType,
-                        PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression, expr)));
+                        Postfix(SyntaxKind.SuppressNullableWarningExpression, expr)));
                 }
 
             default:
@@ -1001,6 +1001,6 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateAwaitExpression(Parser.Ast.AwaitExpression awaitExpr)
     {
         var operand = GenerateExpression(awaitExpr.Operand);
-        return SyntaxFactory.AwaitExpression(operand);
+        return Await(operand);
     }
 }

@@ -6,6 +6,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Sharpy.Compiler.CodeGen.EmittedTreePrecedence;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -267,7 +268,7 @@ internal partial class RoslynEmitter
         var captureTarget = generated is ConditionalExpressionSyntax
             ? ParenthesizedExpression(generated)
             : generated;
-        var capture = IsPatternExpression(
+        var capture = IsPattern(
             captureTarget,
             VarPattern(SingleVariableDesignation(EscapedIdentifier(tempName))));
         return (tempIdent, capture);
@@ -394,7 +395,7 @@ internal partial class RoslynEmitter
         if (!IsMethodGroup(sourceExpr))
             return generated;
 
-        return PostfixUnaryExpression(
+        return Postfix(
             SyntaxKind.SuppressNullableWarningExpression, generated);
     }
 
@@ -805,7 +806,7 @@ internal partial class RoslynEmitter
                     // When the callee FunctionSymbol is unavailable (e.g., CLR constructors
                     // without resolved parameter metadata), apply ! to method group keyword
                     // args to suppress potential CS8622 NRT nullability mismatch warnings.
-                    kwargValue = PostfixUnaryExpression(
+                    kwargValue = Postfix(
                         SyntaxKind.SuppressNullableWarningExpression, kwargValue);
                 }
                 return Argument(kwargValue)
@@ -1011,9 +1012,7 @@ internal partial class RoslynEmitter
     {
         if (existing == null)
             return next;
-        return InvocationExpression(
-            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                existing, IdentifierName("Concat")))
+        return InvocationExpression(Member(existing, "Concat"))
             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(next))));
     }
 
@@ -1040,9 +1039,7 @@ internal partial class RoslynEmitter
         switch (projection.Kind)
         {
             case IterableProjectionKind.DictKeys:
-                return InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        generated, IdentifierName("Keys")));
+                return InvocationExpression(Member(generated, "Keys"));
 
             case IterableProjectionKind.TupleToArray:
                 return GenerateTupleElementArray(projection, generated);
