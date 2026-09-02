@@ -112,8 +112,8 @@ def main() -> None:
 
     # ── __bool__ class (BoolConvertible) — expected from value-position twin ──
     flag = True
-    tv: TruthyVal = TruthyVal()
-    fv: FalsyVal = FalsyVal()
+    tv: BoolFlag = BoolFlag(True)
+    fv: BoolFlag = BoolFlag(False)
     if tv if flag else fv:
         print("bool-conv-true-branch")
     flag = False
@@ -122,10 +122,11 @@ def main() -> None:
     else:
         print("bool-conv-false-falsy")
 
-class TruthyVal:
-    def __bool__(self) -> bool:
-        return True
+class BoolFlag:
+    _val: bool
 
-class FalsyVal:
+    def __init__(self, v: bool) -> None:
+        self._val = v
+
     def __bool__(self) -> bool:
-        return False
+        return self._val
