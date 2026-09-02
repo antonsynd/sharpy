@@ -1,3 +1,7 @@
+using System.Text.RegularExpressions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -25,11 +29,21 @@ public class DispatchSiteInventoryTests
     public DispatchSiteInventoryTests(ITestOutputHelper output) => _output = output;
 
     /// <summary>
-    /// Maps "relative_path::Type.Method" → justification category. Categories:
-    ///   guarded-by:&lt;TestClass&gt;      — a totality test asserts scan-vs-roster for the site
-    ///   documented-by-design:&lt;where&gt; — deliberately partial dispatch, contract recorded there
-    ///   walker-default-contract      — validator whose default-ignore is contractual
-    ///   refusal-net:&lt;TestClass&gt;      — a conformance net covers the dispatch
+    /// Maps "relative_path::Type.Method" → justification category. Every category is a claim
+    /// that a fact below checks (verify-round T10: before that, walker-default-contract and
+    /// documented-by-design rows were never checked — 113 of 184 rows were unfalsifiable):
+    ///   guarded-by:&lt;TestClass&gt;      — a totality test asserts scan-vs-roster for the site;
+    ///                                  the class must exist and its source must scan the site
+    ///   documented-by-design:&lt;path&gt;:&lt;Method|Type&gt;
+    ///                                — deliberately partial dispatch; the cited file must exist
+    ///                                  (compiler-relative, or "Sharpy.Lsp/…"), declare a method
+    ///                                  or type with that identifier, and that declaration must
+    ///                                  carry a contract comment (a /// doc comment or a //
+    ///                                  comment in the body) containing one of the markers in
+    ///                                  <see cref="ContractMarkers"/>
+    ///   walker-default-contract      — validator whose default-ignore is contractual; every
+    ///                                  switch at the site must HAVE a default/discard arm
+    ///   refusal-net:&lt;TestClass&gt;      — a conformance net covers the dispatch; the class must exist
     ///   pending-guard:#&lt;issue&gt;       — no guard/contract/net yet; the row cites its tracking
     ///                                  issue and drains when one lands (allowlist discipline)
     /// </summary>
@@ -80,14 +94,16 @@ public class DispatchSiteInventoryTests
         // documented-by-design: deliberately partial dispatch, contract at cited location
         // ══════════════════════════════════════════════════════════════════════
 
-        // IrNode rewriters — the IrNode kind set is closed by design
-        ["Lowering/IrTreeRewriter.cs::IrTreeRewriter.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:~15-28",
-        ["Lowering/Passes/ComprehensionFusionPass.cs::ComprehensionFusionPass.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:~15-28",
-        ["Lowering/Passes/ConstFoldPass.cs::ConstFoldPass.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:~15-28",
-        ["Lowering/Passes/StackCollectionsPass.cs::StackCollectionsPass.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:~15-28",
+        // IrNode rewriters — the IrNode kind set is closed by design; the contract is the
+        // TypeAnnotation doc comment ("Deliberately not reachable from Node.GetChildNodes …
+        // the lowering-IR rewriter and optimization passes … would silently take their default arms")
+        ["Lowering/IrTreeRewriter.cs::IrTreeRewriter.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:TypeAnnotation",
+        ["Lowering/Passes/ComprehensionFusionPass.cs::ComprehensionFusionPass.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:TypeAnnotation",
+        ["Lowering/Passes/ConstFoldPass.cs::ConstFoldPass.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:TypeAnnotation",
+        ["Lowering/Passes/StackCollectionsPass.cs::StackCollectionsPass.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:TypeAnnotation",
 
-        // CheckExpression — documented HandleUnrecognizedExpression default
-        ["Semantic/TypeChecker.Expressions.cs::TypeChecker.CheckExpression"] = "documented-by-design:HandleUnrecognizedExpression-default",
+        // CheckExpression — HandleUnrecognizedExpression default
+        ["Semantic/TypeChecker.Expressions.cs::TypeChecker.CheckExpression"] = "documented-by-design:Semantic/TypeChecker.Expressions.cs:HandleUnrecognizedExpression",
 
         // ══════════════════════════════════════════════════════════════════════
         // walker-default-contract: validator whose default-ignore is contractual
@@ -198,6 +214,8 @@ public class DispatchSiteInventoryTests
         // ContainsWalrusExpression — drained: switch replaced by structural descendant walk (Phase 3a)
         ["Shared/AstHelper.cs::AstHelper.ExtractNarrowingKey"] = "guarded-by:NarrowingKeyTotalityTests",
         ["Shared/AstHelper.cs::AstHelper.TryGetLiteralValue"] = "guarded-by:LiteralValueClassifierTests",
+        // #1170 canonical-form seam (332f88156): the parser strips redundant parentheses from store targets once
+        ["Shared/AstHelper.cs::AstHelper.CanonicalizeStoreTarget"] = "guarded-by:StoreTargetCanonicalizationTests",
         ["Shared/ExhaustivenessHelper.cs::ExhaustivenessHelper.DescribeIrrefutable"] = "guarded-by:ExhaustivenessHelperTotalityTests",
 
         // --- New pending-guard rows found by typed census (residue issue) ---
@@ -295,16 +313,18 @@ public class DispatchSiteInventoryTests
         ["Sharpy.Lsp/HoverService.cs::HoverService.GetDecorators"] = "guarded-by:HoverDispatchTotalityTests",
     };
 
+    /// <summary>One typed census per test run: both roots, scanned once and shared by the facts.</summary>
+    private static readonly Lazy<(DispatchSiteScan.ScanResult Compiler, DispatchSiteScan.ScanResult Lsp)> Scans = new(() => (
+        DispatchSiteScan.Scan("src/Sharpy.Compiler", "src/Sharpy.Compiler/Sharpy.Compiler.csproj"),
+        DispatchSiteScan.Scan("src/Sharpy.Lsp", "src/Sharpy.Lsp/Sharpy.Lsp.csproj", keyPrefix: "Sharpy.Lsp")));
+
+    private static IReadOnlyList<DispatchSiteScan.DispatchSite> AllSites
+        => Scans.Value.Compiler.Sites.Concat(Scans.Value.Lsp.Sites).ToList();
+
     [Fact]
     public void AllDispatchSites_MatchRosterExactly()
     {
-        var compilerResult = DispatchSiteScan.Scan(
-            "src/Sharpy.Compiler",
-            "src/Sharpy.Compiler/Sharpy.Compiler.csproj");
-        var lspResult = DispatchSiteScan.Scan(
-            "src/Sharpy.Lsp",
-            "src/Sharpy.Lsp/Sharpy.Lsp.csproj",
-            keyPrefix: "Sharpy.Lsp");
+        var (compilerResult, lspResult) = Scans.Value;
 
         var sites = compilerResult.SiteCountByKey.Keys
             .Concat(lspResult.SiteCountByKey.Keys)
@@ -340,6 +360,12 @@ public class DispatchSiteInventoryTests
             .GroupBy(v => v.Split(':')[0])
             .ToDictionary(g => g.Key, g => g.Count());
 
+        // Census (T10 ruling 3): refusal-net rows are checked for class existence only, so their
+        // count is reported here to stay visible; they drain to guarded-by over time.
+        _output.WriteLine("CENSUS rows-per-category: " + string.Join(" ",
+            byCategory.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}"))
+            + $" total={Roster.Count}");
+
         foreach (var category in required)
             Assert.True(byCategory.ContainsKey(category), $"Category '{category}' has no rostered site.");
 
@@ -358,7 +384,294 @@ public class DispatchSiteInventoryTests
                 Assert.True(justification.Contains(":#"),
                     $"Roster row '{site}' is pending-guard and must cite its tracking issue (e.g. pending-guard:#1716).");
             }
+            if (category is "documented-by-design")
+            {
+                Assert.True(DesignCitationPattern.IsMatch(justification.Split(':', 2)[1]),
+                    $"Roster row '{site}' documented-by-design citation '{justification}' must be '<path>.cs:<Method|Type>'.");
+            }
         }
+    }
+
+    /// <summary><c>&lt;path&gt;.cs:&lt;Identifier&gt;</c> — the only accepted documented-by-design spelling.</summary>
+    private static readonly Regex DesignCitationPattern = new(@"^[A-Za-z0-9_./]+\.cs:[A-Za-z_][A-Za-z0-9_]*$");
+
+    // ══════════════════════════════════════════════════════════════════════
+    // T10: documented-by-design / walker-default-contract / refusal-net are claims, not labels
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Words that mark a comment as a dispatch CONTRACT — what the switch deliberately does not
+    /// handle, or that it only renders text and no semantic decision keys on it ("no semantic
+    /// decision" is the codebase's own renderer idiom; ruled in for T10).
+    /// </summary>
+    internal static readonly string[] ContractMarkers =
+    {
+        "render", "contract", "deliberately", "documented-by-design", "no semantic decision",
+    };
+
+    /// <summary>
+    /// (1) Every <c>documented-by-design:&lt;path&gt;.cs:&lt;Identifier&gt;</c> row resolves to an
+    /// existing file under src/ that declares a method or type with that identifier, and that
+    /// declaration carries a contract comment (see <see cref="ContractMarkers"/>). Before this
+    /// fact, repointing a citation at <c>NoSuchFileZZ.cs:NoSuchMethodZZ</c> stayed green.
+    /// </summary>
+    [Fact]
+    public void DesignCitations_ResolveToContractComments()
+    {
+        var violations = CollectDesignCitationViolations(Roster);
+        foreach (var v in violations)
+            _output.WriteLine($"DESIGN VIOLATION: {v}");
+        Assert.True(violations.Count == 0,
+            $"documented-by-design rows without a resolvable contract:\n  {string.Join("\n  ", violations)}");
+    }
+
+    /// <summary>
+    /// (2) A <c>walker-default-contract</c> row claims the site ignores unknown kinds BY CONTRACT;
+    /// a switch with no default/discard arm makes that claim false (a switch expression throws,
+    /// a switch statement falls through by accident or by design — indistinguishable). Every
+    /// switch at the site must have one.
+    /// </summary>
+    [Fact]
+    public void WalkerDefaultContractRows_HaveDefaultArms()
+    {
+        var violations = CollectWalkerDefaultViolations(Roster, AllSites);
+        foreach (var v in violations)
+            _output.WriteLine($"WALKER VIOLATION: {v}");
+        Assert.True(violations.Count == 0,
+            $"walker-default-contract rows whose site has a switch without a default arm:\n  {string.Join("\n  ", violations)}");
+    }
+
+    // (3) refusal-net: ruled (T10, option a) to stay at class existence — a net is keyed by
+    // behavior (fixtures, a property corpus, a matrix), never by production file, so 54 of 55
+    // rows failed a "cited source names the site's file" rule when measured. The rows are made
+    // visible by the per-category census in EveryJustificationCategory_… and drain to
+    // guarded-by over time.
+
+    /// <summary>
+    /// Positive control for (1), file level: a missing file, a missing member, a malformed
+    /// citation and a legacy spelling are each rejected with their own reason, while a real
+    /// renderer (compiler-relative and LSP-prefixed) resolves cleanly.
+    /// </summary>
+    [Fact]
+    public void DesignCitations_SyntheticRoster_RejectsMissingFileMemberAndMalformedSpelling()
+    {
+        const string noFile = "Synthetic/A.cs::A.NoFile";
+        const string noMember = "Synthetic/A.cs::A.NoMember";
+        const string legacy = "Synthetic/A.cs::A.Legacy";
+        const string ok = "Synthetic/A.cs::A.Ok";
+        const string lspOk = "Sharpy.Lsp/Synthetic/B.cs::B.Ok";
+
+        var synthetic = new Dictionary<string, string>
+        {
+            [noFile] = "documented-by-design:NoSuchFileZZ.cs:NoSuchMethodZZ",
+            [noMember] = "documented-by-design:Semantic/TypeChecker.Expressions.Access.Calls.cs:NoSuchMethodZZ",
+            [legacy] = "documented-by-design:HandleUnrecognizedExpression-default",
+            [ok] = "documented-by-design:Semantic/TypeChecker.Expressions.Access.Calls.cs:DescribeTypeOperand",
+            [lspOk] = "documented-by-design:Sharpy.Lsp/Refactoring/OrganizeImportsProvider.cs:RenderImportStatement",
+        };
+
+        var violations = CollectDesignCitationViolations(synthetic);
+        foreach (var v in violations)
+            _output.WriteLine($"SYNTHETIC DESIGN VIOLATION: {v}");
+
+        Assert.Contains(violations, v => v.StartsWith(noFile, StringComparison.Ordinal) && v.Contains("file not found"));
+        Assert.Contains(violations, v => v.StartsWith(noMember, StringComparison.Ordinal) && v.Contains("no method or type named 'NoSuchMethodZZ'"));
+        Assert.Contains(violations, v => v.StartsWith(legacy, StringComparison.Ordinal) && v.Contains("malformed"));
+        Assert.DoesNotContain(violations, v => v.StartsWith(ok, StringComparison.Ordinal));
+        Assert.DoesNotContain(violations, v => v.StartsWith(lspOk, StringComparison.Ordinal));
+        Assert.Equal(3, violations.Count);
+    }
+
+    /// <summary>
+    /// Positive control for (1), syntax level: the contract-comment probe on parsed snippets —
+    /// a marker in the doc comment or in a body comment passes; a doc comment without a marker,
+    /// a body comment on a TYPE citation (only the type's own doc counts), and a missing member
+    /// fail. Independent of any production file, so it cannot rot when comments move.
+    /// </summary>
+    [Theory]
+    [InlineData("class C { /// <summary>Renders the name.</summary>\n void M() {} }", "M", null)]
+    [InlineData("class C { void M() { // deliberately partial: leaves fall through\n } }", "M", null)]
+    [InlineData("class C { void M() { /* documented-by-design */ } }", "M", null)]
+    [InlineData("/// <summary>Deliberately closed set.</summary>\nrecord R;", "R", null)]
+    [InlineData("class C { /// <summary>Gets the thing.</summary>\n void M() {} }", "M", "no contract comment")]
+    [InlineData("class C { void M() {} }", "M", "no contract comment")]
+    [InlineData("class C { void M() { // contract\n } }", "C", "no contract comment")]
+    [InlineData("class C { void Other() {} }", "M", "no method or type named 'M'")]
+    public void ContractCommentProbe_OnSnippets(string source, string identifier, string? expectedReasonFragment)
+    {
+        var root = CSharpSyntaxTree.ParseText(source).GetCompilationUnitRoot();
+        var verdict = ContractCommentVerdict(root, identifier);
+        _output.WriteLine($"  {identifier}: {verdict ?? "ok"}");
+        if (expectedReasonFragment == null)
+            Assert.Null(verdict);
+        else
+            Assert.Contains(expectedReasonFragment, verdict);
+    }
+
+    /// <summary>
+    /// Positive control for (2): a real site with a switch lacking a default arm, re-cited as
+    /// walker-default-contract, is rejected; a real site whose every switch has one is accepted.
+    /// Both are chosen from the live census so the control cannot rot.
+    /// </summary>
+    [Fact]
+    public void WalkerDefault_SyntheticRoster_RejectsSiteWithoutDefaultArm()
+    {
+        var byKey = AllSites.GroupBy(s => s.Key).ToDictionary(g => g.Key, g => g.ToList());
+        var bareKey = byKey.First(kv => kv.Value.Any(s => !s.HasDefaultArm)).Key;
+        var coveredKey = byKey.First(kv => kv.Value.All(s => s.HasDefaultArm)).Key;
+        _output.WriteLine($"  no-default site: {bareKey}");
+        _output.WriteLine($"  all-default site: {coveredKey}");
+
+        var synthetic = new Dictionary<string, string>
+        {
+            [bareKey] = "walker-default-contract",
+            [coveredKey] = "walker-default-contract",
+        };
+
+        var violations = CollectWalkerDefaultViolations(synthetic, AllSites);
+        foreach (var v in violations)
+            _output.WriteLine($"SYNTHETIC WALKER VIOLATION: {v}");
+
+        Assert.Single(violations);
+        Assert.StartsWith(bareKey, violations[0], StringComparison.Ordinal);
+        Assert.Contains("no default/discard arm", violations[0]);
+    }
+
+    private static string ResolveRosterPath(string rosterRelativePath)
+    {
+        var repoRoot = DispatchSiteScan.FindRepoRoot();
+        const string lspPrefix = "Sharpy.Lsp/";
+        return rosterRelativePath.StartsWith(lspPrefix, StringComparison.Ordinal)
+            ? Path.Combine(repoRoot, "src", "Sharpy.Lsp", rosterRelativePath[lspPrefix.Length..])
+            : Path.Combine(repoRoot, "src", "Sharpy.Compiler", rosterRelativePath);
+    }
+
+    /// <summary>
+    /// The contract-comment probe: null when a method or type named <paramref name="identifier"/>
+    /// carries a comment with a marker, else the reason. Method citations read the declaration's
+    /// doc comment and every comment in its body; type citations read only the type's own doc
+    /// comment (a comment somewhere inside a type body is not that type's contract).
+    /// </summary>
+    internal static string? ContractCommentVerdict(CompilationUnitSyntax root, string identifier)
+    {
+        var methods = root.DescendantNodes().OfType<MethodDeclarationSyntax>()
+            .Where(m => m.Identifier.Text == identifier).ToList();
+        var types = root.DescendantNodes().OfType<BaseTypeDeclarationSyntax>()
+            .Where(t => t.Identifier.Text == identifier).ToList();
+        if (methods.Count == 0 && types.Count == 0)
+            return $"no method or type named '{identifier}'";
+
+        var comments = new List<string>();
+        foreach (var method in methods)
+            comments.AddRange(CommentTexts(method.DescendantTrivia()));
+        foreach (var type in types)
+            comments.AddRange(CommentTexts(type.GetLeadingTrivia()));
+
+        var text = string.Join("\n", comments);
+        var hit = ContractMarkers.FirstOrDefault(m => text.Contains(m, StringComparison.OrdinalIgnoreCase));
+        return hit == null
+            ? $"'{identifier}' has no contract comment (no /// or // comment containing any of: {string.Join(", ", ContractMarkers)})"
+            : null;
+    }
+
+    private static IEnumerable<string> CommentTexts(IEnumerable<SyntaxTrivia> trivia)
+        => trivia
+            .Where(t => t.IsKind(SyntaxKind.SingleLineCommentTrivia)
+                     || t.IsKind(SyntaxKind.MultiLineCommentTrivia)
+                     || t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia)
+                     || t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia))
+            .Select(t => t.ToFullString());
+
+    private static List<string> CollectDesignCitationViolations(IReadOnlyDictionary<string, string> roster)
+    {
+        var violations = new List<string>();
+        var parsed = new Dictionary<string, CompilationUnitSyntax>(StringComparer.Ordinal);
+
+        foreach (var (site, justification) in roster)
+        {
+            var parts = justification.Split(':', 2);
+            if (parts[0] != "documented-by-design")
+                continue;
+            var citation = parts[1];
+
+            if (!DesignCitationPattern.IsMatch(citation))
+            {
+                violations.Add($"{site} cites '{citation}' — malformed; expected <path>.cs:<Method|Type>");
+                continue;
+            }
+
+            var sep = citation.LastIndexOf(':');
+            var path = citation[..sep];
+            var identifier = citation[(sep + 1)..];
+
+            var fullPath = ResolveRosterPath(path);
+            if (!File.Exists(fullPath))
+            {
+                violations.Add($"{site} cites '{citation}' — file not found: {path}");
+                continue;
+            }
+
+            if (!parsed.TryGetValue(fullPath, out var root))
+            {
+                root = CSharpSyntaxTree.ParseText(File.ReadAllText(fullPath)).GetCompilationUnitRoot();
+                parsed[fullPath] = root;
+            }
+
+            var verdict = ContractCommentVerdict(root, identifier);
+            if (verdict != null)
+                violations.Add($"{site} cites '{citation}' — {verdict}");
+        }
+
+        return violations;
+    }
+
+    private static List<string> CollectWalkerDefaultViolations(
+        IReadOnlyDictionary<string, string> roster,
+        IEnumerable<DispatchSiteScan.DispatchSite> sites)
+    {
+        var byKey = sites.GroupBy(s => s.Key).ToDictionary(g => g.Key, g => g.ToList());
+        var violations = new List<string>();
+
+        foreach (var (site, justification) in roster)
+        {
+            if (justification != "walker-default-contract")
+                continue;
+            if (!byKey.TryGetValue(site, out var switches))
+                continue; // a phantom row is AllDispatchSites_MatchRosterExactly's finding
+
+            var bare = switches.Where(s => !s.HasDefaultArm).ToList();
+            if (bare.Count > 0)
+            {
+                violations.Add($"{site} claims walker-default-contract but {bare.Count} of {switches.Count} switch(es) has no default/discard arm: "
+                    + string.Join("; ", bare.Select(s => $"{s.Form} on '{s.ScrutineeText}' at line {s.Line}")));
+            }
+        }
+
+        return violations;
+    }
+
+    /// <summary>
+    /// The source file declaring <paramref name="className"/>: LSP test sources first for
+    /// LSP-keyed sites, then compiler test sources. Null when neither declares it.
+    /// </summary>
+    private static string? FindTestSourceFile(string className, string siteKey)
+    {
+        var repoRoot = DispatchSiteScan.FindRepoRoot();
+        var compilerTestsDir = Path.Combine(repoRoot, "src", "Sharpy.Compiler.Tests");
+        var lspTestsDir = Path.Combine(repoRoot, "src", "Sharpy.Lsp.Tests");
+
+        static IEnumerable<string> Sources(string dir) => Directory.GetFiles(dir, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                     && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"));
+
+        if (siteKey.StartsWith("Sharpy.Lsp/", StringComparison.Ordinal) && Directory.Exists(lspTestsDir))
+        {
+            var lspHit = Sources(lspTestsDir).FirstOrDefault(f => File.ReadAllText(f).Contains($"class {className}"));
+            if (lspHit != null)
+                return lspHit;
+        }
+
+        return Sources(compilerTestsDir).FirstOrDefault(f => File.ReadAllText(f).Contains($"class {className}"));
     }
 
     /// <summary>
@@ -445,41 +758,10 @@ public class DispatchSiteInventoryTests
     private static List<string> CollectGuardCitationViolations(IReadOnlyDictionary<string, string> roster)
     {
         var repoRoot = DispatchSiteScan.FindRepoRoot();
-        var compilerTestsDir = Path.Combine(repoRoot, "src", "Sharpy.Compiler.Tests");
         var lspTestsDir = Path.Combine(repoRoot, "src", "Sharpy.Lsp.Tests");
         var testAssemblyTypes = typeof(DispatchSiteInventoryTests).Assembly.GetTypes()
             .Select(t => t.Name)
             .ToHashSet();
-
-        var testSourceCache = new Dictionary<string, string?>();
-        string? FindTestSource(string className, string siteKey)
-        {
-            var cacheKey = $"{className}:{siteKey}";
-            if (testSourceCache.TryGetValue(cacheKey, out var cached))
-                return cached;
-
-            // For LSP-keyed rows, check LSP test sources first
-            if (siteKey.StartsWith("Sharpy.Lsp/") && Directory.Exists(lspTestsDir))
-            {
-                var lspHit = Directory.GetFiles(lspTestsDir, "*.cs", SearchOption.AllDirectories)
-                    .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
-                        && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
-                    .FirstOrDefault(f => File.ReadAllText(f).Contains($"class {className}"));
-                if (lspHit != null)
-                {
-                    testSourceCache[cacheKey] = lspHit;
-                    return lspHit;
-                }
-            }
-
-            // Check compiler test sources
-            var hit = Directory.GetFiles(compilerTestsDir, "*.cs", SearchOption.AllDirectories)
-                .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
-                    && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
-                .FirstOrDefault(f => File.ReadAllText(f).Contains($"class {className}"));
-            testSourceCache[cacheKey] = hit;
-            return hit;
-        }
 
         bool ClassExistsInAnyTestProject(string className, string siteKey)
         {
@@ -514,7 +796,7 @@ public class DispatchSiteInventoryTests
 
             if (parts[0] == "guarded-by")
             {
-                var sourcePath = FindTestSource(cited, site);
+                var sourcePath = FindTestSourceFile(cited, site);
                 if (sourcePath == null)
                 {
                     violations.Add($"{site} cites '{cited}' — test source not found");
