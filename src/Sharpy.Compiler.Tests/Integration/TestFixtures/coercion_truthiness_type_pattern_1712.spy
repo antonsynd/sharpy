@@ -1,13 +1,13 @@
 # #1712 precedence-inversion class: as? coercion in truthiness positions.
 # The emitter builds cond ? Some(x) : default — unparenthesized, .IsSome re-associates.
-# Expected from value-position twins (r = o as? T; if r:) executed at HEAD.
+# Expected from value-position twins (r = o as? T; if r:) executed at HEAD; every consumption is
+# unparenthesized so the coercion conditional itself is the receiver.
 # Numeric controls (as? int8, as? int64, 5 as? long) compile clean — they stay clean.
 def main() -> None:
     o: object = long(42)
 
-    # assert
-    r1: long? = o as? long
-    assert r1, "as-long assert"
+    # assert — the coercion itself is the assert operand (the plan's measured CS8716 cell)
+    assert o as? long, "as-long assert"
     print("assert-pass")
 
     # if
@@ -27,11 +27,16 @@ def main() -> None:
     result: str = "some" if o as? long else "none"
     print("ternary:" + result)
 
-    # and-operand
+    # and-operand — unparenthesized (source parentheses would make the cell pass by construction)
     flag: bool = True
     o = long(42)
-    if (o as? long) and flag:
+    if o as? long and flag:
         print("and-as-long")
+    o = "not a long"
+    if o as? long and flag:
+        print("and-as-long-falsy-unexpected")
+    else:
+        print("and-as-long-falsy")
 
     # ── Numeric controls (must compile clean, no SPY0908) ──
     n: int = 300

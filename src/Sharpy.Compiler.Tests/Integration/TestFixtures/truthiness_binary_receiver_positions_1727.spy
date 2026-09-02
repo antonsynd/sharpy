@@ -1,82 +1,119 @@
-# #1727 precedence-inversion class: str binary receiver (a + b) at every truthiness position.
-# Unparenthesized — the receiver is `a + b` where a, b are str.
-# python3-verified.
+# #1727 precedence-inversion class: a str binary receiver (`a + b`) at every truthiness position,
+# UNPARENTHESIZED (source parentheses are preserved as C# parentheses and would make the cell pass
+# by construction). Every position is probed with a non-empty composite (truthy) and with an
+# empty composite `e + e` (falsy) so the printed line depends on the receiver's value: a cure that
+# emitted a constant, or dropped the receiver, prints different lines. python3-verified.
 def main() -> None:
     a: str = "hello"
     b: str = " world"
+    e: str = ""
 
     # if
     if a + b:
-        print("if-truthy")
+        print("if:truthy")
+    if e + e:
+        print("if-empty:truthy")
+    else:
+        print("if-empty:falsy")
 
     # elif
     x: bool = False
     if x:
         pass
     elif a + b:
-        print("elif-truthy")
+        print("elif:truthy")
+    if x:
+        pass
+    elif e + e:
+        print("elif-empty:truthy")
+    else:
+        print("elif-empty:falsy")
 
-    # while
-    xs: list[str] = ["a", "b", ""]
+    # while — the composite receiver goes falsy when both parts are empty
+    parts: list[str] = ["a", "b", ""]
     count: int = 0
-    while xs[count]:
+    while parts[count] + parts[count]:
         count = count + 1
     print("while-count:" + str(count))
 
     # assert
     assert a + b, "should be truthy"
-    print("assert-pass")
+    print("assert:pass")
 
     # not
-    if not (a + b):
-        print("not-truthy")
+    if not a + b:
+        print("not:truthy")
     else:
-        print("not-falsy")
+        print("not:falsy")
+    if not e + e:
+        print("not-empty:truthy")
+    else:
+        print("not-empty:falsy")
 
-    # and-lhs
+    # and-lhs / and-rhs
     r1: bool = True
-    if (a + b) and r1:
-        print("and-true")
+    if a + b and r1:
+        print("and-lhs:truthy")
+    if e + e and r1:
+        print("and-lhs-empty:truthy")
+    else:
+        print("and-lhs-empty:falsy")
+    if r1 and a + b:
+        print("and-rhs:truthy")
+    if r1 and e + e:
+        print("and-rhs-empty:truthy")
+    else:
+        print("and-rhs-empty:falsy")
 
-    # and-rhs
-    if r1 and (a + b):
-        print("and-rhs-true")
-
-    # or-lhs
+    # or-lhs / or-rhs
     r2: bool = False
-    if (a + b) or r2:
-        print("or-true")
-
-    # or-rhs
-    if r2 or (a + b):
-        print("or-rhs-true")
+    if a + b or r2:
+        print("or-lhs:truthy")
+    if e + e or r2:
+        print("or-lhs-empty:truthy")
+    else:
+        print("or-lhs-empty:falsy")
+    if r2 or a + b:
+        print("or-rhs:truthy")
+    if r2 or e + e:
+        print("or-rhs-empty:truthy")
+    else:
+        print("or-rhs-empty:falsy")
 
     # ternary test
-    result: str = "yes" if a + b else "no"
-    print("ternary:" + result)
+    print("ternary:" + ("yes" if a + b else "no"))
+    print("ternary-empty:" + ("yes" if e + e else "no"))
 
-    # list comprehension if
+    # comprehension if (list / set / dict)
     items: list[int] = [x2 for x2 in [0, 1] if a + b]
     print("list-comp:" + str(len(items)))
-
-    # set comprehension if
+    items_e: list[int] = [x5 for x5 in [0, 1] if e + e]
+    print("list-comp-empty:" + str(len(items_e)))
     s_items: set[int] = {x3 for x3 in [0, 1] if a + b}
     print("set-comp:" + str(len(s_items)))
-
-    # dict comprehension if
+    s_items_e: set[int] = {x6 for x6 in [0, 1] if e + e}
+    print("set-comp-empty:" + str(len(s_items_e)))
     d_items: dict[int, int] = {x4: x4 for x4 in [0, 1] if a + b}
     print("dict-comp:" + str(len(d_items)))
+    d_items_e: dict[int, int] = {x7: x7 for x7 in [0, 1] if e + e}
+    print("dict-comp-empty:" + str(len(d_items_e)))
 
     # match guard
     value: int = 42
     match value:
         case v if a + b:
             print("guard:" + str(v))
+        case _:
+            print("guard:none")
+    match value:
+        case v2 if e + e:
+            print("guard-empty:" + str(v2))
+        case _:
+            print("guard-empty:none")
 
-    # parenthesized twin (positive control — must keep working)
+    # parenthesized twin (positive control — source parentheses must keep working)
     flag: bool = True
-    e: str = ""
     if not (a if flag else e):
-        print("paren-not-truthy")
+        print("paren-not:truthy")
     else:
-        print("paren-not-falsy")
+        print("paren-not:falsy")

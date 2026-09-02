@@ -1,0 +1,22 @@
+in-list:True
+notin-list:True
+in-list-false:False
+in-str:True
+notin-str:True
+in-dict:True
+in-set:True
+in-value:True
+in-if
+and-eq:True
+or-eq:True
+xor-eq:True
+eq-and:True
+and-eq-if
+cast-long:-294967296
+cast-object:[1, 2, 3]
+asq-isnot-none:True
+asq-is-none:False
+asq-some-if
+len-sum:5
+len-cond:2
+isinstance-cond:True

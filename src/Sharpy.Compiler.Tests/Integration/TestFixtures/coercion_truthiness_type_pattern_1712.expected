@@ -4,6 +4,7 @@ while-as-long
 while-count:1
 ternary:some
 and-as-long
+and-as-long-falsy
 narrow-none
 widen-some
 static-some

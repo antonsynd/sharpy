@@ -1,126 +1,141 @@
-# #1727 precedence-inversion class: truthiness kind × conditional receiver.
-# Each kind's receiver is a ternary (x if flag else y) — unparenthesized.
-# python3-verified where an analog exists; int?/__bool__ from value-position twins.
+# #1727 precedence-inversion class: truthiness kind × conditional receiver, unparenthesized
+# (`if x if flag else y:`). Each kind is probed twice under the SAME flag value: once selecting
+# its truthy value and once selecting its falsy value, so the printed line depends on the
+# RECEIVER's truthiness and not on the selector alone — a cure that tested `flag` instead of
+# the selected value, or emitted a constant, prints different lines. Kinds alternate the flag
+# direction so both selector arms are exercised. python3-verified where an analog exists.
 def main() -> None:
-    # ── str (StringNotEmpty) ──
     flag: bool = True
+
+    # ── str (StringNotEmpty) ──
+    flag = True
     s: str = "hello"
     t: str = ""
     if s if flag else t:
-        print("str-true-branch")
-    flag = False
-    if s if flag else t:
-        print("str-false-truthy")
+        print("str-select-truthy:truthy")
     else:
-        print("str-false-falsy")
+        print("str-select-truthy:falsy")
+    if t if flag else s:
+        print("str-select-falsy:truthy")
+    else:
+        print("str-select-falsy:falsy")
 
     # ── int (IntNotZero) ──
-    flag = True
+    flag = False
     n: int = 42
     m: int = 0
-    if n if flag else m:
-        print("int-true-branch")
-    flag = False
-    if n if flag else m:
-        print("int-false-truthy")
+    if m if flag else n:
+        print("int-select-truthy:truthy")
     else:
-        print("int-false-falsy")
+        print("int-select-truthy:falsy")
+    if n if flag else m:
+        print("int-select-falsy:truthy")
+    else:
+        print("int-select-falsy:falsy")
 
     # ── float (FloatNotZero) ──
     flag = True
     f: float = 3.14
     g: float = 0.0
     if f if flag else g:
-        print("float-true-branch")
-    flag = False
-    if f if flag else g:
-        print("float-false-truthy")
+        print("float-select-truthy:truthy")
     else:
-        print("float-false-falsy")
+        print("float-select-truthy:falsy")
+    if g if flag else f:
+        print("float-select-falsy:truthy")
+    else:
+        print("float-select-falsy:falsy")
 
     # ── long (LongNotZero) ──
-    flag = True
+    flag = False
     ln: long = 42
     lm: long = 0
-    if ln if flag else lm:
-        print("long-true-branch")
-    flag = False
-    if ln if flag else lm:
-        print("long-false-truthy")
+    if lm if flag else ln:
+        print("long-select-truthy:truthy")
     else:
-        print("long-false-falsy")
+        print("long-select-truthy:falsy")
+    if ln if flag else lm:
+        print("long-select-falsy:truthy")
+    else:
+        print("long-select-falsy:falsy")
 
     # ── bytes (BytesNotEmpty, cast arm) ──
     flag = True
     bs: bytes = b"hello"
     cs: bytes = b""
     if bs if flag else cs:
-        print("bytes-true-branch")
-    flag = False
-    if bs if flag else cs:
-        print("bytes-false-truthy")
+        print("bytes-select-truthy:truthy")
     else:
-        print("bytes-false-falsy")
+        print("bytes-select-truthy:falsy")
+    if cs if flag else bs:
+        print("bytes-select-falsy:truthy")
+    else:
+        print("bytes-select-falsy:falsy")
 
     # ── list[int] (CollectionNotEmpty / SizedNotEmpty, cast arm) ──
-    flag = True
+    flag = False
     xs: list[int] = [1, 2]
     ys: list[int] = []
-    if xs if flag else ys:
-        print("list-true-branch")
-    flag = False
-    if xs if flag else ys:
-        print("list-false-truthy")
+    if ys if flag else xs:
+        print("list-select-truthy:truthy")
     else:
-        print("list-false-falsy")
+        print("list-select-truthy:falsy")
+    if xs if flag else ys:
+        print("list-select-falsy:truthy")
+    else:
+        print("list-select-falsy:falsy")
 
     # ── dict[str, int] (CollectionNotEmpty, cast arm) ──
     flag = True
     d1: dict[str, int] = {"a": 1}
     d2: dict[str, int] = {}
     if d1 if flag else d2:
-        print("dict-true-branch")
-    flag = False
-    if d1 if flag else d2:
-        print("dict-false-truthy")
+        print("dict-select-truthy:truthy")
     else:
-        print("dict-false-falsy")
+        print("dict-select-truthy:falsy")
+    if d2 if flag else d1:
+        print("dict-select-falsy:truthy")
+    else:
+        print("dict-select-falsy:falsy")
 
     # ── str | None (NullableNotNull) ──
-    flag = True
+    flag = False
     ns: str | None = "hello"
     nt: str | None = None
-    if ns if flag else nt:
-        print("nullable-true-branch")
-    flag = False
-    if ns if flag else nt:
-        print("nullable-false-truthy")
+    if nt if flag else ns:
+        print("nullable-select-truthy:truthy")
     else:
-        print("nullable-false-falsy")
+        print("nullable-select-truthy:falsy")
+    if ns if flag else nt:
+        print("nullable-select-falsy:truthy")
+    else:
+        print("nullable-select-falsy:falsy")
 
-    # ── int? (OptionalIsSome) — expected from value-position twin ──
+    # ── int? (OptionalIsSome) — expected from the value-position twin ──
     flag = True
     o1: int? = 42
     o2: int? = None()
     if o1 if flag else o2:
-        print("optional-true-branch")
-    flag = False
-    if o1 if flag else o2:
-        print("optional-false-truthy")
+        print("optional-select-truthy:truthy")
     else:
-        print("optional-false-falsy")
+        print("optional-select-truthy:falsy")
+    if o2 if flag else o1:
+        print("optional-select-falsy:truthy")
+    else:
+        print("optional-select-falsy:falsy")
 
-    # ── __bool__ class (BoolConvertible) — expected from value-position twin ──
-    flag = True
+    # ── __bool__ class (BoolConvertible) — expected from the value-position twin ──
+    flag = False
     tv: BoolFlag = BoolFlag(True)
     fv: BoolFlag = BoolFlag(False)
-    if tv if flag else fv:
-        print("bool-conv-true-branch")
-    flag = False
-    if tv if flag else fv:
-        print("bool-conv-false-truthy")
+    if fv if flag else tv:
+        print("bool-conv-select-truthy:truthy")
     else:
-        print("bool-conv-false-falsy")
+        print("bool-conv-select-truthy:falsy")
+    if tv if flag else fv:
+        print("bool-conv-select-falsy:truthy")
+    else:
+        print("bool-conv-select-falsy:falsy")
 
 class BoolFlag:
     _val: bool

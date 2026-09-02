@@ -1,0 +1,58 @@
+# Precedence-inversion class (#1727, #1712), seam-family axis: every emitter seam that wraps a
+# GENERATED composite operand without source parentheses. Each cell was SPY0908 (or a silently
+# wrong value) at 61f51aff8; the outputs are python3-verified where an analog exists and, for the
+# int32 wrap, pinned by the source-parenthesized twin.
+def main() -> None:
+    # membership: Python binds `in` looser than `+` / `|`, so the container is the whole sum
+    xs: list[int] = [1, 2]
+    ys: list[int] = [3]
+    print("in-list:" + str(3 in xs + ys))
+    print("notin-list:" + str(9 not in xs + ys))
+    print("in-list-false:" + str(1 in ys + ys))
+    a: str = "hel"
+    b: str = "lo"
+    print("in-str:" + str("ell" in a + b))
+    print("notin-str:" + str("zz" not in a + b))
+    d1: dict[str, int] = {"a": 1}
+    d2: dict[str, int] = {"b": 2}
+    print("in-dict:" + str("b" in d1 | d2))
+    s1: set[int] = {1}
+    s2: set[int] = {3}
+    print("in-set:" + str(3 in s1 | s2))
+    r: bool = 3 in xs + ys
+    print("in-value:" + str(r))
+    if 3 in xs + ys:
+        print("in-if")
+
+    # bitwise operators bind tighter than comparison in Python; C# ranks them below `==`
+    p: int = 6
+    q: int = 3
+    print("and-eq:" + str(p & q == 2))
+    print("or-eq:" + str(p | q == 7))
+    print("xor-eq:" + str(p ^ q == 5))
+    print("eq-and:" + str(2 == p & q))
+    if p & q == 2:
+        print("and-eq-if")
+
+    # throwing cast over a composite operand: the cast applies to the whole sum (int32 wrap first)
+    n: int = 2000000000
+    m: int = 2000000000
+    big: long = n + m as! long
+    print("cast-long:" + str(big))
+    obj: object = xs + ys as! object
+    print("cast-object:" + str(obj))
+
+    # Optional None-test on a coercion result (the #1712 shape reached through `is None`)
+    o: object = long(42)
+    print("asq-isnot-none:" + str(o as? long is not None))
+    print("asq-is-none:" + str(o as? long is None))
+    if o as? long is not None:
+        print("asq-some-if")
+
+    # len() over a composite receiver
+    print("len-sum:" + str(len(a + b)))
+    flag: bool = False
+    print("len-cond:" + str(len(a if flag else b)))
+
+    # isinstance over a conditional subject
+    print("isinstance-cond:" + str(isinstance(a if flag else b, str)))
