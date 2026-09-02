@@ -108,9 +108,8 @@ public class DeclarationKindDispatchTotalityTests
     //     "Type 'Outer.Id' not found"), IDENTICALLY on the single-file and cross-module routes
     //     — no mirrored-route divergence;
     //   - nested `event` → works; nested `@dataclass class` → works.
-    // The SPY0202 refusals are tracked by the issue the lead files for this round; when nested
-    // union/delegate/alias are supported, NestedTypeUniverse gains the kinds and this pin fails
-    // for every extractor at once.
+    // The SPY0202 refusals are tracked by #1729; when nested union/delegate/alias are supported,
+    // NestedTypeUniverse gains the kinds and this pin fails for every extractor at once.
     // ═══════════════════════════════════════════════════════════════════════
 
     [Fact]
