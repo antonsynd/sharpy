@@ -3,7 +3,7 @@
 # Expected from value-position twins (r = o as? T; if r:) executed at HEAD.
 # Numeric controls (as? int8, as? int64, 5 as? long) compile clean — they stay clean.
 def main() -> None:
-    o: object = 42
+    o: object = long(42)
 
     # assert
     r1: long? = o as? long
@@ -23,13 +23,13 @@ def main() -> None:
     print("while-count:" + str(count))
 
     # ternary test
-    o = 42
+    o = long(42)
     result: str = "some" if o as? long else "none"
     print("ternary:" + result)
 
     # and-operand
     flag: bool = True
-    o = 42
+    o = long(42)
     if (o as? long) and flag:
         print("and-as-long")
 

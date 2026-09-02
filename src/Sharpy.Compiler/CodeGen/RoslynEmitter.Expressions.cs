@@ -7,6 +7,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Sharpy.Compiler.CodeGen.EmittedTreePrecedence;
 
 namespace Sharpy.Compiler.CodeGen;
 
@@ -943,28 +944,39 @@ internal partial class RoslynEmitter
         {
             TruthinessLowering.NativeBool => expr,
             TruthinessLowering.IntNotZero => BinaryExpression(SyntaxKind.NotEqualsExpression,
-                expr, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))),
+                Operand(expr, SyntaxKind.NotEqualsExpression, OperandSlot.Left),
+                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))),
             TruthinessLowering.FloatNotZero => BinaryExpression(SyntaxKind.NotEqualsExpression,
-                expr, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0.0))),
+                Operand(expr, SyntaxKind.NotEqualsExpression, OperandSlot.Left),
+                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0.0))),
             TruthinessLowering.LongNotZero => BinaryExpression(SyntaxKind.NotEqualsExpression,
-                expr, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0L))),
+                Operand(expr, SyntaxKind.NotEqualsExpression, OperandSlot.Left),
+                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0L))),
             TruthinessLowering.StringNotEmpty => BinaryExpression(SyntaxKind.GreaterThanExpression,
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, expr, IdentifierName("Length")),
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    Operand(expr, SyntaxKind.SimpleMemberAccessExpression, OperandSlot.Receiver),
+                    IdentifierName("Length")),
                 LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))),
             TruthinessLowering.BytesNotEmpty or TruthinessLowering.CollectionNotEmpty
                 or TruthinessLowering.SizedNotEmpty =>
                 BinaryExpression(SyntaxKind.GreaterThanExpression,
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         ParenthesizedExpression(CastExpression(
-                            MakeGlobalQualifiedName("Sharpy", "ISized"), expr)),
+                            MakeGlobalQualifiedName("Sharpy", "ISized"),
+                            Operand(expr, SyntaxKind.CastExpression, OperandSlot.CastOperand))),
                         IdentifierName("Count")),
                     LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))),
             TruthinessLowering.OptionalIsSome => MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression, expr, IdentifierName("IsSome")),
+                SyntaxKind.SimpleMemberAccessExpression,
+                Operand(expr, SyntaxKind.SimpleMemberAccessExpression, OperandSlot.Receiver),
+                IdentifierName("IsSome")),
             TruthinessLowering.NullableNotNull => BinaryExpression(SyntaxKind.NotEqualsExpression,
-                expr, LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                Operand(expr, SyntaxKind.NotEqualsExpression, OperandSlot.Left),
+                LiteralExpression(SyntaxKind.NullLiteralExpression)),
             TruthinessLowering.BoolConvertible => MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression, expr, IdentifierName("IsTrue")),
+                SyntaxKind.SimpleMemberAccessExpression,
+                Operand(expr, SyntaxKind.SimpleMemberAccessExpression, OperandSlot.Receiver),
+                IdentifierName("IsTrue")),
             TruthinessLowering.AlwaysFalse => LiteralExpression(SyntaxKind.FalseLiteralExpression),
             _ => expr
         };
