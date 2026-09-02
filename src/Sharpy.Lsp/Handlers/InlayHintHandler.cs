@@ -126,45 +126,40 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                         varDecl.NameLineStart, varDecl.NameColumnStart, varDecl.NameColumnEnd, range, hints);
                 }
 
-                // Check initializer for function calls
-                if (varDecl.InitialValue != null)
-                    CollectCallHintsFromExpression(varDecl.InitialValue, analysis, range, hints);
             }
 
             // Plain assignments are how most bindings are written; the declaring one shows
             // the type the compiler inferred for it.
-            if (stmt is Assignment assignment)
+            if (stmt is Assignment { Target: Identifier assignTarget } assignment)
             {
-                if (assignment.Target is Identifier assignTarget)
+                // TryDeclare must run for augmented assignments too — they bind the name for
+                // the rest of the scope — but only `=` introduces a value worth annotating.
+                var isDeclaring = scope.TryDeclare(assignTarget.Name)
+                    && assignment.Operator == AssignmentOperator.Assign;
+
+                if (typeAnnotations && isDeclaring)
                 {
-                    // TryDeclare must run for augmented assignments too — they bind the name for
-                    // the rest of the scope — but only `=` introduces a value worth annotating.
-                    var isDeclaring = scope.TryDeclare(assignTarget.Name)
-                        && assignment.Operator == AssignmentOperator.Assign;
-
-                    if (typeAnnotations && isDeclaring)
-                    {
-                        AddInferredTypeHint(
-                            analysis.SemanticQuery!.GetIdentifierSymbol(assignTarget),
-                            assignTarget.LineStart, assignTarget.ColumnStart,
-                            assignTarget.ColumnStart + SymbolExtents.SourceNameLength(assignTarget.Name, assignTarget.IsNameBacktickEscaped),
-                            range, hints);
-                    }
+                    AddInferredTypeHint(
+                        analysis.SemanticQuery!.GetIdentifierSymbol(assignTarget),
+                        assignTarget.LineStart, assignTarget.ColumnStart,
+                        assignTarget.ColumnStart + SymbolExtents.SourceNameLength(assignTarget.Name, assignTarget.IsNameBacktickEscaped),
+                        range, hints);
                 }
-
-                CollectCallHintsFromExpression(assignment.Value, analysis, range, hints);
             }
 
-            // Expression statements with function calls -> show parameter names
-            if (stmt is ExpressionStatement exprStmt)
+            // Parameter-name hints for every call in every expression position of the statement:
+            // initializers and values, but also `if`/`while` conditions, `for` iterators, `with`
+            // context expressions, `match` scrutinees and guards, `except` filters, `assert` /
+            // `raise` / `yield` operands, parameter defaults. The statement's own GetChildNodes is
+            // the authority on which positions those are (the same reasoning as CallHintCollector
+            // below); the four-kind if-chain this replaced hinted only declarations, assignments,
+            // expression statements and returns, so a call in a condition or an iterator was
+            // silently unhinted (plan-950124 Phase 2 remediation). Suites are recursed by the
+            // switch below, so nested statements hint on their own turn.
+            foreach (var child in stmt.GetChildNodes())
             {
-                CollectCallHintsFromExpression(exprStmt.Expression, analysis, range, hints);
-            }
-
-            // Return statements may contain function calls
-            if (stmt is ReturnStatement returnStmt && returnStmt.Value != null)
-            {
-                CollectCallHintsFromExpression(returnStmt.Value, analysis, range, hints);
+                if (child is Expression expression)
+                    CollectCallHintsFromExpression(expression, analysis, range, hints);
             }
 
             // Recurse into compound statements
@@ -265,6 +260,39 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
                             scope.MergeFrom(caseScope);
                         break;
                     }
+                // Bodied declarations and the deferred suite (plan-950124 Phase 2 remediation):
+                // before this their statements were never visited, so a call inside a property
+                // getter, a union method, a function-style event accessor or a `defer` block got
+                // no hint at all.
+                case PropertyDef propDef:
+                    {
+                        var propScope = new BindingScope();
+                        foreach (var param in propDef.Parameters)
+                            propScope.MarkBound(param.Name);
+                        CollectInlayHints(propDef.Body, analysis, range, hints, typeAnnotations, propScope);
+                        foreach (var observer in propDef.Observers)
+                        {
+                            var observerScope = new BindingScope();
+                            observerScope.MarkBound(observer.ParamName);
+                            CollectInlayHints(observer.Body, analysis, range, hints, typeAnnotations, observerScope);
+                        }
+                        break;
+                    }
+                case UnionDef unionDef:
+                    CollectInlayHints(unionDef.Body, analysis, range, hints, typeAnnotations, new BindingScope());
+                    break;
+                case EventDef eventDef:
+                    {
+                        var eventScope = new BindingScope();
+                        foreach (var param in eventDef.Parameters)
+                            eventScope.MarkBound(param.Name);
+                        CollectInlayHints(eventDef.Body, analysis, range, hints, typeAnnotations, eventScope);
+                        break;
+                    }
+                case DeferStatement deferStmt:
+                    // The deferred suite runs in the enclosing scope: same BindingScope.
+                    CollectInlayHints(deferStmt.Body, analysis, range, hints, typeAnnotations, scope);
+                    break;
             }
         }
     }

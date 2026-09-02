@@ -574,6 +574,102 @@ public class InlayHintTests : IDisposable
             h => h.Label.String!.Contains("name:"));
     }
 
+    // ── Dispatch-totality probes (plan-950124 Phase 2 — InlayHintDispatchTotalityTests) ──
+    // Justified-default probes pair an absence with a positive control on the same input; the
+    // cells after them are misses the probe found, fixed in the handler (no hint → hint).
+
+    [Fact]
+    public async Task InterfaceBody_YieldsNoHint_WhileSiblingCallDoes()
+    {
+        var source = "interface Greeter:\n    def greet(self, name: str) -> str: ...\n\ndef add(a: int, b: int) -> int:\n    return a + b\n\ndef main() -> None:\n    total = add(1, 2)";
+        var hints = await GetHintsAsync(source);
+
+        hints.Should().NotBeNull();
+        hints!.Should().NotContain(h => h.Position.Line <= 1, "an interface body declares signatures only");
+        ParameterHints(hints).Should().Contain(h => h.Position.Line == 7 && h.Label.String == "a:",
+            "positive control: the call on the same input hints");
+    }
+
+    [Fact]
+    public async Task WildcardPattern_BindsNothing_WhileSiblingCaptureDoes()
+    {
+        // `case _:` binds nothing, so the `n = 1` in its body is the declaring binding (hint);
+        // `case n:` binds n, so the same `n = 1` is a rebinding (no hint).
+        var source = "def f(v: int) -> None:\n    match v:\n        case 0:\n            pass\n        case _:\n            n = 1\n            print(n)\n\ndef g(v: int) -> None:\n    match v:\n        case n:\n            n = 1\n            print(n)";
+        var typeHints = TypeHints(await GetHintsAsync(source));
+
+        typeHints.Should().Contain(h => h.Position.Line == 5, "positive control: after a wildcard the assignment declares");
+        typeHints.Should().NotContain(h => h.Position.Line == 11, "after a capture the same assignment is a rebinding");
+    }
+
+    [Fact]
+    public async Task IfCondition_CallGetsParameterHints()
+    {
+        var source = "def check(a: int, b: int) -> bool:\n    return a < b\n\ndef main() -> None:\n    if check(1, 2):\n        pass";
+        var hints = ParameterHints(await GetHintsAsync(source));
+
+        hints.Should().Contain(h => h.Position.Line == 4 && h.Label.String == "a:");
+        hints.Should().Contain(h => h.Position.Line == 4 && h.Label.String == "b:");
+    }
+
+    [Fact]
+    public async Task ForIterator_CallGetsParameterHints()
+    {
+        var source = "def items(n: int, step: int) -> list[int]:\n    return [n, step]\n\ndef main() -> None:\n    for i in items(1, 2):\n        print(i)";
+        var hints = ParameterHints(await GetHintsAsync(source));
+
+        hints.Should().Contain(h => h.Position.Line == 4 && h.Label.String == "n:");
+        hints.Should().Contain(h => h.Position.Line == 4 && h.Label.String == "step:");
+    }
+
+    [Fact]
+    public async Task AssertAndRaiseOperands_CallsGetParameterHints()
+    {
+        var source = "def check(a: int, b: int) -> bool:\n    return a < b\n\ndef make_error(code: int, level: int) -> ValueError:\n    return ValueError(\"x\")\n\ndef main() -> None:\n    assert check(1, 2)\n    raise make_error(3, 4)";
+        var hints = ParameterHints(await GetHintsAsync(source));
+
+        hints.Should().Contain(h => h.Position.Line == 7 && h.Label.String == "a:", "the assert operand hints");
+        hints.Should().Contain(h => h.Position.Line == 8 && h.Label.String == "code:", "the raise operand hints");
+    }
+
+    [Fact]
+    public async Task PropertyGetterBody_CallGetsParameterHints()
+    {
+        var source = "def check(a: int, b: int) -> bool:\n    return a < b\n\nclass C:\n    property get ok(self) -> bool:\n        return check(1, 2)\n\ndef main() -> None:\n    pass";
+        var hints = ParameterHints(await GetHintsAsync(source));
+
+        hints.Should().Contain(h => h.Position.Line == 5 && h.Label.String == "a:");
+    }
+
+    [Fact]
+    public async Task UnionMethodBody_CallGetsParameterHints()
+    {
+        var source = "def check(a: int, b: int) -> bool:\n    return a < b\n\nunion Shape:\n    case Circle(r: float)\n    def ok(self) -> bool:\n        return check(1, 2)\n\ndef main() -> None:\n    pass";
+        var hints = ParameterHints(await GetHintsAsync(source));
+
+        hints.Should().Contain(h => h.Position.Line == 6 && h.Label.String == "a:");
+    }
+
+    [Fact]
+    public async Task DeferBody_CallGetsParameterHints()
+    {
+        _workspace.SetConfiguredFeatures(new[] { "defer" });
+        var source = "def check(a: int, b: int) -> bool:\n    return a < b\n\ndef main() -> None:\n    defer check(1, 2)\n    defer:\n        check(3, 4)\n    print(1)";
+        var hints = ParameterHints(await GetHintsAsync(source));
+
+        hints.Should().Contain(h => h.Position.Line == 4 && h.Label.String == "a:", "the inline deferred statement hints");
+        hints.Should().Contain(h => h.Position.Line == 6 && h.Label.String == "a:", "the defer block's statements hint");
+    }
+
+    [Fact]
+    public async Task FunctionStyleEventBody_CallGetsParameterHints()
+    {
+        var source = "def check(a: int, b: int) -> bool:\n    return a < b\n\ndelegate Cb(v: int) -> None\n\nclass Box:\n    _handlers: list[Cb] = []\n\n    event add on_click(self, handler: Cb):\n        check(1, 2)\n        self._handlers.append(handler)\n\n    event remove on_click(self, handler: Cb):\n        self._handlers.remove(handler)\n\ndef main() -> None:\n    pass";
+        var hints = ParameterHints(await GetHintsAsync(source));
+
+        hints.Should().Contain(h => h.Position.Line == 9 && h.Label.String == "a:");
+    }
+
     public void Dispose()
     {
         _languageService.Dispose();
