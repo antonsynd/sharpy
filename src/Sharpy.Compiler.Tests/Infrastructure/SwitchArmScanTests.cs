@@ -36,26 +36,26 @@ public class SwitchArmScanTests
     }
 
     [Fact]
-    public void CaseTypeNames_PerContainingType_AstVisitorVoid_Returns94Arms()
+    public void CaseTypeNames_PerContainingType_AstVisitorVoid_Returns93Arms()
     {
         var arms = SwitchArmScan.CaseTypeNames(
             "src/Sharpy.Compiler/Parser/Ast/AstVisitor.cs",
             "Visit",
             "AstVisitor");
 
-        Assert.Equal(94, arms.Count);
+        Assert.Equal(93, arms.Count);
         Assert.Contains("FStringLiteral", arms);
     }
 
     [Fact]
-    public void CaseTypeNames_PerContainingType_AstVisitorGeneric_Returns94Arms()
+    public void CaseTypeNames_PerContainingType_AstVisitorGeneric_Returns93Arms()
     {
         var arms = SwitchArmScan.CaseTypeNames(
             "src/Sharpy.Compiler/Parser/Ast/AstVisitor.cs",
             "Visit",
             "AstVisitor`1");
 
-        Assert.Equal(94, arms.Count);
+        Assert.Equal(93, arms.Count);
         Assert.Contains("FStringLiteral", arms);
     }
 
@@ -72,7 +72,7 @@ public class SwitchArmScanTests
     [Fact]
     public void CaseTypeNames_PerContainingType_FilterDiscriminatesByDispatchForm()
     {
-        // The two Visit overloads' rosters coincide (94 == 94), so roster assertions cannot
+        // The two Visit overloads' rosters coincide (93 == 93), so roster assertions cannot
         // detect a filter regression that silently merges the overloads (the plan-e31e76
         // verify-round warning). The overloads differ in dispatch FORM: the void overload is
         // one switch STATEMENT, the generic overload one switch EXPRESSION. A merged
@@ -99,7 +99,7 @@ public class SwitchArmScanTests
             "AstVisitor`1");
 
         Assert.True(voidArms.SetEquals(genericArms),
-            "Both overloads should match the same 94 types today");
+            "Both overloads should match the same 93 types today");
     }
 
     [Fact]
