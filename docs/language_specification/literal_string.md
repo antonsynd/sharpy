@@ -31,6 +31,25 @@ result = safe_query("SELECT * " + "FROM users")
 result2 = safe_query("A" + "B" + "C")
 ```
 
+## Accepted Forms
+
+An argument is a `LiteralString` when it is a string literal, a `+` concatenation whose operands are
+themselves accepted forms, or either of those wrapped in redundant parentheses — parentheses never
+change meaning (the canonical-form contract, #1170):
+
+```python
+def safe_query(query: LiteralString) -> str:
+    return f"executing: {query}"
+
+def main():
+    print(safe_query(("SELECT * FROM users")))   # executing: SELECT * FROM users
+    print(safe_query(("SELECT * ") + ("FROM users")))
+```
+
+PEP 675 also treats `"a" * 3`, an f-string with literal-only holes, and implicit concatenation
+`"a" "b"` as `LiteralString`; Sharpy deliberately does **not** accept those forms today (the first
+two are refused as `str`, the third does not parse). Widening is a separate decision.
+
 ## Type Relationship
 
 `LiteralString` is a subtype of `str`:

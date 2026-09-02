@@ -337,6 +337,33 @@ def main():
         typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
     }
 
+    /// <summary>
+    /// The plan's nested-call cell proper: the placeholder appears INSIDE the call on the and/or
+    /// chain's right operand. Measured @ 277f54543 (verify round): refused loudly with SPY0220
+    /// ("Operand of 'and' must be truth-testable, got '(int32) -> bool'") — a named refusal, never
+    /// SPY0907/SPY0908. The sibling above (`is_valid(5)`, no placeholder in the call) is the
+    /// inference-succeeds control.
+    /// </summary>
+    [Fact]
+    public void OperatorSection_AndOrChainWithPlaceholderInsideCall_RefusesLoudly()
+    {
+        var source = @"
+def is_valid(n: int) -> bool:
+    return n > 0
+
+def main():
+    f = (_ > 0 and is_valid(_))
+";
+        var (module, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module, isEntryPoint: false);
+
+        typeChecker.Diagnostics.GetErrors()
+            .Should().Contain(e => e.Code == DiagnosticCodes.Semantic.TypeMismatch
+                                || e.Code == DiagnosticCodes.Semantic.UnresolvedLambdaParameterType);
+        typeChecker.Diagnostics.GetErrors()
+            .Should().NotContain(e => e.Code == DiagnosticCodes.Infrastructure.UnexpectedUnknownType);
+    }
+
     [Fact]
     public void OperatorSection_MemberAccessOperand_RefusesSPY0343()
     {

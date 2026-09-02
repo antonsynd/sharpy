@@ -46,6 +46,12 @@ public class CheckPatternTotalityTests
         nameof(StarPattern),
     };
 
+    // UnionCasePattern is the only kind outside the arms, so it is the only kind that COULD reach
+    // the loud UnsupportedFeature default — but it has no construction site in the parser
+    // (measured @ 277f54543: `case Circle(r):` over a union and `case Some(v):` over an Optional
+    // both parse as PositionalPattern and run correctly), so no program can reach the default
+    // through it and this entry is unfalsifiable by execution. Filed as a dead AST kind: #1730.
+    // Until it is deleted or wired, the roster keeps it here so the universe assertion stays exact.
     private static readonly HashSet<string> LoudDefault = new()
     {
         nameof(UnionCasePattern),
