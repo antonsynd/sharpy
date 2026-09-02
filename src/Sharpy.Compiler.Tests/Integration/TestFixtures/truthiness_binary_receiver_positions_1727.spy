@@ -1,0 +1,82 @@
+# #1727 precedence-inversion class: str binary receiver (a + b) at every truthiness position.
+# Unparenthesized — the receiver is `a + b` where a, b are str.
+# python3-verified.
+def main() -> None:
+    a: str = "hello"
+    b: str = " world"
+
+    # if
+    if a + b:
+        print("if-truthy")
+
+    # elif
+    x: bool = False
+    if x:
+        pass
+    elif a + b:
+        print("elif-truthy")
+
+    # while
+    xs: list[str] = ["a", "b", ""]
+    count: int = 0
+    while xs[count]:
+        count = count + 1
+    print("while-count:" + str(count))
+
+    # assert
+    assert a + b, "should be truthy"
+    print("assert-pass")
+
+    # not
+    if not (a + b):
+        print("not-truthy")
+    else:
+        print("not-falsy")
+
+    # and-lhs
+    r1: bool = True
+    if (a + b) and r1:
+        print("and-true")
+
+    # and-rhs
+    if r1 and (a + b):
+        print("and-rhs-true")
+
+    # or-lhs
+    r2: bool = False
+    if (a + b) or r2:
+        print("or-true")
+
+    # or-rhs
+    if r2 or (a + b):
+        print("or-rhs-true")
+
+    # ternary test
+    result: str = "yes" if a + b else "no"
+    print("ternary:" + result)
+
+    # list comprehension if
+    items: list[int] = [x2 for x2 in [0, 1] if a + b]
+    print("list-comp:" + str(len(items)))
+
+    # set comprehension if
+    s_items: set[int] = {x3 for x3 in [0, 1] if a + b}
+    print("set-comp:" + str(len(s_items)))
+
+    # dict comprehension if
+    d_items: dict[int, int] = {x4: x4 for x4 in [0, 1] if a + b}
+    print("dict-comp:" + str(len(d_items)))
+
+    # match guard
+    value: int = 42
+    match value:
+        case v if a + b:
+            print("guard:" + str(v))
+
+    # parenthesized twin (positive control — must keep working)
+    flag: bool = True
+    e: str = ""
+    if not (a if flag else e):
+        print("paren-not-truthy")
+    else:
+        print("paren-not-falsy")

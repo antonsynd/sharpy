@@ -1,0 +1,24 @@
+# #1727 precedence-inversion class: list[int] binary receiver (xs + ys) in truthiness positions.
+# The cast arm: (ISized)(xs + ys).Count > 0 — the cast parenthesizes the cast but not the operand.
+# python3-verified.
+def main() -> None:
+    xs: list[int] = [1, 2]
+    ys: list[int] = [3]
+    empty: list[int] = []
+
+    # if — truthy
+    if xs + ys:
+        print("list-if-truthy")
+
+    # if — falsy
+    if empty + empty:
+        print("list-if-empty-truthy")
+    else:
+        print("list-if-empty-falsy")
+
+    # while
+    count: int = 0
+    data: list[list[int]] = [[1], [2], []]
+    while data[count] + data[count]:
+        count = count + 1
+    print("list-while-count:" + str(count))

@@ -1,0 +1,15 @@
+if-truthy
+elif-truthy
+while-count:2
+assert-pass
+not-falsy
+and-true
+and-rhs-true
+or-true
+or-rhs-true
+ternary:yes
+list-comp:2
+set-comp:2
+dict-comp:2
+guard:42
+paren-not-falsy

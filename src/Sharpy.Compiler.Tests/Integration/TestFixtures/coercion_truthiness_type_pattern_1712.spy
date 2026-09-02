@@ -1,0 +1,50 @@
+# #1712 precedence-inversion class: as? coercion in truthiness positions.
+# The emitter builds cond ? Some(x) : default — unparenthesized, .IsSome re-associates.
+# Expected from value-position twins (r = o as? T; if r:) executed at HEAD.
+# Numeric controls (as? int8, as? int64, 5 as? long) compile clean — they stay clean.
+def main() -> None:
+    o: object = 42
+
+    # assert
+    r1: long? = o as? long
+    assert r1, "as-long assert"
+    print("assert-pass")
+
+    # if
+    if o as? long:
+        print("if-as-long")
+
+    # while (mutates o so while runs once)
+    count: int = 0
+    while o as? long:
+        print("while-as-long")
+        o = "not a long"
+        count = count + 1
+    print("while-count:" + str(count))
+
+    # ternary test
+    o = 42
+    result: str = "some" if o as? long else "none"
+    print("ternary:" + result)
+
+    # and-operand
+    flag: bool = True
+    o = 42
+    if (o as? long) and flag:
+        print("and-as-long")
+
+    # ── Numeric controls (must compile clean, no SPY0908) ──
+    n: int = 300
+    # narrowing: int → int8 (out of range → None)
+    if n as? int8:
+        print("narrow-some")
+    else:
+        print("narrow-none")
+
+    # widening: int → int64 (always succeeds)
+    if n as? int64:
+        print("widen-some")
+
+    # statically convertible
+    if 5 as? long:
+        print("static-some")
