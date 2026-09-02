@@ -271,7 +271,7 @@ public static class DispatchSiteScan
         };
     }
 
-    private static string BuildGlobalUsingsSource(string csprojPath)
+    internal static string BuildGlobalUsingsSource(string csprojPath)
     {
         var lines = SdkImplicitUsings
             .Select(u => $"global using global::{u};")
@@ -284,7 +284,7 @@ public static class DispatchSiteScan
         return string.Join("\n", lines);
     }
 
-    private static List<string> ReadCsprojUsings(string csprojPath)
+    internal static List<string> ReadCsprojUsings(string csprojPath)
     {
         var usings = new List<string>();
         var doc = XDocument.Load(csprojPath);
@@ -332,7 +332,7 @@ public static class DispatchSiteScan
         return map;
     }
 
-    private static string GetAssemblyName(string csprojPath)
+    internal static string GetAssemblyName(string csprojPath)
     {
         var doc = XDocument.Load(csprojPath);
         var ns = doc.Root?.Name.Namespace ?? XNamespace.None;
