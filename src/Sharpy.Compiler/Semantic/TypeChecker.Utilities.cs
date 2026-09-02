@@ -1816,13 +1816,17 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Checks if an expression is a valid assignment target.
-    /// Valid targets: Identifier, MemberAccess (attribute), IndexAccess, TupleLiteral (for unpacking)
-    /// Invalid targets: FunctionCall, Literal, BinaryExpression, etc.
+    /// Checks if an expression is a valid assignment target — the universe authority for the
+    /// assignment-target dispatch family (<c>AssignmentTargetDispatchTotalityTests</c>).
+    /// Valid targets: Identifier, MemberAccess (attribute), IndexAccess, TupleLiteral (for unpacking),
+    /// StarExpression (inside a tuple). Invalid targets: FunctionCall, Literal, BinaryExpression, etc.
+    /// Targets arrive canonical from the parser (<see cref="AstHelper.CanonicalizeStoreTarget"/>),
+    /// so the only <c>Parenthesized</c> that can reach the default arm is the refused
+    /// <c>(*a)</c> shape (a Python SyntaxError) — do not add an unwrap here.
     /// </summary>
     private bool IsValidAssignmentTarget(Expression target)
     {
-        return UnwrapParenthesized(target) switch
+        return target switch
         {
             Identifier => true,
             MemberAccess => true,

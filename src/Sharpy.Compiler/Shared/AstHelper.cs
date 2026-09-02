@@ -103,6 +103,25 @@ internal static class AstHelper
     /// Walks the full descendant tree via <see cref="Node.GetChildNodes"/>, stopping at
     /// <see cref="LambdaExpression"/> boundaries (walrus in a lambda binds in lambda scope).
     /// </summary>
+    /// <summary>
+    /// True when <paramref name="expr"/> contains a <see cref="WalrusExpression"/> that a
+    /// <c>while</c> test must re-evaluate per iteration (#1723). This is a structural descendant
+    /// walk over <see cref="Node.GetChildNodes"/> — there is no kind list to go stale, which is
+    /// how the member-call, index, keyword-argument, star-argument, container-element and
+    /// conditional hosts are covered (fixtures <c>walrus_while_host_*</c>).
+    ///
+    /// <para>Boundaries: the walk stops at <see cref="LambdaExpression"/> — a walrus in a lambda
+    /// body binds in the lambda's scope and is the lambda lowering's business (#1725, still
+    /// hoisted out of the lambda today). It deliberately does NOT stop at comprehensions: Sharpy's
+    /// comprehension-local walrus (<c>walrus_operator.md</c>) is still re-evaluated per outer
+    /// iteration when the comprehension sits in the <c>while</c> test, so it must count; the
+    /// comprehension lowering under inline mode is the open half (#1724 — CS0103 today,
+    /// an infinite loop before the walk was structural).</para>
+    ///
+    /// <para>Sole consumer: <c>RoslynEmitter.GenerateWhile</c>. The <c>if</c>/<c>elif</c>,
+    /// short-circuit, and ternary hosts do not go through here and still evaluate a walrus
+    /// eagerly (#1680).</para>
+    /// </summary>
     public static bool ContainsWalrusExpression(Expression expr)
     {
         return ContainsWalrusInDescendants(expr);
@@ -145,6 +164,48 @@ internal static class AstHelper
         while (expr is Parenthesized paren)
             expr = paren.Expression;
         return expr;
+    }
+
+    /// <summary>
+    /// Canonicalizes a <em>store target</em> — the left side of an assignment or augmented
+    /// assignment, an annotated declaration's name, a <c>for</c> / comprehension loop target, or a
+    /// <c>with … as</c> target. Redundant parentheses never change what a target binds (#1170), so
+    /// <c>(a) = 1</c>, <c>for (x) in xs</c>, <c>((a), b) = t</c>, <c>with cm as (f)</c> and
+    /// <c>*(rest), last = xs</c> bind exactly like their unparenthesized spellings (python3 accepts
+    /// every one of them).
+    ///
+    /// <para>The parser applies this ONCE, at every site that constructs a target
+    /// (<c>ParseStoreTarget</c> and the assignment / annotated-declaration constructors in
+    /// <c>ParseSimpleStatement</c>), so no downstream consumer — the checker's target authority
+    /// <c>IsValidAssignmentTarget</c>, definite assignment, narrowing-key collection, the naming and
+    /// collision validators, the emitter's stores, the LSP binding walkers — can ever see a
+    /// <see cref="Parenthesized"/> in a target position. A <c>Parenthesized</c> arm in any of those
+    /// switches is dead code; <c>AssignmentTargetDispatchTotalityTests</c> pins their arm sets
+    /// without it and <c>StoreTargetCanonicalizationTests</c> pins the parser seam.</para>
+    ///
+    /// <para>Refusals that must survive: <c>(*a), b = xs</c> is a Python SyntaxError ("cannot use
+    /// starred expression here") — the parser yields a one-element <see cref="TupleLiteral"/>
+    /// holding the star (not a <c>Parenthesized</c>), which the target authority refuses
+    /// (SPY0225), so this helper never sees it. Parentheses around a walrus target
+    /// (<c>((a) := 1)</c>) and around an <c>except … as</c> name are Python syntax errors too;
+    /// those two parse sites deliberately do not canonicalize.</para>
+    /// </summary>
+    public static Expression CanonicalizeStoreTarget(Expression target)
+    {
+        return target switch
+        {
+            Parenthesized paren => CanonicalizeStoreTarget(paren.Expression),
+            TupleLiteral tuple => tuple with
+            {
+                Elements = tuple.Elements.Select(CanonicalizeStoreTarget).ToImmutableArray()
+            },
+            ListLiteral list => list with
+            {
+                Elements = list.Elements.Select(CanonicalizeStoreTarget).ToImmutableArray()
+            },
+            StarExpression star => star with { Operand = CanonicalizeStoreTarget(star.Operand) },
+            _ => target,
+        };
     }
 
     /// <summary>

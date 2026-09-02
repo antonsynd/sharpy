@@ -1,0 +1,6 @@
+# Refusal control for the store-target canonicalization seam (#1170): python3 rejects
+# `(*a), b = xs` ("cannot use starred expression here"), so it must stay refused while
+# `*(a), b = xs` (valid python3) is accepted — see assignment_parenthesized_target_routes.spy.
+def main():
+    (*a), b = [1, 2, 3]
+    print(a, b)

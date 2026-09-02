@@ -893,9 +893,6 @@ internal class ControlFlowGraphBuilder
     {
         switch (target)
         {
-            case Parenthesized paren:
-                CollectBindingKeysInto(paren.Expression, keys);
-                break;
             case TupleLiteral tuple:
                 foreach (var element in tuple.Elements)
                     CollectBindingKeysInto(element, keys);

@@ -1,0 +1,34 @@
+# Redundant parentheses around a binding name never change meaning (#1170) on EVERY store-target
+# route, not just plain assignment: for-loop targets, nested tuple elements, with-as targets,
+# annotated declarations, bare tuple targets, starred operands, and comprehension targets.
+# python3-verified output. Before the parser-level canonicalization (AstHelper.CanonicalizeStoreTarget)
+# each of these routes refused the name with SPY0200/SPY0107/SPY0239 while `(a) = 1` compiled.
+class Tracker:
+    label: str
+
+    def __init__(self, label: str):
+        self.label = label
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self) -> None:
+        pass
+
+def main():
+    for (x) in [1, 2]:
+        print(x)
+    for ((a), b) in [(3, 4)]:
+        print(a, b)
+    with Tracker("t") as (t):
+        print(t.label)
+    (c): int = 5
+    print(c)
+    ((d), e) = (6, 7)
+    print(d, e)
+    (f), g = 8, 9
+    print(f, g)
+    *(h), i = [10, 11, 12]
+    print(h, i)
+    print([y for (y) in [13, 14]])
+    print([z for ((z), w) in [(15, 16)]])

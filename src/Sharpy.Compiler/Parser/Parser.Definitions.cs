@@ -100,7 +100,7 @@ public partial class Parser
 
                 return new Assignment
                 {
-                    Target = tuple,
+                    Target = AstHelper.CanonicalizeStoreTarget(tuple),
                     Value = value,
                     Operator = op,
                     LineStart = startLine,
@@ -125,7 +125,8 @@ public partial class Parser
 
             return new Assignment
             {
-                Target = expr,
+                // Store targets are canonical from here on (#1170): `(a) = 1` binds `a`.
+                Target = AstHelper.CanonicalizeStoreTarget(expr),
                 Value = value,
                 Operator = op,
                 LineStart = expr.LineStart,
@@ -139,7 +140,9 @@ public partial class Parser
         // Check for type annotation (variable declaration)
         if (Current.Type == TokenType.Colon)
         {
-            if (expr is not Identifier id)
+            // `(a): int = 1` is valid Python (the parentheses are redundant); a tuple or any
+            // other shape is not an annotatable name (python3: "only single target can be annotated").
+            if (AstHelper.CanonicalizeStoreTarget(expr) is not Identifier id)
                 throw ReportError("Invalid type annotation target", Current.Line, Current.Column, DiagnosticCodes.Parser.InvalidTypeAnnotationTarget, span: CurrentSpan);
 
             Advance();  // Skip :

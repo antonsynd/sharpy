@@ -17,18 +17,17 @@ internal partial class TypeChecker
         // First, validate that the assignment target is a valid assignable expression
         // Valid targets: Identifier, MemberAccess (attribute), IndexAccess, TupleLiteral (unpacking)
         // Invalid targets: FunctionCall, Literal, BinaryExpression, etc.
-        var effectiveTarget = UnwrapParenthesized(assignment.Target);
-
+        // The target is canonical (no redundant parentheses) — see AstHelper.CanonicalizeStoreTarget.
         if (!IsValidAssignmentTarget(assignment.Target))
         {
-            AddError($"Cannot assign to {GetAssignmentTargetDescription(effectiveTarget)}",
+            AddError($"Cannot assign to {GetAssignmentTargetDescription(assignment.Target)}",
                 assignment.Target.LineStart, assignment.Target.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
                 span: assignment.Span);
             return;
         }
 
         // Validate that 'self' cannot be reassigned
-        if (effectiveTarget is Identifier selfId && selfId.Name == PythonNames.Self)
+        if (assignment.Target is Identifier selfId && selfId.Name == PythonNames.Self)
         {
             AddError("Cannot reassign 'self'",
                 assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
@@ -37,7 +36,7 @@ internal partial class TypeChecker
         }
 
         // Validate that 'in' parameters cannot be reassigned
-        if (effectiveTarget is Identifier inParamId)
+        if (assignment.Target is Identifier inParamId)
         {
             var sym = _symbolTable.Lookup(inParamId.Name, searchParents: true);
             if (sym is VariableSymbol vs && vs.IsParameter && vs.ParameterModifier == Parser.Ast.ParameterModifier.In)
@@ -50,7 +49,7 @@ internal partial class TypeChecker
         }
 
         // Handle tuple unpacking: x, y = expr  or  first, *rest = items
-        if (assignment.Operator == AssignmentOperator.Assign && effectiveTarget is TupleLiteral targetTuple)
+        if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is TupleLiteral targetTuple)
         {
             var tupleValueType = CheckExpression(assignment.Value);
 
@@ -88,7 +87,7 @@ internal partial class TypeChecker
         }
 
         // Check if this is a simple assignment to an identifier (type inference and redefinition case)
-        if (assignment.Operator == AssignmentOperator.Assign && effectiveTarget is Identifier targetId)
+        if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is Identifier targetId)
         {
             // Check current scope first
             var existingSymbol = _symbolTable.Lookup(targetId.Name, searchParents: false);
@@ -279,7 +278,7 @@ internal partial class TypeChecker
         }
 
         // Check if the assignment target is an event member access
-        if (effectiveTarget is MemberAccess eventMa)
+        if (assignment.Target is MemberAccess eventMa)
         {
             var eventSymbol = TryResolveEventAccess(eventMa);
             if (eventSymbol != null)
@@ -341,8 +340,8 @@ internal partial class TypeChecker
         SemanticType targetType;
         using (ScopedValue.Push(ref _indexStoreTarget, IndexStoreTarget.Of(assignment)))
         using (ScopedValue.Push(ref _plainStoreTarget,
-            assignment.Operator == AssignmentOperator.Assign ? effectiveTarget : null))
-            targetType = CheckExpression(effectiveTarget);
+            assignment.Operator == AssignmentOperator.Assign ? assignment.Target : null))
+            targetType = CheckExpression(assignment.Target);
         var assignmentTargetType = targetType;
         // Set expected type for constructor inference (Some/None()/Ok/Err)
         var previousExpectedType = _expectedType;
@@ -1302,8 +1301,6 @@ internal partial class TypeChecker
             {
                 case Identifier id:
                     return id.Name == name;
-                case Parenthesized paren:
-                    return TargetBindsName(paren.Expression, name);
                 case StarExpression star:
                     return TargetBindsName(star.Operand, name);
                 case TupleLiteral tuple:

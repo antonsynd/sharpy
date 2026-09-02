@@ -244,7 +244,13 @@ public partial class Parser
     /// <c>with … as</c> targets. Does not accept call <c>()</c> suffixes — you cannot
     /// assign to a function call result.
     /// </summary>
-    private Expression ParseStoreTarget()
+    /// <param name="canonicalize">
+    /// When true (the default) the result passes through
+    /// <see cref="AstHelper.CanonicalizeStoreTarget"/>, so redundant parentheses around a
+    /// binding name never reach semantic analysis (#1170). The <c>except … as</c> site passes
+    /// false: <c>except E as (e)</c> is a Python SyntaxError and must stay refused.
+    /// </param>
+    private Expression ParseStoreTarget(bool canonicalize = true)
     {
         var expr = ParsePrimary();
         while (true)
@@ -305,7 +311,7 @@ public partial class Parser
                 break;
             }
         }
-        return expr;
+        return canonicalize ? AstHelper.CanonicalizeStoreTarget(expr) : expr;
     }
 
     /// <summary>
@@ -612,7 +618,9 @@ public partial class Parser
                 else if (Current.Type == TokenType.As)
                 {
                     Advance();
-                    var exceptTarget = ParseStoreTarget();
+                    // python3 refuses `except E as (e)` — keep the wrapper so the simple-name
+                    // check below refuses it too (the seam's deliberate non-canonical site).
+                    var exceptTarget = ParseStoreTarget(canonicalize: false);
                     if (exceptTarget is Identifier exceptId)
                     {
                         name = exceptId.Name;

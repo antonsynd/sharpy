@@ -23,6 +23,29 @@ a, b = (1, 2, 3)
 *Implementation*
 - *✅ Native - C# tuple deconstruction: `var (x, y) = point;`*
 
+## Redundant Parentheses Around Targets
+
+Parentheses around a binding name never change what it binds — on every store-target route:
+plain and augmented assignment, annotated declarations, nested tuple elements, starred operands,
+`for` and comprehension targets, and `with … as` targets. The parser canonicalizes the target once,
+so `(a) = 1` is exactly `a = 1` (the canonical-form contract, #1170; Python accepts every spelling):
+
+```python
+for (x) in [1, 2]:
+    print(x)          # 1, 2
+for ((a), b) in [(3, 4)]:
+    print(a, b)       # 3 4
+(c): int = 5
+((d), e) = (6, 7)
+(f), g = 8, 9
+*(h), i = [10, 11, 12]
+print(h, i)           # [10, 11] 12
+print([y for (y) in [13, 14]])   # [13, 14]
+```
+
+The shapes Python rejects stay rejected: `(*a), b = xs` ("cannot use starred expression here"),
+`except E as (e)`, and a parenthesized walrus target `((a) := 1)`.
+
 ## Nested Tuple Unpacking
 
 Targets can themselves be tuple patterns, enabling nested destructuring:

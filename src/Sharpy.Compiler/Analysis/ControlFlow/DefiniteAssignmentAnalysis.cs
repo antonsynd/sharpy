@@ -229,9 +229,6 @@ internal static class DefiniteAssignmentAnalysis
             case StarExpression star:
                 CollectAssignedNames(star.Operand, assigned);
                 break;
-            case Parenthesized paren:
-                CollectAssignedNames(paren.Expression, assigned);
-                break;
             case IndexAccess:
             case MemberAccess:
                 break;
@@ -270,9 +267,6 @@ internal static class DefiniteAssignmentAnalysis
                 break;
             case StarExpression star:
                 CollectTargetReads(star.Operand, reads, stmtIdx, lambdaReads);
-                break;
-            case Parenthesized paren:
-                CollectTargetReads(paren.Expression, reads, stmtIdx, lambdaReads);
                 break;
             default:
                 CollectReadsFromExpr(target, reads, stmtIdx, lambdaReads);

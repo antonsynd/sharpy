@@ -11,16 +11,23 @@ namespace Sharpy.Compiler.Tests.Analysis;
 /// (the sole authority for what the parser admits as an assignment target):
 /// {Identifier, MemberAccess, IndexAccess, TupleLiteral, StarExpression}.
 ///
-/// <c>IsValidAssignmentTarget</c> calls <c>UnwrapParenthesized</c> at its seam,
-/// so downstream sites receive canonical (unwrapped) targets. Sites that operate
-/// on raw AST (before the checker's unwrap) may include <c>Parenthesized</c> as
-/// a recursion arm — that is a superset, not a universe change, and is documented
-/// per site. <c>ListLiteral</c> appears in two sites defensively (Python admits
-/// <c>[a, b] = t</c>; Sharpy's parser may produce it in error recovery).
+/// The PARSER canonicalizes every store target through
+/// <c>AstHelper.CanonicalizeStoreTarget</c> (assignment, annotated declaration, for /
+/// comprehension target, with-as target), so NO member site — raw-AST analyses included —
+/// can ever receive a <c>Parenthesized</c> target; the only surviving wrapper is the refused
+/// <c>(*a)</c> shape, which reaches the authority's default arm. A <c>Parenthesized</c> arm in
+/// any member site is therefore dead code and <c>NoMemberSite_HasParenthesizedArm</c> fails on it;
+/// the parser seam itself is pinned by <c>StoreTargetCanonicalizationTests</c>.
+/// <c>ListLiteral</c> appears in two sites defensively (Python admits <c>[a, b] = t</c>;
+/// Sharpy's parser may produce it in error recovery).
 ///
 /// A new assignment-target kind must be added to <c>IsValidAssignmentTarget</c>
 /// first, which causes <c>Universe_MatchesAuthority</c> to fail, then to every
 /// member site whose reason does not already cover it.
+///
+/// mutation (verify round 2026-09-02): <c>Parenthesized</c> arm re-added to
+/// <c>CollectBindingKeysInto</c> → <c>CollectBindingKeysInto_Arms_AreKnown</c> and
+/// <c>NoMemberSite_HasParenthesizedArm</c> red; restored → green.
 /// </summary>
 public class AssignmentTargetDispatchTotalityTests
 {
@@ -53,12 +60,42 @@ public class AssignmentTargetDispatchTotalityTests
             $"  Missing from authority: {string.Join(", ", Universe.Except(arms))}");
     }
 
+    // Every member site whose arms this class pins, as (file, method). Used by
+    // NoMemberSite_HasParenthesizedArm: the parser seam guarantees no Parenthesized target
+    // reaches any of them, so an arm for it is dead code that would hide a seam regression.
+    private static readonly (string File, string Method)[] MemberSites =
+    {
+        ("src/Sharpy.Compiler/Semantic/TypeChecker.Utilities.cs", "IsValidAssignmentTarget"),
+        ("src/Sharpy.Compiler/Analysis/ControlFlow/ControlFlowGraphBuilder.cs", "CollectBindingKeysInto"),
+        ("src/Sharpy.Compiler/Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs", "CollectAssignedNames"),
+        ("src/Sharpy.Compiler/Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs", "CollectTargetReads"),
+        ("src/Sharpy.Compiler/Semantic/TypeChecker.Statements.cs", "TargetBindsName"),
+        ("src/Sharpy.Lsp/Refactoring/ScopeAnalyzer.cs", "CollectAssignmentTargets"),
+        ("src/Sharpy.Lsp/Handlers/InlayHintHandler.cs", "MarkTargetBound"),
+    };
+
+    [Fact]
+    public void NoMemberSite_HasParenthesizedArm()
+    {
+        var offenders = new List<string>();
+        foreach (var (file, method) in MemberSites)
+        {
+            var arms = SwitchArmScan.CaseTypeNames(file, method);
+            Assert.NotEmpty(arms);
+            if (arms.Contains(nameof(Parenthesized)))
+                offenders.Add($"{file}::{method}");
+        }
+
+        Assert.True(offenders.Count == 0,
+            "Parenthesized targets are canonicalized by the parser (AstHelper.CanonicalizeStoreTarget); " +
+            "these member sites carry a dead Parenthesized arm:\n  " + string.Join("\n  ", offenders));
+    }
+
     // --- ControlFlowGraphBuilder.CollectBindingKeysInto ---
-    // Arms: {Parenthesized, TupleLiteral}; default delegates to ExtractNarrowingKey
-    // which handles Identifier, MemberAccess, IndexAccess. Parenthesized is explicit
-    // because this site operates on raw targets (before the checker's unwrap seam).
-    // StarExpression falls to the default (ExtractNarrowingKey returns null for it,
-    // which is correct — star targets don't produce narrowing keys).
+    // Arms: {TupleLiteral}; default delegates to ExtractNarrowingKey which handles
+    // Identifier, MemberAccess, IndexAccess. StarExpression falls to the default
+    // (ExtractNarrowingKey returns null for it, which is correct — star targets don't
+    // produce narrowing keys). Targets are canonical: no Parenthesized arm.
 
     [Fact]
     public void CollectBindingKeysInto_Arms_AreKnown()
@@ -69,7 +106,7 @@ public class AssignmentTargetDispatchTotalityTests
         Assert.NotEmpty(arms);
         _output.WriteLine($"CollectBindingKeysInto arms: {string.Join(", ", arms.OrderBy(a => a))}");
 
-        var expected = new HashSet<string> { nameof(Parenthesized), nameof(TupleLiteral) };
+        var expected = new HashSet<string> { nameof(TupleLiteral) };
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected.\n" +
             $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +
@@ -77,10 +114,9 @@ public class AssignmentTargetDispatchTotalityTests
     }
 
     // --- DefiniteAssignmentAnalysis.CollectAssignedNames ---
-    // Arms: universe + Parenthesized = {Identifier, TupleLiteral, StarExpression,
-    // Parenthesized, IndexAccess, MemberAccess}. IndexAccess and MemberAccess are
-    // no-op arms (they mutate a container, not rebind a name). Parenthesized recurses.
-    // Operates on raw targets (before the checker's unwrap).
+    // Arms == universe = {Identifier, TupleLiteral, StarExpression, IndexAccess, MemberAccess}.
+    // IndexAccess and MemberAccess are no-op arms (they mutate a container, not rebind a name).
+    // Targets are canonical: no Parenthesized arm.
 
     [Fact]
     public void CollectAssignedNames_Arms_AreKnown()
@@ -91,17 +127,17 @@ public class AssignmentTargetDispatchTotalityTests
         Assert.NotEmpty(arms);
         _output.WriteLine($"CollectAssignedNames arms: {string.Join(", ", arms.OrderBy(a => a))}");
 
-        var expected = new HashSet<string>(Universe) { nameof(Parenthesized) };
+        var expected = new HashSet<string>(Universe);
         Assert.True(arms.SetEquals(expected),
-            $"Arms differ from expected (universe + Parenthesized).\n" +
+            $"Arms differ from expected (universe).\n" +
             $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +
             $"  Missing: {string.Join(", ", expected.Except(arms))}");
     }
 
     // --- DefiniteAssignmentAnalysis.CollectTargetReads ---
-    // Arms: {Identifier, TupleLiteral, StarExpression, Parenthesized}; default
-    // calls CollectReadsFromExpr for IndexAccess/MemberAccess sub-expression reads.
-    // Identifier is a no-op (pure binding, no read). Parenthesized recurses.
+    // Arms: {Identifier, TupleLiteral, StarExpression}; default calls CollectReadsFromExpr
+    // for IndexAccess/MemberAccess sub-expression reads. Identifier is a no-op (pure binding,
+    // no read). Targets are canonical: no Parenthesized arm.
 
     [Fact]
     public void CollectTargetReads_Arms_AreKnown()
@@ -114,8 +150,7 @@ public class AssignmentTargetDispatchTotalityTests
 
         var expected = new HashSet<string>
         {
-            nameof(Identifier), nameof(TupleLiteral),
-            nameof(StarExpression), nameof(Parenthesized),
+            nameof(Identifier), nameof(TupleLiteral), nameof(StarExpression),
         };
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected.\n" +
@@ -124,10 +159,10 @@ public class AssignmentTargetDispatchTotalityTests
     }
 
     // --- ReassignmentFinder.TargetBindsName ---
-    // Arms: {Identifier, Parenthesized, StarExpression, TupleLiteral, ListLiteral};
-    // default returns false. MemberAccess/IndexAccess in the default — correct,
-    // they don't rebind names. ListLiteral is defensive (Python admits [a,b] = t;
-    // parser may produce it). Parenthesized recurses.
+    // Arms: {Identifier, StarExpression, TupleLiteral, ListLiteral}; default returns
+    // false. MemberAccess/IndexAccess in the default — correct, they don't rebind names.
+    // ListLiteral is defensive (Python admits [a,b] = t; parser may produce it).
+    // Targets are canonical: no Parenthesized arm.
 
     [Fact]
     public void TargetBindsName_Arms_AreKnown()
@@ -140,8 +175,7 @@ public class AssignmentTargetDispatchTotalityTests
 
         var expected = new HashSet<string>
         {
-            nameof(Identifier), nameof(Parenthesized),
-            nameof(StarExpression), nameof(TupleLiteral), nameof(ListLiteral),
+            nameof(Identifier), nameof(StarExpression), nameof(TupleLiteral), nameof(ListLiteral),
         };
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected.\n" +
