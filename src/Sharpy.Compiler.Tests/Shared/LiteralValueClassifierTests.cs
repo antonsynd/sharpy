@@ -1,4 +1,6 @@
-using System.Text.RegularExpressions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Tests.Infrastructure;
@@ -205,21 +207,141 @@ public class LiteralValueClassifierTests
 
     #endregion
 
-    #region Re-derivation guard
+    #region Re-derivation guard (literal-value family)
 
-    [Fact]
-    public void EmitterLruCacheFile_DoesNotContainLiteralExtractionSwitch()
+    /// <summary>
+    /// The four former re-derivation sites of the literal-value classifier (#1716): each used to
+    /// hold its own <c>switch</c> over literal AST kinds; all now call
+    /// <see cref="AstHelper.TryGetLiteralValue"/>. The only switch that may name a literal kind
+    /// lives in <see cref="SourceFile"/> (pinned arm-by-arm above).
+    /// </summary>
+    private static readonly string[] LiteralValueFamilyFiles =
     {
-        var repoRoot = FindRepoRoot();
-        var lruCacheFile = Path.Combine(repoRoot,
-            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.ClassMembers.LruCache.cs");
-        var source = File.ReadAllText(lruCacheFile);
+        "src/Sharpy.Compiler/Project/GeneratorContextBuilder.cs",
+        "src/Sharpy.Compiler/Semantic/Validation/DecoratorValidator.Caching.cs",
+        "src/Sharpy.Compiler/Semantic/TypeChecker.Definitions.cs",
+        "src/Sharpy.Compiler/CodeGen/RoslynEmitter.ClassMembers.LruCache.cs",
+    };
 
+    private static readonly HashSet<string> LiteralAstKinds = new(StringComparer.Ordinal)
+    {
+        nameof(IntegerLiteral),
+        nameof(FloatLiteral),
+        nameof(StringLiteral),
+        nameof(BooleanLiteral),
+        nameof(NoneLiteral),
+    };
+
+    /// <summary>
+    /// Family-wide guard (verify-round finding P3b.4 — the previous guard scanned ONE file for
+    /// ONE regex): every switch statement and switch expression in each family file is
+    /// enumerated with Roslyn, and no arm pattern may name a literal AST kind. A re-derived
+    /// classifier in any of the four files fails its own row.
+    /// </summary>
+    [Theory]
+    [InlineData("src/Sharpy.Compiler/Project/GeneratorContextBuilder.cs")]
+    [InlineData("src/Sharpy.Compiler/Semantic/Validation/DecoratorValidator.Caching.cs")]
+    [InlineData("src/Sharpy.Compiler/Semantic/TypeChecker.Definitions.cs")]
+    [InlineData("src/Sharpy.Compiler/CodeGen/RoslynEmitter.ClassMembers.LruCache.cs")]
+    public void LiteralValueFamilyFile_HasNoSwitchArmNamingALiteralKind(string repoRelativePath)
+    {
+        Assert.Contains(repoRelativePath, LiteralValueFamilyFiles);
+
+        var hits = LiteralKindSwitchArms(repoRelativePath);
+        foreach (var hit in hits)
+            _output.WriteLine($"  RE-DERIVATION: {hit}");
+
+        Assert.True(hits.Count == 0,
+            $"{repoRelativePath} has {hits.Count} switch arm(s) naming a literal AST kind — " +
+            $"the literal-value classifier is AstHelper.TryGetLiteralValue, not a local switch:\n  " +
+            string.Join("\n  ", hits));
+    }
+
+    /// <summary>
+    /// Positive control for the absence assertion above: the same probe, applied to the file
+    /// that legitimately holds the classifier switch, must hit — once per literal kind.
+    /// </summary>
+    [Fact]
+    public void LiteralKindSwitchArmProbe_HitsEveryKindInTheClassifierFile()
+    {
+        var hits = LiteralKindSwitchArms(SourceFile);
+        foreach (var hit in hits)
+            _output.WriteLine($"  CLASSIFIER ARM: {hit}");
+
+        Assert.NotEmpty(hits);
+        foreach (var kind in LiteralAstKinds)
+            Assert.Contains(hits, h => h.Contains(kind));
+    }
+
+    /// <summary>
+    /// The emitter reads the materialized <c>FunctionSymbol.CacheMaxSize</c>; the deleted
+    /// re-derivation helper must not come back under its old name in any family file.
+    /// </summary>
+    [Theory]
+    [InlineData("src/Sharpy.Compiler/Project/GeneratorContextBuilder.cs")]
+    [InlineData("src/Sharpy.Compiler/Semantic/Validation/DecoratorValidator.Caching.cs")]
+    [InlineData("src/Sharpy.Compiler/Semantic/TypeChecker.Definitions.cs")]
+    [InlineData("src/Sharpy.Compiler/CodeGen/RoslynEmitter.ClassMembers.LruCache.cs")]
+    public void LiteralValueFamilyFile_DoesNotNameGetLruCacheMaxSize(string repoRelativePath)
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepoRoot(), repoRelativePath));
         Assert.DoesNotContain("GetLruCacheMaxSize", source);
+    }
 
-        Assert.DoesNotMatch(
-            @"IntegerLiteral\s+\w+\s+when\s+int\.TryParse",
-            source);
+    /// <summary>
+    /// Every switch arm / case label in the file whose pattern names one of
+    /// <see cref="LiteralAstKinds"/>, as "line: pattern names Kind[, Kind]". Handles both
+    /// switch statements (pattern labels and, for parse-only <c>case Kind:</c>, constant
+    /// labels) and switch expressions. Nested property patterns count
+    /// (<c>UnaryOp { Operand: IntegerLiteral }</c> is still a literal-kind dispatch).
+    /// <c>when</c> clauses are outside the pattern and are not scanned.
+    /// </summary>
+    private static List<string> LiteralKindSwitchArms(string repoRelativePath)
+    {
+        var fullPath = Path.Combine(FindRepoRoot(), repoRelativePath);
+        Assert.True(File.Exists(fullPath), $"family file not found: {fullPath}");
+
+        var root = CSharpSyntaxTree.ParseText(File.ReadAllText(fullPath)).GetCompilationUnitRoot();
+        var hits = new List<string>();
+
+        foreach (var switchStmt in root.DescendantNodes().OfType<SwitchStatementSyntax>())
+        {
+            foreach (var label in switchStmt.Sections.SelectMany(s => s.Labels))
+            {
+                SyntaxNode? patternNode = label switch
+                {
+                    CasePatternSwitchLabelSyntax patternLabel => patternLabel.Pattern,
+                    CaseSwitchLabelSyntax constantLabel => constantLabel.Value,
+                    _ => null,
+                };
+                if (patternNode != null)
+                    AddIfNamesLiteralKind(patternNode, hits);
+            }
+        }
+
+        foreach (var switchExpr in root.DescendantNodes().OfType<SwitchExpressionSyntax>())
+        {
+            foreach (var arm in switchExpr.Arms)
+                AddIfNamesLiteralKind(arm.Pattern, hits);
+        }
+
+        return hits;
+    }
+
+    private static void AddIfNamesLiteralKind(SyntaxNode patternNode, List<string> hits)
+    {
+        var named = patternNode.DescendantNodesAndSelf()
+            .OfType<IdentifierNameSyntax>()
+            .Select(id => id.Identifier.Text)
+            .Where(LiteralAstKinds.Contains)
+            .Distinct()
+            .ToList();
+        if (named.Count == 0)
+            return;
+
+        var line = patternNode.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+        var patternText = string.Join(" ", patternNode.ToString().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        hits.Add($"{line}: {patternText} names {string.Join(", ", named)}");
     }
 
     #endregion
