@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -277,5 +279,70 @@ public class DispatchSiteScanTests
             keys.Should().Contain(existingKey,
                 $"existing roster key '{existingKey}' must still be found by the typed scan");
         }
+    }
+
+    /// <summary>
+    /// Enclosing-member fallback (plan-950124 Phase 0 Task 1): a switch inside a constructor
+    /// keys as <c>Type..ctor</c>; inside a property accessor or an expression-bodied property
+    /// as <c>Type.PropertyName</c>; inside an indexer as <c>Type.this[]</c>; inside a local
+    /// function as the enclosing METHOD (the existing rule, kept). Before the fallback all of
+    /// the first four keyed as <c>Type.&lt;no-method&gt;</c>. Parses a snippet, so it is a unit
+    /// fact on the instrument, independent of whether the codebase currently has such a switch.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Infrastructure")]
+    public void EnclosingContext_FallsBackToConstructorThenPropertyThenNoMethod()
+    {
+        const string source = @"
+class C
+{
+    private readonly int _f;
+
+    public C(object o)
+    {
+        switch (o) { case string: _f = 1; break; default: _f = 0; break; }
+    }
+
+    public int P
+    {
+        get { switch (_f) { case 1: return 1; default: return 0; } }
+    }
+
+    public int Q => _f switch { 1 => 1, _ => 0 };
+
+    public int this[int i]
+    {
+        get { switch (i) { default: return i; } }
+    }
+
+    public int M(object o)
+    {
+        int Local(object x) { switch (x) { default: return 0; } }
+        return Local(o);
+    }
+}
+
+class Outer<T>
+{
+    public Outer() { _ = 1 switch { _ => 0 }; }
+}";
+        var root = CSharpSyntaxTree.ParseText(source).GetCompilationUnitRoot();
+        var contexts = root.DescendantNodes()
+            .Where(n => n is SwitchStatementSyntax or SwitchExpressionSyntax)
+            .Select(DispatchSiteScan.EnclosingContext)
+            .ToList();
+
+        foreach (var c in contexts)
+            _output.WriteLine($"  {c}");
+
+        contexts.Should().Equal(
+            "C..ctor",
+            "C.P",
+            "C.Q",
+            "C.this[]",
+            "C.M",
+            "Outer`1..ctor");
+        contexts.Should().NotContain(c => c.Contains("<no-method>"),
+            "every switch in the snippet has an enclosing constructor, property, indexer, or method");
     }
 }

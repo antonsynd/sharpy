@@ -213,14 +213,11 @@ public static class DispatchSiteScan
     }
 
     /// <summary>
-    /// Enclosing context: "Type.Method" using the first <see cref="MethodDeclarationSyntax"/>
-    /// ancestor (skips local functions, so a switch inside a local function keeps its
-    /// enclosing method's key — preserving the 75 existing keys) and the first
-    /// <see cref="TypeDeclarationSyntax"/> ancestor, with arity-suffixed type names.
+    /// Enclosing context: "Type.Member" using the first <see cref="TypeDeclarationSyntax"/>
+    /// ancestor (arity-suffixed) and <see cref="EnclosingMemberName"/>.
     /// </summary>
     internal static string EnclosingContext(SyntaxNode node)
     {
-        var method = node.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
         var type = node.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
 
         var typeName = type == null
@@ -229,7 +226,43 @@ public static class DispatchSiteScan
                 ? $"{type.Identifier.Text}`{type.TypeParameterList.Parameters.Count}"
                 : type.Identifier.Text;
 
-        return $"{typeName}.{method?.Identifier.Text ?? "<no-method>"}";
+        return $"{typeName}.{EnclosingMemberName(node)}";
+    }
+
+    /// <summary>
+    /// Enclosing member name, in this order (plan-950124 Phase 0 Task 1):
+    /// <list type="number">
+    ///   <item>the first <see cref="MethodDeclarationSyntax"/> ancestor — local functions are
+    ///         <see cref="LocalFunctionStatementSyntax"/>, not methods, so a switch inside a
+    ///         local function keeps its enclosing METHOD's key (preserves the existing keys);</item>
+    ///   <item>else the first <see cref="ConstructorDeclarationSyntax"/> ancestor → <c>.ctor</c>
+    ///         (key <c>Type..ctor</c>);</item>
+    ///   <item>else the enclosing <see cref="PropertyDeclarationSyntax"/> /
+    ///         <see cref="IndexerDeclarationSyntax"/>, reached through an
+    ///         <see cref="AccessorDeclarationSyntax"/> or an expression body → the property
+    ///         name (<c>this[]</c> for indexers);</item>
+    ///   <item>else <c>&lt;no-method&gt;</c>.</item>
+    /// </list>
+    /// Without steps 2–3 a switch inside a constructor or property accessor was keyed
+    /// <c>Type.&lt;no-method&gt;</c>, so two such switches in one type collapsed into one key.
+    /// </summary>
+    private static string EnclosingMemberName(SyntaxNode node)
+    {
+        var method = node.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+        if (method != null)
+            return method.Identifier.Text;
+
+        var ctor = node.Ancestors().OfType<ConstructorDeclarationSyntax>().FirstOrDefault();
+        if (ctor != null)
+            return ".ctor";
+
+        var property = node.Ancestors().OfType<BasePropertyDeclarationSyntax>().FirstOrDefault();
+        return property switch
+        {
+            PropertyDeclarationSyntax p => p.Identifier.Text,
+            IndexerDeclarationSyntax => "this[]",
+            _ => "<no-method>",
+        };
     }
 
     private static string BuildGlobalUsingsSource(string csprojPath)
