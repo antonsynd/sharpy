@@ -150,8 +150,7 @@ public class DispatchSiteInventoryTests
         ["Pretty/UnparseVisitor.cs::UnparseVisitor.GetExpressionPrecedence"] = "refusal-net:UnparseIdempotencePropertyTests",
         ["Semantic/IntegerConstantEvaluator.cs::IntegerConstantEvaluator.TryGetConstantInteger"] = "refusal-net:IntegerConstantEvaluatorTests",
         // New emitter sites found by typed census
-        ["CodeGen/RoslynEmitter.Expressions.Comprehensions.cs::RoslynEmitter.GenerateDictSpreadComprehension"] = "refusal-net:FileBasedIntegrationTests",
-        ["CodeGen/RoslynEmitter.Expressions.Comprehensions.cs::RoslynEmitter.GenerateImperativeComprehension"] = "refusal-net:FileBasedIntegrationTests",
+        // (GenerateDictSpreadComprehension / GenerateImperativeComprehension: comprehension-clause family, see guarded-by rows)
         ["CodeGen/RoslynEmitter.Expressions.Comprehensions.cs::RoslynEmitter.BindComprehensionLoopTarget"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Comprehensions.cs::RoslynEmitter.TargetBoundNames"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Statements.Assignments.cs::RoslynEmitter.GenerateStore"] = "refusal-net:FileBasedIntegrationTests",
@@ -248,6 +247,10 @@ public class DispatchSiteInventoryTests
         ["Pretty/StructuralEqualityComparer.cs::StructuralEqualityComparer.Equals"] = "guarded-by:StructuralEqualityComparerTotalityTests",
         ["Pretty/UnparseVisitor.cs::UnparseVisitor.NeedsTrailingCommaInParens"] = "refusal-net:UnparseIdempotencePropertyTests",
         ["Lowering/Passes/ComprehensionFusionPass.cs::ComprehensionFusionPass.QualifiesForProductPreallocation"] = "guarded-by:ComprehensionClauseDispatchTotalityTests",
+        // Emitter members of the comprehension-clause family (verify-round finding P4.3); the second one
+        // holds two clauses[i] switches under one key and is pinned per switch as well as by union.
+        ["CodeGen/RoslynEmitter.Expressions.Comprehensions.cs::RoslynEmitter.GenerateDictSpreadComprehension"] = "guarded-by:ComprehensionClauseDispatchTotalityTests",
+        ["CodeGen/RoslynEmitter.Expressions.Comprehensions.cs::RoslynEmitter.GenerateImperativeComprehension"] = "guarded-by:ComprehensionClauseDispatchTotalityTests",
 
         // ══════════════════════════════════════════════════════════════════════
         // LSP sites — all keyed with "Sharpy.Lsp/" prefix
