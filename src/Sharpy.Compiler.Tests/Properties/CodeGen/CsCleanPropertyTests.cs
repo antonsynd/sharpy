@@ -41,12 +41,15 @@ public class CsCleanPropertyTests
     {
         var references = IntegrationTestBase.GetSharedReferences();
 
-        // Pair the WellTypedProgram semantic filter with the typed program generator:
+        // Pair the WellTypedProgram semantic filter with the typed program generator, WITH
+        // statements: without them StatementOfType — and so IfElseStatement's non-bool truthiness
+        // tests (#1727) — is never generated and the sweep cannot reach the precedence-inversion
+        // class at any seed (plan-683c8b Phase 1 Task 4 landed inert without this).
         // GenTyped.TypedProgram already emits well-typed programs, so the filter passes
         // nearly every sample (wrapping the raw GenSharpy.Module generator instead makes
         // the filter reject ~85% of candidates and CsCheck aborts with a Where-max-count).
         var baseGen = Gen.OneOfConst("int", "str", "bool").SelectMany(type =>
-            GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2));
+            GenTyped.TypedProgram(TypeEnv.Default, type, fuel: 2, withStatements: true));
 
         var wellTyped = SemanticFilter.WellTypedProgram(baseGen);
 

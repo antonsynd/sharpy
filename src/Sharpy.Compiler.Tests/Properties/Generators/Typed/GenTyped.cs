@@ -211,7 +211,8 @@ internal static class GenTyped
         Gen.Select(
             Gen.OneOf(
                 ExpressionOfType(env, "int", fuel),
-                ExpressionOfType(env, "str", fuel)),
+                ExpressionOfType(env, "str", fuel),
+                ExpressionOfType(env, "list[int]", fuel)),
             AssignmentStatement(env, fuel),
             AssignmentStatement(env, fuel),
             (test, thenStmt, elseStmt) => (Statement)new IfStatement
