@@ -1,0 +1,6 @@
+# #1723 while-test walrus host cell: UnaryOp minus -(n := n - 1). python3-verified. @ e523ceec3: correct (control).
+def main():
+    n: int = 3
+    while -(n := n - 1) < 0:
+        print(n)
+    print("done", n)

@@ -1,0 +1,6 @@
+# #1723 while-test walrus host cell: ComparisonChain operand 0 < (n := n - 1) < 5. python3-verified. @ e523ceec3: correct (control).
+def main():
+    n: int = 5
+    while 0 < (n := n - 1) < 5:
+        print(n)
+    print("done", n)

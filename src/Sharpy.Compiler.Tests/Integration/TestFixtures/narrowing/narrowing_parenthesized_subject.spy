@@ -1,3 +1,7 @@
+# CONTROL, not a discriminator (plan-950124 Phase 3c Task 9): this fixture prints ABC with and
+# without ExtractNarrowingKey's canonical-input contract because NarrowingConditionInterpreter
+# .Recognize unwraps the redundant parentheses upstream (NarrowingFlowAnalysis.cs, case Parenthesized).
+# It documents that narrowing survives a parenthesized subject; NarrowingKeyTotalityTests pins the arms.
 def main():
     x: str | None = "abc"
     if (x) is not None:

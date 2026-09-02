@@ -1,0 +1,12 @@
+# #1723 while-test walrus host cell: nested call argument g(h((s := f()))). python3-verified. @ e523ceec3: correct (control).
+def h(s: str) -> str:
+    return s.strip()
+
+def g(s: str) -> bool:
+    return len(s) > 0
+
+def main():
+    xs: list[str] = [" a ", " b ", "   "]
+    while g(h((s := xs.pop(0)))):
+        print(s.strip())
+    print("done", len(xs))

@@ -1,0 +1,6 @@
+# #1723 while-test walrus host cell: ConditionalExpression branch ((s := f()) if c else x). python3-verified. @ e523ceec3: looped forever (walrus hoisted once).
+def main():
+    xs: list[str] = [" a ", " b ", "   "]
+    while ((s := xs.pop(0)) if True else "") != "   ":
+        print(s.strip())
+    print("done", len(xs))

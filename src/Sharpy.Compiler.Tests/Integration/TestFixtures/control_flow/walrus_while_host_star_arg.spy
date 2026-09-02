@@ -1,0 +1,12 @@
+# #1723 while-test walrus host cell: StarExpression argument f(*(t := g())). python3-verified. @ e523ceec3: looped forever (walrus hoisted once).
+def total(*args: int) -> int:
+    result = 0
+    for n in args:
+        result += n
+    return result
+
+def main():
+    xs: list[int] = [1, 2, 0]
+    while total(*(t := [xs.pop(0)])) > 0:
+        print(t[0])
+    print("done", len(xs))

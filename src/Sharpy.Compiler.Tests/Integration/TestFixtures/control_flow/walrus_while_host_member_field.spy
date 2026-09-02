@@ -1,0 +1,12 @@
+# #1723 while-test walrus host cell: MemberAccess field (o := Box(f())).v. python3-verified. @ e523ceec3: looped forever (walrus hoisted once).
+class Box:
+    v: int
+
+    def __init__(self, v: int):
+        self.v = v
+
+def main():
+    xs: list[int] = [1, 2, 0]
+    while (o := Box(xs.pop(0))).v > 0:
+        print(o.v)
+    print("done", len(xs))

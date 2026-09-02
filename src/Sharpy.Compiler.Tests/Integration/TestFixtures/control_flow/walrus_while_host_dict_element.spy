@@ -1,0 +1,6 @@
+# #1723 while-test walrus host cell: DictLiteral value {k: (s := f())}[k]. python3-verified. @ e523ceec3: looped forever (walrus hoisted once).
+def main():
+    xs: list[str] = [" a ", " b ", "   "]
+    while {"k": (s := xs.pop(0))}["k"] != "   ":
+        print(s.strip())
+    print("done", len(xs))

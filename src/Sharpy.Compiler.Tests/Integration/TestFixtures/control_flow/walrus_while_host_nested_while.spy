@@ -1,0 +1,10 @@
+# #1723 while-test walrus host cell: member-call host in a while nested inside another while. python3-verified. @ e523ceec3: looped forever (walrus hoisted once).
+def main():
+    outer: int = 2
+    while outer > 0:
+        outer = outer - 1
+        xs: list[str] = [" a ", " b ", "   "]
+        while (s := xs.pop(0)).strip():
+            print(s.strip())
+        print("inner done", len(xs))
+    print("done")

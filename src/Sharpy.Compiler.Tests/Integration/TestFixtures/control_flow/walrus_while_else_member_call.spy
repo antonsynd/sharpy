@@ -1,0 +1,8 @@
+# #1723 while-test walrus host cell: member-call host with a while…else clause. python3-verified. @ e523ceec3: looped forever (walrus hoisted once).
+def main():
+    xs: list[str] = [" a ", " b ", "   "]
+    while (s := xs.pop(0)).strip():
+        print(s.strip())
+    else:
+        print("else")
+    print("done", len(xs))

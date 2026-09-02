@@ -15,6 +15,26 @@ while (line := file.read_line()) is not None:
     process(line)
 ```
 
+**Re-evaluation in `while` tests.** A walrus anywhere inside a `while` test is re-evaluated on every iteration, whatever expression hosts it — a member call on the bound value, an index, a keyword argument, a container element, a conditional branch, or a nested call all behave the same way:
+
+```python
+def main():
+    xs: list[str] = [" a ", " b ", "   "]
+    while (s := xs.pop(0)).strip():
+        print(s.strip())
+    print("done", len(xs))
+```
+
+Output (identical to Python):
+
+```
+a
+b
+done 0
+```
+
+Before this was fixed, the walrus was hoisted once ahead of the loop for every host other than a direct comparison, so the example above looped forever (#1723).
+
 **Type Inference Only:**
 
 The walrus operator always infers the type from the right-hand side expression. Type annotations are not supported with `:=` (matching Python 3.8+ behavior):

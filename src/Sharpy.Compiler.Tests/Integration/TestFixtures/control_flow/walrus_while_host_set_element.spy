@@ -1,0 +1,6 @@
+# #1723 while-test walrus host cell: SetLiteral element {(s := f())}. python3-verified. @ e523ceec3: looped forever (walrus hoisted once).
+def main():
+    xs: list[str] = [" a ", " b ", "   "]
+    while len({(s := xs.pop(0))}) > 0 and s != "   ":
+        print(s.strip())
+    print("done", len(xs))
