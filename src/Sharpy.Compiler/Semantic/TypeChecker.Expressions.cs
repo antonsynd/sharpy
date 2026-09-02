@@ -193,6 +193,12 @@ internal partial class TypeChecker
     private static string DescribeTypeReference(GenericReference reference)
         => reference.TargetSymbol?.Name ?? "type";
 
+    /// <summary>
+    /// <c>CheckExpression</c>'s default arm (documented-by-design in DispatchSiteInventoryTests):
+    /// deliberately LOUD, never a silent default — an expression kind with no arm is reported as
+    /// an internal compiler error and typed <see cref="SemanticType.Unknown"/>, so no semantic
+    /// decision keys on the default. Every concrete kind is expected to have its own arm.
+    /// </summary>
     private SemanticType HandleUnrecognizedExpression(Expression expr)
     {
         AddError(

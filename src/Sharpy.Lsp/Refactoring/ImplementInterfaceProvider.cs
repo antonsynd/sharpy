@@ -15,6 +15,11 @@ namespace Sharpy.Lsp.Refactoring;
 /// </summary>
 internal sealed class ImplementInterfaceProvider : ICodeActionProvider
 {
+    /// <summary>
+    /// Deliberately partial dispatch (documented-by-design): only <c>ClassDef</c> and
+    /// <c>StructDef</c> can implement interfaces, so any other statement under the cursor yields
+    /// no action — no semantic decision keys on that switch.
+    /// </summary>
     public Task<IReadOnlyList<CodeAction>> GetCodeActionsAsync(
         CodeActionProviderContext context,
         CancellationToken cancellationToken)

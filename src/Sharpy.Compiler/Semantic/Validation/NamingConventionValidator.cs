@@ -193,6 +193,10 @@ internal sealed class NamingConventionValidator : ValidatingAstWalker
                 foreach (var element in tuple.Elements)
                     CheckForTarget(element);
                 break;
+            default:
+                // walker-default-contract: any kind not listed above is deliberately ignored by
+                // this walker (rostered in DispatchSiteInventoryTests).
+                break;
         }
     }
 

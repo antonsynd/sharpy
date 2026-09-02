@@ -2853,7 +2853,9 @@ internal partial class TypeChecker
     /// The dotted spelling of a member-access chain whose every segment is a plain name
     /// (<c>lib.Box</c>, <c>pkg.mod.Box</c>), or null when any segment is something else — a call, an
     /// index, a literal — because such a chain is not a type name and must not be handed to a
-    /// name-keyed lookup.
+    /// name-keyed lookup. Deliberately partial dispatch (documented-by-design): the default
+    /// yields null and no semantic decision keys on this switch — the caller falls back to
+    /// ordinary member resolution.
     /// </summary>
     private static string? TryFlattenDottedName(MemberAccess memberAccess)
         => memberAccess.Object switch

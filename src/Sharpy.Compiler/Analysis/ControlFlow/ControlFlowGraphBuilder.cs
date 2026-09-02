@@ -696,7 +696,8 @@ internal class ControlFlowGraphBuilder
         var handlerBinderBlocks = new List<BasicBlock>();
         foreach (var handler in stmt.Handlers)
         {
-            // Block label only — no semantic decision keys on the exception type form.
+            // Block label rendering only (documented-by-design in DispatchSiteInventoryTests):
+            // deliberately partial — no semantic decision keys on the exception type form.
             var typeName = handler.ExceptionType switch
             {
                 TypeAnnotation ta => ta.Name,

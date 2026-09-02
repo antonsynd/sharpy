@@ -50,6 +50,10 @@ internal class FinalFieldValidator : SemanticValidatorBase
                 // Module-level function — scan body for @final on locals.
                 WalkForFinalLocalDeclarations(funcDef.Body, context);
                 break;
+            default:
+                // walker-default-contract: any kind not listed above is deliberately ignored by
+                // this walker (rostered in DispatchSiteInventoryTests).
+                break;
         }
     }
 
@@ -246,6 +250,10 @@ internal class FinalFieldValidator : SemanticValidatorBase
                 // @suppress wrapper (#1024): suppression is warning-only metadata; the final-field
                 // assignment *error* inside must still be found (errors are never suppressible).
                 yield return new[] { decorated.Statement };
+                break;
+            default:
+                // walker-default-contract: any kind not listed above is deliberately ignored by
+                // this walker (rostered in DispatchSiteInventoryTests).
                 break;
         }
     }

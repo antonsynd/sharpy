@@ -1839,6 +1839,9 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Gets a human-readable description of an invalid assignment target for error messages.
+    /// Message rendering only (documented-by-design): the default is a generic placeholder and
+    /// no semantic decision keys on this switch — validity is decided by
+    /// <see cref="IsValidAssignmentTarget"/>, never here.
     /// </summary>
     private string GetAssignmentTargetDescription(Expression target)
     {

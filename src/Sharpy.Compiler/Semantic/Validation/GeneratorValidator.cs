@@ -38,6 +38,10 @@ internal class GeneratorValidator : SemanticValidatorBase
                 case StructDef structDef:
                     ValidateStructGenerators(structDef, context);
                     break;
+                default:
+                    // walker-default-contract: any kind not listed above is deliberately ignored by
+                    // this walker (rostered in DispatchSiteInventoryTests).
+                    break;
             }
 
             // Check top-level functions

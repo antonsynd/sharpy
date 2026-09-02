@@ -55,6 +55,10 @@ internal class UnusedImportValidator : ValidatingAstWalker
                             alias.Name, localName, alias.LineStart, alias.ColumnStart, alias.Span);
                     }
                     break;
+                default:
+                    // walker-default-contract: any kind not listed above is deliberately ignored by
+                    // this walker (rostered in DispatchSiteInventoryTests).
+                    break;
             }
         }
 

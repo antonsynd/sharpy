@@ -211,7 +211,9 @@ internal sealed class OrganizeImportsProvider : ICodeActionProvider
     }
 
     /// <summary>
-    /// Gets the sort key for an import statement (the module name).
+    /// Gets the sort key for an import statement (the module name). Rendering only
+    /// (documented-by-design): the two import kinds yield their module name and, deliberately,
+    /// every other kind sorts by an empty key — no semantic decision keys on this switch.
     /// </summary>
     private static string GetSortKey(Statement stmt)
     {

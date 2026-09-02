@@ -159,7 +159,11 @@ internal class DefaultParameterValidator : ValidatingAstWalker
                 foreach (var elem in list.Elements)
                     CollectIdentifierNamesInto(elem, names);
                 break;
-                // Literals and other leaf nodes contribute no identifiers
+            default:
+                // walker-default-contract: literals and other leaf nodes contribute no
+                // identifiers — any kind not listed above is deliberately ignored by this walker
+                // (rostered in DispatchSiteInventoryTests).
+                break;
         }
     }
 

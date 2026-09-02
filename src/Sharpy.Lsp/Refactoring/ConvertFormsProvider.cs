@@ -194,7 +194,9 @@ internal sealed class ConvertFormsProvider : ICodeActionProvider
     }
 
     /// <summary>
-    /// Formats a literal expression as Sharpy source text.
+    /// Formats a literal expression as Sharpy source text. Rendering only (documented-by-design):
+    /// the caller admits only the literal kinds <c>IsSimpleLiteral</c> lists, so the switch is
+    /// deliberately partial and no semantic decision keys on it.
     /// </summary>
     private static string FormatLiteral(Expression literal, string sourceText)
     {

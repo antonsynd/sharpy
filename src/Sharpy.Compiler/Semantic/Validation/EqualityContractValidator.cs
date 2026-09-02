@@ -25,6 +25,10 @@ internal class EqualityContractValidator : SemanticValidatorBase
                 case StructDef structDef:
                     ValidateStruct(structDef, context);
                     break;
+                default:
+                    // walker-default-contract: any kind not listed above is deliberately ignored by
+                    // this walker (rostered in DispatchSiteInventoryTests).
+                    break;
             }
         }
     }

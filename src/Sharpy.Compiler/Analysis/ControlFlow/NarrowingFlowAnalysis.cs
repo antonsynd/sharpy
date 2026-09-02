@@ -228,6 +228,9 @@ internal static class NarrowingConditionInterpreter
     /// the intersection join at a CFG merge point. Resolution happens later, in the TypeChecker,
     /// against the type the type-operand classifier recorded.
     /// </para>
+    /// <para>Deliberately partial dispatch (documented-by-design in DispatchSiteInventoryTests):
+    /// the default returns null for un-keyable forms and no semantic decision keys on this
+    /// switch — an unkeyed type test simply produces no narrowing fact.</para>
     /// </summary>
     private static string? DescribeTypeExpression(Expression typeExpression) => typeExpression switch
     {

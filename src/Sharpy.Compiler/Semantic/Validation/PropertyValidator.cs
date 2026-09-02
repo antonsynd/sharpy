@@ -833,6 +833,10 @@ internal class PropertyValidator : SemanticValidatorBase
                 // assignment *error* inside must still be found (errors are never suppressible).
                 yield return new[] { decorated.Statement };
                 break;
+            default:
+                // walker-default-contract: any kind not listed above is deliberately ignored by
+                // this walker (rostered in DispatchSiteInventoryTests).
+                break;
         }
     }
 }

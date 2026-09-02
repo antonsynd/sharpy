@@ -37,6 +37,10 @@ internal class VarianceValidator : SemanticValidatorBase
                 case DelegateDef delegateDef:
                     ValidateDelegateVariancePositions(delegateDef, context);
                     break;
+                default:
+                    // walker-default-contract: any kind not listed above is deliberately ignored by
+                    // this walker (rostered in DispatchSiteInventoryTests).
+                    break;
             }
         }
 

@@ -142,6 +142,10 @@ internal class EventValidator : SemanticValidatorBase
                 ValidateInterfaceEvents(interfaceDef.Name, interfaceDef.Body);
                 ValidateNestedTypes(interfaceDef.Body);
                 break;
+            default:
+                // walker-default-contract: any kind not listed above is deliberately ignored by
+                // this walker (rostered in DispatchSiteInventoryTests).
+                break;
         }
     }
 

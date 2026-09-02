@@ -203,6 +203,10 @@ internal sealed class LocalNameCollisionValidator : ValidatingAstWalker
                 // `a, *rest = ...` binds `rest`; the star only says how much it takes.
                 DeclareTarget(star.Operand);
                 break;
+            default:
+                // walker-default-contract: any kind not listed above is deliberately ignored by
+                // this walker (rostered in DispatchSiteInventoryTests).
+                break;
         }
     }
 

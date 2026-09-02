@@ -591,6 +591,10 @@ internal partial class TypeChecker
                 case GuardPattern g:
                     Walk(g.Inner);
                     break;
+                default:
+                    // walker-default-contract: any kind not listed above is deliberately ignored by
+                    // this walker (rostered in DispatchSiteInventoryTests).
+                    break;
             }
         }
         Walk(pattern);

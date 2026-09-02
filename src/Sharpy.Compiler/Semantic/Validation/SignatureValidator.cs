@@ -46,6 +46,10 @@ internal class SignatureValidator : SemanticValidatorBase
             case InterfaceDef interfaceDef:
                 ValidateInterfaceDunders(interfaceDef);
                 break;
+            default:
+                // walker-default-contract: any kind not listed above is deliberately ignored by
+                // this walker (rostered in DispatchSiteInventoryTests).
+                break;
         }
     }
 
