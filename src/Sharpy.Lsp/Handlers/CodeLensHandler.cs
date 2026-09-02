@@ -46,6 +46,20 @@ internal sealed class SharpyCodeLensHandler : CodeLensHandlerBase
                 case InterfaceDef interfaceDef:
                     AddDefinitionLens(interfaceDef.Name, interfaceDef, analysis, lenses);
                     break;
+                // The remaining named type declarations count references exactly like a class;
+                // before this they were silently skipped (plan-950124 Phase 2 remediation).
+                case EnumDef enumDef:
+                    AddDefinitionLens(enumDef.Name, enumDef, analysis, lenses);
+                    break;
+                case UnionDef unionDef:
+                    AddDefinitionLens(unionDef.Name, unionDef, analysis, lenses);
+                    break;
+                case DelegateDef delegateDef:
+                    AddDefinitionLens(delegateDef.Name, delegateDef, analysis, lenses);
+                    break;
+                case TypeAlias typeAlias:
+                    AddDefinitionLens(typeAlias.Name, typeAlias, analysis, lenses);
+                    break;
             }
         }
 

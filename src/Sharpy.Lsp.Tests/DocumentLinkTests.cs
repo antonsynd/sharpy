@@ -200,6 +200,25 @@ public class DocumentLinkTests : IDisposable
         result.Should().BeNull();
     }
 
+    // ── Dispatch-totality probe (plan-950124 Phase 2 — CodeLensDocumentLinkDispatchTotalityTests) ──
+
+    [Fact]
+    public async Task FunctionDef_YieldsNoLink_WhileSiblingImportDoes()
+    {
+        CreateProjectFiles(
+            ("main.spy", "from helpers import greet\ndef main():\n    print(greet())"),
+            ("helpers.spy", "def greet() -> str:\n    return \"hi\""));
+        (await _service.InitializeProjectAsync(_tempDir)).Should().BeTrue();
+
+        var links = await GetLinksAsync("main.spy");
+
+        links.Should().NotBeNull();
+        links!.Should().NotContain(l => l.Range.Start.Line >= 1,
+            "only import statements link — the function on line 1 names no module");
+        links.Should().Contain(l => l.Range.Start.Line == 0,
+            "positive control: the from-import on the same input links");
+    }
+
     private async Task<DocumentLinkContainer?> GetLinksAsync(string fileName)
     {
         var path = IOPath.Combine(_tempDir, fileName);
