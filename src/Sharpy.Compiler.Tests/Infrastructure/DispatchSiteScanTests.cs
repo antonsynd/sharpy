@@ -28,14 +28,16 @@ public class DispatchSiteScanTests
 
     private static DispatchSiteScan.ScanResult ScanCompiler(
         Dictionary<string, string>? aliasOverrides = null,
-        bool suppressGlobalUsings = false)
+        bool suppressGlobalUsings = false,
+        bool includeIrNodeRoot = true)
     {
         return DispatchSiteScan.Scan(
             "src/Sharpy.Compiler",
             "src/Sharpy.Compiler/Sharpy.Compiler.csproj",
             keyPrefix: null,
             aliasOverrides: aliasOverrides,
-            suppressGlobalUsings: suppressGlobalUsings);
+            suppressGlobalUsings: suppressGlobalUsings,
+            includeIrNodeRoot: includeIrNodeRoot);
     }
 
     private static DispatchSiteScan.ScanResult ScanLsp(
@@ -151,25 +153,54 @@ public class DispatchSiteScanTests
     }
 
     /// <summary>
-    /// Mutation (c): the IrNode root must contribute sites. If it didn't, the four
-    /// RewriteNode rows would be phantoms.
+    /// The four roster rows that exist only because the IrNode root is scanned.
+    /// </summary>
+    private static readonly string[] IrNodeRewriteKeys =
+    {
+        "Lowering/IrTreeRewriter.cs::IrTreeRewriter.RewriteNode",
+        "Lowering/Passes/ComprehensionFusionPass.cs::ComprehensionFusionPass.RewriteNode",
+        "Lowering/Passes/ConstFoldPass.cs::ConstFoldPass.RewriteNode",
+        "Lowering/Passes/StackCollectionsPass.cs::StackCollectionsPass.RewriteNode",
+    };
+
+    /// <summary>
+    /// Mutation (c), made executable and falsifiable in both directions: WITH the IrNode root
+    /// the four RewriteNode keys are present; WITHOUT it (<c>includeIrNodeRoot: false</c>)
+    /// they are ABSENT and no site is IrNode-typed, while the Node-typed census is unchanged.
+    /// The absence half is the recorded red state the plan asked for, turned into a positive
+    /// control: if dropping the root did not remove the keys, the four rows could be phantoms
+    /// resolved by some other path.
     /// </summary>
     [Fact]
     [Trait("Category", "Infrastructure")]
-    public void CompilerScan_IrNodeRootContributesSites()
+    public void CompilerScan_IrNodeRoot_RewriteNodeKeysPresentWithRoot_AbsentWithout()
     {
-        var result = ScanCompiler();
+        var withRoot = ScanCompiler();
+        var withoutRoot = ScanCompiler(includeIrNodeRoot: false);
 
-        var irNodeSites = result.Sites.Where(s => s.Root == "IrNode").ToList();
-        irNodeSites.Should().NotBeEmpty(
-            "the IrNode root must find at least the IrTreeRewriter.RewriteNode site");
+        var keysWith = withRoot.Sites.Select(s => s.Key).ToHashSet();
+        var keysWithout = withoutRoot.Sites.Select(s => s.Key).ToHashSet();
 
-        irNodeSites.Should().Contain(s =>
-            s.Key.Contains("IrTreeRewriter") && s.Key.Contains("RewriteNode"),
-            "IrTreeRewriter.RewriteNode must be found as an IrNode-typed dispatch");
+        foreach (var site in withRoot.Sites.Where(s => s.Root == "IrNode"))
+            _output.WriteLine($"  IrNode site (with root): {site.Key} ({site.ScrutineeText})");
+        _output.WriteLine($"  with root: {withRoot.Sites.Count} sites; without root: {withoutRoot.Sites.Count} sites");
 
-        foreach (var site in irNodeSites)
-            _output.WriteLine($"  IrNode site: {site.Key} ({site.ScrutineeText})");
+        foreach (var key in IrNodeRewriteKeys)
+        {
+            keysWith.Should().Contain(key,
+                $"'{key}' is an IrNode-typed dispatch and must be found when the IrNode root is scanned");
+            keysWithout.Should().NotContain(key,
+                $"'{key}' must vanish when the IrNode root is not scanned — otherwise the root is not what finds it");
+        }
+
+        withRoot.Sites.Should().Contain(s => s.Root == "IrNode",
+            "the IrNode root must contribute at least the RewriteNode sites");
+        withoutRoot.Sites.Should().NotContain(s => s.Root == "IrNode",
+            "no site can be IrNode-typed when the IrNode root is not resolved");
+
+        withoutRoot.Sites.Count(s => s.Root == "Node").Should().Be(
+            withRoot.Sites.Count(s => s.Root == "Node"),
+            "dropping the IrNode root must not disturb the Node-typed census");
     }
 
     /// <summary>

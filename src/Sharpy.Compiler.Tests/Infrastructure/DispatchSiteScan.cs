@@ -57,13 +57,17 @@ public static class DispatchSiteScan
     /// Scans a project for AST/IrNode dispatch switches by building a Roslyn compilation
     /// from source. The <paramref name="keyPrefix"/> is prepended to every site key
     /// (e.g. "Sharpy.Lsp" → keys become "Sharpy.Lsp/path::Type.Method").
+    /// <paramref name="includeIrNodeRoot"/> is the instrument-health lever for plan-950124
+    /// Phase 0 mutation (c): when false the <c>IrNode</c> root is not resolved, so IrNode-typed
+    /// scrutinees are classified as non-dispatch and their keys vanish from the result.
     /// </summary>
     public static ScanResult Scan(
         string projectDir,
         string projectCsproj,
         string? keyPrefix = null,
         Dictionary<string, string>? aliasOverrides = null,
-        bool suppressGlobalUsings = false)
+        bool suppressGlobalUsings = false,
+        bool includeIrNodeRoot = true)
     {
         var repoRoot = FindRepoRoot();
         var fullProjectDir = Path.GetFullPath(Path.Combine(repoRoot, projectDir));
@@ -102,7 +106,9 @@ public static class DispatchSiteScan
                 .WithNullableContextOptions(NullableContextOptions.Enable));
 
         var nodeType = FindType(compilation, "Sharpy.Compiler.Parser.Ast.Node");
-        var irNodeType = FindType(compilation, "Sharpy.Compiler.Lowering.IrNode");
+        var irNodeType = includeIrNodeRoot
+            ? FindType(compilation, "Sharpy.Compiler.Lowering.IrNode")
+            : null;
 
         var sites = new List<DispatchSite>();
         var unresolved = new List<UnresolvedSite>();
