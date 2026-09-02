@@ -313,6 +313,83 @@ public class DispatchSiteScanTests
     }
 
     /// <summary>
+    /// Census reconciliation (Phase 0 acceptance / verify-round finding P0.4): one run of the
+    /// shipped instrument reports, per root, every number the two prototype readings disagreed
+    /// on (compiler: 161 sites / 153 keys / 88 non-identifier scrutinees vs 164 / 127; LSP: 30).
+    /// The numbers are written to the test output for the lead to reconcile and are NOT pinned —
+    /// they change as switches come and go. Only what must hold is asserted: non-zero
+    /// switches/sites/keys for both roots, a non-zero IrNode census and both scrutinee spellings
+    /// for the compiler, and the partition identities.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Infrastructure")]
+    public void Census_ReportsCounts()
+    {
+        var compiler = ReportCensus("Compiler", ScanCompiler());
+        var lsp = ReportCensus("LSP", ScanLsp());
+
+        compiler.IrNodeSites.Should().BeGreaterThan(0, "the compiler has IrNode-typed rewriters");
+        compiler.CanonicalIdentifierSites.Should().BeGreaterThan(0,
+            "the compiler has switches on identifiers spelled node/stmt/pattern/expr");
+        compiler.OtherSpellingSites.Should().BeGreaterThan(0,
+            "the compiler has switches on other spellings (e.g. CollectBindingKeysInto's 'target', #1715)");
+        lsp.IrNodeSites.Should().Be(0, "the LSP does not dispatch on IrNode");
+    }
+
+    private sealed record Census(
+        int TotalSwitches, int Sites, int NodeSites, int IrNodeSites, int DistinctKeys,
+        int CanonicalIdentifierSites, int OtherSpellingSites,
+        int SwitchStatements, int SwitchExpressions, int NoDefaultArm, int Unresolved);
+
+    private Census ReportCensus(string root, DispatchSiteScan.ScanResult result)
+    {
+        static bool IsCanonicalIdentifier(string scrutinee)
+            => scrutinee is "node" or "stmt" or "pattern" or "expr";
+
+        var census = new Census(
+            TotalSwitches: result.TotalSwitchCount,
+            Sites: result.Sites.Count,
+            NodeSites: result.Sites.Count(s => s.Root == "Node"),
+            IrNodeSites: result.Sites.Count(s => s.Root == "IrNode"),
+            DistinctKeys: result.SiteCountByKey.Count,
+            CanonicalIdentifierSites: result.Sites.Count(s => IsCanonicalIdentifier(s.ScrutineeText)),
+            OtherSpellingSites: result.Sites.Count(s => !IsCanonicalIdentifier(s.ScrutineeText)),
+            SwitchStatements: result.Sites.Count(s => s.Form == "SwitchStatement"),
+            SwitchExpressions: result.Sites.Count(s => s.Form == "SwitchExpression"),
+            NoDefaultArm: result.Sites.Count(s => !s.HasDefaultArm),
+            Unresolved: result.Unresolved.Count);
+
+        _output.WriteLine($"CENSUS {root}: total-switches={census.TotalSwitches} sites={census.Sites} " +
+            $"node-sites={census.NodeSites} irnode-sites={census.IrNodeSites} distinct-keys={census.DistinctKeys} " +
+            $"canonical-identifier(node/stmt/pattern/expr)={census.CanonicalIdentifierSites} other-spelling={census.OtherSpellingSites} " +
+            $"switch-statements={census.SwitchStatements} switch-expressions={census.SwitchExpressions} " +
+            $"no-default-arm={census.NoDefaultArm} unresolved={census.Unresolved}");
+
+        var otherSpellings = result.Sites
+            .Where(s => !IsCanonicalIdentifier(s.ScrutineeText))
+            .Select(s => s.ScrutineeText)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(t => t, StringComparer.Ordinal)
+            .ToList();
+        _output.WriteLine($"CENSUS {root}: other-spelling scrutinees ({otherSpellings.Count} distinct): " +
+            string.Join(" | ", otherSpellings));
+
+        census.TotalSwitches.Should().BeGreaterThan(0, $"{root} has switches");
+        census.Sites.Should().BeGreaterThan(0, $"{root} has AST dispatch sites");
+        census.NodeSites.Should().BeGreaterThan(0, $"{root} has Node-typed dispatch sites");
+        census.DistinctKeys.Should().BeGreaterThan(0, $"{root} has dispatch keys");
+        census.DistinctKeys.Should().BeLessThanOrEqualTo(census.Sites, "a key covers one or more sites");
+        (census.NodeSites + census.IrNodeSites).Should().Be(census.Sites, "every site has exactly one root");
+        (census.SwitchStatements + census.SwitchExpressions).Should().Be(census.Sites, "every site has exactly one form");
+        (census.CanonicalIdentifierSites + census.OtherSpellingSites).Should().Be(census.Sites, "spelling is a partition");
+        census.NoDefaultArm.Should().BeLessThanOrEqualTo(census.Sites);
+        census.Sites.Should().BeLessThanOrEqualTo(census.TotalSwitches - census.Unresolved,
+            "sites are the typed subset of resolved switches");
+
+        return census;
+    }
+
+    /// <summary>
     /// Enclosing-member fallback (plan-950124 Phase 0 Task 1): a switch inside a constructor
     /// keys as <c>Type..ctor</c>; inside a property accessor or an expression-bodied property
     /// as <c>Type.PropertyName</c>; inside an indexer as <c>Type.this[]</c>; inside a local
