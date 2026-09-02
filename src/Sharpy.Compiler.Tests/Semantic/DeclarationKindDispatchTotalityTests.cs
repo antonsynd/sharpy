@@ -18,6 +18,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 ///   - Base-carrying kinds: {ClassDef, StructDef, InterfaceDef}
 ///   - Generator-attributed: {ClassDef, FunctionDef, StructDef}
 ///   - Module-level classification: the full ResolveDeclaration set + imports
+///   - Abstract-member scan (class body): {FunctionDef, PropertyDef, EventDef} + ClassDef recursion
 /// </summary>
 public class DeclarationKindDispatchTotalityTests
 {
@@ -87,10 +88,29 @@ public class DeclarationKindDispatchTotalityTests
         nameof(StructDef),
     };
 
+    // --- Abstract-member scan (AbstractMemberValidator.ValidateClass arms) ---
+    // The three class-body member kinds on which `@abstract` is recognized, plus ClassDef for
+    // the nested-class recursion (#1461).
+    private static readonly HashSet<string> AbstractMemberScanKinds = new()
+    {
+        nameof(FunctionDef),
+        nameof(PropertyDef),
+        nameof(EventDef),
+        nameof(ClassDef),
+    };
+
     // ═══════════════════════════════════════════════════════════════════════
     // ExtractNestedTypes — ModuleLoader
-    // Reason for subset: only the 4 type-declaring kinds that can nest inside a class/struct/interface body.
-    // UnionDef/DelegateDef/TypeAlias/EventDef are not extracted as nested types today.
+    // Reason for subset: only the 4 type-declaring kinds are extracted as nested types.
+    // MEASURED (plan-950124 verify round, 2026-09-01) for the kinds NOT in the arm set:
+    //   - nested `union` / `delegate` / `type` alias in a class body → refused SPY0202
+    //     ("Union symbol for 'Shape' not found" / "Delegate symbol for 'Handler' not found" /
+    //     "Type 'Outer.Id' not found"), IDENTICALLY on the single-file and cross-module routes
+    //     — no mirrored-route divergence;
+    //   - nested `event` → works; nested `@dataclass class` → works.
+    // The SPY0202 refusals are tracked by the issue the lead files for this round; when nested
+    // union/delegate/alias are supported, NestedTypeUniverse gains the kinds and this pin fails
+    // for every extractor at once.
     // ═══════════════════════════════════════════════════════════════════════
 
     [Fact]
@@ -242,6 +262,41 @@ public class DeclarationKindDispatchTotalityTests
             $"Arms differ from module-level kinds.\n" +
             $"  Extra: {string.Join(", ", arms.Except(ModuleLevelKinds))}\n" +
             $"  Missing: {string.Join(", ", ModuleLevelKinds.Except(arms))}");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ValidateClass — AbstractMemberValidator (verify-round finding P4.2 / D cells)
+    // Stated subset: the switch walks a ClassDef body and reports `@abstract` on the three
+    // member kinds that carry the decorator (FunctionDef, PropertyDef, EventDef — the
+    // validator's #1307 contract: "methods, properties, events"), and recurses through
+    // ClassDef so nested classes are reached (#1461). Nested StructDef / InterfaceDef /
+    // EnumDef bodies are NOT recursed by this validator; DecoratorValidator.InvalidOnInterface
+    // refuses `@abstract` on interfaces separately. Its intersection with the nested-type
+    // universe is therefore exactly {ClassDef} — pinned below so a recursion arm added for
+    // another nested kind, or the class recursion dropped, is a visible universe change.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void ValidateClass_Arms_MatchAbstractMemberScanKinds()
+    {
+        var arms = SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Semantic/Validation/AbstractMemberValidator.cs",
+            "ValidateClass");
+        Assert.NotEmpty(arms);
+        _output.WriteLine($"ValidateClass arms: {string.Join(", ", arms)}");
+        Assert.True(arms.SetEquals(AbstractMemberScanKinds),
+            $"Arms differ from abstract-member scan kinds.\n" +
+            $"  Extra: {string.Join(", ", arms.Except(AbstractMemberScanKinds))}\n" +
+            $"  Missing: {string.Join(", ", AbstractMemberScanKinds.Except(arms))}");
+    }
+
+    [Fact]
+    public void AbstractMemberScanKinds_RecurseOnlyThroughClassDef()
+    {
+        var recursed = AbstractMemberScanKinds.Intersect(NestedTypeUniverse).ToList();
+        Assert.True(recursed.Count == 1 && recursed[0] == nameof(ClassDef),
+            $"AbstractMemberValidator recurses through exactly {{ClassDef}} of the nested-type universe; " +
+            $"got {{{string.Join(", ", recursed)}}}");
     }
 
     // ═══════════════════════════════════════════════════════════════════════

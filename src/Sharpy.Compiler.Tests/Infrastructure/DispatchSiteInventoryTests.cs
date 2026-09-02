@@ -117,7 +117,7 @@ public class DispatchSiteInventoryTests
         // New walker-default-contract sites found by typed census
         ["Semantic/Validation/DecoratorValidator.BracketAttributes.cs::DecoratorValidator.CollectImportedClrNamespaces"] = "walker-default-contract",
         ["Semantic/Validation/UnusedImportValidator.cs::UnusedImportValidator.Validate"] = "walker-default-contract",
-        ["Semantic/Validation/AbstractMemberValidator.cs::AbstractMemberValidator.ValidateClass"] = "walker-default-contract",
+        // AbstractMemberValidator.ValidateClass: pinned in the declaration-kind family (see the guarded-by rows)
         ["Semantic/Validation/LocalNameCollisionValidator.cs::LocalNameCollisionValidator.DeclareTarget"] = "walker-default-contract",
         ["Semantic/Validation/NamingConventionValidator.cs::NamingConventionValidator.CheckForTarget"] = "walker-default-contract",
 
@@ -235,6 +235,7 @@ public class DispatchSiteInventoryTests
         ["Semantic/Validation/FinalFieldValidator.cs::FinalFieldValidator.ValidateTypeBody"] = "guarded-by:MemberKindValidatorTotalityTests",
         ["Semantic/Validation/MustUseValidator.cs::MustUseValidator.ElidedMethodGroupMessage"] = "documented-by-design:Semantic/Validation/MustUseValidator.cs:ElidedMethodGroupMessage",
         ["Semantic/Validation/NestedTypeIndex.cs::NestedTypeIndex.TypeDeclarationOf"] = "guarded-by:DeclarationKindDispatchTotalityTests",
+        ["Semantic/Validation/AbstractMemberValidator.cs::AbstractMemberValidator.ValidateClass"] = "guarded-by:DeclarationKindDispatchTotalityTests",
         ["Semantic/Validation/PropertyValidator.cs::PropertyValidator.EnumerateAllProperties"] = "guarded-by:MemberKindValidatorTotalityTests",
         ["Semantic/Validation/PropertyValidator.cs::PropertyValidator.ValidateTypeBody"] = "guarded-by:MemberKindValidatorTotalityTests",
         ["Semantic/Validation/PropertyValidator.cs::PropertyValidator.ValidateTypeStatement"] = "guarded-by:MemberKindValidatorTotalityTests",
