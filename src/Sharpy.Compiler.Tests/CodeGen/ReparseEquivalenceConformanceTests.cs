@@ -161,12 +161,13 @@ public class ReparseEquivalenceConformanceTests
             $"Checked {units.Count} stdlib module unit(s) for binding-equivalent direct handoff.");
 
         extra.Should().BeEmpty(BuildFailureMessage(
-            "stdlib module tree(s) introduce a binding error under direct handoff that reparsing avoids (#1095)",
+            "stdlib module tree(s) bind differently under direct handoff and under reparse "
+            + "(direct-only = the #1095 classes; reparse-only = the printed text means another program, #1727)",
             extra));
 
         _output.WriteLine($"Precedence violations in stdlib modules: {allViolations.Count}");
-        foreach (var v in allViolations)
-            _output.WriteLine($"  {v}");
+        allViolations.Should().BeEmpty(BuildPrecedenceFailureMessage(
+            $"{allViolations.Count} stdlib module unit(s) have precedence inversions", allViolations));
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -185,6 +186,7 @@ public class ReparseEquivalenceConformanceTests
         var references = IntegrationTestBase.GetSharedReferences();
         var failures = new List<string>();
         var precedenceViolations = new List<string>();
+        var tableDisagreements = new List<string>();
         int assertedFixtures = 0;
         int assertedUnits = 0;
         int skippedNoUnits = 0;
@@ -205,9 +207,10 @@ public class ReparseEquivalenceConformanceTests
                 continue;
             }
 
-            // Assert only units from a clean compile: error fixtures (and any compile that reported
-            // errors) never produce final, valid C#, so their partial emitter output must not be held to
-            // the binding-equivalence contract.
+            // Assert only units whose Sharpy FRONT END was clean: error fixtures never reach code
+            // generation, so their partial emitter output must not be held to the contract. A unit whose
+            // C# stage then refused it (SPY0908/SPY0599) IS asserted — those are exactly the members of
+            // the precedence-inversion class (#1727, #1712): the tree binds, its reparsed text does not.
             if (!success || units.Count == 0)
             {
                 skippedNoUnits++;
@@ -226,6 +229,9 @@ public class ReparseEquivalenceConformanceTests
                 foreach (var v in violations)
                     precedenceViolations.Add($"  fixture {fixture.TestName} [{Label(path)}:{v.Line}] " +
                         $"{v.ParentKind}/{v.ChildKind} ({v.Slot}): {v.Text}");
+
+                foreach (var d in PrecedenceCrossCheck.Disagreements(unit))
+                    tableDisagreements.Add($"  fixture {fixture.TestName} [{Label(path)}] {d}");
             }
         }
 
@@ -235,12 +241,34 @@ public class ReparseEquivalenceConformanceTests
             + $"{fixtures.Count} discovered.");
 
         failures.Should().BeEmpty(BuildFailureMessage(
-            "fixture tree(s) introduce a binding error under direct handoff that reparsing avoids (#1095)",
+            "fixture tree(s) bind differently under direct handoff and under reparse "
+            + "(direct-only = the #1095 classes; reparse-only = the printed text means another program, #1727)",
             failures));
 
         _output.WriteLine($"Precedence violations in fixture corpus: {precedenceViolations.Count}");
-        foreach (var v in precedenceViolations)
-            _output.WriteLine(v);
+        precedenceViolations.Should().BeEmpty(BuildPrecedenceFailureMessage(
+            $"{precedenceViolations.Count} fixture unit(s) have precedence inversions", precedenceViolations));
+
+        // Instrument verification (Decision 2): over every full-expression slot the corpus emits, the
+        // table and Roslyn's parser must agree — `Violations` empty iff the reparse keeps the kind-shape.
+        _output.WriteLine($"Precedence table vs parser disagreements in fixture corpus: {tableDisagreements.Count}");
+        foreach (var d in tableDisagreements)
+            _output.WriteLine(d);
+        tableDisagreements.Should().BeEmpty(BuildFailureMessage(
+            "expression slot(s) on which the precedence table and Roslyn's parser disagree (table-lax = a rule "
+            + "is missing or a token-adjacency sibling to file; table-strict = a rule is stricter than the grammar)",
+            tableDisagreements));
+    }
+
+    private static string BuildPrecedenceFailureMessage(string headline, IReadOnlyList<string> violations)
+    {
+        const int cap = 25;
+        var body = string.Join("\n", violations.Take(cap));
+        if (violations.Count > cap)
+            body += $"\n  ... and {violations.Count - cap} more";
+        return $"{headline} — each names an unparenthesized operand whose C# precedence is lower than its "
+            + "parent operator's, so the printed text re-associates on reparse (#1727, #1712). Build the "
+            + "operand through EmittedTreePrecedence (Binary/Member/Cast/Prefix/... or Operand()).\n" + body;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -557,10 +585,14 @@ public class ReparseEquivalenceConformanceTests
     /// (<c>CSharpSyntaxTree.Create</c>) and reparse (<c>ParseText(ToFullString())</c>) — against the same
     /// references and options, and returns the binding diagnostics (errors and warnings) present under
     /// direct handoff that reparsing does not produce. Diagnostics are diffed as a <c>(id, file)</c>
-    /// multiset with the reparse side as the reference: an id is "extra" only when it appears more times
-    /// under direct handoff than under reparse, so anything caused by an incomplete reference set (present
-    /// identically in both compilations) cancels and only tree-shape divergences survive. Skips the reparse
-    /// compilation entirely when the direct-handoff compilation is already clean (the common case).
+    /// multiset in BOTH directions: an id is "direct-only" when it appears more times under direct handoff
+    /// than under reparse (the #1095 classes — the tree carries a shape the parser would never build), and
+    /// "reparse-only" when it appears more times under reparse than under direct handoff (the printed text
+    /// means a different program than the tree — a precedence or token-adjacency inversion, #1727/#1712).
+    /// Anything caused by an incomplete reference set is present identically in both compilations and
+    /// cancels; only tree-vs-text divergences survive. Both compilations are always built — the original
+    /// early return on a clean direct-handoff compile was exactly the blind spot that hid the reparse-only
+    /// direction.
     /// </summary>
     private static IReadOnlyList<string> ExtraBindingErrors(
         IReadOnlyList<(string? Path, CompilationUnitSyntax Unit)> units,
@@ -572,23 +604,35 @@ public class ReparseEquivalenceConformanceTests
             units.Select(u => CSharpSyntaxTree.Create(u.Unit, path: u.Path ?? "member.cs")),
             references, options);
 
-        if (createdDiagnostics.Count == 0)
-            return Array.Empty<string>();
-
         var reparsedDiagnostics = CompilationDiagnostics(
             units.Select(u => CSharpSyntaxTree.ParseText(
                 u.Unit.ToFullString(), path: u.Path ?? "member.cs", encoding: System.Text.Encoding.UTF8)),
             references, options);
 
+        if (createdDiagnostics.Count == 0 && reparsedDiagnostics.Count == 0)
+            return Array.Empty<string>();
+
+        var extra = new List<string>();
+        extra.AddRange(OneDirection(createdDiagnostics, reparsedDiagnostics, "direct-only"));
+        extra.AddRange(OneDirection(reparsedDiagnostics, createdDiagnostics, "reparse-only"));
+        return extra;
+    }
+
+    /// <summary>
+    /// The diagnostics of <paramref name="subject"/> that <paramref name="reference"/> does not account
+    /// for, as a (id, file) multiset difference, each labelled with <paramref name="direction"/>.
+    /// </summary>
+    private static IEnumerable<string> OneDirection(
+        IReadOnlyList<Diagnostic> subject, IReadOnlyList<Diagnostic> reference, string direction)
+    {
         var baseline = new Dictionary<(string Id, string File), int>();
-        foreach (var d in reparsedDiagnostics)
+        foreach (var d in reference)
         {
             var key = (d.Id, d.Location.SourceTree?.FilePath ?? string.Empty);
             baseline[key] = baseline.TryGetValue(key, out var n) ? n + 1 : 1;
         }
 
-        var extra = new List<string>();
-        foreach (var d in createdDiagnostics)
+        foreach (var d in subject)
         {
             var key = (d.Id, d.Location.SourceTree?.FilePath ?? string.Empty);
             if (baseline.TryGetValue(key, out var n) && n > 0)
@@ -599,10 +643,8 @@ public class ReparseEquivalenceConformanceTests
 
             var file = Label(d.Location.SourceTree?.FilePath);
             var line = d.Location.GetLineSpan().StartLinePosition.Line + 1;
-            extra.Add($"{d.Severity.ToString().ToLowerInvariant()} {d.Id} [{file}:{line}] {d.GetMessage()}");
+            yield return $"{direction} {d.Severity.ToString().ToLowerInvariant()} {d.Id} [{file}:{line}] {d.GetMessage()}";
         }
-
-        return extra;
     }
 
     private static List<Diagnostic> CompilationDiagnostics(
@@ -691,7 +733,7 @@ public class ReparseEquivalenceConformanceTests
             var projectCompiler = new ProjectCompiler(
                 _logger, moduleRegistry, ProjectCompilerOptions.Default with { Features = features }, factory);
             var result = projectCompiler.Compile(config, CancellationToken.None, emitAssembly: false);
-            return (result.Success, factory.Captured);
+            return (FrontEndClean(result.Diagnostics), factory.Captured);
         }
         else
         {
@@ -706,9 +748,25 @@ public class ReparseEquivalenceConformanceTests
 
             var compiler = new Compiler(options, _logger, factory);
             var result = compiler.Compile(source, fixture.SpyFilePath);
-            return (result.Success, factory.Captured);
+            return (FrontEndClean(result.Diagnostics), factory.Captured);
         }
     }
+
+    /// <summary>
+    /// True when the Sharpy front end reported no error — i.e. every error present is a refusal of a
+    /// COMPLETE emitter unit: the C# stage's (SPY0908), the parse-invariant net's (SPY0599) or the
+    /// precedence net's (SPY0524). Such units are exactly what this suite must assert: a member of the
+    /// precedence-inversion class binds under direct handoff and fails only once its text is reparsed.
+    /// SPY0524 is in the set because the production net fires BEFORE the C# stage; treating it as a
+    /// front-end error would skip the unit and make the corpus assertions below vacuous whenever the
+    /// net catches the same inversion first (found by mutation: with a seam re-broken, the arm stayed
+    /// green until this code was added).
+    /// </summary>
+    private static bool FrontEndClean(DiagnosticBag diagnostics) =>
+        !diagnostics.GetErrors().Any(d =>
+            d.Code is not (DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError
+                or DiagnosticCodes.CodeGen.InternalGeneratedCSharpParseError
+                or DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion));
 
     private IReadOnlyList<(string? Path, CompilationUnitSyntax Unit)> CompileSourceCapturing(
         string source, string fileName)
