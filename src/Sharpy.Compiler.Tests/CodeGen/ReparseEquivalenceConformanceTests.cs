@@ -149,12 +149,25 @@ public class ReparseEquivalenceConformanceTests
 
         var extra = ExtraBindingErrors(units, StdlibReferences.Value);
 
+        var allViolations = new List<string>();
+        foreach (var (path, unit) in units)
+        {
+            var violations = EmittedTreePrecedence.Violations(unit);
+            foreach (var v in violations)
+                allViolations.Add($"{Label(path)}:{v.Line} {v.ParentKind}/{v.ChildKind} ({v.Slot}): {v.Text}");
+        }
+
         _output.WriteLine(
             $"Checked {units.Count} stdlib module unit(s) for binding-equivalent direct handoff.");
 
         extra.Should().BeEmpty(BuildFailureMessage(
             "stdlib module tree(s) introduce a binding error under direct handoff that reparsing avoids (#1095)",
             extra));
+
+        allViolations.Should().BeEmpty(
+            $"{allViolations.Count} stdlib module unit(s) have precedence inversions — each names an " +
+            "unparenthesized operand whose C# precedence is lower than its parent's (#1727, #1712).\n" +
+            string.Join("\n", allViolations.Take(25)));
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -172,6 +185,7 @@ public class ReparseEquivalenceConformanceTests
 
         var references = IntegrationTestBase.GetSharedReferences();
         var failures = new List<string>();
+        var precedenceViolations = new List<string>();
         int assertedFixtures = 0;
         int assertedUnits = 0;
         int skippedNoUnits = 0;
@@ -206,6 +220,14 @@ public class ReparseEquivalenceConformanceTests
 
             foreach (var e in ExtraBindingErrors(units, references))
                 failures.Add($"  fixture {fixture.TestName}: {e}");
+
+            foreach (var (path, unit) in units)
+            {
+                var violations = EmittedTreePrecedence.Violations(unit);
+                foreach (var v in violations)
+                    precedenceViolations.Add($"  fixture {fixture.TestName} [{Label(path)}:{v.Line}] " +
+                        $"{v.ParentKind}/{v.ChildKind} ({v.Slot}): {v.Text}");
+            }
         }
 
         _output.WriteLine(
@@ -216,6 +238,11 @@ public class ReparseEquivalenceConformanceTests
         failures.Should().BeEmpty(BuildFailureMessage(
             "fixture tree(s) introduce a binding error under direct handoff that reparsing avoids (#1095)",
             failures));
+
+        precedenceViolations.Should().BeEmpty(
+            $"{precedenceViolations.Count} fixture unit(s) have precedence inversions — each names an " +
+            "unparenthesized operand whose C# precedence is lower than its parent's (#1727, #1712).\n" +
+            string.Join("\n", precedenceViolations.Take(25)));
     }
 
     // ---------------------------------------------------------------------------------------------

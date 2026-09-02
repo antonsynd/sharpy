@@ -109,7 +109,12 @@ internal static class EmitterTestPipeline
         var analysis = Analyze(Parse(source), isEntryPoint, sourceFilePath, runValidators, emitLineDirectives);
         if (requireNoErrors)
             analysis.TypeChecker.Diagnostics.GetErrors().Should().BeEmpty("Sharpy source should have no type errors");
-        return analysis.Emitter.GenerateCompilationUnit(analysis.Module);
+        var unit = analysis.Emitter.GenerateCompilationUnit(analysis.Module);
+        var precedenceViolations = EmittedTreePrecedence.Violations(unit);
+        precedenceViolations.Should().BeEmpty(
+            "the emitted tree must have no precedence inversions — each violation names an " +
+            "unparenthesized operand whose C# precedence is lower than its parent's (#1727, #1712)");
+        return unit;
     }
 
     /// <summary>Parses, analyzes and emits <paramref name="source"/> as normalized C# text.</summary>
