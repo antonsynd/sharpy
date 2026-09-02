@@ -202,6 +202,8 @@ Whole defect classes are guarded by conformance sweeps that ratchet against an a
 
 A new hand-rolled switch on an AST `Node` or lowering `IrNode` subtype must be rostered in `DispatchSiteInventoryTests` with a justification category; the `*TotalityTests` family pins arm sets against reflection universes so a new kind fails every member site at once.
 
+Emitter code that places a *generated* expression under an operator, cast, member access, `is` pattern, prefix/postfix operator, `await`, conditional test or element/conditional access builds the node through `EmittedTreePrecedence` (`Binary`, `Member`, `Cast`, `Prefix`, `Postfix`, `Conditional`, `IsPattern`, `Await`, `Element`, `ConditionalAccess`, or `Operand` directly), never through the raw `SyntaxFactory` call: the default compile path reparses the printed C#, so an unparenthesized lower-precedence operand re-associates (#1727, #1712). `EmittedTreePrecedence.Violations` is asserted on every `EmitterTestPipeline` emission and over both `ReparseEquivalenceConformanceTests` corpus arms, and fires as SPY0524 in production.
+
 ## Feature Implementation Order
 
 ```
