@@ -114,6 +114,42 @@ public class DifferentialExecutionTests : IntegrationTestBase
             yield return SharpyStdlibReference.Location;
     }
 
+    /// <summary>
+    /// Eligibility guard for the walrus narrowing (#1732): a while-test walrus is IN the shared
+    /// subset (the CPython oracle sees #1723's cells); a walrus inside a comprehension — Sharpy's
+    /// one documented scoping divergence — is OUT under its own shape key. Positive + negative
+    /// control on the same construct, so a blanket rejection or a blanket acceptance is red.
+    /// mutation (verify round 2026-09-02): `_comprehensionDepth > 0` replaced by `true` →
+    /// <c>WhileTestWalrus_IsInSharedSubset</c> red (1 failed); restored → green.
+    /// </summary>
+    [Fact]
+    public void WhileTestWalrus_IsInSharedSubset()
+    {
+        var module = ParseForSubset(
+            "def main():\n    xs: list[str] = [\" a \", \"   \"]\n    while (s := xs.pop(0)).strip():\n        print(s)\n");
+        // A while-test walrus has identical runtime meaning in CPython (#1723 lives here).
+        Assert.Null(ExecSubsetFilter.RejectionShape(module));
+    }
+
+    [Fact]
+    public void ComprehensionWalrus_IsRejected_UnderItsOwnShape()
+    {
+        var module = ParseForSubset(
+            "def main():\n    ys = [y for x in [1, 2] if (y := x * 2) > 2]\n    print(ys)\n");
+        // A comprehension-scoped walrus is Sharpy's documented divergence from CPython (walrus_operator.md).
+        Assert.Equal("sharpy-only-node:WalrusExpression-in-comprehension", ExecSubsetFilter.RejectionShape(module));
+    }
+
+    private static Module ParseForSubset(string source)
+    {
+        var lexer = new Sharpy.Compiler.Lexer.Lexer(source);
+        var parser = new Sharpy.Compiler.Parser.Parser(lexer.TokenizeAll());
+        var module = parser.ParseModule();
+        Assert.False(parser.Diagnostics.HasErrors,
+            string.Join("\n", parser.Diagnostics.GetErrors().Select(d => d.Message)));
+        return module;
+    }
+
     [Fact]
     public void DifferentialExecution_SharedSubset_MatchesCPython()
     {
@@ -1330,6 +1366,7 @@ public class DifferentialExecutionTests : IntegrationTestBase
         // so listing them would buy nothing and cost the oracle real coverage.
 
         private string? _rejection;
+        private int _comprehensionDepth;
         private readonly HashSet<string> _exceptAliases = new(StringComparer.Ordinal);
         private HashSet<string> _declaredFunctions = new(StringComparer.Ordinal);
 
@@ -1370,7 +1407,42 @@ public class DifferentialExecutionTests : IntegrationTestBase
         public override void VisitStarExpression(StarExpression node) => Reject(node);
         public override void VisitSpreadElement(SpreadElement node) => Reject(node);
         public override void VisitDictSpreadComprehension(DictSpreadComprehension node) => Reject(node);
-        public override void VisitWalrusExpression(WalrusExpression node) => Reject(node);
+
+        // Walrus (#1732): Python since 3.8 with identical runtime meaning in every position EXCEPT
+        // inside a comprehension, where Sharpy scopes the bound name to the comprehension
+        // (walrus_operator.md) and CPython leaks it. Only that documented divergence leaves the
+        // subset; a while/if-test, argument, or container-element walrus stays in — that is where
+        // #1723, #1680, #1724 and #1725 live, and the oracle must be able to see them.
+        public override void VisitWalrusExpression(WalrusExpression node)
+        {
+            if (_comprehensionDepth > 0)
+            {
+                Reject("sharpy-only-node:WalrusExpression-in-comprehension");
+                return;
+            }
+            base.VisitWalrusExpression(node);
+        }
+
+        public override void VisitListComprehension(ListComprehension node)
+        {
+            _comprehensionDepth++;
+            base.VisitListComprehension(node);
+            _comprehensionDepth--;
+        }
+
+        public override void VisitSetComprehension(SetComprehension node)
+        {
+            _comprehensionDepth++;
+            base.VisitSetComprehension(node);
+            _comprehensionDepth--;
+        }
+
+        public override void VisitDictComprehension(DictComprehension node)
+        {
+            _comprehensionDepth++;
+            base.VisitDictComprehension(node);
+            _comprehensionDepth--;
+        }
         // F-strings: Sharpy/CPython disagree on delimiter/escape micro-syntax; exclude wholesale.
         public override void VisitFStringLiteral(FStringLiteral node) => Reject(node);
 
