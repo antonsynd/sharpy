@@ -117,6 +117,28 @@ internal sealed class SharpyFoldingRangeHandler : FoldingRangeHandlerBase
                     CollectFoldingRanges(p.Body, ranges);
                 }
                 break;
+
+            case DeferStatement deferStmt:
+                // The `defer:` block is a suite; the inline form is single-line and AddRange
+                // skips it on the multi-line check like any other one-line node.
+                AddRange(ranges, deferStmt, FoldingRangeKind.Region);
+                CollectFoldingRanges(deferStmt.Body, ranges);
+                break;
+
+            case UnionDef unionDef:
+                // Cases plus methods: a bodied declaration like a class.
+                AddRange(ranges, unionDef, FoldingRangeKind.Region);
+                CollectFoldingRanges(unionDef.Body, ranges);
+                break;
+
+            case EventDef eventDef:
+                // Mirrors PropertyDef: only the function-style form (`event add name(...):`) has a suite.
+                if (eventDef.IsFunctionStyle && eventDef.Body.Length > 0)
+                {
+                    AddRange(ranges, eventDef, FoldingRangeKind.Region);
+                    CollectFoldingRanges(eventDef.Body, ranges);
+                }
+                break;
         }
     }
 
