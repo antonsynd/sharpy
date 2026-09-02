@@ -865,4 +865,114 @@ def main():
     }
 
     #endregion
+
+    #region Dispatch-totality probes (plan-950124 Phase 2 — SemanticTokensDispatchTotalityTests)
+
+    // Justified-default probes: each absence claim sits next to a positive control on the SAME
+    // input, so a collector that emitted nothing at all could not pass.
+
+    [Fact]
+    public void PassStatement_YieldsNoToken_WhileSiblingCallDoes()
+    {
+        var tokens = CollectTokensFrom("def f(x: int) -> None:\n    pass\n    print(x)");
+        tokens.Should().NotContain(t => t.Line == 1, "a keyword-only statement produces no server token (client grammar)");
+        tokens.Should().Contain(t => t.Line == 2 && t.TokenType == TParameter,
+            "positive control: the parameter usage on the next line is tokenized");
+    }
+
+    [Fact]
+    public void IntegerLiteral_YieldsNoToken_WhileSiblingStringDoes()
+    {
+        var tokens = CollectTokensFrom("def f() -> None:\n    a = 42\n    b = \"s\"");
+        tokens.Should().NotContain(t => t.Line == 1, "a numeric literal is the client grammar's (TNumber is registered but never pushed)");
+        tokens.Should().Contain(t => t.Line == 2 && t.TokenType == TString,
+            "positive control: the string literal on the next line is tokenized");
+    }
+
+    // Misses found by the probe, fixed by delegating arms (no tokens → tokens).
+
+    [Fact]
+    public void DeferStatement_BodyIsTokenized_InlineAndBlock()
+    {
+        var tokens = CollectTokensFrom(
+            "def f(msg: str) -> None:\n    defer print(msg)\n    defer:\n        print(msg)\n    print(\"x\")");
+        tokens.Should().Contain(t => t.Line == 1 && t.TokenType == TParameter,
+            "the inline deferred statement's parameter usage is tokenized");
+        tokens.Should().Contain(t => t.Line == 3 && t.TokenType == TParameter,
+            "the defer block's parameter usage is tokenized");
+    }
+
+    [Fact]
+    public void TypeAlias_NameGetsTypeDeclarationToken()
+    {
+        var tokens = CollectTokensFrom("type Names = list[str]\ndef main() -> None:\n    pass");
+        tokens.Should().Contain(t => t.Line == 0 && t.Col == 5 && t.Length == 5 && t.TokenType == TType
+            && (t.Modifiers & ModDeclaration) != 0,
+            "the alias head is a declared type name like a class head");
+    }
+
+    [Fact]
+    public void UnionDef_HeadCasesAndBodyGetTokens()
+    {
+        var tokens = CollectTokensFrom(
+            "union Shape:\n    case Circle(r: float)\n    def describe(self) -> str:\n        return \"s\"");
+        tokens.Should().Contain(t => t.Line == 0 && t.Col == 6 && t.Length == 5 && t.TokenType == TType,
+            "the union head is a type declaration");
+        tokens.Should().Contain(t => t.Line == 1 && t.Col == 9 && t.Length == 6 && t.TokenType == TEnumMember,
+            "each case is a declared variant");
+        tokens.Should().Contain(t => t.Line == 2 && t.TokenType == TFunction,
+            "the union body's method is tokenized like a class member");
+        tokens.Should().Contain(t => t.Line == 3 && t.TokenType == TString,
+            "the method body's literal is tokenized");
+    }
+
+    [Fact]
+    public void DelegateDef_NameAndParametersGetTokens()
+    {
+        var tokens = CollectTokensFrom("delegate Cb(v: int) -> None\ndef main() -> None:\n    pass");
+        tokens.Should().Contain(t => t.Line == 0 && t.Col == 9 && t.Length == 2 && t.TokenType == TType,
+            "the delegate head is a type declaration");
+        tokens.Should().Contain(t => t.Line == 0 && t.Col == 12 && t.Length == 1 && t.TokenType == TParameter,
+            "its parameter is a declared parameter");
+    }
+
+    [Fact]
+    public void EventDef_NameGetsPropertyToken()
+    {
+        var tokens = CollectTokensFrom("delegate Cb(v: int) -> None\nclass Box:\n    event on_change: Cb");
+        tokens.Should().Contain(t => t.Line == 2 && t.Col == 10 && t.Length == 9 && t.TokenType == TProperty,
+            "an event is a property-like member");
+    }
+
+    [Fact]
+    public void AwaitExpression_OperandIsTokenized()
+    {
+        var tokens = CollectTokensFrom("async def f(x: int) -> None:\n    await g(x)");
+        tokens.Should().Contain(t => t.Line == 1 && t.TokenType == TParameter,
+            "the awaited call's parameter usage is tokenized");
+    }
+
+    [Fact]
+    public void MatchExpression_ScrutineeAndArmsAreTokenized()
+    {
+        var tokens = CollectTokensFrom(
+            "def f(n: int) -> str:\n    r: str = match n:\n        case 1: \"one\"\n        case _: \"other\"\n    return r");
+        tokens.Should().Contain(t => t.Line == 1 && t.TokenType == TParameter,
+            "the scrutinee's parameter usage is tokenized");
+        tokens.Should().Contain(t => t.Line == 2 && t.TokenType == TString,
+            "an arm result literal is tokenized");
+        tokens.Should().Contain(t => t.Line == 3 && t.TokenType == TString,
+            "every arm result literal is tokenized");
+    }
+
+    [Fact]
+    public void DictSpreadComprehension_SpreadAndClausesAreTokenized()
+    {
+        var tokens = CollectTokensFrom(
+            "def f(ds: list[dict[str, int]]) -> dict[str, int]:\n    return {**d for d in ds}");
+        tokens.Should().Contain(t => t.Line == 1 && t.TokenType == TParameter,
+            "the clause iterator's parameter usage is tokenized");
+    }
+
+    #endregion
 }

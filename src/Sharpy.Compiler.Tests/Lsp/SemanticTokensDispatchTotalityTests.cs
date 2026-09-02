@@ -1,14 +1,19 @@
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Sharpy.Compiler.Tests.Lsp;
 
 /// <summary>
-/// Totality guards for <c>SemanticTokensHandler</c> dispatch switches.
-/// Kinds with no tokens are silently skipped — the skip is contractual, not a miss.
-/// Each fact pins the arm set via <see cref="SwitchArmScan"/>.
+/// Totality guards for <c>SemanticTokensHandler</c>'s three dispatch switches, run through
+/// <see cref="LspDispatchTotality"/>: arms == roster, roster ∪ justified-default == the
+/// reflection universe, disjoint, phantom-free, every default tagged with its reason class.
+/// The representative justified-default kinds are probed through the real collector in
+/// <c>Sharpy.Lsp.Tests.SemanticTokensTests</c> (<c>PassStatement_YieldsNoToken_WhileSiblingCallDoes</c>,
+/// <c>IntegerLiteral_YieldsNoToken_WhileSiblingStringDoes</c>) — each absence next to a
+/// positive control on the same input.
+/// Mutation (worktree @ 277f54543 + this change): DeferStatement arm deleted from
+/// CollectStatementTokens → red (1 failed, 2 passed); restored → green (3 passed).
 /// </summary>
 public class SemanticTokensDispatchTotalityTests
 {
@@ -16,7 +21,9 @@ public class SemanticTokensDispatchTotalityTests
 
     public SemanticTokensDispatchTotalityTests(ITestOutputHelper output) => _output = output;
 
-    private static readonly HashSet<string> CollectStatementTokensExpected = new()
+    // ── CollectStatementTokens: Statement universe ──
+
+    private static readonly HashSet<string> CollectStatementTokensArms = new()
     {
         nameof(FunctionDef),
         nameof(ClassDef),
@@ -38,23 +45,40 @@ public class SemanticTokensDispatchTotalityTests
         nameof(RaiseStatement),
         nameof(YieldStatement),
         nameof(DecoratedStatement),
+        // Phase 2 remediation: the deferred suite, the alias name, and the union / delegate /
+        // event declaration heads were silent (no tokens → tokens; cells in SemanticTokensTests).
+        nameof(DeferStatement),
+        nameof(TypeAlias),
+        nameof(UnionDef),
+        nameof(DelegateDef),
+        nameof(EventDef),
+    };
+
+    private static readonly Dictionary<string, string> CollectStatementTokensDefault = new()
+    {
+        [nameof(BreakStatement)] = "CONTRACTUAL: keyword-only statement — the legend carries no keyword token for plain keywords; the client grammar colors them",
+        [nameof(ContinueStatement)] = "CONTRACTUAL: keyword-only statement — the client grammar colors it",
+        [nameof(PassStatement)] = "CONTRACTUAL: keyword-only statement — the client grammar colors it",
+        [nameof(BreakWithFlagStatement)] = "UNREACHABLE: emitter-synthesized (never parsed) — it has no source position to tokenize",
+        [nameof(ImportStatement)] = "CONTRACTUAL: the legend has no namespace/module token type; imported names are left to the client grammar",
+        [nameof(FromImportStatement)] = "CONTRACTUAL: the legend has no namespace/module token type; imported names are left to the client grammar",
     };
 
     [Fact]
-    public void CollectStatementTokens_Arms()
+    public void CollectStatementTokens_ArmsPlusJustifiedDefaults_EqualTheStatementUniverse()
     {
-        var arms = SwitchArmScan.CaseTypeNames(
+        LspDispatchTotality.Verify(
+            _output,
             "src/Sharpy.Lsp/Handlers/SemanticTokensHandler.cs",
-            "CollectStatementTokens");
-        Assert.NotEmpty(arms);
-        _output.WriteLine($"CollectStatementTokens arms ({arms.Count}): {string.Join(", ", arms.OrderBy(a => a))}");
-        Assert.True(arms.SetEquals(CollectStatementTokensExpected),
-            $"Arms differ from expected.\n" +
-            $"  Extra: {string.Join(", ", arms.Except(CollectStatementTokensExpected))}\n" +
-            $"  Missing: {string.Join(", ", CollectStatementTokensExpected.Except(arms))}");
+            "CollectStatementTokens",
+            typeof(Statement),
+            CollectStatementTokensArms,
+            CollectStatementTokensDefault);
     }
 
-    private static readonly HashSet<string> CollectExpressionTokensExpected = new()
+    // ── CollectExpressionTokens: Expression universe ──
+
+    private static readonly HashSet<string> CollectExpressionTokensArms = new()
     {
         nameof(UnaryOp),
         nameof(BinaryOp),
@@ -88,40 +112,63 @@ public class SemanticTokensDispatchTotalityTests
         nameof(StringLiteral),
         nameof(BytesLiteralExpression),
         nameof(ModifiedArgument),
-        "And",
-        "Or",
-        "In",
-        "NotIn",
-        "Is",
-        "IsNot",
+        // Phase 2 remediation: operands of await / match-expression arms / dict-spread
+        // comprehensions were never walked (no tokens → tokens; cells in SemanticTokensTests).
+        nameof(AwaitExpression),
+        nameof(MatchExpression),
+        nameof(DictSpreadComprehension),
+    };
+
+    /// <summary>
+    /// The BinaryOp arm's positional fallback switches on <c>BinaryOperator</c>; the scanner
+    /// reads those constant labels as names. They are operator sub-arms, not Expression kinds,
+    /// and stay out of the kind universe explicitly.
+    /// </summary>
+    private static readonly HashSet<string> CollectExpressionTokensOperatorSubArms = new()
+    {
+        "And", "Or", "In", "NotIn", "Is", "IsNot",
+    };
+
+    private static readonly Dictionary<string, string> CollectExpressionTokensDefault = new()
+    {
+        [nameof(BooleanLiteral)] = "CONTRACTUAL: literal colored by the client grammar; TNumber is registered in the legend but the handler pushes no numeric/keyword-literal token",
+        [nameof(EllipsisLiteral)] = "CONTRACTUAL: literal colored by the client grammar",
+        [nameof(FloatLiteral)] = "CONTRACTUAL: literal colored by the client grammar (TNumber registered, unused)",
+        [nameof(IntegerLiteral)] = "CONTRACTUAL: literal colored by the client grammar (TNumber registered, unused)",
+        [nameof(NoneLiteral)] = "CONTRACTUAL: literal colored by the client grammar",
+        [nameof(SuperExpression)] = "CONTRACTUAL: the `super` keyword is colored by the client grammar; the node has no sub-expression",
     };
 
     [Fact]
-    public void CollectExpressionTokens_Arms()
+    public void CollectExpressionTokens_ArmsPlusJustifiedDefaults_EqualTheExpressionUniverse()
     {
-        var arms = SwitchArmScan.CaseTypeNames(
+        LspDispatchTotality.Verify(
+            _output,
             "src/Sharpy.Lsp/Handlers/SemanticTokensHandler.cs",
-            "CollectExpressionTokens");
-        Assert.NotEmpty(arms);
-        _output.WriteLine($"CollectExpressionTokens arms ({arms.Count}): {string.Join(", ", arms.OrderBy(a => a))}");
-        Assert.True(arms.SetEquals(CollectExpressionTokensExpected),
-            $"Arms differ from expected.\n" +
-            $"  Extra: {string.Join(", ", arms.Except(CollectExpressionTokensExpected))}\n" +
-            $"  Missing: {string.Join(", ", CollectExpressionTokensExpected.Except(arms))}");
+            "CollectExpressionTokens",
+            typeof(Expression),
+            CollectExpressionTokensArms,
+            CollectExpressionTokensDefault,
+            CollectExpressionTokensOperatorSubArms);
     }
 
-    [Fact]
-    public void CollectComprehensionClauseTokens_Arms()
+    // ── CollectComprehensionClauseTokens: ComprehensionClause universe ──
+
+    private static readonly HashSet<string> CollectComprehensionClauseTokensArms = new()
     {
-        var arms = SwitchArmScan.CaseTypeNames(
+        nameof(ForClause),
+        nameof(IfClause),
+    };
+
+    [Fact]
+    public void CollectComprehensionClauseTokens_Arms_EqualTheComprehensionClauseUniverse()
+    {
+        LspDispatchTotality.Verify(
+            _output,
             "src/Sharpy.Lsp/Handlers/SemanticTokensHandler.cs",
-            "CollectComprehensionClauseTokens");
-        Assert.NotEmpty(arms);
-        _output.WriteLine($"CollectComprehensionClauseTokens arms: {string.Join(", ", arms.OrderBy(a => a))}");
-        var expected = new HashSet<string> { nameof(ForClause), nameof(IfClause) };
-        Assert.True(arms.SetEquals(expected),
-            $"Arms differ from expected.\n" +
-            $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +
-            $"  Missing: {string.Join(", ", expected.Except(arms))}");
+            "CollectComprehensionClauseTokens",
+            typeof(ComprehensionClause),
+            CollectComprehensionClauseTokensArms,
+            new Dictionary<string, string>());
     }
 }

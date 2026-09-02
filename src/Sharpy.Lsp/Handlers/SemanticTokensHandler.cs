@@ -345,6 +345,61 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 CollectDecorators(decorated.Decorators, tokens);
                 CollectStatementTokens(decorated.Statement, tokens, parameterNames, semanticQuery);
                 break;
+
+            case DeferStatement deferStmt:
+                // The deferred suite (inline or `defer:` block) is ordinary statements in the
+                // enclosing scope: parameter usages and literals inside it color like any body.
+                CollectStatementList(deferStmt.Body, tokens, parameterNames, semanticQuery);
+                break;
+
+            case TypeAlias alias:
+                // A declaration head like the type kinds above; the aliased type on the right is
+                // a TypeAnnotation, which this handler leaves to the client grammar everywhere.
+                PushNameToken(tokens, alias.NameLineStart, alias.NameColumnStart, alias.NameColumnEnd - alias.NameColumnStart, TType, ModDeclaration | ModDefinition | genMod);
+                break;
+
+            case UnionDef unionDef:
+                // The legend has no union-specific type: the head is a `type` declaration and each
+                // case a declared `enumMember` (a named variant of a sum type — the rust-analyzer
+                // mapping for enum variants); the body holds methods and colors like a class body.
+                PushNameToken(tokens, unionDef.NameLineStart, unionDef.NameColumnStart, unionDef.NameColumnEnd - unionDef.NameColumnStart, TType, ModDeclaration | ModDefinition | genMod);
+                CollectDecorators(unionDef.Decorators, tokens);
+                foreach (var unionCase in unionDef.Cases)
+                {
+                    PushNameToken(tokens, unionCase.NameLineStart, unionCase.NameColumnStart, unionCase.NameColumnEnd - unionCase.NameColumnStart, TEnumMember, ModDeclaration | genMod);
+                }
+                CollectTokens(unionDef.Body, tokens, semanticQuery);
+                break;
+
+            case DelegateDef delegateDef:
+                // A delegate declares a type (no `delegate` token in the legend → `type`) whose
+                // parameters are declared names exactly like a function's.
+                PushNameToken(tokens, delegateDef.NameLineStart, delegateDef.NameColumnStart, delegateDef.NameColumnEnd - delegateDef.NameColumnStart, TType, ModDeclaration | ModDefinition | genMod);
+                foreach (var param in delegateDef.Parameters)
+                {
+                    PushNameToken(tokens, param.NameLineStart, param.NameColumnStart, param.NameColumnEnd - param.NameColumnStart, TParameter, ModDeclaration);
+                }
+                break;
+
+            case EventDef eventDef:
+                {
+                    // An event is a property-like member (add/remove accessors, no `event` token in
+                    // the legend → `property`, mirroring the PropertyDef arm). Function-style events
+                    // declare parameters and a body like a function.
+                    PushNameToken(tokens, eventDef.NameLineStart, eventDef.NameColumnStart, eventDef.NameColumnEnd - eventDef.NameColumnStart, TProperty, ModDeclaration | genMod);
+                    CollectDecorators(eventDef.Decorators, tokens);
+                    HashSet<string>? eventParameterNames = null;
+                    foreach (var param in eventDef.Parameters)
+                    {
+                        if (param.Name == "self" || param.Name == "cls")
+                            continue;
+                        PushNameToken(tokens, param.NameLineStart, param.NameColumnStart, param.NameColumnEnd - param.NameColumnStart, TParameter, ModDeclaration);
+                        eventParameterNames ??= new HashSet<string>();
+                        eventParameterNames.Add(param.Name);
+                    }
+                    CollectStatementList(eventDef.Body, tokens, eventParameterNames, semanticQuery);
+                    break;
+                }
         }
     }
 
@@ -698,6 +753,26 @@ internal sealed class SharpySemanticTokensHandler : SemanticTokensHandlerBase
                 CollectExpressionTokens(modArg.Argument, tokens, parameterNames, semanticQuery);
                 break;
 
+            case AwaitExpression awaitExpr:
+                // `await` itself is a plain keyword (client grammar); the operand carries the tokens.
+                CollectExpressionTokens(awaitExpr.Operand, tokens, parameterNames, semanticQuery);
+                break;
+
+            case MatchExpression matchExpr:
+                CollectExpressionTokens(matchExpr.Scrutinee, tokens, parameterNames, semanticQuery);
+                foreach (var arm in matchExpr.Arms)
+                {
+                    if (arm.Guard != null)
+                        CollectExpressionTokens(arm.Guard, tokens, parameterNames, semanticQuery);
+                    CollectExpressionTokens(arm.Result, tokens, parameterNames, semanticQuery);
+                }
+                break;
+
+            case DictSpreadComprehension spreadComp:
+                CollectExpressionTokens(spreadComp.Spread, tokens, parameterNames, semanticQuery);
+                foreach (var clause in spreadComp.Clauses)
+                    CollectComprehensionClauseTokens(clause, tokens, parameterNames, semanticQuery);
+                break;
         }
     }
 
