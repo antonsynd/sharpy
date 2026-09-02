@@ -242,6 +242,11 @@ internal static class NarrowingConditionInterpreter
         _ => null
     };
 
+    /// <summary>
+    /// Narrowing key builder for a parenthesized type expression — delegates to
+    /// <see cref="DescribeTypeExpression"/> or <see cref="DescribeTupleElements"/>.
+    /// Returns null for un-keyable forms; no semantic decision keys on this switch.
+    /// </summary>
     private static string? DescribeTupleTypeExpression(Expression inner) => inner switch
     {
         TupleLiteral tuple => DescribeTupleElements(tuple),

@@ -200,6 +200,8 @@ Multi-file: `ProjectCompilationHelper` (`WithRootNamespace(...).AddSourceFile(..
 ### Standing class-contract harnesses
 Whole defect classes are guarded by conformance sweeps that ratchet against an allowlist next to the test (drain on fix; every entry cites an issue): roster and contracts in [docs/design/gap-discovery-contracts.md](../docs/design/gap-discovery-contracts.md); the process rules a fix must satisfy (class before cell, mutation-tested guards, control runs, `@ sha (measured)` counts) in [docs/design/verification-contract.md](../docs/design/verification-contract.md). CI runs the `InteropConformance`, `MetamorphicCorpus`, and `DifferentialExecution` sweeps as separate steps, excluded from the main Compiler test step.
 
+A new hand-rolled switch on an AST `Node` or lowering `IrNode` subtype must be rostered in `DispatchSiteInventoryTests` with a justification category; the `*TotalityTests` family pins arm sets against reflection universes so a new kind fails every member site at once.
+
 ## Feature Implementation Order
 
 ```
