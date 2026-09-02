@@ -191,8 +191,27 @@ internal static class GenTyped
             AssignmentStatement(env, fuel));
 
     public static Gen<Statement> IfElseStatement(TypeEnv env, int fuel) =>
+        Gen.Frequency(
+            (3, IfElseWithBoolTest(env, fuel)),
+            (1, IfElseWithTruthinessTest(env, fuel)));
+
+    private static Gen<Statement> IfElseWithBoolTest(TypeEnv env, int fuel) =>
         Gen.Select(
             ExpressionOfType(env, "bool", fuel),
+            AssignmentStatement(env, fuel),
+            AssignmentStatement(env, fuel),
+            (test, thenStmt, elseStmt) => (Statement)new IfStatement
+            {
+                Test = test,
+                ThenBody = ImmutableArray.Create(thenStmt),
+                ElseBody = ImmutableArray.Create(elseStmt)
+            });
+
+    private static Gen<Statement> IfElseWithTruthinessTest(TypeEnv env, int fuel) =>
+        Gen.Select(
+            Gen.OneOf(
+                ExpressionOfType(env, "int", fuel),
+                ExpressionOfType(env, "str", fuel)),
             AssignmentStatement(env, fuel),
             AssignmentStatement(env, fuel),
             (test, thenStmt, elseStmt) => (Statement)new IfStatement
