@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Services;
@@ -9,6 +10,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Text;
 using Xunit;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Sharpy.Compiler.Tests.Diagnostics;
 
@@ -293,6 +295,84 @@ public class CompilerInvariantsTests
         Assert.Single(errors);
         Assert.Contains("generated C# contains", errors[0].Message);
         Assert.Contains("syntax error", errors[0].Message);
+    }
+
+    // ----- EmittedTreePrecedence (#1727, #1712) -----
+
+    [Fact]
+    public void AssertEmittedTreePrecedence_CleanUnit_NoErrors()
+    {
+        // (flag ? a : b).Length > 0 — the #1727 shape built correctly: the conditional receiver is
+        // parenthesized, so the tree and its printed text mean the same program.
+        var diagnostics = CreateDiagnostics();
+        var unit = UnitWithExpression(
+            BinaryExpression(SyntaxKind.GreaterThanExpression,
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    ParenthesizedExpression(ConditionalExpression(
+                        IdentifierName("flag"), IdentifierName("a"), IdentifierName("b"))),
+                    IdentifierName("Length")),
+                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))));
+
+        CompilerInvariants.AssertEmittedTreePrecedence(unit, diagnostics);
+
+        Assert.Empty(diagnostics.GetErrors());
+    }
+
+    [Fact]
+    public void AssertEmittedTreePrecedence_InvertedUnit_EmitsSPY0524()
+    {
+        // The same tree with the receiver left bare: the tree means (flag ? a : b).Length > 0, its
+        // printed text `flag ? a : b.Length > 0` means flag ? a : (b.Length > 0) — CS0173 behind
+        // SPY0908 at fe652987f. The net names the class instead.
+        var diagnostics = CreateDiagnostics();
+        var unit = UnitWithExpression(
+            BinaryExpression(SyntaxKind.GreaterThanExpression,
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    ConditionalExpression(IdentifierName("flag"), IdentifierName("a"), IdentifierName("b")),
+                    IdentifierName("Length")),
+                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))));
+
+        CompilerInvariants.AssertEmittedTreePrecedence(unit, diagnostics);
+
+        var error = Assert.Single(diagnostics.GetErrors());
+        Assert.Equal(DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion, error.Code);
+        Assert.Contains("ConditionalExpression", error.Message);
+        Assert.Contains("SimpleMemberAccessExpression", error.Message);
+        Assert.Contains("Receiver", error.Message);
+    }
+
+    [Fact]
+    public void Assert_WithEmittedTreePrecedenceFlag_ChecksEmitterUnit()
+    {
+        // cond ? a : b.IsSome — the #1712 shape. The flag routes the unit to the check; without the
+        // flag the same unit is not examined.
+        var inverted = UnitWithExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                ConditionalExpression(IdentifierName("flag"), IdentifierName("a"), IdentifierName("b")),
+                IdentifierName("IsSome")));
+
+        var withFlag = CreateDiagnostics();
+        CompilerInvariants.Assert(withFlag, CompilerInvariants.InvariantSet.EmittedTreePrecedence, emitterUnit: inverted);
+        Assert.Single(withFlag.GetErrors());
+
+        var withoutFlag = CreateDiagnostics();
+        CompilerInvariants.Assert(withoutFlag, CompilerInvariants.InvariantSet.GeneratedCSharp, emitterUnit: inverted);
+        Assert.Empty(withoutFlag.GetErrors());
+    }
+
+    [Fact]
+    public void PostCodeGenAndAllFlags_IncludeEmittedTreePrecedence()
+    {
+        Assert.True(CompilerInvariants.InvariantSet.PostCodeGen.HasFlag(CompilerInvariants.InvariantSet.EmittedTreePrecedence));
+        Assert.True(CompilerInvariants.InvariantSet.All.HasFlag(CompilerInvariants.InvariantSet.EmittedTreePrecedence));
+    }
+
+    private static CompilationUnitSyntax UnitWithExpression(ExpressionSyntax expression)
+    {
+        var method = MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier("M"))
+            .WithBody(Block(ExpressionStatement(expression)));
+        var cls = ClassDeclaration("C").WithMembers(SingletonList<MemberDeclarationSyntax>(method));
+        return CompilationUnit().WithMembers(SingletonList<MemberDeclarationSyntax>(cls));
     }
 
     #endregion

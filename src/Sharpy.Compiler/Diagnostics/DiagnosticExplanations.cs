@@ -140,6 +140,16 @@ public static partial class DiagnosticExplanations
             "# File: bubble_sort.spy\ndef bubble_sort(arr: list[int]) -> list[int]:\n    ...\n# 'bubble_sort' compiles to 'BubbleSort', same as class 'BubbleSort' from filename",
             "Rename the function or the source file so the function's PascalCase name does not match the filename's PascalCase name.");
 
+        Add(dict, DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion, "Internal error: emitted C# tree inverts operator precedence", "CodeGen",
+            "The compiler built a C# expression tree in which an operand of lower precedence than its parent operator " +
+            "(for example a conditional expression as the receiver of a member access) was not wrapped in parentheses. " +
+            "The tree is correct, but its printed text re-associates under C# precedence, so the generated C# would " +
+            "fail to compile or compute a different value. The compiler refuses the unit instead of leaking the C# " +
+            "compiler's error (#1727, #1712).",
+            "xs: list[int] = [1]\nys: list[int] = [2]\nif 2 in xs + ys:  # the emitter must build (xs + ys).Contains(2), never xs + ys.Contains(2)\n    ...",
+            "This is an internal compiler error. Please report it at https://github.com/antonsynd/sharpy/issues with the .spy file that triggered it. " +
+            "As a workaround, add explicit parentheses around the composite sub-expression.");
+
         Add(dict, DiagnosticCodes.CodeGen.TypeReExportNotSupported, "Type re-export not supported", "CodeGen",
             "A type cannot be re-exported from an __init__.spy package file. Types should be imported directly " +
             "from their defining module rather than re-exported through package init files.",

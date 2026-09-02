@@ -4,6 +4,8 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Sharpy.Compiler.CodeGen;
 
 namespace Sharpy.Compiler.Services;
 
@@ -77,6 +79,14 @@ public static class CompilerInvariants
         /// </summary>
         GeneratedCSharp = 32,
 
+        /// <summary>
+        /// Check that the emitter's syntax tree prints as the program it means: every operand whose
+        /// C# precedence is lower than its parent operator's is a <c>ParenthesizedExpressionSyntax</c>
+        /// (#1727, #1712). Run after code generation on the emitter's own unit, before its text is
+        /// reparsed or compiled.
+        /// </summary>
+        EmittedTreePrecedence = 64,
+
         /// <summary>All invariants for post-parse phase.</summary>
         PostParse = Spans,
 
@@ -90,10 +100,10 @@ public static class CompilerInvariants
         PostTypeChecking = UnknownTypes,
 
         /// <summary>All invariants for post-code-generation phase.</summary>
-        PostCodeGen = GeneratedCSharp,
+        PostCodeGen = GeneratedCSharp | EmittedTreePrecedence,
 
         /// <summary>All invariants.</summary>
-        All = Spans | SymbolNames | TypeUniqueness | Inheritance | UnknownTypes | GeneratedCSharp
+        All = Spans | SymbolNames | TypeUniqueness | Inheritance | UnknownTypes | GeneratedCSharp | EmittedTreePrecedence
     }
 
     /// <summary>
@@ -105,13 +115,15 @@ public static class CompilerInvariants
     /// <param name="symbolTable">Symbol table to check (required for SymbolNames, TypeUniqueness, Inheritance).</param>
     /// <param name="semanticInfo">Semantic info to check (required for UnknownTypes).</param>
     /// <param name="generatedCSharp">Generated C# code to check (required for GeneratedCSharp).</param>
+    /// <param name="emitterUnit">The emitter's compilation unit to check (required for EmittedTreePrecedence).</param>
     public static void Assert(
         DiagnosticBag diagnostics,
         InvariantSet invariants = InvariantSet.All,
         Module? module = null,
         SymbolTable? symbolTable = null,
         SemanticInfo? semanticInfo = null,
-        string? generatedCSharp = null)
+        string? generatedCSharp = null,
+        CompilationUnitSyntax? emitterUnit = null)
     {
         ArgumentNullException.ThrowIfNull(diagnostics);
 
@@ -146,6 +158,11 @@ public static class CompilerInvariants
         if (invariants.HasFlag(InvariantSet.GeneratedCSharp) && generatedCSharp != null)
         {
             AssertGeneratedCSharpParses(generatedCSharp, diagnostics);
+        }
+
+        if (invariants.HasFlag(InvariantSet.EmittedTreePrecedence) && emitterUnit != null)
+        {
+            AssertEmittedTreePrecedence(emitterUnit, diagnostics);
         }
     }
 
@@ -417,6 +434,35 @@ public static class CompilerInvariants
     internal static void AssertGeneratedCSharpParses(SyntaxTree tree, DiagnosticBag diagnostics)
     {
         ReportSyntaxErrors(tree, diagnostics);
+    }
+
+    /// <summary>
+    /// Verify the emitter's tree carries no precedence inversion (#1727, #1712): an operand whose C#
+    /// precedence is lower than its parent operator's must be a <see cref="ParenthesizedExpressionSyntax"/>,
+    /// or the printed text — which the default compile path reparses — means a different program than
+    /// the tree does (<c>cond ? a : b.Length</c> for a tree that means <c>(cond ? a : b).Length</c>).
+    /// One SPY0524 error per violation, naming the parent and child kinds, the operand slot, the
+    /// offending text and its line in the generated C#. Runs on the emitter's own unit, before
+    /// <c>ToFullString()</c>, so the zero-parse handoff is covered uniformly; the caller's
+    /// <c>HasErrors</c> check then keeps the unit away from the C# compiler, so the class is named
+    /// here instead of surfacing as CS0173/CS0019/CS8716 behind SPY0908.
+    /// </summary>
+    internal static void AssertEmittedTreePrecedence(CompilationUnitSyntax emitterUnit, DiagnosticBag diagnostics)
+    {
+        ArgumentNullException.ThrowIfNull(emitterUnit);
+        ArgumentNullException.ThrowIfNull(diagnostics);
+        foreach (var violation in EmittedTreePrecedence.Violations(emitterUnit))
+        {
+            var text = violation.Text.Replace("\r", " ", StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal);
+            if (text.Length > 120)
+                text = text.Substring(0, 120) + "...";
+            diagnostics.AddError(
+                $"Internal error: emitted C# tree inverts operator precedence -- unparenthesized {violation.ChildKind} " +
+                $"operand of {violation.ParentKind} ({violation.Slot} slot) at generated line {violation.Line}: '{text}'. " +
+                "The tree is correct but its printed text re-associates. This is a compiler bug -- please report it.",
+                code: DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion,
+                phase: CompilerPhase.CodeGeneration);
+        }
     }
 
     private static void ReportSyntaxErrors(SyntaxTree tree, DiagnosticBag diagnostics)

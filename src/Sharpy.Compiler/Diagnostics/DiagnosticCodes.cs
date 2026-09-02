@@ -818,9 +818,9 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Code generation diagnostic codes (SPY0500-SPY0599).
-    /// Active: SPY0500-SPY0508, SPY0510, SPY0518-SPY0520, SPY0522-SPY0523, SPY0550-SPY0555, SPY0599 (22 codes)
+    /// Active: SPY0500-SPY0508, SPY0510, SPY0518-SPY0520, SPY0522-SPY0524, SPY0550-SPY0555, SPY0599 (23 codes)
     /// Reserved: SPY0521 (TypeReExportNotSupported — for future type re-export support)
-    /// Reserved: SPY0509, SPY0511-SPY0517, SPY0524-SPY0549, SPY0556-SPY0569 (source generators), SPY0570-SPY0598 (66 codes)
+    /// Reserved: SPY0509, SPY0511-SPY0517, SPY0525-SPY0549, SPY0556-SPY0569 (source generators), SPY0570-SPY0598 (65 codes)
     /// </summary>
     public static class CodeGen
     {
@@ -840,7 +840,7 @@ public static class DiagnosticCodes
 
         #endregion
 
-        #region Expression and operator errors (SPY0518-SPY0523)
+        #region Expression and operator errors (SPY0518-SPY0524)
 
         // SPY0511-SPY0517: Reserved for future statement-level codegen diagnostics
         public const string UnsupportedExpressionType = "SPY0518";  // Active
@@ -849,7 +849,8 @@ public static class DiagnosticCodes
         public const string TypeReExportNotSupported = "SPY0521";   // Reserved — for future type re-export support
         public const string MemberNameCollision = "SPY0522";        // Active
         public const string FunctionModuleClassCollision = "SPY0523"; // Active
-        // SPY0524-SPY0549: Reserved for future codegen diagnostics
+        public const string EmittedTreePrecedenceInversion = "SPY0524"; // Active (#1727, #1712)
+        // SPY0525-SPY0549: Reserved for future codegen diagnostics
 
         #endregion
 

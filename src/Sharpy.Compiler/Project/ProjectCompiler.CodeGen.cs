@@ -100,6 +100,14 @@ internal partial class ProjectCompiler
 
                 var emitter = _emitterFactory.Create(codeGenContext, _cancellationToken);
                 var roslynCompilationUnit = emitter.GenerateCompilationUnit(unit.Ast);
+
+                // Structural precedence net (#1727, #1712): the emitter's tree must print as the program it
+                // means. Checked on the emitter's own node, before the text is post-processed and reparsed
+                // below, so both branches are covered; a violation is an SPY0524 error, and the HasErrors
+                // check further down keeps the unit away from the C# compiler instead of leaking
+                // CS0173/CS0019/CS8716 behind SPY0908.
+                CompilerInvariants.AssertEmittedTreePrecedence(roslynCompilationUnit, codeGenContext.Diagnostics);
+
                 var emittedCode = roslynCompilationUnit.ToFullString();
 
                 // Two tree-construction paths, keyed on whether #line post-processing is requested:

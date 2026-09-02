@@ -15,6 +15,7 @@ using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Utilities;
+using Sharpy.Compiler.Services;
 
 namespace Sharpy.Compiler.Project;
 
@@ -178,6 +179,12 @@ internal partial class ProjectCompiler
             {
                 SymbolTable.ExitScope();
             }
+
+            // Same structural precedence net as the main path (#1727, #1712). Defensive here — this
+            // handoff is zero-parse, so an inversion would still bind as the tree means — but the unit
+            // must name the class uniformly rather than depend on which seam it flows through.
+            CompilerInvariants.AssertEmittedTreePrecedence(roslynUnit, codeGenContext.Diagnostics);
+
             var csharpCode = roslynUnit.ToFullString();
 
             if (codeGenContext.HasErrors)
