@@ -194,7 +194,16 @@ internal class GeneratorContextBuilder
         return new GDecoratorInfo(dec.Name, args, kwargs, dec.IsBracketAttribute);
     }
 
-    private static object ExtractLiteralValue(Expression expr)
+    /// <summary>
+    /// What a source generator receives for a decorator argument — the contract pinned by
+    /// <c>GeneratorContextBuilderLiteralValueTests</c>. Values come from the one literal
+    /// classifier (<see cref="AstHelper.TryGetLiteralValue"/>): a string literal → its text; an
+    /// integer literal → its source text (e.g. <c>"42"</c>, <c>"-42"</c> for a negated one); a
+    /// float literal → a boxed <see cref="double"/> (negation applied); a boolean → <see cref="bool"/>;
+    /// <c>None</c> → <c>null</c>; anything else → the AST record's <c>ToString()</c> (the
+    /// pre-existing fallback, so a generator can at least see what it was given).
+    /// </summary>
+    internal static object ExtractLiteralValue(Expression expr)
     {
         var value = AstHelper.TryGetLiteralValue(expr);
         if (value == AstHelper.NoneValue)

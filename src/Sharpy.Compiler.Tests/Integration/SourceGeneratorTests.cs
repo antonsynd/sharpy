@@ -370,6 +370,14 @@ def main():
             e => e.Code == Sharpy.Compiler.Diagnostics.DiagnosticCodes.CodeGen.GeneratorUnsupportedShape);
     }
 
+    /// <summary>
+    /// CONTROL, not a direction cell: a decorated generated class with a base clause was refused
+    /// with SPY0555 at e523ceec3 as well as after 0da4d6479 (measured by the verify round). The
+    /// parser attaches decorators to the ClassDef itself and wraps a statement in
+    /// DecoratedStatement only for non-declaration targets under @suppress, so the refusal never
+    /// depended on unwrapping — 0da4d6479's UnwrapDecorated() hunk was unreachable and is gone.
+    /// The cell stays so the refusal cannot silently regress for the decorated spelling.
+    /// </summary>
     [Fact]
     public void GeneratorEmittingDecoratedClassWithBaseClause_IsRefusedWithSPY0555()
     {

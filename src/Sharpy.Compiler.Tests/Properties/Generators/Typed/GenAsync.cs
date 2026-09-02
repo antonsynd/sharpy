@@ -2,6 +2,12 @@ using System.Collections.Immutable;
 using CsCheck;
 using Sharpy.Compiler.Parser.Ast;
 
+// VSTHRD200 (vs-threading, flowing in transitively through the Sharpy.Lsp reference that
+// DispatchSiteScan needs, #1715) objects to the "Async" suffix on a method that returns a
+// generator rather than an awaitable. The suffix here names the Sharpy construct being
+// generated, not a .NET async method — suppressed at this one site, not project-wide.
+#pragma warning disable VSTHRD200
+
 namespace Sharpy.Compiler.Tests.Properties.Generators.Typed;
 
 internal static class GenAsync

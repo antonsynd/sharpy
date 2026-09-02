@@ -82,6 +82,11 @@ internal partial class DecoratorValidator
 
     /// <summary>
     /// Validates that the maxsize argument is either a non-negative integer literal or None.
+    /// The literal shape is decided by the one classifier, <see cref="AstHelper.TryGetLiteralValue"/>
+    /// (integer literals come back as their source text, a negated integer as "-" + text, None as
+    /// <see cref="AstHelper.NoneValue"/>); this validator only maps the classified value to its
+    /// refusal. It refuses malformed shapes where <c>TypeChecker.ExtractCacheConfig</c> defaults to
+    /// 128 — that disagreement is by design (the validator is the loud half).
     /// </summary>
     private void ValidateLruCacheMaxSizeValue(Expression value, string definitionName)
     {
@@ -90,11 +95,11 @@ internal partial class DecoratorValidator
         if (literal == AstHelper.NoneValue)
             return;
 
-        if (value is IntegerLiteral)
-            return;
-
-        if (value is UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral })
+        if (literal is string text && value is IntegerLiteral or UnaryOp)
         {
+            if (!text.StartsWith('-'))
+                return;
+
             AddError(
                 $"'@lru_cache' on '{definitionName}' requires a non-negative 'maxsize' value.",
                 value.LineStart,

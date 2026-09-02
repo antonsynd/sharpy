@@ -9,8 +9,7 @@
     <IsTestProject>true</IsTestProject>
     <!-- Suppress nullable warnings in tests - test framework handles assertion failures -->
     <!-- CS1718: intentional self-comparison in equality tests -->
-    <!-- VSTHRD200: inherited from OmniSharp analyzers via Sharpy.Lsp ProjectReference (#1715) -->
-    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618;CS1718;VSTHRD200</NoWarn>
+    <NoWarn>CS8600;CS8601;CS8602;CS8604;CS8625;CS0618;CS1718</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +25,11 @@
 
   <ItemGroup>
     <ProjectReference Include="../Sharpy.Compiler/Sharpy.Compiler.csproj" />
+    <!-- DispatchSiteScan (#1715) needs the LSP's references (OmniSharp) in the TPA list. The
+         OmniSharp vs-threading analyzers flow in transitively (ExcludeAssets="analyzers" on this
+         reference does NOT stop them — measured 2026-09-02); the one site they flag,
+         Properties/Generators/Typed/GenAsync.cs, carries a local #pragma instead of a
+         project-wide NoWarn. -->
     <ProjectReference Include="../Sharpy.Lsp/Sharpy.Lsp.csproj" />
     <ProjectReference Include="../Sharpy.TestInfrastructure/Sharpy.TestInfrastructure.csproj" />
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj">

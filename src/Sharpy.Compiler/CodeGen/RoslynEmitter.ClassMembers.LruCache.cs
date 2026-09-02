@@ -146,6 +146,19 @@ internal partial class RoslynEmitter
             ?? _context.SymbolTable.LookupFunctionOverloads(func.Name)
                 ?.FirstOrDefault(o => o.DeclarationLine == func.LineStart)
             ?? _context.LookupSymbol(func.Name) as FunctionSymbol;
+
+        // Rule 2: the cache size is the checker's materialized fact (FunctionSymbol.CacheMaxSize,
+        // set by ExtractCacheConfig). IsLruCacheDecorated gates this path from the AST, so a
+        // symbol that the lookups above fail to reach — or one the checker never marked cached —
+        // must fail LOUD here: silently reading a null CacheMaxSize would emit an unbounded cache
+        // where the program asked for 128 (the silent-miss shape the verify round flagged).
+        if (funcSymbol is not { IsCached: true })
+        {
+            _context.AddError(
+                $"internal: '@lru_cache'/'@cache' function '{func.Name}' has no materialized cached symbol " +
+                "(FunctionSymbol.IsCached) — the emitter cannot read its cache size",
+                DiagnosticCodes.Infrastructure.InvariantViolation, func.LineStart, func.ColumnStart);
+        }
         var maxSize = funcSymbol?.CacheMaxSize;
 
         members.Add(GenerateLruCacheField(cacheFieldName, lruCacheType, maxSize, isStatic));

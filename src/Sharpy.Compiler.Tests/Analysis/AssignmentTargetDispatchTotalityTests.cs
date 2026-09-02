@@ -44,6 +44,21 @@ public class AssignmentTargetDispatchTotalityTests
         nameof(StarExpression),
     };
 
+    /// <summary>
+    /// Every member site's expectation is DERIVED from <see cref="Universe"/>: the kinds it
+    /// handles by an explicit arm are the universe minus the kinds it routes through its default
+    /// (each named with a reason at the site), plus any deliberately extra arm. A new
+    /// assignment-target kind therefore fails every member fact at once (Design Decision 4 of
+    /// plan-950124), not only <c>Universe_MatchesAuthority</c>.
+    /// </summary>
+    private static HashSet<string> Expect(IEnumerable<string> routedThroughDefault, params string[] extraArms)
+    {
+        var set = new HashSet<string>(Universe);
+        set.ExceptWith(routedThroughDefault);
+        set.UnionWith(extraArms);
+        return set;
+    }
+
     // --- Universe authority: IsValidAssignmentTarget ---
 
     [Fact]
@@ -106,7 +121,8 @@ public class AssignmentTargetDispatchTotalityTests
         Assert.NotEmpty(arms);
         _output.WriteLine($"CollectBindingKeysInto arms: {string.Join(", ", arms.OrderBy(a => a))}");
 
-        var expected = new HashSet<string> { nameof(TupleLiteral) };
+        // Identifier/MemberAccess/IndexAccess → default → ExtractNarrowingKey; StarExpression → default → null.
+        var expected = Expect(new[] { nameof(Identifier), nameof(MemberAccess), nameof(IndexAccess), nameof(StarExpression) });
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected.\n" +
             $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +
@@ -127,7 +143,7 @@ public class AssignmentTargetDispatchTotalityTests
         Assert.NotEmpty(arms);
         _output.WriteLine($"CollectAssignedNames arms: {string.Join(", ", arms.OrderBy(a => a))}");
 
-        var expected = new HashSet<string>(Universe);
+        var expected = Expect(Array.Empty<string>());
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected (universe).\n" +
             $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +
@@ -148,10 +164,8 @@ public class AssignmentTargetDispatchTotalityTests
         Assert.NotEmpty(arms);
         _output.WriteLine($"CollectTargetReads arms: {string.Join(", ", arms.OrderBy(a => a))}");
 
-        var expected = new HashSet<string>
-        {
-            nameof(Identifier), nameof(TupleLiteral), nameof(StarExpression),
-        };
+        // MemberAccess/IndexAccess → default → CollectReadsFromExpr (their sub-expressions are reads).
+        var expected = Expect(new[] { nameof(MemberAccess), nameof(IndexAccess) });
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected.\n" +
             $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +
@@ -173,10 +187,8 @@ public class AssignmentTargetDispatchTotalityTests
         Assert.NotEmpty(arms);
         _output.WriteLine($"TargetBindsName arms: {string.Join(", ", arms.OrderBy(a => a))}");
 
-        var expected = new HashSet<string>
-        {
-            nameof(Identifier), nameof(StarExpression), nameof(TupleLiteral), nameof(ListLiteral),
-        };
+        // MemberAccess/IndexAccess → default (false: they mutate, not rebind); ListLiteral extra (defensive, #1733).
+        var expected = Expect(new[] { nameof(MemberAccess), nameof(IndexAccess) }, nameof(ListLiteral));
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected.\n" +
             $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +
@@ -197,11 +209,8 @@ public class AssignmentTargetDispatchTotalityTests
         Assert.NotEmpty(arms);
         _output.WriteLine($"CollectAssignmentTargets arms: {string.Join(", ", arms.OrderBy(a => a))}");
 
-        var expected = new HashSet<string>
-        {
-            nameof(Identifier), nameof(TupleLiteral),
-            nameof(ListLiteral), nameof(StarExpression),
-        };
+        // MemberAccess/IndexAccess → default (walked as reads); ListLiteral extra (defensive, #1733).
+        var expected = Expect(new[] { nameof(MemberAccess), nameof(IndexAccess) }, nameof(ListLiteral));
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected.\n" +
             $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +
@@ -222,10 +231,8 @@ public class AssignmentTargetDispatchTotalityTests
         Assert.NotEmpty(arms);
         _output.WriteLine($"MarkTargetBound arms: {string.Join(", ", arms.OrderBy(a => a))}");
 
-        var expected = new HashSet<string>
-        {
-            nameof(Identifier), nameof(TupleLiteral), nameof(StarExpression),
-        };
+        // MemberAccess/IndexAccess intentionally omitted: they do not bind loop-variable names.
+        var expected = Expect(new[] { nameof(MemberAccess), nameof(IndexAccess) });
         Assert.True(arms.SetEquals(expected),
             $"Arms differ from expected.\n" +
             $"  Extra: {string.Join(", ", arms.Except(expected))}\n" +

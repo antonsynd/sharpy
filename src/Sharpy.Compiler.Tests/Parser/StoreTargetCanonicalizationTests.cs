@@ -118,6 +118,26 @@ public class StoreTargetCanonicalizationTests
             $"the comprehension target of `{source.Trim()}` must be canonical, got {forClause.Target}");
     }
 
+    // --- The seam's own dispatch (rostered guarded-by this class in DispatchSiteInventoryTests) ---
+
+    /// <summary>
+    /// <c>AstHelper.CanonicalizeStoreTarget</c> (src/Sharpy.Compiler/Shared/AstHelper.cs) is itself
+    /// a switch over target kinds; its arms are the wrapper it strips and the three containers it
+    /// recurses through. Everything else is a leaf target and passes through the default.
+    /// </summary>
+    [Fact]
+    public void CanonicalizeStoreTarget_Arms_ArePinned()
+    {
+        var arms = Sharpy.Compiler.Tests.Infrastructure.SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Shared/AstHelper.cs", "CanonicalizeStoreTarget");
+        var expected = new HashSet<string>
+        {
+            nameof(Parenthesized), nameof(TupleLiteral), nameof(ListLiteral), nameof(StarExpression),
+        };
+        arms.Should().BeEquivalentTo(expected,
+            "the canonicalizer strips Parenthesized and recurses through tuple/list elements and star operands only");
+    }
+
     // --- Controls ---
 
     [Fact]

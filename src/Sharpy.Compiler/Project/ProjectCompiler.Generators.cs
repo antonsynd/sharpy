@@ -499,11 +499,16 @@ internal partial class ProjectCompiler
 
             // Refuse generated declarations with base clauses — inheritance froze at Phase 4c
             // and IntegrateGeneratedSource never runs ResolveInheritance (#1535).
+            // The arm set is every Statement kind that carries a base list (reflection: a
+            // property of type ImmutableArray<TypeAnnotation> named Base*), pinned by
+            // DeclarationKindDispatchTotalityTests. Decorators sit ON these declaration nodes —
+            // the parser wraps a statement in DecoratedStatement only for non-declaration
+            // targets under @suppress (Parser.cs, ParseDecoratedStatement) — so a decorated
+            // generated class reaches this switch as the ClassDef itself; no unwrap is needed.
             bool hasUnsupportedShape = false;
             foreach (var stmt in module.Body)
             {
-                var inner = stmt.UnwrapDecorated();
-                IReadOnlyList<Parser.Ast.TypeAnnotation>? bases = inner switch
+                IReadOnlyList<Parser.Ast.TypeAnnotation>? bases = stmt switch
                 {
                     Parser.Ast.ClassDef cd => cd.BaseClasses,
                     Parser.Ast.StructDef sd => sd.BaseClasses,
