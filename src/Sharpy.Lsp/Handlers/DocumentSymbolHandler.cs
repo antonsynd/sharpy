@@ -54,7 +54,50 @@ internal sealed class SharpyDocumentSymbolHandler : DocumentSymbolHandlerBase
             EnumDef e => ConvertEnum(e),
             VariableDeclaration v => ConvertVariable(v),
             TypeAlias t => ConvertTypeAlias(t),
+            // Plan-950124 Phase 2 remediation: the two remaining named type declarations. LSP
+            // SymbolKind has neither Union nor Delegate; both lower to classes, so Class it is —
+            // a union's cases are its constructors, its methods children like a class's.
+            UnionDef u => ConvertUnion(u),
+            DelegateDef d => MakeSymbol(d.Name, SymbolKind.Class, d),
             _ => null
+        };
+    }
+
+    private static DocumentSymbol ConvertUnion(UnionDef u)
+    {
+        var children = new System.Collections.Generic.List<DocumentSymbol>();
+        foreach (var unionCase in u.Cases)
+        {
+            var caseRange = new LspRange(
+                PositionConverter.ToLsp(unionCase.LineStart, unionCase.ColumnStart),
+                PositionConverter.ToLsp(unionCase.LineEnd, unionCase.ColumnEnd));
+            var nameRange = new LspRange(
+                PositionConverter.ToLsp(unionCase.NameLineStart, unionCase.NameColumnStart),
+                PositionConverter.ToLsp(unionCase.NameLineStart, unionCase.NameColumnEnd));
+            children.Add(new DocumentSymbol
+            {
+                Name = unionCase.Name,
+                Kind = SymbolKind.Constructor,
+                Range = caseRange,
+                SelectionRange = nameRange,
+            });
+        }
+
+        foreach (var member in u.Body)
+        {
+            var child = ConvertClassMember(member);
+            if (child != null)
+                children.Add(child);
+        }
+
+        var range = NodeToRange(u);
+        return new DocumentSymbol
+        {
+            Name = u.Name,
+            Kind = SymbolKind.Class,
+            Range = range,
+            SelectionRange = NameSelectionRange(u, range),
+            Children = new Container<DocumentSymbol>(children),
         };
     }
 
@@ -141,6 +184,10 @@ internal sealed class SharpyDocumentSymbolHandler : DocumentSymbolHandlerBase
             PropertyDef p => MakeSymbol(p.Name, SymbolKind.Property, p),
             EventDef e => MakeSymbol(e.Name, SymbolKind.Event, e),
             VariableDeclaration v => MakeSymbol(v.Name, SymbolKind.Field, v),
+            // Nested type declarations and aliases outline exactly as they do at module level
+            // (with their own children); before this they vanished from the outline.
+            ClassDef or StructDef or InterfaceDef or EnumDef or UnionDef or DelegateDef or TypeAlias
+                => ConvertStatement(stmt),
             _ => null
         };
     }
