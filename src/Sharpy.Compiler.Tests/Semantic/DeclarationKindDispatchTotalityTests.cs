@@ -26,78 +26,136 @@ public class DeclarationKindDispatchTotalityTests
 
     public DeclarationKindDispatchTotalityTests(ITestOutputHelper output) => _output = output;
 
-    // --- Nested-type universe (the 4 kinds that can appear as nested type declarations) ---
-    private static readonly HashSet<string> NestedTypeUniverse = new()
+    // ═══════════════════════════════════════════════════════════════════════
+    // The authority's handled set, READ FROM THE PRODUCTION SWITCH: every member universe below
+    // is `AuthorityKinds − {excluded kind → reason} ∪ {extra arms}` (Design Decision 4), so a
+    // kind that ResolveDeclaration starts handling reaches EVERY member fact at once — each site
+    // then either grows an arm or is given an exclusion with a reason. A stale exclusion (a kind
+    // the authority no longer handles) fails ExcludedKinds_AreAuthorityKinds.
+    // ═══════════════════════════════════════════════════════════════════════
+    private const string AuthorityFile = "src/Sharpy.Compiler/Semantic/NameResolver.Declarations.cs";
+    private const string AuthorityMethod = "ResolveDeclaration";
+
+    private static readonly IReadOnlySet<string> AuthorityKinds =
+        SwitchArmScan.CaseTypeNames(AuthorityFile, AuthorityMethod);
+
+    private static HashSet<string> Derived(IReadOnlyDictionary<string, string> excludedWithReason, params string[] extraArms)
     {
-        nameof(ClassDef),
-        nameof(StructDef),
-        nameof(InterfaceDef),
-        nameof(EnumDef),
+        var kinds = new HashSet<string>(AuthorityKinds);
+        foreach (var excluded in excludedWithReason.Keys)
+            kinds.Remove(excluded);
+        foreach (var extra in extraArms)
+            kinds.Add(extra);
+        return kinds;
+    }
+
+    private const string MemberNotType = "a member declaration, not a type declaration";
+
+    // --- Nested-type universe (the 4 kinds extracted as nested type declarations) ---
+    private static readonly Dictionary<string, string> NotNestedTypes = new()
+    {
+        [nameof(UnionDef)] = "nested union refused SPY0202 on both routes (#1729)",
+        [nameof(DelegateDef)] = "nested delegate refused SPY0202 on both routes (#1729)",
+        [nameof(TypeAlias)] = "nested type alias refused SPY0202 on both routes (#1729)",
+        [nameof(FunctionDef)] = MemberNotType,
+        [nameof(PropertyDef)] = MemberNotType,
+        [nameof(VariableDeclaration)] = MemberNotType,
     };
+    private static readonly HashSet<string> NestedTypeUniverse = Derived(NotNestedTypes);
 
     // --- Type-name universe (kinds that introduce a named type, subject to shadowing checks) ---
-    private static readonly HashSet<string> TypeNameUniverse = new()
+    private static readonly Dictionary<string, string> NotTypeNames = new()
     {
-        nameof(ClassDef),
-        nameof(StructDef),
-        nameof(InterfaceDef),
-        nameof(EnumDef),
-        nameof(UnionDef),
-        nameof(DelegateDef),
-        nameof(TypeAlias),
+        [nameof(FunctionDef)] = "does not introduce a type name",
+        [nameof(PropertyDef)] = "does not introduce a type name",
+        [nameof(VariableDeclaration)] = "does not introduce a type name",
     };
+    private static readonly HashSet<string> TypeNameUniverse = Derived(NotTypeNames);
 
     // --- Base-carrying kinds (kinds with a base-class/interface list) ---
-    private static readonly HashSet<string> BaseCarryingKinds = new()
+    private static readonly Dictionary<string, string> NotBaseCarrying = new(NotNestedTypes)
     {
-        nameof(ClassDef),
-        nameof(StructDef),
-        nameof(InterfaceDef),
+        [nameof(EnumDef)] = "has no base list",
     };
+    private static readonly HashSet<string> BaseCarryingKinds = Derived(NotBaseCarrying);
 
     // --- Generator-attributed kinds (kinds that carry source-generator decorators) ---
-    private static readonly HashSet<string> GeneratorAttributedKinds = new()
+    private static readonly Dictionary<string, string> NotGeneratorAttributed = new()
     {
-        nameof(ClassDef),
-        nameof(FunctionDef),
-        nameof(StructDef),
+        [nameof(InterfaceDef)] = "source-generator decorators are not recognized on this kind",
+        [nameof(EnumDef)] = "source-generator decorators are not recognized on this kind",
+        [nameof(UnionDef)] = "source-generator decorators are not recognized on this kind",
+        [nameof(DelegateDef)] = "source-generator decorators are not recognized on this kind",
+        [nameof(TypeAlias)] = "source-generator decorators are not recognized on this kind",
+        [nameof(PropertyDef)] = "source-generator decorators are not recognized on this kind",
+        [nameof(VariableDeclaration)] = "source-generator decorators are not recognized on this kind",
     };
+    private static readonly HashSet<string> GeneratorAttributedKinds = Derived(NotGeneratorAttributed);
 
-    // --- Module-level classification (IsModuleLevelStatement arms) ---
-    private static readonly HashSet<string> ModuleLevelKinds = new()
-    {
-        nameof(FunctionDef),
-        nameof(ClassDef),
-        nameof(StructDef),
-        nameof(InterfaceDef),
-        nameof(EnumDef),
-        nameof(UnionDef),
-        nameof(DelegateDef),
-        nameof(PropertyDef),
-        nameof(TypeAlias),
+    // --- Module-level classification (IsModuleLevelStatement arms): every authority kind plus
+    //     the import statements, which are module-level but are not declarations the resolver handles ---
+    private static readonly HashSet<string> ModuleLevelKinds = Derived(
+        new Dictionary<string, string>(),
         nameof(ImportStatement),
-        nameof(FromImportStatement),
-        nameof(VariableDeclaration),
-    };
+        nameof(FromImportStatement));
 
     // --- Declaration-name kinds (GetDeclarationName arms) ---
-    private static readonly HashSet<string> DeclarationNameKinds = new()
+    private static readonly Dictionary<string, string> NotGeneratorNamed = new()
     {
-        nameof(ClassDef),
-        nameof(FunctionDef),
-        nameof(StructDef),
+        [nameof(InterfaceDef)] = "the generator framework names only class/function/struct; default 'Unknown'",
+        [nameof(EnumDef)] = "the generator framework names only class/function/struct; default 'Unknown'",
+        [nameof(UnionDef)] = "the generator framework names only class/function/struct; default 'Unknown'",
+        [nameof(DelegateDef)] = "the generator framework names only class/function/struct; default 'Unknown'",
+        [nameof(TypeAlias)] = "the generator framework names only class/function/struct; default 'Unknown'",
+        [nameof(PropertyDef)] = "the generator framework names only class/function/struct; default 'Unknown'",
+        [nameof(VariableDeclaration)] = "the generator framework names only class/function/struct; default 'Unknown'",
     };
+    private static readonly HashSet<string> DeclarationNameKinds = Derived(NotGeneratorNamed);
 
     // --- Abstract-member scan (AbstractMemberValidator.ValidateClass arms) ---
-    // The three class-body member kinds on which `@abstract` is recognized, plus ClassDef for
+    // The three class-body member kinds on which `@abstract` is recognized (EventDef is a
+    // class-member kind the authority does not resolve, so it is an extra arm), plus ClassDef for
     // the nested-class recursion (#1461).
-    private static readonly HashSet<string> AbstractMemberScanKinds = new()
+    private static readonly Dictionary<string, string> NotAbstractScanned = new()
     {
-        nameof(FunctionDef),
-        nameof(PropertyDef),
-        nameof(EventDef),
-        nameof(ClassDef),
+        [nameof(StructDef)] = "nested struct body not recursed by AbstractMemberValidator",
+        [nameof(InterfaceDef)] = "nested interface body not recursed; @abstract on interfaces refused by DecoratorValidator.InvalidOnInterface",
+        [nameof(EnumDef)] = "nested enum body not recursed",
+        [nameof(UnionDef)] = "not a class-body member the validator scans",
+        [nameof(DelegateDef)] = "not a class-body member the validator scans",
+        [nameof(TypeAlias)] = "not a class-body member the validator scans",
+        [nameof(VariableDeclaration)] = "@abstract is not recognized on fields",
     };
+    private static readonly HashSet<string> AbstractMemberScanKinds = Derived(NotAbstractScanned, nameof(EventDef));
+
+    private static readonly (string Name, IReadOnlyDictionary<string, string> Excluded)[] AllExclusions =
+    {
+        (nameof(NotNestedTypes), NotNestedTypes),
+        (nameof(NotTypeNames), NotTypeNames),
+        (nameof(NotBaseCarrying), NotBaseCarrying),
+        (nameof(NotGeneratorAttributed), NotGeneratorAttributed),
+        (nameof(NotGeneratorNamed), NotGeneratorNamed),
+        (nameof(NotAbstractScanned), NotAbstractScanned),
+    };
+
+    [Fact]
+    public void AuthorityKinds_AreReadFromResolveDeclaration()
+    {
+        _output.WriteLine($"{AuthorityMethod} arms ({AuthorityKinds.Count}): {string.Join(", ", AuthorityKinds.OrderBy(k => k, StringComparer.Ordinal))}");
+        Assert.NotEmpty(AuthorityKinds);
+        Assert.Contains(nameof(ClassDef), AuthorityKinds);
+        Assert.Contains(nameof(FunctionDef), AuthorityKinds);
+    }
+
+    [Fact]
+    public void ExcludedKinds_AreAuthorityKinds()
+    {
+        var stale = AllExclusions
+            .SelectMany(e => e.Excluded.Keys.Where(k => !AuthorityKinds.Contains(k)).Select(k => $"{e.Name}: {k}"))
+            .ToList();
+        Assert.True(stale.Count == 0,
+            $"Exclusions naming kinds the authority no longer handles (drain them):\n  {string.Join("\n  ", stale)}");
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // ExtractNestedTypes — ModuleLoader
