@@ -206,14 +206,17 @@ public class AstConstructionCensusTests
     }
 
     /// <summary>
-    /// Mutation (a) adapted: the reflection universe contains known types and excludes
-    /// abstract bases and obviously wrong types. Since we cannot add a phantom type to the
-    /// compiled assembly in a test, the real guard is that the main census finds 0
-    /// unconstructed kinds.
+    /// Universe sanity: the reflection universe contains known concrete kinds and excludes the
+    /// abstract bases. This is a positive control for the universe, NOT the falsification of the
+    /// census — that is the manual mutation the contract requires (§2): add
+    /// <c>public record PhantomPattern : Pattern;</c> to <c>Parser/Ast/Pattern.cs</c>, rebuild so the
+    /// universe sees it → <see cref="EveryConcreteAstKind_IsParserConstructedOrRostered"/> goes red
+    /// naming it (recorded red/green in the commit body); delete the <c>BreakWithFlagStatement</c>
+    /// roster row → red naming it.
     /// </summary>
     [Fact]
     [Trait("Category", "Infrastructure")]
-    public void Universe_ContainsKnownTypes_ExcludesAbstractAndPhantom()
+    public void Universe_ContainsKnownTypes_ExcludesAbstract()
     {
         var universe = GetUniverse();
 
@@ -235,9 +238,6 @@ public class AstConstructionCensusTests
         foreach (var abs in abstractTypes)
             universe.Should().NotContain(abs,
                 $"'{abs}' is abstract and must not be in the universe");
-
-        universe.Should().NotContain("PhantomPattern",
-            "a type that doesn't exist must not appear in the universe");
     }
 
     /// <summary>
