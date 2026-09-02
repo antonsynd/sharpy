@@ -258,7 +258,9 @@ public class DispatchSiteInventoryTests
         ["Sharpy.Lsp/Handlers/ImplementationHandler.cs::SharpyImplementationHandler.ResolveSymbol"] = "walker-default-contract",
         ["Sharpy.Lsp/Handlers/TypeDefinitionHandler.cs::SharpyTypeDefinitionHandler.ResolveType"] = "walker-default-contract",
         ["Sharpy.Lsp/Handlers/TypeHierarchyPrepareHandler.cs::SharpyTypeHierarchyPrepareHandler.ResolveTypeSymbol"] = "walker-default-contract",
-        ["Sharpy.Lsp/Handlers/DeclarationCursorResolver.cs::DeclarationCursorResolver.Resolve"] = "walker-default-contract",
+        // DeclarationCursorMatrixTests (src/Sharpy.Lsp.Tests) exercises the resolver behaviorally:
+        // rename/references parity across the declaration-cursor matrix.
+        ["Sharpy.Lsp/Handlers/DeclarationCursorResolver.cs::DeclarationCursorResolver.Resolve"] = "refusal-net:DeclarationCursorMatrixTests",
 
         // Refactoring providers — documented-by-design partial dispatch
         ["Sharpy.Lsp/Refactoring/ConvertFormsProvider.cs::ConvertFormsProvider.FormatLiteral"] = "documented-by-design:Sharpy.Lsp/Refactoring/ConvertFormsProvider.cs:FormatLiteral",
@@ -364,6 +366,80 @@ public class DispatchSiteInventoryTests
     [Fact]
     public void GuardCitations_ResolveToRealTests_AndGuardedByTestsScanTheirSite()
     {
+        var violations = CollectGuardCitationViolations(Roster);
+
+        foreach (var v in violations)
+            _output.WriteLine($"VIOLATION: {v}");
+
+        Assert.True(violations.Count == 0,
+            $"Unbacked guard citations:\n  {string.Join("\n  ", violations)}");
+    }
+
+    /// <summary>
+    /// Positive control for the citation check (verify-round finding P1.1): the real roster is
+    /// all-green, so nothing above proves a bad citation is REJECTED. A synthetic roster proves
+    /// each arm of the existence check by direction:
+    /// (a) an LSP-keyed row citing a class that exists in NEITHER test project → exactly one
+    ///     violation, from the existence check ("no such test class");
+    /// (b) a compiler-keyed row citing a class that exists ONLY in <c>src/Sharpy.Lsp.Tests</c>
+    ///     (<c>HoverTests</c>) → violation — LSP sources are consulted only for LSP-keyed rows;
+    /// (c) an LSP-keyed row citing that same LSP-only class → no violation.
+    /// The messages are asserted verbatim so that skipping the existence check (which would
+    /// route (a) to the weaker "test source not found" arm) reads as red, not as a relabeling.
+    /// </summary>
+    [Fact]
+    public void GuardCitations_SyntheticRoster_RejectsUnknownAndCrossProjectClasses()
+    {
+        const string lspOnlyClass = "HoverTests";
+        const string unknownClass = "NoSuchTestClassAnywhere";
+        const string lspRowUnknown = "Sharpy.Lsp/Handlers/Synthetic.cs::Synthetic.CitesUnknown";
+        const string compilerRowLspClass = "Semantic/Synthetic.cs::Synthetic.CitesLspOnlyClass";
+        const string lspRowLspClass = "Sharpy.Lsp/Handlers/Synthetic.cs::Synthetic.CitesLspOnlyClass";
+
+        // Preconditions on the fixtures themselves: the LSP-only class really is LSP-only, and
+        // the unknown class really is unknown to both projects.
+        var repoRoot = DispatchSiteScan.FindRepoRoot();
+        var lspHoverSource = Path.Combine(repoRoot, "src", "Sharpy.Lsp.Tests", "HoverTests.cs");
+        Assert.True(File.Exists(lspHoverSource), $"fixture precondition: {lspHoverSource} must exist");
+        Assert.Contains($"class {lspOnlyClass}", File.ReadAllText(lspHoverSource));
+        Assert.DoesNotContain(typeof(DispatchSiteInventoryTests).Assembly.GetTypes(),
+            t => t.Name == lspOnlyClass);
+        Assert.DoesNotContain(typeof(DispatchSiteInventoryTests).Assembly.GetTypes(),
+            t => t.Name == unknownClass);
+
+        var synthetic = new Dictionary<string, string>
+        {
+            [lspRowUnknown] = $"guarded-by:{unknownClass}",
+            [compilerRowLspClass] = $"refusal-net:{lspOnlyClass}",
+            [lspRowLspClass] = $"refusal-net:{lspOnlyClass}",
+        };
+
+        var violations = CollectGuardCitationViolations(synthetic);
+        foreach (var v in violations)
+            _output.WriteLine($"SYNTHETIC VIOLATION: {v}");
+
+        var unknownViolations = violations.Where(v => v.StartsWith(lspRowUnknown, StringComparison.Ordinal)).ToList();
+        Assert.True(unknownViolations.Count == 1,
+            $"(a) expected exactly one violation for {lspRowUnknown}, got {unknownViolations.Count}");
+        Assert.Contains($"'{unknownClass}'", unknownViolations[0]);
+        Assert.Contains("no such test class in any test assembly", unknownViolations[0]);
+
+        var crossProjectViolations = violations.Where(v => v.StartsWith(compilerRowLspClass, StringComparison.Ordinal)).ToList();
+        Assert.True(crossProjectViolations.Count == 1,
+            $"(b) expected exactly one violation for {compilerRowLspClass} (LSP sources are consulted only for LSP-keyed rows), got {crossProjectViolations.Count}");
+        Assert.Contains($"'{lspOnlyClass}'", crossProjectViolations[0]);
+        Assert.Contains("no such test class in any test assembly", crossProjectViolations[0]);
+
+        Assert.DoesNotContain(violations, v => v.StartsWith(lspRowLspClass, StringComparison.Ordinal));
+        Assert.Equal(2, violations.Count);
+    }
+
+    /// <summary>
+    /// The citation validator's body, parameterized on the roster so the real roster and a
+    /// synthetic one go through the same predicate. Returns the violation list (empty = clean).
+    /// </summary>
+    private static List<string> CollectGuardCitationViolations(IReadOnlyDictionary<string, string> roster)
+    {
         var repoRoot = DispatchSiteScan.FindRepoRoot();
         var compilerTestsDir = Path.Combine(repoRoot, "src", "Sharpy.Compiler.Tests");
         var lspTestsDir = Path.Combine(repoRoot, "src", "Sharpy.Lsp.Tests");
@@ -419,7 +495,7 @@ public class DispatchSiteInventoryTests
         }
 
         var violations = new List<string>();
-        foreach (var (site, justification) in Roster)
+        foreach (var (site, justification) in roster)
         {
             var parts = justification.Split(':', 2);
             if (parts[0] is not ("guarded-by" or "refusal-net"))
@@ -452,7 +528,6 @@ public class DispatchSiteInventoryTests
             }
         }
 
-        Assert.True(violations.Count == 0,
-            $"Unbacked guard citations:\n  {string.Join("\n  ", violations)}");
+        return violations;
     }
 }
