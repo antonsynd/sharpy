@@ -1244,6 +1244,15 @@ public static partial class DiagnosticExplanations
 
         // ── Semantic overflow (SPY0600+) ─────────────────────────────────────
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction,
+            "Strict Optional construction",
+            "Semantic",
+            "A bare value or bare None cannot be stored into an Optional[T] (T?) slot. " +
+            "Use Some(value) to wrap a value, or None() to create an empty Optional. " +
+            "Bare None belongs to nullable types (T | None), not Optional.",
+            "x: int? = 1  # SPY0604: use Some(1)\ny: int? = None  # SPY0604: use None()",
+            "x: int? = Some(1)\ny: int? = None()");
+
         Add(dict, DiagnosticCodes.SemanticOverflow.UseBeforeAssignment,
             "Variable used before being assigned",
             "Semantic",

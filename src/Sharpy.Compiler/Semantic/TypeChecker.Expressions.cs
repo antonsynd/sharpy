@@ -370,12 +370,6 @@ internal partial class TypeChecker
     /// </summary>
     private SemanticType CheckNoneLiteral(NoneLiteral noneLiteral)
     {
-        if (_expectedType is OptionalType optionalTarget
-            && ReferenceEquals(_parameterTypedArgument, noneLiteral))
-        {
-            _semanticInfo.SetOptionalNoneMaterialization(noneLiteral, optionalTarget);
-        }
-
         return SemanticType.Void;
     }
 

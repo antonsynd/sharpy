@@ -77,11 +77,15 @@ internal partial class TypeChecker
 
         // 6. ConditionalExpression per-branch recursion (placeholder — Phase 2 Task 2)
 
-        // 7. VoidType into non-nullable
-        if (valueType is VoidType && targetType is not NullableType and not OptionalType)
+        // 7. Strict Optional construction — bare values and bare None are refused into T?
+        if (targetType is OptionalType)
+            return StoreVerdict.RefusedOptionalConstruction;
+
+        // 8. VoidType into non-nullable
+        if (valueType is VoidType && targetType is not NullableType)
             return StoreVerdict.RefusedNoneIntoNonNullable;
 
-        // 8. Otherwise
+        // 9. Otherwise
         return StoreVerdict.Refused;
     }
 
@@ -129,8 +133,21 @@ internal partial class TypeChecker
                     span: value?.Span ?? span);
                 return false;
 
-            case StoreVerdict.Refused:
             case StoreVerdict.RefusedOptionalConstruction:
+            {
+                var underlying = ((OptionalType)targetType).UnderlyingType.GetDisplayName();
+                var steer = valueType is VoidType
+                    ? $"bare None is not an Optional[{underlying}]; use None(), or declare the slot '{underlying} | None'"
+                    : $"'{valueType.GetDisplayName()}' is not an Optional[{underlying}]; construct it with Some(...)";
+                AddError(
+                    steer,
+                    reportAt.LineStart, reportAt.ColumnStart,
+                    code: DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction,
+                    span: span);
+                return false;
+            }
+
+            case StoreVerdict.Refused:
                 var refusalCode = position == StorePosition.Return
                     ? DiagnosticCodes.Semantic.MissingReturnValue
                     : DiagnosticCodes.Semantic.TypeMismatch;

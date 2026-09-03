@@ -703,12 +703,6 @@ internal partial class TypeChecker
             return IsAssignable(source, nullable.UnderlyingType);
         }
 
-        // Non-optional type can be assigned to optional version of the same type
-        if (target is OptionalType optional)
-        {
-            return IsAssignable(source, optional.UnderlyingType);
-        }
-
         // Tuple elements are compared through the checker's IsAssignable (variance, CLR,
         // provenance arms reachable) — not the data-level TupleType.IsAssignableTo which
         // bypasses them (#1701).

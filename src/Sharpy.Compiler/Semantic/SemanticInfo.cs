@@ -89,20 +89,6 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, CharMaterializationKind> _charMaterializations =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map a bare `None` node to the OPTIONAL type it must materialize as (#1478). Node-keyed
-    // (Critical Rule 2 pattern (b)) because the fact belongs to the literal and there is no symbol
-    // to hang it on: the SAME `None` token means C# `null` for a `T | None` destination and
-    // `Optional<T>.None` for a `T?` one, and only the checker knows which destination it landed in.
-    //
-    // The emitter used to answer this from its own ambient target-type context, which it could only
-    // do at the DIRECT value sites (initializers, returns, assignments) — the site's comment says
-    // reading the ambient context in an argument would fire wrongly. So the argument position got no
-    // conversion at all and `takes(None)` for `x: int?` emitted a bare `null` into a
-    // `Sharpy.Optional<int>` slot: CS1503 behind SPY0908, because that Optional is a STRUCT with no
-    // conversion from null. A reference payload survived only because `Optional<string>` accepts it.
-    private readonly ConcurrentDictionary<Expression, OptionalType> _optionalNoneMaterializations =
-        new(ReferenceEqualityComparer.Instance);
-
     // Map a TYPE OPERAND node to the type test codegen must emit. Keyed on the operand node so the
     // emitter and both narrowing resolvers read ONE decided type and none of them re-derives what the
     // operand's syntax denotes (#1207, #1213, Critical Rule 2 pattern (b)).
@@ -707,26 +693,6 @@ public class SemanticInfo : ISemanticQuery
     public CharMaterializationKind? GetCharMaterialization(Expression expr)
     {
         return _charMaterializations.TryGetValue(expr, out var kind) ? kind : null;
-    }
-
-    /// <summary>
-    /// Records that a bare <c>None</c> lands in an <see cref="OptionalType"/> destination and must
-    /// therefore emit <c>Optional&lt;T&gt;.None</c> rather than C# <c>null</c> (#1478). Set by the
-    /// TypeChecker at the seam that knows the destination, so the emitter re-derives nothing.
-    /// </summary>
-    public void SetOptionalNoneMaterialization(Expression expr, OptionalType target)
-    {
-        _optionalNoneMaterializations[expr] = target;
-    }
-
-    /// <summary>
-    /// The optional type a bare <c>None</c> must materialize as, or <c>null</c> when it emits plain
-    /// C# <c>null</c> — which is every <c>None</c> whose destination is nullable rather than
-    /// optional.
-    /// </summary>
-    public OptionalType? GetOptionalNoneMaterialization(Expression expr)
-    {
-        return _optionalNoneMaterializations.TryGetValue(expr, out var target) ? target : null;
     }
 
     /// <summary>
@@ -1598,9 +1564,6 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._charMaterializations)
             _charMaterializations.TryAdd(kvp.Key, kvp.Value);
-
-        foreach (var kvp in other._optionalNoneMaterializations)
-            _optionalNoneMaterializations.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._typeTestLowerings)
             _typeTestLowerings.TryAdd(kvp.Key, kvp.Value);

@@ -927,7 +927,8 @@ public static class DiagnosticCodes
         public const string AmbiguousClrOverload = "SPY0601"; // Active (#1569)
         public const string MultiAxisNotSupported = "SPY0602"; // Active (#1644)
         public const string ExpressionStatementNotDiscardable = "SPY0603"; // Active (#1622)
-        // SPY0604-SPY0699: Available for new semantic diagnostics
+        public const string StrictOptionalConstruction = "SPY0604"; // Active (#1720)
+        // SPY0605-SPY0699: Available for new semantic diagnostics
     }
 
     /// <summary>
