@@ -154,8 +154,8 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
         FromMember(new Holder(2.5d));
 #line (76, 5) - (76, 39) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
         global::Sharpy.Builtins.Print(FromMatchExpression(4.75d));
-#line (77, 5) - (77, 48) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
-        global::Sharpy.Builtins.Print(FromOptionalMatchExpression("hi"));
+#line (77, 5) - (77, 54) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
+        global::Sharpy.Builtins.Print(FromOptionalMatchExpression(Optional<string>.Some("hi")));
 #line hidden
     }
 }

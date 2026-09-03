@@ -5,6 +5,6 @@
 # the truth about what an `Optional[T]` is.
 def main() -> None:
     xs: list[int] = [1, 2]
-    ys: list[int]? = None
+    ys: list[int]? = None()
     zs = xs + ys
     print(len(zs))

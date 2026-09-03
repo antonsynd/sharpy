@@ -25,7 +25,7 @@ def main():
     
     # Chain of nullables
     a: str? = None()
-    result: str? = a.unwrap_or("default")
+    result: str = a.unwrap_or("default")
     print(result)
     
     # Nullable bool

@@ -18,12 +18,12 @@ def resolve_config(config: Config?) -> str:
 
 def main():
     # Test with complete config
-    full: Config = Config("api.example.com", Some(443), Some(5.0))
-    print(resolve_config(full))
+    full: Config = Config(Some("api.example.com"), Some(443), Some(5.0))
+    print(resolve_config(Some(full)))
 
     # Test with partial config
     partial: Config = Config(None(), Some(3000), None())
-    print(resolve_config(partial))
+    print(resolve_config(Some(partial)))
 
     # Test with None config
     empty: Config? = None()

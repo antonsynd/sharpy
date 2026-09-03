@@ -2,12 +2,12 @@
 # access raises SPY0229. The diagnostics suggest narrowing (if x is not None:),
 # unwrapping, or the ?. / Optional API. See #882.
 def main() -> None:
-    s: str? = "hello"
+    s: str? = Some("hello")
     print(len(s))
     print("e" in s)
     print(s[0])
     print(s.upper())
-    items: list[str]? = ["a", "b"]
+    items: list[str]? = Some(["a", "b"])
     print(len(items))
     print("a" in items)
     print(items[0])

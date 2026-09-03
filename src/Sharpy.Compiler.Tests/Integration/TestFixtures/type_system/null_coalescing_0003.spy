@@ -3,7 +3,7 @@
 # Basic null coalescing with int
 x: int? = None()
 y: int = x ?? 42
-a: int? = 100
+a: int? = Some(100)
 b: int = a ?? 999
 name: str? = None()
 default_name: str = name ?? "Guest"

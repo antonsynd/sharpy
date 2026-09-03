@@ -113,7 +113,7 @@ def main() -> None:
 
     # ── int? (OptionalIsSome) — expected from the value-position twin ──
     flag = True
-    o1: int? = 42
+    o1: int? = Some(42)
     o2: int? = None()
     if o1 if flag else o2:
         print("optional-select-truthy:truthy")

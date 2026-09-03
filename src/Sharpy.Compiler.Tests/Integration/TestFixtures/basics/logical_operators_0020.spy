@@ -38,15 +38,15 @@ def validate_readings(readings: list[int?]) -> tuple[int, int]:
 def main():
     # Build list with append to avoid mixed-type literal
     data: list[int?] = []
-    data.append(5)
-    data.append(25)
+    data.append(Some(5))
+    data.append(Some(25))
     data.append(None())
-    data.append(55)
-    data.append(10)
-    data.append(75)
-    data.append(40)
+    data.append(Some(55))
+    data.append(Some(10))
+    data.append(Some(75))
+    data.append(Some(40))
     data.append(None())
-    data.append(15)
+    data.append(Some(15))
     
     result: tuple[int, int] = validate_readings(data)
     valid_count: int = result[0]

@@ -7,10 +7,10 @@ class Node:
 
     def __init__(self, label: str):
         self.label = label
-        self.next_node = None
+        self.next_node = None()
 
     def link(self, other: Self) -> Self:
-        self.next_node = other
+        self.next_node = Some(other)
         return self
 
     def tail_label(self) -> str:

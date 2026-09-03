@@ -62,13 +62,13 @@ def main():
     print(pin.check_permission())
 
     system: SecuritySystem = SecuritySystem(False, False)
-    print(system.grant_access(bio, False))
-    print(system.grant_access(pin, False))
+    print(system.grant_access(Some(bio), False))
+    print(system.grant_access(Some(pin), False))
 
     failed_bio: BiometricCredential = BiometricCredential(True, False, False)
     print(failed_bio.check_permission())
-    print(system.grant_access(failed_bio, True))
+    print(system.grant_access(Some(failed_bio), True))
 
     armed_system: SecuritySystem = SecuritySystem(True, True)
-    print(armed_system.grant_access(pin, False))
+    print(armed_system.grant_access(Some(pin), False))
     print(armed_system.grant_access(None(), True))

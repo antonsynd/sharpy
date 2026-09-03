@@ -320,8 +320,8 @@ public static partial class TruthinessConditionalReceiverKinds1727
 
 #line (115, 5) - (115, 16) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         flag = true;
-#line (116, 5) - (116, 19) 8 "truthiness_conditional_receiver_kinds_1727.spy"
-        Optional<int> o1 = 42;
+#line (116, 5) - (116, 25) 8 "truthiness_conditional_receiver_kinds_1727.spy"
+        Optional<int> o1 = Optional<int>.Some(42);
 #line (117, 5) - (117, 23) 8 "truthiness_conditional_receiver_kinds_1727.spy"
         Optional<int> o2 = Optional<int>.None;
 #line (118, 5) - (122, 1) 8 "truthiness_conditional_receiver_kinds_1727.spy"

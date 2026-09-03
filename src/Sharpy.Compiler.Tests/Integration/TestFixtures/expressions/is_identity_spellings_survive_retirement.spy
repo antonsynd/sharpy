@@ -13,7 +13,7 @@ def main() -> None:
     a: Node = Node("a")
     b: Node = a
     c: Node = Node("a")
-    missing: Node? = None
+    missing: Node? = None()
 
     print(a is b)
     print(a is c)

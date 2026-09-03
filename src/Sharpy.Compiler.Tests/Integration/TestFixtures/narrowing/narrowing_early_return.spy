@@ -18,8 +18,8 @@ def must_have(value: str?) -> str:
     return "got " + value
 
 def main():
-    print(greet("World"))
-    print(greet(None))
+    print(greet(Some("World")))
+    print(greet(None()))
     print(double_or_default(21))
     print(double_or_default(None))
-    print(must_have("it"))
+    print(must_have(Some("it")))

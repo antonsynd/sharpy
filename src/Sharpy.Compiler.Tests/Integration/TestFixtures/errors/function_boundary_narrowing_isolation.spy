@@ -5,7 +5,7 @@
 # narrowing condition no longer holds.
 
 def main():
-    x: int? = 42
+    x: int? = Some(42)
     if x is not None:
         # x is narrowed to int here in the outer function
         y: int = x  # This works - x is narrowed to int

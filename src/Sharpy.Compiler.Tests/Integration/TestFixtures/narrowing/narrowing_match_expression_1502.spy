@@ -24,7 +24,7 @@ def stmt_form(x: str?) -> str:
 
 
 def main() -> None:
-    print(expr_form("hi"))
-    print(expr_form(None))
-    print(stmt_form("yo"))
-    print(stmt_form(None))
+    print(expr_form(Some("hi")))
+    print(expr_form(None()))
+    print(stmt_form(Some("yo")))
+    print(stmt_form(None()))

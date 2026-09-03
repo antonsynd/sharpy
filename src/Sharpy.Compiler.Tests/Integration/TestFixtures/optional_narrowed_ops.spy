@@ -2,7 +2,7 @@
 # ?. operator, the Optional API (unwrap_or), and Some(v)/None matching work on
 # the optional directly. See #882.
 def main() -> None:
-    s: str? = "hello"
+    s: str? = Some("hello")
 
     # Narrowing unlocks len(), indexing, and member access.
     if s is not None:
@@ -16,7 +16,7 @@ def main() -> None:
 
     # unwrap_or on a present and an absent optional.
     print(s.unwrap_or("fallback"))
-    n: str? = None
+    n: str? = None()
     print(n.unwrap_or("default"))
 
     # ?. on an absent optional propagates None; unwrap_or supplies the default.
@@ -31,7 +31,7 @@ def main() -> None:
             print("none")
 
     # Narrowing works for Optional collections too, including iteration.
-    items: list[str]? = ["x", "y"]
+    items: list[str]? = Some(["x", "y"])
     if items is not None:
         print(len(items))
         for item in items:

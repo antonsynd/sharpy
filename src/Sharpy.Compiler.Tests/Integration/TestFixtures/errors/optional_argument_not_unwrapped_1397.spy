@@ -27,12 +27,12 @@ class Scaler:
 
 
 def main() -> None:
-    ys: list[int]? = None
+    ys: list[int]? = None()
     print(total(ys))
-    v: str? = None
+    v: str? = None()
     print(shout(v))
-    n: str? = "ada"
+    n: str? = Some("ada")
     print(greet(n))
     # The method-binding seam refuses it for the same reason the free-function seam does.
-    k: int? = 3
+    k: int? = Some(3)
     print(Scaler().by(k))

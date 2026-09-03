@@ -36,6 +36,6 @@ def main():
     print(ev.describe())
 
     # Type narrowing with isinstance-like behavior via cast
-    maybe_ev: ElectricCar? = ev
+    maybe_ev: ElectricCar? = Some(ev)
     if maybe_ev is not None:
         print(maybe_ev.battery_kwh)

@@ -19,7 +19,7 @@ def get_field(b: Box?) -> str?:
 
 def main():
     box: Box = Box("hello")
-    print(get_value(box))
+    print(get_value(Some(box)))
     print(get_value(None()))
-    print(get_field(box))
+    print(get_field(Some(box)))
     print(get_field(None()))

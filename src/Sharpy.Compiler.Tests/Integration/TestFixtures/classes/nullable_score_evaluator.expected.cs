@@ -85,8 +85,8 @@ public static partial class NullableScoreEvaluator
     {
 #line (29, 5) - (29, 35) 8 "nullable_score_evaluator.spy"
         var evaluator = new ScoreEvaluator(60);
-#line (31, 5) - (31, 29) 8 "nullable_score_evaluator.spy"
-        Optional<int> testScore1 = 75;
+#line (31, 5) - (31, 35) 8 "nullable_score_evaluator.spy"
+        Optional<int> testScore1 = Optional<int>.Some(75);
 #line (32, 5) - (32, 48) 8 "nullable_score_evaluator.spy"
         var result1 = evaluator.Evaluate(testScore1);
 #line (33, 5) - (33, 20) 8 "nullable_score_evaluator.spy"
@@ -95,8 +95,8 @@ public static partial class NullableScoreEvaluator
         var status1 = evaluator.GetStatus(testScore1);
 #line (35, 5) - (35, 20) 8 "nullable_score_evaluator.spy"
         global::Sharpy.Builtins.Print(status1);
-#line (37, 5) - (37, 29) 8 "nullable_score_evaluator.spy"
-        Optional<int> testScore2 = 45;
+#line (37, 5) - (37, 35) 8 "nullable_score_evaluator.spy"
+        Optional<int> testScore2 = Optional<int>.Some(45);
 #line (38, 5) - (38, 48) 8 "nullable_score_evaluator.spy"
         var result2 = evaluator.Evaluate(testScore2);
 #line (39, 5) - (39, 20) 8 "nullable_score_evaluator.spy"

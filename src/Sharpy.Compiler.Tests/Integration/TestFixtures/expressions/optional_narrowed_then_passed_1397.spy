@@ -14,11 +14,11 @@ def describe(v: int?) -> str:
 
 
 def main() -> None:
-    ys: list[int]? = [1, 2, 3]
+    ys: list[int]? = Some([1, 2, 3])
     if ys is not None:
         print(total(ys))
 
-    print(describe(7))
+    print(describe(Some(7)))
 
-    x: int? = 4
+    x: int? = Some(4)
     print(describe(x))

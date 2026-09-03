@@ -5,7 +5,7 @@ def main():
     print(a.is_none)
     print(a.is_some)
 
-    b: str? = None
+    b: str? = None()
     print(b.is_none)
 
     # A None optional narrows away in an `is not None` branch.

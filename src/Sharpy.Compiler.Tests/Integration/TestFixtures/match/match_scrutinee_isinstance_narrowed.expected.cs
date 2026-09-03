@@ -111,8 +111,8 @@ public static partial class MatchScrutineeIsinstanceNarrowed
         NarrowedUserGeneric(new Box<int>(42));
 #line (49, 5) - (49, 29) 8 "match_scrutinee_isinstance_narrowed.spy"
         NarrowedCollection(new Sharpy.List<int>() { 9 });
-#line (50, 5) - (50, 28) 8 "match_scrutinee_isinstance_narrowed.spy"
-        NarrowedOptional("hi");
+#line (50, 5) - (50, 34) 8 "match_scrutinee_isinstance_narrowed.spy"
+        NarrowedOptional(Optional<string>.Some("hi"));
 #line hidden
     }
 }

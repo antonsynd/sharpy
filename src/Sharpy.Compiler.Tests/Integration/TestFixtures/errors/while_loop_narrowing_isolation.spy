@@ -2,7 +2,7 @@
 # Similar to if-statement case, narrowing should not cross function boundaries
 
 def process():
-    value: int? = 42
+    value: int? = Some(42)
     while value is not None:
         # value is narrowed to int here
         temp: int = value  # This works

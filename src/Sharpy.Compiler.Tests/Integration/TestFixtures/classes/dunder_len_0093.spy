@@ -50,7 +50,7 @@ def main():
     buf.enqueue("f")
     print(len(buf))
     
-    view = FilteredView(buf, 3)
+    view = FilteredView(buf, Some(3))
     print(view.visible_count())
     
     unbounded: int? = None()

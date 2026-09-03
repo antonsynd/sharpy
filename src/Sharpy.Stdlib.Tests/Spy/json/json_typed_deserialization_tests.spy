@@ -34,7 +34,7 @@ class RecordWithDict:
 
 class RecordWithOptional:
     name: str = ""
-    nickname: str? = None
+    nickname: str? = None()
     count: int = 0
 
 

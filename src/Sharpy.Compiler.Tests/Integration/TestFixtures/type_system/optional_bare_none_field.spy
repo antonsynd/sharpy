@@ -1,6 +1,6 @@
 class Config:
-    timeout: int? = None
-    name: str? = None
+    timeout: int? = None()
+    name: str? = None()
 
     def __init__(self):
         pass

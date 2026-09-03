@@ -74,4 +74,4 @@ def main() -> None:
 
     from_member(Holder(2.5))
     print(from_match_expression(4.75))
-    print(from_optional_match_expression("hi"))
+    print(from_optional_match_expression(Some("hi")))

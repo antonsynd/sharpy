@@ -73,10 +73,10 @@ public static partial class NullConditional0005
 
     public static void Main()
     {
-#line (33, 5) - (33, 50) 8 "null_conditional_0005.spy"
-        var addr1 = new Address("Main Street", "Springfield");
-#line (34, 5) - (34, 37) 8 "null_conditional_0005.spy"
-        var person1 = new Person("Alice", addr1);
+#line (33, 5) - (33, 62) 8 "null_conditional_0005.spy"
+        var addr1 = new Address(Optional<string>.Some("Main Street"), Optional<string>.Some("Springfield"));
+#line (34, 5) - (34, 43) 8 "null_conditional_0005.spy"
+        var person1 = new Person("Alice", Optional<Address>.Some(addr1));
 #line (36, 5) - (36, 43) 8 "null_conditional_0005.spy"
         Optional<string> city1 = person1.GetCityName();
 #line (37, 5) - (37, 17) 8 "null_conditional_0005.spy"
@@ -85,7 +85,7 @@ public static partial class NullConditional0005
         Optional<string> street1 = person1.GetStreetName();
 #line (40, 5) - (40, 19) 8 "null_conditional_0005.spy"
         global::Sharpy.Builtins.Print(street1);
-#line (43, 5) - (43, 34) 8 "null_conditional_0005.spy"
+#line (43, 5) - (43, 36) 8 "null_conditional_0005.spy"
         var person2 = new Person("Bob", Optional<Address>.None);
 #line (45, 5) - (45, 43) 8 "null_conditional_0005.spy"
         Optional<string> city2 = person2.GetCityName();
@@ -95,10 +95,10 @@ public static partial class NullConditional0005
         Optional<string> street2 = person2.GetStreetName();
 #line (49, 5) - (49, 19) 8 "null_conditional_0005.spy"
         global::Sharpy.Builtins.Print(street2);
-#line (52, 5) - (52, 36) 8 "null_conditional_0005.spy"
-        var addr3 = new Address(Optional<string>.None, "Boston");
-#line (53, 5) - (53, 39) 8 "null_conditional_0005.spy"
-        var person3 = new Person("Charlie", addr3);
+#line (52, 5) - (52, 44) 8 "null_conditional_0005.spy"
+        var addr3 = new Address(Optional<string>.None, Optional<string>.Some("Boston"));
+#line (53, 5) - (53, 45) 8 "null_conditional_0005.spy"
+        var person3 = new Person("Charlie", Optional<Address>.Some(addr3));
 #line (55, 5) - (55, 43) 8 "null_conditional_0005.spy"
         Optional<string> city3 = person3.GetCityName();
 #line (56, 5) - (56, 17) 8 "null_conditional_0005.spy"

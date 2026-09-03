@@ -47,4 +47,4 @@ def narrowed_optional(x: str?) -> None:
 def main() -> None:
     narrowed_user_generic(Box[int](42))
     narrowed_collection([9])
-    narrowed_optional("hi")
+    narrowed_optional(Some("hi"))

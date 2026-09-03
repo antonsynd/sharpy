@@ -6,5 +6,5 @@ def greet(name: str?) -> str?:
     return name?.upper()
 
 def main():
-    print(greet("hello"))
+    print(greet(Some("hello")))
     print(greet(None()))

@@ -17,7 +17,7 @@ class LinkedList:
         if self.head is None:
             self.head = Some(new_node)
             return
-        current: Node? = self.head
+        current: Node? = Some(self.head)
         while current is not None:
             nxt: Node? = current.next
             if nxt is None:
@@ -39,7 +39,7 @@ class LinkedList:
         if self.head is not None and self.head.value == val:
             self.head = self.head.next
             return
-        current: Node? = self.head
+        current: Node? = Some(self.head)
         while current is not None:
             nxt: Node? = current.next
             if nxt is not None and nxt.value == val:

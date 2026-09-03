@@ -2,5 +2,5 @@
 # the loose nullable (int | None). Narrow or unwrap the Optional first.
 def main():
     xs: list[int] = [10, 20, 30]
-    o: int? = 2
+    o: int? = Some(2)
     print(xs[1:o])

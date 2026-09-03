@@ -13,5 +13,5 @@ def show(x: str?) -> None:
 
 
 def main() -> None:
-    show("hi")
-    show(None)
+    show(Some("hi"))
+    show(None())

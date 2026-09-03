@@ -21,7 +21,7 @@ class Box[T = shapes.Shape]:
     item: T?
 
     def __init__(self):
-        self.item = None
+        self.item = None()
 
 
 def main() -> None:

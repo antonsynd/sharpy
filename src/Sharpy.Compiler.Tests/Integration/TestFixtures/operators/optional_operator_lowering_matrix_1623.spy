@@ -8,7 +8,7 @@ def main():
     print(y is not None)  # True
 
     # is None on nullable — no tag (native == null)
-    z: str? = None
+    z: str | None = None
     print(z is None)      # True
 
     # ?? both Optional — OptionalCoalesceBothOptional
@@ -27,6 +27,6 @@ def main():
     print(g)              # 99
 
     # ?? nullable — native coalesce
-    h: str? = None
+    h: str | None = None
     i: str = h ?? "default"
     print(i)              # default

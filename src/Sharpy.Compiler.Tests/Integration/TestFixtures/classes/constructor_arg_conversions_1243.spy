@@ -35,7 +35,7 @@ class Bag[T]:
 
 def main() -> None:
     # None binds to a nullable parameter.
-    h = Holder(None, Color.RED, 3)
+    h = Holder(None(), Color.RED, 3)
     print(h.tag is None)
     print(h.count)
 

@@ -10,7 +10,7 @@ class Config:
     name: str
     max_connections: int
     retry_count: int = 3
-    label: str? = None
+    label: str | None = None
 
 
 def main() -> None:

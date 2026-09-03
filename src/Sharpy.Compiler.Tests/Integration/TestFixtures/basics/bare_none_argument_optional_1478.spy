@@ -27,16 +27,16 @@ def takes_nullable(x: str | None) -> str:
     return "nullable"
 
 
-def defaulted(x: int? = None) -> str:
+def defaulted(x: int? = None()) -> str:
     return "defaulted"
 
 
 def main() -> None:
     # Value-type payload, argument position — the ICE.
-    print(takes_int(None))
+    print(takes_int(None()))
 
-    # Reference-type payload, argument position — worked by accident, must keep working.
-    print(takes_str(None))
+    # Reference-type payload, argument position.
+    print(takes_str(None()))
 
     # A NULLABLE destination still emits plain `null`. This is the control that fails if the
     # materialization ever widens from optional to every None.
@@ -44,8 +44,8 @@ def main() -> None:
 
     # Default-parameter-value position, omitted and passed explicitly.
     print(defaulted())
-    print(defaulted(None))
+    print(defaulted(None()))
 
     # Assignment position, then passed on — the path that already worked.
-    nothing: int? = None
+    nothing: int? = None()
     print(takes_int(nothing))
