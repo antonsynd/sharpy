@@ -638,70 +638,23 @@ internal partial class TypeChecker
     /// </para>
     /// </remarks>
     private bool IsImplicitConstantConversion(Expression? value, SemanticType source, SemanticType target)
-    {
-        if (value == null)
-            return false;
+        => ImplicitConversions.IsImplicitIntegerConstantConversion(value, source, target, MakeConstantResolver());
 
-        System.Numerics.BigInteger? ResolveConstant(Identifier id)
+    private Func<Identifier, System.Numerics.BigInteger?> MakeConstantResolver()
+    {
+        return id =>
         {
             var sym = _symbolTable.Lookup(id.Name);
-
-            // The escape decides which symbol this spelling denotes, both ways (SPY0212's rule;
-            // mirrors CheckFunctionCall's identifier arm). Without this, a bare spelling folded the
-            // value of an identity-mismatched escaped const while the emitter bound the symbol the
-            // spelling actually names — admitting a conversion the emitted C# cannot perform (SPY0908).
             if (sym != null && id.IsNameBacktickEscaped != sym.IsNameBacktickEscaped)
                 return null;
-
             return sym is VariableSymbol { IsConstant: true, ConstantValue: not null } vs
                 ? vs.ConstantValue
                 : null;
-        }
-
-        if (!IntegerConstantEvaluator.TryGetConstantInteger(value, out var constant, ResolveConstant))
-            return false;
-
-        var sourceInfo = Registry.PrimitiveCatalog.GetPrimitiveInfo(source);
-        var targetInfo = Registry.PrimitiveCatalog.GetPrimitiveInfo(target);
-        if (sourceInfo == null || targetInfo == null)
-            return false;
-
-        // §10.2.11 splits on the CONSTANT's type, not on width: a long constant has exactly one
-        // legal destination. Compared by CLR type because the int singleton is named "int" while
-        // the other widths use catalog spellings (#1304/#1356 class).
-        if (sourceInfo.ClrType == typeof(long))
-            return targetInfo.ClrType == typeof(ulong) && constant.Sign >= 0;
-
-        if (sourceInfo.ClrType != typeof(int))
-            return false;
-
-        // int→long is the value-independent standard numeric conversion (§10.2.3), not a constant
-        // conversion; it already works and must not be re-derived here.
-        return targetInfo.Kind is Registry.PrimitiveCatalog.NumericKind.SignedInteger or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger
-            && targetInfo.ClrType != typeof(int)
-            && targetInfo.ClrType != typeof(long)
-            && FitsInRange(constant, targetInfo);
+        };
     }
 
-    /// <summary>
-    /// Whether an exact constant lies in <paramref name="target"/>'s range, derived from
-    /// <see cref="Registry.PrimitiveCatalog.PrimitiveInfo.SizeInBits"/> and <see cref="Registry.PrimitiveCatalog.PrimitiveInfo.IsSigned"/>.
-    /// Those two fields are identical across the catalog's Sharpy-style and C#-style alias
-    /// registrations — only <c>SharpyName</c> differs — so this is unaffected by which alias the CLR
-    /// reverse map happens to canonicalize to (#1356).
-    /// </summary>
     private static bool FitsInRange(System.Numerics.BigInteger constant, Registry.PrimitiveCatalog.PrimitiveInfo target)
-    {
-        if (target.IsSigned)
-        {
-            // Two's complement: the negative side reaches one further than the positive side, which
-            // is what makes `sb: int8 = -128` legal while `sb: int8 = 128` is not.
-            var limit = System.Numerics.BigInteger.One << (target.SizeInBits - 1);
-            return constant >= -limit && constant < limit;
-        }
-
-        return constant.Sign >= 0 && constant < (System.Numerics.BigInteger.One << target.SizeInBits);
-    }
+        => ImplicitConversions.FitsInRange(constant, target);
 
     /// <summary>
     /// The ONE decision behind <c>x op= y</c> on an integer target whose binary result is wider

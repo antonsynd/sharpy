@@ -2226,25 +2226,7 @@ internal partial class TypeChecker
         SemanticType declaredType,
         SemanticType initType,
         Expression? initialValue)
-    {
-        if (initialValue is not FloatLiteral { Suffix: null } literal)
-        {
-            return false;
-        }
-
-        if (Registry.PrimitiveCatalog.GetPrimitiveInfo(declaredType)?.ClrType != typeof(float)
-            || Registry.PrimitiveCatalog.GetPrimitiveInfo(initType)?.ClrType != typeof(double))
-        {
-            return false;
-        }
-
-        return double.TryParse(
-                literal.Value,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var value)
-            && !double.IsInfinity((double)(float)value);
-    }
+        => ImplicitConversions.IsFloat32LiteralNarrowing(declaredType, initType, initialValue);
 
     private void TryFoldConstantValue(
         VariableSymbol symbol, SemanticType declaredType, Expression? initializer)
