@@ -1,0 +1,24 @@
+# Augmented assignment on a collection accepts exactly what the mutator's Python contract admits
+# (#1682). list += any iterable, dict |= mapping or pairs, set ops set-like only.
+
+def main() -> None:
+    # list += set (element assignable to T)
+    xs: list[int] = [1, 2]
+    xs += {3}
+    print(xs)
+
+    # list += list (baseline)
+    ys: list[int] = [10]
+    ys += [20, 30]
+    print(ys)
+
+    # dict |= list of pairs
+    d: dict[str, int] = {"a": 1}
+    d |= [("b", 2)]
+    print(sorted(d.keys()))
+    print(d["b"])
+
+    # set |= frozenset
+    s: set[int] = {1, 2}
+    s |= frozenset({3})
+    print(sorted(s))

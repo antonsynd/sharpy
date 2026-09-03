@@ -1,0 +1,5 @@
+# set |= list is a TypeError in Python — Sharpy refuses it with a steer message (#1682).
+
+def main() -> None:
+    s: set[int] = {1, 2}
+    s |= [3]

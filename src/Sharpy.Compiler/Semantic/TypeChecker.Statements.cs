@@ -298,7 +298,9 @@ internal partial class TypeChecker
                 }
             }
 
-            if (AugmentedCollectionAssignment.Classify(assignment, targetType) is not null
+            var classified = AugmentedCollectionAssignment.Classify(assignment, targetType);
+
+            if (classified is not null
                 && _semanticInfo.GetNarrowedReadLowering(assignment.Target)
                     is { Kind: NarrowedReadKind.Cast })
             {
@@ -309,6 +311,19 @@ internal partial class TypeChecker
                     assignment.LineStart, assignment.ColumnStart,
                     code: DiagnosticCodes.Semantic.NarrowedReceiverAugAssign,
                     span: assignment.Span);
+                return;
+            }
+
+            // Collection-mutation path (#1682): validate the RHS against the mutator's Python
+            // contract and record the mutation — no InferBinaryOpType needed.
+            if (classified is not null)
+            {
+                if (targetType is not UnknownType && valueType is not UnknownType
+                    && !ValidateCollectionMutationRhs(classified, assignment, targetType, valueType))
+                {
+                    return;
+                }
+                _semanticInfo.SetAugmentedAssignMutation(assignment, classified.ClrName);
                 return;
             }
 
@@ -436,11 +451,6 @@ internal partial class TypeChecker
                 _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(kind, narrowTo));
             }
 
-            if (AugmentedCollectionAssignment.Classify(assignment, targetType) is { } mutation)
-            {
-                _semanticInfo.SetAugmentedAssignMutation(assignment, mutation.ClrName);
-            }
-
             return;
         }
 
@@ -449,6 +459,136 @@ internal partial class TypeChecker
             : StorePosition.IndexStore;
         CheckStore(storePos, assignment.Value, valueType, assignmentTargetType,
             assignment, assignment.Span);
+    }
+
+    /// <summary>
+    /// Validates the RHS of a classified collection-mutation augmented assignment against the
+    /// mutator's Python contract (#1682). Returns <c>true</c> when the RHS is accepted;
+    /// reports SPY0222 and returns <c>false</c> when it is not.
+    /// </summary>
+    private bool ValidateCollectionMutationRhs(
+        AugmentedCollectionAssignment.AugmentedMutation classified,
+        Assignment assignment,
+        SemanticType targetType,
+        SemanticType valueType)
+    {
+        var gt = (GenericType)targetType;
+        if (gt.TypeArguments.Count == 0)
+            return true;
+
+        switch (classified.RhsShape)
+        {
+            case AugmentedCollectionAssignment.RhsShapeKind.IterableOfElement:
+            {
+                var targetElement = gt.TypeArguments[0];
+                var rhsElement = _typeInference.InferIterableElementType(valueType);
+                if (rhsElement == null)
+                {
+                    ReportUnsupportedBinaryOperator(assignment,
+                        GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
+                        messageSuffix: $" — '{classified.PythonName}' requires an iterable");
+                    return false;
+                }
+                if (!rhsElement.IsAssignableTo(targetElement))
+                {
+                    AddError(
+                        $"Element type '{rhsElement.GetDisplayName()}' of the iterable is not assignable to "
+                        + $"'{targetElement.GetDisplayName()}'",
+                        assignment.LineStart, assignment.ColumnStart,
+                        code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                        span: assignment.Span);
+                    return false;
+                }
+                if (ClassifyIterableArgument(valueType) is { } projection)
+                    _semanticInfo.SetIterableProjection(assignment.Value, projection);
+                return true;
+            }
+
+            case AugmentedCollectionAssignment.RhsShapeKind.ExactInt:
+            {
+                if (valueType != SemanticType.Int)
+                {
+                    ReportUnsupportedBinaryOperator(assignment,
+                        GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
+                        messageSuffix: " — list repetition requires an int count");
+                    return false;
+                }
+                return true;
+            }
+
+            case AugmentedCollectionAssignment.RhsShapeKind.SetLike:
+            {
+                if (valueType is not GenericType { Name: "set" or "frozenset" })
+                {
+                    ReportUnsupportedBinaryOperator(assignment,
+                        GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
+                        messageSuffix: $" — use s.{classified.PythonName}(xs) to update from any iterable");
+                    return false;
+                }
+                var targetElement = gt.TypeArguments[0];
+                var rhsGt = (GenericType)valueType;
+                if (rhsGt.TypeArguments.Count > 0 && !rhsGt.TypeArguments[0].IsAssignableTo(targetElement))
+                {
+                    AddError(
+                        $"Element type '{rhsGt.TypeArguments[0].GetDisplayName()}' is not assignable to "
+                        + $"set element type '{targetElement.GetDisplayName()}'",
+                        assignment.LineStart, assignment.ColumnStart,
+                        code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                        span: assignment.Span);
+                    return false;
+                }
+                return true;
+            }
+
+            case AugmentedCollectionAssignment.RhsShapeKind.MappingOrPairs:
+            {
+                var targetK = gt.TypeArguments[0];
+                var targetV = gt.TypeArguments.Count > 1 ? gt.TypeArguments[1] : SemanticType.Unknown;
+
+                if (valueType is GenericType { Name: "dict" } dictRhs && dictRhs.TypeArguments.Count >= 2)
+                {
+                    if (!dictRhs.TypeArguments[0].IsAssignableTo(targetK)
+                        || !dictRhs.TypeArguments[1].IsAssignableTo(targetV))
+                    {
+                        AddError(
+                            $"dict[{dictRhs.TypeArguments[0].GetDisplayName()}, {dictRhs.TypeArguments[1].GetDisplayName()}] "
+                            + $"is not assignable to dict[{targetK.GetDisplayName()}, {targetV.GetDisplayName()}]",
+                            assignment.LineStart, assignment.ColumnStart,
+                            code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                            span: assignment.Span);
+                        return false;
+                    }
+                    return true;
+                }
+
+                var elemType = _typeInference.InferIterableElementType(valueType);
+                if (elemType is TupleType { ElementTypes.Count: 2 } pair)
+                {
+                    if (!pair.ElementTypes[0].IsAssignableTo(targetK)
+                        || !pair.ElementTypes[1].IsAssignableTo(targetV))
+                    {
+                        AddError(
+                            $"Pair type ({pair.ElementTypes[0].GetDisplayName()}, {pair.ElementTypes[1].GetDisplayName()}) "
+                            + $"is not assignable to ({targetK.GetDisplayName()}, {targetV.GetDisplayName()})",
+                            assignment.LineStart, assignment.ColumnStart,
+                            code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                            span: assignment.Span);
+                        return false;
+                    }
+                    if (ClassifyIterableArgument(valueType) is { } projection)
+                        _semanticInfo.SetIterableProjection(assignment.Value, projection);
+                    return true;
+                }
+
+                ReportUnsupportedBinaryOperator(assignment,
+                    GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
+                    messageSuffix: " — dict |= requires a dict or an iterable of (key, value) pairs");
+                return false;
+            }
+
+            default:
+                return false;
+        }
     }
 
     /// <summary>
