@@ -50,6 +50,37 @@ PEP 675 also treats `"a" * 3`, an f-string with literal-only holes, and implicit
 `"a" "b"` as `LiteralString`; Sharpy deliberately does **not** accept those forms today (the first
 two are refused as `str`, the third does not parse). Widening is a separate decision.
 
+## Store Positions
+
+A literal-derived string is accepted at **every** store position where the slot is
+`LiteralString` — the same scope as integer constant conversion:
+
+```python
+class Config:
+    key: LiteralString = "default"        # field declaration
+
+def query(sql: LiteralString) -> str:
+    return sql
+
+def run(sql: LiteralString = "SELECT 1") -> str:  # parameter default
+    return sql
+
+def main() -> None:
+    x: LiteralString = "hello"            # declaration
+    x = "world"                           # plain store
+    print(query("SELECT 1"))              # positional argument
+    print(query(sql="SELECT 1"))          # keyword argument
+    print(run())                          # default
+    xs: list[LiteralString] = ["a", "b"]  # collection-literal elements
+```
+
+The expression's type stays `str`; `LiteralString` is the **slot's** declared type.
+A `str` variable is always refused — the literal-derived check is a compile-time
+fact, not a type.
+
+Refused forms: f-strings (`f"..."` — interpolation is runtime), `"a" * 3`, and any
+non-literal `str` expression. See #1741 for the full forms table.
+
 ## Type Relationship
 
 `LiteralString` is a subtype of `str`:

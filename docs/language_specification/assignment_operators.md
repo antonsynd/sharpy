@@ -123,26 +123,39 @@ An integer constant whose **value** fits the destination converts implicitly at
 ```python
 class Box:
     n: int8 = 0
+    property p: int8 = 0       # property default
 
 def take(v: int8) -> None:
     print(v)
 
 def make() -> int8:
-    return 120          # return
+    return 120                  # return
+
+def gen() -> int8:
+    yield 1                     # yield
 
 def main() -> None:
-    x: int8 = 7         # declaration
-    x = 120             # plain store
-    print(x)            # 120
+    x: int8 = 7                 # declaration
+    x = 120                     # plain store
+    print(x)                    # 120
     b: Box = Box()
-    b.n = 120           # attribute store
+    b.n = 120                   # attribute store
     xs: list[int8] = [x]
-    xs[0] = 120         # index store
+    xs[0] = 120                 # index store
     d: dict[str, int8] = {}
-    d["k"] = 120        # dict-value store
-    take(120)           # argument
-    print(make())       # 120
-    # x = 300           # SPY0220: 300 is not in int8's range
+    d["k"] = 120                # dict-value store
+    take(120)                   # positional argument
+    take(v=120)                 # keyword argument
+    print(make())               # 120
+    for v in gen():
+        print(v)                # 1
+    ys: list[int8] = [1, 2]     # collection-literal elements
+    f: () -> int8 = lambda: 7   # lambda body under a typed target
+    if (x := 7) > 0:            # walrus
+        print(x)                # 7
+    r: int8 = 7 if True else 8  # conditional-of-constants
+    print(r)                    # 7
+    # x = 300                   # SPY0220: 300 is not in int8's range
 ```
 
 The value is checked, not the literal's spelling: folded expressions

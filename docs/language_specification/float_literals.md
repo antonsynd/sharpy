@@ -26,32 +26,43 @@ precise = 3.141_592_653
   - `d` or `D` for `float64` (System.Double): `3.14d` (redundant but allowed)
   - `m` or `M` for `decimal` (System.Decimal): `3.14m`
 
-## Narrowing an Unsuffixed Literal to `float32`
+## Narrowing an Unsuffixed Literal to `float32` or `decimal`
 
-An **unsuffixed** float literal may initialize a `float32` **declaration** — a variable or a field
-— without the `f` suffix. The literal is typed `float32` and emitted as an `f`-suffixed C# literal:
+An **unsuffixed** float literal may narrow to `float32` or `decimal` at **every** store
+position — the same rule as integer constants (§10.2.11 above). The literal is re-typed
+and emitted with the appropriate suffix (`f` for `float32`, `m` for `decimal`):
 
 ```python
-def main() -> None:
-    x: float32 = 0.1      # OK — the literal narrows to float32
-    print(x)              # 0.1
+from System.Numerics import Vector2
 
 class Holder:
-    ratio: float32 = 0.5  # OK — same rule for a field declaration
+    ratio: float32 = 0.5       # field declaration
+
+def ret() -> float32:
+    return 0.1                  # return
+
+def takes(x: float32 = 0.1) -> None:   # parameter default
+    print(x)
+
+def main() -> None:
+    x: float32 = 0.1           # declaration
+    x = 0.25                    # plain store
+    print(x)                    # 0.25
+    takes(0.5)                  # argument
+    print(ret())                # 0.1
+    xs: list[float32] = [0.5]   # collection-literal element
+    v: Vector2 = Vector2(1.0, 2.0)  # CLR argument
+    print(v.X)                  # 1
 ```
 
-The allowance is scoped to declarations, where the annotation sits next to the literal. It does
-**not** extend to signature positions, which callers read:
+The same rule applies to `decimal`:
 
 ```python
-def ret() -> float32:
-    return 0.1            # ERROR (SPY0260) — write 0.1f
-
-def takes(x: float32 = 0.1) -> None:   # ERROR (SPY0220) — write 0.1f
-    pass
+d: decimal = 1.5
+print(d)                        # 1.5
 ```
 
-Two further limits:
+Two limits:
 
 - Only a **literal** narrows. A `float64`-typed *expression* or variable still requires an explicit
   cast: `x: float32 = y` is SPY0220 for `y: float`.
@@ -61,4 +72,4 @@ This is a deliberate divergence from C#, which rejects `float f = 0.1;` outright
 within range is accepted — writing the annotation is taken as asking for it.
 
 *Implementation*
-- *✅ Native - Direct mapping to C# float literals.*
+- *✅ Native - Direct mapping to C# float literals with compiler-inserted suffixes.*

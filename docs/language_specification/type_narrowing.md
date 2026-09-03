@@ -67,6 +67,16 @@ def main() -> None:
 
 A non-nullable declaration is unaffected: `y: str = "a"; y = None` is SPY0229.
 
+The walrus operator follows the same rule — its target slot is the declared binding type:
+
+```python
+def main() -> None:
+    x: str | None = None
+    x = "a"
+    if (x := None) is None:
+        print("back to None")
+```
+
 ## `isinstance` is call syntax, not a value
 
 `isinstance` is a compile-time narrowing construct rather than an ordinary function. It must be
