@@ -186,6 +186,32 @@ print(ys)            # [1, 2, 3, 4] — same object, mutated in place
 print(xs is ys)      # True
 ```
 
+### Right-Hand Side Types
+
+The RHS is accepted exactly when the mutator's **Python contract** admits it:
+
+| Operator | Collection | Accepted RHS | Refused RHS |
+|----------|-----------|--------------|-------------|
+| `+=` | `list[T]` | any iterable whose element is assignable to `T` (list, set, tuple, range, str into `list[str]`, dict iterates keys) | non-iterable |
+| `*=` | `list[T]` | `int` | non-int |
+| `\|=` | `set[T]` | `set[T]` or `frozenset[T]` only | `list`, `tuple` (SPY0222 — use `s.update(xs)` to update from any iterable) |
+| `&= -= ^=` | `set[T]` | `set[T]` or `frozenset[T]` only | same as `\|=` |
+| `\|=` | `dict[K,V]` | `dict[K,V]` or an iterable of `tuple[K,V]` pairs | non-mapping non-pair iterable |
+
+```python
+xs: list[int] = [1]
+xs += {2}             # set is iterable — [1, 2]
+xs += (3, 4)          # tuple is iterable — [1, 2, 3, 4]
+xs += range(2)        # range is iterable — [1, 2, 3, 4, 0, 1]
+
+d: dict[str, int] = {}
+d |= [("a", 1)]      # iterable of pairs — {'a': 1}
+
+s: set[int] = {1}
+# s |= [2]            # SPY0222 — python3 raises TypeError here too
+s |= {2}              # OK — set
+```
+
 ### Targets
 
 Augmented collection assignment works on identifier, attribute (`self.xs`), and
