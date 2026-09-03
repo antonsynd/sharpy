@@ -528,7 +528,7 @@ public class CollectionLiteralContextualTypingMatrixTests : IntegrationTestBase
     /// never SPY0908) and it is the assertion that will go green when #1701 lands — the cell is
     /// not rewritten to match the defect.
     /// </summary>
-    [Theory(Skip = "#1701 — mistyped store into a tuple slot whose element is a collection is accepted and ICEs (SPY0908/CS0029)")]
+    [Theory]
     [MemberData(nameof(KnownRedTupleCellIds))]
     public void KnownRedTupleCell(string id) => AssertCell(CellsById[id]);
 

@@ -709,6 +709,20 @@ internal partial class TypeChecker
             return IsAssignable(source, optional.UnderlyingType);
         }
 
+        // Tuple elements are compared through the checker's IsAssignable (variance, CLR,
+        // provenance arms reachable) — not the data-level TupleType.IsAssignableTo which
+        // bypasses them (#1701).
+        if (source is TupleType sourceTuple && target is TupleType targetTuple
+            && sourceTuple.ElementTypes.Count == targetTuple.ElementTypes.Count)
+        {
+            for (int i = 0; i < sourceTuple.ElementTypes.Count; i++)
+            {
+                if (!IsAssignable(sourceTuple.ElementTypes[i], targetTuple.ElementTypes[i]))
+                    return false;
+            }
+            return true;
+        }
+
         // FunctionType is assignable to a delegate type if the signatures are compatible
         if (source is FunctionType sourceFt)
         {

@@ -1,0 +1,3 @@
+# Rows cite the issue that drains them. A surviving call to TupleType.IsAssignableTo
+# in TypeChecker*.cs outside IsAssignable is a regression.
+TypeChecker.Expressions.Operators.cs:1184-1187 # #1677 ternary join — drains in P7
