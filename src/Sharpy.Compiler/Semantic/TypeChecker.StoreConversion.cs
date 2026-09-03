@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Semantic;
@@ -73,7 +74,12 @@ internal partial class TypeChecker
             && ImplicitConversions.IsDecimalLiteralNarrowing(targetType, valueType, value))
             return StoreVerdict.AcceptedDecimalNarrowing;
 
-        // 5. Literal-derived string into LiteralString (placeholder — Phase 7)
+        // 5. Literal-derived string into LiteralString (#1731)
+        if (targetType is LiteralStringType
+            && valueType == SemanticType.Str
+            && value != null
+            && _semanticInfo.IsLiteralDerived(AstHelper.UnwrapParenthesized(value)))
+            return StoreVerdict.AcceptedLiteralString;
 
         // 6. ConditionalExpression per-branch recursion (placeholder — Phase 2 Task 2)
 

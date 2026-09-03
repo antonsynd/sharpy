@@ -287,6 +287,15 @@ internal partial class TypeChecker
             }
         }
 
+        // #1731: propagate literal-derived string fact through str + str
+        if (binOp.Operator == BinaryOperator.Add
+            && resultType == SemanticType.Str
+            && _semanticInfo.IsLiteralDerived(AstHelper.UnwrapParenthesized(binOp.Left))
+            && _semanticInfo.IsLiteralDerived(AstHelper.UnwrapParenthesized(binOp.Right)))
+        {
+            _semanticInfo.SetLiteralDerived(binOp);
+        }
+
         return resultType;
     }
 

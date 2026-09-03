@@ -1,0 +1,24 @@
+def accept_literal(query: LiteralString) -> str:
+    return query
+
+def main():
+    # Declaration
+    x: LiteralString = "hello"
+    print(x)
+
+    # Plain store
+    x = "world"
+    print(x)
+
+    # Argument
+    print(accept_literal("SELECT * FROM users"))
+
+    # Concatenation
+    print(accept_literal("SELECT " + "* FROM users"))
+
+    # Return via function
+    result: str = accept_literal("literal")
+    print(result)
+
+    # Parenthesized
+    print(accept_literal(("parens")))

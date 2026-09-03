@@ -35,7 +35,7 @@ internal partial class TypeChecker
                 "M" => SemanticType.Decimal,
                 _ => SemanticType.Double,
             },
-            StringLiteral => SemanticType.Str,
+            StringLiteral sl => CheckStringLiteral(sl),
             BytesLiteralExpression bytesLit => CheckBytesLiteral(bytesLit),
             BooleanLiteral => SemanticType.Bool,
             NoneLiteral noneLiteral => CheckNoneLiteral(noneLiteral),

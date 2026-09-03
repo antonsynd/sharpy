@@ -162,6 +162,12 @@ public class SemanticInfo : ISemanticQuery
     // backed by CLR System.Type (e.g., assert_raises(zoneinfo.ZoneInfoNotFoundError)).
     private readonly ConcurrentDictionary<Expression, byte> _typeReferenceNodes = new(ReferenceEqualityComparer.Instance);
 
+    // #1731: PEP 675 literal-derived string fact — bottom-up marker for expressions that are
+    // compile-time literal strings (string literals, parenthesized literals, `str + str` where
+    // both operands are literal-derived). The StoreConversion seam reads this to accept a `str`
+    // into a `LiteralString` slot at every store position.
+    private readonly HashSet<Expression> _literalDerivedStrings = new(ReferenceEqualityComparer.Instance);
+
     // Track arguments that name a type used as a zero-argument factory callable — Python's
     // defaultdict(list) convention, where the argument is a type name, not a value. Whether an
     // identifier denotes such a factory is a semantic question (it may resolve as a TypeSymbol, as a
@@ -981,6 +987,16 @@ public class SemanticInfo : ISemanticQuery
     public bool IsEventAccess(Expression expr) => _eventAccessNodes.ContainsKey(expr);
 
     /// <summary>
+    /// Marks an expression as a compile-time literal-derived string (PEP 675 #1731).
+    /// </summary>
+    public void SetLiteralDerived(Expression expr) => _literalDerivedStrings.Add(expr);
+
+    /// <summary>
+    /// Returns true if the expression was marked as a literal-derived string.
+    /// </summary>
+    public bool IsLiteralDerived(Expression expr) => _literalDerivedStrings.Contains(expr);
+
+    /// <summary>
     /// Marks an expression as denoting a type reference (rather than a value), e.g., a
     /// module-qualified reference to an exported TypeSymbol.
     /// </summary>
@@ -1582,6 +1598,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._typeReferenceNodes)
             _typeReferenceNodes.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var expr in other._literalDerivedStrings)
+            _literalDerivedStrings.Add(expr);
 
         foreach (var kvp in other._typeFactoryArguments)
             _typeFactoryArguments.TryAdd(kvp.Key, kvp.Value);

@@ -605,6 +605,12 @@ internal partial class TypeChecker
         }
     }
 
+    private SemanticType CheckStringLiteral(StringLiteral sl)
+    {
+        _semanticInfo.SetLiteralDerived(sl);
+        return SemanticType.Str;
+    }
+
     private SemanticType CheckFStringLiteral(FStringLiteral fstr)
     {
         // Type-check all interpolated expressions within the f-string

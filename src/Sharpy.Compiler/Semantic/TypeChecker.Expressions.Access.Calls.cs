@@ -3227,11 +3227,11 @@ internal partial class TypeChecker
 
                 if (!IsArgumentAssignable(argTypes[i], paramType, ArgumentNodeAt(call, i)))
                 {
-                    // PEP 675: string literals (and concatenations thereof) satisfy LiteralString
+                    // PEP 675: literal-derived strings satisfy LiteralString (#1731)
                     if (paramType is LiteralStringType && i < call.Arguments.Length
-                        && IsLiteralStringExpression(call.Arguments[i]))
+                        && _semanticInfo.IsLiteralDerived(AstHelper.UnwrapParenthesized(call.Arguments[i])))
                     {
-                        // Allow — literal string expression satisfies LiteralString
+                        // Allow — literal-derived string expression satisfies LiteralString
                     }
                     // A type-reference expression (e.g. module.SomeError) satisfies a
                     // parameter backed by CLR System.Type (e.g. assert_raises's exceptionType).
@@ -4907,23 +4907,6 @@ internal partial class TypeChecker
                 code: DiagnosticCodes.Validation.DeprecatedUsage,
                 phase: CompilerPhase.TypeChecking);
         }
-    }
-
-    /// <summary>
-    /// PEP 675 LiteralString acceptance: string literal, <c>+</c> of literals, parentheses transparent.
-    /// Not accepted: <c>"a" * 3</c>, f-strings, implicit concatenation (<c>"a" "b"</c>).
-    /// </summary>
-    private static bool IsLiteralStringExpression(Expression expr)
-    {
-        // #1170 canonical-form contract: parentheses are transparent
-        expr = AstHelper.UnwrapParenthesized(expr);
-        return expr switch
-        {
-            StringLiteral => true,
-            BinaryOp { Operator: BinaryOperator.Add, Left: var left, Right: var right }
-                => IsLiteralStringExpression(left) && IsLiteralStringExpression(right),
-            _ => false
-        };
     }
 
     /// <summary>
