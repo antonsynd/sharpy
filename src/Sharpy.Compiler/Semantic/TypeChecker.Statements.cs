@@ -116,64 +116,29 @@ internal partial class TypeChecker
                 return;
             }
 
-            // In Sharpy, simple assignments (x = value) create new variable versions
-            // This enables Python-like behavior where variables can be reassigned to different types
-            // Set expected type for constructor inference if the variable was previously declared
-            var previousExpectedType2 = _expectedType;
-            // The expectation, like the check below, is the DECLARED binding type (#1706).
-            if (existingSymbol is VariableSymbol existingVarSym)
-            {
-                var existingType = DeclaredBindingType(existingVarSym);
-                _expectedType = existingType is UnknownType ? null : existingType;
-            }
-            else if (parentSymbol is VariableSymbol parentVarSym)
-            {
-                var parentType = DeclaredBindingType(parentVarSym);
-                _expectedType = parentType is UnknownType ? null : parentType;
-            }
-            var inferredType = CheckExpression(assignment.Value);
-            _expectedType = previousExpectedType2;
+            var storePredecessor = (existingSymbol ?? parentSymbol) as VariableSymbol;
+            var storeTarget = storePredecessor != null ? DeclaredBindingType(storePredecessor) : SemanticType.Unknown;
+            SemanticType inferredType;
+            using (EnterStore(StorePosition.PlainStore, storeTarget, assignment.Value))
+                inferredType = CheckExpression(assignment.Value);
             inferredType = CheckLambdaBindingInferable(assignment.Value, inferredType);
 
-            // `ys = <CLR sequence>` binds a Sharpy collection, exactly as the annotated declaration
-            // path does (#1251). This is the case the issue's own control got wrong: without it the
-            // variable's type says `list[str]` while its emitted type stays `IEnumerable<string>`, so
-            // `print(ys)` prints a LINQ iterator's type name and `ys.append(v)` binds LINQ's pure
-            // Enumerable.Append and throws the result away — wrong, and silent.
             var boundType = NativeCollectionForm(inferredType);
             RecordSequenceMaterialization(assignment.Value, inferredType, boundType);
             inferredType = boundType;
 
-            // A value with NO type never becomes the binding's type (#1516).
-            //
-            // With an existing binding, the rebinding KEEPS that type: `x: int? = None; x = None` is
-            // a legitimate write of an empty optional, and letting `None` retype the variable made
-            // `x` a `None` from the second statement onward — so the very next `x == None` was
-            // refused as "expression of type 'None' has no value". Silent, and wrong.
-            //
-            // With NO existing binding there is nothing to keep, and the emitter wrote `var x = null;`
-            // — CS0815 behind SPY0908. That is the refusal.
             if (inferredType is VoidType)
             {
-                var boundVoidTarget = (existingSymbol ?? parentSymbol) as VariableSymbol;
-                if (boundVoidTarget != null && DeclaredBindingType(boundVoidTarget) is { } keptType
-                    && keptType is not UnknownType)
+                if (storePredecessor != null && storeTarget is not UnknownType)
                 {
-                    // Keeping the type is only legitimate when None is a legal value of it —
-                    // `x: int? = None; x = None` writes an empty optional. For a non-nullable
-                    // binding the kept type silently retyped the write and the emitter produced
-                    // `y = null;` (CS0037 behind SPY0908), so it gets the same SPY0229 refusal as
-                    // the declaration position (#1564; found by ILCompilesPropertyTests).
-                    if (IsAssignable(SemanticType.Void, keptType))
+                    if (IsAssignable(SemanticType.Void, storeTarget))
                     {
-                        inferredType = keptType;
+                        inferredType = storeTarget;
                     }
                     else
                     {
-                        AddError($"Cannot assign 'None' to non-nullable type '{keptType.GetDisplayName()}'",
-                            assignment.LineStart, assignment.ColumnStart,
-                            code: DiagnosticCodes.Semantic.NullabilityViolation,
-                            span: assignment.Value.Span);
+                        CheckStore(StorePosition.PlainStore, assignment.Value, inferredType, storeTarget,
+                            assignment, assignment.Value.Span);
                         return;
                     }
                 }
@@ -185,18 +150,6 @@ internal partial class TypeChecker
                 }
             }
 
-            // A rebinding may not change the variable's type to one the existing binding cannot hold
-            // (#1301). The comment above promises "Python-like behavior where variables can be
-            // reassigned to different types", but the emitter assigns to the SAME C# local — it only
-            // versions on redeclaration (`x: T = ...` twice), not on plain assignment. So every
-            // type-changing rebinding produced uncompilable C#: `z: float32 = 1.0f; z = w` was CS0266
-            // and `z = "hello"` was CS0029, both surfacing as SPY0908 internal errors. A diagnostic at
-            // the assignment is the honest report of what the compiler can actually do.
-            //
-            // The binding the store is checked against is the DECLARED one — the root of the rebinding
-            // chain — not the previous value's version: `x: str | None = None; x = "a"; x = None` and
-            // `x: object = 1; x = "a"; x = 2` both write the declared C# local (#1706). The new
-            // version below still takes the value's type, which is what makes later READS narrow.
             if (existingSymbol is VariableSymbol boundSymbol)
             {
                 var boundExisting = DeclaredBindingType(boundSymbol);
@@ -204,35 +157,15 @@ internal partial class TypeChecker
                     && inferredType is not UnknownType
                     && !IsAssignable(inferredType, boundExisting))
                 {
-                    if (IsFloat32LiteralNarrowing(boundExisting, inferredType, assignment.Value))
-                    {
-                        // Parity with the declaration position: `z: float32 = 1.0f; z = 0.25` narrows.
-                        _semanticInfo.SetExpressionType(assignment.Value, SemanticType.Float32);
-                        inferredType = SemanticType.Float32;
-                    }
-                    else if (IsImplicitConstantConversion(assignment.Value, inferredType, boundExisting))
-                    {
-                        // Same parity for integers: `x8: int8 = 1; x8 = 7` is the §10.2.11 constant
-                        // conversion the declaration position already performs, and the C# it emits
-                        // (`x8 = 7;` on an `sbyte`) compiles as written (#1698). Unlike the float32
-                        // case the VALUE is not re-typed — C# converts the constant itself — but the
-                        // variable must keep its declared width: the rebinding below records
-                        // `inferredType` as the new binding's type, and leaving it `int32` would
-                        // make every later read of `x8` lie about the `sbyte` local the emitter
-                        // assigned into (`ys: list[int8] = [x8]` became SPY0220).
-                        inferredType = boundExisting;
-                    }
-                    else
-                    {
-                        AddError(
-                            $"Cannot assign type '{inferredType.GetDisplayName()}' to variable of type "
-                            + $"'{boundExisting.GetDisplayName()}'"
-                            + DescribeClrCollectionConversionSteer(inferredType, boundExisting),
-                            assignment.LineStart, assignment.ColumnStart,
-                            code: DiagnosticCodes.Semantic.TypeMismatch,
-                            span: assignment.Span);
+                    if (!CheckStore(StorePosition.PlainStore, assignment.Value, inferredType, boundExisting,
+                            assignment, assignment.Span))
                         return;
-                    }
+                    inferredType = ClassifyStore(StorePosition.PlainStore, assignment.Value, inferredType, boundExisting) switch
+                    {
+                        StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
+                        StoreVerdict.AcceptedDecimalNarrowing => SemanticType.Decimal,
+                        _ => boundExisting,
+                    };
                 }
             }
 
@@ -511,31 +444,11 @@ internal partial class TypeChecker
             return;
         }
 
-        // Otherwise, check as a regular simple assignment
-        // Use assignmentTargetType (declared type) for fields where narrowing may differ.
-        // An in-range integer constant converts here exactly as it does at a declaration — the
-        // attribute, index and dict-value store positions all land on this one check, so
-        // `b.n8 = 7`, `xs[0] = 7` and `d["a"] = 7` narrow to a narrow-integer destination the
-        // same way `n8: int8 = 7` does (#1698, §10.2.11).
-        if (!IsAssignable(valueType, assignmentTargetType)
-            && !IsImplicitConstantConversion(assignment.Value, valueType, assignmentTargetType))
-        {
-            if (valueType is VoidType && assignmentTargetType is not NullableType and not OptionalType)
-            {
-                AddError($"Cannot assign 'None' to non-nullable type '{assignmentTargetType.GetDisplayName()}'",
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
-                    span: assignment.Value.Span);
-            }
-            else
-            {
-                AddError($"Cannot assign type '{valueType.GetDisplayName()}' to '{assignmentTargetType.GetDisplayName()}'"
-                    + DescribeClrCollectionConversionSteer(valueType, assignmentTargetType),
-                    assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                    span: assignment.Span);
-            }
-        }
-
-        RecordSequenceMaterialization(assignment.Value, valueType, assignmentTargetType);
+        var storePos = assignment.Target is MemberAccess
+            ? StorePosition.MemberStore
+            : StorePosition.IndexStore;
+        CheckStore(storePos, assignment.Value, valueType, assignmentTargetType,
+            assignment, assignment.Span);
     }
 
     /// <summary>
@@ -662,21 +575,13 @@ internal partial class TypeChecker
 
         if (varDecl.InitialValue != null)
         {
-            // Set expected type for constructor inference (Some/None()/Ok/Err)
-            var previousExpectedType = _expectedType;
-            _expectedType = declaredType is UnknownType ? null : declaredType;
-            var initType = CheckExpression(varDecl.InitialValue);
-            _expectedType = previousExpectedType;
+            SemanticType initType;
+            using (EnterStore(StorePosition.Declaration, declaredType, varDecl.InitialValue))
+                initType = CheckExpression(varDecl.InitialValue);
 
-            // Only on the 'auto' path: a declared annotation that cannot type the lambda already
-            // reports its own mismatch below, and telling the user to annotate a parameter on top
-            // of that would be noise (#1212).
             if (declaredType is UnknownType)
                 initType = CheckLambdaBindingInferable(varDecl.InitialValue, initType);
 
-            // The `auto` spelling of the same gap: `x: auto = None` inferred VoidType and emitted
-            // `var x = null;` (#1516). Same rule, same message — the declaration form is not a
-            // second answer.
             if (declaredType is UnknownType
                 && RefuseUntypedVoidBinding(
                     varDecl.Name, varDecl.InitialValue, initType,
@@ -685,44 +590,18 @@ internal partial class TypeChecker
                 initType = SemanticType.Unknown;
             }
 
-            // Handle type inference for 'auto'
             if (declaredType is UnknownType)
             {
-                // An inferred local binding a CLR sequence becomes a Sharpy collection, not a CLR one
-                // (#1251). Without this the variable's type says `list[str]` while its emitted type is
-                // `IEnumerable<string>`, and every later use is either an ICE (`ys[0]`, passing it on)
-                // or silently wrong (`print(ys)` prints a LINQ iterator's type name; `ys.append(v)`
-                // binds LINQ's pure Enumerable.Append and discards the result).
                 declaredType = NativeCollectionForm(initType);
                 if (varDecl.Type != null)
                 {
                     _semanticInfo.SetTypeAnnotation(varDecl.Type, declaredType);
                 }
             }
-            else if (!IsAssignable(initType, declaredType)
-                && !IsImplicitConstantConversion(varDecl.InitialValue, initType, declaredType))
+            else
             {
-                // Allow implicit narrowing of a double-valued float LITERAL to float32 (#1301).
-                if (IsFloat32LiteralNarrowing(declaredType, initType, varDecl.InitialValue))
-                {
-                    // Narrow the literal node itself so emission produces `0.1f`. C# has no implicit
-                    // double→float literal conversion, so recording nothing here would only move the
-                    // failure: SPY0220 becomes CS0664, an ICE instead of a diagnostic.
-                    _semanticInfo.SetExpressionType(varDecl.InitialValue!, SemanticType.Float32);
-                }
-                else if (initType is VoidType && declaredType is not NullableType and not OptionalType)
-                {
-                    AddError($"Cannot assign 'None' to non-nullable type '{declaredType.GetDisplayName()}'",
-                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.NullabilityViolation,
-                        span: varDecl.InitialValue!.Span);
-                }
-                else
-                {
-                    AddError($"Cannot assign type '{initType.GetDisplayName()}' to variable of type '{declaredType.GetDisplayName()}'"
-                        + DescribeClrCollectionConversionSteer(initType, declaredType),
-                        varDecl.LineStart, varDecl.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: varDecl.Span);
-                }
+                CheckStore(StorePosition.Declaration, varDecl.InitialValue, initType, declaredType,
+                    varDecl, varDecl.Span);
             }
 
             if (initType is FunctionType { OptionalParameterCount: > 0 } sourceFt
@@ -738,8 +617,6 @@ internal partial class TypeChecker
                     DiagnosticCodes.Validation.DefaultsErasedByConversion,
                     CompilerPhase.TypeChecking);
             }
-
-            RecordSequenceMaterialization(varDecl.InitialValue, initType, declaredType);
         }
         else if (declaredType is UnknownType)
         {
@@ -861,23 +738,12 @@ internal partial class TypeChecker
 
         if (returnStmt.Value != null)
         {
-            // Set expected type for constructor inference (Some/None()/Ok/Err)
-            var previousExpectedType = _expectedType;
-            _expectedType = _currentFunctionReturnType;
-            var returnType = CheckExpression(returnStmt.Value);
-            _expectedType = previousExpectedType;
-            RecordSequenceMaterialization(returnStmt.Value, returnType, _currentFunctionReturnType);
-            // `return 7` from a `-> int8` is the §10.2.11 constant conversion, the same one the
-            // declaration and argument positions perform; the emitted `return 7;` compiles as
-            // written (#1698).
-            if (!IsAssignable(returnType, _currentFunctionReturnType)
-                && !IsImplicitConstantConversion(returnStmt.Value, returnType, _currentFunctionReturnType))
-            {
-                AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
-                    returnStmt.LineStart, returnStmt.ColumnStart, code: DiagnosticCodes.Semantic.MissingReturnValue,
-                    span: returnStmt.Span);
-            }
-            else if (_currentFunctionReturnType is VoidType && returnType is VoidType)
+            SemanticType returnType;
+            using (EnterStore(StorePosition.Return, _currentFunctionReturnType!, returnStmt.Value))
+                returnType = CheckExpression(returnStmt.Value);
+            CheckStore(StorePosition.Return, returnStmt.Value, returnType, _currentFunctionReturnType!,
+                returnStmt, returnStmt.Span);
+            if (_currentFunctionReturnType is VoidType && returnType is VoidType)
             {
                 var unwrapped = UnwrapParenthesized(returnStmt.Value);
                 var kind = unwrapped is NoneLiteral
@@ -939,21 +805,15 @@ internal partial class TypeChecker
         }
         else
         {
-            // yield expr: type-check the value
-            var valueType = CheckExpression(yieldStmt.Value);
+            SemanticType valueType;
+            using (EnterStore(StorePosition.Yield, _currentFunctionReturnType!, yieldStmt.Value))
+                valueType = CheckExpression(yieldStmt.Value);
 
             if (_currentFunctionReturnType != SemanticType.Void
                 && _currentFunctionReturnType is not UnknownType)
             {
-                // If there's a return type annotation, verify the yielded type matches
-                if (!IsAssignable(valueType, _currentFunctionReturnType))
-                {
-                    AddError(
-                        $"Yielded type '{valueType.GetDisplayName()}' is not assignable to declared return type '{_currentFunctionReturnType.GetDisplayName()}'",
-                        yieldStmt.LineStart, yieldStmt.ColumnStart,
-                        code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: yieldStmt.Span);
-                }
+                CheckStore(StorePosition.Yield, yieldStmt.Value, valueType, _currentFunctionReturnType!,
+                    yieldStmt, yieldStmt.Span);
             }
         }
     }
@@ -2204,29 +2064,6 @@ internal partial class TypeChecker
             }
         }
     }
-
-    /// <summary>
-    /// Whether an unsuffixed float literal initializing a <c>float32</c> annotation may narrow
-    /// implicitly (#1301) — <c>x: float32 = 0.1</c>.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Compared by CLR type, not by <see cref="BuiltinType.Name"/>. Sharpy has TWO double-backed
-    /// builtin singletons — <c>float</c> and <c>float64</c> — and <see cref="BuiltinType"/> is a record
-    /// whose equality includes the name, so the original name test could only ever match one of them.
-    /// Unsuffixed literals type as the other, which is why the allowance never fired once in its life.
-    /// </para>
-    /// <para>
-    /// Out-of-range values are excluded: an <c>f</c>-suffixed C# literal outside float's range is
-    /// CS0594, so admitting <c>x: float32 = 1e40</c> would trade a diagnostic for an ICE. Precision
-    /// loss within range is accepted — that is what the allowance is for.
-    /// </para>
-    /// </remarks>
-    private static bool IsFloat32LiteralNarrowing(
-        SemanticType declaredType,
-        SemanticType initType,
-        Expression? initialValue)
-        => ImplicitConversions.IsFloat32LiteralNarrowing(declaredType, initType, initialValue);
 
     private void TryFoldConstantValue(
         VariableSymbol symbol, SemanticType declaredType, Expression? initializer)

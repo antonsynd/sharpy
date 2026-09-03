@@ -594,52 +594,6 @@ internal partial class TypeChecker
     internal static bool IsStringBackedEnum(SemanticType? type)
         => type is UserDefinedType { Symbol: { TypeKind: TypeKind.Enum, IsStringEnum: true } };
 
-    /// <summary>
-    /// Whether <paramref name="value"/> is an integer constant expression that C# would convert
-    /// implicitly to <paramref name="target"/> because its VALUE is in range (#1355).
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// ECMA-334 §10.2.11 *Implicit constant expression conversions*, which this implements verbatim:
-    /// an <c>int</c> constant converts to <c>sbyte</c>/<c>byte</c>/<c>short</c>/<c>ushort</c>/
-    /// <c>uint</c>/<c>ulong</c> when the value is in the destination's range, and a <c>long</c>
-    /// constant converts to <c>ulong</c> only, and only when non-negative. Without it NO literal can
-    /// initialize a sub-32-bit annotation — there are no suffixes for those widths — so
-    /// <c>b: uint8 = 200</c> was SPY0220 and the language specification's own examples
-    /// (<c>integer_literals.md</c>: <c>s: int16 = 42</c>, <c>b: uint8 = 255</c>, <c>sb: int8 = -128</c>)
-    /// were unexecutable. Implementation moves to the spec (Critical Rule 7).
-    /// </para>
-    /// <para>
-    /// This is deliberately NOT folded into <see cref="Registry.PrimitiveCatalog.ImplicitConversionCost"/>,
-    /// which is keyed on types alone and is the single ranking that <c>CanImplicitlyConvert</c> and the
-    /// CLR operator resolver both consume. A conversion that depends on a literal's value cannot be
-    /// expressed there, and widening that function to admit it would silently change overload
-    /// resolution at every numeric call site.
-    /// </para>
-    /// <para>
-    /// Unlike <c>IsFloat32LiteralNarrowing</c> — the value-aware allowance this is modelled on — the
-    /// literal's recorded type is left alone. That one has to re-type its node because C# has no
-    /// implicit <c>double</c>→<c>float</c> literal conversion, so leaving it would turn SPY0220 into
-    /// CS0664. Here C# performs exactly this conversion itself, so <c>byte b = 200;</c> emits and
-    /// compiles as written, and re-typing would be a lie about what the source said.
-    /// </para>
-    /// <para>
-    /// The constant's VALUE comes from <see cref="IntegerConstantEvaluator"/>, the evaluator the
-    /// checker and the lowering pass already share — so parenthesized and folded shapes
-    /// (<c>b: uint8 = 1 + 1</c>, <c>(200)</c>, <c>1 &lt;&lt; 7</c>) come for free and agree with the
-    /// numbers SPY0348 is reported from. Its contract is exactly the half needed here: it decides
-    /// what the value IS and never whether it fits a type, leaving the range decision to callers.
-    /// </para>
-    /// <para>
-    /// A <c>const</c> reference is a constant expression: <c>const L: int = 200</c> then
-    /// <c>b: uint8 = L</c> folds via <see cref="VariableSymbol.ConstantValue"/>, which
-    /// <see cref="IntegerConstantEvaluator"/> consults through the resolver parameter (#1460).
-    /// Compound expressions over const references (<c>LIMIT + 55</c>) fold transitively.
-    /// </para>
-    /// </remarks>
-    private bool IsImplicitConstantConversion(Expression? value, SemanticType source, SemanticType target)
-        => ImplicitConversions.IsImplicitIntegerConstantConversion(value, source, target, MakeConstantResolver());
-
     private Func<Identifier, System.Numerics.BigInteger?> MakeConstantResolver()
     {
         return id =>
@@ -718,7 +672,8 @@ internal partial class TypeChecker
         // §10.2.11 constant conversion — `x8 += 1`, `x8 %= 2`, `u8 -= 1`. Same helper, same
         // range check and same const-reference folding the declaration position uses (#1355), so
         // `const L: int = 100` then `x8 += L` narrows and `x8 += 300` does not.
-        return IsImplicitConstantConversion(value, valueType, targetType) ? targetType : null;
+        return ImplicitConversions.IsImplicitIntegerConstantConversion(value, valueType, targetType, MakeConstantResolver())
+            ? targetType : null;
     }
 
     private bool IsAssignable(SemanticType source, SemanticType target)
@@ -931,10 +886,8 @@ internal partial class TypeChecker
         if (IsAssignable(source, target))
             return true;
 
-        // An in-range integer constant satisfies a small-width parameter, exactly as it does a
-        // small-width annotation — §10.2.11 conversions apply wherever an implicit conversion is
-        // asked, not only at a declaration (#1355).
-        if (allowConstantConversion && IsImplicitConstantConversion(argument, source, target))
+        if (allowConstantConversion
+            && ImplicitConversions.IsImplicitIntegerConstantConversion(argument, source, target, MakeConstantResolver()))
             return true;
 
         // list[T] → array[T]: element types must match exactly (UnknownType acts as a
@@ -1705,7 +1658,10 @@ internal partial class TypeChecker
     /// </summary>
     private bool AllAssignableTo(List<SemanticType> types, SemanticType target)
     {
-        return types.All(t => IsAssignable(t, target));
+        return types.All(t => ClassifyStore(StorePosition.CollectionElement, null, t, target)
+            is StoreVerdict.Accepted or StoreVerdict.AcceptedWithNarrowing
+            or StoreVerdict.AcceptedConstantConversion or StoreVerdict.AcceptedFloat32Narrowing
+            or StoreVerdict.AcceptedDecimalNarrowing or StoreVerdict.AcceptedLiteralString);
     }
 
     /// <summary>

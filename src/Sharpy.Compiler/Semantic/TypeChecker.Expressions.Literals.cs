@@ -318,7 +318,13 @@ internal partial class TypeChecker
     /// </summary>
     private SemanticType ContextualElementType(SemanticType produced, SemanticType? expectation)
     {
-        return expectation != null && IsAssignable(produced, expectation) ? expectation : produced;
+        if (expectation == null)
+            return produced;
+        var verdict = ClassifyStore(StorePosition.CollectionElement, null, produced, expectation);
+        return verdict is StoreVerdict.Accepted or StoreVerdict.AcceptedWithNarrowing
+            or StoreVerdict.AcceptedConstantConversion or StoreVerdict.AcceptedFloat32Narrowing
+            or StoreVerdict.AcceptedDecimalNarrowing or StoreVerdict.AcceptedLiteralString
+            ? expectation : produced;
     }
 
     private SemanticType CheckListComprehension(ListComprehension listComp)

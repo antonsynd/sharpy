@@ -712,22 +712,24 @@ internal partial class TypeChecker
         var bindingType = valueType;
         if (predecessor != null)
         {
-            // Same contract as the statement form (#1301): the chain shares one C# local, so the
-            // value must fit the variable's type.
-            var boundExisting = GetVariableType(predecessor);
+            var boundExisting = DeclaredBindingType(predecessor);
             if (boundExisting is not UnknownType && valueType is not UnknownType
                 && !IsAssignable(valueType, boundExisting))
             {
-                AddError(
-                    $"Cannot assign type '{valueType.GetDisplayName()}' to variable of type "
-                    + $"'{boundExisting.GetDisplayName()}'",
-                    walrus.LineStart, walrus.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch, span: walrus.Span);
-                return SemanticType.Unknown;
+                if (!CheckStore(StorePosition.Walrus, walrus.Value, valueType, boundExisting,
+                        walrus, walrus.Span))
+                    return SemanticType.Unknown;
+                bindingType = ClassifyStore(StorePosition.Walrus, walrus.Value, valueType, boundExisting) switch
+                {
+                    StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
+                    StoreVerdict.AcceptedDecimalNarrowing => SemanticType.Decimal,
+                    _ => boundExisting,
+                };
             }
-
-            if (boundExisting is not UnknownType)
+            else if (boundExisting is not UnknownType)
+            {
                 bindingType = boundExisting;
+            }
         }
 
         var newSymbol = new VariableSymbol

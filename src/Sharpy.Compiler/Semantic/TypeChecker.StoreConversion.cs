@@ -60,12 +60,17 @@ internal partial class TypeChecker
                 value, valueType, targetType, MakeConstantResolver()))
             return StoreVerdict.AcceptedConstantConversion;
 
-        // 3. Float32 literal narrowing
-        if (ImplicitConversions.IsFloat32LiteralNarrowing(targetType, valueType, value))
+        // 3. Float32 literal narrowing — scoped to store-like positions; return and parameter
+        //    signatures are part of the contract the caller reads, so `0.1` stays double (#1301).
+        if (position is not StorePosition.Return
+            and not StorePosition.ParameterDefault and not StorePosition.LambdaParameterDefault
+            && ImplicitConversions.IsFloat32LiteralNarrowing(targetType, valueType, value))
             return StoreVerdict.AcceptedFloat32Narrowing;
 
-        // 4. Decimal literal narrowing
-        if (ImplicitConversions.IsDecimalLiteralNarrowing(targetType, valueType, value))
+        // 4. Decimal literal narrowing — same scope as float32
+        if (position is not StorePosition.Return
+            and not StorePosition.ParameterDefault and not StorePosition.LambdaParameterDefault
+            && ImplicitConversions.IsDecimalLiteralNarrowing(targetType, valueType, value))
             return StoreVerdict.AcceptedDecimalNarrowing;
 
         // 5. Literal-derived string into LiteralString (placeholder — Phase 7)
@@ -126,11 +131,14 @@ internal partial class TypeChecker
 
             case StoreVerdict.Refused:
             case StoreVerdict.RefusedOptionalConstruction:
+                var refusalCode = position == StorePosition.Return
+                    ? DiagnosticCodes.Semantic.MissingReturnValue
+                    : DiagnosticCodes.Semantic.TypeMismatch;
                 AddError(
                     FormatStoreError(position, valueType, targetType, slotName)
                         + DescribeClrCollectionConversionSteer(valueType, targetType),
                     reportAt.LineStart, reportAt.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    code: refusalCode,
                     span: span);
                 return false;
 
@@ -195,11 +203,14 @@ internal partial class TypeChecker
         var savedExpectedType = _expectedType;
         var savedParameterTypedArgument = _parameterTypedArgument;
 
-        _expectedType = targetType;
-        _parameterTypedArgument = position is StorePosition.ArgumentPositional
-            or StorePosition.ArgumentKeyword
-                ? valueNode
-                : _parameterTypedArgument;
+        _expectedType = targetType is UnknownType ? null : targetType;
+        _parameterTypedArgument = position switch
+        {
+            StorePosition.ArgumentPositional or StorePosition.ArgumentKeyword => valueNode,
+            StorePosition.ParameterDefault or StorePosition.LambdaParameterDefault when valueNode != null
+                => ParameterTypedArgumentOf(targetType, valueNode),
+            _ => _parameterTypedArgument,
+        };
 
         return new StoreScope(this, savedExpectedType, savedParameterTypedArgument);
     }

@@ -91,41 +91,40 @@ internal partial class TypeChecker
             _semanticInfo.SetParameterSymbol(lambdaParam, paramSymbol);
         }
 
-        // Type-check default value expressions and validate compatibility
         for (int i = 0; i < lambda.Parameters.Length; i++)
         {
             var param = lambda.Parameters[i];
             if (param.DefaultValue != null)
             {
-                var defaultType = CheckExpression(param.DefaultValue);
-                if (paramTypes[i] is not UnknownType && !IsAssignable(defaultType, paramTypes[i]))
+                SemanticType defaultType;
+                using (EnterStore(StorePosition.LambdaParameterDefault, paramTypes[i], param.DefaultValue))
+                    defaultType = CheckExpression(param.DefaultValue);
+                if (paramTypes[i] is not UnknownType)
                 {
-                    AddError(
-                        $"Default value of type '{defaultType.GetDisplayName()}' is not assignable to parameter type '{paramTypes[i].GetDisplayName()}'",
-                        param.DefaultValue.LineStart, param.DefaultValue.ColumnStart,
-                        code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: param.DefaultValue.Span);
+                    CheckStore(StorePosition.LambdaParameterDefault, param.DefaultValue, defaultType, paramTypes[i],
+                        param.DefaultValue, param.DefaultValue.Span);
                 }
             }
         }
 
-        var bodyType = CheckExpression(lambda.Body);
-
-        // Validate explicit return type annotation (arrow lambda syntax)
-        SemanticType returnType = bodyType;
+        SemanticType bodyType;
+        SemanticType returnType;
         if (lambda.ReturnType != null)
         {
             var declaredReturnType = _typeResolver.ResolveTypeAnnotation(lambda.ReturnType);
-            if (declaredReturnType is not UnknownType && bodyType is not UnknownType
-                && !IsAssignable(bodyType, declaredReturnType))
+            using (EnterStore(StorePosition.LambdaBody, declaredReturnType, lambda.Body))
+                bodyType = CheckExpression(lambda.Body);
+            if (declaredReturnType is not UnknownType && bodyType is not UnknownType)
             {
-                AddError(
-                    $"Arrow lambda body type '{bodyType.GetDisplayName()}' is not assignable to declared return type '{declaredReturnType.GetDisplayName()}'",
-                    lambda.Body.LineStart, lambda.Body.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch,
-                    span: lambda.Body.Span);
+                CheckStore(StorePosition.LambdaBody, lambda.Body, bodyType, declaredReturnType,
+                    lambda.Body, lambda.Body.Span);
             }
             returnType = declaredReturnType;
+        }
+        else
+        {
+            bodyType = CheckExpression(lambda.Body);
+            returnType = bodyType;
         }
 
         if (returnType is VoidType && UnwrapParenthesized(lambda.Body) is NoneLiteral)

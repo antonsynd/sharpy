@@ -714,26 +714,15 @@ internal partial class TypeChecker
                 functionSymbol.Parameters[i] = functionSymbol.Parameters[i] with { Type = paramType };
             }
 
-            // Type check default value if present
             if (param.DefaultValue != null)
             {
-                // Set expected type for constructor inference (Some/None()/Ok/Err). The default
-                // value IS the parameter's own value, so `_expectedType` genuinely holds this
-                // node's destination type here and is bound as such — which is what lets a bare
-                // `None` default materialize as `Optional<T>.None` (#1478, #1490).
-                var previousExpectedType = _expectedType;
-                var previousParameterTypedArgument = _parameterTypedArgument;
-                _expectedType = paramType is UnknownType ? null : paramType;
-                _parameterTypedArgument = ParameterTypedArgumentOf(paramType, param.DefaultValue);
-                var defaultType = CheckExpression(param.DefaultValue);
-                _expectedType = previousExpectedType;
-                _parameterTypedArgument = previousParameterTypedArgument;
-                if (!IsAssignable(defaultType, paramType)
-                    && !IsImplicitConstantConversion(param.DefaultValue, defaultType, paramType))
+                SemanticType defaultType;
+                using (EnterStore(StorePosition.ParameterDefault, paramType, param.DefaultValue))
+                    defaultType = CheckExpression(param.DefaultValue);
+                if (paramType is not UnknownType)
                 {
-                    AddError($"Default value type '{defaultType.GetDisplayName()}' is not assignable to parameter type '{paramType.GetDisplayName()}'",
-                        param.LineStart, param.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: param.DefaultValue?.Span);
+                    CheckStore(StorePosition.ParameterDefault, param.DefaultValue, defaultType, paramType,
+                        param.DefaultValue, param.DefaultValue?.Span);
                 }
             }
         }
@@ -2067,33 +2056,23 @@ internal partial class TypeChecker
         // (mirrors CheckVariableDeclaration).
         if (!propDef.IsFunctionStyle && propDef.DefaultValue != null)
         {
-            var previousExpectedType = _expectedType;
-            _expectedType = propertyType is UnknownType ? null : propertyType;
-            var defaultType = CheckExpression(propDef.DefaultValue);
-            _expectedType = previousExpectedType;
+            SemanticType defaultType;
+            using (EnterStore(StorePosition.PropertyDefault, propertyType, propDef.DefaultValue))
+                defaultType = CheckExpression(propDef.DefaultValue);
 
             if (propertyType is UnknownType)
             {
-                // Inferred: bind as the Sharpy collection the value is typed as, exactly like the
-                // inferred-assignment rule (#1251) — a CLR iterator must not become the property's type.
                 propertyType = NativeCollectionForm(defaultType);
                 if (propDef.Type != null)
                 {
                     _semanticInfo.SetTypeAnnotation(propDef.Type, propertyType);
                 }
             }
-            else if (!IsAssignable(defaultType, propertyType))
+            else
             {
-                AddError(
-                    $"Cannot assign type '{defaultType.GetDisplayName()}' to property of type '{propertyType.GetDisplayName()}'",
-                    propDef.LineStart, propDef.ColumnStart,
-                    code: DiagnosticCodes.Semantic.TypeMismatch,
-                    span: propDef.DefaultValue.Span);
+                CheckStore(StorePosition.PropertyDefault, propDef.DefaultValue, defaultType, propertyType,
+                    propDef, propDef.DefaultValue.Span);
             }
-
-            // PropertyDef is its own AST node — the variable-declaration path's recording (#1251)
-            // never reaches a property initializer.
-            RecordSequenceMaterialization(propDef.DefaultValue, defaultType, propertyType);
         }
 
         // Update the symbol registered by NameResolver (pass 1). Getter and
@@ -2240,23 +2219,15 @@ internal partial class TypeChecker
         {
             if (propDef.DefaultValue != null)
             {
-                var previousExpectedType = _expectedType;
-                _expectedType = propertyType is UnknownType ? null : propertyType;
-                var defaultType = CheckExpression(propDef.DefaultValue);
-                _expectedType = previousExpectedType;
+                SemanticType defaultType;
+                using (EnterStore(StorePosition.PropertyDefault, propertyType, propDef.DefaultValue))
+                    defaultType = CheckExpression(propDef.DefaultValue);
 
-                if (propertyType is not UnknownType && !IsAssignable(defaultType, propertyType))
+                if (propertyType is not UnknownType)
                 {
-                    AddError(
-                        $"Cannot assign type '{defaultType.GetDisplayName()}' to property of type '{propertyType.GetDisplayName()}'",
-                        propDef.LineStart, propDef.ColumnStart,
-                        code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: propDef.DefaultValue.Span);
+                    CheckStore(StorePosition.PropertyDefault, propDef.DefaultValue, defaultType, propertyType,
+                        propDef, propDef.DefaultValue.Span);
                 }
-
-                // PropertyDef is its own AST node — the variable-declaration path's recording (#1251)
-                // never reaches a property initializer.
-                RecordSequenceMaterialization(propDef.DefaultValue, defaultType, propertyType);
             }
 
             if (!propDef.Observers.IsEmpty)

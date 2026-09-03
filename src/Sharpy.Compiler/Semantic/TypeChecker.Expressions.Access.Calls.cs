@@ -3320,7 +3320,7 @@ internal partial class TypeChecker
                         span: kwarg.Span ?? kwarg.Value.Span);
                 }
                 else if (paramType != null
-                    && !IsArgumentAssignable(kwargTypes[kwarg.Name], paramType)
+                    && !IsArgumentAssignable(kwargTypes[kwarg.Name], paramType, kwarg.Value)
                     && !(IsSystemTypeParameter(paramType) && _semanticInfo.IsTypeReference(kwarg.Value)))
                 {
                     AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{paramType.GetDisplayName()}'"
