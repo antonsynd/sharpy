@@ -1,0 +1,9 @@
+# Guard: inplace_augassign was removed from KnownFeatures one release after graduation (#1679).
+# A per-file import of the retired name must produce SPY0330.
+from __future__ import inplace_augassign
+
+def main() -> None:
+    xs: list[int] = [1, 2]
+    t: list[int] = xs
+    xs += [3]
+    print(t)

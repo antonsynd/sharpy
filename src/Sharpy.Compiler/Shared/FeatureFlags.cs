@@ -168,16 +168,6 @@ public sealed class FeatureFlags
                 "escape (v1: iterated directly by a for only; len()/constant-index positions are " +
                 "deferred to #1103) lower to raw arrays instead of Sharpy.List allocations.",
                 FeatureScope.CodeGen),
-            // #1428/#1614 in-place augmented assignment on collections — graduated 2026-08-29: the
-            // mutation-call lowering is the language on every TFM, SPY0478 is retired, and the flag is
-            // a no-op kept for one release so existing .features files keep parsing (#1679).
-            ["inplace_augassign"] = new FeatureInfo(
-                "inplace_augassign",
-                "Graduated (#1614): in-place augmented assignment on collections is now the default. " +
-                "`xs += ys` / `s |= t` / `d |= e` on list/set/dict mutate the receiver in place " +
-                "(CPython `__iadd__`-family semantics). Safe to remove from .features files.",
-                FeatureScope.Semantic,
-                IsNoOp: true),
         };
 
     /// <summary>The names of all enabled features, in ordinal order.</summary>

@@ -200,7 +200,7 @@ A behavioral flag differs from a syntax feature in three ways:
 Five features have piloted this lifecycle. Four are `Parser`-scoped; one (`inplace_augassign`)
 is a **behavioral-semantics flag** — it gates runtime behavior (mutation vs. rebind), not syntax.
 `failable_cast` has completed the full course to graduation and flag deletion (see below);
-`inplace_augassign` is graduating in this round.
+`inplace_augassign` graduated (#1614) and had its flag removed (#1679).
 
 | Feature | Flag | Issue | Scope | Lowering | Status |
 |---------|------|-------|-------|----------|--------|
@@ -208,7 +208,7 @@ is a **behavioral-semantics flag** — it gates runtime behavior (mutation vs. r
 | `defer` statement | `defer` | [#1023](https://github.com/antonsynd/sharpy/issues/1023) | `Parser` | scope-exit registration lowered to try/finally | experimental |
 | `as?` / `as!` failable casts | `failable_cast` | [#1029](https://github.com/antonsynd/sharpy/issues/1029) | `Parser` | `(T)value` or `is T … ? Optional<T>.Some(…) : default` | graduated (#1096), flag removed (#1128) |
 | `before_set` / `after_set` property observers | `property_observers` | [#416](https://github.com/antonsynd/sharpy/issues/416) | `Parser` | auto-property lowered to a backing field + expanded setter running the observers around every store | experimental |
-| In-place augmented assignment on collections | `inplace_augassign` | [#1614](https://github.com/antonsynd/sharpy/issues/1614) | `Semantic` | `xs += ys` → `xs.Extend(ys)` (mutation call) instead of rebind | graduating |
+| In-place augmented assignment on collections | `inplace_augassign` | [#1614](https://github.com/antonsynd/sharpy/issues/1614) | `Semantic` | `xs += ys` → `xs.Extend(ys)` (mutation call) instead of rebind | graduated (#1614), flag removed (#1679) |
 
 Each pilot registered its name in `KnownFeatures`, registered its gated construct (`@`/`@=`, the
 `defer` statement, the `as?`/`as!`-form `TypeCoercion`, and a `PropertyDef` carrying non-empty

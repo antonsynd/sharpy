@@ -128,10 +128,10 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<MemberAccess, (TypeSymbol Owner, Symbol Member)> _memberAccessResolutions =
         new(ReferenceEqualityComparer.Instance);
 
-    // #1428: augmented assignment mutation lowering — when the inplace_augassign feature is
-    // enabled and the assignment matches the Classify table, the emitter emits a mutation call
-    // (e.g. xs.Extend(ys)) instead of the default rebind. Keyed on the Assignment node; value
-    // is the CLR method name on the Sharpy.Core collection.
+    // #1428: augmented assignment mutation lowering — when an augmented assignment matches the
+    // Classify table, the emitter emits a mutation call (e.g. xs.Extend(ys)) instead of the
+    // default rebind. Keyed on the Assignment node; value is the CLR method name on the
+    // Sharpy.Core collection.
     private readonly ConcurrentDictionary<Assignment, string> _augmentedAssignMutations =
         new(ReferenceEqualityComparer.Instance);
 
@@ -755,8 +755,8 @@ public class SemanticInfo : ISemanticQuery
 
     /// <summary>
     /// Records that this augmented assignment should lower to a mutation call instead of the default
-    /// rebind (#1428). Set by the TypeChecker when <c>inplace_augassign</c> is enabled and the
-    /// assignment matches <see cref="AugmentedCollectionAssignment.Classify"/>.
+    /// rebind (#1428). Set by the TypeChecker when the assignment matches
+    /// <see cref="AugmentedCollectionAssignment.Classify"/>.
     /// </summary>
     public void SetAugmentedAssignMutation(Assignment node, string clrMethodName)
     {
