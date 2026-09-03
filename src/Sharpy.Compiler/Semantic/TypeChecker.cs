@@ -5,6 +5,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -530,6 +531,19 @@ internal partial class TypeChecker
             }
         }
 
+        // Pre-pass: resolve declared types for module-level consts so forward references
+        // type as their annotation rather than Unknown (#1728).
+        foreach (var statement in module.Body)
+        {
+            if (statement is Parser.Ast.VariableDeclaration { IsConst: true } constTypeDecl
+                && constTypeDecl.Type != null
+                && _symbolTable.Lookup(constTypeDecl.Name) is VariableSymbol { IsConstant: true } constTypeSym)
+            {
+                var declaredType = _typeResolver.ResolveTypeAnnotation(constTypeDecl.Type);
+                SemanticBinding.SetVariableType(constTypeSym, declaredType);
+            }
+        }
+
         // Pre-pass: fold constant values for module-level consts (#1601). Fixed-point
         // iteration handles forward references and chains (BETA = ALPHA, ALPHA = 200):
         // each pass folds consts whose dependencies were resolved on a prior pass.
@@ -555,28 +569,10 @@ internal partial class TypeChecker
             }
         } while (foldedAny);
 
-        foreach (var statement in module.Body)
-        {
-            if (statement is Parser.Ast.VariableDeclaration { IsConst: true } unfoldedDecl
-                && unfoldedDecl.InitialValue != null
-                && _symbolTable.Lookup(unfoldedDecl.Name) is VariableSymbol { IsConstant: true, ConstantValue: null })
-            {
-                var unfoldedType = _typeResolver.ResolveTypeAnnotation(unfoldedDecl.Type);
-                if (Registry.PrimitiveCatalog.GetPrimitiveInfo(unfoldedType)?.Kind
-                    is not (Registry.PrimitiveCatalog.NumericKind.SignedInteger
-                        or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger))
-                    continue;
-
-                if (ReferencesUnfoldedConst(unfoldedDecl.InitialValue))
-                {
-                    AddError(
-                        $"Circular constant reference: '{unfoldedDecl.Name}' depends on a constant that references it back",
-                        unfoldedDecl.LineStart, unfoldedDecl.ColumnStart,
-                        code: DiagnosticCodes.Semantic.CircularConstantReference,
-                        span: unfoldedDecl.Span);
-                }
-            }
-        }
+        // Dependency-graph DFS cycle detection for module-level consts (#1728).
+        // Type-independent: works for int, float, str, bool, decimal — any const whose
+        // value was not folded in the fixed-point pass above.
+        DetectConstantCycles(module);
 
         // Compute statement-level narrowing facts for the module body (#1042). Module-level code is
         // its own narrowing scope; nested functions/lambdas get their own flow when checked.
@@ -689,29 +685,80 @@ internal partial class TypeChecker
         }
     }
 
-    /// <summary>
-    /// Returns true when <paramref name="expr"/> references a constant whose value
-    /// has not yet been folded (ConstantValue is null). Used to raise SPY0278
-    /// (CircularConstantReference) for circular constant references. The default
-    /// (false) is conservative: an expression kind not enumerated here is treated as
-    /// not referencing an unfolded constant, which means a cycle through that kind
-    /// produces no SPY0278 — the wrong-diagnostic shape, not silent-wrong-output.
-    /// Pinned by ConstantCycleDetectionTests.
-    /// </summary>
-    private bool ReferencesUnfoldedConst(Expression expr)
+    private void DetectConstantCycles(Module module)
     {
-        switch (expr)
+        var constDecls = new Dictionary<string, Parser.Ast.VariableDeclaration>();
+        foreach (var statement in module.Body)
         {
-            case Identifier id:
-                return _symbolTable.Lookup(id.Name) is VariableSymbol { IsConstant: true, ConstantValue: null };
-            case UnaryOp unary:
-                return ReferencesUnfoldedConst(unary.Operand);
-            case BinaryOp binary:
-                return ReferencesUnfoldedConst(binary.Left) || ReferencesUnfoldedConst(binary.Right);
-            case Parenthesized paren:
-                return ReferencesUnfoldedConst(paren.Expression);
-            default:
-                return false;
+            if (statement is Parser.Ast.VariableDeclaration { IsConst: true } decl
+                && decl.InitialValue != null
+                && _symbolTable.Lookup(decl.Name) is VariableSymbol { IsConstant: true, ConstantValue: null })
+            {
+                constDecls[decl.Name] = decl;
+            }
+        }
+
+        if (constDecls.Count == 0)
+            return;
+
+        var deps = new Dictionary<string, HashSet<string>>();
+        foreach (var (name, decl) in constDecls)
+        {
+            var referencedConsts = new HashSet<string>();
+            AstHelper.ContainsDescendant(
+                decl.InitialValue!,
+                n =>
+                {
+                    if (n is Identifier id
+                        && _symbolTable.Lookup(id.Name) is VariableSymbol { IsConstant: true } vs
+                        && constDecls.ContainsKey(vs.Name))
+                    {
+                        referencedConsts.Add(vs.Name);
+                    }
+                    return false;
+                },
+                static n => n is LambdaExpression);
+            deps[name] = referencedConsts;
+        }
+
+        var onCycle = new HashSet<string>();
+        var visited = new HashSet<string>();
+        var inProgress = new HashSet<string>();
+
+        void Dfs(string name, List<string> path)
+        {
+            if (visited.Contains(name))
+                return;
+            if (inProgress.Contains(name))
+            {
+                var cycleStart = path.IndexOf(name);
+                for (int i = cycleStart; i < path.Count; i++)
+                    onCycle.Add(path[i]);
+                return;
+            }
+            inProgress.Add(name);
+            path.Add(name);
+            if (deps.TryGetValue(name, out var neighbors))
+            {
+                foreach (var neighbor in neighbors)
+                    Dfs(neighbor, path);
+            }
+            path.RemoveAt(path.Count - 1);
+            inProgress.Remove(name);
+            visited.Add(name);
+        }
+
+        foreach (var name in constDecls.Keys)
+            Dfs(name, new List<string>());
+
+        foreach (var name in onCycle)
+        {
+            var decl = constDecls[name];
+            AddError(
+                $"Circular constant reference: '{name}' depends on a constant that references it back",
+                decl.LineStart, decl.ColumnStart,
+                code: DiagnosticCodes.Semantic.CircularConstantReference,
+                span: decl.Span);
         }
     }
 

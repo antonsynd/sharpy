@@ -124,18 +124,18 @@ internal static class AstHelper
     /// </summary>
     public static bool ContainsWalrusExpression(Expression expr)
     {
-        return ContainsWalrusInDescendants(expr);
+        return ContainsDescendant(expr, static n => n is WalrusExpression, static n => n is LambdaExpression);
     }
 
-    private static bool ContainsWalrusInDescendants(Node node)
+    internal static bool ContainsDescendant(Node root, Func<Node, bool> predicate, Func<Node, bool>? stopAt = null)
     {
-        if (node is WalrusExpression)
+        if (predicate(root))
             return true;
-        if (node is LambdaExpression)
+        if (stopAt?.Invoke(root) == true)
             return false;
-        foreach (var child in node.GetChildNodes())
+        foreach (var child in root.GetChildNodes())
         {
-            if (ContainsWalrusInDescendants(child))
+            if (ContainsDescendant(child, predicate, stopAt))
                 return true;
         }
         return false;

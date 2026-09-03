@@ -2667,12 +2667,17 @@ internal partial class TypeChecker
         if (inferenceResult.Success && inferenceResult.InferredTypes != null)
         {
             _semanticInfo.SetInferredTypeArguments(call, inferenceResult.InferredTypes);
-            return SubstituteTypeParameters(
+            var result = SubstituteTypeParameters(
                 overload.ReturnType,
                 overload.TypeParameters,
                 inferenceResult.InferredTypes);
+            if (ContainsTypeParameterType(result))
+                return SemanticType.Unknown;
+            return result;
         }
 
+        if (ContainsTypeParameterType(overload.ReturnType))
+            return SemanticType.Unknown;
         return overload.ReturnType;
     }
 

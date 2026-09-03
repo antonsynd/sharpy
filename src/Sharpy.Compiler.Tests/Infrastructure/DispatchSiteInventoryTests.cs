@@ -203,7 +203,7 @@ public class DispatchSiteInventoryTests
         // GeneratorContextBuilder.ExtractLiteralValue: dispatch moved to AstHelper.TryGetLiteralValue (#1716)
         ["Project/ProjectCompiler.Generators.cs::ProjectCompiler.IntegrateGeneratedSource"] = "guarded-by:DeclarationKindDispatchTotalityTests",
         ["Semantic/ModuleLoader.cs::ModuleLoader.ExtractNestedTypes"] = "guarded-by:DeclarationKindDispatchTotalityTests",
-        ["Semantic/TypeChecker.cs::TypeChecker.ReferencesUnfoldedConst"] = "guarded-by:ConstantCycleDetectionTests",
+
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.DescribeTypeOperand"] = "documented-by-design:Semantic/TypeChecker.Expressions.Access.Calls.cs:DescribeTypeOperand",
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.IsLiteralStringExpression"] = "guarded-by:IsLiteralStringExpressionTotalityTests",
         ["Semantic/TypeChecker.Expressions.Access.Lambdas.cs::TypeChecker.InferParamTypesFromSubExpression"] = "refusal-net:LambdaTypeInferenceTests",
