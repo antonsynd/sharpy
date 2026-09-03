@@ -18,12 +18,10 @@ The `Optional` type is part of the standard library and provides special syntax 
 
 ## Creating Optional Values
 
-```python
-# Bare None (preferred)
-value: int? = Some(42)
-empty: int? = None
+`Optional[T]` is constructed exclusively through `Some(value)` and `None()`:
 
-# None() (explicit alternative)
+```python
+value: int? = Some(42)
 empty: int? = None()
 
 # Fully qualified (equivalent)
@@ -31,7 +29,14 @@ value: Optional[int] = Optional.Some(42)
 empty: Optional[int] = Optional.None()
 ```
 
-Bare `None` and `None()` are interchangeable for `T?`. Bare `None` is the more ergonomic form. For `T | None` (C# nullable interop), only bare `None` is valid — see [Nullable Types](nullable_types.md).
+A bare value or bare `None` is **not** accepted for `T?` — use `Some(…)` or `None()`:
+
+```python
+# x: int? = 1       # SPY0604 — use Some(1)
+# y: int? = None     # SPY0604 — use None(), or declare y: int | None
+```
+
+Bare `None` belongs to `T | None` (C# nullable interop) — see [Nullable Types](nullable_types.md). The `maybe` expression bridges a `T` value into `T?`: `z: int? = maybe x` wraps `x` in `Some` when non-null.
 
 ## Pattern Matching
 
@@ -146,28 +151,28 @@ union Optional[T]:
 
 ## Constructor Shorthand
 
-When the expected type is known, you can use `Some(value)` and `None`
-without qualifying with the type name:
+When the expected type is known, `Some(value)` and `None()` infer the full
+`Optional<T>` type from context — no qualification needed:
 
 ```python
-# With type annotation - shorthand works
+# With type annotation
 x: int? = Some(42)
-y: int? = None
+y: int? = None()
 
-# Function return - shorthand works
+# Function return
 def get_value() -> int?:
     return Some(42)
 
-# Default parameter - shorthand works
-def foo(x: int? = None) -> None:
+# Default parameter
+def foo(x: int? = None()) -> None:
     pass
 
 # Without type context - error (type cannot be inferred)
 x = Some(42)   # Error: Cannot infer type for 'Some()'
 ```
 
-The compiler infers the full type from context. The shorthand is equivalent to
-calling `Optional<T>.Some(value)` or using `Optional<T>.None()`.
+The shorthand is equivalent to calling `Optional<T>.Some(value)` or
+`Optional<T>.None()`.
 
 ## Protocol Operations and Member Access
 
@@ -335,7 +340,7 @@ opt_number: int? = Some(42)
 opt_string = opt_number.map(lambda x: f"The answer is {x}")
 # Result: Some("The answer is 42")
 
-opt_nothing: int? = None
+opt_nothing: int? = None()
 opt_result = opt_nothing.map(lambda x: x * 2)
 # Result: None
 ```

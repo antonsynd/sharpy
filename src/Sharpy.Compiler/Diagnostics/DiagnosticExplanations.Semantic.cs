@@ -108,7 +108,7 @@ public static partial class DiagnosticExplanations
 
         Add(dict, DiagnosticCodes.Semantic.NullabilityViolation, "Nullability violation", "Semantic",
             "A potentially null value is being used in a context that requires a non-null value. Use Optional[T] for values that can be None, and handle the None case before using the value.",
-            "def get_name() -> Optional[str]:\n    return None\n\nname: str = get_name()  # might be None",
+            "def get_name() -> Optional[str]:\n    return None()\n\nname: str = get_name()  # might be None",
             "Handle the null case:\nresult = get_name()\nif result is not None:\n    name: str = result");
 
         Add(dict, DiagnosticCodes.Semantic.NotCallable, "Type is not callable", "Semantic",

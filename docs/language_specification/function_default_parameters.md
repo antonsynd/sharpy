@@ -68,7 +68,7 @@ def still_broken(point: Point = Point(0, 0)) -> None:  # ERROR: constructor call
 Use `None` as the default and create the mutable object inside the function:
 
 ```python
-def append_to(item: int, target: list[int]? = None) -> list[int]:
+def append_to(item: int, target: list[int]? = None()) -> list[int]:
     if target is None:
         target = []
     target.append(item)

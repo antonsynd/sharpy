@@ -8,12 +8,12 @@ This document maps Python `typing` constructs to their Sharpy equivalents.
 
 | Python `typing` | Sharpy Native | Example |
 |---|---|---|
-| `Optional[X]` | `X?` | `x: int? = None` |
+| `Optional[X]` | `X?` | `x: int? = None()` |
 | `List[X]` | `list[X]` | `items: list[int] = [1, 2, 3]` |
 | `Dict[K, V]` | `dict[K, V]` | `scores: dict[str, int] = {}` |
 | `Set[X]` | `set[X]` | `tags: set[str] = set()` |
 | `Tuple[X, Y]` | `tuple[X, Y]` | `point: tuple[int, int] = (1, 2)` |
-| `Union[X, Y]` | `union` keyword (tagged) or `X?` (nullable) | `x: int? = None` |
+| `Union[X, Y]` | `union` keyword (tagged) or `X?` (nullable) | `x: int? = None()` |
 | `Callable[[X], Y]` | `(X) -> Y` | `f: (int) -> str` |
 | `Any` | Not supported -- use concrete types or generics | `def identity[T](x: T) -> T` |
 | `TypeVar` | Generic type parameters `[T]` | `class Box[T]` |
