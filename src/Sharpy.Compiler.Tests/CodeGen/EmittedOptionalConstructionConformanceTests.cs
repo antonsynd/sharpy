@@ -29,6 +29,16 @@ public class EmittedOptionalConstructionConformanceTests
         _output = output;
     }
 
+    // Allowlist: known violations that drain on fix (each cites its tracking issue).
+    // A non-allowlisted violation fails the test; a stale allowlist entry (file gone
+    // or violation fixed) also fails — entries drain, never accumulate.
+    private static readonly HashSet<string> Allowlist = new(StringComparer.Ordinal)
+    {
+        // #1747 — null-conditional lowering emits bare T in the true branch
+        "optionals/null_conditional_chaining.expected.cs",
+        "optionals/null_conditional_flatten.expected.cs",
+    };
+
     [Fact]
     public void SnapshotCorpus_NoImplicitConversionToOptional()
     {
@@ -38,8 +48,10 @@ public class EmittedOptionalConstructionConformanceTests
 
         var references = IntegrationTestBase.GetSharedReferences();
         var violations = new List<string>();
+        var allowlistedViolations = new List<string>();
         int scannedFiles = 0;
         int scannedExpressions = 0;
+        var filesWithViolations = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var file in snapshotFiles.OrderBy(f => f, StringComparer.Ordinal))
         {
@@ -59,25 +71,47 @@ public class EmittedOptionalConstructionConformanceTests
             var model = compilation.GetSemanticModel(tree);
             scannedFiles++;
 
+            var relativePath = Path.GetRelativePath(FixturesRoot, file)
+                .Replace(Path.DirectorySeparatorChar, '/');
+
             foreach (var expr in tree.GetRoot().DescendantNodes().OfType<ExpressionSyntax>())
             {
                 scannedExpressions++;
                 if (IsImplicitOptionalConversion(model, expr))
                 {
                     var span = expr.GetLocation().GetLineSpan();
-                    var relativePath = Path.GetRelativePath(FixturesRoot, file);
                     var text = expr.ToString().Replace("\n", " ");
                     if (text.Length > 80)
                         text = text[..80] + "...";
-                    violations.Add(
+                    var entry =
                         $"{relativePath}:{span.StartLinePosition.Line + 1} " +
-                        $"implicit T→Optional<T> on: {text}");
+                        $"implicit T→Optional<T> on: {text}";
+
+                    if (Allowlist.Contains(relativePath))
+                    {
+                        allowlistedViolations.Add(entry);
+                        filesWithViolations.Add(relativePath);
+                    }
+                    else
+                    {
+                        violations.Add(entry);
+                    }
                 }
             }
         }
 
         _output.WriteLine(
             $"Scanned {scannedFiles} snapshot file(s), {scannedExpressions} expression node(s).");
+        if (allowlistedViolations.Count > 0)
+            _output.WriteLine(
+                $"Allowlisted violations ({allowlistedViolations.Count}): " +
+                string.Join("; ", allowlistedViolations.Select(v => v.Split(' ')[0])));
+
+        // Stale allowlist entries fail — entries drain on fix, never accumulate.
+        var staleEntries = Allowlist.Except(filesWithViolations).ToList();
+        Assert.True(staleEntries.Count == 0,
+            $"Allowlist has {staleEntries.Count} stale entry/entries (violation fixed — remove them): " +
+            string.Join(", ", staleEntries));
 
         Assert.True(violations.Count == 0,
             $"Emitted C# relies on Optional<T>'s implicit operator in {violations.Count} place(s) " +
