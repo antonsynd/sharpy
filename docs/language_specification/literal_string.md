@@ -122,6 +122,25 @@ LiteralString <: str
 
 This ensures that functions accepting `str` work with literal strings, but functions requiring `LiteralString` reject runtime-constructed strings.
 
+### Use Surface
+
+A `LiteralString` value supports every operation a `str` does: operators (`==`, `!=`, `<`,
+`+`, `*`), comparison chains, `len`, indexing, slicing, iteration, `in`, truthiness (`if x:`),
+method calls (including `split`, which returns `list[str]`), f-strings, `str()`, and `sorted`.
+
+```python
+def main() -> None:
+    x: LiteralString = "hello"
+    print(x.upper())           # HELLO
+    print(x.startswith("he"))  # True
+    print(x.replace("l", "r", 1))  # herlo
+    print(f"{x}!")             # hello!
+    print(str(x))              # hello
+```
+
+`x + "b"` is still literal-derived (admissible into a `LiteralString` slot), while `x + s`
+(where `s: str`) is not — `x += s` is SPY0220.
+
 ## Use Cases
 
 `LiteralString` is primarily useful for:

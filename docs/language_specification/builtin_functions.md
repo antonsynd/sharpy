@@ -296,7 +296,7 @@ naming its source container (see deviation `iterator-repr-no-address` in
 | `len(x)` | Get length | Calls `__len__` if defined, else `.Count` or `.Length` |
 | `min(iter)` | Minimum value | `.Min()` or `Math.Min()` |
 | `max(iter)` | Maximum value | `.Max()` or `Math.Max()` |
-| `sum(iter)` | Sum values | `.Sum()` |
+| `sum(iter)` | Sum values | `Builtins.Sum()` |
 | `sorted(iter)` | Sort collection | `Builtins.Sorted<T>()` → `List<T>` |
 | `reversed(iter)` | Reverse | `Builtins.Reversed<T>()` → `Iterator<T>` |
 | `enumerate(iter)` | Index + value | `.Select((x, i) => (i, x))` |
@@ -397,6 +397,23 @@ for i, name in enumerate(names, 1):
 ```
 
 *Implementation: 🔄 Lowered - `.Select((x, i) => (i + start, x))`.*
+
+**`sum()` Integer Widths:**
+
+`sum` accepts every integer width. The result type is the element's C# arithmetic width:
+
+| Element type | Result type | Notes |
+|---|---|---|
+| `int8`, `uint8`, `int16`, `uint16` | `int32` | C# promotes sub-int arithmetic to `int` |
+| `int32` | `int32` | |
+| `uint32` | `uint32` | |
+| `int64` | `int64` | |
+| `uint64` | `uint64` | |
+| `float32`, `float64` | same | |
+
+Each width has a `start` form: `sum(xs, start)` initialises the accumulator to `start` and adds
+elements onto it. Overflow raises `OverflowError` (checked accumulation, matching the `int`
+form's LINQ `Sum` overflow behaviour).
 
 | `zip(a, b)` | Combine iterables | `.Zip()` |
 | `range(n)` | Number sequence | `Enumerable.Range()` |

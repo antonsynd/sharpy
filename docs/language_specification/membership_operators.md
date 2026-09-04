@@ -77,5 +77,22 @@ if "ell" in "Hello":            # Calls str.Contains()
     print("Found substring")
 ```
 
+## Needle Type
+
+The needle (left operand) is checked against the container's element type as an argument into the
+element slot. A constant converts when in range, a variable that C# cannot implicitly convert is
+refused by name, and a non-numeric type mismatch is reported:
+
+```python
+xs: list[uint64] = [1, 2, 3]
+print(2 in xs)            # True — constant 2 converts to uint64
+# n: int32 = 2
+# print(n in xs)          # SPY0222 — int32 cannot be used with uint64; cast
+# print("a" in xs)        # SPY0222 — str is not a uint64
+print(1 in [1, 2, 3])     # True  — same-width, always works
+```
+
+Tuples are not containers — `2 in (1, 2)` is SPY0320.
+
 *Implementation*
 - *Lowered: `x in y` emits `y.Contains(x)`. For Sharpy classes, `__contains__` compiles to a C# `Contains` method, so the same `.Contains()` call dispatches correctly for both Sharpy and .NET types.*

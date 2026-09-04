@@ -221,6 +221,31 @@ handle_result(Err("bad"))   # Short for Result.Err("bad")
 
 The compiler infers the full type from the variable's type annotation or the parameter's type signature.
 
+**Bare vs. qualified spelling.** The bare form (`Ok(42)`, `Err("e")`, `Some(v)`, `None()`) is
+the builtin unions' only spelling. User-defined unions are always constructed with the qualified
+`Union.Case(…)` syntax:
+
+```python
+union Box[T]:
+    case Full(v: T)
+    case Empty()
+
+b: Box[int] = Box.Full(1)    # qualified — type inferred from the annotation
+p = Box.Full("hi")           # qualified — type inferred from the argument: Box[str]
+e: Box[int] = Box.Empty()    # qualified — type from annotation; no args to infer from
+# c = Full(1)                # SPY0200 — bare case name is not in scope
+```
+
+When neither a slot annotation nor the arguments supply type information, the case constructor
+cannot infer the type parameters, and SPY0227 is reported:
+
+```python
+# x = Box.Empty()            # SPY0227 — cannot infer T; add an annotation
+```
+
+The qualified builtin forms (`Optional.Some(…)`, `Result.Ok(…)`) are not supported today (#1758,
+Batch 3).
+
 ## Pattern Matching
 
 ```python
