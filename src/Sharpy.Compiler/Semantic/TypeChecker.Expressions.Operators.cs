@@ -104,8 +104,12 @@ internal partial class TypeChecker
             return SemanticType.Bool;
         }
 
+        // §10.2.11: a constant operand converts to the other operand's type before promotion
+        var (effectiveLeftType, effectiveRightType) = EffectiveOperandTypes(
+            binOp.Operator, binOp.Left, leftType, binOp.Right, rightType);
+
         // Use TypeInferenceService for type inference
-        var resultType = _typeInference.InferBinaryOpType(binOp.Operator, leftType, rightType);
+        var resultType = _typeInference.InferBinaryOpType(binOp.Operator, effectiveLeftType, effectiveRightType);
 
         // If type inference fails, report the error directly
         // (validators may not catch all type incompatibilities)
@@ -2013,6 +2017,27 @@ internal partial class TypeChecker
         AssignmentOperator.NullCoalesceAssign => "??=",
         _ => op.ToString()
     };
+
+    private (SemanticType left, SemanticType right) EffectiveOperandTypes(
+        BinaryOperator op, Expression left, SemanticType leftType,
+        Expression right, SemanticType rightType)
+    {
+        if (op is BinaryOperator.LeftShift or BinaryOperator.RightShift)
+            return (leftType, rightType);
+
+        var resolver = MakeConstantResolver();
+        var leftConverts = ImplicitConversions.IsImplicitIntegerConstantConversion(
+            left, leftType, rightType, resolver);
+        var rightConverts = ImplicitConversions.IsImplicitIntegerConstantConversion(
+            right, rightType, leftType, resolver);
+
+        if (leftConverts && !rightConverts)
+            return (rightType, rightType);
+        if (rightConverts && !leftConverts)
+            return (leftType, leftType);
+
+        return (leftType, rightType);
+    }
 
     private void ReportUnsupportedBinaryOperator(
         Node node, string operatorSpelling,

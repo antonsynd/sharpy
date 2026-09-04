@@ -327,10 +327,19 @@ internal partial class TypeChecker
                 return;
             }
 
+            // §10.2.11: constant RHS converts to the target's type before promotion
+            var effectiveValueType = valueType;
+            if (assignment.Operator is not (AssignmentOperator.LeftShiftAssign or AssignmentOperator.RightShiftAssign)
+                && ImplicitConversions.IsImplicitIntegerConstantConversion(
+                    assignment.Value, valueType, targetType, MakeConstantResolver()))
+            {
+                effectiveValueType = targetType;
+            }
+
             var resultType = _typeInference.InferAugmentedAssignmentType(
                 assignment.Operator,
                 targetType,
-                valueType);
+                effectiveValueType);
 
             if (resultType == null)
             {
