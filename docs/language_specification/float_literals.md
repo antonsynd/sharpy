@@ -67,6 +67,8 @@ def taxed(rate: decimal = 0.2) -> None:   # parameter default
 def main() -> None:
     d: decimal = 1.5            # declaration
     print(d)                    # 1.5
+    e: decimal = 1.5e2          # exponent form narrows too
+    print(e)                    # 150
     taxed(0.25)                 # argument                  -> 0.25
     print(money())              # 0.1
     ds: list[decimal] = [0.5]   # collection-literal element
