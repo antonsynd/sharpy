@@ -7,6 +7,11 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-09-04
+
+### Changed
+- No extension-facing changes (a dev-dependency bump only); version bumped with the toolchain. Toolchain-side (breaking): strict Optional construction — `Some(v)`/`None()` are the only constructors, `T → T?` and bare `None → T?` are refused with SPY0604 steers; one store-conversion seam decides every store position (integer constants, `float32`/`decimal` literals and `LiteralString` convert at declarations, stores, returns, defaults, arguments, elements, lambda bodies and walrus targets alike); numeric promotion follows C# §12.4.7 with constant operands converting first, `uint64 ** uint64` keeps its width; const cycles are detected through every expression edge; SPY0524 names an emitted-tree precedence inversion before the C# compile; the `inplace_augassign` feature flag is removed.
+
 ## [0.17.0] - 2026-08-30
 
 ### Changed
