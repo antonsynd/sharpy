@@ -55,6 +55,67 @@ public class UnsubstitutedTypeParameterGuardTests : IntegrationTestBase
     }
 
     /// <summary>
+    /// The inference-failure cells: a generic callee whose argument is already <c>Unknown</c>
+    /// (an undefined name) cannot bind its own type parameter, and the call's type must become
+    /// <c>Unknown</c> rather than the raw <c>T</c> — otherwise the store one token later reports
+    /// "Cannot assign type 'T' …". These are the cells the const forward references no longer
+    /// reach (the const pre-pass types them by annotation), so they are what keeps
+    /// <c>FinalizeCallReturnType</c> load-bearing: with it reverted, every row below renders 'T'
+    /// (measured 2026-09-04 @ d5b4d4bb3 — both spellings leaked before the seam).
+    /// </summary>
+    [Theory]
+    [InlineData("def main() -> None:\n    x: str = max(nope, 1)\n    print(x)\n",
+        "builtin max: one Unknown argument beside a constant")]
+    [InlineData("def main() -> None:\n    y: int = min(missing_a, missing_b)\n    print(y)\n",
+        "builtin min: every argument Unknown")]
+    [InlineData("def first[T](xs: list[T]) -> T:\n    return xs[0]\n\ndef main() -> None:\n    z: int = first(nope)\n    print(z)\n",
+        "user generic function: Unknown argument")]
+    public void GenericCallOverUnknownArgument_ReportsOnlyTheUndefinedName_NeverT(string program, string cell)
+    {
+        var result = CompileAndExecute(program);
+
+        result.Success.Should().BeFalse($"{cell}: the undefined name is refused");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.UndefinedVariable,
+            $"{cell}: the undefined name is the diagnostic (positive control that the program is checked)");
+        AssertNoDiagnosticNamesATypeParameter(result, cell);
+    }
+
+    /// <summary>
+    /// The opposite direction, and the reason the rule is scope-aware: a type parameter of the
+    /// ENCLOSING class is in scope, so a generic call whose inference binds to it keeps that type
+    /// and the mistyped store is refused by name — never erased to Unknown (which ICEd with CS0029
+    /// between a1b22ed94 and this fix; SPY0220 naming 'U' at f7c7d3d97).
+    /// </summary>
+    [Fact]
+    public void GenericCallBoundToAnEnclosingClassParameter_KeepsThatParameter_AndRefusesByName()
+    {
+        var result = CompileAndExecute(@"
+def first[T](xs: list[T]) -> T:
+    return xs[0]
+
+class Box[U]:
+    items: list[U]
+    def __init__(self, items: list[U]) -> None:
+        self.items = items
+    def bad(self) -> int:
+        x: int = first(self.items)
+        return x
+
+def main() -> None:
+    b: Box[str] = Box([""a""])
+    print(b.bad())
+");
+        result.Success.Should().BeFalse("storing a U into an int32 is a type mismatch");
+        result.RawDiagnostics.Should().NotContain(d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            "the class parameter is in scope; erasing it to Unknown is what ICEd");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.TypeMismatch && d.Message.Contains("'U'", StringComparison.Ordinal),
+            "the refusal names the in-scope parameter; got "
+            + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
+    }
+
+    /// <summary>
     /// The forward-reference cells (#1728 e4 and its float twin): acyclic, so they RUN — the leak
     /// was a forward-reference defect, not a cycle-detection one, and the value proves the const's
     /// declared type carried the inference.
@@ -107,7 +168,10 @@ def main():
 
     private static void AssertNoDiagnosticNamesATypeParameter(ExecutionResult result, string cell)
     {
+        // SPY0237 ("Type parameter 'T' cannot be inferred") is ABOUT the parameter it names — the
+        // one diagnostic whose subject is the type parameter itself, not a type that leaked one.
         var offenders = result.RawDiagnostics
+            .Where(d => d.Code != DiagnosticCodes.Semantic.CannotInferGenericType)
             .Where(d => d.Message.Contains(TypeParameterToken, StringComparison.Ordinal))
             .Select(d => $"{d.Code}:{d.Message}")
             .ToList();

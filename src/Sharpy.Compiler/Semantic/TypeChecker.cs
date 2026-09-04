@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Sharpy.Compiler.Analysis.ControlFlow;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
@@ -44,6 +45,13 @@ internal partial class TypeChecker
 
     // Track current class being checked (for self parameter typing)
     private TypeSymbol? _currentClass = null;
+
+    // The names of the type parameters declared by the enclosing FUNCTIONS (a generic def, and any
+    // generic def it is nested in). Together with _currentClass's parameters these are the type
+    // parameters a call's result may legitimately still name; any other TypeParameterType left in a
+    // call's type is the callee's own parameter that inference failed to bind (an Unknown argument,
+    // an early-return route) and must become Unknown rather than render 'T' (#1728, Decision 9 ii).
+    private ImmutableHashSet<string> _functionTypeParametersInScope = ImmutableHashSet<string>.Empty;
 
     // Track type narrowing in conditional contexts with proper scope isolation.
     // After #1042 (P5.3) this carries ONLY expression-level narrowings that the statement-level

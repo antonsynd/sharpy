@@ -277,6 +277,10 @@ internal partial class TypeChecker
         // Validate parameter ordering and register parameters in scope
         RegisterFunctionParameters(functionDef, functionSymbol);
 
+        var previousFunctionTypeParametersInScope = _functionTypeParametersInScope;
+        _functionTypeParametersInScope = _functionTypeParametersInScope.Union(
+            functionSymbol?.TypeParameters.Select(tp => tp.Name) ?? Enumerable.Empty<string>());
+
         // Update function symbol return type and sync with owning TypeSymbol
         UpdateFunctionSymbol(functionDef, functionSymbol, returnType);
 
@@ -343,6 +347,7 @@ internal partial class TypeChecker
 
         _symbolTable.ExitScope();
         _currentFunctionReturnType = previousFunctionReturnType;
+        _functionTypeParametersInScope = previousFunctionTypeParametersInScope;
         _typeResolver.SetIsStaticContext(false);
     }
 

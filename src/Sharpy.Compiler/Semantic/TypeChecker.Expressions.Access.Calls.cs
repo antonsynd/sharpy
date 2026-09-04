@@ -1252,7 +1252,7 @@ internal partial class TypeChecker
                 genericFuncType.FunctionSymbol.ReturnType,
                 genericFuncType.FunctionSymbol.TypeParameters,
                 genericFuncType.TypeArguments);
-            return substitutedReturnType;
+            return FinalizeCallReturnType(substitutedReturnType);
         }
 
         return null;
@@ -2077,7 +2077,7 @@ internal partial class TypeChecker
                 _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
             // Record the resolved call target for codegen (and check deprecation) — #1438
             RecordResolvedCallTarget(call, matchingOverload);
-            return matchingOverload.ReturnType;
+            return FinalizeCallReturnType(matchingOverload.ReturnType);
         }
 
         // isinstance must always type to bool even when no overload matched. No overload accepts a
@@ -2210,6 +2210,7 @@ internal partial class TypeChecker
         {
             returnType = typeSubstitution(returnType);
         }
+        returnType = FinalizeCallReturnType(returnType);
 
         if (isNullConditionalCall)
             return WrapNullConditionalResult(call, returnType, isOptionalNullConditional);
@@ -2701,8 +2702,10 @@ internal partial class TypeChecker
     private SemanticType InferGenericReturnType(
         FunctionSymbol overload, List<SemanticType> argTypes, FunctionCall call)
     {
+        // A bridged generic builtin (Builtins.Max<T>) carries no own TypeParameters but names T in
+        // its return type — the same seam decides whether that T is in scope or an unbound leak.
         if (!overload.IsGeneric)
-            return overload.ReturnType;
+            return FinalizeCallReturnType(overload.ReturnType);
 
         var inferenceResult = _genericInference.InferTypeArguments(overload, argTypes);
         if (inferenceResult.Success && inferenceResult.InferredTypes != null)
@@ -2712,15 +2715,42 @@ internal partial class TypeChecker
                 overload.ReturnType,
                 overload.TypeParameters,
                 inferenceResult.InferredTypes);
-            if (ContainsTypeParameterType(result))
-                return SemanticType.Unknown;
-            return result;
+            return FinalizeCallReturnType(result);
         }
 
-        if (ContainsTypeParameterType(overload.ReturnType))
-            return SemanticType.Unknown;
-        return overload.ReturnType;
+        return FinalizeCallReturnType(overload.ReturnType);
     }
+
+    /// <summary>
+    /// The type a call records: <paramref name="returnType"/>, or
+    /// <c>Unknown</c> when the type still names a type parameter that is NOT in scope — the
+    /// callee's own parameter that inference failed to bind (an argument was already
+    /// <c>Unknown</c>, or an early-return route never ran inference), so nothing may render the
+    /// unsubstituted <c>'T'</c> in a later diagnostic (#1728, plan-14853b Decision 9 ii). A type
+    /// parameter of the enclosing class or of an enclosing generic def IS in scope and is kept:
+    /// <c>x: int = first(self.items)</c> inside <c>class Box[U]</c> stays the SPY0220 that names
+    /// <c>'U'</c>, never an Unknown that ICEs later (SPY0220 @ f7c7d3d97, CS0029 after a1b22ed94).
+    /// Every route that turns a resolved <see cref="FunctionSymbol"/> into a call's type goes
+    /// through this one seam, so the rule cannot differ by callee kind.
+    /// </summary>
+    private SemanticType FinalizeCallReturnType(SemanticType returnType)
+        => ContainsUnboundTypeParameter(returnType) ? SemanticType.Unknown : returnType;
+
+    private bool IsTypeParameterInScope(TypeParameterType parameter)
+        => _functionTypeParametersInScope.Contains(parameter.Name)
+            || (_currentClass?.TypeParameters.Any(tp => tp.Name == parameter.Name) ?? false);
+
+    private bool ContainsUnboundTypeParameter(SemanticType type) => type switch
+    {
+        TypeParameterType p => !IsTypeParameterInScope(p),
+        ResultType rt => ContainsUnboundTypeParameter(rt.OkType) || ContainsUnboundTypeParameter(rt.ErrorType),
+        OptionalType ot => ContainsUnboundTypeParameter(ot.UnderlyingType),
+        NullableType nt => ContainsUnboundTypeParameter(nt.UnderlyingType),
+        GenericType gt => gt.TypeArguments.Any(ContainsUnboundTypeParameter),
+        FunctionType ft => ft.ParameterTypes.Any(ContainsUnboundTypeParameter) || ContainsUnboundTypeParameter(ft.ReturnType),
+        TupleType tt => tt.ElementTypes.Any(ContainsUnboundTypeParameter),
+        _ => false
+    };
 
     /// <summary>
     /// Validates a function call against a resolved FunctionSymbol, including generic inference,
@@ -2739,7 +2769,7 @@ internal partial class TypeChecker
         // iterable spread. Tuple spread is excluded because tuple size is statically known.
         if (CheckSpreadIntoNonVariadic(call, funcSymbol.Name, funcSymbol.Parameters))
         {
-            var earlyReturn = funcSymbol.ReturnType;
+            var earlyReturn = FinalizeCallReturnType(funcSymbol.ReturnType);
             if (isNullConditionalCall)
                 return WrapNullConditionalResult(call, earlyReturn, isOptionalNullConditional);
             return earlyReturn;
@@ -2805,6 +2835,7 @@ internal partial class TypeChecker
                     clrParameterNames: funcSymbol.ClrMethodName != null);
 
                 // Wrap result in optional/nullable for null conditional calls
+                substitutedReturnType = FinalizeCallReturnType(substitutedReturnType);
                 if (isNullConditionalCall)
                     return WrapNullConditionalResult(call, substitutedReturnType, isOptionalNullConditional);
                 return substitutedReturnType;
@@ -2835,7 +2866,7 @@ internal partial class TypeChecker
         ValidateCallArguments(call, funcSymbol.Parameters, argTypes, kwargTypes, totalArgCount,
             clrParameterNames: funcSymbol.ClrMethodName != null);
 
-        var returnType = funcSymbol.ReturnType;
+        var returnType = FinalizeCallReturnType(funcSymbol.ReturnType);
 
         // Wrap result in optional/nullable for null conditional calls
         if (isNullConditionalCall)
@@ -3141,7 +3172,10 @@ internal partial class TypeChecker
             }
         }
 
-        // Wrap result in optional/nullable for null conditional calls
+        // Wrap result in optional/nullable for null conditional calls. A function-typed value's
+        // declared return type can still name a type parameter no scope declares (a builtin bound
+        // as a function value, called with an Unknown argument) — same seam as the symbol routes.
+        returnType = FinalizeCallReturnType(returnType);
         if (isNullConditionalCall)
             return WrapNullConditionalResult(call, returnType, isOptionalNullConditional);
         return returnType;
