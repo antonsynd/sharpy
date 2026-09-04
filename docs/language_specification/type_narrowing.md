@@ -42,8 +42,12 @@ if isinstance(x, int) or isinstance(x, str):
 ## Stores Use the Declared Type
 
 Narrowing describes what a **read** sees. A **store** is checked against the target's declared
-type — the slot the emitted C# writes — never against the narrowed type of the previous value or
-of an enclosing `assert`/`if`. After a store, reads narrow to the stored value's type.
+type — the slot the emitted C# writes. After a store, reads narrow to the stored value's type.
+
+For **wrapper types** (`T?` or `T | None`), a store inside a narrowing applies the **payload
+rule**: the value is classified against the payload first, then against the declared type. A
+payload-accepted value re-wraps and the narrowing survives; a `None()`/`Some(…)` store or a
+refused value falls back to the declared slot and ends the narrowing.
 
 ```python
 class Box:
@@ -67,7 +71,19 @@ def main() -> None:
 
 A non-nullable declaration is unaffected: `y: str = "a"; y = None` is SPY0229.
 
-The walrus operator follows the same rule — its target slot is the declared binding type:
+A store to a name from an **enclosing block** (inside `if`, `while`, `for`, `try`, `with`, `else`,
+or a nested `def`) is a store into that name's declared slot — the emitted C# local keeps its
+type across blocks:
+
+```python
+def main() -> None:
+    d: int? = Some(10)
+    if d is not None:
+        d = 5   # SPY0604 — use Some(5); the name's slot is int?
+```
+
+The walrus operator follows the same rule — its target slot is the declared binding type
+(see [Walrus Operator](walrus_operator.md)):
 
 ```python
 def main() -> None:

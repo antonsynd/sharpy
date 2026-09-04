@@ -35,6 +35,23 @@ done 0
 
 Before this was fixed, the walrus was hoisted once ahead of the loop for every host other than a direct comparison, so the example above looped forever (#1723).
 
+**Value-Typed (R-V):**
+
+A walrus is a store followed by a read of its target; its type is what the target reads as after
+the store. When the target is a wrapper type (`T?` or `T | None`), the walrus's type reflects the
+stored value, not the wrapper:
+
+```python
+def main() -> None:
+    m: int | None = None
+    n: int = (m := 5)          # m stores 5, reads as int; n = 5
+    print(n)
+```
+
+```
+5
+```
+
 **Type Inference Only:**
 
 The walrus operator always infers the type from the right-hand side expression. Type annotations are not supported with `:=` (matching Python 3.8+ behavior):
