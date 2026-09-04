@@ -603,4 +603,106 @@ def main() -> None:
     }
 
     #endregion
+
+    #region Conditional branch narrowing (#1698, plan-14853b Decision 1)
+
+    private static ConditionalExpression Ternary(Expression thenValue, Expression elseValue) => new()
+    {
+        Test = Id("c"),
+        ThenValue = thenValue,
+        ElseValue = elseValue,
+    };
+
+    private static IntegerLiteral Int(string value) => new() { Value = value };
+
+    /// <summary>
+    /// The SAME conditional AST emits a cast on exactly the arm the store seam recorded a narrowing
+    /// for. C# gives <c>c ? 7 : 8</c> the natural type <c>int</c>, so <c>sbyte b = c ? 7 : 8;</c> is
+    /// CS0266; the recorded fact is what makes the emitted arm <c>(sbyte)7</c>. Mutation M14: make
+    /// <c>ApplyConditionalBranchNarrowing</c> ignore the fact and this test is red.
+    /// </summary>
+    [Fact]
+    public void ConditionalBranch_WithRecordedNarrowing_CastsOnlyThatArm()
+    {
+        var thenValue = Int("7");
+        var elseValue = Int("8");
+        var cond = Ternary(thenValue, elseValue);
+        var info = new SemanticInfo();
+        info.SetConditionalBranchNarrowing(thenValue, SemanticType.SByte);
+        _context.SemanticInfo = info;
+
+        Emit(cond).Should().Be("c ? (sbyte)7 : 8");
+    }
+
+    /// <summary>
+    /// Positive control for the absence assertion above: with the fact on BOTH arms both are cast,
+    /// so "no cast on the other arm" is a property of the recorded fact and not of the emitter
+    /// being unable to cast a second arm at all.
+    /// </summary>
+    [Fact]
+    public void ConditionalBranch_WithNarrowingOnBothArms_CastsBoth()
+    {
+        var thenValue = Int("7");
+        var elseValue = Int("8");
+        var cond = Ternary(thenValue, elseValue);
+        var info = new SemanticInfo();
+        info.SetConditionalBranchNarrowing(thenValue, SemanticType.SByte);
+        info.SetConditionalBranchNarrowing(elseValue, SemanticType.SByte);
+        _context.SemanticInfo = info;
+
+        Emit(cond).Should().Be("c ? (sbyte)7 : (sbyte)8");
+    }
+
+    /// <summary>
+    /// The emitter must still be correct when the fact is absent — an ordinary
+    /// <c>x = 7 if c else 8</c> into an <c>int</c> slot needs no cast, and neither do the
+    /// float32/decimal arms (their literals are re-typed per node and print their own suffix).
+    /// </summary>
+    [Fact]
+    public void ConditionalBranch_WithoutRecordedNarrowing_EmitsNoCast()
+    {
+        var cond = Ternary(Int("7"), Int("8"));
+        _context.SemanticInfo = new SemanticInfo();
+
+        Emit(cond).Should().Be("c ? 7 : 8");
+    }
+
+    /// <summary>
+    /// A different recorded slot type prints a different cast off the same AST — the emitter reads
+    /// the fact rather than deriving a width from the literal.
+    /// </summary>
+    [Fact]
+    public void ConditionalBranch_SameAst_FollowsTheRecordedSlotType()
+    {
+        var thenValue = Int("7");
+        var cond = Ternary(thenValue, Int("8"));
+        var info = new SemanticInfo();
+        info.SetConditionalBranchNarrowing(thenValue, SemanticType.UShort);
+        _context.SemanticInfo = info;
+
+        Emit(cond).Should().Be("c ? (ushort)7 : 8");
+    }
+
+    /// <summary>
+    /// Nested conditionals need no extra emitter machinery: the inner conditional's own arms carry
+    /// their own facts and are reached by the same seam through the recursion in
+    /// <c>GenerateConditionalExpression</c>.
+    /// </summary>
+    [Fact]
+    public void ConditionalBranch_NestedConditional_CastsTheInnerArmsThroughRecursion()
+    {
+        var innerThen = Int("8");
+        var innerElse = Int("9");
+        var outerThen = Int("7");
+        var cond = Ternary(outerThen, Ternary(innerThen, innerElse));
+        var info = new SemanticInfo();
+        info.SetConditionalBranchNarrowing(outerThen, SemanticType.SByte);
+        info.SetConditionalBranchNarrowing(innerThen, SemanticType.SByte);
+        info.SetConditionalBranchNarrowing(innerElse, SemanticType.SByte);
+        _context.SemanticInfo = info;
+
+        Emit(cond).Should().Be("c ? (sbyte)7 : c ? (sbyte)8 : (sbyte)9");
+    }
+
+    #endregion
 }

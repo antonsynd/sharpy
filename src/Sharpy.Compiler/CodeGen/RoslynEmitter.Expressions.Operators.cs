@@ -727,10 +727,35 @@ internal partial class RoslynEmitter
     {
         // value if test else other → test ? value : other
         var test = WrapTruthinessIfNeeded(GenerateExpression(cond.Test), cond.Test);
-        var whenTrue = GenerateExpression(cond.ThenValue);
-        var whenFalse = GenerateExpression(cond.ElseValue);
+        var whenTrue = ApplyConditionalBranchNarrowing(cond.ThenValue, GenerateExpression(cond.ThenValue));
+        var whenFalse = ApplyConditionalBranchNarrowing(cond.ElseValue, GenerateExpression(cond.ElseValue));
 
         return Conditional(test, whenTrue, whenFalse);
+    }
+
+    /// <summary>
+    /// Applies the per-branch narrowing the store seam recorded for an arm of a conditional
+    /// expression (<c>SemanticInfo.SetConditionalBranchNarrowing</c>, plan-14853b Decision 1, #1698).
+    ///
+    /// <para>C# gives <c>c ? 7 : 8</c> the natural type <c>int</c>, so <c>sbyte b = c ? 7 : 8;</c> is
+    /// CS0266 — the conditional-expression conversion applies only when the conditional has no
+    /// natural type, and C# has no narrow-integer literal suffix. <c>c ? (sbyte)7 : (sbyte)8</c>
+    /// compiles, so each admitted arm is cast to the slot type the checker recorded on it.</para>
+    ///
+    /// <para>Rule 2: the emitter reads a materialized fact and prints a cast — it does not ask
+    /// whether the arm is a constant, whether it fits, or what the slot is. An absent fact leaves
+    /// the arm untouched, which is also the whole behavior for the float32/decimal arms (their
+    /// literals are re-typed per node and print their own suffix) and for every non-store
+    /// conditional. Nested conditionals need nothing extra: the inner conditional's own arms carry
+    /// their own facts and are reached by this same seam through
+    /// <see cref="GenerateConditionalExpression"/>'s recursion.</para>
+    /// </summary>
+    private ExpressionSyntax ApplyConditionalBranchNarrowing(Expression branch, ExpressionSyntax generated)
+    {
+        if (_context.SemanticInfo?.GetConditionalBranchNarrowing(branch) is not { } narrowedTo)
+            return generated;
+
+        return Cast(_typeMapper.MapSemanticType(narrowedTo), generated);
     }
 
     private ExpressionSyntax GenerateTypeCoercion(TypeCoercion coercion)
