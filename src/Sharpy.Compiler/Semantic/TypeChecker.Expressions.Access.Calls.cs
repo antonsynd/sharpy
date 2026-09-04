@@ -2208,12 +2208,8 @@ internal partial class TypeChecker
             returnType = typeSubstitution(returnType);
         }
 
-        if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
-        {
-            if (isOptionalNullConditional)
-                return new OptionalType { UnderlyingType = returnType };
-            return new NullableType { UnderlyingType = returnType };
-        }
+        if (isNullConditionalCall)
+            return WrapNullConditionalResult(call, returnType, isOptionalNullConditional);
         return returnType;
     }
 
@@ -2502,12 +2498,8 @@ internal partial class TypeChecker
 
         var returnType = InferGenericReturnType(matchingOverload, argTypes, call);
 
-        if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
-        {
-            if (isOptionalNullConditional)
-                return new OptionalType { UnderlyingType = returnType };
-            return new NullableType { UnderlyingType = returnType };
-        }
+        if (isNullConditionalCall)
+            return WrapNullConditionalResult(call, returnType, isOptionalNullConditional);
         return returnType;
     }
 
@@ -2745,12 +2737,8 @@ internal partial class TypeChecker
         if (CheckSpreadIntoNonVariadic(call, funcSymbol.Name, funcSymbol.Parameters))
         {
             var earlyReturn = funcSymbol.ReturnType;
-            if (isNullConditionalCall && earlyReturn is not NullableType and not OptionalType)
-            {
-                if (isOptionalNullConditional)
-                    return new OptionalType { UnderlyingType = earlyReturn };
-                return new NullableType { UnderlyingType = earlyReturn };
-            }
+            if (isNullConditionalCall)
+                return WrapNullConditionalResult(call, earlyReturn, isOptionalNullConditional);
             return earlyReturn;
         }
 
@@ -2814,12 +2802,8 @@ internal partial class TypeChecker
                     clrParameterNames: funcSymbol.ClrMethodName != null);
 
                 // Wrap result in optional/nullable for null conditional calls
-                if (isNullConditionalCall && substitutedReturnType is not NullableType and not OptionalType)
-                {
-                    if (isOptionalNullConditional)
-                        return new OptionalType { UnderlyingType = substitutedReturnType };
-                    return new NullableType { UnderlyingType = substitutedReturnType };
-                }
+                if (isNullConditionalCall)
+                    return WrapNullConditionalResult(call, substitutedReturnType, isOptionalNullConditional);
                 return substitutedReturnType;
             }
             else
@@ -2851,12 +2835,8 @@ internal partial class TypeChecker
         var returnType = funcSymbol.ReturnType;
 
         // Wrap result in optional/nullable for null conditional calls
-        if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
-        {
-            if (isOptionalNullConditional)
-                return new OptionalType { UnderlyingType = returnType };
-            return new NullableType { UnderlyingType = returnType };
-        }
+        if (isNullConditionalCall)
+            return WrapNullConditionalResult(call, returnType, isOptionalNullConditional);
         return returnType;
     }
 
@@ -3159,12 +3139,8 @@ internal partial class TypeChecker
         }
 
         // Wrap result in optional/nullable for null conditional calls
-        if (isNullConditionalCall && returnType is not NullableType and not OptionalType)
-        {
-            if (isOptionalNullConditional)
-                return new OptionalType { UnderlyingType = returnType };
-            return new NullableType { UnderlyingType = returnType };
-        }
+        if (isNullConditionalCall)
+            return WrapNullConditionalResult(call, returnType, isOptionalNullConditional);
         return returnType;
     }
 

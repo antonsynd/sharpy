@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
@@ -76,17 +77,34 @@ internal static class ImplicitConversions
             || PrimitiveCatalog.GetPrimitiveInfo(initType)?.ClrType != typeof(double))
             return false;
 
+        // Non-throwing and range-checked in one step: a literal above float32's maximum becomes
+        // Infinity when narrowed, which is the refusal (`1e40` is SPY0220, never a crash), and an
+        // exponent form that fits (`1.5e2`) narrows exactly as a plain one does.
         return double.TryParse(
                 literal.Value,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
                 out var value)
             && !double.IsInfinity((double)(float)value);
     }
 
     /// <summary>
     /// Whether an unsuffixed <see cref="FloatLiteral"/> typed as <c>double</c> can narrow to
-    /// <c>decimal</c> without going out of range. Twin of <see cref="IsFloat32LiteralNarrowing"/>.
+    /// <c>decimal</c>. Twin of <see cref="IsFloat32LiteralNarrowing"/>.
+    ///
+    /// <para>Finiteness as a <c>double</c> is not the question — <c>decimal</c>'s range is
+    /// ±7.9e28, far narrower, and its smallest non-zero magnitude is 1e-28. The predicate used to
+    /// ask only <c>double.IsFinite</c>, so it admitted <c>1e40</c>, the seam re-typed the literal
+    /// to <c>decimal</c>, and the emitter's <c>decimal.Parse</c> threw — SPY0909, a compiler CRASH
+    /// where the honest answer is the SPY0220 the same store drew before the decimal arm existed.
+    /// Three questions, all answered without throwing:</para>
+    /// <list type="number">
+    ///   <item>FORM — <c>decimal.TryParse</c> under <see cref="NumberStyles.Float"/>, which is what
+    ///   makes an exponent literal (<c>1.5e2</c>) a decimal literal at all.</item>
+    ///   <item>RANGE — the same call returns false for <c>1e40</c>, above decimal's maximum.</item>
+    ///   <item>UNDERFLOW — <c>1e-30</c> PARSES, to <c>0m</c>. Admitting it would store a silently
+    ///   wrong value, so a non-zero literal that becomes zero is refused.</item>
+    /// </list>
     /// </summary>
     public static bool IsDecimalLiteralNarrowing(
         SemanticType declaredType,
@@ -102,11 +120,23 @@ internal static class ImplicitConversions
 
         if (!double.TryParse(
                 literal.Value,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var value))
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out var asDouble)
+            || !double.IsFinite(asDouble))
+        {
             return false;
+        }
 
-        return double.IsFinite(value);
+        if (!decimal.TryParse(
+                literal.Value,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out var asDecimal))
+        {
+            return false;
+        }
+
+        return asDecimal != 0m || asDouble == 0.0;
     }
 }

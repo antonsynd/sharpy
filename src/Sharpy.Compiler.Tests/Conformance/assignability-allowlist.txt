@@ -11,13 +11,13 @@
 
 TypeChecker.Expressions.Operators.cs::CheckConditionalExpression # #1677 ternary join — drains in P7
 
-# The class issue for the remaining pre-existing sites is being filed by the round lead; substitute
-# its number for #TBD-lead when it exists. None of these is a store position: they compare function
-# SIGNATURES, pipe-forward operands, type-parameter default constraints and a compound-assignment
-# operand.
-TypeChecker.Expressions.Access.Calls.Overloads.cs::SignatureSatisfiesPartialTarget # #TBD-lead
-TypeChecker.Expressions.Access.Calls.Overloads.cs::SignatureSatisfiesTarget # #TBD-lead
-TypeChecker.Definitions.cs::ValidateTypeParameterDefaultConstraints # #TBD-lead
-TypeChecker.Expressions.Operators.cs::CheckPipeForward # #TBD-lead
-TypeChecker.Expressions.Operators.cs::CheckPipeForwardWithFunctionCall # #TBD-lead
-TypeChecker.Utilities.cs::TryNarrowAugmentedResult # #TBD-lead
+# The class issue for the remaining pre-existing sites is #1748. None of them is a store position:
+# they compare function SIGNATURES, pipe-forward operands, type-parameter default constraints and a
+# compound-assignment operand. The six sites in TypeChecker.Statements.cs that this round's
+# augmented work touched are NOT here — they were routed through IsAssignable instead (333924154).
+TypeChecker.Expressions.Access.Calls.Overloads.cs::SignatureSatisfiesPartialTarget # #1748
+TypeChecker.Expressions.Access.Calls.Overloads.cs::SignatureSatisfiesTarget # #1748
+TypeChecker.Definitions.cs::ValidateTypeParameterDefaultConstraints # #1748
+TypeChecker.Expressions.Operators.cs::CheckPipeForward # #1748
+TypeChecker.Expressions.Operators.cs::CheckPipeForwardWithFunctionCall # #1748
+TypeChecker.Utilities.cs::TryNarrowAugmentedResult # #1748

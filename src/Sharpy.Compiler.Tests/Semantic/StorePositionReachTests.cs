@@ -195,6 +195,42 @@ public class StorePositionReachTests : IntegrationTestBase
     public void Controls_StayRefused(string cell, string body, string message)
         => AssertRefused(cell, body, code: null, message: message);
 
+    /// <summary>
+    /// Some(v)'s argument is a store into the Optional's UNDERLYING slot, so the seam decides it —
+    /// an in-range constant into an `int8?` was SPY0220 while the same constant into an `int8`
+    /// declaration ran (#1698, R-G #1720).
+    /// </summary>
+    [Fact]
+    public void SomeArgument_IsAStoreIntoTheUnderlyingSlot()
+    {
+        AssertPrints("some-declaration", "z: int8? = Some(7)\n    print(z)", "7\n");
+        AssertPrints("some-argument", "print(takes(Some(7)))", "1\n",
+            prelude: "def takes(o: int8?) -> int:\n    return 1\n\n");
+    }
+
+    /// <summary>
+    /// The literal-narrowing predicates answer FORM, RANGE and UNDERFLOW without throwing. Asking
+    /// only "is it a finite double" admitted `1e40` into a decimal slot, and the emitter's
+    /// `decimal.Parse` then threw — SPY0909, a compiler CRASH where SPY0220 is the honest answer.
+    /// </summary>
+    [Theory]
+    [InlineData("decimal-out-of-range", "d: decimal = 1e40\n    print(d)",
+        "Cannot assign type 'float64' to variable of type 'decimal'")]
+    [InlineData("decimal-underflow", "d: decimal = 1e-30\n    print(d)",
+        "Cannot assign type 'float64' to variable of type 'decimal'")]
+    [InlineData("float32-out-of-range-exponent", "x: float32 = 1e40\n    print(x)",
+        "Cannot assign type 'float64' to variable of type 'float32'")]
+    [InlineData("decimal-suffixed-literal", "d: decimal = 1.5f\n    print(d)",
+        "Cannot assign type 'float32' to variable of type 'decimal'")]
+    [InlineData("float32-suffixed-literal", "x: float32 = 1.5d\n    print(x)",
+        "Cannot assign type 'float64' to variable of type 'float32'")]
+    public void LiteralNarrowing_RefusesWhatItCannotRepresent(string cell, string body, string message)
+        => AssertRefused(cell, body, code: null, message: message);
+
+    [Fact]
+    public void Float32_AdmitsAnInRangeExponentLiteral()
+        => AssertPrints("float32-exponent", "x: float32 = 1.5e2\n    print(x)", "150.0\n");
+
     [Fact]
     public void NoneIntoNonNullable_IsStillSPY0229()
         => AssertRefused("none-into-int", "x: int = None\n    print(x)",

@@ -2955,7 +2955,13 @@ internal partial class TypeChecker
                     return _expectedType;
                 }
                 var argType = CheckExpression(call.Arguments[0]);
-                if (!IsAssignable(argType, opt.UnderlyingType))
+                // Some(v)'s argument is a store into the Optional's underlying slot, so the seam
+                // decides it — an in-range constant, an unsuffixed float literal and a literal-
+                // derived string are admitted here exactly as they are at a declaration (#1698,
+                // #1688, #1731), and the accepted verdict's facts reach the emitter. The refusal
+                // message stays this site's own.
+                if (!CheckStoreQuietly(
+                        StorePosition.ArgumentPositional, call.Arguments[0], argType, opt.UnderlyingType))
                 {
                     AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Optional underlying type '{opt.UnderlyingType.GetDisplayName()}'",
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,

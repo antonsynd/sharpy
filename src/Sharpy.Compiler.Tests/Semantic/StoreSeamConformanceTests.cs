@@ -42,6 +42,10 @@ public class StoreSeamConformanceTests
         // The binary operator's constant pre-step — a promotion question, not a store (plan-299c1b
         // Decision 3). The augmented site calls THIS rather than re-deriving it.
         "TypeChecker.Expressions.Operators.cs::EffectiveOperandTypes",
+        // min/max's constant-argument pre-step — the same promotion question over an argument LIST,
+        // asked before overload selection so `max(u64, 1)` unifies on uint64 (plan-299c1b, #1700).
+        // Not a store: nothing is admitted into a slot here, and no fact is recorded.
+        "TypeChecker.Expressions.Operators.cs::EffectiveMinMaxArgumentTypes",
     };
 
     /// <summary>
