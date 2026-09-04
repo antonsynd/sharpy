@@ -1356,6 +1356,44 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// Builds both arms of the ternary a null-conditional access on an <c>Optional&lt;T&gt;</c>
+    /// receiver lowers to (<c>?.</c> does not work on structs). ONE seam for the method-call and the
+    /// member/property lowerings, so a new <c>?.</c> shape cannot pick a different rule (#1747).
+    ///
+    /// <para>The question each arm has to answer is whether the inner result is ALREADY an
+    /// <c>Optional&lt;T&gt;</c> — a member declared <c>T?</c>, which the checker's flatten rule leaves
+    /// unwrapped — or a bare <c>T</c> the checker wrapped to give the <c>?.</c> expression its
+    /// Optional type. The recorded type of the access node is <c>Optional&lt;T&gt;</c> in BOTH cases,
+    /// so it cannot discriminate them: <c>o?.get_inner()?.label</c> and <c>o?.get_inner()?.value</c>
+    /// differ only in the member's own type, which no node carries. Reading it here would mean the
+    /// emitter re-resolving the member (repo rule 2). The checker therefore decides once and records
+    /// <c>SetNullConditionalOptionalWrap</c> exactly when it ADDS the layer; the emitter constructs
+    /// the Optional when the fact is present and leaves the branch alone when it is not.</para>
+    ///
+    /// <para>Without the wrap the true branch is a bare <c>T</c> against an
+    /// <c>Optional&lt;T&gt;</c> false branch, which only compiles through
+    /// <c>Optional&lt;T&gt;</c>'s implicit operator — the dependency strict Optional retires and
+    /// <c>EmittedOptionalConstructionConformanceTests</c> guards (#1720).</para>
+    ///
+    /// <para>The last arm is error recovery: when the access node has no resolved Optional type at
+    /// all (a CLR-discovered member the checker typed <c>Unknown</c>), both branches are built from
+    /// the RECEIVER's Optional type so the ternary at least has one type.</para>
+    /// </summary>
+    private (ExpressionSyntax WhenTrue, ExpressionSyntax WhenFalse) GenerateNullConditionalOptionalBranches(
+        Expression accessNode, ExpressionSyntax innerResult, SemanticType? resultType,
+        OptionalType receiverOptionalType)
+    {
+        if (_context.SemanticInfo?.GetNullConditionalOptionalWrap(accessNode) is { } wrappedAs)
+            return (WrapInOptionalSome(innerResult, wrappedAs), GenerateOptionalNone(wrappedAs));
+
+        if (resultType is OptionalType alreadyOptional)
+            return (innerResult, GenerateOptionalNone(alreadyOptional));
+
+        return (WrapInOptionalSome(innerResult, receiverOptionalType),
+            GenerateOptionalNone(receiverOptionalType));
+    }
+
+    /// <summary>
     /// Handle null conditional method calls: obj?.Method(args).
     /// For Optional&lt;T&gt;, lowers to a ternary since ?. doesn't work on structs.
     /// For nullable reference types, uses ConditionalAccessExpression.
@@ -1382,29 +1420,8 @@ internal partial class RoslynEmitter
             if (capture != null)
                 cond = Binary(SyntaxKind.LogicalAndExpression, capture, cond);
 
-            // Determine the Optional type and whether to wrap the true branch.
-            // Case 1: callType is OptionalType — the method itself returns Optional<T>
-            //   (e.g., get_city() -> str?). The true branch already returns Optional<T>,
-            //   so we use it as-is and only set the false branch to Optional<T>.None.
-            // Case 2: callType is Unknown or non-Optional — the method returns a plain type
-            //   (e.g., str.upper() -> str, resolved via CLR discovery). The true branch returns
-            //   the raw type, so we wrap it in Optional<T>.Some() using the object's
-            //   Optional underlying type. This ensures both branches have the same type.
-            var callType = GetExpressionSemanticType(call);
-            ExpressionSyntax trueBranch;
-            ExpressionSyntax falseExpr;
-            if (callType is OptionalType optCallType)
-            {
-                // Method returns Optional<T> — true branch is already correct
-                trueBranch = methodCall;
-                falseExpr = GenerateOptionalNone(optCallType);
-            }
-            else
-            {
-                // Method returns non-Optional (or Unknown) — wrap both branches
-                trueBranch = WrapInOptionalSome(methodCall, objOptType);
-                falseExpr = GenerateOptionalNone(objOptType);
-            }
+            var (trueBranch, falseExpr) = GenerateNullConditionalOptionalBranches(
+                call, methodCall, GetExpressionSemanticType(call), objOptType);
             return Conditional(cond, trueBranch, falseExpr);
         }
 
@@ -1681,24 +1698,8 @@ internal partial class RoslynEmitter
                         .WithArgumentList(ArgumentList()),
                     member);
 
-                // Determine the Optional type and whether to wrap the true branch.
-                // Same logic as method calls: if the member type is already Optional,
-                // the true branch is correct as-is. Otherwise wrap in Optional<T>.Some().
-                var exprType = GetExpressionSemanticType(memberAccess);
-                ExpressionSyntax falseExpr;
-                ExpressionSyntax wrappedTrue;
-                if (exprType is OptionalType optExprType)
-                {
-                    // Member returns Optional<T> — true branch is already correct
-                    wrappedTrue = trueExpr;
-                    falseExpr = GenerateOptionalNone(optExprType);
-                }
-                else
-                {
-                    // Member returns non-Optional (or Unknown) — wrap both branches
-                    wrappedTrue = WrapInOptionalSome(trueExpr, propObjOptType);
-                    falseExpr = GenerateOptionalNone(propObjOptType);
-                }
+                var (wrappedTrue, falseExpr) = GenerateNullConditionalOptionalBranches(
+                    memberAccess, trueExpr, GetExpressionSemanticType(memberAccess), propObjOptType);
                 result = Conditional(cond, wrappedTrue, falseExpr);
             }
             else

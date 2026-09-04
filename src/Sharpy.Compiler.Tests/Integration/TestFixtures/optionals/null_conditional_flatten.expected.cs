@@ -92,7 +92,7 @@ public static partial class NullConditionalFlatten
 #line (59, 5) - (59, 55) 8 "null_conditional_flatten.spy"
         Optional<Outer> o7 = Optional<Outer>.Some(new Outer(Optional<Inner>.Some(new Inner(42, Optional<string>.None))));
 #line (60, 5) - (60, 39) 8 "null_conditional_flatten.spy"
-        Optional<int> r7 = ((o7).IsSome ? o7.Unwrap().GetInner() : Optional<Inner>.None) is var __opt_6 && (__opt_6).IsSome ? __opt_6.Unwrap().Value : Optional<int>.None;
+        Optional<int> r7 = ((o7).IsSome ? o7.Unwrap().GetInner() : Optional<Inner>.None) is var __opt_6 && (__opt_6).IsSome ? Optional<int>.Some(__opt_6.Unwrap().Value) : Optional<int>.None;
 #line (61, 5) - (61, 14) 8 "null_conditional_flatten.spy"
         global::Sharpy.Builtins.Print(r7);
 #line hidden

@@ -51,9 +51,12 @@ public class EmittedOptionalConstructionConformanceTests
     // Optional<string> — correctly unwrapped) versus :95 (`.Value`, a bare int — the violation).
     private static readonly HashSet<string> Allowlist = new(StringComparer.Ordinal)
     {
-        // #1747 — null-conditional lowering emits bare T in the true branch
+        // #1747 — the METHOD-CALL arm still emits bare T in the true branch: the checker records
+        // SetNullConditionalOptionalWrap for field and property access
+        // (TypeChecker.Expressions.Access.cs:487/:508) but not yet for the six
+        // isNullConditionalCall blocks in Calls.cs. null_conditional_flatten drained when the
+        // member arm was wired.
         "optionals/null_conditional_chaining.expected.cs",
-        "optionals/null_conditional_flatten.expected.cs",
     };
 
     // Violations seen only through the executing-fixture corpus arm, keyed by fixture name. The
@@ -61,17 +64,16 @@ public class EmittedOptionalConstructionConformanceTests
     // invisible to the snapshot arm. Each entry cites its issue and drains on fix.
     private static readonly HashSet<string> FixtureAllowlist = new(StringComparer.Ordinal)
     {
-        // #1747 — null-conditional lowering emits bare T in the true branch (the two snapshotted
-        // fixtures; same sites the Allowlist above covers)
+        // #1747 — the null-conditional METHOD-CALL arm (the snapshotted fixture; same sites the
+        // Allowlist above covers). null_conditional_flatten drained when the member arm was wired.
         "optionals/null_conditional_chaining",
-        "optionals/null_conditional_flatten",
 
-        // #1755 Class A — the same #1747 null-conditional lowering in unsnapshotted fixtures
+        // #1755 Class A — the same #1747 method-call arm in unsnapshotted fixtures.
+        // type_system/null_conditional_0004 drained with the member arm.
         "null_conditional_optional_member_call_1307",
         "optional_narrowed_ops",
         "optional_result/maybe_chained",
         "optional_result/optional_null_conditional_coalesce",
-        "type_system/null_conditional_0004",
         "type_system/optional_null_conditional_chain",
         "type_system/optional_null_conditional_method",
         "type_system/optional_null_conditional_value_type",
