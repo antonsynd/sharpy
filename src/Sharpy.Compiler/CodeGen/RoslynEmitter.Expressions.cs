@@ -609,6 +609,41 @@ internal partial class RoslynEmitter
             return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(value));
     }
 
+    /// <summary>
+    /// Parses the digits of a decimal literal. ONE parse for BOTH decimal arms of
+    /// <see cref="GenerateFloatLiteral"/> — the hand-written <c>m</c> suffix and the unsuffixed
+    /// literal the store seam re-typed to <c>decimal</c> (#1688) — so a form one arm accepts can
+    /// never be a form the other rejects.
+    ///
+    /// <para><see cref="NumberStyles.Float"/> is the load-bearing part. Both arms called
+    /// <c>decimal.Parse(value, CultureInfo.InvariantCulture)</c>, whose implied style is
+    /// <see cref="NumberStyles.Number"/> — which does NOT include
+    /// <see cref="NumberStyles.AllowExponent"/>. Every exponent form therefore threw
+    /// <see cref="FormatException"/> out of code generation and surfaced as an SPY0909 internal
+    /// error: <c>d: decimal = 1.5e2</c> crashed the compiler even though the checker admitted it.
+    /// <c>double.Parse</c> never had the bug because its implied style is
+    /// <c>Float | AllowThousands</c>, which is why only the decimal arms were affected.</para>
+    ///
+    /// <para>A failure here is a COMPILER BUG, not user error: the checker has already admitted the
+    /// literal and refused the out-of-range ones (<c>1e40</c> is SPY0220 before code generation).
+    /// So the failure is named and loud rather than an escaping parse exception.</para>
+    /// </summary>
+    private static decimal ParseDecimalLiteral(FloatLiteral literal)
+    {
+        if (decimal.TryParse(
+                literal.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+
+        throw new InvalidOperationException(
+            $"The decimal literal '{literal.Value}' at line {literal.LineStart}, column "
+            + $"{literal.ColumnStart} could not be parsed as a decimal. Semantic analysis admits a "
+            + "literal into a decimal slot only after checking its range, so reaching code "
+            + "generation with an unparsable one is a compiler bug — the literal's accepted forms "
+            + "and this parse have diverged.");
+    }
+
     private ExpressionSyntax GenerateFloatLiteral(FloatLiteral literal)
     {
         var value = double.Parse(literal.Value, CultureInfo.InvariantCulture);
@@ -623,11 +658,8 @@ internal partial class RoslynEmitter
                 return LiteralExpression(SyntaxKind.NumericLiteralExpression,
                     Literal(text, value));
             if (literal.Suffix.Equals("m", StringComparison.OrdinalIgnoreCase))
-            {
-                var decimalValue = decimal.Parse(literal.Value, CultureInfo.InvariantCulture);
                 return LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                    Literal(text, decimalValue));
-            }
+                    Literal(text, ParseDecimalLiteral(literal)));
         }
 
         // An unsuffixed literal is float64 unless the semantic phase narrowed it — which it does for
@@ -648,14 +680,13 @@ internal partial class RoslynEmitter
 
             if (builtinType.Name == "decimal")
             {
-                var decimalValue = decimal.Parse(literal.Value, CultureInfo.InvariantCulture);
                 var decimalText = literal.Value.Contains('.', StringComparison.Ordinal)
                     || literal.Value.Contains('e', StringComparison.Ordinal)
                     || literal.Value.Contains('E', StringComparison.Ordinal)
                     ? literal.Value + "m"
                     : literal.Value + ".0m";
                 return LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                    Literal(decimalText, decimalValue));
+                    Literal(decimalText, ParseDecimalLiteral(literal)));
             }
         }
 

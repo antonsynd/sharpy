@@ -1,0 +1,48 @@
+# Every accepted decimal literal form reaches the emitter's ONE decimal parse. The exponent forms
+# used to crash code generation with SPY0909 (FormatException) because both decimal arms parsed
+# without NumberStyles.AllowExponent, while the checker admitted the literal happily.
+#
+# Both routes into the decimal arms are covered: the unsuffixed literal the store seam re-types to
+# decimal (#1688), and the hand-written `m` suffix.
+
+def main() -> None:
+    # Unsuffixed, re-typed to decimal by the store seam.
+    a: decimal = 1.5e2
+    print(a)
+
+    # Hand-written suffix, same digits — must agree with the unsuffixed form.
+    b: decimal = 1.5e2m
+    print(b)
+
+    # Capital exponent marker.
+    c: decimal = 1.5E2
+    print(c)
+
+    # Negative exponent.
+    d: decimal = 2.5e-2
+    print(d)
+
+    # Explicit positive exponent sign.
+    e: decimal = 1.5e+2
+    print(e)
+
+    # Exponent with no decimal point.
+    f: decimal = 1e3
+    print(f)
+
+    # Suffixed negative exponent.
+    g: decimal = 2.5e-2m
+    print(g)
+
+    # Controls: the forms that always worked must keep working. A plain fraction, a bare integer
+    # (int -> decimal is a standard implicit conversion in C#), and a suffixed fraction.
+    h: decimal = 1.5
+    print(h)
+    i: decimal = 1
+    print(i)
+    j: decimal = 1.5m
+    print(j)
+
+    # Control: arithmetic on the parsed values, so the fixture asserts the VALUE and not just that
+    # something was emitted. 150 + 0.025 = 150.025
+    print(a + d)

@@ -1,0 +1,8 @@
+# Positive control for basics/decimal_literal_exponent_forms: an exponent form the checker CANNOT
+# admit is still a named refusal, not a crash. The emitter's decimal parse is only ever handed
+# literals semantic analysis already range-checked, which is why an unparsable one there is an
+# internal error rather than a diagnostic.
+
+def main() -> None:
+    d: decimal = 1e40
+    print(d)
