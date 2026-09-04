@@ -228,23 +228,23 @@ public static class PrimitiveCatalog
             (left.Kind == NumericKind.FloatingPoint && right.Kind == NumericKind.Decimal))
             return null;
 
-        // Special case: mixing signed and unsigned integers of same size
-        // e.g., int + uint -> long (to avoid overflow)
+        // Mixed-signedness integer pairs: C# §12.4.7 binary numeric promotion.
         if (left.Kind != right.Kind &&
             (left.Kind == NumericKind.SignedInteger || left.Kind == NumericKind.UnsignedInteger) &&
-            (right.Kind == NumericKind.SignedInteger || right.Kind == NumericKind.UnsignedInteger) &&
-            left.SizeInBits == right.SizeInBits)
+            (right.Kind == NumericKind.SignedInteger || right.Kind == NumericKind.UnsignedInteger))
         {
-            // Promote to next larger signed type, or return null if no safe promotion exists
-            // Use direct lookup instead of FirstOrDefault for efficiency
-            return left.SizeInBits switch
-            {
-                8 => GetByName("short"),   // sbyte + byte -> short
-                16 => GetByName("int"),    // short + ushort -> int
-                32 => GetByName("long"),   // int + uint -> long
-                64 => null,   // long + ulong: cannot safely promote; return null to force error
-                _ => null
-            };
+            var (unsigned, signed) = left.IsSigned ? (right, left) : (left, right);
+
+            if (unsigned.ClrType == typeof(ulong))
+                return null;
+
+            if (signed.ClrType == typeof(long))
+                return GetByName("long");
+
+            if (unsigned.ClrType == typeof(uint))
+                return GetByName("long");
+
+            return GetByName("int");
         }
 
         // Return the type with higher priority

@@ -175,9 +175,26 @@ public class PrimitiveCatalogTests
     [InlineData("float", "double", "float")]   // float(double) + double -> float(double), both are C# double
     [InlineData("long", "double", "double")]   // long + double -> double
     [InlineData("byte", "int", "int")]
-    [InlineData("int", "uint", "long")]        // Mixed signed/unsigned promotes to larger signed
-    [InlineData("short", "ushort", "int")]     // 16-bit mixed promotes to 32-bit signed
-    [InlineData("sbyte", "byte", "short")]     // 8-bit mixed promotes to 16-bit signed
+    [InlineData("int", "uint", "long")]        // C# §12.4.7: uint + signed → long
+    [InlineData("uint", "int", "long")]        // commutative
+    [InlineData("short", "ushort", "int")]     // C# §12.4.7: remaining mixed-sign → int
+    [InlineData("ushort", "short", "int")]     // commutative
+    [InlineData("sbyte", "byte", "int")]       // C# §12.4.7: remaining mixed-sign → int
+    [InlineData("byte", "sbyte", "int")]       // commutative
+    [InlineData("uint", "short", "long")]      // C# §12.4.7: uint + signed → long
+    [InlineData("short", "uint", "long")]      // commutative
+    [InlineData("uint", "sbyte", "long")]      // uint + sbyte → long
+    [InlineData("sbyte", "uint", "long")]      // commutative
+    [InlineData("long", "uint", "long")]       // long + unsigned → long
+    [InlineData("uint", "long", "long")]       // commutative
+    [InlineData("long", "byte", "long")]       // long + byte → long
+    [InlineData("byte", "long", "long")]       // commutative
+    [InlineData("long", "ushort", "long")]     // long + ushort → long
+    [InlineData("ushort", "long", "long")]     // commutative
+    [InlineData("uint", "ushort", "uint")]     // same-sign: priority
+    [InlineData("ushort", "uint", "uint")]     // commutative
+    [InlineData("ulong", "uint", "ulong")]    // same-sign: priority
+    [InlineData("uint", "ulong", "ulong")]    // commutative
     [InlineData("int", "float32", "float32")]  // int + float32 -> float32
     [InlineData("float32", "float", "float")]  // float32 + float(double) -> float(double)
     public void GetPromotedType_ReturnsCorrectType(string left, string right, string expected)
@@ -280,6 +297,23 @@ public class PrimitiveCatalogTests
         var ulongInfo = PrimitiveCatalog.GetByName("ulong")!;
 
         PrimitiveCatalog.GetPromotedType(longInfo, ulongInfo).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("ulong", "sbyte")]
+    [InlineData("sbyte", "ulong")]
+    [InlineData("ulong", "short")]
+    [InlineData("short", "ulong")]
+    [InlineData("ulong", "int")]
+    [InlineData("int", "ulong")]
+    [InlineData("ulong", "long")]
+    [InlineData("long", "ulong")]
+    public void GetPromotedType_UlongWithSigned_ReturnsNull(string left, string right)
+    {
+        var leftInfo = PrimitiveCatalog.GetByName(left)!;
+        var rightInfo = PrimitiveCatalog.GetByName(right)!;
+
+        PrimitiveCatalog.GetPromotedType(leftInfo, rightInfo).Should().BeNull();
     }
 
     [Fact]

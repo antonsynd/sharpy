@@ -350,7 +350,7 @@ internal class TypeInferenceService
                 BinaryOperator.LessThan or
                 BinaryOperator.LessThanOrEqual or
                 BinaryOperator.GreaterThan or
-                BinaryOperator.GreaterThanOrEqual => SemanticType.Bool,
+                BinaryOperator.GreaterThanOrEqual => InferNumericResultType(left, right) != null ? SemanticType.Bool : null,
 
                 _ => null
             };
