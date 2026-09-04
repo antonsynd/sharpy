@@ -152,6 +152,11 @@ public class DispatchSiteInventoryTests
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateParametrizeMemberDataProperties"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateStatement"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.CollectReferencedIdentifiers"] = "refusal-net:FileBasedIntegrationTests",
+        // The cast-steer spelling for a refused numeric pair (#1699, 94e87ff99): a switch over the
+        // reported node's shape (binary operation / augmented assignment) that names the two
+        // operands; the NarrowWidthArithmeticMatrixTests refused cells assert the steer text for
+        // both shapes, and mutation B-M9 (steer returns null) reddens them.
+        ["Semantic/TypeChecker.Expressions.Operators.cs::TypeChecker.OperandSpellings"] = "refusal-net:NarrowWidthArithmeticMatrixTests",
         ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.ContainsSuperExpressionInExpression"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.ContainsSuperExpressionInStatement"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.TransformStatementForLoopElse"] = "refusal-net:FileBasedIntegrationTests",
