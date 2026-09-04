@@ -309,7 +309,12 @@ user-defined `operator %` types.*
 
 ## Numeric Type Promotion
 
-When binary arithmetic operators (`+`, `-`, `*`) operate on different numeric types, operands are implicitly promoted following .NET's numeric promotion rules. These rules are designed to be intuitive and follow the spirit of Python's simple "promote integers to floats when mixed" philosophy, adapted to .NET's richer type system:
+Binary arithmetic (`+`, `-`, `*`), comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`),
+and bitwise (`&`, `|`, `^`) operators follow C#'s binary numeric promotion
+(C# spec §12.4.7). Shifts (`<<`, `>>`) promote the left operand alone and are
+exempt from the mixed-signedness rules below.
+
+### Same-signedness pairs
 
 | Left Type | Right Type | Result Type | Notes |
 |-----------|------------|-------------|-------|
@@ -318,9 +323,57 @@ When binary arithmetic operators (`+`, `-`, `*`) operate on different numeric ty
 | `int32` | `float64` | `float64` | Integer promoted to float |
 | `int32` | `decimal` | `decimal` | Integer promoted to decimal |
 | `float32` | `float64` | `float64` | Lower precision promoted |
-| `float64` | `decimal` | ❌ Error | Cannot mix double and decimal |
+| `float64` | `decimal` | ❌ SPY0222 | Cannot mix double and decimal |
 | `uint8` | `int32` | `int32` | Small integers promote to int |
 | `int16` | `int32` | `int32` | Small integers promote to int |
+
+### Mixed-signedness pairs (#1699)
+
+When one operand is unsigned and the other is signed, C# §12.4.7 applies:
+
+| Unsigned | Signed | Result | Rule |
+|----------|--------|--------|------|
+| `uint32` | `int8`, `int16`, `int32` | `int64` | Both convert to `long` |
+| `uint32` | `int64` | `int64` | `uint` converts to `long` |
+| `uint32` | `uint8`, `uint16` | `uint32` | Both convert to `uint` |
+| `uint64` | any unsigned | `uint64` | Both convert to `ulong` |
+| `uint64` | any signed | ❌ SPY0222 | No implicit conversion; cast one operand |
+
+The table is order-symmetric: `int32 + uint64` follows the same rule as
+`uint64 + int32`.
+
+```python
+a: uint32 = 5
+b: int16 = 4
+c: int64 = a + b     # OK: result is int64
+# d: uint32 = a + b  # SPY0220: 'int64' is not assignable to 'uint32'
+
+e: uint64 = 5
+f: int32 = 4
+# print(e + f)       # SPY0222: uint64 does not support '+' with int32
+#                     #   — cast one operand: 'int64(e)' or 'uint64(f)'
+```
+
+### Constant-operand conversion (§10.2.11)
+
+When exactly one operand is an integer constant whose **value** fits the other
+operand's type, the constant converts to that type BEFORE promotion — the
+operator sees two operands of the same type:
+
+```python
+b: uint32 = 5
+c: uint32 = b + 1     # OK: 1 converts to uint32, result is uint32
+print(c)               # 6
+
+a: uint64 = 5
+d: uint64 = a + 1     # OK: 1 converts to uint64, result is uint64
+
+# print(a + (-1))     # SPY0222: -1 does not convert to uint64
+```
+
+This covers literal integers, `const` references, and folded constant
+expressions (`1 << 2`). The constant's own recorded type is unchanged (hover
+still shows `int`); only the operator's effective operand types change.
 
 **Key Rules:**
 
@@ -328,6 +381,8 @@ When binary arithmetic operators (`+`, `-`, `*`) operate on different numeric ty
 2. **Float operations**: Result is the higher-precision float type
 3. **Mixed integer/float**: Integer is promoted to the float type
 4. **Decimal is special**: Can mix with integers, but not with `float32`/`float64`
+5. **Mixed signedness**: `uint32` with signed → `int64`; `uint64` with signed → refused
+6. **Constant operand**: An in-range constant converts to the other operand's type first
 
 ### Narrow-width integer promotion floor
 
@@ -377,10 +432,10 @@ width. The result type is always the type the generated C# actually produces:
 |------------|-------------|-----|
 | `uint32 + - * & \| ^ << >>` , `~uint32` | `uint32` | C# has predefined `uint` operators |
 | `uint32 // uint32`, `uint32 % uint32` | `int64` | Lowered to `Builtins.FloorDiv`/`FloorMod`, whose overloads are `(int, int)`, `(long, long)`, `(ulong, ulong)`, float and double — a `uint` pair binds the `long` one |
-| `uint32 ** uint32` | `int64` | `Builtins.CheckedIntPow` has `(int, int)` and `(long, long)` overloads only |
+| `uint32 ** uint32` | `int64` | `Builtins.CheckedIntPow` has `(int, int)` and `(long, long)` — a `uint` pair binds `long` |
 | `-uint32` | `int64` | C# §12.9.3: unary `-` is predefined for `int`, `long`, `float`, `double`, `decimal`; a `uint` operand widens to `long` |
 | `uint64 // uint64`, `uint64 % uint64`, `~uint64` | `uint64` | These lowerings *do* have a `ulong` overload |
-| `uint64 ** uint64` | `int64` | No `ulong` power overload |
+| `uint64 ** uint64` | `uint64` | `Builtins.CheckedIntPow(ulong, ulong)` overload (#1700) |
 | `-uint64` | ❌ **SPY0223** | C# has no unary `-` for `ulong` at all (CS0023); cast to `int64` first |
 
 ```python
