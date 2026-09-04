@@ -58,9 +58,6 @@ public class EmittedOptionalConstructionConformanceTests
     // do with `?.`.
     private static readonly HashSet<string> FixtureAllowlist = new(StringComparer.Ordinal)
     {
-        // #1755 Class C — ??= on an Optional stores a bare RHS (x ??= 42); needs an R-G ruling
-        // before it is wrapped rather than refused
-        "type_system/null_coalescing_assignment_optional",
     };
 
     [Fact]

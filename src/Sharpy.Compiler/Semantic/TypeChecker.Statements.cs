@@ -354,6 +354,49 @@ internal partial class TypeChecker
                 return;
             }
 
+            // ??= is a store into the left slot: the RHS is classified by the store seam,
+            // not the binary ?? operator. Cross-family cells refuse with steers; constants
+            // and float32 literals convert to the payload width; Optional→wrap fact (#1767).
+            if (assignment.Operator == AssignmentOperator.NullCoalesceAssign
+                && assignment.Target is Identifier coalTargetId)
+            {
+                var coalPred = (_symbolTable.Lookup(coalTargetId.Name, searchParents: false)
+                    ?? _symbolTable.Lookup(coalTargetId.Name, searchParents: true)) as VariableSymbol;
+                var coalDeclaredType = coalPred != null ? DeclaredBindingType(coalPred) : targetType;
+
+                if (coalDeclaredType is not UnknownType && valueType is not UnknownType
+                    && !IsAssignable(valueType, coalDeclaredType))
+                {
+                    // Try payload first for wrapper types
+                    var coalPayload = coalDeclaredType is OptionalType coalOpt ? coalOpt.UnderlyingType
+                        : coalDeclaredType is NullableType { IsValueType: true } coalNt ? coalNt.UnderlyingType
+                        : (SemanticType?)null;
+
+                    if (coalPayload != null
+                        && (IsAssignable(valueType, coalPayload)
+                            || IsAcceptedVerdict(ClassifyStore(StorePosition.Augmented, assignment.Value, valueType, coalPayload))))
+                    {
+                        if (coalDeclaredType is OptionalType wrapOpt)
+                            _semanticInfo.SetOptionalStoreWrap(assignment, wrapOpt);
+                    }
+                    else
+                    {
+                        CheckStore(StorePosition.Augmented, assignment.Value, valueType, coalDeclaredType,
+                            assignment, assignment.Span);
+                    }
+                }
+
+                // The emitter needs the Optional coalesce lowering to generate
+                // x.IsSome ? x : value (the C# ?? operator doesn't work on Optional<T>).
+                if (coalDeclaredType is OptionalType)
+                {
+                    _semanticInfo.SetOperatorLowering(assignment,
+                        new OperatorLowering(OperatorLoweringKind.OptionalCoalesceBothOptional));
+                }
+
+                return;
+            }
+
             // The RHS's value SHAPE converts to the target's type before the operator question —
             // the SAME pre-step the binary site applies (EffectiveOperandTypes, §10.2.11), plus the
             // float32/decimal literal arms the seam admits at every other store position

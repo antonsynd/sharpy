@@ -198,7 +198,9 @@ internal partial class RoslynEmitter
                 var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, assign.Target, assign.Value, assign);
 
                 // R-T: a narrowed Optional augmented result re-wraps.
-                if (_context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } augWrapOpt)
+                // ??= handles its own wrapping via OptionalCoalesceBothOptional.
+                if (assign.Operator != AssignmentOperator.NullCoalesceAssign
+                    && _context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } augWrapOpt)
                     augmentedValue = WrapInOptionalSome(augmentedValue, augWrapOpt);
 
                 return ExpressionStatement(
@@ -889,6 +891,10 @@ internal partial class RoslynEmitter
             && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind
                 == OperatorLoweringKind.OptionalCoalesceBothOptional)
         {
+            // ??= with a bare-value RHS wraps the value in Some() (#1767)
+            if (_context.SemanticInfo?.GetOptionalStoreWrap(assignNode) is { } coalWrapOpt)
+                right = WrapInOptionalSome(right, coalWrapOpt);
+
             return Conditional(
                 Member(left, "IsSome"),
                 left,
