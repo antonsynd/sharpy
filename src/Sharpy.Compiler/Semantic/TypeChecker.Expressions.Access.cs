@@ -2199,6 +2199,16 @@ internal partial class TypeChecker
 
     private SemanticType CheckIndexAccess(IndexAccess indexAccess)
     {
+        // A plain-store TARGET is typed by the container's DECLARED element type, never by a read
+        // narrowing — the SAME rule the member-access twin above follows (#1706, #1756). A store
+        // writes the declared slot: `d["k"] = None` inside `if d["k"] is not None:` writes the
+        // declared `str | None`, and narrowing only describes what the previous READ produced. The
+        // member and local targets already obeyed this; the index target did not, so the identical
+        // program was SPY0229 "Cannot assign 'None' to non-nullable type 'str'" through a
+        // subscript and ran through an attribute.
+        if (ReferenceEquals(indexAccess, _plainStoreTarget))
+            return CheckIndexAccessCore(indexAccess);
+
         // Type-test operands (`xs[0] is (not) None`, isinstance subjects) read the raw element —
         // the node's own narrowing must not apply (its container access still lowers normally).
         var narrowingKey = ReferenceEquals(indexAccess, _typeTestOperand)

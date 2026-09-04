@@ -570,15 +570,58 @@ internal static class NarrowingFlowAnalysis
         return facts;
     }
 
-    /// <summary>Removes facts invalidated by an assignment to the statement's target(s).</summary>
+    /// <summary>
+    /// Removes facts invalidated by everything the statement WRITES: its assignment target(s), and
+    /// every walrus target reachable from it.
+    ///
+    /// <para>The walrus half is not a refinement — it is the difference between a narrowing that
+    /// describes the variable and one that describes a value the variable no longer holds (#1757).
+    /// A walrus writes its target from inside an EXPRESSION, so it can appear in a declaration's
+    /// initializer, a call argument or a condition, and none of those is an <see cref="Assignment"/>
+    /// statement. Keying only on Assignment left the fact live: inside
+    /// <c>if isinstance(x, int):</c>, the statement <c>y: object = (x := "s")</c> was followed by a
+    /// <c>print(x)</c> that still read <c>x</c> as <c>int</c> and emitted <c>((int)x!)</c> —
+    /// InvalidCastException at runtime, where the statement twin <c>x = "s"</c> prints <c>s</c>.</para>
+    ///
+    /// <para>Deliberately statement-granular, exactly as the assignment half is: the snapshot in
+    /// <see cref="Transfer"/> is taken BEFORE this runs, so a read textually before the walrus in
+    /// the SAME statement still sees the fact. That is the same resolution the assignment half has
+    /// (an assignment's own RHS reads the pre-store facts), and the same one
+    /// <see cref="DefiniteAssignmentAnalysis"/> documents for its walrus collection.</para>
+    /// </summary>
     private static void Kill(HashSet<NarrowingFact> facts, Statement statement)
     {
-        if (statement is not Assignment assignment)
-            return;
-
-        foreach (var assignedKey in CollectAssignedKeys(assignment.Target))
+        if (statement is Assignment assignment)
         {
-            facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, assignedKey));
+            foreach (var assignedKey in CollectAssignedKeys(assignment.Target))
+            {
+                facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, assignedKey));
+            }
+        }
+
+        foreach (var walrusKey in CollectWalrusTargetKeys(statement))
+        {
+            facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, walrusKey));
+        }
+    }
+
+    /// <summary>
+    /// The narrowing keys every walrus in <paramref name="node"/> writes. Does not descend into a
+    /// lambda body — a walrus there binds when the lambda RUNS, not where it is written, which is
+    /// the same boundary <see cref="DefiniteAssignmentAnalysis"/> draws.
+    /// </summary>
+    private static IEnumerable<string> CollectWalrusTargetKeys(Node node)
+    {
+        if (node is LambdaExpression)
+            yield break;
+
+        if (node is WalrusExpression walrus)
+            yield return walrus.Target;
+
+        foreach (var child in node.GetChildNodes())
+        {
+            foreach (var key in CollectWalrusTargetKeys(child))
+                yield return key;
         }
     }
 

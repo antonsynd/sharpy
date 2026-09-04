@@ -231,6 +231,77 @@ public class StorePositionReachTests : IntegrationTestBase
     public void Float32_AdmitsAnInRangeExponentLiteral()
         => AssertPrints("float32-exponent", "x: float32 = 1.5e2\n    print(x)", "150.0\n");
 
+    /// <summary>
+    /// #1756: an INDEX store writes the container's declared element type. The local and attribute
+    /// targets already obeyed the declared-slot rule (#1706); the subscript target did not, so the
+    /// identical program was SPY0229 through `d["k"]` and ran through `b.v`.
+    /// </summary>
+    [Theory]
+    [InlineData("dict-if-narrowed",
+        "d: dict[str, str | None] = {\"k\": \"v\"}\n    if d[\"k\"] is not None:\n        d[\"k\"] = None\n    print(d[\"k\"])")]
+    [InlineData("dict-assert-narrowed",
+        "d: dict[str, str | None] = {\"k\": \"v\"}\n    assert d[\"k\"] is not None\n    d[\"k\"] = None\n    print(d[\"k\"])")]
+    [InlineData("list-if-narrowed",
+        "xs: list[str | None] = [\"v\"]\n    if xs[0] is not None:\n        xs[0] = None\n    print(xs[0])")]
+    [InlineData("dict-control-no-narrowing",
+        "d: dict[str, str | None] = {\"k\": \"v\"}\n    d[\"k\"] = None\n    print(d[\"k\"])")]
+    [InlineData("local-control-same-narrowing",
+        "x: str | None = \"v\"\n    if x is not None:\n        x = None\n    print(x)")]
+    public void IndexStore_WritesTheDeclaredElementType(string cell, string body)
+        => AssertPrints(cell, body, "None\n");
+
+    /// <summary>
+    /// #1757: a walrus writes its target from inside an EXPRESSION, so the flow analysis never
+    /// killed the target's narrowing facts and later reads used a value the variable no longer
+    /// held. The contract is that the walrus form behaves exactly like its STATEMENT twin, so each
+    /// cell asserts the pair rather than a value — a cell pinned to one expected string would pass
+    /// if BOTH forms regressed together.
+    /// </summary>
+    [Theory]
+    [InlineData("isinstance-rebind",
+        "x: object = 1\n    if isinstance(x, int):\n        y: object = (x := \"s\")\n        print(x)",
+        "x: object = 1\n    if isinstance(x, int):\n        x = \"s\"\n        print(x)")]
+    [InlineData("none-rebind",
+        "x: str | None = \"a\"\n    if x is not None:\n        y: str = (x := None)\n        print(x)",
+        "x: str | None = \"a\"\n    if x is not None:\n        x = None\n        print(x)")]
+    [InlineData("none-rebind-then-read",
+        "x: str | None = \"a\"\n    if x is not None:\n        z: str | None = (x := None)\n        print(len(x))",
+        "x: str | None = \"a\"\n    if x is not None:\n        x = None\n        print(len(x))")]
+    public void WalrusStore_BehavesLikeItsStatementTwin(string cell, string walrusBody, string statementBody)
+    {
+        var walrus = CompileAndExecute("def main():\n    " + walrusBody + "\n");
+        var twin = CompileAndExecute("def main():\n    " + statementBody + "\n");
+
+        walrus.Success.Should().Be(twin.Success,
+            $"cell '{cell}': the walrus form and its statement twin must agree. Walrus: "
+            + string.Join(" | ", walrus.CompilationErrors));
+        walrus.StandardOutput.Should().Be(twin.StandardOutput,
+            $"cell '{cell}': the walrus form prints what its statement twin prints");
+        RuntimeFailureOf(walrus).Should().Be(RuntimeFailureOf(twin),
+            $"cell '{cell}': a stale narrowing shows up as a .NET cast or null failure where the "
+            + "twin has none, or has Sharpy's own typed error");
+    }
+
+    /// <summary>
+    /// The .NET exception a run failed with, or the empty string. Named exactly, because the two
+    /// #1757 symptoms ARE exception identities: InvalidCastException from `((int)x!)` emitted
+    /// against a stale isinstance narrowing, and NullReferenceException from an unwrapped access
+    /// where the statement twin raises Sharpy's own TypeError.
+    /// </summary>
+    private static string RuntimeFailureOf(ExecutionResult result)
+    {
+        foreach (var marker in new[]
+        {
+            "System.InvalidCastException", "System.NullReferenceException", "Sharpy.TypeError",
+        })
+        {
+            if (result.StandardError.Contains(marker, StringComparison.Ordinal))
+                return marker;
+        }
+
+        return string.Empty;
+    }
+
     [Fact]
     public void NoneIntoNonNullable_IsStillSPY0229()
         => AssertRefused("none-into-int", "x: int = None\n    print(x)",
