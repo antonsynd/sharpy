@@ -167,5 +167,113 @@ namespace Sharpy
                 throw new OverflowError("integer exponentiation result too large for long", ex);
             }
         }
+
+        /// <summary>
+        /// Return x raised to the power y as an exact <see cref="ulong"/> using
+        /// checked exponentiation-by-squaring. See <see cref="CheckedIntPow(int, int)"/>
+        /// for semantics; an out-of-range result raises <see cref="OverflowError"/>.
+        /// </summary>
+        /// <param name="x">The base.</param>
+        /// <param name="y">The exponent.</param>
+        /// <returns>x raised to the power y.</returns>
+        /// <exception cref="OverflowError">The result does not fit in a <see cref="ulong"/>.</exception>
+        public static ulong CheckedIntPow(ulong x, ulong y)
+        {
+            try
+            {
+                checked
+                {
+                    ulong result = 1;
+                    ulong baseValue = x;
+                    ulong exponent = y;
+
+                    while (exponent > 0)
+                    {
+                        if ((exponent & 1) == 1)
+                        {
+                            result *= baseValue;
+                        }
+
+                        exponent >>= 1;
+
+                        if (exponent > 0)
+                        {
+                            baseValue *= baseValue;
+                        }
+                    }
+
+                    return result;
+                }
+            }
+            catch (System.OverflowException ex)
+            {
+                throw new OverflowError("integer exponentiation result too large for ulong", ex);
+            }
+        }
+
+        /// <summary>
+        /// Return x raised to the power y as an exact <see cref="ulong"/>. When y is negative,
+        /// the truncating double-path value is returned, as in
+        /// <see cref="CheckedIntPow(int, int)"/> (#1228). When y is non-negative, delegates to
+        /// <see cref="CheckedIntPow(ulong, ulong)"/>.
+        /// </summary>
+        /// <param name="x">The base.</param>
+        /// <param name="y">The exponent. A negative exponent returns the truncating double-path
+        /// value.</param>
+        /// <returns>x raised to the power y.</returns>
+        /// <exception cref="OverflowError">The result does not fit in a <see cref="ulong"/>.</exception>
+        public static ulong CheckedIntPow(ulong x, long y)
+        {
+            if (y < 0)
+            {
+                return (ulong)System.Math.Pow(x, y);
+            }
+
+            return CheckedIntPow(x, (ulong)y);
+        }
+
+        /// <summary>
+        /// Return x raised to the power y as an exact <see cref="long"/> using
+        /// checked exponentiation-by-squaring. See <see cref="CheckedIntPow(int, int)"/>
+        /// for semantics; an out-of-range result raises <see cref="OverflowError"/>.
+        /// Handles negative bases correctly.
+        /// </summary>
+        /// <param name="x">The base.</param>
+        /// <param name="y">The exponent.</param>
+        /// <returns>x raised to the power y.</returns>
+        /// <exception cref="OverflowError">The result does not fit in a <see cref="long"/>.</exception>
+        public static long CheckedIntPow(long x, ulong y)
+        {
+            try
+            {
+                checked
+                {
+                    long result = 1;
+                    long baseValue = x;
+                    ulong exponent = y;
+
+                    while (exponent > 0)
+                    {
+                        if ((exponent & 1) == 1)
+                        {
+                            result *= baseValue;
+                        }
+
+                        exponent >>= 1;
+
+                        if (exponent > 0)
+                        {
+                            baseValue *= baseValue;
+                        }
+                    }
+
+                    return result;
+                }
+            }
+            catch (System.OverflowException ex)
+            {
+                throw new OverflowError("integer exponentiation result too large for long", ex);
+            }
+        }
     }
 }

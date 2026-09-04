@@ -180,3 +180,83 @@ public class CheckedIntPow_NegativeExponent_Tests
         CheckedIntPow(3L, 39L).Should().Be(4052555153018976267L);
     }
 }
+
+/// <summary>
+/// Tests for the <c>CheckedIntPow(ulong, ulong)</c>, <c>(ulong, long)</c>, and
+/// <c>(long, ulong)</c> overloads added for #1700.
+/// </summary>
+public class CheckedIntPow_ULong_Tests
+{
+    [Theory]
+    [InlineData(3UL, 2UL, 9UL)]
+    [InlineData(0UL, 0UL, 1UL)]
+    [InlineData(2UL, 0UL, 1UL)]
+    [InlineData(2UL, 1UL, 2UL)]
+    [InlineData(1UL, 100UL, 1UL)]
+    [InlineData(0UL, 5UL, 0UL)]
+    [InlineData(5UL, 3UL, 125UL)]
+    public void CheckedIntPow_ULongULong_InRange_ReturnsExactResult(ulong x, ulong y, ulong expected)
+    {
+        CheckedIntPow(x, y).Should().Be(expected);
+    }
+
+    [Fact]
+    public void CheckedIntPow_ULongULong_2Pow63_Times1()
+    {
+        // The motivating case: 2^63 is valid in ulong but overflows long.
+        ulong val = 1UL << 63; // 9223372036854775808
+        CheckedIntPow(val, 1UL).Should().Be(val);
+    }
+
+    [Fact]
+    public void CheckedIntPow_ULongULong_2Pow63_Squared_ThrowsOverflowError()
+    {
+        ulong val = 1UL << 63;
+        System.Action act = () => CheckedIntPow(val, 2UL);
+
+        act.Should().Throw<OverflowError>();
+    }
+
+    [Theory]
+    [InlineData(3UL, 2L, 9UL)]
+    [InlineData(2UL, 0L, 1UL)]
+    [InlineData(5UL, 1L, 5UL)]
+    public void CheckedIntPow_ULongLong_NonNegativeExponent(ulong x, long y, ulong expected)
+    {
+        CheckedIntPow(x, y).Should().Be(expected);
+    }
+
+    [Fact]
+    public void CheckedIntPow_ULongLong_NegativeExponent_Truncates()
+    {
+        // 3 ** -1 truncates to 0 (the double value is ~0.333)
+        CheckedIntPow(3UL, -1L).Should().Be(0UL);
+    }
+
+    [Theory]
+    [InlineData(3L, 2UL, 9L)]
+    [InlineData(0L, 0UL, 1L)]
+    [InlineData(1L, 100UL, 1L)]
+    [InlineData(-2L, 3UL, -8L)]
+    [InlineData(-2L, 2UL, 4L)]
+    [InlineData(-1L, 1UL, -1L)]
+    public void CheckedIntPow_LongULong_InRange_ReturnsExactResult(long x, ulong y, long expected)
+    {
+        CheckedIntPow(x, y).Should().Be(expected);
+    }
+
+    [Fact]
+    public void CheckedIntPow_LongULong_MinValue_Pow1()
+    {
+        CheckedIntPow(long.MinValue, 1UL).Should().Be(long.MinValue);
+    }
+
+    [Fact]
+    public void CheckedIntPow_LongULong_Overflow_ThrowsOverflowError()
+    {
+        // long.MaxValue ** 2 overflows
+        System.Action act = () => CheckedIntPow(2L, 63UL);
+
+        act.Should().Throw<OverflowError>();
+    }
+}
