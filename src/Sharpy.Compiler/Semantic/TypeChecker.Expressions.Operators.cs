@@ -2071,6 +2071,72 @@ internal partial class TypeChecker
         return (leftType, rightType);
     }
 
+    /// <summary>
+    /// The §10.2.11 constant-operand rule for the variadic <c>min</c>/<c>max</c> value form — the
+    /// sibling of <see cref="EffectiveOperandTypes"/> for the OTHER consumer of
+    /// <c>PrimitiveCatalog.GetPromotedType</c> (#1699). <c>min(u, 1)</c> with <c>u: uint64</c> is
+    /// legal for the same reason <c>u + 1</c> is: the constant converts to <c>ulong</c> BEFORE the
+    /// common type is computed. Promoting the declared types instead answers null and refuses the
+    /// call ("Cannot determine common numeric type for 'min' with argument types 'uint64',
+    /// 'int32'"), which is a false refusal.
+    /// <para>The conversion target is the single type shared by the arguments that are NOT integer
+    /// constant expressions; with none, or with several different ones, there is nothing to convert
+    /// toward and the argument types are returned unchanged. A constant that does NOT convert
+    /// (a negative literal against an unsigned type) also returns them unchanged, so the call is
+    /// refused exactly as a signed variable operand would be — the refusal is preserved, not
+    /// widened away. <c>min(2, 3.0)</c> is untouched: the predicate answers false for a
+    /// floating-point target, so promotion still decides that pair.</para>
+    /// <para><b>Wiring (#1699, pending — this helper has no caller yet).</b> The three builtin
+    /// dispatch sites live in <c>TypeChecker.Expressions.Access.Calls.cs</c> and must pass the
+    /// effective types to <c>BuiltinReturnTypeInference.InferReturnType</c> while keeping the
+    /// ORIGINAL <paramref name="argTypes"/> for <c>ReportMinMaxPromotionFailure</c> (the message
+    /// names what the user wrote) and for <c>RecordMinMaxTypeArguments</c> (the recorded type
+    /// argument must differ from an argument's declared type for the emitted
+    /// <c>Builtins.Min&lt;T&gt;</c> to bind — C# cannot infer one <c>T</c> from
+    /// <c>(ulong, int)</c>).</para>
+    /// </summary>
+    private List<SemanticType> EffectiveMinMaxArgumentTypes(
+        FunctionCall call, List<SemanticType> argTypes)
+    {
+        if (argTypes.Count < 2 || call.Arguments.Length != argTypes.Count)
+            return argTypes;
+
+        var resolver = MakeConstantResolver();
+
+        SemanticType? target = null;
+        List<int>? constantIndices = null;
+        for (var i = 0; i < argTypes.Count; i++)
+        {
+            if (IntegerConstantEvaluator.TryGetConstantInteger(call.Arguments[i], out _, resolver))
+            {
+                (constantIndices ??= new List<int>()).Add(i);
+                continue;
+            }
+
+            if (target == null)
+                target = argTypes[i];
+            else if (!Equals(target, argTypes[i]))
+                return argTypes;
+        }
+
+        if (target == null || constantIndices == null)
+            return argTypes;
+
+        var effective = new List<SemanticType>(argTypes);
+        foreach (var i in constantIndices)
+        {
+            if (!ImplicitConversions.IsImplicitIntegerConstantConversion(
+                    call.Arguments[i], argTypes[i], target, resolver))
+            {
+                return argTypes;
+            }
+
+            effective[i] = target;
+        }
+
+        return effective;
+    }
+
     private void ReportUnsupportedBinaryOperator(
         Node node, string operatorSpelling,
         SemanticType left, SemanticType right,
