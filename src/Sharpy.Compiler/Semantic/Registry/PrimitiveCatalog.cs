@@ -182,8 +182,13 @@ public static class PrimitiveCatalog
 
     // ==================== 1.4 Numeric Promotion Rules ====================
 
+    private static bool IsIntegerKind(PrimitiveInfo info)
+        => info.Kind is NumericKind.SignedInteger or NumericKind.UnsignedInteger;
+
     // Promotion priority: higher value = wider type
-    // When mixing types, the result is the type with higher priority
+    // When mixing types, the result is the type with higher priority.
+    // Integer pairs never reach it — they are decided by the §12.4.7 arm in GetPromotedType —
+    // so the integer ranks below only order a float/decimal pair's integer partner.
     private static int GetPromotionPriority(PrimitiveInfo info)
     {
         // Handle void type (no promotion possible)
@@ -228,21 +233,28 @@ public static class PrimitiveCatalog
             (left.Kind == NumericKind.FloatingPoint && right.Kind == NumericKind.Decimal))
             return null;
 
-        // Mixed-signedness integer pairs: C# §12.4.7 binary numeric promotion.
-        if (left.Kind != right.Kind &&
-            (left.Kind == NumericKind.SignedInteger || left.Kind == NumericKind.UnsignedInteger) &&
-            (right.Kind == NumericKind.SignedInteger || right.Kind == NumericKind.UnsignedInteger))
+        // Integer pairs: C# §12.4.7 binary numeric promotion, verbatim and in its own order —
+        // ulong first (its partner must be convertible to ulong, i.e. unsigned), then long, then
+        // uint (whose partner decides between long and uint), then int. Applies to same-signedness
+        // pairs too: `sbyte + short` and `byte + ushort` are `int` in C#, not the wider narrow
+        // type the priority table below would pick (#1699). The priority table survives for the
+        // float and decimal ranks only.
+        if (IsIntegerKind(left) && IsIntegerKind(right))
         {
-            var (unsigned, signed) = left.IsSigned ? (right, left) : (left, right);
+            if (left.ClrType == typeof(ulong) || right.ClrType == typeof(ulong))
+            {
+                var partner = left.ClrType == typeof(ulong) ? right : left;
+                return partner.IsSigned ? null : GetByName("ulong");
+            }
 
-            if (unsigned.ClrType == typeof(ulong))
-                return null;
-
-            if (signed.ClrType == typeof(long))
+            if (left.ClrType == typeof(long) || right.ClrType == typeof(long))
                 return GetByName("long");
 
-            if (unsigned.ClrType == typeof(uint))
-                return GetByName("long");
+            if (left.ClrType == typeof(uint) || right.ClrType == typeof(uint))
+            {
+                var partner = left.ClrType == typeof(uint) ? right : left;
+                return partner.IsSigned ? GetByName("long") : GetByName("uint");
+            }
 
             return GetByName("int");
         }

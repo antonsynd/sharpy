@@ -168,33 +168,102 @@ public class PrimitiveCatalogTests
 
     // ==================== 1.6.4 Test promotion rules ====================
 
+    /// <summary>
+    /// The full 8 x 8 ordered-pair table of C# ECMA-334 §12.4.7 binary numeric promotion over the
+    /// integer types, both orders, with the seven `ulong` x signed pairs answering null because C#
+    /// has no predefined operator for them (CS0034). Every expected value is written out rather
+    /// than derived, so a rule the implementation gets wrong cannot be reproduced by the test's own
+    /// arithmetic; the hand-picked subset this replaces had three mixed rows, all same-width, and
+    /// would have passed with `uint + short` typed `uint` (#1699).
+    /// </summary>
     [Theory]
+    [InlineData("sbyte", "sbyte", "int")]
+    [InlineData("sbyte", "short", "int")]
+    [InlineData("sbyte", "int", "int")]
+    [InlineData("sbyte", "long", "long")]
+    [InlineData("sbyte", "byte", "int")]
+    [InlineData("sbyte", "ushort", "int")]
+    [InlineData("sbyte", "uint", "long")]
+    [InlineData("sbyte", "ulong", null)]
+    [InlineData("short", "sbyte", "int")]
+    [InlineData("short", "short", "int")]
+    [InlineData("short", "int", "int")]
+    [InlineData("short", "long", "long")]
+    [InlineData("short", "byte", "int")]
+    [InlineData("short", "ushort", "int")]
+    [InlineData("short", "uint", "long")]
+    [InlineData("short", "ulong", null)]
+    [InlineData("int", "sbyte", "int")]
+    [InlineData("int", "short", "int")]
     [InlineData("int", "int", "int")]
     [InlineData("int", "long", "long")]
+    [InlineData("int", "byte", "int")]
+    [InlineData("int", "ushort", "int")]
+    [InlineData("int", "uint", "long")]
+    [InlineData("int", "ulong", null)]
+    [InlineData("long", "sbyte", "long")]
+    [InlineData("long", "short", "long")]
+    [InlineData("long", "int", "long")]
+    [InlineData("long", "long", "long")]
+    [InlineData("long", "byte", "long")]
+    [InlineData("long", "ushort", "long")]
+    [InlineData("long", "uint", "long")]
+    [InlineData("long", "ulong", null)]
+    [InlineData("byte", "sbyte", "int")]
+    [InlineData("byte", "short", "int")]
+    [InlineData("byte", "int", "int")]
+    [InlineData("byte", "long", "long")]
+    [InlineData("byte", "byte", "int")]
+    [InlineData("byte", "ushort", "int")]
+    [InlineData("byte", "uint", "uint")]
+    [InlineData("byte", "ulong", "ulong")]
+    [InlineData("ushort", "sbyte", "int")]
+    [InlineData("ushort", "short", "int")]
+    [InlineData("ushort", "int", "int")]
+    [InlineData("ushort", "long", "long")]
+    [InlineData("ushort", "byte", "int")]
+    [InlineData("ushort", "ushort", "int")]
+    [InlineData("ushort", "uint", "uint")]
+    [InlineData("ushort", "ulong", "ulong")]
+    [InlineData("uint", "sbyte", "long")]
+    [InlineData("uint", "short", "long")]
+    [InlineData("uint", "int", "long")]
+    [InlineData("uint", "long", "long")]
+    [InlineData("uint", "byte", "uint")]
+    [InlineData("uint", "ushort", "uint")]
+    [InlineData("uint", "uint", "uint")]
+    [InlineData("uint", "ulong", "ulong")]
+    [InlineData("ulong", "sbyte", null)]
+    [InlineData("ulong", "short", null)]
+    [InlineData("ulong", "int", null)]
+    [InlineData("ulong", "long", null)]
+    [InlineData("ulong", "byte", "ulong")]
+    [InlineData("ulong", "ushort", "ulong")]
+    [InlineData("ulong", "uint", "ulong")]
+    [InlineData("ulong", "ulong", "ulong")]
+    public void GetPromotedType_MatchesCSharpBinaryNumericPromotion(string left, string right, string? expected)
+    {
+        var leftInfo = PrimitiveCatalog.GetByName(left)!;
+        var rightInfo = PrimitiveCatalog.GetByName(right)!;
+
+        var result = PrimitiveCatalog.GetPromotedType(leftInfo, rightInfo);
+
+        if (expected == null)
+        {
+            result.Should().BeNull(
+                $"C# has no predefined operator for '{left}' and '{right}' (CS0034)");
+            return;
+        }
+
+        result.Should().NotBeNull($"C# promotes '{left}' and '{right}' to '{expected}'");
+        result!.SharpyName.Should().Be(PrimitiveCatalog.GetByName(expected)!.SharpyName);
+    }
+
+    /// <summary>The float and decimal ranks, which the §12.4.7 integer arm does not answer.</summary>
+    [Theory]
     [InlineData("int", "float", "float")]      // int + float(double) -> float(double)
     [InlineData("float", "double", "float")]   // float(double) + double -> float(double), both are C# double
     [InlineData("long", "double", "double")]   // long + double -> double
-    [InlineData("byte", "int", "int")]
-    [InlineData("int", "uint", "long")]        // C# §12.4.7: uint + signed → long
-    [InlineData("uint", "int", "long")]        // commutative
-    [InlineData("short", "ushort", "int")]     // C# §12.4.7: remaining mixed-sign → int
-    [InlineData("ushort", "short", "int")]     // commutative
-    [InlineData("sbyte", "byte", "int")]       // C# §12.4.7: remaining mixed-sign → int
-    [InlineData("byte", "sbyte", "int")]       // commutative
-    [InlineData("uint", "short", "long")]      // C# §12.4.7: uint + signed → long
-    [InlineData("short", "uint", "long")]      // commutative
-    [InlineData("uint", "sbyte", "long")]      // uint + sbyte → long
-    [InlineData("sbyte", "uint", "long")]      // commutative
-    [InlineData("long", "uint", "long")]       // long + unsigned → long
-    [InlineData("uint", "long", "long")]       // commutative
-    [InlineData("long", "byte", "long")]       // long + byte → long
-    [InlineData("byte", "long", "long")]       // commutative
-    [InlineData("long", "ushort", "long")]     // long + ushort → long
-    [InlineData("ushort", "long", "long")]     // commutative
-    [InlineData("uint", "ushort", "uint")]     // same-sign: priority
-    [InlineData("ushort", "uint", "uint")]     // commutative
-    [InlineData("ulong", "uint", "ulong")]    // same-sign: priority
-    [InlineData("uint", "ulong", "ulong")]    // commutative
     [InlineData("int", "float32", "float32")]  // int + float32 -> float32
     [InlineData("float32", "float", "float")]  // float32 + float(double) -> float(double)
     public void GetPromotedType_ReturnsCorrectType(string left, string right, string expected)
@@ -289,15 +358,6 @@ public class PrimitiveCatalogTests
         PrimitiveCatalog.GetPromotedType(boolInfo, intInfo).Should().BeNull();
     }
 
-    [Fact]
-    public void GetPromotedType_ReturnsNullForLongUlongMixedTypes()
-    {
-        // Per C# spec, long + ulong has no implicit common type and should be an error
-        var longInfo = PrimitiveCatalog.GetByName("long")!;
-        var ulongInfo = PrimitiveCatalog.GetByName("ulong")!;
-
-        PrimitiveCatalog.GetPromotedType(longInfo, ulongInfo).Should().BeNull();
-    }
 
     [Theory]
     [InlineData("ulong", "sbyte")]

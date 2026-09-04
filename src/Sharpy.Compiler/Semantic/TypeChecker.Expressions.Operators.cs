@@ -168,7 +168,7 @@ internal partial class TypeChecker
         if (binOp.Operator == BinaryOperator.Power
             && TypeUtils.IsInteger(leftType) && TypeUtils.IsInteger(rightType))
         {
-            var folded = TryFoldIntegerPower(binOp);
+            var folded = TryFoldIntegerPower(binOp, effectiveLeftType, effectiveRightType);
             if (folded != null)
                 return folded;
         }
@@ -238,7 +238,7 @@ internal partial class TypeChecker
         }
 
         if (binOp.Operator == BinaryOperator.Power
-            && ClassifyIntegerPower(leftType, rightType) is { } powKind)
+            && ClassifyIntegerPower(effectiveLeftType, effectiveRightType) is { } powKind)
         {
             _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(powKind));
         }
@@ -288,6 +288,11 @@ internal partial class TypeChecker
     /// (<see cref="CheckBinaryOp"/>) and the augmented <c>**=</c> site, so the two cannot
     /// drift (#1700, the #1623 shape). Returns <c>null</c> for user-defined / CLR operands and
     /// non-integer types (float/decimal are handled separately at the call site).
+    /// <para>The integer arm is <see cref="IntegerPowerRules.Classify"/> — the SAME call whose
+    /// <see cref="IntegerPowerRules.Classification.ResultType"/> the checker records for the
+    /// expression, so the emitted overload and the recorded type are one decision, not two
+    /// (#1700). Both sites pass the EFFECTIVE operand types (§10.2.11 constant conversion applied
+    /// first), so <c>u64 ** 2</c> classifies as the <c>(ulong, ulong)</c> pair it emits.</para>
     /// </summary>
     private static OperatorLoweringKind? ClassifyIntegerPower(
         SemanticType leftType, SemanticType rightType)
@@ -302,29 +307,7 @@ internal partial class TypeChecker
         if (PrimitiveCatalog.IsFloatingPoint(leftType) || PrimitiveCatalog.IsFloatingPoint(rightType))
             return OperatorLoweringKind.FloatPow;
 
-        if (!TypeUtils.IsInteger(leftType) || !TypeUtils.IsInteger(rightType))
-            return null;
-
-        var leftInfo = PrimitiveCatalog.GetPrimitiveInfo(leftType);
-        var rightInfo = PrimitiveCatalog.GetPrimitiveInfo(rightType);
-        if (leftInfo == null || rightInfo == null)
-            return null;
-
-        var leftIsULong = leftType == SemanticType.ULong;
-        var rightIsULong = rightType == SemanticType.ULong;
-
-        if (leftIsULong && (rightIsULong || !rightInfo.IsSigned))
-            return OperatorLoweringKind.IntegerPowULong;
-        if (leftIsULong && rightInfo.IsSigned)
-            return OperatorLoweringKind.IntegerPowULongExponentLong;
-        if (rightIsULong)
-            return OperatorLoweringKind.IntegerPowLongExponentULong;
-
-        var promoted = PrimitiveCatalog.GetPromotedType(leftType, rightType);
-        if (promoted == SemanticType.Long || promoted == SemanticType.UInt)
-            return OperatorLoweringKind.IntegerPowLong;
-
-        return OperatorLoweringKind.IntegerPowInt;
+        return IntegerPowerRules.Classify(leftType, rightType)?.Kind;
     }
 
     /// <summary>
@@ -387,13 +370,20 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Constant-folds a <c>base ** exponent</c> expression when both operands are constant
-    /// integers and the exponent is non-negative. Returns <see cref="SemanticType.Int"/> or
-    /// <see cref="SemanticType.Long"/> (whichever fits) and records the folded value in
-    /// <see cref="SemanticInfo"/>; emits SPY0328 and returns <see cref="SemanticType.Unknown"/>
-    /// when the result exceeds <c>long</c>. Returns <c>null</c> when the expression is not a
-    /// constant non-negative integer power (caller keeps the regular inference result). (#905)
+    /// integers and the exponent is non-negative; emits SPY0328 and returns
+    /// <see cref="SemanticType.Unknown"/> when the value fits no integer width the pair can
+    /// produce. Returns <c>null</c> when the expression is not a constant non-negative integer
+    /// power (caller keeps the regular inference result). (#905)
+    /// <para><b>The folded type is the pair's type, not the value's type alone</b> (#1700): a
+    /// <c>uint64</c>-classified pair folds to <c>uint64</c> even when the value would fit
+    /// <c>int32</c>, because <c>k: uint64 = 4UL ** 2</c> must store — folding it to <c>int32</c>
+    /// made the constant form refuse (SPY0220) a program whose variable form runs. For a signed
+    /// pair the <c>int</c> → <c>long</c> ladder still widens by value, exactly as it does for
+    /// <c>2 ** 62</c>; the trailing <c>ulong</c> rung keeps a ulong-operand fold whose value
+    /// exceeds <c>long</c> (<c>2 ** 63UL</c>) accepted.</para>
     /// </summary>
-    private SemanticType? TryFoldIntegerPower(BinaryOp binOp)
+    private SemanticType? TryFoldIntegerPower(
+        BinaryOp binOp, SemanticType leftType, SemanticType rightType)
     {
         if (!IntegerConstantEvaluator.TryGetConstantInteger(binOp.Left, out var baseValue)
             || !IntegerConstantEvaluator.TryGetConstantInteger(binOp.Right, out var exponent))
@@ -413,18 +403,29 @@ internal partial class TypeChecker
 
         var result = System.Numerics.BigInteger.Pow(baseValue, (int)exponent);
 
-        // The folded VALUE is re-derived into an IrConstant by the lowering pass (E2 #1056); the
-        // type checker keeps only the result-type + overflow decision here. Both sides read the same
-        // pure IntegerConstantEvaluator, so they cannot diverge.
+        // The folded VALUE is re-derived into an IrConstant by the lowering pass (E2 #1056), which
+        // reads the recorded TYPE to choose the literal's suffix; the type checker keeps only the
+        // result-type + overflow decision here. Both sides read the same pure
+        // IntegerConstantEvaluator, so they cannot diverge.
+        //
+        // A ulong-classified pair folds at its own width: `4UL ** 2` is uint64, not int32.
+        if (IntegerPowerRules.Classify(leftType, rightType)?.ResultType == SemanticType.ULong)
+        {
+            if (result >= 0 && result <= ulong.MaxValue)
+                return SemanticType.ULong;
+
+            ReportIntegerPowerOverflow(binOp);
+            return SemanticType.Unknown;
+        }
+
         if (result >= int.MinValue && result <= int.MaxValue)
             return SemanticType.Int;
 
         if (result >= long.MinValue && result <= long.MaxValue)
             return SemanticType.Long;
 
-        // A ulong-typed operand widens the fold to ulong (#1700).
-        var leftType = _semanticInfo.GetExpressionType(binOp.Left);
-        var rightType = _semanticInfo.GetExpressionType(binOp.Right);
+        // A ulong-typed operand widens a signed-classified fold past long (#1700) — the exponent
+        // side of `2 ** 63UL`, whose value is a legal ulong literal.
         if ((leftType == SemanticType.ULong || rightType == SemanticType.ULong)
             && result >= 0 && result <= ulong.MaxValue)
             return SemanticType.ULong;

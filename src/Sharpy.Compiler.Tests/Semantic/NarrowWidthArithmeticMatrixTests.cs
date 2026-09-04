@@ -240,6 +240,10 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         programs.Add(WrapProgram());
         programs.AddRange(SelfAndNestedAttributePrograms());
         programs.AddRange(UnsignedWideTypingPrograms());
+        programs.AddRange(MixedSignednessPrograms());
+        programs.AddRange(ConstantOperandPrograms());
+        programs.AddRange(AugmentedMixedPrograms());
+        programs.AddRange(IntegerPowerPrograms());
         return programs;
     }
 
@@ -536,6 +540,32 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
     }
 
     // ── uint64: the width whose `//`, `%` and `~` keep their type and whose `-` has no operator ──
+
+    /// <summary>
+    /// The <c>uint64</c> expressions that keep their own width, declared as data so the matrix's
+    /// totality count is computed over the axis rather than carrying a magic constant.
+    /// <c>Builtins.FloorDiv</c>/<c>FloorMod</c> DO have a <c>(ulong, ulong)</c> overload (#1662)
+    /// and <c>CheckedIntPow</c> now does too (#1700), so unlike <c>uint32</c> these do not widen;
+    /// <c>~</c> is predefined on <c>ulong</c>.
+    /// </summary>
+    private static readonly (string Expression, string Expected)[] UnsignedWideKeeps =
+    {
+        ("a + b", "9"),
+        ("a // b", "3"),
+        ("a % b", "1"),
+        ("~a", "18446744073709551608"),
+        ("a ** b", "49"),
+    };
+
+    /// <summary>
+    /// Unary <c>-</c> on <c>ulong</c> matches NO predefined C# operator (§12.9.3 / CS0023): a named
+    /// refusal, not an emitter ICE.
+    /// </summary>
+    private static readonly (string Expression, string Message)[] UnsignedWideRefusals =
+    {
+        ("-a", "Type 'uint64' does not support unary operator '-'"),
+    };
+
     private static IEnumerable<MatrixProgram> UnsignedWideTypingPrograms()
     {
         var sb = new SourceBuilder();
@@ -543,37 +573,352 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         sb.Add("    a: uint64 = 7");
         sb.Add("    b: uint64 = 2");
         var keep = new List<Cell>();
-        void Keeps(string expr, string expected)
+        for (var i = 0; i < UnsignedWideKeeps.Length; i++)
         {
-            var i = keep.Count;
+            var (expr, expected) = UnsignedWideKeeps[i];
             sb.Add($"    k{i}: uint64 = {expr}");
             var line = sb.Add($"    print(k{i})");
             keep.Add(new Cell($"plain-decl/uint64/{expr}", "plain decl", "uint64", expr, "-",
                 true, line, expected, null));
         }
 
-        // Builtins.FloorDiv/FloorMod DO have a (ulong, ulong) overload (#1662), so unlike uint32
-        // these keep their width; `~` is predefined on ulong.
-        Keeps("a + b", "9");
-        Keeps("a // b", "3");
-        Keeps("a % b", "1");
-        Keeps("~a", "18446744073709551608");
-        // uint64 ** uint64 now returns uint64 (#1700 — CheckedIntPow(ulong,ulong) overload)
-        Keeps("a ** b", "49");
         yield return new MatrixProgram("uint64/accepted", sb.Text, true, keep);
 
-        // Unary `-` on ulong matches NO predefined C# operator (§12.9.3 / CS0023): a named
-        // refusal, not an emitter ICE.
-        var neg = new SourceBuilder();
-        neg.Add("def main() -> None:");
-        neg.Add("    a: uint64 = 3");
-        var negLine = neg.Add("    print(-a)");
-        yield return new MatrixProgram("uint64/negation-refused", neg.Text, false, new[]
+        foreach (var (expr, message) in UnsignedWideRefusals)
         {
-            new Cell("unary-minus/uint64", "unary", "uint64", "u-", "-", false, negLine,
-                "Type 'uint64' does not support unary operator '-'",
-                DiagnosticCodes.Semantic.InvalidUnaryOperation),
-        });
+            var neg = new SourceBuilder();
+            neg.Add("def main() -> None:");
+            neg.Add("    a: uint64 = 3");
+            var negLine = neg.Add($"    print({expr})");
+            yield return new MatrixProgram($"uint64/refused/{expr}", neg.Text, false, new[]
+            {
+                new Cell($"unary/uint64/{expr}", "unary", "uint64", "u-", "-", false, negLine,
+                    message, DiagnosticCodes.Semantic.InvalidUnaryOperation),
+            });
+        }
+    }
+
+    // ─────────── mixed-signedness pairs, the constant axis and `**` (#1699, #1700) ───────────
+
+    /// <summary>
+    /// An ordered operand pair and the type C# ECMA-334 §12.4.7 promotes it to — <c>null</c> when
+    /// C# has no predefined operator for the pair (CS0034 / CS0019), which Sharpy must refuse by
+    /// name instead of handing it to Roslyn. Written out per pair, never derived from the rule the
+    /// implementation uses.
+    /// </summary>
+    private sealed record MixedPair(string Left, string Right, string? Promoted)
+    {
+        public string Id => $"{Left}*{Right}";
+    }
+
+    private static readonly MixedPair[] MixedPairs =
+    {
+        new("uint32", "int16",  "int64"),
+        new("uint32", "int32",  "int64"),
+        new("uint32", "uint16", "uint32"),
+        new("uint64", "int32",  null),
+        new("uint64", "int64",  null),
+        new("uint64", "uint32", "uint64"),
+        new("int64",  "uint64", null),
+    };
+
+    /// <summary>
+    /// The operator families that share the promotion table, each with the printed form its
+    /// accepted cell uses. Shifts are NOT here on purpose — a shift count is not promoted with the
+    /// left operand (§12.4.7's carve-out) — and appear as the exempt control in
+    /// <see cref="ShiftAndUnaryControlsAreUnaffected"/>. The comparison forms print two values so
+    /// the cell's line is never the bare <c>True</c> the value reader filters out as prelude.
+    /// </summary>
+    private sealed record MixedFamily(string Id, string Operator, string Expression, string Value, bool Stores);
+
+    private static readonly MixedFamily[] MixedFamilies =
+    {
+        new("arith", "+", "a + b", "9", true),
+        new("cmp", ">", "a > b, a < b", "True False", false),
+        new("eq", "==", "a == b, a != b", "False True", false),
+        new("bitwise", "&", "a & b", "2", true),
+    };
+
+    /// <summary>
+    /// {arith, cmp, eq, bitwise} x mixed pair. A pair C# promotes runs and stores into the promoted
+    /// type; a pair it cannot is SPY0222 naming both types in EVERY family — the comparison and
+    /// equality arms included, which returned <c>bool</c> unconditionally and sent
+    /// <c>uint64 &gt; int32</c> to Roslyn as a native <c>&gt;</c> (SPY0908 / CS0034).
+    /// </summary>
+    private static IEnumerable<MatrixProgram> MixedSignednessPrograms()
+    {
+        foreach (var pair in MixedPairs)
+        {
+            var sb = new SourceBuilder();
+            sb.Add("def main() -> None:");
+            sb.Add($"    a: {pair.Left} = {LeftValue}");
+            sb.Add($"    b: {pair.Right} = {RightValue}");
+
+            var cells = new List<Cell>();
+            var stored = 0;
+            foreach (var family in MixedFamilies)
+            {
+                int line;
+                if (pair.Promoted == null)
+                {
+                    line = sb.Add($"    print(a {family.Operator} b)");
+                    cells.Add(new Cell(
+                        $"mixed/{family.Id}/{pair.Id}", $"mixed/{family.Id}", pair.Id, family.Id, "-",
+                        false, line,
+                        $"Type '{pair.Left}' does not support operator '{family.Operator}' "
+                        + $"with operand of type '{pair.Right}'",
+                        DiagnosticCodes.Semantic.InvalidBinaryOperation));
+                    continue;
+                }
+
+                if (family.Stores)
+                {
+                    sb.Add($"    c{stored}: {pair.Promoted} = {family.Expression}");
+                    line = sb.Add($"    print(c{stored})");
+                    stored++;
+                }
+                else
+                {
+                    line = sb.Add($"    print({family.Expression})");
+                }
+
+                cells.Add(new Cell(
+                    $"mixed/{family.Id}/{pair.Id}", $"mixed/{family.Id}", pair.Id, family.Id, "-",
+                    true, line, family.Value, null));
+            }
+
+            yield return new MatrixProgram(
+                $"mixed/{pair.Id}/{(pair.Promoted == null ? "refused" : "accepted")}",
+                sb.Text, pair.Promoted != null, cells);
+        }
+
+        // The store column: the recorded type is APPLIED, so a store back into the left operand's
+        // type is refused BY NAME when promotion widened it (`c: uint32 = a + b` for uint32*int16
+        // was SPY0908 / CS0266) while the promoted-type store above runs.
+        foreach (var pair in MixedStoreColumn)
+        {
+            var sb = new SourceBuilder();
+            sb.Add("def main() -> None:");
+            sb.Add($"    a: {pair.Left} = {LeftValue}");
+            sb.Add($"    b: {pair.Right} = {RightValue}");
+            var line = sb.Add($"    c: {pair.Left} = a + b");
+
+            yield return new MatrixProgram($"mixed/store/{pair.Id}", sb.Text, false, new[]
+            {
+                new Cell($"mixed/store/{pair.Id}", "mixed/store", pair.Id, "+", "-",
+                    false, line,
+                    $"Cannot assign type '{pair.Promoted}' to variable of type '{pair.Left}'",
+                    DiagnosticCodes.Semantic.TypeMismatch),
+            });
+        }
+
+        // decimal x float64 is the one NON-integer pair promotion refuses, and the comparison arm
+        // admitted it (SPY0908 / CS0019) for exactly the reason the integer pairs slipped through.
+        foreach (var (leftDecl, rightDecl, pairId, family, expr, message) in NonIntegerRefusals)
+        {
+            var dec = new SourceBuilder();
+            dec.Add("def main() -> None:");
+            dec.Add(leftDecl);
+            dec.Add(rightDecl);
+            var decLine = dec.Add($"    print({expr})");
+            yield return new MatrixProgram($"mixed/{pairId}/refused", dec.Text, false, new[]
+            {
+                new Cell($"mixed/{family}/{pairId}", $"mixed/{family}", pairId, family, "-",
+                    false, decLine, message, DiagnosticCodes.Semantic.InvalidBinaryOperation),
+            });
+        }
+    }
+
+    /// <summary>
+    /// The non-integer pairs the same promotion answer refuses. <c>decimal</c> never mixes with a
+    /// float kind (CPython raises TypeError for <c>Decimal(7) + 1.5</c>), and the comparison arm
+    /// must refuse it for the same reason arithmetic does.
+    /// </summary>
+    private static readonly (string LeftDecl, string RightDecl, string PairId, string Family,
+        string Expression, string Message)[] NonIntegerRefusals =
+    {
+        ("    d: decimal = 1", "    f: float = 2.0", "decimal*float64", "cmp", "d < f",
+            "Type 'decimal' does not support operator '<' with operand of type 'float64'"),
+    };
+
+    /// <summary>The pairs whose promoted type is not the left operand's, so a left-typed store refuses.</summary>
+    private static MixedPair[] MixedStoreColumn
+        => MixedPairs.Where(p => p.Promoted != null && p.Promoted != p.Left).ToArray();
+
+    /// <summary>
+    /// A constant operand converts to the OTHER operand's type before promotion (§10.2.11 then
+    /// §12.4.7), so <c>u32 + 1</c> is <c>uint32</c> and not <c>int64</c> — <c>c: uint32 = a + 1</c>
+    /// was a live false SPY0220. <c>ResultType</c> is <c>null</c> for the one constant that cannot
+    /// convert: a negative literal has no <c>ulong</c> form, so <c>uint64 + (-1)</c> is refused
+    /// exactly like a signed variable operand (it was SPY0908 / CS0034).
+    /// </summary>
+    private sealed record ConstantOperandCase(
+        string Target, string Kind, string Constant, string? ResultType, string Expected)
+    {
+        public string Id => $"constant/{Kind}/{Target}";
+    }
+
+    private static readonly ConstantOperandCase[] ConstantOperandCases =
+    {
+        new("uint32", "literal",      "1",          "uint32", "8"),
+        new("uint32", "const-ref",    "K",          "uint32", "10"),
+        new("uint32", "folded",       "(1 << 2)",   "uint32", "11"),
+        new("uint32", "suffixed",     "1u",         "uint32", "8"),
+        new("uint32", "negative",     "(-1)",       "int64",  "6"),
+        new("uint32", "long-literal", "4294967296", "int64",  "4294967303"),
+        new("uint64", "literal",      "1",          "uint64", "8"),
+        new("uint64", "const-ref",    "K",          "uint64", "10"),
+        new("uint64", "folded",       "(1 << 2)",   "uint64", "11"),
+        new("uint64", "suffixed",     "1u",         "uint64", "8"),
+        new("uint64", "long-literal", "4294967296", "uint64", "4294967303"),
+        new("uint64", "negative",     "(-1)",       null,
+            "does not support operator '+' with operand of type 'int32'"),
+    };
+
+    private static IEnumerable<MatrixProgram> ConstantOperandPrograms()
+    {
+        foreach (var c in ConstantOperandCases)
+        {
+            var sb = new SourceBuilder();
+            if (c.Kind == "const-ref")
+            {
+                sb.Add("const K: int = 3");
+                sb.Add("");
+            }
+            sb.Add("def main() -> None:");
+            sb.Add($"    a: {c.Target} = {LeftValue}");
+
+            if (c.ResultType == null)
+            {
+                var refusedLine = sb.Add($"    print(a + {c.Constant})");
+                yield return new MatrixProgram(c.Id, sb.Text, false, new[]
+                {
+                    new Cell(c.Id, $"constant/{c.Kind}", c.Target, "+", "-", false, refusedLine,
+                        c.Expected, DiagnosticCodes.Semantic.InvalidBinaryOperation),
+                });
+                continue;
+            }
+
+            sb.Add($"    c: {c.ResultType} = a + {c.Constant}");
+            var line = sb.Add("    print(c)");
+            yield return new MatrixProgram(c.Id, sb.Text, true, new[]
+            {
+                new Cell(c.Id, $"constant/{c.Kind}", c.Target, "+", "-", true, line, c.Expected, null),
+            });
+        }
+    }
+
+    /// <summary>
+    /// The augmented column of the mixed axis: the constant pre-step and the promotion answer must
+    /// reach <c>x op= y</c> too, or the two sites disagree about the same pair.
+    /// </summary>
+    private sealed record AugmentedMixedCase(
+        string Id, string Target, string RhsDeclaration, string Operator, string Rhs, bool Accepted,
+        string Expected, string? Code);
+
+    private static readonly AugmentedMixedCase[] AugmentedMixedCases =
+    {
+        new("augmented-mixed/uint32/literal", "uint32", "", "+", "1", true, "8", null),
+        new("augmented-mixed/uint64/negative", "uint64", "", "+", "(-1)", false,
+            "does not support operator '+=' with operand of type 'int32'",
+            DiagnosticCodes.Semantic.InvalidBinaryOperation),
+        new("augmented-mixed/uint32/int16-var", "uint32", "    r: int16 = 1", "+", "r", false,
+            "Result type 'int64' of augmented assignment is not assignable to target type 'uint32'",
+            DiagnosticCodes.Semantic.TypeMismatch),
+        new("augmented-mixed/int64/uint32-var", "int64", "    r: uint32 = 1", "+", "r", true, "8", null),
+        // `**=` goes through the SAME ClassifyIntegerPower the binary site uses (#1700): a uint64
+        // target keeps its width for a constant exponent and for a signed variable one.
+        new("augmented-mixed/uint64/power-constant", "uint64", "", "**", "2", true, "49", null),
+        new("augmented-mixed/uint64/power-int32-var", "uint64", "    r: int32 = 2", "**", "r", true, "49", null),
+    };
+
+    private static IEnumerable<MatrixProgram> AugmentedMixedPrograms()
+    {
+        foreach (var c in AugmentedMixedCases)
+        {
+            var sb = new SourceBuilder();
+            sb.Add("def main() -> None:");
+            sb.Add($"    x: {c.Target} = {LeftValue}");
+            if (c.RhsDeclaration.Length > 0)
+                sb.Add(c.RhsDeclaration);
+            var line = sb.Add($"    x {c.Operator}= {c.Rhs}");
+            if (c.Accepted)
+                sb.Add("    print(x)");
+
+            yield return new MatrixProgram(c.Id, sb.Text, c.Accepted, new[]
+            {
+                new Cell(c.Id, "augmented/mixed", c.Target, c.Operator, "identifier",
+                    c.Accepted, line, c.Expected, c.Code),
+            });
+        }
+    }
+
+    /// <summary>
+    /// Integer <c>**</c> binds a <c>CheckedIntPow</c> overload and the recorded type IS that
+    /// overload's return type (#1700). Each cell STORES into the type it claims, so a cell that
+    /// recorded the wrong width fails on the store rather than only on the value.
+    /// </summary>
+    private sealed record PowerCase(
+        string Id, string Declarations, string Expression, string ResultType, string Expected);
+
+    private static readonly PowerCase[] PowerCases =
+    {
+        new("power/int32*uint64", "    a: int32 = 3\n    n: uint64 = 20", "a ** n", "int64", "3486784401"),
+        new("power/uint64*int32", "    a: uint64 = 3\n    n: int32 = 4", "a ** n", "uint64", "81"),
+        new("power/uint64*uint64", "    a: uint64 = 3\n    n: uint64 = 4", "a ** n", "uint64", "81"),
+        new("power/uint32*uint32", "    a: uint32 = 3\n    n: uint32 = 4", "a ** n", "int64", "81"),
+        new("power/int32*int32", "    a: int32 = 3\n    n: int32 = 4", "a ** n", "int32", "81"),
+        new("power/uint64*constant", "    a: uint64 = 3", "a ** 2", "uint64", "9"),
+        new("power/fold-uint64", "", "4UL ** 2", "uint64", "16"),
+        new("power/fold-uint64-wide", "", "2UL ** 63", "uint64", "9223372036854775808"),
+        new("power/fold-int32", "", "2 ** 30", "int32", "1073741824"),
+        new("power/fold-int64", "", "2 ** 31", "int64", "2147483648"),
+    };
+
+    /// <summary>The `**` cells that must be REFUSED, each by name.</summary>
+    private sealed record PowerRefusedCase(
+        string Id, string Declarations, string Statement, string Expected, string Code);
+
+    private static readonly PowerRefusedCase[] PowerRefusedCases =
+    {
+        new("power/store/int32*uint64", "    a: int32 = 3\n    n: uint64 = 20", "    z: int32 = a ** n",
+            "Cannot assign type 'int64' to variable of type 'int32'",
+            DiagnosticCodes.Semantic.TypeMismatch),
+        new("power/store/fold-overflow", "", "    print(2UL ** 64)",
+            "Result of integer exponentiation does not fit a 64-bit integer",
+            DiagnosticCodes.Semantic.IntegerPowerOverflow),
+    };
+
+    private static IEnumerable<MatrixProgram> IntegerPowerPrograms()
+    {
+        foreach (var c in PowerCases)
+        {
+            var sb = new SourceBuilder();
+            sb.Add("def main() -> None:");
+            foreach (var d in c.Declarations.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                sb.Add(d);
+            sb.Add($"    p: {c.ResultType} = {c.Expression}");
+            var line = sb.Add("    print(p)");
+
+            yield return new MatrixProgram(c.Id, sb.Text, true, new[]
+            {
+                new Cell(c.Id, "power", c.Id, "**", "-", true, line, c.Expected, null),
+            });
+        }
+
+        foreach (var c in PowerRefusedCases)
+        {
+            var sb = new SourceBuilder();
+            sb.Add("def main() -> None:");
+            foreach (var d in c.Declarations.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                sb.Add(d);
+            var line = sb.Add(c.Statement);
+
+            yield return new MatrixProgram(c.Id, sb.Text, false, new[]
+            {
+                new Cell(c.Id, "power/store", c.Id, "**", "-", false, line, c.Expected, c.Code),
+            });
+        }
     }
 
     // ───────────────────────────── the tests ─────────────────────────────
@@ -674,14 +1019,91 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
 
         NaCells.Should().OnlyContain(n => n.Reason.Length > 20, "every N/A cell states why");
 
+        // The mixed-signedness axes (#1699): pair × family, plus the store column, the constant
+        // column, the augmented column and the `**` column. Each declared entry must be a live
+        // cell — a generator that dropped one would otherwise leave the rest green.
+        foreach (var pair in MixedPairs)
+            foreach (var family in MixedFamilies)
+                live.Should().Contain(c => c.Store == $"mixed/{family.Id}" && c.Width == pair.Id,
+                    $"mixed/{family.Id} × {pair.Id} is a cell of the matrix");
+
+        foreach (var pair in MixedStoreColumn)
+            live.Should().Contain(c => c.Id == $"mixed/store/{pair.Id}",
+                $"the {pair.Id} store column is a cell of the matrix");
+
+        foreach (var (_, _, pairId, family, _, _) in NonIntegerRefusals)
+            live.Should().Contain(c => c.Store == $"mixed/{family}" && c.Width == pairId,
+                $"mixed/{family} × {pairId} is a cell of the matrix");
+
+        foreach (var c in ConstantOperandCases)
+            live.Should().Contain(l => l.Id == c.Id, $"{c.Id} is a cell of the matrix");
+        foreach (var c in AugmentedMixedCases)
+            live.Should().Contain(l => l.Id == c.Id, $"{c.Id} is a cell of the matrix");
+        foreach (var c in PowerCases)
+            live.Should().Contain(l => l.Id == c.Id, $"{c.Id} is a cell of the matrix");
+        foreach (var c in PowerRefusedCases)
+            live.Should().Contain(l => l.Id == c.Id, $"{c.Id} is a cell of the matrix");
+
         var liveAugmented = live.Count(c => RhsKinds.Any(r => c.Store == $"augmented/{r}")
             && TargetKinds.Contains(c.TargetKind));
         var expectedAugmented = RhsKinds.Length * Widths.Length * TargetKinds.Length * BinaryOps.Length
             - (Widths.Length * TargetKinds.Length * 2);   // the two shift × out-of-range-const columns
 
         liveAugmented.Should().Be(expectedAugmented);
+        live.Count(c => c.Store == "augmented/mixed").Should().Be(AugmentedMixedCases.Length,
+            "the augmented column of the mixed axis is exactly its declared cases");
+
+        // Every non-augmented cell is accounted for by a declared axis — no magic constant, so a
+        // generator that stopped emitting an arm fails here instead of silently shrinking.
+        var expectedNonAugmented =
+            (4 * Widths.Length * Ops.Length)                       // plain decl / print / argument / return
+            + UnsignedWideKeeps.Length + UnsignedWideRefusals.Length
+            + (MixedPairs.Length * MixedFamilies.Length) + MixedStoreColumn.Length
+            + NonIntegerRefusals.Length
+            + ConstantOperandCases.Length
+            + PowerCases.Length + PowerRefusedCases.Length;
+
         live.Count(c => !c.Store.StartsWith("augmented/", StringComparison.Ordinal))
-            .Should().Be((4 * Widths.Length * Ops.Length) + 6);   // 4 stores + the uint64 group (#1700: ** accepted)
+            .Should().Be(expectedNonAugmented);
+    }
+
+    /// <summary>
+    /// The exempt controls, so the promotion change cannot be credited with refusing things that
+    /// have their own rule: a shift promotes its LEFT operand alone (§12.4.7's carve-out), unary
+    /// operators are not binary promotion, and <c>x == None</c> keeps the `is None` steer that runs
+    /// before the numeric arm — the three places a mixed-signedness refusal could hide.
+    /// </summary>
+    [Fact]
+    public void ShiftAndUnaryControlsAreUnaffected()
+    {
+        var result = CompileAndExecute(@"
+def main() -> None:
+    a: uint64 = 5
+    n: int32 = 1
+    print(a << n)
+    b: uint32 = 5
+    m: int16 = 1
+    print(b << m)
+    print(~a)
+    c: int64 = 5
+    print(-c)
+");
+        result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
+        result.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(l => l.Trim())
+            .Should().Equal("10", "10", "18446744073709551610", "-5");
+
+        var noneControl = CompileAndExecute(@"
+def main() -> None:
+    y: int | None = 1
+    print(y == None)
+");
+        noneControl.Success.Should().BeFalse("`x == None` is refused with the `is None` steer");
+        noneControl.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.InvalidBinaryOperation
+                && d.Message.Contains("Did you mean 'is None'?", StringComparison.Ordinal),
+            "the None shortcut runs before the numeric arm; got "
+            + string.Join(" | ", noneControl.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
     }
 
     /// <summary>

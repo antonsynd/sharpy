@@ -1588,14 +1588,22 @@ internal class TypeInferenceService
     #region Helper Methods
 
 
+    /// <summary>
+    /// The recorded type of a <c>**</c>. An integer pair is answered by the ONE classification that
+    /// also picks the emitted <c>CheckedIntPow</c> overload (<see cref="IntegerPowerRules"/>), so
+    /// the recorded type IS that overload's CLR return type (#1700); any float/decimal operand
+    /// makes it <c>float64</c>.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately NOT <see cref="InferNumericResultType"/>: <c>**</c> is a call, not a predefined
+    /// operator, so binary numeric promotion is the wrong rule for it — promotion answers
+    /// <c>null</c> for <c>(int32, uint64)</c> (no C# operator) while <c>CheckedIntPow(long, ulong)</c>
+    /// binds and returns <c>long</c>.
+    /// </remarks>
     private static SemanticType InferPowerResultType(SemanticType left, SemanticType right)
     {
-        // Power type promotion:
-        // - Both integer types → use numeric promotion (int**int→int, int**long→long, etc.)
-        //   Math.Pow returns double, but we cast back to the promoted integer type
-        // - Any float involvement → Double
         if (TypeUtils.IsInteger(left) && TypeUtils.IsInteger(right))
-            return ApplyIntegerPowWidth(InferNumericResultType(left, right) ?? ApplyIntegerFloor(left));
+            return IntegerPowerRules.Classify(left, right)?.ResultType ?? ApplyIntegerFloor(left);
         return SemanticType.Double;
     }
 
@@ -1623,18 +1631,12 @@ internal class TypeInferenceService
     private static SemanticType? ApplyFlooredCallWidth(SemanticType? promoted)
         => promoted == SemanticType.UInt ? SemanticType.Long : promoted;
 
-    /// <summary>
-    /// The result width of an integer <c>**</c>: <c>uint32</c> widens to <c>int64</c> (the
-    /// <c>(long, long)</c> overload binds); <c>uint64</c> stays <c>uint64</c> because
-    /// <c>CheckedIntPow(ulong, ulong|long)</c> overloads now exist (#1700).
-    /// </summary>
-    private static SemanticType ApplyIntegerPowWidth(SemanticType promoted)
-        => promoted == SemanticType.UInt ? SemanticType.Long : promoted;
-
     // C# promotes all narrow integers (int8, int16, uint8, uint16) to int in
     // arithmetic, bitwise, and unary operations.  Match that so the checker's
     // result type agrees with what the CLR actually produces (#1666).
-    private static SemanticType ApplyIntegerFloor(SemanticType type)
+    // Internal because <see cref="IntegerPowerRules"/> applies the same floor to the width it
+    // classifies — one floor, not two.
+    internal static SemanticType ApplyIntegerFloor(SemanticType type)
     {
         if (type == SemanticType.SByte || type == SemanticType.Byte
             || type == SemanticType.Short || type == SemanticType.UShort)
