@@ -523,111 +523,21 @@ internal partial class TypeChecker
         switch (classified.RhsShape)
         {
             case AugmentedCollectionAssignment.RhsShapeKind.IterableOfElement:
-            {
-                var targetElement = gt.TypeArguments[0];
-                var rhsElement = _typeInference.InferIterableElementType(valueType);
-                if (rhsElement == null)
                 {
-                    ReportUnsupportedBinaryOperator(assignment,
-                        GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
-                        messageSuffix: $" — '{classified.PythonName}' requires an iterable");
-                    return false;
-                }
-                if (!IsAssignable(rhsElement, targetElement))
-                {
-                    AddError(
-                        $"Element type '{rhsElement.GetDisplayName()}' of the iterable is not assignable to "
-                        + $"'{targetElement.GetDisplayName()}'",
-                        assignment.LineStart, assignment.ColumnStart,
-                        code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
-                        span: assignment.Span);
-                    return false;
-                }
-                if (ClassifyIterableArgument(valueType) is { } projection)
-                    _semanticInfo.SetIterableProjection(assignment.Value, projection);
-                return true;
-            }
-
-            case AugmentedCollectionAssignment.RhsShapeKind.ExactInt:
-            {
-                // `xs *= n` lowers to InPlaceRepeat(int), so the count is anything a C# `int`
-                // parameter admits — an int8 count is an implicit widening, not a different shape.
-                // Requiring the type to BE `int` refused `n: int8; xs *= n`, which ran before the
-                // shape rule existed (#1682).
-                if (!IsAssignable(valueType, SemanticType.Int))
-                {
-                    ReportUnsupportedBinaryOperator(assignment,
-                        GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
-                        messageSuffix: " — list repetition requires an int count");
-                    return false;
-                }
-                return true;
-            }
-
-            case AugmentedCollectionAssignment.RhsShapeKind.SetLike:
-            {
-                if (valueType is not GenericType { Name: "set" or "frozenset" })
-                {
-                    ReportUnsupportedBinaryOperator(assignment,
-                        GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
-                        messageSuffix: $" — use s.{classified.PythonName}(xs) to update from any iterable");
-                    return false;
-                }
-                var targetElement = gt.TypeArguments[0];
-                var rhsGt = (GenericType)valueType;
-                if (rhsGt.TypeArguments.Count > 0 && !IsAssignable(rhsGt.TypeArguments[0], targetElement))
-                {
-                    AddError(
-                        $"Element type '{rhsGt.TypeArguments[0].GetDisplayName()}' is not assignable to "
-                        + $"set element type '{targetElement.GetDisplayName()}'",
-                        assignment.LineStart, assignment.ColumnStart,
-                        code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
-                        span: assignment.Span);
-                    return false;
-                }
-                return true;
-            }
-
-            case AugmentedCollectionAssignment.RhsShapeKind.MappingOrPairs:
-            {
-                var targetK = gt.TypeArguments[0];
-                var targetV = gt.TypeArguments.Count > 1 ? gt.TypeArguments[1] : SemanticType.Unknown;
-
-                if (valueType is GenericType { Name: "dict" } dictRhs && dictRhs.TypeArguments.Count >= 2)
-                {
-                    // EXACT type arguments, not assignable ones. `d |= e` lowers to
-                    // `Dict.Update(IReadOnlyDictionary<K, V>)`, and that interface is INVARIANT in
-                    // both parameters, so a `dict[str, Derived]` cannot bind to a
-                    // `dict[str, Base]`'s mutator however assignable the elements are. Accepting it
-                    // on element assignability is what produced CS1503 behind SPY0908 (#1682); the
-                    // refusal names invariance instead. `d.update(e)` is NOT the steer — it takes
-                    // the same invariant interface and is SPY0354 (measured), so the advice is a
-                    // per-item loop or an explicit copy.
-                    if (!dictRhs.TypeArguments[0].Equals(targetK)
-                        || !dictRhs.TypeArguments[1].Equals(targetV))
+                    var targetElement = gt.TypeArguments[0];
+                    var rhsElement = _typeInference.InferIterableElementType(valueType);
+                    if (rhsElement == null)
                     {
-                        AddError(
-                            $"dict[{dictRhs.TypeArguments[0].GetDisplayName()}, {dictRhs.TypeArguments[1].GetDisplayName()}] "
-                            + $"is not assignable to dict[{targetK.GetDisplayName()}, {targetV.GetDisplayName()}]"
-                            + " — the merge binds an invariant IReadOnlyDictionary, so the key and"
-                            + " value types must match exactly; copy the entries in a loop instead",
-                            assignment.LineStart, assignment.ColumnStart,
-                            code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
-                            span: assignment.Span);
+                        ReportUnsupportedBinaryOperator(assignment,
+                            GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
+                            messageSuffix: $" — '{classified.PythonName}' requires an iterable");
                         return false;
                     }
-                    return true;
-                }
-
-                var elemType = _typeInference.InferIterableElementType(valueType);
-                if (elemType is TupleType { ElementTypes.Count: 2 } pair)
-                {
-                    if (!IsAssignable(pair.ElementTypes[0], targetK)
-                        || !IsAssignable(pair.ElementTypes[1], targetV))
+                    if (!IsAssignable(rhsElement, targetElement))
                     {
                         AddError(
-                            $"Pair type ({pair.ElementTypes[0].GetDisplayName()}, {pair.ElementTypes[1].GetDisplayName()}) "
-                            + $"is not assignable to ({targetK.GetDisplayName()}, {targetV.GetDisplayName()})",
+                            $"Element type '{rhsElement.GetDisplayName()}' of the iterable is not assignable to "
+                            + $"'{targetElement.GetDisplayName()}'",
                             assignment.LineStart, assignment.ColumnStart,
                             code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
                             span: assignment.Span);
@@ -638,11 +548,101 @@ internal partial class TypeChecker
                     return true;
                 }
 
-                ReportUnsupportedBinaryOperator(assignment,
-                    GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
-                    messageSuffix: " — dict |= requires a dict or an iterable of (key, value) pairs");
-                return false;
-            }
+            case AugmentedCollectionAssignment.RhsShapeKind.ExactInt:
+                {
+                    // `xs *= n` lowers to InPlaceRepeat(int), so the count is anything a C# `int`
+                    // parameter admits — an int8 count is an implicit widening, not a different shape.
+                    // Requiring the type to BE `int` refused `n: int8; xs *= n`, which ran before the
+                    // shape rule existed (#1682).
+                    if (!IsAssignable(valueType, SemanticType.Int))
+                    {
+                        ReportUnsupportedBinaryOperator(assignment,
+                            GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
+                            messageSuffix: " — list repetition requires an int count");
+                        return false;
+                    }
+                    return true;
+                }
+
+            case AugmentedCollectionAssignment.RhsShapeKind.SetLike:
+                {
+                    if (valueType is not GenericType { Name: "set" or "frozenset" })
+                    {
+                        ReportUnsupportedBinaryOperator(assignment,
+                            GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
+                            messageSuffix: $" — use s.{classified.PythonName}(xs) to update from any iterable");
+                        return false;
+                    }
+                    var targetElement = gt.TypeArguments[0];
+                    var rhsGt = (GenericType)valueType;
+                    if (rhsGt.TypeArguments.Count > 0 && !IsAssignable(rhsGt.TypeArguments[0], targetElement))
+                    {
+                        AddError(
+                            $"Element type '{rhsGt.TypeArguments[0].GetDisplayName()}' is not assignable to "
+                            + $"set element type '{targetElement.GetDisplayName()}'",
+                            assignment.LineStart, assignment.ColumnStart,
+                            code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                            span: assignment.Span);
+                        return false;
+                    }
+                    return true;
+                }
+
+            case AugmentedCollectionAssignment.RhsShapeKind.MappingOrPairs:
+                {
+                    var targetK = gt.TypeArguments[0];
+                    var targetV = gt.TypeArguments.Count > 1 ? gt.TypeArguments[1] : SemanticType.Unknown;
+
+                    if (valueType is GenericType { Name: "dict" } dictRhs && dictRhs.TypeArguments.Count >= 2)
+                    {
+                        // EXACT type arguments, not assignable ones. `d |= e` lowers to
+                        // `Dict.Update(IReadOnlyDictionary<K, V>)`, and that interface is INVARIANT in
+                        // both parameters, so a `dict[str, Derived]` cannot bind to a
+                        // `dict[str, Base]`'s mutator however assignable the elements are. Accepting it
+                        // on element assignability is what produced CS1503 behind SPY0908 (#1682); the
+                        // refusal names invariance instead. `d.update(e)` is NOT the steer — it takes
+                        // the same invariant interface and is SPY0354 (measured), so the advice is a
+                        // per-item loop or an explicit copy.
+                        if (!dictRhs.TypeArguments[0].Equals(targetK)
+                            || !dictRhs.TypeArguments[1].Equals(targetV))
+                        {
+                            AddError(
+                                $"dict[{dictRhs.TypeArguments[0].GetDisplayName()}, {dictRhs.TypeArguments[1].GetDisplayName()}] "
+                                + $"is not assignable to dict[{targetK.GetDisplayName()}, {targetV.GetDisplayName()}]"
+                                + " — the merge binds an invariant IReadOnlyDictionary, so the key and"
+                                + " value types must match exactly; copy the entries in a loop instead",
+                                assignment.LineStart, assignment.ColumnStart,
+                                code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                                span: assignment.Span);
+                            return false;
+                        }
+                        return true;
+                    }
+
+                    var elemType = _typeInference.InferIterableElementType(valueType);
+                    if (elemType is TupleType { ElementTypes.Count: 2 } pair)
+                    {
+                        if (!IsAssignable(pair.ElementTypes[0], targetK)
+                            || !IsAssignable(pair.ElementTypes[1], targetV))
+                        {
+                            AddError(
+                                $"Pair type ({pair.ElementTypes[0].GetDisplayName()}, {pair.ElementTypes[1].GetDisplayName()}) "
+                                + $"is not assignable to ({targetK.GetDisplayName()}, {targetV.GetDisplayName()})",
+                                assignment.LineStart, assignment.ColumnStart,
+                                code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                                span: assignment.Span);
+                            return false;
+                        }
+                        if (ClassifyIterableArgument(valueType) is { } projection)
+                            _semanticInfo.SetIterableProjection(assignment.Value, projection);
+                        return true;
+                    }
+
+                    ReportUnsupportedBinaryOperator(assignment,
+                        GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
+                        messageSuffix: " — dict |= requires a dict or an iterable of (key, value) pairs");
+                    return false;
+                }
 
             default:
                 return false;
