@@ -32,7 +32,7 @@ def test_dict_reader_auto_detect_row_has_correct_values():
 @test
 def test_dict_reader_explicit_fieldnames_first_row_is_data():
     # When fieldnames are supplied, NO row is consumed as headers
-    reader = csv.dict_reader(["Alice,30", "Bob,25"], ["name", "age"])
+    reader = csv.dict_reader(["Alice,30", "Bob,25"], Some(["name", "age"]))
     rows: list[dict[str, str]] = []
     for row in reader:
         rows.append(row)
@@ -42,7 +42,7 @@ def test_dict_reader_explicit_fieldnames_first_row_is_data():
 
 @test
 def test_dict_reader_explicit_fieldnames_accessible_before_iteration():
-    reader = csv.dict_reader(["1,2"], ["x", "y"])
+    reader = csv.dict_reader(["1,2"], Some(["x", "y"]))
     # Fieldnames should be set even before iteration
     assert reader.fieldnames.is_some
     assert reader.fieldnames.unwrap()[0] == "x"

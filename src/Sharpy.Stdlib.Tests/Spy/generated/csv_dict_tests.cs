@@ -91,8 +91,8 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDictReaderExplicitFieldnamesFirstRowIsData()
             {
-#line (35, 5) - (35, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
-                var reader = csv.DictReader(new Sharpy.List<string>() { "Alice,30", "Bob,25" }, new Sharpy.List<string>() { "name", "age" });
+#line (35, 5) - (35, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
+                var reader = csv.DictReader(new Sharpy.List<string>() { "Alice,30", "Bob,25" }, Optional<Sharpy.List<string>>.Some(new Sharpy.List<string>() { "name", "age" }));
 #line (36, 5) - (36, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
                 Sharpy.List<Sharpy.Dict<string, string>> rows = new Sharpy.List<Sharpy.Dict<string, string>>()
 #line hidden
@@ -120,8 +120,8 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDictReaderExplicitFieldnamesAccessibleBeforeIteration()
             {
-#line (45, 5) - (45, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
-                var reader = csv.DictReader(new Sharpy.List<string>() { "1,2" }, new Sharpy.List<string>() { "x", "y" });
+#line (45, 5) - (45, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
+                var reader = csv.DictReader(new Sharpy.List<string>() { "1,2" }, Optional<Sharpy.List<string>>.Some(new Sharpy.List<string>() { "x", "y" }));
 #line (47, 5) - (47, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
                 Xunit.Assert.True(reader.Fieldnames.IsSome);
 #line (48, 5) - (48, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
