@@ -330,18 +330,44 @@ internal partial class TypeChecker
                 return;
             }
 
-            // §10.2.11: constant RHS converts to the target's type before promotion
+            // The RHS's value SHAPE converts to the target's type before the operator question —
+            // the SAME pre-step the binary site applies (EffectiveOperandTypes, §10.2.11), plus the
+            // float32/decimal literal arms the seam admits at every other store position
+            // (Decision 6, ruled A). Without the second half, `f: float32 = 1.0; f += 1.0` was
+            // SPY0220 and `d: decimal = 1.5; d += 1.5` was SPY0222 while both run at a declaration.
             var effectiveValueType = valueType;
-            if (assignment.Operator is not (AssignmentOperator.LeftShiftAssign or AssignmentOperator.RightShiftAssign)
-                && ImplicitConversions.IsImplicitIntegerConstantConversion(
-                    assignment.Value, valueType, targetType, MakeConstantResolver()))
+            if (assignment.Operator is not (AssignmentOperator.LeftShiftAssign or AssignmentOperator.RightShiftAssign))
             {
-                effectiveValueType = targetType;
+                if (AugmentedBinaryOperator(assignment.Operator) is { } binaryOp)
+                {
+                    // Only the RIGHT operand can move: the left is the assignment target, which is
+                    // never a constant expression (a const cannot be augment-assigned).
+                    effectiveValueType = EffectiveOperandTypes(
+                        binaryOp, assignment.Target, targetType, assignment.Value, valueType).right;
+                }
+
+                var literalVerdict = ClassifyStore(
+                    StorePosition.Augmented, assignment.Value, valueType, targetType);
+                if (literalVerdict is StoreVerdict.AcceptedFloat32Narrowing
+                    or StoreVerdict.AcceptedDecimalNarrowing)
+                {
+                    ApplyAcceptedVerdict(
+                        StorePosition.Augmented, literalVerdict, assignment.Value, valueType, targetType);
+                    effectiveValueType = literalVerdict == StoreVerdict.AcceptedFloat32Narrowing
+                        ? SemanticType.Float32
+                        : SemanticType.Decimal;
+                }
             }
+
+            // PEP 675: a LiteralString IS a str at the operator level, and
+            // `LiteralString + LiteralString` stays literal (#1731). Asking the operator question of
+            // `str` lets the seam decide the RESULT — admitted when the RHS is literal-derived,
+            // refused when it is not — instead of refusing the operator itself.
+            var operatorTargetType = targetType is LiteralStringType ? SemanticType.Str : targetType;
 
             var resultType = _typeInference.InferAugmentedAssignmentType(
                 assignment.Operator,
-                targetType,
+                operatorTargetType,
                 effectiveValueType);
 
             if (resultType == null)
@@ -359,19 +385,20 @@ internal partial class TypeChecker
             // SPY0220 below is the answer, and it is the same answer for `x8 += i` (a variable
             // RHS) and `x8 += 300` (an out-of-range constant) as it was before the rule existed.
             SemanticType? narrowTo = null;
-            if (!resultType.IsAssignableTo(targetType))
+            if (!IsAssignable(resultType, targetType))
             {
                 narrowTo = TryNarrowAugmentedResult(
                     assignment.Operator, targetType, valueType, resultType, assignment.Value);
 
                 if (narrowTo == null)
                 {
-                    AddError(
-                        $"Result type '{resultType.GetDisplayName()}' of augmented assignment is not assignable to target type '{targetType.GetDisplayName()}'",
-                        assignment.LineStart,
-                        assignment.ColumnStart,
-                        code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: assignment.Span);
+                    // The seam owns this position's admission AND its refusal (Decision 1): a
+                    // result it admits by value shape — a literal-derived `str` into a
+                    // `LiteralString` slot — needs no cast, and a refusal carries the seam's steers
+                    // under the Augmented message template, which is the text this site used to
+                    // format by hand.
+                    CheckStore(StorePosition.Augmented, assignment.Value, resultType, targetType,
+                        assignment, assignment.Span);
                 }
             }
 
@@ -454,6 +481,31 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The binary operator an augmented assignment desugars to, or null for the forms that have no
+    /// binary twin. Lets the augmented site reuse the binary site's constant pre-step
+    /// (<c>EffectiveOperandTypes</c>) so `u64 += 1` and `u32 += 1` decide a constant operand the
+    /// way `u64 + 1` does (plan-299c1b Decision 3).
+    /// </summary>
+    private static BinaryOperator? AugmentedBinaryOperator(AssignmentOperator op) => op switch
+    {
+        AssignmentOperator.PlusAssign => BinaryOperator.Add,
+        AssignmentOperator.MinusAssign => BinaryOperator.Subtract,
+        AssignmentOperator.StarAssign => BinaryOperator.Multiply,
+        AssignmentOperator.MatMulAssign => BinaryOperator.MatMul,
+        AssignmentOperator.SlashAssign => BinaryOperator.Divide,
+        AssignmentOperator.DoubleSlashAssign => BinaryOperator.FloorDivide,
+        AssignmentOperator.PercentAssign => BinaryOperator.Modulo,
+        AssignmentOperator.PowerAssign => BinaryOperator.Power,
+        AssignmentOperator.AndAssign => BinaryOperator.BitwiseAnd,
+        AssignmentOperator.OrAssign => BinaryOperator.BitwiseOr,
+        AssignmentOperator.XorAssign => BinaryOperator.BitwiseXor,
+        AssignmentOperator.LeftShiftAssign => BinaryOperator.LeftShift,
+        AssignmentOperator.RightShiftAssign => BinaryOperator.RightShift,
+        AssignmentOperator.NullCoalesceAssign => BinaryOperator.NullCoalesce,
+        _ => null,
+    };
+
+    /// <summary>
     /// Validates the RHS of a classified collection-mutation augmented assignment against the
     /// mutator's Python contract (#1682). Returns <c>true</c> when the RHS is accepted;
     /// reports SPY0222 and returns <c>false</c> when it is not.
@@ -481,7 +533,7 @@ internal partial class TypeChecker
                         messageSuffix: $" — '{classified.PythonName}' requires an iterable");
                     return false;
                 }
-                if (!rhsElement.IsAssignableTo(targetElement))
+                if (!IsAssignable(rhsElement, targetElement))
                 {
                     AddError(
                         $"Element type '{rhsElement.GetDisplayName()}' of the iterable is not assignable to "
@@ -498,7 +550,11 @@ internal partial class TypeChecker
 
             case AugmentedCollectionAssignment.RhsShapeKind.ExactInt:
             {
-                if (valueType != SemanticType.Int)
+                // `xs *= n` lowers to InPlaceRepeat(int), so the count is anything a C# `int`
+                // parameter admits — an int8 count is an implicit widening, not a different shape.
+                // Requiring the type to BE `int` refused `n: int8; xs *= n`, which ran before the
+                // shape rule existed (#1682).
+                if (!IsAssignable(valueType, SemanticType.Int))
                 {
                     ReportUnsupportedBinaryOperator(assignment,
                         GetAssignmentOperatorSymbol(assignment.Operator), targetType, valueType,
@@ -519,7 +575,7 @@ internal partial class TypeChecker
                 }
                 var targetElement = gt.TypeArguments[0];
                 var rhsGt = (GenericType)valueType;
-                if (rhsGt.TypeArguments.Count > 0 && !rhsGt.TypeArguments[0].IsAssignableTo(targetElement))
+                if (rhsGt.TypeArguments.Count > 0 && !IsAssignable(rhsGt.TypeArguments[0], targetElement))
                 {
                     AddError(
                         $"Element type '{rhsGt.TypeArguments[0].GetDisplayName()}' is not assignable to "
@@ -539,12 +595,22 @@ internal partial class TypeChecker
 
                 if (valueType is GenericType { Name: "dict" } dictRhs && dictRhs.TypeArguments.Count >= 2)
                 {
-                    if (!dictRhs.TypeArguments[0].IsAssignableTo(targetK)
-                        || !dictRhs.TypeArguments[1].IsAssignableTo(targetV))
+                    // EXACT type arguments, not assignable ones. `d |= e` lowers to
+                    // `Dict.Update(IReadOnlyDictionary<K, V>)`, and that interface is INVARIANT in
+                    // both parameters, so a `dict[str, Derived]` cannot bind to a
+                    // `dict[str, Base]`'s mutator however assignable the elements are. Accepting it
+                    // on element assignability is what produced CS1503 behind SPY0908 (#1682); the
+                    // refusal names invariance instead. `d.update(e)` is NOT the steer — it takes
+                    // the same invariant interface and is SPY0354 (measured), so the advice is a
+                    // per-item loop or an explicit copy.
+                    if (!dictRhs.TypeArguments[0].Equals(targetK)
+                        || !dictRhs.TypeArguments[1].Equals(targetV))
                     {
                         AddError(
                             $"dict[{dictRhs.TypeArguments[0].GetDisplayName()}, {dictRhs.TypeArguments[1].GetDisplayName()}] "
-                            + $"is not assignable to dict[{targetK.GetDisplayName()}, {targetV.GetDisplayName()}]",
+                            + $"is not assignable to dict[{targetK.GetDisplayName()}, {targetV.GetDisplayName()}]"
+                            + " — the merge binds an invariant IReadOnlyDictionary, so the key and"
+                            + " value types must match exactly; copy the entries in a loop instead",
                             assignment.LineStart, assignment.ColumnStart,
                             code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
                             span: assignment.Span);
@@ -556,8 +622,8 @@ internal partial class TypeChecker
                 var elemType = _typeInference.InferIterableElementType(valueType);
                 if (elemType is TupleType { ElementTypes.Count: 2 } pair)
                 {
-                    if (!pair.ElementTypes[0].IsAssignableTo(targetK)
-                        || !pair.ElementTypes[1].IsAssignableTo(targetV))
+                    if (!IsAssignable(pair.ElementTypes[0], targetK)
+                        || !IsAssignable(pair.ElementTypes[1], targetV))
                     {
                         AddError(
                             $"Pair type ({pair.ElementTypes[0].GetDisplayName()}, {pair.ElementTypes[1].GetDisplayName()}) "
