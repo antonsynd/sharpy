@@ -65,13 +65,41 @@ def query(sql: LiteralString) -> str:
 def run(sql: LiteralString = "SELECT 1") -> str:  # parameter default
     return sql
 
+def make() -> LiteralString:
+    return "SELECT 1"                     # return
+
+def gen() -> LiteralString:
+    yield "a"                             # yield
+
 def main() -> None:
     x: LiteralString = "hello"            # declaration
     x = "world"                           # plain store
-    print(query("SELECT 1"))              # positional argument
-    print(query(sql="SELECT 1"))          # keyword argument
-    print(run())                          # default
+    print(x)                              # world
+    c: Config = Config()
+    c.key = "k"                           # attribute store
+    print(c.key)                          # k
     xs: list[LiteralString] = ["a", "b"]  # collection-literal elements
+    xs[0] = "z"                           # index store
+    print(xs[0])                          # z
+    d: dict[str, LiteralString] = {}
+    d["k"] = "v"                          # dict-value store
+    print(d["k"])                         # v
+    print(query("SELECT 1"))              # positional argument -> SELECT 1
+    print(query(sql="SELECT 1"))          # keyword argument    -> SELECT 1
+    print(run())                          # default             -> SELECT 1
+    print(make())                         # return              -> SELECT 1
+    for s in gen():
+        print(s)                          # yield               -> a
+    t: tuple[LiteralString, int] = ("a", 1)    # tuple element
+    print(t[0])                           # a
+    print(query((x := "walrus")))         # walrus              -> walrus
+    f: () -> LiteralString = lambda: "b"  # lambda body under a typed target
+    print(f())                            # b
+    r: LiteralString = "a" if True else "c"    # conditional of literals
+    print(r)                              # a
+    s2: LiteralString = "a"
+    s2 += "b"                             # augmented
+    print(s2)                             # ab
 ```
 
 The expression's type stays `str`; `LiteralString` is the **slot's** declared type.

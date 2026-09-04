@@ -52,14 +52,25 @@ def main() -> None:
     print(ret())                # 0.1
     xs: list[float32] = [0.5]   # collection-literal element
     v: Vector2 = Vector2(1.0, 2.0)  # CLR argument
-    print(v.X)                  # 1
+    print(v.X)                  # 1.0
 ```
 
-The same rule applies to `decimal`:
+The same rule applies to `decimal`, at the same positions:
 
 ```python
-d: decimal = 1.5
-print(d)                        # 1.5
+def money() -> decimal:
+    return 0.1                  # return
+
+def taxed(rate: decimal = 0.2) -> None:   # parameter default
+    print(rate)
+
+def main() -> None:
+    d: decimal = 1.5            # declaration
+    print(d)                    # 1.5
+    taxed(0.25)                 # argument                  -> 0.25
+    print(money())              # 0.1
+    ds: list[decimal] = [0.5]   # collection-literal element
+    print(ds[0])                # 0.5
 ```
 
 Two limits:

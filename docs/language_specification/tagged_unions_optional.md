@@ -23,11 +23,12 @@ The `Optional` type is part of the standard library and provides special syntax 
 ```python
 value: int? = Some(42)
 empty: int? = None()
-
-# Fully qualified (equivalent)
-value: Optional[int] = Optional.Some(42)
-empty: Optional[int] = Optional.None()
 ```
+
+`Some(…)` and `None()` are the only spellings that work. The fully-qualified forms
+`Optional.Some(…)` and `Optional.None()` are **not supported today** (#1758): `Optional.None()`
+does not compile at all, and `Optional.Some(42)` is typed `Unknown`, so a mistyped destination
+leaks a C# error instead of SPY0220. Use the bare constructors.
 
 A bare value or bare `None` is **not** accepted for `T?` — use `Some(…)` or `None()`:
 
