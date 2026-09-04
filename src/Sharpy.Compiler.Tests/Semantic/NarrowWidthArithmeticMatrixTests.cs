@@ -244,6 +244,7 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         programs.AddRange(ConstantOperandPrograms());
         programs.AddRange(AugmentedMixedPrograms());
         programs.AddRange(IntegerPowerPrograms());
+        programs.AddRange(MinMaxPrograms());
         return programs;
     }
 
@@ -921,6 +922,67 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         }
     }
 
+    /// <summary>
+    /// <c>min</c>/<c>max</c> is the third consumer of the promotion seam, and the value form's
+    /// recorded type must be the type the emitted <c>Builtins.Min&lt;T&gt;</c> returns — which is
+    /// why a promoted cell records its type argument (C# cannot infer one <c>T</c> from
+    /// <c>(ulong, int)</c>). <c>StoreType</c> is the store each cell uses, so a wrong recorded type
+    /// fails on the store rather than only on the printed value (#1699, #1014).
+    /// </summary>
+    private sealed record MinMaxCase(
+        string Id, string Declarations, string Expression, string? StoreType,
+        string Expected, string? Code);
+
+    private static readonly MinMaxCase[] MinMaxCases =
+    {
+        new("minmax/uint64/constant-min", "    a: uint64 = 5", "min(a, 1)", "uint64", "1", null),
+        new("minmax/uint64/constant-max", "    a: uint64 = 5", "max(a, 1)", "uint64", "5", null),
+        new("minmax/uint64/three-arg", "    a: uint64 = 5", "min(a, 1, 2)", "uint64", "1", null),
+        new("minmax/uint32/constant", "    a: uint32 = 5", "min(a, 1)", "uint32", "1", null),
+        new("minmax/int8/constant", "    a: int8 = 5", "min(a, 1)", "int8", "1", null),
+        new("minmax/uint32*int16", "    a: uint32 = 5\n    b: int16 = 3", "min(a, b)", "int64", "3", null),
+        new("minmax/uint64*uint32", "    a: uint64 = 5\n    b: uint32 = 3", "max(a, b)", "uint64", "5", null),
+        // The control: a mixed numeric pair whose promotion is a THIRD type still works, and works
+        // for the reason it always did (int -> double is a standard implicit conversion).
+        new("minmax/int*float", "", "min(2, 3.0)", "float", "2.0", null),
+        // The refusals the constant rule must NOT widen away: a negative constant has no ulong
+        // form, and a signed VARIABLE never converts.
+        new("minmax/uint64/negative", "    a: uint64 = 5", "min(a, -1)", null,
+            "Cannot determine common numeric type for 'min' with argument types 'uint64', 'int32'",
+            DiagnosticCodes.Semantic.TypeMismatch),
+        new("minmax/uint64*int32-var", "    a: uint64 = 5\n    b: int32 = 1", "min(a, b)", null,
+            "Cannot determine common numeric type for 'min' with argument types 'uint64', 'int32'",
+            DiagnosticCodes.Semantic.TypeMismatch),
+    };
+
+    private static IEnumerable<MatrixProgram> MinMaxPrograms()
+    {
+        foreach (var c in MinMaxCases)
+        {
+            var sb = new SourceBuilder();
+            sb.Add("def main() -> None:");
+            foreach (var d in c.Declarations.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                sb.Add(d);
+
+            int line;
+            if (c.StoreType == null)
+            {
+                line = sb.Add($"    print({c.Expression})");
+            }
+            else
+            {
+                sb.Add($"    p: {c.StoreType} = {c.Expression}");
+                line = sb.Add("    print(p)");
+            }
+
+            yield return new MatrixProgram(c.Id, sb.Text, c.StoreType != null, new[]
+            {
+                new Cell(c.Id, "minmax", c.Id, "min/max", "-",
+                    c.StoreType != null, line, c.Expected, c.Code),
+            });
+        }
+    }
+
     // ───────────────────────────── the tests ─────────────────────────────
 
     public static IEnumerable<object[]> Programs()
@@ -1043,6 +1105,8 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
             live.Should().Contain(l => l.Id == c.Id, $"{c.Id} is a cell of the matrix");
         foreach (var c in PowerRefusedCases)
             live.Should().Contain(l => l.Id == c.Id, $"{c.Id} is a cell of the matrix");
+        foreach (var c in MinMaxCases)
+            live.Should().Contain(l => l.Id == c.Id, $"{c.Id} is a cell of the matrix");
 
         var liveAugmented = live.Count(c => RhsKinds.Any(r => c.Store == $"augmented/{r}")
             && TargetKinds.Contains(c.TargetKind));
@@ -1061,7 +1125,8 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
             + (MixedPairs.Length * MixedFamilies.Length) + MixedStoreColumn.Length
             + NonIntegerRefusals.Length
             + ConstantOperandCases.Length
-            + PowerCases.Length + PowerRefusedCases.Length;
+            + PowerCases.Length + PowerRefusedCases.Length
+            + MinMaxCases.Length;
 
         live.Count(c => !c.Store.StartsWith("augmented/", StringComparison.Ordinal))
             .Should().Be(expectedNonAugmented);
