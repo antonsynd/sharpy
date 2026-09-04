@@ -352,9 +352,12 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     private static Verdict Classify(Position p, Shape s)
     {
         var key = Key(p, s);
-        if (NotApplicableCells.ContainsKey(key)) return Verdict.NotApplicable;
-        if (KnownRedCells.ContainsKey(key)) return Verdict.KnownRed;
-        if (OperatorRefusalCells.Contains(key)) return Verdict.Refused;
+        if (NotApplicableCells.ContainsKey(key))
+            return Verdict.NotApplicable;
+        if (KnownRedCells.ContainsKey(key))
+            return Verdict.KnownRed;
+        if (OperatorRefusalCells.Contains(key))
+            return Verdict.Refused;
         return s.AcceptedOutput != null ? Verdict.Accepted : Verdict.Refused;
     }
 
