@@ -582,7 +582,7 @@ class Dog(Animal):
     ...
 
 def main():
-    animal: Animal? = Dog()
+    animal: Animal? = Some(Dog())
     if animal is not None and isinstance(animal, Dog):
         d: Dog = animal
 ";
@@ -2392,7 +2392,7 @@ class Node:
         self.value = v
 
 def main():
-    node: Node? = Node(42)
+    node: Node? = Some(Node(42))
     if node is not None and node.value == 42:
         print(node.value)
 ";
@@ -2415,7 +2415,7 @@ class Node:
         self.next = None()
 
 def main():
-    current: Node? = Node(1)
+    current: Node? = Some(Node(1))
     while current is not None and current.value > 0:
         current = current.next
 ";
@@ -2436,8 +2436,8 @@ class Node:
         self.value = v
 
 def main():
-    a: Node? = Node(10)
-    b: Node? = Node(10)
+    a: Node? = Some(Node(10))
+    b: Node? = Some(Node(10))
     if a is not None and b is not None and a.value == b.value:
         print(a.value + b.value)
 ";
@@ -2474,7 +2474,7 @@ class Node:
         self.value = v
 
 def main():
-    node: Node? = Node(99)
+    node: Node? = Some(Node(99))
     if node is not None and node.value == 99:
         print(node.value)
     # After the if, node is still Optional — reassign to None
