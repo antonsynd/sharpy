@@ -153,7 +153,12 @@ internal partial class TypeChecker
                 }
             }
 
-            if (storePredecessor != null && storeTarget is not UnknownType
+            // The seam predecessor: same-scope (existingSymbol) OR a parent-scope predecessor
+            // within the current function (block scopes and closures, NOT module-level shadowing).
+            var seamPredecessor = existingSymbol as VariableSymbol
+                ?? (IsParentScopePredecessorWithinFunction(targetId.Name) ? storePredecessor : null);
+
+            if (seamPredecessor != null && storeTarget is not UnknownType
                 && inferredType is not UnknownType
                 && !IsAssignable(inferredType, storeTarget))
             {

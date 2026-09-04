@@ -464,6 +464,27 @@ internal partial class TypeChecker
         return false;
     }
 
+    private bool IsParentScopePredecessorWithinFunction(string name)
+    {
+        var scope = _symbolTable.CurrentScope.Parent;
+        while (scope != null)
+        {
+            if (scope.Lookup(name, searchParent: false) != null)
+            {
+                var check = scope;
+                while (check != null)
+                {
+                    if (SymbolTable.IsFunctionLikeScope(check.Name))
+                        return true;
+                    check = check.Parent;
+                }
+                return false;
+            }
+            scope = scope.Parent;
+        }
+        return false;
+    }
+
     private (SemanticType Type, NarrowedReadLowering Lowering)? ResolveNarrowedTypeFromFacts(string key, SemanticType liveType)
     {
         NarrowingFact? isTypeFact = null;

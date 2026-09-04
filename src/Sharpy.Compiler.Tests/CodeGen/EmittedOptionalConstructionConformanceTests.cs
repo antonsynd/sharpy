@@ -58,11 +58,6 @@ public class EmittedOptionalConstructionConformanceTests
     // do with `?.`.
     private static readonly HashSet<string> FixtureAllowlist = new(StringComparer.Ordinal)
     {
-        // #1755 Class B — a narrowed Optional read stored back into an Optional slot is not
-        // re-wrapped (x += 5 on a narrowed int? emits x = x.Unwrap() + 5)
-        "type_system/optional_augmented_assign_narrowing",
-        "algorithms/linked_list",
-
         // #1755 Class C — ??= on an Optional stores a bare RHS (x ??= 42); needs an R-G ruling
         // before it is wrapped rather than refused
         "type_system/null_coalescing_assignment_optional",
