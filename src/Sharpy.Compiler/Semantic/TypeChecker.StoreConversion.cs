@@ -61,17 +61,12 @@ internal partial class TypeChecker
                 value, valueType, targetType, MakeConstantResolver()))
             return StoreVerdict.AcceptedConstantConversion;
 
-        // 3. Float32 literal narrowing — scoped to store-like positions; return and parameter
-        //    signatures are part of the contract the caller reads, so `0.1` stays double (#1301).
-        if (position is not StorePosition.Return
-            and not StorePosition.ParameterDefault and not StorePosition.LambdaParameterDefault
-            && ImplicitConversions.IsFloat32LiteralNarrowing(targetType, valueType, value))
+        // 3. Float32 literal narrowing — every store position (Decision 6 ruled A, #1688)
+        if (ImplicitConversions.IsFloat32LiteralNarrowing(targetType, valueType, value))
             return StoreVerdict.AcceptedFloat32Narrowing;
 
-        // 4. Decimal literal narrowing — same scope as float32
-        if (position is not StorePosition.Return
-            and not StorePosition.ParameterDefault and not StorePosition.LambdaParameterDefault
-            && ImplicitConversions.IsDecimalLiteralNarrowing(targetType, valueType, value))
+        // 4. Decimal literal narrowing — every store position (same as float32)
+        if (ImplicitConversions.IsDecimalLiteralNarrowing(targetType, valueType, value))
             return StoreVerdict.AcceptedDecimalNarrowing;
 
         // 5. Literal-derived string into LiteralString (#1731)

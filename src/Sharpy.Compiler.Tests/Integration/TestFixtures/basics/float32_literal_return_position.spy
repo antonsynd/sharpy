@@ -1,6 +1,5 @@
-# The float32 literal-narrowing allowance (#1301) is scoped to declarations — a variable or a field
-# whose annotation sits next to the literal. A return type is a signature the caller reads, so the
-# narrowing must be written out there. This fixture pins that boundary as a decision, not an accident.
+# Decision 6 A (#1688): float32 literal narrowing at every store position, including return.
+# Supersedes #1301's "signature positions" exclusion.
 
 def ret() -> float32:
     return 0.1

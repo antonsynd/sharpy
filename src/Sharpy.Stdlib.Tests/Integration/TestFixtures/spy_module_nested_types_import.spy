@@ -5,6 +5,6 @@ def main() -> None:
     p: Pattern = compile(r"(\w+)")
     print(type(p).__name__)
 
-    m: MatchResult? = search(r"(\d+)", "abc456def")
+    m: MatchResult | None = search(r"(\d+)", "abc456def")
     if m is not None:
         print(m[0])

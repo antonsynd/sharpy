@@ -898,6 +898,12 @@ internal partial class TypeChecker
             && ImplicitConversions.IsImplicitIntegerConstantConversion(argument, source, target, MakeConstantResolver()))
             return true;
 
+        if (ImplicitConversions.IsFloat32LiteralNarrowing(target, source, argument))
+            return true;
+
+        if (ImplicitConversions.IsDecimalLiteralNarrowing(target, source, argument))
+            return true;
+
         // list[T] → array[T]: element types must match exactly (UnknownType acts as a
         // wildcard for empty list literals) so codegen's .ToArray() produces an array of
         // the parameter's element type. Using IsAssignable on the element would wrongly

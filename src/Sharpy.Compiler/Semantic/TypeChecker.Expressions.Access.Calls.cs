@@ -3225,7 +3225,8 @@ internal partial class TypeChecker
                 // enforces that distinction, so both rules read the same predicate.
                 RecordSequenceMaterialization(ArgumentNodeAt(call, i), argTypes[i], paramType);
 
-                if (!IsArgumentAssignable(argTypes[i], paramType, ArgumentNodeAt(call, i)))
+                var argNode = ArgumentNodeAt(call, i);
+                if (!IsArgumentAssignable(argTypes[i], paramType, argNode))
                 {
                     // PEP 675: literal-derived strings satisfy LiteralString (#1731)
                     if (paramType is LiteralStringType && i < call.Arguments.Length
@@ -3249,6 +3250,13 @@ internal partial class TypeChecker
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
                             span: call.Arguments[i].Span);
                     }
+                }
+                else if (argNode != null)
+                {
+                    if (ImplicitConversions.IsFloat32LiteralNarrowing(paramType, argTypes[i], argNode))
+                        _semanticInfo.SetExpressionType(argNode, SemanticType.Float32);
+                    else if (ImplicitConversions.IsDecimalLiteralNarrowing(paramType, argTypes[i], argNode))
+                        _semanticInfo.SetExpressionType(argNode, SemanticType.Decimal);
                 }
             }
 

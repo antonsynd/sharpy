@@ -1,5 +1,5 @@
-# The other half of the #1301 scope boundary: a parameter default is part of the signature, so the
-# literal-narrowing allowance does not reach it. Write `0.1f`.
+# Decision 6 A (#1688): float32 literal narrowing at every store position, including defaults.
+# Supersedes #1301's "signature positions" exclusion.
 
 def takes(x: float32 = 0.1) -> None:
     print(x)
