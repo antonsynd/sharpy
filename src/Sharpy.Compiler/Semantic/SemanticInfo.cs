@@ -168,6 +168,13 @@ public class SemanticInfo : ISemanticQuery
     // into a `LiteralString` slot at every store position.
     private readonly HashSet<Expression> _literalDerivedStrings = new(ReferenceEqualityComparer.Instance);
 
+    // plan-14853b Decision 1 / #1698: a branch of a ConditionalExpression admitted into a narrow
+    // integer slot by the §10.2.11 constant arm. C# gives `c ? 7 : 8` the natural type int, so
+    // `sbyte b = c ? 7 : 8` is CS0266; the seam records the slot type per admitted branch and the
+    // emitter wraps that branch in a cast. Node-keyed on the BRANCH expression (float32/decimal
+    // branches need no entry — their literals are re-typed and print their own suffix).
+    private readonly ConcurrentDictionary<Expression, SemanticType> _conditionalBranchNarrowing = new(ReferenceEqualityComparer.Instance);
+
     // Track arguments that name a type used as a zero-argument factory callable — Python's
     // defaultdict(list) convention, where the argument is a type name, not a value. Whether an
     // identifier denotes such a factory is a semantic question (it may resolve as a TypeSymbol, as a
@@ -997,6 +1004,20 @@ public class SemanticInfo : ISemanticQuery
     public bool IsLiteralDerived(Expression expr) => _literalDerivedStrings.Contains(expr);
 
     /// <summary>
+    /// Records that <paramref name="branch"/> (an arm of a conditional expression) was admitted into
+    /// the narrow integer slot <paramref name="targetType"/> by the constant-conversion arm of the
+    /// store seam; the emitter casts the arm to that type (plan-14853b Decision 1, #1698).
+    /// </summary>
+    public void SetConditionalBranchNarrowing(Expression branch, SemanticType targetType)
+        => _conditionalBranchNarrowing[branch] = targetType;
+
+    /// <summary>
+    /// The narrow slot type recorded for a conditional-expression arm, or null when the arm needs no cast.
+    /// </summary>
+    public SemanticType? GetConditionalBranchNarrowing(Expression branch)
+        => _conditionalBranchNarrowing.TryGetValue(branch, out var t) ? t : null;
+
+    /// <summary>
     /// Marks an expression as denoting a type reference (rather than a value), e.g., a
     /// module-qualified reference to an exported TypeSymbol.
     /// </summary>
@@ -1601,6 +1622,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var expr in other._literalDerivedStrings)
             _literalDerivedStrings.Add(expr);
+
+        foreach (var kvp in other._conditionalBranchNarrowing)
+            _conditionalBranchNarrowing.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._typeFactoryArguments)
             _typeFactoryArguments.TryAdd(kvp.Key, kvp.Value);
