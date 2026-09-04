@@ -290,6 +290,9 @@ public class RoslynEmitterOperatorLoweringTests
     [Theory]
     [InlineData(OperatorLoweringKind.IntegerPowInt, "global::Sharpy.Builtins.CheckedIntPow((int)(a), (int)(b))")]
     [InlineData(OperatorLoweringKind.IntegerPowLong, "global::Sharpy.Builtins.CheckedIntPow((long)(a), (long)(b))")]
+    [InlineData(OperatorLoweringKind.IntegerPowULong, "global::Sharpy.Builtins.CheckedIntPow((ulong)(a), (ulong)(b))")]
+    [InlineData(OperatorLoweringKind.IntegerPowULongExponentLong, "global::Sharpy.Builtins.CheckedIntPow((ulong)(a), (long)(b))")]
+    [InlineData(OperatorLoweringKind.IntegerPowLongExponentULong, "global::Sharpy.Builtins.CheckedIntPow((long)(a), (ulong)(b))")]
     [InlineData(OperatorLoweringKind.FloatPow, "global::System.Math.Pow(a, b)")]
     [InlineData(OperatorLoweringKind.DecimalPow, "global::System.Math.Pow((double)(a), (double)(b))")]
     public void Power_SameAst_FollowsTheRecordedFamily(OperatorLoweringKind kind, string expected)

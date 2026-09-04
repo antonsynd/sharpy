@@ -1083,12 +1083,16 @@ internal partial class RoslynEmitter
     /// <para>
     /// The lowering is the <see cref="OperatorLowering"/> tag the TypeChecker recorded on
     /// <paramref name="operatorNode"/> (the <c>BinaryOp</c> or the augmented <c>Assignment</c>,
-    /// #1623): <see cref="OperatorLoweringKind.IntegerPowInt"/> / <see cref="OperatorLoweringKind.IntegerPowLong"/>
-    /// select the <c>CheckedIntPow</c> width, <see cref="OperatorLoweringKind.FloatPow"/> is
-    /// <c>Math.Pow</c>, <see cref="OperatorLoweringKind.DecimalPow"/> is <c>Math.Pow</c> over
-    /// <c>(double)</c> casts. There is no type-inspecting fallback: an unrecorded power throws,
-    /// because a `**` that passed inference is always one of these four (a user-defined or CLR
-    /// operand is refused by inference — no <c>__pow__</c> mapping exists).
+    /// #1623, #1700): five integer kinds select the <c>CheckedIntPow</c> overload —
+    /// <see cref="OperatorLoweringKind.IntegerPowInt"/>, <see cref="OperatorLoweringKind.IntegerPowLong"/>,
+    /// <see cref="OperatorLoweringKind.IntegerPowULong"/>,
+    /// <see cref="OperatorLoweringKind.IntegerPowULongExponentLong"/>,
+    /// <see cref="OperatorLoweringKind.IntegerPowLongExponentULong"/>;
+    /// <see cref="OperatorLoweringKind.FloatPow"/> is <c>Math.Pow</c>,
+    /// <see cref="OperatorLoweringKind.DecimalPow"/> is <c>Math.Pow</c> over <c>(double)</c> casts.
+    /// There is no type-inspecting fallback: an unrecorded power throws, because a <c>**</c> that
+    /// passed inference is always one of these seven (a user-defined or CLR operand is refused by
+    /// inference — no <c>__pow__</c> mapping exists).
     /// </para>
     /// </summary>
     /// <param name="left">Generated C# expression for the left operand.</param>
@@ -1112,25 +1116,30 @@ internal partial class RoslynEmitter
                 return GenerateDoublePow(left, right);
 
             case OperatorLoweringKind.IntegerPowInt:
-            case OperatorLoweringKind.IntegerPowLong:
-                {
-                    var castKind = powKind == OperatorLoweringKind.IntegerPowLong
-                        ? SyntaxKind.LongKeyword
-                        : SyntaxKind.IntKeyword;
+                return GenerateCheckedIntPow(left, right,
+                    SyntaxKind.IntKeyword, SyntaxKind.IntKeyword);
 
-                    return InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            MakeGlobalQualifiedName("Sharpy", "Builtins"),
-                            IdentifierName("CheckedIntPow")))
-                        .AddArgumentListArguments(
-                            Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(left))),
-                            Argument(CastExpression(PredefinedType(Token(castKind)), ParenthesizedExpression(right))));
-                }
+            case OperatorLoweringKind.IntegerPowLong:
+                return GenerateCheckedIntPow(left, right,
+                    SyntaxKind.LongKeyword, SyntaxKind.LongKeyword);
+
+            case OperatorLoweringKind.IntegerPowULong:
+                return GenerateCheckedIntPow(left, right,
+                    SyntaxKind.ULongKeyword, SyntaxKind.ULongKeyword);
+
+            case OperatorLoweringKind.IntegerPowULongExponentLong:
+                return GenerateCheckedIntPow(left, right,
+                    SyntaxKind.ULongKeyword, SyntaxKind.LongKeyword);
+
+            case OperatorLoweringKind.IntegerPowLongExponentULong:
+                return GenerateCheckedIntPow(left, right,
+                    SyntaxKind.LongKeyword, SyntaxKind.ULongKeyword);
 
             default:
                 throw new InvalidOperationException(
                     "No power lowering recorded for '**' — the TypeChecker must classify every power "
-                    + "that passes inference as IntegerPowInt/IntegerPowLong/FloatPow/DecimalPow (#1623)");
+                    + "that passes inference as IntegerPowInt/IntegerPowLong/IntegerPowULong/"
+                    + "IntegerPowULongExponentLong/IntegerPowLongExponentULong/FloatPow/DecimalPow (#1623, #1700)");
         }
     }
 
@@ -1147,6 +1156,21 @@ internal partial class RoslynEmitter
             .AddArgumentListArguments(
                 Argument(left),
                 Argument(right));
+    }
+
+    private ExpressionSyntax GenerateCheckedIntPow(
+        ExpressionSyntax left,
+        ExpressionSyntax right,
+        SyntaxKind leftCastKind,
+        SyntaxKind rightCastKind)
+    {
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                IdentifierName("CheckedIntPow")))
+            .AddArgumentListArguments(
+                Argument(CastExpression(PredefinedType(Token(leftCastKind)), ParenthesizedExpression(left))),
+                Argument(CastExpression(PredefinedType(Token(rightCastKind)), ParenthesizedExpression(right))));
     }
 
     /// <summary>
