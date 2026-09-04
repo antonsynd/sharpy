@@ -51,7 +51,7 @@ public static partial class LambdaInferredMod
             7
         };
 #line (16, 5) - (16, 52) 8 "lambda_inferred_mod.spy"
-        global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Filter(x => global::Sharpy.Builtins.FloorMod(x, 3) == 1, nums)));
+        global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Filter<int>(x => global::Sharpy.Builtins.FloorMod(x, 3) == 1, nums)));
 #line (19, 5) - (19, 44) 8 "lambda_inferred_mod.spy"
         global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Map(x => global::Sharpy.Builtins.FloorMod(x, 3), nums)));
 #line (22, 5) - (22, 45) 8 "lambda_inferred_mod.spy"
@@ -59,11 +59,11 @@ public static partial class LambdaInferredMod
 #line (25, 5) - (25, 53) 8 "lambda_inferred_mod.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Sorted(new Sharpy.List<int>() { -7, -6, -5 }, key: x => global::Sharpy.Builtins.FloorMod(x, 3)));
 #line (28, 5) - (28, 67) 8 "lambda_inferred_mod.spy"
-        global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Filter(x => ((global::System.Func<int, int>)(y => global::Sharpy.Builtins.FloorMod(y, 3)))(x) == 1, nums)));
+        global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Filter<int>(x => ((global::System.Func<int, int>)(y => global::Sharpy.Builtins.FloorMod(y, 3)))(x) == 1, nums)));
 #line (31, 5) - (31, 49) 8 "lambda_inferred_mod.spy"
         global::Sharpy.Builtins.Print(ApplyAll(v => global::Sharpy.Builtins.FloorMod(v, 3) == 1, nums));
 #line (34, 5) - (34, 57) 8 "lambda_inferred_mod.spy"
-        global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Filter((int x) => global::Sharpy.Builtins.FloorMod(x, 3) == 1, nums)));
+        global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Filter<int>((int x) => global::Sharpy.Builtins.FloorMod(x, 3) == 1, nums)));
 #line hidden
     }
 }

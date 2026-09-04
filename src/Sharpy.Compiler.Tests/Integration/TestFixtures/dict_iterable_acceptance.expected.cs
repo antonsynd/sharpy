@@ -65,9 +65,9 @@ public static partial class DictIterableAcceptance
 #line (14, 5) - (14, 18) 8 "dict_iterable_acceptance.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Sum(f.Keys()));
 #line (18, 5) - (18, 18) 8 "dict_iterable_acceptance.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Any(n.Keys()));
+        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Any<int>(n.Keys()));
 #line (19, 5) - (19, 18) 8 "dict_iterable_acceptance.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.All(n.Keys()));
+        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.All<int>(n.Keys()));
 #line (20, 5) - (20, 38) 8 "dict_iterable_acceptance.spy"
         Sharpy.Dict<int, string> falsy = new Sharpy.Dict<int, string>()
 #line hidden
@@ -78,9 +78,9 @@ public static partial class DictIterableAcceptance
             }
         };
 #line (21, 5) - (21, 22) 8 "dict_iterable_acceptance.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Any(falsy.Keys()));
+        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Any<int>(falsy.Keys()));
 #line (22, 5) - (22, 22) 8 "dict_iterable_acceptance.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.All(falsy.Keys()));
+        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.All<int>(falsy.Keys()));
 #line (23, 5) - (23, 46) 8 "dict_iterable_acceptance.spy"
         Sharpy.Dict<int, string> mixed = new Sharpy.Dict<int, string>()
 #line hidden
@@ -95,9 +95,9 @@ public static partial class DictIterableAcceptance
             }
         };
 #line (24, 5) - (24, 22) 8 "dict_iterable_acceptance.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Any(mixed.Keys()));
+        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Any<int>(mixed.Keys()));
 #line (25, 5) - (25, 22) 8 "dict_iterable_acceptance.spy"
-        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.All(mixed.Keys()));
+        global::Sharpy.Builtins.Print(global::Sharpy.Builtins.All<int>(mixed.Keys()));
 #line (28, 5) - (28, 24) 8 "dict_iterable_acceptance.spy"
         global::Sharpy.Builtins.Print(global::Sharpy.StringExtensions.Join(", ", d.Keys()));
 #line (29, 5) - (29, 23) 8 "dict_iterable_acceptance.spy"

@@ -558,10 +558,8 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         Keeps("a // b", "3");
         Keeps("a % b", "1");
         Keeps("~a", "18446744073709551608");
-        sb.Add("    p: int64 = a ** b");
-        var powLine = sb.Add("    print(p)");
-        keep.Add(new Cell("plain-decl/uint64/a ** b", "plain decl", "uint64", "**", "-",
-            true, powLine, "49", null));
+        // uint64 ** uint64 now returns uint64 (#1700 — CheckedIntPow(ulong,ulong) overload)
+        Keeps("a ** b", "49");
         yield return new MatrixProgram("uint64/accepted", sb.Text, true, keep);
 
         // Unary `-` on ulong matches NO predefined C# operator (§12.9.3 / CS0023): a named
@@ -575,20 +573,6 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
             new Cell("unary-minus/uint64", "unary", "uint64", "u-", "-", false, negLine,
                 "Type 'uint64' does not support unary operator '-'",
                 DiagnosticCodes.Semantic.InvalidUnaryOperation),
-        });
-
-        // `**` is lowered to CheckedIntPow, whose widest overload is (long, long) — so the
-        // uint64 destination is honestly refused rather than emitted as a CS0266 (#1700).
-        var pow = new SourceBuilder();
-        pow.Add("def main() -> None:");
-        pow.Add("    a: uint64 = 7");
-        pow.Add("    b: uint64 = 2");
-        var powRefused = pow.Add("    c: uint64 = a ** b");
-        yield return new MatrixProgram("uint64/power-refused", pow.Text, false, new[]
-        {
-            new Cell("plain-decl-refused/uint64/**", "plain decl", "uint64", "**", "-", false, powRefused,
-                "Cannot assign type 'int64' to variable of type 'uint64'",
-                DiagnosticCodes.Semantic.TypeMismatch),
         });
     }
 
@@ -697,7 +681,7 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
 
         liveAugmented.Should().Be(expectedAugmented);
         live.Count(c => !c.Store.StartsWith("augmented/", StringComparison.Ordinal))
-            .Should().Be((4 * Widths.Length * Ops.Length) + 7);   // 4 stores + the uint64 group
+            .Should().Be((4 * Widths.Length * Ops.Length) + 6);   // 4 stores + the uint64 group (#1700: ** accepted)
     }
 
     /// <summary>
