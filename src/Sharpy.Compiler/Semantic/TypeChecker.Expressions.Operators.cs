@@ -2137,6 +2137,69 @@ internal partial class TypeChecker
         return effective;
     }
 
+    /// <summary>
+    /// The cure suffix for a pair binary numeric promotion refuses (#1699). SPY0222 names what is
+    /// wrong; without this it does not name what to write instead, and the pairs promotion refuses
+    /// are exactly the ones whose fix is not obvious — <c>uint64 ⊗ signed</c> has no common type in
+    /// C# (§12.4.7, CS0034) and <c>decimal ⊗ float</c> has no conversion at all. The spellings are
+    /// the ones <c>arithmetic_operators.md</c> documents, and each was executed: <c>int64(e) + f</c>
+    /// and <c>e + uint64(f)</c> print 9, <c>decimal(g) &lt; d</c> and <c>float64(d) &lt; g</c> run.
+    /// <para>Operand spellings come from the reported NODE — a <c>BinaryOp</c>'s two operands or an
+    /// <c>Assignment</c>'s target and value — so the augmented site gets the same steer without a
+    /// second call shape. A non-identifier operand falls back to <c>x</c>/<c>y</c>: the steer is
+    /// advice about which conversion to write, not a quick-fix edit.</para>
+    /// </summary>
+    private static string? PromotionRefusalSteer(Node node, SemanticType left, SemanticType right)
+    {
+        var leftInfo = PrimitiveCatalog.GetPrimitiveInfo(left);
+        var rightInfo = PrimitiveCatalog.GetPrimitiveInfo(right);
+        if (leftInfo == null || rightInfo == null)
+            return null;
+        if (!PrimitiveCatalog.IsNumeric(left) || !PrimitiveCatalog.IsNumeric(right))
+            return null;
+        if (PrimitiveCatalog.GetPromotedType(left, right) != null)
+            return null;
+
+        var (leftSpelling, rightSpelling) = OperandSpellings(node);
+
+        if (PrimitiveCatalog.IsDecimal(left) && PrimitiveCatalog.IsFloatingPoint(right))
+        {
+            return $" — cast one operand: 'decimal({rightSpelling})' "
+                + $"or '{right.GetDisplayName()}({leftSpelling})'";
+        }
+
+        if (PrimitiveCatalog.IsFloatingPoint(left) && PrimitiveCatalog.IsDecimal(right))
+        {
+            return $" — cast one operand: 'decimal({leftSpelling})' "
+                + $"or '{left.GetDisplayName()}({rightSpelling})'";
+        }
+
+        if (left == SemanticType.ULong && rightInfo.IsSigned)
+            return $" — cast one operand: 'int64({leftSpelling})' or 'uint64({rightSpelling})'";
+
+        if (right == SemanticType.ULong && leftInfo.IsSigned)
+            return $" — cast one operand: 'int64({rightSpelling})' or 'uint64({leftSpelling})'";
+
+        return null;
+    }
+
+    private static (string Left, string Right) OperandSpellings(Node node)
+    {
+        var (left, right) = node switch
+        {
+            BinaryOp binOp => ((Expression?)binOp.Left, (Expression?)binOp.Right),
+            Assignment assignment => (assignment.Target, assignment.Value),
+            _ => (null, null),
+        };
+
+        return (SpellOperand(left, "x"), SpellOperand(right, "y"));
+    }
+
+    private static string SpellOperand(Expression? operand, string fallback)
+        => operand != null && AstHelper.UnwrapParenthesized(operand) is Identifier id
+            ? id.Name
+            : fallback;
+
     private void ReportUnsupportedBinaryOperator(
         Node node, string operatorSpelling,
         SemanticType left, SemanticType right,
@@ -2144,6 +2207,7 @@ internal partial class TypeChecker
         string? messageSuffix = null)
     {
         var message = $"Type '{left.GetDisplayName()}' does not support operator '{operatorSpelling}' with operand of type '{right.GetDisplayName()}'";
+        messageSuffix ??= PromotionRefusalSteer(node, left, right);
         if (messageSuffix != null)
             message += messageSuffix;
         AddError(message, node.LineStart, node.ColumnStart,

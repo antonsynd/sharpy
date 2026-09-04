@@ -663,11 +663,16 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
                 if (pair.Promoted == null)
                 {
                     line = sb.Add($"    print(a {family.Operator} b)");
+                    // The refusal must also name the CURE: the pairs promotion refuses are the
+                    // ones whose fix is not obvious (#1699, arithmetic_operators.md).
+                    var ulongSpelling = pair.Left == "uint64" ? "a" : "b";
+                    var signedSpelling = pair.Left == "uint64" ? "b" : "a";
                     cells.Add(new Cell(
                         $"mixed/{family.Id}/{pair.Id}", $"mixed/{family.Id}", pair.Id, family.Id, "-",
                         false, line,
                         $"Type '{pair.Left}' does not support operator '{family.Operator}' "
-                        + $"with operand of type '{pair.Right}'",
+                        + $"with operand of type '{pair.Right}'"
+                        + $" — cast one operand: 'int64({ulongSpelling})' or 'uint64({signedSpelling})'",
                         DiagnosticCodes.Semantic.InvalidBinaryOperation));
                     continue;
                 }
@@ -739,7 +744,8 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         string Expression, string Message)[] NonIntegerRefusals =
     {
         ("    d: decimal = 1", "    f: float = 2.0", "decimal*float64", "cmp", "d < f",
-            "Type 'decimal' does not support operator '<' with operand of type 'float64'"),
+            "Type 'decimal' does not support operator '<' with operand of type 'float64'"
+            + " — cast one operand: 'decimal(f)' or 'float64(d)'"),
     };
 
     /// <summary>The pairs whose promoted type is not the left operand's, so a left-typed store refuses.</summary>
@@ -773,7 +779,8 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         new("uint64", "suffixed",     "1u",         "uint64", "8"),
         new("uint64", "long-literal", "4294967296", "uint64", "4294967303"),
         new("uint64", "negative",     "(-1)",       null,
-            "does not support operator '+' with operand of type 'int32'"),
+            "does not support operator '+' with operand of type 'int32'"
+            + " — cast one operand: 'int64(a)' or 'uint64(y)'"),
     };
 
     private static IEnumerable<MatrixProgram> ConstantOperandPrograms()
@@ -821,7 +828,8 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
     {
         new("augmented-mixed/uint32/literal", "uint32", "", "+", "1", true, "8", null),
         new("augmented-mixed/uint64/negative", "uint64", "", "+", "(-1)", false,
-            "does not support operator '+=' with operand of type 'int32'",
+            "does not support operator '+=' with operand of type 'int32'"
+            + " — cast one operand: 'int64(x)' or 'uint64(y)'",
             DiagnosticCodes.Semantic.InvalidBinaryOperation),
         new("augmented-mixed/uint32/int16-var", "uint32", "    r: int16 = 1", "+", "r", false,
             "Result type 'int64' of augmented assignment is not assignable to target type 'uint32'",
@@ -933,6 +941,15 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         string Id, string Declarations, string Expression, string? StoreType,
         string Expected, string? Code);
 
+    /// <summary>
+    /// The refused min/max message INCLUDING its cure (#1699): a refusal that names only what is
+    /// wrong leaves the reader with a pair C# genuinely cannot bind and no spelling that works.
+    /// </summary>
+    private const string MinMaxRefusal =
+        "Cannot determine common numeric type for 'min' with argument types 'uint64', 'int32'"
+        + " — no numeric promotion covers this pair (C# §12.4.7: uint64 has no operator with a"
+        + " signed operand); cast one argument to a shared type, e.g. int64(x) or uint64(x)";
+
     private static readonly MinMaxCase[] MinMaxCases =
     {
         new("minmax/uint64/constant-min", "    a: uint64 = 5", "min(a, 1)", "uint64", "1", null),
@@ -948,11 +965,9 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         // The refusals the constant rule must NOT widen away: a negative constant has no ulong
         // form, and a signed VARIABLE never converts.
         new("minmax/uint64/negative", "    a: uint64 = 5", "min(a, -1)", null,
-            "Cannot determine common numeric type for 'min' with argument types 'uint64', 'int32'",
-            DiagnosticCodes.Semantic.TypeMismatch),
+            MinMaxRefusal, DiagnosticCodes.Semantic.TypeMismatch),
         new("minmax/uint64*int32-var", "    a: uint64 = 5\n    b: int32 = 1", "min(a, b)", null,
-            "Cannot determine common numeric type for 'min' with argument types 'uint64', 'int32'",
-            DiagnosticCodes.Semantic.TypeMismatch),
+            MinMaxRefusal, DiagnosticCodes.Semantic.TypeMismatch),
     };
 
     private static IEnumerable<MatrixProgram> MinMaxPrograms()

@@ -72,9 +72,9 @@ public static partial class DiagnosticExplanations
             "Ensure the types are compatible. Use explicit conversions if needed.");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidBinaryOperation, "Invalid binary operation", "Semantic",
-            "A binary operator was used with operand types that do not support it. For example, using + between an int and a bool, or - with strings. Comparing against the None literal with == or != is also rejected: use the identity operators 'is None' / 'is not None' instead.",
-            "x: str = \"hello\" - \"world\"  # str doesn't support -",
-            "Use an operator that is supported for the given types, or convert the operands to compatible types. To check for None, use 'x is None' or 'x is not None' rather than 'x == None' / 'x != None'.");
+            "A binary operator was used with operand types that do not support it. For example, using + between an int and a bool, or - with strings. Comparing against the None literal with == or != is also rejected: use the identity operators 'is None' / 'is not None' instead. Two numeric operands are also refused when binary numeric promotion (C# ECMA-334 §12.4.7) has no common type for them: uint64 mixed with any signed integer type has no predefined operator in any family — arithmetic, comparison or bitwise — and decimal never mixes with float32/float64. The message names the cast that fixes it.",
+            "x: str = \"hello\" - \"world\"  # str doesn't support -\na: uint64 = 5\nb: int32 = 4\nprint(a + b)  # SPY0222: no common type for uint64 and int32",
+            "Use an operator that is supported for the given types, or convert the operands to compatible types. To check for None, use 'x is None' or 'x is not None' rather than 'x == None' / 'x != None'. For a refused numeric pair, cast one operand to a type both share: 'int64(a) + b' or 'a + uint64(b)' for uint64 with a signed operand, 'decimal(f) < d' or 'float64(d) < f' for decimal with a float.");
 
         Add(dict, DiagnosticCodes.Semantic.InvalidUnaryOperation, "Invalid unary operation", "Semantic",
             "A unary operator was used with an operand type that does not support it. For example, using the negation operator (-) on a string.",
