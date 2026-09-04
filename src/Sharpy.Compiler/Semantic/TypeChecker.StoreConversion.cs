@@ -224,6 +224,24 @@ internal partial class TypeChecker
         TextSpan? span,
         string? slotName = null,
         string? extraSteer = null)
+        => CheckStoreAt(position, value, valueType, targetType,
+            reportAt.LineStart, reportAt.ColumnStart, span, slotName, extraSteer);
+
+    /// <summary>
+    /// <see cref="CheckStore"/> against an explicit report position, for the one store site whose
+    /// reporting anchor is not a <see cref="Node"/>: a <see cref="KeywordArgument"/> carries its own
+    /// line/column but is not an AST node.
+    /// </summary>
+    private bool CheckStoreAt(
+        StorePosition position,
+        Expression? value,
+        SemanticType valueType,
+        SemanticType targetType,
+        int reportLine,
+        int reportColumn,
+        TextSpan? span,
+        string? slotName = null,
+        string? extraSteer = null)
     {
         var verdict = ClassifyStore(position, value, valueType, targetType);
 
@@ -238,7 +256,7 @@ internal partial class TypeChecker
             case StoreVerdict.RefusedNoneIntoNonNullable:
                 AddError(
                     $"Cannot assign 'None' to non-nullable type '{targetType.GetDisplayName()}'",
-                    reportAt.LineStart, reportAt.ColumnStart,
+                    reportLine, reportColumn,
                     code: DiagnosticCodes.Semantic.NullabilityViolation,
                     span: value?.Span ?? span);
                 return false;
@@ -251,7 +269,7 @@ internal partial class TypeChecker
                         : $"'{valueType.GetDisplayName()}' is not an Optional[{underlying}]; construct it with Some(...)";
                     AddError(
                         steer,
-                        reportAt.LineStart, reportAt.ColumnStart,
+                        reportLine, reportColumn,
                         code: DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction,
                         span: span);
                     return false;
@@ -265,7 +283,7 @@ internal partial class TypeChecker
                     FormatStoreError(position, valueType, targetType, slotName)
                         + DescribeStoreRefusalSteer(position, valueType, targetType)
                         + (extraSteer ?? string.Empty),
-                    reportAt.LineStart, reportAt.ColumnStart,
+                    reportLine, reportColumn,
                     code: refusalCode,
                     span: span);
                 return false;
@@ -291,6 +309,26 @@ internal partial class TypeChecker
 
         ApplyAcceptedVerdict(position, verdict, value, valueType, targetType);
         return true;
+    }
+
+    /// <summary>
+    /// Applies the accepted verdict for an argument that a BOUND parameter slot has accepted — the
+    /// argument-position twin of the side effects <see cref="CheckStore"/> applies everywhere else.
+    ///
+    /// <para>Argument acceptance is decided during overload probing by
+    /// <see cref="IsArgumentAssignable"/>, which must stay side-effect free (no candidate has been
+    /// chosen yet). That split is exactly how the facts went missing: five routes accepted a
+    /// <c>1.0</c> into a <c>float</c> parameter and none of them re-typed the literal, so the
+    /// emitter printed an unsuffixed <c>double</c> and Roslyn answered CS1503 behind SPY0908
+    /// (#1688). Every final binding site calls this once the parameter is known.</para>
+    /// </summary>
+    private void ApplyArgumentConversion(
+        StorePosition position, Expression? argument, SemanticType argumentType, SemanticType parameterType)
+    {
+        if (argument == null)
+            return;
+
+        CheckStoreQuietly(position, argument, argumentType, parameterType);
     }
 
     /// <summary>

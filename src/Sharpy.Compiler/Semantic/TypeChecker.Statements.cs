@@ -80,8 +80,11 @@ internal partial class TypeChecker
                 return;
             }
 
-            // Type-check each unpacking element (supports nested tuple targets)
-            CheckTupleUnpackingElements(targetTuple.Elements, tupleType.ElementTypes);
+            // Type-check each unpacking element (supports nested tuple targets). The RHS element
+            // NODES travel with the types so each element is a store the seam can classify by
+            // value shape, not a bare type comparison (#1698, #1701).
+            CheckTupleUnpackingElements(targetTuple.Elements, tupleType.ElementTypes,
+                TupleLiteralElements(assignment.Value));
 
             return;
         }

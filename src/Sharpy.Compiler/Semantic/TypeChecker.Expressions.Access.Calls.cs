@@ -3143,13 +3143,16 @@ internal partial class TypeChecker
                         break;
                     }
 
-                    if (!IsArgumentAssignable(argTypes[i], expected, ArgumentNodeAt(call, i)))
+                    var functionValueArgNode = ArgumentNodeAt(call, i);
+                    if (IsArgumentAssignable(argTypes[i], expected, functionValueArgNode))
                     {
-                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{expected.GetDisplayName()}'"
-                            + DescribeOptionalArgument(argTypes[i], expected)
-                            + DescribeClrCollectionConversionSteer(argTypes[i], expected),
-                            call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                            span: call.Arguments[i].Span);
+                        ApplyArgumentConversion(
+                            StorePosition.ArgumentPositional, functionValueArgNode, argTypes[i], expected);
+                    }
+                    else
+                    {
+                        CheckStore(StorePosition.ArgumentPositional, functionValueArgNode, argTypes[i],
+                            expected, call.Arguments[i], call.Arguments[i].Span);
                     }
                 }
             }
@@ -3274,35 +3277,27 @@ internal partial class TypeChecker
                 var argNode = ArgumentNodeAt(call, i);
                 if (!IsArgumentAssignable(argTypes[i], paramType, argNode))
                 {
-                    // PEP 675: literal-derived strings satisfy LiteralString (#1731)
-                    if (paramType is LiteralStringType && i < call.Arguments.Length
-                        && _semanticInfo.IsLiteralDerived(AstHelper.UnwrapParenthesized(call.Arguments[i])))
-                    {
-                        // Allow — literal-derived string expression satisfies LiteralString
-                    }
                     // A type-reference expression (e.g. module.SomeError) satisfies a
                     // parameter backed by CLR System.Type (e.g. assert_raises's exceptionType).
-                    else if (IsSystemTypeParameter(paramType) && i < call.Arguments.Length
+                    if (IsSystemTypeParameter(paramType) && i < call.Arguments.Length
                         && _semanticInfo.IsTypeReference(call.Arguments[i]))
                     {
                         // Allow — type reference satisfies a System.Type parameter
                     }
                     else
                     {
-                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{paramType.GetDisplayName()}'"
-                            + DescribeOptionalArgument(argTypes[i], paramType)
-                            + DescribeClrCollectionConversionSteer(argTypes[i], paramType)
-                            + DescribeTypeParameterBinding(param.Type, typeBinding),
-                            call.Arguments[i].LineStart, call.Arguments[i].ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                            span: call.Arguments[i].Span);
+                        // The refusal is the seam's: same classification, same steers, and the
+                        // strict-Optional cells report SPY0604 here exactly as they do at a
+                        // declaration (#1720). Only the type-parameter-binding clause is this
+                        // site's own.
+                        CheckStore(StorePosition.ArgumentPositional, argNode, argTypes[i], paramType,
+                            call.Arguments[i], call.Arguments[i].Span,
+                            extraSteer: DescribeTypeParameterBinding(param.Type, typeBinding));
                     }
                 }
-                else if (argNode != null)
+                else
                 {
-                    if (ImplicitConversions.IsFloat32LiteralNarrowing(paramType, argTypes[i], argNode))
-                        _semanticInfo.SetExpressionType(argNode, SemanticType.Float32);
-                    else if (ImplicitConversions.IsDecimalLiteralNarrowing(paramType, argTypes[i], argNode))
-                        _semanticInfo.SetExpressionType(argNode, SemanticType.Decimal);
+                    ApplyArgumentConversion(StorePosition.ArgumentPositional, argNode, argTypes[i], paramType);
                 }
             }
 
@@ -3378,16 +3373,26 @@ internal partial class TypeChecker
                         kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.DuplicateArgument,
                         span: kwarg.Span ?? kwarg.Value.Span);
                 }
-                else if (paramType != null
-                    && !IsArgumentAssignable(kwargTypes[kwarg.Name], paramType, kwarg.Value)
-                    && !(IsSystemTypeParameter(paramType) && _semanticInfo.IsTypeReference(kwarg.Value)))
+                else if (paramType != null)
                 {
-                    AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{paramType.GetDisplayName()}'"
-                        + DescribeOptionalArgument(kwargTypes[kwarg.Name], paramType)
-                        + DescribeClrCollectionConversionSteer(kwargTypes[kwarg.Name], paramType)
-                        + DescribeTypeParameterBinding(param.Type, typeBinding),
-                        kwarg.LineStart, kwarg.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: kwarg.Span ?? kwarg.Value.Span);
+                    // A keyword argument is a store into the named parameter's slot, node and all:
+                    // the route used to drop the node in the acceptance question and applied no
+                    // side effects at all, so `f(x=0.5)` into a float32 formal emitted an
+                    // unsuffixed double (CS1503 behind SPY0908) and `g(s="a")` into LiteralString
+                    // was SPY0220 (#1688, #1731).
+                    var kwargType = kwargTypes[kwarg.Name];
+                    if (IsArgumentAssignable(kwargType, paramType, kwarg.Value))
+                    {
+                        ApplyArgumentConversion(
+                            StorePosition.ArgumentKeyword, kwarg.Value, kwargType, paramType);
+                    }
+                    else if (!(IsSystemTypeParameter(paramType) && _semanticInfo.IsTypeReference(kwarg.Value)))
+                    {
+                        CheckStoreAt(StorePosition.ArgumentKeyword, kwarg.Value, kwargType, paramType,
+                            kwarg.LineStart, kwarg.ColumnStart, kwarg.Span ?? kwarg.Value.Span,
+                            slotName: kwarg.Name,
+                            extraSteer: DescribeTypeParameterBinding(param.Type, typeBinding));
+                    }
                 }
             }
         }
@@ -3505,6 +3510,82 @@ internal partial class TypeChecker
     /// never chooses between candidates. Two overloads of the same arity bail out above before any
     /// type check runs, so no ambiguity can be created.</para>
     /// </summary>
+    /// <summary>
+    /// Applies the store seam's accepted verdict to every positional argument of a call whose
+    /// parameter list is known, WITHOUT reporting anything — the apply-only half of
+    /// <see cref="ValidateCallArguments"/>, for routes that resolve a binding but do not (yet)
+    /// type-check it.
+    ///
+    /// <para>The CLR-constructor route is the one that needs it: a bridged type's constructors live
+    /// in <see cref="TypeSymbol.Constructors"/>, not in <c>Methods</c>, so
+    /// <see cref="CheckConstructorCall"/> found no <c>__init__</c> and checked nothing at all —
+    /// arity, types and conversions alike. <c>Vector2(1.0, 2.0)</c> was accepted and emitted as two
+    /// unsuffixed doubles (CS1503 behind SPY0908, #1688). Applying the verdict cannot introduce a
+    /// refusal: an argument the seam does not admit simply records no fact and the route behaves
+    /// exactly as it does today. (Type-CHECKING CLR constructor arguments is a separate gap — the
+    /// bridge's parameter types would have to be trusted to refuse with.)</para>
+    /// </summary>
+    private void ApplyResolvedArgumentConversions(
+        FunctionCall call, IReadOnlyList<ParameterSymbol> parameters, List<SemanticType> argTypes,
+        TypeParameterBinding? typeBinding = null)
+    {
+        var variadicIndex = -1;
+        for (int p = 0; p < parameters.Count; p++)
+        {
+            if (parameters[p].IsVariadic)
+            {
+                variadicIndex = p;
+                break;
+            }
+        }
+
+        for (int i = 0; i < argTypes.Count; i++)
+        {
+            ParameterSymbol param;
+            if (variadicIndex >= 0 && i >= variadicIndex)
+                param = parameters[variadicIndex];
+            else if (i < parameters.Count)
+                param = parameters[i];
+            else
+                break;
+
+            if (SubstitutedParameterType(param.Type, typeBinding) is not { } paramType)
+                continue;
+
+            ApplyArgumentConversion(
+                StorePosition.ArgumentPositional, ArgumentNodeAt(call, i), argTypes[i], paramType);
+        }
+    }
+
+    /// <summary>
+    /// The sole constructor of <paramref name="typeSymbol"/> that accepts this many positional
+    /// arguments, or null when zero or several do — the same arity-decides rule
+    /// <see cref="ValidateSoleArityMatchingOverload"/> applies to <c>__init__</c> overloads,
+    /// asked of the CLR-discovered constructor surface.
+    /// </summary>
+    private static IReadOnlyList<ParameterSymbol>? SoleArityMatchingConstructor(
+        TypeSymbol typeSymbol, int totalArgCount)
+    {
+        IReadOnlyList<ParameterSymbol>? soleMatch = null;
+        foreach (var ctor in typeSymbol.Constructors)
+        {
+            var parameters = ctor.Parameters.Skip(1).ToList();
+            if (parameters.Any(p => p.IsVariadic))
+                return null;
+
+            var required = parameters.Count(p => !p.HasDefault);
+            if (totalArgCount < required || totalArgCount > parameters.Count)
+                continue;
+
+            if (soleMatch != null)
+                return null;
+
+            soleMatch = parameters;
+        }
+
+        return soleMatch;
+    }
+
     private FunctionSymbol? ValidateSoleArityMatchingOverload(
         FunctionCall call, IReadOnlyList<FunctionSymbol> initMethods,
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes,
@@ -5855,7 +5936,15 @@ internal partial class TypeChecker
                 RecordSequenceMaterialization(argumentNode, argTypes[i], expected);
 
                 if (ClrParameterAccepts(parameter, argTypes[i], argumentNode))
+                {
+                    // A CLR formal is a typed slot like any other: an argument admitted by a value
+                    // shape must carry that shape's fact to the emitter. Without this,
+                    // `Vector2(1.0, 2.0)` and `xs.append(0.0)` into a `float` formal were accepted
+                    // and then emitted as unsuffixed doubles — CS1503 behind SPY0908 (#1688).
+                    ApplyArgumentConversion(
+                        StorePosition.ArgumentPositional, argumentNode, argTypes[i], expected);
                     continue;
+                }
 
                 // A lossy mapping refused by .NET is reported in .NET's words: the user wrote an
                 // `int` where the formal is an enum, and "expects 'int'" would send them in circles.

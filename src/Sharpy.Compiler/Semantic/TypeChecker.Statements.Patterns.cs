@@ -1312,12 +1312,34 @@ internal partial class TypeChecker
     /// Recursively type-checks tuple unpacking target elements against their value types.
     /// Handles nested tuple targets like (a, b), c and (a, (b, c)), d.
     /// </summary>
-    private void CheckTupleUnpackingElements(ImmutableArray<Expression> targets, IReadOnlyList<SemanticType> valueTypes)
+    /// <summary>
+    /// The written element expressions of a tuple LITERAL value, or null for anything else —
+    /// the per-element nodes the store seam needs to see a value's shape. Parentheses are
+    /// transparent, as they are everywhere else the seam looks at a value.
+    /// </summary>
+    private static IReadOnlyList<Expression>? TupleLiteralElements(Expression? value)
+        => value != null && AstHelper.UnwrapParenthesized(value) is TupleLiteral literal
+            && !literal.Elements.Any(e => e is SpreadElement)
+            ? literal.Elements
+            : null;
+
+    /// <param name="valueNodes">
+    /// The RHS element EXPRESSIONS, when the value is a tuple literal — the store seam's value-shape
+    /// arms are properties of the written expression, not of its type, so without the node
+    /// <c>a: int8; b: float32; a, b = 1, 2.5</c> was admitted type-wise and the emitter printed an
+    /// unsuffixed <c>2.5</c> into a <c>float</c> slot (CS0029 behind SPY0908). Null when the value is
+    /// a tuple-TYPED expression rather than a literal: there is no per-element node then, and the
+    /// classification is type-only.
+    /// </param>
+    private void CheckTupleUnpackingElements(
+        ImmutableArray<Expression> targets, IReadOnlyList<SemanticType> valueTypes,
+        IReadOnlyList<Expression>? valueNodes = null)
     {
         for (int i = 0; i < targets.Length; i++)
         {
             var targetElem = targets[i];
             var valueElemType = valueTypes[i];
+            var valueElemNode = valueNodes != null && i < valueNodes.Count ? valueNodes[i] : null;
 
             if (targetElem is Identifier tupleTargetId)
             {
@@ -1333,13 +1355,46 @@ internal partial class TypeChecker
                     continue;
                 }
 
+                // A target that already has a declared binding is a STORE into it: the emitted C#
+                // local keeps its declared type and the deconstruction assigns INTO that local, so
+                // the slot is the declared type (#1706) and the element's value shape decides
+                // (#1698, #1688). Without this, `a: int8; b: float32; a, b = 1, 2.5` was admitted
+                // type-wise and the emitter printed an unsuffixed 2.5 (CS0029 behind SPY0908), and
+                // a genuinely mistyped element (`a: int; a, b = "x", 3`) was the same ICE.
+                var elementType = valueElemType;
+                if (existingSymbol is VariableSymbol storePredecessor
+                    && DeclaredBindingType(storePredecessor) is var declaredSlot
+                    && declaredSlot is not UnknownType
+                    && elementType is not UnknownType
+                    && !IsAssignable(elementType, declaredSlot))
+                {
+                    var verdict = ClassifyStore(
+                        StorePosition.TupleElement, valueElemNode, elementType, declaredSlot);
+                    if (!IsAcceptedVerdict(verdict))
+                    {
+                        AddError($"Cannot assign type '{elementType.GetDisplayName()}' to '{declaredSlot.GetDisplayName()}' in tuple unpacking",
+                            targetElem.LineStart, targetElem.ColumnStart,
+                            code: DiagnosticCodes.Semantic.TypeMismatch, span: targetElem.Span);
+                        continue;
+                    }
+
+                    ApplyAcceptedVerdict(
+                        StorePosition.TupleElement, verdict, valueElemNode, elementType, declaredSlot);
+                    elementType = verdict switch
+                    {
+                        StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
+                        StoreVerdict.AcceptedDecimalNarrowing => SemanticType.Decimal,
+                        _ => declaredSlot,
+                    };
+                }
+
                 // In Sharpy, tuple unpacking creates new variable versions
                 // Create/redefine with inferred type from tuple element
                 var newSymbol = new VariableSymbol
                 {
                     Name = tupleTargetId.Name,
                     Kind = SymbolKind.Variable,
-                    Type = valueElemType,
+                    Type = elementType,
                     IsConstant = false,
                     DeclarationLine = tupleTargetId.LineStart,
                     DeclarationColumn = tupleTargetId.ColumnStart,
@@ -1348,7 +1403,7 @@ internal partial class TypeChecker
                     AccessLevel = AccessLevel.Public
                 };
                 _symbolTable.Define(newSymbol);
-                SemanticBinding.SetVariableType(newSymbol, valueElemType);
+                SemanticBinding.SetVariableType(newSymbol, elementType);
                 _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
 
                 if (existingSymbol is VariableSymbol predecessor)
@@ -1361,8 +1416,8 @@ internal partial class TypeChecker
                     _semanticInfo.SetTargetBinding(tupleTargetId, new TargetBinding(TargetBindingKind.Declares));
                 }
 
-                _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
-                if (valueElemType is UnknownType)
+                _semanticInfo.SetExpressionType(tupleTargetId, elementType);
+                if (elementType is UnknownType)
                 {
                     MarkExpressionAsErrorRecovery(tupleTargetId,
                         ErrorRecoveryReason.Propagated("the matched tuple element's type"));
@@ -1388,7 +1443,8 @@ internal partial class TypeChecker
                 }
 
                 // Recurse into nested tuple
-                CheckTupleUnpackingElements(nestedTuple.Elements, nestedTupleType.ElementTypes);
+                CheckTupleUnpackingElements(nestedTuple.Elements, nestedTupleType.ElementTypes,
+                    TupleLiteralElements(valueElemNode));
             }
             else
             {
@@ -1399,7 +1455,8 @@ internal partial class TypeChecker
                 using (ScopedValue.Push(ref _indexStoreTarget, IndexStoreTarget.Of(targetElem)))
                 using (ScopedValue.Push(ref _plainStoreTarget, targetElem))
                     targetElemType = CheckExpression(targetElem);
-                if (!IsAssignable(valueElemType, targetElemType))
+                if (!CheckStoreQuietly(
+                        StorePosition.TupleElement, valueElemNode, valueElemType, targetElemType))
                 {
                     AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
                         targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,

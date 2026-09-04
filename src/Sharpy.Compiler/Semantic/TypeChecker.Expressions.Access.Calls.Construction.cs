@@ -58,6 +58,15 @@ internal partial class TypeChecker
             if (resolvedInit != null)
                 CheckDeprecatedUsage(resolvedInit, call);
         }
+        else if (SoleArityMatchingConstructor(typeSymbol, totalArgCount) is { } clrConstructorParameters)
+        {
+            // A CLR-bridged type's constructors live in TypeSymbol.Constructors, never in Methods,
+            // so neither branch above sees them and the arguments reached codegen undecided —
+            // `Vector2(1.0, 2.0)` emitted two unsuffixed doubles (#1688). Apply the seam's verdict
+            // for the one constructor this argument count can mean; nothing is refused here.
+            ApplyResolvedArgumentConversions(call, clrConstructorParameters, argTypes,
+                UnwrittenTypeParameterBinding(typeSymbol));
+        }
 
         // A type with no construction cannot be constructed. Reads the same authority as the
         // value-position refusal (#1250) rather than testing IsAbstract, which only abstract classes

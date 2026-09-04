@@ -891,18 +891,19 @@ internal partial class TypeChecker
         Expression? argument = null,
         bool allowConstantConversion = true)
     {
-        if (IsAssignable(source, target))
+        // Every value SHAPE is the store seam's decision — an in-range integer constant, an
+        // unsuffixed float literal into float32/decimal, a literal-derived string into
+        // LiteralString, a conditional whose branches are all admitted. This method used to
+        // re-implement three of those arms and omit the rest, so an argument slot answered a
+        // different question than a declaration slot for the same value (#1698, #1688, #1731).
+        // Side-effect free on purpose: this runs during overload PROBING, where no candidate has
+        // been chosen yet and no fact may be recorded. The final binding site applies the verdict
+        // through ApplyArgumentConversion.
+        if (IsAcceptedVerdict(ClassifyStore(
+                StorePosition.ArgumentPositional, argument, source, target, allowConstantConversion)))
+        {
             return true;
-
-        if (allowConstantConversion
-            && ImplicitConversions.IsImplicitIntegerConstantConversion(argument, source, target, MakeConstantResolver()))
-            return true;
-
-        if (ImplicitConversions.IsFloat32LiteralNarrowing(target, source, argument))
-            return true;
-
-        if (ImplicitConversions.IsDecimalLiteralNarrowing(target, source, argument))
-            return true;
+        }
 
         // list[T] → array[T]: element types must match exactly (UnknownType acts as a
         // wildcard for empty list literals) so codegen's .ToArray() produces an array of
