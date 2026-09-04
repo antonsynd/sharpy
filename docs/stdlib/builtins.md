@@ -1860,6 +1860,60 @@ value, as in `CheckedIntPow(int, int)` (#1228).
 
 - `OverflowError` -- The result does not fit in a `long`.
 
+### `checked_int_pow(x: ulong, y: ulong) -> ulong`
+
+Return x raised to the power y as an exact `ulong` using
+checked exponentiation-by-squaring. See `CheckedIntPow(int, int)`
+for semantics; an out-of-range result raises `OverflowError`.
+
+**Parameters:**
+
+- `x` (ulong) -- The base.
+- `y` (ulong) -- The exponent.
+
+**Returns:** x raised to the power y.
+
+**Raises:**
+
+- `OverflowError` -- The result does not fit in a `ulong`.
+
+### `checked_int_pow(x: ulong, y: long) -> ulong`
+
+Return x raised to the power y as an exact `ulong`. When y is negative,
+the truncating double-path value is returned, as in
+`CheckedIntPow(int, int)` (#1228). When y is non-negative, delegates to
+`CheckedIntPow(ulong, ulong)`.
+
+**Parameters:**
+
+- `x` (ulong) -- The base.
+- `y` (long) -- The exponent. A negative exponent returns the truncating double-path
+value.
+
+**Returns:** x raised to the power y.
+
+**Raises:**
+
+- `OverflowError` -- The result does not fit in a `ulong`.
+
+### `checked_int_pow(x: long, y: ulong) -> long`
+
+Return x raised to the power y as an exact `long` using
+checked exponentiation-by-squaring. See `CheckedIntPow(int, int)`
+for semantics; an out-of-range result raises `OverflowError`.
+Handles negative bases correctly.
+
+**Parameters:**
+
+- `x` (long) -- The base.
+- `y` (ulong) -- The exponent.
+
+**Returns:** x raised to the power y.
+
+**Raises:**
+
+- `OverflowError` -- The result does not fit in a `long`.
+
 ### `range(stop: int) -> RangeIterator`
 
 Return an iterator that produces integers from 0 up to (but not including) stop.
