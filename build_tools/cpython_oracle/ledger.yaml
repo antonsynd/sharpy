@@ -125,6 +125,14 @@ deviations:
   spec_ref: docs/language_specification/dataclass.md
   existing_diagnostic: SPY0381
   planned_diagnostic: null
+- id: decimal-float-comparison-refused
+  category: operators
+  audience: python
+  severity: error
+  code: SPY0222
+  spec_ref: docs/language_specification/comparison_operators.md
+  existing_diagnostic: SPY0222
+  planned_diagnostic: null
 - id: dict-spread-in-call
   category: syntax
   audience: python

@@ -343,6 +343,33 @@ print(max("a", "bbb", "cc", key=len))  # "bbb"
 > so promotion is the type-safe choice (Axiom 1 `.NET` > Axiom 3 `types` > Axiom 2 `Python`).
 > A non-callable `key` in the value form is a compile-time error (`SPY0230`).
 
+"The same rules as the binary numeric operators" means literally the same table — C# §12.4.7, as
+tabulated in [Numeric Type Promotion](arithmetic_operators.md#numeric-type-promotion). The call's
+return type is the promoted type, and the emitted call carries it as an explicit type argument
+(`min(a, b)` below emits `Sharpy.Builtins.Min<long>(a, b)`), so the .NET overload that runs is the
+one the promotion picked:
+
+```python
+a: uint32 = 5
+b: int16 = 4
+r: int64 = min(a, b)     # 4 — uint32 with int16 promotes to int64
+m: int64 = max(a, b)     # 5
+# w: uint32 = min(a, b)  # ERROR (SPY0220): Cannot assign type 'int64'
+#                        #   to variable of type 'uint32'
+```
+
+A pair the table refuses is refused here too, and the diagnostic names the function and both
+argument types:
+
+```python
+c: uint64 = 5
+d: int32 = 4
+# print(min(c, d))       # ERROR (SPY0220): Cannot determine common numeric type
+#                        #   for 'min' with argument types 'uint64', 'int32'
+```
+
+Cast one argument to the type you want the comparison to happen in (`int64(c)` or `uint64(d)`).
+
 **`enumerate()` Signature:**
 
 The `enumerate()` function takes the iterable and an optional positional `start` argument:

@@ -1327,6 +1327,27 @@ deviations:
         print(2 ** -1)      # 0    — int ** int stays int; truncated
         print(2.0 ** -1)    # 0.5  — float base gives the Python answer
 
+  - id: decimal-float-comparison-refused
+    code: SPY0222
+    category: operators
+    audience: python
+    severity: error
+    python_behavior: "`Decimal` compares against `float` directly: `Decimal(1) < 2.0` is `True` (verified with python3). CPython converts the float to its exact decimal value for the comparison, so the two types mix in every comparison operator."
+    sharpy_behavior: "A `decimal` operand against a `float64` operand is refused with SPY0222 — `Type 'decimal' does not support operator '<' with operand of type 'float64'`. C# has no implicit conversion in either direction (`decimal` has more precision, `double` more range), so the pair does not bind under the binary numeric promotion the comparison operators share with the arithmetic ones (C# §12.4.7). Axiom precedence: .NET (1) > Python (2). Convert explicitly to name the comparison type: `d < decimal(f)` or `float(d) < f`. `decimal` against an *integer* is unaffected (`decimal < int` promotes the integer and runs)."
+    spec_ref: docs/language_specification/comparison_operators.md
+    existing_diagnostic: SPY0222
+    planned_diagnostic: null
+    example:
+      python: |
+        from decimal import Decimal
+        print(Decimal(1) < 2.0)     # True
+      sharpy: |
+        d: decimal = 1
+        f: float64 = 2.0
+        # r: bool = d < f           # ERROR (SPY0222)
+        print(d < decimal(f))       # True  — compare as decimal
+        print(float(d) < f)         # True  — or compare as float64
+
   - id: float-is-double
     code: null
     category: types

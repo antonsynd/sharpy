@@ -9,6 +9,41 @@
 | `<<` | Left shift |
 | `>>` | Right shift |
 
+## Operand types for `&`, `|` and `^`
+
+The binary logical operators promote **both** operands through the same table the arithmetic
+operators use — C# §12.4.7, tabulated in
+[Numeric Type Promotion](arithmetic_operators.md#numeric-type-promotion). The result type is the
+promoted type, not the left operand's type, and a pair the table refuses is refused here:
+
+```python
+a: uint32 = 5
+b: int16 = 2
+r: int64 = a | b         # 7    — both promote to int64
+# w: uint32 = a | b      # ERROR (SPY0220): Cannot assign type 'int64'
+#                        #   to variable of type 'uint32'
+
+c: uint32 = 5
+d: uint8 = 3
+s: uint32 = c ^ d        # 6    — uint32 with a small unsigned stays uint32
+
+e: uint64 = 5
+f: int32 = 3
+# t: uint64 = e & f      # ERROR (SPY0222): Type 'uint64' does not support
+#                        #   operator '&' with operand of type 'int32'
+u: uint64 = e & uint64(f)   # 1 — cast one operand to a common type
+```
+
+A constant operand converts to the other operand's type before promotion (§10.2.11), so a literal
+mask needs no suffix:
+
+```python
+g: uint64 = 5
+v: uint64 = g & 1        # 1 — the constant 1 converts to uint64
+```
+
+Shifts are the exception and are covered next.
+
 ## Shift Semantics
 
 ### Result type follows the left operand
@@ -24,6 +59,16 @@ print(1 << 2L)     # 4    — a long count does not make the result long
 
 This differs from `&`, `|` and `^`, which promote both operands, because a shift's operands play
 different roles: one is the value, the other is a count.
+
+Because the count never joins the promotion, a shift accepts operand pairs `&` refuses. A signed
+count against a `uint64` value is fine:
+
+```python
+a: uint64 = 5
+n: int32 = 1
+r: uint64 = a << n       # 10 — only the left operand carries the type
+# t: uint64 = a & n      # ERROR (SPY0222) — `&` promotes both, and this pair has no common type
+```
 
 ### Constant shifts are range-checked
 
