@@ -939,7 +939,7 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
     /// </summary>
     private sealed record MinMaxCase(
         string Id, string Declarations, string Expression, string? StoreType,
-        string Expected, string? Code);
+        bool Accepted, string Expected, string? Code);
 
     /// <summary>
     /// The refused min/max message INCLUDING its cure (#1699): a refusal that names only what is
@@ -952,21 +952,30 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
 
     private static readonly MinMaxCase[] MinMaxCases =
     {
-        new("minmax/uint64/constant-min", "    a: uint64 = 5", "min(a, 1)", "uint64", "1", null),
-        new("minmax/uint64/constant-max", "    a: uint64 = 5", "max(a, 1)", "uint64", "5", null),
-        new("minmax/uint64/three-arg", "    a: uint64 = 5", "min(a, 1, 2)", "uint64", "1", null),
-        new("minmax/uint32/constant", "    a: uint32 = 5", "min(a, 1)", "uint32", "1", null),
-        new("minmax/int8/constant", "    a: int8 = 5", "min(a, 1)", "int8", "1", null),
-        new("minmax/uint32*int16", "    a: uint32 = 5\n    b: int16 = 3", "min(a, b)", "int64", "3", null),
-        new("minmax/uint64*uint32", "    a: uint64 = 5\n    b: uint32 = 3", "max(a, b)", "uint64", "5", null),
+        new("minmax/uint64/constant-min", "    a: uint64 = 5", "min(a, 1)", "uint64", true, "1", null),
+        new("minmax/uint64/constant-max", "    a: uint64 = 5", "max(a, 1)", "uint64", true, "5", null),
+        new("minmax/uint64/three-arg", "    a: uint64 = 5", "min(a, 1, 2)", "uint64", true, "1", null),
+        new("minmax/uint32/constant", "    a: uint32 = 5", "min(a, 1)", "uint32", true, "1", null),
+        new("minmax/int8/constant", "    a: int8 = 5", "min(a, 1)", "int8", true, "1", null),
+        new("minmax/uint32*int16", "    a: uint32 = 5\n    b: int16 = 3", "min(a, b)", "int64", true, "3", null),
+        new("minmax/uint64*uint32", "    a: uint64 = 5\n    b: uint32 = 3", "max(a, b)", "uint64", true, "5", null),
         // The control: a mixed numeric pair whose promotion is a THIRD type still works, and works
         // for the reason it always did (int -> double is a standard implicit conversion).
-        new("minmax/int*float", "", "min(2, 3.0)", "float", "2.0", null),
+        new("minmax/int*float", "", "min(2, 3.0)", "float", true, "2.0", null),
+        // The narrow SAME-signedness pairs, whose answer is the best common type and NOT §12.4.7's
+        // int32: `min(int8, int16)` is int16 (measured `3` at f7c7d3d97 and at HEAD). Correcting
+        // GetPromotedType to §12.4.7 refused both of these for two commits — a store that had
+        // always worked — because min/max is the one consumer that reads a promotion without the
+        // operator's narrow floor. These two cells are that direction, pinned.
+        new("minmax/int8*int16", "    a: int8 = 5\n    b: int16 = 3", "min(a, b)", "int16", true, "3", null),
+        new("minmax/uint8*uint16", "    a: uint8 = 5\n    b: uint16 = 3", "max(a, b)", "uint16", true, "5", null),
+        new("minmax/int8/same-type", "    a: int8 = 5", "min(a, a)", "int8", true, "5", null),
+        new("minmax/int8*int16/print", "    a: int8 = 5\n    b: int16 = 3", "min(a, b)", null, true, "3", null),
         // The refusals the constant rule must NOT widen away: a negative constant has no ulong
         // form, and a signed VARIABLE never converts.
-        new("minmax/uint64/negative", "    a: uint64 = 5", "min(a, -1)", null,
+        new("minmax/uint64/negative", "    a: uint64 = 5", "min(a, -1)", null, false,
             MinMaxRefusal, DiagnosticCodes.Semantic.TypeMismatch),
-        new("minmax/uint64*int32-var", "    a: uint64 = 5\n    b: int32 = 1", "min(a, b)", null,
+        new("minmax/uint64*int32-var", "    a: uint64 = 5\n    b: int32 = 1", "min(a, b)", null, false,
             MinMaxRefusal, DiagnosticCodes.Semantic.TypeMismatch),
     };
 
@@ -990,10 +999,10 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
                 line = sb.Add("    print(p)");
             }
 
-            yield return new MatrixProgram(c.Id, sb.Text, c.StoreType != null, new[]
+            yield return new MatrixProgram(c.Id, sb.Text, c.Accepted, new[]
             {
                 new Cell(c.Id, "minmax", c.Id, "min/max", "-",
-                    c.StoreType != null, line, c.Expected, c.Code),
+                    c.Accepted, line, c.Expected, c.Code),
             });
         }
     }

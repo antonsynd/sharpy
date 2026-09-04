@@ -125,6 +125,27 @@ internal static class BuiltinReturnTypeInference
                 return first;
         }
 
+        // Same-signedness / widening pairs (#1699): C# infers ONE `T` for
+        // `Builtins.Min<T>(T, T, params T[])` by BEST COMMON TYPE (§12.6.3.15) — the argument type
+        // every other argument converts to implicitly — and that is the type the emitted call
+        // returns, so it is the type to record. For a narrow pair of one signedness the best common
+        // type is the WIDER of the two: `min(int8, int16)` is `int16`, and `max(uint8, uint16)` is
+        // `uint16`.
+        //
+        // Binary numeric promotion is NOT this call's rule and must not be applied first: §12.4.7
+        // answers `int32` for both pairs (it is the rule for a predefined OPERATOR, whose narrow
+        // operands are floored to `int`), which made `r: int16 = min(a8, b16)` and
+        // `u: uint16 = max(u8, u16)` SPY0220 — programs that ran before the promotion seam was
+        // corrected. Promotion stays as the FALLBACK below for a pair with no best common type
+        // (`min(uint32, int16)` -> `int64`), where the recorded type is not any argument's type and
+        // must be printed as an explicit type argument for the call to bind at all.
+        if (argTypes.Count >= 2 && argTypes.All(PrimitiveCatalog.IsNumeric))
+        {
+            var bestCommon = TryBestCommonNumericType(argTypes);
+            if (bestCommon != null)
+                return bestCommon;
+        }
+
         // Mixed-numeric value form (#1014): min(2, 3.0) -> float64. The all-same-type branch
         // above misses mixed numerics, which would otherwise fall through to the iterable
         // element type (null for a scalar) and leak the open generic parameter T into
@@ -148,6 +169,45 @@ internal static class BuiltinReturnTypeInference
 
         // Iterable form: min(iterable) / max(iterable) -> element type.
         return typeInference.InferIterableElementType(argTypes[0]);
+    }
+
+    /// <summary>
+    /// The best common type of a numeric argument list — the C# generic-inference answer for one
+    /// <c>T</c> (§12.6.3.15): the candidate among the argument types that every argument converts
+    /// to implicitly. Returns <c>null</c> when no candidate qualifies (<c>uint32</c> with
+    /// <c>int16</c>: neither converts to the other) or when two distinct ones would, so the caller
+    /// falls back to binary numeric promotion.
+    /// </summary>
+    private static SemanticType? TryBestCommonNumericType(List<SemanticType> argTypes)
+    {
+        SemanticType? best = null;
+
+        foreach (var candidate in argTypes)
+        {
+            var candidateInfo = PrimitiveCatalog.GetPrimitiveInfo(candidate);
+            if (candidateInfo == null)
+                return null;
+
+            var acceptsEveryArgument = true;
+            foreach (var arg in argTypes)
+            {
+                var argInfo = PrimitiveCatalog.GetPrimitiveInfo(arg);
+                if (argInfo == null || !PrimitiveCatalog.CanImplicitlyConvert(argInfo, candidateInfo))
+                {
+                    acceptsEveryArgument = false;
+                    break;
+                }
+            }
+
+            if (!acceptsEveryArgument)
+                continue;
+            if (best == null || Equals(best, candidate))
+                best = candidate;
+            else
+                return null;
+        }
+
+        return best;
     }
 
     private static SemanticType? InferEnumerate(List<SemanticType> argTypes, TypeInferenceService typeInference)
