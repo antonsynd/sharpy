@@ -1,0 +1,8 @@
+# The positive control for the lambda edge (#1728): the same shape WITHOUT a cycle still
+# compiles and runs. An initializer that reads a later const through a lambda is a forward
+# reference, not a circular one.
+const A: int = (lambda: B)()
+const B: int = 4
+
+def main():
+    print(A, B)

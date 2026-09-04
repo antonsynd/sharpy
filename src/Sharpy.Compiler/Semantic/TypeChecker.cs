@@ -685,6 +685,26 @@ internal partial class TypeChecker
         }
     }
 
+    /// <summary>
+    /// Reports SPY0278 on every constant that lies on a reference cycle (#1728). The graph is
+    /// built structurally from initializer expressions and walked with a DFS, so it is independent
+    /// of the constant's TYPE and of whether the fixed-point fold above could evaluate it: an
+    /// acyclic chain the folder cannot evaluate (<c>const A: int = ident(5)</c>) runs, and a
+    /// <c>float</c>/<c>str</c>/<c>bool</c> cycle is refused like an <c>int</c> one.
+    /// <para><b>Scope of the graph.</b> Module-level consts (keyed by name) AND class-level consts
+    /// (keyed <c>Class.Member</c>, reached through the qualified <c>C.A</c> spelling that is the
+    /// only way to name one in an initializer). A class-level cycle was SPY0908/CS0110 ("the
+    /// evaluation of the constant value involves a circular definition") and a module↔class cycle
+    /// SPY0908/CS0133 before they entered this graph. Two shapes are impossible rather than
+    /// missing: a FUNCTION-level const cannot forward-reference (SPY0200 — its scope is
+    /// sequential), and a CROSS-MODULE const cycle needs each module to import the other, which
+    /// SPY0302 ("Circular dependency detected") already refuses.</para>
+    /// <para><b>No lambda boundary.</b> Unlike the walrus walk (<c>ContainsWalrusExpression</c>),
+    /// this walk does not stop at a <see cref="LambdaExpression"/>: the walrus rule is about where
+    /// a binding takes effect, while a const initializer's VALUE flows through an
+    /// immediately-invoked lambda — <c>const A: int = (lambda: B)()</c> is a dependency on
+    /// <c>B</c>, and stopping there printed <c>0 1</c> for a cycle.</para>
+    /// </summary>
     private void DetectConstantCycles(Module module)
     {
         var constDecls = new Dictionary<string, Parser.Ast.VariableDeclaration>();
@@ -695,6 +715,20 @@ internal partial class TypeChecker
                 && _symbolTable.Lookup(decl.Name) is VariableSymbol { IsConstant: true, ConstantValue: null })
             {
                 constDecls[decl.Name] = decl;
+            }
+            else if (statement is Parser.Ast.ClassDef classDef)
+            {
+                // Class-level consts have not been checked yet (CheckClass runs after this pass),
+                // so there is no folded value to filter on — every one enters the graph and the
+                // DFS decides. A non-cyclic member simply has no back edge.
+                foreach (var member in classDef.Body)
+                {
+                    if (member is Parser.Ast.VariableDeclaration { IsConst: true } constMember
+                        && constMember.InitialValue != null)
+                    {
+                        constDecls[$"{classDef.Name}.{constMember.Name}"] = constMember;
+                    }
+                }
             }
         }
 
@@ -715,9 +749,14 @@ internal partial class TypeChecker
                     {
                         referencedConsts.Add(vs.Name);
                     }
+                    else if (n is MemberAccess { Object: Identifier owner } memberAccess
+                        && _symbolTable.Lookup(owner.Name) is TypeSymbol
+                        && constDecls.ContainsKey($"{owner.Name}.{memberAccess.Member}"))
+                    {
+                        referencedConsts.Add($"{owner.Name}.{memberAccess.Member}");
+                    }
                     return false;
-                },
-                static n => n is LambdaExpression);
+                });
             deps[name] = referencedConsts;
         }
 

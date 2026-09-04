@@ -1,0 +1,8 @@
+# The positive control for the class-level arm (#1728): an acyclic class-level const chain
+# still folds and runs after class members entered the dependency graph.
+class C:
+    const A: int = 4
+    const B: int = C.A + 1
+
+def main():
+    print(C.A, C.B)

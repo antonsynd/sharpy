@@ -1,0 +1,2 @@
+Circular constant reference: 'A' depends on a constant that references it back @6:1
+Circular constant reference: 'B' depends on a constant that references it back @7:1

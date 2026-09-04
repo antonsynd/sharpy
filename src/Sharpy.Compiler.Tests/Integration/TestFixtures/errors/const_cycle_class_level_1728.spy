@@ -1,0 +1,9 @@
+# #1728: class-level consts are in the dependency graph too, keyed by their qualified
+# spelling. This pair was SPY0908 / CS0110 ("the evaluation of the constant value involves
+# a circular definition") — the C# compiler discovering what the checker should have.
+class C:
+    const A: int = C.B + 1
+    const B: int = C.A + 1
+
+def main():
+    print(C.A, C.B)

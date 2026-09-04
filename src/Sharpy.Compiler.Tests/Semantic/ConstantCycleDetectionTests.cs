@@ -79,4 +79,51 @@ public class ConstantCycleDetectionTests
         var count = CountCircularConstantErrors(decls + "\ndef main():\n    print(A)\n");
         count.Should().Be(2, why);
     }
+
+    /// <summary>
+    /// A const initializer's VALUE flows through an immediately-invoked lambda, so the dependency
+    /// walk must not stop at a <c>LambdaExpression</c> the way the walrus walk does — that boundary
+    /// is about where a binding takes effect, not about where a value comes from. With the stop in
+    /// place this cycle compiled and printed <c>0 1</c> (#1728).
+    /// </summary>
+    [Fact]
+    public void CycleThroughLambdaBody_RaisesSPY0278_OnBothConstants()
+    {
+        var count = CountCircularConstantErrors(
+            "const A: int = (lambda: B)()\nconst B: int = A + 1\n\ndef main():\n    print(A, B)\n");
+        count.Should().Be(2, "an immediately-invoked lambda carries the dependency out of its body");
+    }
+
+    /// <summary>
+    /// Class-level consts are in the same graph, keyed by their qualified spelling — the only way
+    /// to name one from an initializer. Before this the pair reached codegen and came back as
+    /// SPY0908 / CS0110 (#1728).
+    /// </summary>
+    [Theory]
+    [InlineData("class C:\n    const A: int = C.B + 1\n    const B: int = C.A + 1\n", 2,
+        "both class-level constants on the cycle are named")]
+    [InlineData("const X: int = C.A + 1\n\nclass C:\n    const A: int = X + 1\n", 2,
+        "a module const and a class const can close a cycle between them")]
+    public void ClassLevelCycle_RaisesSPY0278(string decls, int expected, string why)
+    {
+        CountCircularConstantErrors(decls + "\ndef main():\n    print(1)\n")
+            .Should().Be(expected, why);
+    }
+
+    /// <summary>
+    /// The positive controls for every arm above: acyclic programs of the SAME shapes report
+    /// nothing. Without these, a walker that reported SPY0278 on every const — or on none — could
+    /// still satisfy the counts above.
+    /// </summary>
+    [Theory]
+    [InlineData("const A: int = (lambda: B)()\nconst B: int = 4\n", "forward reference through a lambda")]
+    [InlineData("def ident(x: int) -> int:\n    return x\n\nconst A: int = ident(5)\nconst B: int = A + 1\n",
+        "an unfoldable acyclic chain is not a cycle")]
+    [InlineData("class C:\n    const A: int = 4\n    const B: int = C.A + 1\n", "acyclic class-level chain")]
+    [InlineData("const A: float = 1.0\nconst B: float = A + 1.0\n", "acyclic float chain")]
+    public void AcyclicProgram_ReportsNoCircularConstantError(string decls, string why)
+    {
+        CountCircularConstantErrors(decls + "\ndef main():\n    print(1)\n")
+            .Should().Be(0, why);
+    }
 }

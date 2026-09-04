@@ -1,0 +1,10 @@
+# The positive control for the DFS (#1728): "the folder could not evaluate it" is not
+# "it is circular". This chain is acyclic and unfoldable, and runs.
+def ident(x: int) -> int:
+    return x
+
+const A: int = ident(5)
+const B: int = A + 1
+
+def main():
+    print(A, B)

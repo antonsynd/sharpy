@@ -1,0 +1,10 @@
+# #1728: the dependency walk is structural — a reference reached through a function-call
+# argument is an edge like any other, and both constants on the cycle are named.
+def ident(x: int) -> int:
+    return x
+
+const A: int = ident(B)
+const B: int = A + 1
+
+def main():
+    print(A, B)

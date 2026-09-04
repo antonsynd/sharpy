@@ -1,0 +1,8 @@
+# #1728: a const initializer's value flows through an immediately-invoked lambda, so a
+# reference inside the lambda body is a dependency edge. Stopping the dependency walk at
+# the lambda (the walrus walk's boundary) let this cycle through: it printed `0 1`.
+const A: int = (lambda: B)()
+const B: int = A + 1
+
+def main():
+    print(A, B)

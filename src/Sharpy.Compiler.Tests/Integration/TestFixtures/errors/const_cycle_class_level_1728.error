@@ -1,0 +1,2 @@
+Circular constant reference: 'C.A' depends on a constant that references it back @5:5
+Circular constant reference: 'C.B' depends on a constant that references it back @6:5
