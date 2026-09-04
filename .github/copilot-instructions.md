@@ -38,6 +38,8 @@ Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files com
 
 **Key registries**: `OperatorRegistry`, `ProtocolRegistry`, `BuiltinRegistry`, `ModuleRegistry`, `PrimitiveCatalog` (source of truth for primitive types and CLR mappings).
 
+**Store checks** go through `TypeChecker.CheckStore` (`TypeChecker.StoreConversion.cs`) — one entry point for every store position (declaration, assignment, return, yield, argument, default, collection element, walrus, lambda body, etc.). Value-shape predicates (integer constant conversion, float32/decimal literal narrowing, literal-derived string into `LiteralString`) live in `ImplicitConversions.cs`.
+
 **Materialization points** — after each major phase, computed data is frozen from `SemanticBinding` onto `Symbol` properties:
 1. After import resolution → `MaterializeInheritance()` (BaseType, Interfaces)
 2. After type checking → `MaterializeVariableTypes()`, `MaterializeCodeGenInfo()`
