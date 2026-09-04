@@ -422,6 +422,13 @@ internal partial class TypeChecker
         if (result >= long.MinValue && result <= long.MaxValue)
             return SemanticType.Long;
 
+        // A ulong-typed operand widens the fold to ulong (#1700).
+        var leftType = _semanticInfo.GetExpressionType(binOp.Left);
+        var rightType = _semanticInfo.GetExpressionType(binOp.Right);
+        if ((leftType == SemanticType.ULong || rightType == SemanticType.ULong)
+            && result >= 0 && result <= ulong.MaxValue)
+            return SemanticType.ULong;
+
         ReportIntegerPowerOverflow(binOp);
         return SemanticType.Unknown;
     }

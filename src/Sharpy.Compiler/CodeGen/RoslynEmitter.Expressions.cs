@@ -723,6 +723,7 @@ internal partial class RoslynEmitter
     {
         bool b => LiteralExpression(b ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
         double d => LiteralExpression(SyntaxKind.NumericLiteralExpression, DoubleLiteralToken(d)),
+        ulong u => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(u)),
         long l when constant.Type == SemanticType.Long =>
             LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(l)),
         long l => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)l)),

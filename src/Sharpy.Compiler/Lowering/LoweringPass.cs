@@ -239,10 +239,19 @@ internal sealed partial class LoweringPass
             return null;
 
         var result = System.Numerics.BigInteger.Pow(baseValue, (int)exponent);
+        var resultType = semanticInfo.GetExpressionType(binOp);
+
+        if (resultType == SemanticType.ULong)
+        {
+            if (result < 0 || result > ulong.MaxValue)
+                return null;
+            return new IrConstant((ulong)result, resultType, SpanOf(binOp));
+        }
+
         if (result < long.MinValue || result > long.MaxValue)
             return null;
 
-        return new IrConstant((long)result, semanticInfo.GetExpressionType(binOp), SpanOf(binOp));
+        return new IrConstant((long)result, resultType, SpanOf(binOp));
     }
 
     private static ImmutableArray<IrNode> LowerChildren(Node node, SemanticInfo semanticInfo, LoweringState state)
