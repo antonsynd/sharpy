@@ -42,42 +42,22 @@ public class EmittedOptionalConstructionConformanceTests
     // A non-allowlisted violation fails the test; a stale allowlist entry (file gone
     // or violation fixed) also fails — entries drain, never accumulate.
     //
-    // #1747 — the null-conditional lowering does not wrap its true branch when the member's or
-    // method's OWN type is a bare T. Both emitter arms discriminate on the recorded type of the
-    // `?.` node (RoslynEmitter.Expressions.Access.cs:1396 and :1687), which the checker has already
-    // wrapped in Optional in BOTH the "member is Optional" and "member is bare T" cases, so the two
-    // are indistinguishable there — the fix needs a checker-recorded fact, not an emitter patch.
-    // The discriminating pair is null_conditional_flatten.expected.cs:83 (`.Label`, already
-    // Optional<string> — correctly unwrapped) versus :95 (`.Value`, a bare int — the violation).
-    private static readonly HashSet<string> Allowlist = new(StringComparer.Ordinal)
-    {
-        // #1747 — the METHOD-CALL arm still emits bare T in the true branch: the checker records
-        // SetNullConditionalOptionalWrap for field and property access
-        // (TypeChecker.Expressions.Access.cs:487/:508) but not yet for the six
-        // isNullConditionalCall blocks in Calls.cs. null_conditional_flatten drained when the
-        // member arm was wired.
-        "optionals/null_conditional_chaining.expected.cs",
-    };
+    // EMPTY: #1747 is fully drained. The null-conditional lowering used to leave its true branch a
+    // bare T whenever the member's or method's OWN type was not already Optional; both emitter arms
+    // discriminated on the recorded type of the `?.` node, which the checker wraps in BOTH cases.
+    // The checker now records the layer it adds (SetNullConditionalOptionalWrap, member/property at
+    // TypeChecker.Expressions.Access.cs and the six isNullConditionalCall blocks in Calls.cs) and
+    // one emitter seam constructs Optional<T>.Some(...) from it.
+    private static readonly HashSet<string> Allowlist = new(StringComparer.Ordinal);
 
     // Violations seen only through the executing-fixture corpus arm, keyed by fixture name. The
-    // snapshot corpus is 142 selected .expected.cs files, so every fixture below executes but was
+    // snapshot corpus is 142 selected .expected.cs files, so every fixture below executes but is
     // invisible to the snapshot arm. Each entry cites its issue and drains on fix.
+    //
+    // All of #1755 Class A drained with #1747. What remains is two lowerings that have nothing to
+    // do with `?.`.
     private static readonly HashSet<string> FixtureAllowlist = new(StringComparer.Ordinal)
     {
-        // #1747 — the null-conditional METHOD-CALL arm (the snapshotted fixture; same sites the
-        // Allowlist above covers). null_conditional_flatten drained when the member arm was wired.
-        "optionals/null_conditional_chaining",
-
-        // #1755 Class A — the same #1747 method-call arm in unsnapshotted fixtures.
-        // type_system/null_conditional_0004 drained with the member arm.
-        "null_conditional_optional_member_call_1307",
-        "optional_narrowed_ops",
-        "optional_result/maybe_chained",
-        "optional_result/optional_null_conditional_coalesce",
-        "type_system/optional_null_conditional_chain",
-        "type_system/optional_null_conditional_method",
-        "type_system/optional_null_conditional_value_type",
-
         // #1755 Class B — a narrowed Optional read stored back into an Optional slot is not
         // re-wrapped (x += 5 on a narrowed int? emits x = x.Unwrap() + 5)
         "type_system/optional_augmented_assign_narrowing",
@@ -98,6 +78,7 @@ public class EmittedOptionalConstructionConformanceTests
         var references = IntegrationTestBase.GetSharedReferences();
         var violations = new List<string>();
         var allowlistedViolations = new List<string>();
+        var unresolvedBindings = new List<string>();
         int scannedFiles = 0;
         int scannedExpressions = 0;
         var filesWithViolations = new HashSet<string>(StringComparer.Ordinal);
@@ -122,6 +103,18 @@ public class EmittedOptionalConstructionConformanceTests
 
             var relativePath = Path.GetRelativePath(FixturesRoot, file)
                 .Replace(Path.DirectorySeparatorChar, '/');
+
+            // Instrument check (the standing rule for Roslyn source-compilation scans): an
+            // expression that binds to an ERROR type has no conversion at all, so GetConversion
+            // reports nothing and this scan under-counts SILENTLY. Assert that every snapshot binds
+            // with its names resolved before believing any per-file result.
+            var unresolved = UnresolvedTypeDiagnostics(compilation);
+            if (unresolved.Count > 0)
+            {
+                unresolvedBindings.Add(
+                    $"{relativePath}: {unresolved.Count} unresolved-name diagnostic(s) — " +
+                    string.Join("; ", unresolved.Take(5)));
+            }
 
             foreach (var expr in tree.GetRoot().DescendantNodes().OfType<ExpressionSyntax>())
             {
@@ -150,7 +143,14 @@ public class EmittedOptionalConstructionConformanceTests
         }
 
         _output.WriteLine(
-            $"Scanned {scannedFiles} snapshot file(s), {scannedExpressions} expression node(s).");
+            $"Scanned {scannedFiles} snapshot file(s), {scannedExpressions} expression node(s); "
+            + $"{unresolvedBindings.Count} file(s) with unresolved names.");
+
+        Assert.True(unresolvedBindings.Count == 0,
+            $"{unresolvedBindings.Count} snapshot(s) did not bind with every name resolved, so the "
+            + "conversion scan under-counts on them silently (an expression bound to an error type "
+            + "has no conversion to report). Fix the scan's compilation, not this assertion:\n" +
+            string.Join("\n", unresolvedBindings.Take(25)));
         if (allowlistedViolations.Count > 0)
             _output.WriteLine(
                 $"Allowlisted violations ({allowlistedViolations.Count}): " +
@@ -247,6 +247,7 @@ public static class PositiveControl
         var references = IntegrationTestBase.GetSharedReferences();
         var violations = new List<string>();
         var allowlistedViolations = new List<string>();
+        var unresolvedBindings = new List<string>();
         var fixturesWithViolations = new HashSet<string>(StringComparer.Ordinal);
         int scannedFixtures = 0;
         int scannedUnits = 0;
@@ -277,18 +278,37 @@ public static class PositiveControl
             scannedFixtures++;
             scannedUnits += units.Count;
 
-            foreach (var unit in units)
+            // ALL units of a multi-file fixture go into ONE compilation. Compiled one at a time,
+            // a unit that imports a sibling module cannot resolve it (CS0234 on Sharpy.Test.Lib and
+            // friends) and every expression in it binds to an error type — which reports no
+            // conversion and would make the scan silently vacuous on exactly the cross-module
+            // programs it should cover. Measured: compiling one tree at a time, 49 fixtures'
+            // first unit reported unresolved names (CS0234 on Sharpy.Test.<Sibling>, CS0103 on
+            // functions imported from one); with the whole fixture compiled together, 0.
+            var trees = units
+                .Select(u => CSharpSyntaxTree.Create(
+                    u, CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest)))
+                .ToList();
+
+            var compilation = CSharpCompilation.Create(
+                "OptionalConformanceFixtureScan",
+                trees,
+                references,
+                new CSharpCompilationOptions(OutputKind.ConsoleApplication)
+                    .WithNullableContextOptions(NullableContextOptions.Enable));
+
+            // Instrument check: an expression bound to an error type yields no conversion, so a
+            // fixture whose names do not resolve would be scanned vacuously.
+            var unresolved = UnresolvedTypeDiagnostics(compilation);
+            if (unresolved.Count > 0)
             {
-                var tree = CSharpSyntaxTree.Create(
-                    unit, CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
+                unresolvedBindings.Add(
+                    $"{fixture.TestName}: {unresolved.Count} unresolved-name diagnostic(s) — " +
+                    string.Join("; ", unresolved.Take(3)));
+            }
 
-                var compilation = CSharpCompilation.Create(
-                    "OptionalConformanceFixtureScan",
-                    new[] { tree },
-                    references,
-                    new CSharpCompilationOptions(OutputKind.ConsoleApplication)
-                        .WithNullableContextOptions(NullableContextOptions.Enable));
-
+            foreach (var tree in trees)
+            {
                 var model = compilation.GetSemanticModel(tree);
 
                 foreach (var expr in tree.GetRoot().DescendantNodes().OfType<ExpressionSyntax>())
@@ -317,13 +337,18 @@ public static class PositiveControl
         _output.WriteLine(
             $"Scanned {scannedUnits} emitter unit(s) across {scannedFixtures} fixture(s); " +
             $"{skippedNoUnits} produced no unit (error fixtures / non-clean front end), out of " +
-            $"{fixtures.Count} discovered.");
+            $"{fixtures.Count} discovered; {unresolvedBindings.Count} unit(s) with unresolved names.");
         if (allowlistedViolations.Count > 0)
             _output.WriteLine($"Allowlisted violations ({allowlistedViolations.Count}).");
 
         // The corpus must not be empty of scanned units, or every assertion below is vacuous.
         Assert.True(scannedUnits > 0,
             "No emitter unit was scanned — every fixture was skipped, so this guard proves nothing.");
+
+        Assert.True(unresolvedBindings.Count == 0,
+            $"{unresolvedBindings.Count} emitter unit(s) did not bind with every name resolved, so "
+            + "the conversion scan under-counts on them silently:\n" +
+            string.Join("\n", unresolvedBindings.Take(25)));
 
         // Stale allowlist entries fail — entries drain on fix, never accumulate.
         var staleEntries = FixtureAllowlist.Except(fixturesWithViolations).ToList();
@@ -457,6 +482,72 @@ public static class PositiveControl
             }
         }
     }
+
+    /// <summary>
+    /// Positive control for the "0 unresolved names" assertions in both corpus arms. Those are
+    /// ABSENCE assertions, and an absence assertion passes vacuously when the detector is broken.
+    /// This takes a real snapshot, strips its <c>using</c> directives, and asserts the detector
+    /// fires — the same mutation as "drop the usings from the scan's compilation", made permanent
+    /// and asserted on every run instead of performed once by hand.
+    ///
+    /// <para>Measured result the arms depend on: all 142 committed snapshots and every emitter unit
+    /// in the fixture corpus bind standalone with ZERO unresolved names, because the emitter writes
+    /// its own using directives into each compilation unit (<c>using System;</c>,
+    /// <c>System.Collections.Generic</c>, <c>System.Linq</c>, <c>System.Threading.Tasks</c>,
+    /// <c>global::Sharpy</c>) and <see cref="IntegrationTestBase.GetSharedReferences"/> supplies the
+    /// assemblies. No global-usings injection is needed for THIS corpus, and no file is exempted.
+    /// This control is what makes that measured zero mean something.</para>
+    /// </summary>
+    [Fact]
+    public void PositiveControl_UnresolvedNamesAreDetected()
+    {
+        var snapshot = Path.Combine(FixturesRoot, "optionals", "null_conditional_flatten.expected.cs");
+        Assert.True(File.Exists(snapshot), $"Control snapshot missing: {snapshot}");
+
+        var source = File.ReadAllText(snapshot);
+        var stripped = string.Join("\n", source.Split('\n')
+            .Where(line => !line.TrimStart().StartsWith("using ", StringComparison.Ordinal)));
+
+        Assert.NotEqual(source, stripped);
+
+        var references = IntegrationTestBase.GetSharedReferences();
+        var tree = CSharpSyntaxTree.ParseText(
+            stripped,
+            CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest),
+            path: "UnresolvedControl.cs");
+
+        var compilation = CSharpCompilation.Create(
+            "OptionalConformanceUnresolvedControl",
+            new[] { tree },
+            references,
+            new CSharpCompilationOptions(OutputKind.ConsoleApplication)
+                .WithNullableContextOptions(NullableContextOptions.Enable));
+
+        var unresolved = UnresolvedTypeDiagnostics(compilation);
+        _output.WriteLine($"Control detected {unresolved.Count} unresolved-name diagnostic(s).");
+
+        Assert.True(unresolved.Count > 0,
+            "Positive control failed: a snapshot with its using directives stripped reported NO "
+            + "unresolved-name diagnostic. UnresolvedTypeDiagnostics is broken, so the "
+            + "\"0 unresolved\" assertions in both corpus arms pass vacuously.");
+    }
+
+    /// <summary>
+    /// The unresolved-name diagnostics a scan must have none of before its typed results mean
+    /// anything: CS0246 (type or namespace not found), CS0103 (name does not exist) and CS0234
+    /// (namespace member not found). An expression whose type failed to bind is an ERROR type, and
+    /// <c>GetConversion</c> reports no user-defined conversion for one — so a scan that tolerates
+    /// them reports "clean" for reasons that have nothing to do with the property it guards. Other
+    /// diagnostics (unused variables, unreachable code, and the deliberate refusals in snapshots of
+    /// programs the C# stage rejects) do not affect binding and are ignored.
+    /// </summary>
+    private static IReadOnlyList<string> UnresolvedTypeDiagnostics(CSharpCompilation compilation)
+        => compilation.GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error
+                && d.Id is "CS0246" or "CS0103" or "CS0234")
+            .Select(d => $"{d.Id} at line {d.Location.GetLineSpan().StartLinePosition.Line + 1}: "
+                + d.GetMessage())
+            .ToList();
 
     private static bool IsImplicitOptionalConversion(SemanticModel model, ExpressionSyntax expr)
     {
