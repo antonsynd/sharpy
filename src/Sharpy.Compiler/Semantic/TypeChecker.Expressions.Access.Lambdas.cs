@@ -121,6 +121,26 @@ internal partial class TypeChecker
             }
             returnType = declaredReturnType;
         }
+        else if (expectedFunc is { ReturnType: not UnknownType and not VoidType } expected
+            && !ContainsTypeParameterType(expected.ReturnType)
+            && expected.ReturnType is { } expectedReturn)
+        {
+            // An UNANNOTATED lambda under a typed target — `f: () -> int8 = lambda: 7` — has a slot
+            // for its body after all: the expected FunctionType's return type. Without pushing it,
+            // the body types as `int32`, the lambda's FunctionType is `() -> int32`, and the
+            // DECLARATION refuses two function types that differ only by a conversion the seam
+            // admits at every other position (#1698 a9). The body is a store into that slot, so it
+            // reaches the constant/float32/decimal/literal-derived arms and their side effects; when
+            // admitted, the slot type IS the lambda's return type, so the declaration's function-type
+            // comparison then agrees.
+            using (EnterStore(StorePosition.LambdaBody, expectedReturn, lambda.Body))
+                bodyType = CheckExpression(lambda.Body);
+
+            returnType = bodyType is not UnknownType
+                && CheckStoreQuietly(StorePosition.LambdaBody, lambda.Body, bodyType, expectedReturn)
+                    ? expectedReturn
+                    : bodyType;
+        }
         else
         {
             bodyType = CheckExpression(lambda.Body);

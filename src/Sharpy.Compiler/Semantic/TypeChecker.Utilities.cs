@@ -940,9 +940,15 @@ internal partial class TypeChecker
     /// a tautology the reader cannot act on. Naming the argument's Optional-ness says which of the
     /// two <c>T?</c>s is which, and states the remedy the type exists to require.</para>
     /// </summary>
-    private static string DescribeOptionalArgument(SemanticType argumentType, SemanticType parameterType)
+    /// <param name="noun">
+    /// What the refused value is called at this position — "argument" at an argument slot, "value"
+    /// everywhere else. The rule is one rule (Decision 1: the steer applies at EVERY position);
+    /// only the noun in the sentence follows the position.
+    /// </param>
+    private static string DescribeOptionalArgument(
+        SemanticType argumentType, SemanticType parameterType, string noun = "argument")
         => argumentType is OptionalType optional && parameterType is not OptionalType
-            ? $" — the argument is Optional[{optional.UnderlyingType.GetDisplayName()}]; narrow it"
+            ? $" — the {noun} is Optional[{optional.UnderlyingType.GetDisplayName()}]; narrow it"
               + " ('if x is not None:') or unwrap it first"
             : string.Empty;
 
@@ -1595,11 +1601,17 @@ internal partial class TypeChecker
             code: DiagnosticCodes.Semantic.TypeMismatch, span: index.Span);
     }
 
+    /// <summary>
+    /// The subscript key of a dict is a value entering the dict's declared KEY slot, so it is
+    /// decided by the store seam like every other typed slot — <c>d[1]</c> against a
+    /// <c>dict[int8, str]</c> is the same in-range-constant question as <c>d[k] = v</c>'s value
+    /// (plan-14853b Decision 1). Only the refusal message is this site's own.
+    /// </summary>
     private void CheckDictKey(Expression index, SemanticType indexType, SemanticType keyType)
     {
         if (indexType is UnknownType)
             return;
-        if (IsAssignable(indexType, keyType))
+        if (CheckStoreQuietly(StorePosition.CollectionElement, index, indexType, keyType))
             return;
         var message = $"Dict key must be '{keyType.GetDisplayName()}', got '{indexType.GetDisplayName()}'";
         if (indexType == BuiltinType.Bool)
@@ -1667,15 +1679,70 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Check if all types in a list are assignable to a target type.
-    /// Used by contextual type inference for collection literals.
+    /// Whether every element of a collection literal is admitted into the contextual element slot,
+    /// applying each element's accepted verdict when they ALL are — the collection-element store
+    /// position (plan-14853b Decision 1).
+    ///
+    /// <para>Each element is classified with its own NODE, which is what makes the value-shape arms
+    /// reachable here at all: without the node, <see cref="ClassifyStore"/> sees only types, so
+    /// <c>xs: list[int8] = [1, 2]</c> asked "is <c>int32</c> assignable to <c>int8</c>" and got the
+    /// same "no" a variable element gets. A spread contributes no node (its elements are not written
+    /// here) and stays type-only.</para>
+    ///
+    /// <para>Two passes on purpose: the side effects (float32/decimal re-typing, conditional-branch
+    /// casts, sequence materialization) run only once the WHOLE literal is admitted. A literal with
+    /// one refused element keeps its produced element type, so the enclosing store reports the
+    /// composite mismatch exactly as it did before — half-re-typed elements would emit C# for a
+    /// program the checker refused.</para>
     /// </summary>
-    private bool AllAssignableTo(List<SemanticType> types, SemanticType target)
+    private bool AdmitCollectionElements(
+        IReadOnlyList<(Expression? Node, SemanticType Type)> elements, SemanticType expectation)
     {
-        return types.All(t => ClassifyStore(StorePosition.CollectionElement, null, t, target)
-            is StoreVerdict.Accepted or StoreVerdict.AcceptedWithNarrowing
-            or StoreVerdict.AcceptedConstantConversion or StoreVerdict.AcceptedFloat32Narrowing
-            or StoreVerdict.AcceptedDecimalNarrowing or StoreVerdict.AcceptedLiteralString);
+        var verdicts = new StoreVerdict[elements.Count];
+        for (int i = 0; i < elements.Count; i++)
+        {
+            verdicts[i] = ClassifyStore(
+                StorePosition.CollectionElement, elements[i].Node, elements[i].Type, expectation);
+            if (!IsAcceptedVerdict(verdicts[i]))
+                return false;
+        }
+
+        for (int i = 0; i < elements.Count; i++)
+        {
+            ApplyAcceptedVerdict(
+                StorePosition.CollectionElement, verdicts[i], elements[i].Node, elements[i].Type, expectation);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The positional twin of <see cref="AdmitCollectionElements"/>: each index of a tuple literal
+    /// is classified against its OWN slot. Same all-or-nothing side-effect rule.
+    /// </summary>
+    private bool AdmitTupleElements(
+        IReadOnlyList<(Expression? Node, SemanticType Type)> elements,
+        IReadOnlyList<SemanticType> expectations)
+    {
+        if (elements.Count != expectations.Count)
+            return false;
+
+        var verdicts = new StoreVerdict[elements.Count];
+        for (int i = 0; i < elements.Count; i++)
+        {
+            verdicts[i] = ClassifyStore(
+                StorePosition.CollectionElement, elements[i].Node, elements[i].Type, expectations[i]);
+            if (!IsAcceptedVerdict(verdicts[i]))
+                return false;
+        }
+
+        for (int i = 0; i < elements.Count; i++)
+        {
+            ApplyAcceptedVerdict(
+                StorePosition.CollectionElement, verdicts[i], elements[i].Node, elements[i].Type, expectations[i]);
+        }
+
+        return true;
     }
 
     /// <summary>

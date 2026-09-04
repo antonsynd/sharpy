@@ -41,46 +41,89 @@ internal partial class TypeChecker
         AcceptedFloat32Narrowing,
         AcceptedDecimalNarrowing,
         AcceptedLiteralString,
+        AcceptedConditional,
         Refused,
         RefusedNoneIntoNonNullable,
         RefusedOptionalConstruction,
+        RefusedNullableIntoOptional,
     }
+
+    /// <summary>
+    /// Whether a verdict admits the value. The one place the accepted half of the lattice is
+    /// enumerated — every consumer (the collection-literal arms, the argument routes, the
+    /// augmented site) asks this rather than re-listing the arms, so a new accepted verdict
+    /// cannot be missed at one position and honoured at another.
+    /// </summary>
+    private static bool IsAcceptedVerdict(StoreVerdict verdict)
+        => verdict is StoreVerdict.Accepted
+            or StoreVerdict.AcceptedWithNarrowing
+            or StoreVerdict.AcceptedConstantConversion
+            or StoreVerdict.AcceptedFloat32Narrowing
+            or StoreVerdict.AcceptedDecimalNarrowing
+            or StoreVerdict.AcceptedLiteralString
+            or StoreVerdict.AcceptedConditional;
 
     private StoreVerdict ClassifyStore(
         StorePosition position,
         Expression? value,
         SemanticType valueType,
-        SemanticType targetType)
+        SemanticType targetType,
+        bool allowConstantConversion = true)
     {
         // 1. Direct assignability
         if (IsAssignable(valueType, targetType))
             return StoreVerdict.Accepted;
 
+        // The SLOT the value-shape arms measure against. `T | None` is real C# nullability and
+        // stays loose (Decision 7): `sbyte? x = 7;` and `float? f = 0.5f;` compile, so a value
+        // shape admitted into `T` is admitted into `T | None`. `T?` (Optional) is NOT unwrapped —
+        // it is a tagged union whose only constructors are Some(v)/None() (R-G, #1720).
+        var slotType = targetType is NullableType nullableSlot ? nullableSlot.UnderlyingType : targetType;
+
         // 2. Integer constant conversion
-        if (ImplicitConversions.IsImplicitIntegerConstantConversion(
-                value, valueType, targetType, MakeConstantResolver()))
+        if (allowConstantConversion
+            && ImplicitConversions.IsImplicitIntegerConstantConversion(
+                value, valueType, slotType, MakeConstantResolver()))
             return StoreVerdict.AcceptedConstantConversion;
 
         // 3. Float32 literal narrowing — every store position (Decision 6 ruled A, #1688)
-        if (ImplicitConversions.IsFloat32LiteralNarrowing(targetType, valueType, value))
+        if (ImplicitConversions.IsFloat32LiteralNarrowing(slotType, valueType, value))
             return StoreVerdict.AcceptedFloat32Narrowing;
 
         // 4. Decimal literal narrowing — every store position (same as float32)
-        if (ImplicitConversions.IsDecimalLiteralNarrowing(targetType, valueType, value))
+        if (ImplicitConversions.IsDecimalLiteralNarrowing(slotType, valueType, value))
             return StoreVerdict.AcceptedDecimalNarrowing;
 
         // 5. Literal-derived string into LiteralString (#1731)
-        if (targetType is LiteralStringType
+        if (slotType is LiteralStringType
             && valueType == SemanticType.Str
             && value != null
             && _semanticInfo.IsLiteralDerived(AstHelper.UnwrapParenthesized(value)))
             return StoreVerdict.AcceptedLiteralString;
 
-        // 6. ConditionalExpression per-branch recursion (placeholder — Phase 2 Task 2)
+        // 6. Conditional-of-constants: both branches classified against the SAME slot, recursively.
+        //    `x8 = 7 if c else 8` is admitted exactly when `x8 = 7` and `x8 = 8` are; the
+        //    conditional's own recorded type stays its natural type and the emitter casts each
+        //    branch admitted by the constant arm (ConditionalBranchNarrowing, Decision 1).
+        if (value != null
+            && AstHelper.UnwrapParenthesized(value) is ConditionalExpression conditional
+            && ClassifyConditionalBranch(position, conditional.ThenValue, targetType, allowConstantConversion) is { } thenVerdict
+            && ClassifyConditionalBranch(position, conditional.ElseValue, targetType, allowConstantConversion) is { } elseVerdict
+            && IsAcceptedVerdict(thenVerdict)
+            && IsAcceptedVerdict(elseVerdict))
+        {
+            return StoreVerdict.AcceptedConditional;
+        }
 
         // 7. Strict Optional construction — bare values and bare None are refused into T?
         if (targetType is OptionalType)
-            return StoreVerdict.RefusedOptionalConstruction;
+        {
+            // A `T | None` value into `T?` is a NOTATION mismatch, not a missing constructor: the
+            // value already carries its absence. Steering it to Some(...) would be wrong advice.
+            return valueType is NullableType
+                ? StoreVerdict.RefusedNullableIntoOptional
+                : StoreVerdict.RefusedOptionalConstruction;
+        }
 
         // 8. VoidType into non-nullable
         if (valueType is VoidType && targetType is not NullableType)
@@ -90,6 +133,88 @@ internal partial class TypeChecker
         return StoreVerdict.Refused;
     }
 
+    /// <summary>
+    /// Classifies one arm of a conditional-expression value against the store's slot, or null when
+    /// the arm has no recorded type (it was never checked — error recovery). The arm's type comes
+    /// from <see cref="SemanticInfo.GetExpressionType"/> because the conditional has already been
+    /// checked by the time a store consults the seam.
+    /// </summary>
+    private StoreVerdict? ClassifyConditionalBranch(
+        StorePosition position, Expression branch, SemanticType targetType, bool allowConstantConversion)
+    {
+        var branchType = _semanticInfo.GetExpressionType(branch);
+        if (branchType == null || branchType is UnknownType)
+            return null;
+
+        return ClassifyStore(position, branch, branchType, targetType, allowConstantConversion);
+    }
+
+    /// <summary>
+    /// The side effects an ACCEPTED verdict carries — the facts codegen reads. Factored out of
+    /// <see cref="CheckStore"/> so every position that admits a value through
+    /// <see cref="ClassifyStore"/> without going through <c>CheckStore</c> (collection-literal
+    /// elements, the argument-binding routes, the augmented site) applies the SAME effects. A
+    /// position that classifies but does not apply is the defect class this seam exists to close:
+    /// the checker says `float32` and the emitter prints an unsuffixed `double`.
+    /// </summary>
+    private void ApplyAcceptedVerdict(
+        StorePosition position,
+        StoreVerdict verdict,
+        Expression? value,
+        SemanticType valueType,
+        SemanticType targetType)
+    {
+        if (!IsAcceptedVerdict(verdict))
+            return;
+
+        switch (verdict)
+        {
+            case StoreVerdict.AcceptedFloat32Narrowing when value != null:
+                _semanticInfo.SetExpressionType(value, SemanticType.Float32);
+                break;
+
+            case StoreVerdict.AcceptedDecimalNarrowing when value != null:
+                _semanticInfo.SetExpressionType(value, SemanticType.Decimal);
+                break;
+
+            case StoreVerdict.AcceptedConditional when value != null:
+                ApplyConditionalBranchVerdicts(position, value, targetType);
+                break;
+        }
+
+        RecordSequenceMaterialization(value, valueType, targetType);
+    }
+
+    /// <summary>
+    /// Applies each arm's own accepted verdict, and records
+    /// <see cref="SemanticInfo.SetConditionalBranchNarrowing"/> for an arm admitted by the integer
+    /// constant arm. C# gives `c ? 7 : 8` the natural type `int`, so `sbyte b = c ? 7 : 8;` is
+    /// CS0266 — the cast the emitter reads from that fact is what makes the store legal. A
+    /// float32/decimal arm needs no fact: its literal is re-typed per node and prints its own suffix.
+    /// </summary>
+    private void ApplyConditionalBranchVerdicts(
+        StorePosition position, Expression value, SemanticType targetType)
+    {
+        if (AstHelper.UnwrapParenthesized(value) is not ConditionalExpression conditional)
+            return;
+
+        foreach (var branch in new[] { conditional.ThenValue, conditional.ElseValue })
+        {
+            var branchType = _semanticInfo.GetExpressionType(branch);
+            if (branchType == null)
+                continue;
+
+            var verdict = ClassifyStore(position, branch, branchType, targetType);
+            ApplyAcceptedVerdict(position, verdict, branch, branchType, targetType);
+
+            if (verdict == StoreVerdict.AcceptedConstantConversion)
+            {
+                var slotType = targetType is NullableType nullable ? nullable.UnderlyingType : targetType;
+                _semanticInfo.SetConditionalBranchNarrowing(branch, slotType);
+            }
+        }
+    }
+
     private bool CheckStore(
         StorePosition position,
         Expression? value,
@@ -97,35 +222,19 @@ internal partial class TypeChecker
         SemanticType targetType,
         Node reportAt,
         TextSpan? span,
-        string? slotName = null)
+        string? slotName = null,
+        string? extraSteer = null)
     {
         var verdict = ClassifyStore(position, value, valueType, targetType);
 
+        if (IsAcceptedVerdict(verdict))
+        {
+            ApplyAcceptedVerdict(position, verdict, value, valueType, targetType);
+            return true;
+        }
+
         switch (verdict)
         {
-            case StoreVerdict.Accepted:
-            case StoreVerdict.AcceptedWithNarrowing:
-                RecordSequenceMaterialization(value, valueType, targetType);
-                return true;
-
-            case StoreVerdict.AcceptedConstantConversion:
-                RecordSequenceMaterialization(value, valueType, targetType);
-                return true;
-
-            case StoreVerdict.AcceptedFloat32Narrowing:
-                _semanticInfo.SetExpressionType(value!, SemanticType.Float32);
-                RecordSequenceMaterialization(value, valueType, targetType);
-                return true;
-
-            case StoreVerdict.AcceptedDecimalNarrowing:
-                _semanticInfo.SetExpressionType(value!, SemanticType.Decimal);
-                RecordSequenceMaterialization(value, valueType, targetType);
-                return true;
-
-            case StoreVerdict.AcceptedLiteralString:
-                RecordSequenceMaterialization(value, valueType, targetType);
-                return true;
-
             case StoreVerdict.RefusedNoneIntoNonNullable:
                 AddError(
                     $"Cannot assign 'None' to non-nullable type '{targetType.GetDisplayName()}'",
@@ -135,34 +244,79 @@ internal partial class TypeChecker
                 return false;
 
             case StoreVerdict.RefusedOptionalConstruction:
-            {
-                var underlying = ((OptionalType)targetType).UnderlyingType.GetDisplayName();
-                var steer = valueType is VoidType
-                    ? $"bare None is not an Optional[{underlying}]; use None(), or declare the slot '{underlying} | None'"
-                    : $"'{valueType.GetDisplayName()}' is not an Optional[{underlying}]; construct it with Some(...)";
-                AddError(
-                    steer,
-                    reportAt.LineStart, reportAt.ColumnStart,
-                    code: DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction,
-                    span: span);
-                return false;
-            }
+                {
+                    var underlying = ((OptionalType)targetType).UnderlyingType.GetDisplayName();
+                    var steer = valueType is VoidType
+                        ? $"bare None is not an Optional[{underlying}]; use None(), or declare the slot '{underlying} | None'"
+                        : $"'{valueType.GetDisplayName()}' is not an Optional[{underlying}]; construct it with Some(...)";
+                    AddError(
+                        steer,
+                        reportAt.LineStart, reportAt.ColumnStart,
+                        code: DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction,
+                        span: span);
+                    return false;
+                }
 
-            case StoreVerdict.Refused:
+            default:
                 var refusalCode = position == StorePosition.Return
                     ? DiagnosticCodes.Semantic.MissingReturnValue
                     : DiagnosticCodes.Semantic.TypeMismatch;
                 AddError(
                     FormatStoreError(position, valueType, targetType, slotName)
-                        + DescribeClrCollectionConversionSteer(valueType, targetType),
+                        + DescribeStoreRefusalSteer(position, valueType, targetType)
+                        + (extraSteer ?? string.Empty),
                     reportAt.LineStart, reportAt.ColumnStart,
                     code: refusalCode,
                     span: span);
                 return false;
-
-            default:
-                return false;
         }
+    }
+
+    /// <summary>
+    /// The seam's verdict WITHOUT the diagnostic: classify, apply the accepted verdict's side
+    /// effects, and report the answer to a caller that owns the refusal (the lambda body, whose
+    /// refusal is the enclosing declaration's function-type mismatch, and the argument routes,
+    /// whose refusal carries site data). Never a second decision — the same
+    /// <see cref="ClassifyStore"/> and the same <see cref="ApplyAcceptedVerdict"/>.
+    /// </summary>
+    private bool CheckStoreQuietly(
+        StorePosition position,
+        Expression? value,
+        SemanticType valueType,
+        SemanticType targetType)
+    {
+        var verdict = ClassifyStore(position, value, valueType, targetType);
+        if (!IsAcceptedVerdict(verdict))
+            return false;
+
+        ApplyAcceptedVerdict(position, verdict, value, valueType, targetType);
+        return true;
+    }
+
+    /// <summary>
+    /// The steer a refused store carries, at EVERY position (Decision 1). Three shapes, in the
+    /// order they can apply: an <c>Optional[T]</c> value at a non-Optional slot (narrow or unwrap),
+    /// a <c>T | None</c> value at a <c>T?</c> slot (cross with <c>maybe</c>), and a CLR collection
+    /// at a Sharpy-collection slot (convert inward). Owned here rather than at the sites so a new
+    /// position gets the advice by construction — an <c>Optional</c> refused at <c>return</c> or
+    /// <c>yield</c> had none before this.
+    /// </summary>
+    private static string DescribeStoreRefusalSteer(
+        StorePosition position, SemanticType valueType, SemanticType targetType)
+    {
+        if (valueType is NullableType nullableValue && targetType is OptionalType optionalSlot)
+        {
+            return $" — the value is '{nullableValue.UnderlyingType.GetDisplayName()} | None' (C# nullability)"
+                + $" and the slot is Optional[{optionalSlot.UnderlyingType.GetDisplayName()}];"
+                + " cross with 'maybe' (e.g. 'z: int? = maybe y')";
+        }
+
+        var noun = position is StorePosition.ArgumentPositional or StorePosition.ArgumentKeyword
+            ? "argument"
+            : "value";
+
+        return DescribeOptionalArgument(valueType, targetType, noun)
+            + DescribeClrCollectionConversionSteer(valueType, targetType);
     }
 
     private static string FormatStoreError(

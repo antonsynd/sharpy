@@ -68,7 +68,7 @@ internal partial class TypeChecker
         if (_expectedType is GenericType { Name: BuiltinNames.List, TypeArguments.Count: 1 } expectedList)
             elementExpectation = expectedList.TypeArguments[0];
 
-        var elementTypes = new List<SemanticType>();
+        var elements = new List<(Expression? Node, SemanticType Type)>();
         foreach (var elem in list.Elements)
         {
             if (elem is SpreadElement spread)
@@ -76,27 +76,30 @@ internal partial class TypeChecker
                 var spreadType = CheckExpression(spread.Value);
                 // Extract element type from the spread iterable
                 if (spreadType is GenericType { Name: BuiltinNames.List or BuiltinNames.Set or BuiltinNames.Array } gt && gt.TypeArguments.Count > 0)
-                    elementTypes.Add(gt.TypeArguments[0]);
+                    elements.Add((null, gt.TypeArguments[0]));
                 else if (spreadType is TupleType tupleSpread)
-                    elementTypes.AddRange(tupleSpread.ElementTypes);
+                    elements.AddRange(tupleSpread.ElementTypes.Select(t => ((Expression?)null, t)));
                 else
-                    elementTypes.Add(spreadType);
+                    elements.Add((null, spreadType));
             }
             else
             {
                 var previousExpected = _expectedType;
                 _expectedType = elementExpectation;
-                elementTypes.Add(CheckExpression(elem));
+                elements.Add((elem, CheckExpression(elem)));
                 _expectedType = previousExpected;
             }
         }
 
+        var elementTypes = elements.Select(e => e.Type).ToList();
         var commonType = FindLeastCommonAncestor(elementTypes);
 
-        // When a contextual element type is available and every element is assignable to it,
-        // record the expected type. This handles covariant assignments (list[Base] = [Derived()])
-        // and depth > 1 contextual inference (#1671).
-        if (elementExpectation != null && AllAssignableTo(elementTypes, elementExpectation))
+        // When a contextual element type is available and every element is admitted by the store
+        // seam, record the expected type. This handles covariant assignments
+        // (list[Base] = [Derived()]), depth > 1 contextual inference (#1671), and every value shape
+        // the seam knows — an in-range constant, an unsuffixed float literal into list[float32], a
+        // literal-derived string into list[LiteralString] (#1698, #1688, #1731).
+        if (elementExpectation != null && AdmitCollectionElements(elements, elementExpectation))
             commonType = elementExpectation;
 
         commonType = ResolveVoidElementType(
@@ -126,8 +129,8 @@ internal partial class TypeChecker
             valueExpectation = expectedDict.TypeArguments[1];
         }
 
-        var keyTypes = new List<SemanticType>();
-        var valueTypes = new List<SemanticType>();
+        var keys = new List<(Expression? Node, SemanticType Type)>();
+        var values = new List<(Expression? Node, SemanticType Type)>();
         foreach (var entry in dict.Entries)
         {
             if (entry.Key == null)
@@ -136,29 +139,29 @@ internal partial class TypeChecker
                 var spreadType = CheckExpression(entry.Value);
                 if (spreadType is GenericType { Name: BuiltinNames.Dict } gt && gt.TypeArguments.Count == 2)
                 {
-                    keyTypes.Add(gt.TypeArguments[0]);
-                    valueTypes.Add(gt.TypeArguments[1]);
+                    keys.Add((null, gt.TypeArguments[0]));
+                    values.Add((null, gt.TypeArguments[1]));
                 }
             }
             else
             {
                 var previousExpected = _expectedType;
                 _expectedType = keyExpectation;
-                keyTypes.Add(CheckExpression(entry.Key));
+                keys.Add((entry.Key, CheckExpression(entry.Key)));
                 _expectedType = valueExpectation;
-                valueTypes.Add(CheckExpression(entry.Value));
+                values.Add((entry.Value, CheckExpression(entry.Value)));
                 _expectedType = previousExpected;
             }
         }
 
-        var commonKeyType = FindLeastCommonAncestor(keyTypes);
-        var commonValueType = FindLeastCommonAncestor(valueTypes);
+        var commonKeyType = FindLeastCommonAncestor(keys.Select(k => k.Type).ToList());
+        var commonValueType = FindLeastCommonAncestor(values.Select(v => v.Type).ToList());
 
-        // When a contextual key/value type is available and every element is assignable,
-        // record the expected type (#1671).
-        if (keyExpectation != null && AllAssignableTo(keyTypes, keyExpectation))
+        // When a contextual key/value type is available and every element is admitted by the store
+        // seam, record the expected type (#1671, #1698).
+        if (keyExpectation != null && AdmitCollectionElements(keys, keyExpectation))
             commonKeyType = keyExpectation;
-        if (valueExpectation != null && AllAssignableTo(valueTypes, valueExpectation))
+        if (valueExpectation != null && AdmitCollectionElements(values, valueExpectation))
             commonValueType = valueExpectation;
 
         commonKeyType = ResolveVoidElementType(
@@ -186,31 +189,31 @@ internal partial class TypeChecker
         if (_expectedType is GenericType { Name: BuiltinNames.Set, TypeArguments.Count: 1 } expectedSet)
             elementExpectation = expectedSet.TypeArguments[0];
 
-        var elementTypes = new List<SemanticType>();
+        var elements = new List<(Expression? Node, SemanticType Type)>();
         foreach (var elem in set.Elements)
         {
             if (elem is SpreadElement spread)
             {
                 var spreadType = CheckExpression(spread.Value);
                 if (spreadType is GenericType { Name: BuiltinNames.List or BuiltinNames.Set or BuiltinNames.Array } gt && gt.TypeArguments.Count > 0)
-                    elementTypes.Add(gt.TypeArguments[0]);
+                    elements.Add((null, gt.TypeArguments[0]));
                 else if (spreadType is TupleType tupleSpread)
-                    elementTypes.AddRange(tupleSpread.ElementTypes);
+                    elements.AddRange(tupleSpread.ElementTypes.Select(t => ((Expression?)null, t)));
                 else
-                    elementTypes.Add(spreadType);
+                    elements.Add((null, spreadType));
             }
             else
             {
                 var previousExpected = _expectedType;
                 _expectedType = elementExpectation;
-                elementTypes.Add(CheckExpression(elem));
+                elements.Add((elem, CheckExpression(elem)));
                 _expectedType = previousExpected;
             }
         }
 
-        var commonType = FindLeastCommonAncestor(elementTypes);
+        var commonType = FindLeastCommonAncestor(elements.Select(e => e.Type).ToList());
 
-        if (elementExpectation != null && AllAssignableTo(elementTypes, elementExpectation))
+        if (elementExpectation != null && AdmitCollectionElements(elements, elementExpectation))
             commonType = elementExpectation;
 
         commonType = ResolveVoidElementType(
@@ -266,13 +269,27 @@ internal partial class TypeChecker
             indexExpectations = expectedTuple.ElementTypes;
         }
 
-        var directElementTypes = new List<SemanticType>(tuple.Elements.Length);
+        var directElements = new List<(Expression? Node, SemanticType Type)>(tuple.Elements.Length);
         for (int i = 0; i < tuple.Elements.Length; i++)
         {
             var previousExpected = _expectedType;
             _expectedType = indexExpectations?[i];
-            directElementTypes.Add(CheckExpression(tuple.Elements[i]));
+            directElements.Add((tuple.Elements[i], CheckExpression(tuple.Elements[i])));
             _expectedType = previousExpected;
+        }
+
+        var directElementTypes = directElements.Select(e => e.Type).ToList();
+
+        // A tuple literal under a tuple expectation is a row of collection-element stores, one per
+        // index (its slots differ, unlike a list's). When EVERY index is admitted the literal adopts
+        // the expected element types and each index's accepted verdict applies — that is what makes
+        // `t: tuple[LiteralString, int8] = ("a", 1)` a store rather than a type comparison. All-or-
+        // nothing, for the same reason the other literals are: a refused index keeps the produced
+        // types so the enclosing store reports the composite mismatch unchanged (#1698, #1701).
+        if (indexExpectations != null
+            && AdmitTupleElements(directElements, indexExpectations))
+        {
+            directElementTypes = indexExpectations.ToList();
         }
 
         var tupleType = new TupleType { ElementTypes = directElementTypes };
@@ -316,15 +333,18 @@ internal partial class TypeChecker
     /// (a mistyped comprehension stays SPY0220). The comprehension twin of the collection literals'
     /// <c>AllAssignableTo</c> arm (#1671).
     /// </summary>
-    private SemanticType ContextualElementType(SemanticType produced, SemanticType? expectation)
+    private SemanticType ContextualElementType(
+        SemanticType produced, SemanticType? expectation, Expression? element = null)
     {
         if (expectation == null)
             return produced;
-        var verdict = ClassifyStore(StorePosition.CollectionElement, null, produced, expectation);
-        return verdict is StoreVerdict.Accepted or StoreVerdict.AcceptedWithNarrowing
-            or StoreVerdict.AcceptedConstantConversion or StoreVerdict.AcceptedFloat32Narrowing
-            or StoreVerdict.AcceptedDecimalNarrowing or StoreVerdict.AcceptedLiteralString
-            ? expectation : produced;
+
+        var verdict = ClassifyStore(StorePosition.CollectionElement, element, produced, expectation);
+        if (!IsAcceptedVerdict(verdict))
+            return produced;
+
+        ApplyAcceptedVerdict(StorePosition.CollectionElement, verdict, element, produced, expectation);
+        return expectation;
     }
 
     private SemanticType CheckListComprehension(ListComprehension listComp)
@@ -356,7 +376,8 @@ internal partial class TypeChecker
             Name = BuiltinNames.List,
             TypeArguments = new List<SemanticType>
             {
-                ContextualElementType(elementType, expectations?[0])
+                ContextualElementType(elementType, expectations?[0],
+                    listComp.Element is SpreadElement ? null : listComp.Element)
             }
         };
     }
@@ -390,7 +411,8 @@ internal partial class TypeChecker
             Name = BuiltinNames.Set,
             TypeArguments = new List<SemanticType>
             {
-                ContextualElementType(elementType, expectations?[0])
+                ContextualElementType(elementType, expectations?[0],
+                    setComp.Element is SpreadElement ? null : setComp.Element)
             }
         };
     }
@@ -416,8 +438,8 @@ internal partial class TypeChecker
             Name = BuiltinNames.Dict,
             TypeArguments = new List<SemanticType>
             {
-                ContextualElementType(keyType, expectations?[0]),
-                ContextualElementType(valueType, expectations?[1])
+                ContextualElementType(keyType, expectations?[0], dictComp.Key),
+                ContextualElementType(valueType, expectations?[1], dictComp.Value)
             }
         };
     }
