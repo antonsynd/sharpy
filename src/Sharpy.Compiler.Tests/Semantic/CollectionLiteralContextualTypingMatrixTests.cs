@@ -81,8 +81,7 @@ public class CollectionLiteralContextualTypingMatrixTests : IntegrationTestBase
         Outcome Expected,
         string? ExpectedOutput = null,
         string? ExpectedInnerCsError = null,
-        string Note = "",
-        bool KnownRed = false);
+        string Note = "");
 
     private const string Prelude = """
         class Base:
@@ -189,20 +188,10 @@ public class CollectionLiteralContextualTypingMatrixTests : IntegrationTestBase
                         + $"    {shape.Insert}\n"
                         + $"    {shape.Read}\n");
 
-                    // The three tuple-element mistyped cells are a live defect of a NEIGHBOURING
-                    // class (#1701): a mistyped store into a tuple slot whose element is a
-                    // collection is accepted by the checker and ICEs as SPY0908/CS0029. Measured
-                    // @ c68a2683d and total over decl / assignment / argument / return / nested,
-                    // so it is not this matrix's cell to fix.
-                    if (kind == "tuple-element" && direction == "mistyped")
-                    {
-                        yield return new Cell(
-                            $"A/{kind}/d{depth}/{direction}", "kind x depth x direction", source,
-                            Outcome.RefusedTypeMismatch,
-                            Note: "known red @ c68a2683d — SPY0908/CS0029, see #1701",
-                            KnownRed: true);
-                        continue;
-                    }
+                    // The three tuple-element mistyped cells were carried as known-red against
+                    // #1701 (the checker accepted the store and it ICEd as SPY0908/CS0029). They
+                    // are ordinary live cells since the store seam landed: measured @ 080fb4b03,
+                    // all three are SPY0220 naming the tuple pair, at depths 1, 2 and 3.
 
                     yield return direction == "mistyped"
                         ? new Cell($"A/{kind}/d{depth}/{direction}", "kind x depth x direction",
@@ -495,10 +484,7 @@ public class CollectionLiteralContextualTypingMatrixTests : IntegrationTestBase
         BuildKnownRedFormCells().ToDictionary(c => c.Id);
 
     public static IEnumerable<object[]> LiveCellIds()
-        => BuildCells().Where(c => !c.KnownRed).Select(c => new object[] { c.Id });
-
-    public static IEnumerable<object[]> KnownRedTupleCellIds()
-        => BuildCells().Where(c => c.KnownRed).Select(c => new object[] { c.Id });
+        => BuildCells().Select(c => new object[] { c.Id });
 
     public static IEnumerable<object[]> KnownRedCellIds()
         => BuildKnownRedFormCells().Select(c => new object[] { c.Id });
@@ -522,15 +508,6 @@ public class CollectionLiteralContextualTypingMatrixTests : IntegrationTestBase
     [Theory(Skip = "F51 — comprehension contextual typing, lead's Wave B")]
     [MemberData(nameof(KnownRedCellIds))]
     public void KnownRedFormCell(string id) => AssertCell(KnownRedCellsById[id]);
-
-    /// <summary>
-    /// The mistyped tuple-element cells. Their expectation here is the contract's (SPY0220,
-    /// never SPY0908) and it is the assertion that will go green when #1701 lands — the cell is
-    /// not rewritten to match the defect.
-    /// </summary>
-    [Theory]
-    [MemberData(nameof(KnownRedTupleCellIds))]
-    public void KnownRedTupleCell(string id) => AssertCell(CellsById[id]);
 
     private void AssertCell(Cell cell)
     {

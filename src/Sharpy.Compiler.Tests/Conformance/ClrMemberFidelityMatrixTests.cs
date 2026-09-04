@@ -171,11 +171,6 @@ public class ClrMemberFidelityMatrixTests
             + "map makes the resolver Inconclusive (permissive) — the pair measured nothing; the "
             + "static-store cells use `CultureInfo.default_thread_current_culture` (`CultureInfo?`) instead.");
 
-        yield return new NotApplicable("Vector2.x-field-correct",
-            "the CONSTRUCTOR ICEs first — a float literal bound to a CLR `float` (Single) parameter "
-            + "is CS1503 behind SPY0908 (#1688), so no Vector2 value can be built to read a field "
-            + "from. The field itself resolves: the wrong-destination twin draws SPY0220 (float32).");
-
         yield return new NotApplicable("Stack[int].field-any",
             "System.Collections.Generic.Stack<T> declares no public field, so the "
             + "receiver × field cells of the unmapped-generic row have no member to name.");
@@ -411,6 +406,36 @@ public class ClrMemberFidelityMatrixTests
 
         yield return new Cell("TimeSpan.Zero-static-field-wrong-clr",
             SrcSystem("TimeSpan", "x: str = TimeSpan.Zero"), Expect.TypeMismatch);
+
+        // ── Struct: Vector2 — INSTANCE FIELD, both spellings ──
+        // Was rostered N/A on "the CONSTRUCTOR ICEs first" (#1688). It does not any more:
+        // `Vector2(1.0, 2.0)` runs and `print(v.X)` prints 1.0 since the store seam narrows the
+        // float literals at the CLR argument position — measured @ 080fb4b03, and asserted by
+        // execution in StorePositionReachTests.ClrArgumentRoutes_ApplyTheAcceptedVerdict, which is
+        // where that claim belongs: this harness compiles to a LIBRARY and never reaches the C#
+        // stage, so the CS1503 the N/A cited could not have failed a cell here either way.
+        // What these cells measure is the field's REFLECTED type — the wrong-destination twin is
+        // the discriminating half (with the field left Unknown it draws no error at all).
+
+        yield return new Cell("Vector2.x-field-correct-pythonic",
+            SrcFrom("system.numerics", "Vector2", "v = Vector2(1.0, 2.0)\n    f: float32 = v.x"),
+            Expect.Compiles);
+
+        yield return new Cell("Vector2.x-field-wrong-pythonic",
+            SrcFrom("system.numerics", "Vector2", "v = Vector2(1.0, 2.0)\n    x: str = v.x"),
+            Expect.TypeMismatch);
+
+        yield return new Cell("Vector2.X-field-correct-clr",
+            SrcFrom("system.numerics", "Vector2", "v = Vector2(1.0, 2.0)\n    f: float32 = v.X"),
+            Expect.Compiles);
+
+        yield return new Cell("Vector2.X-field-wrong-clr",
+            SrcFrom("system.numerics", "Vector2", "v = Vector2(1.0, 2.0)\n    x: str = v.X"),
+            Expect.TypeMismatch);
+
+        yield return new Cell("Vector2.bogus-field",
+            SrcFrom("system.numerics", "Vector2", "v = Vector2(1.0, 2.0)\n    print(v.no_such_member_xyz)"),
+            Expect.AbsentMember);
 
         // ── User class INHERITING a CLR type: class IntList(List[int]) ──
 
