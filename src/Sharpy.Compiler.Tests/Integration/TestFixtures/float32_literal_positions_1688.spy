@@ -1,0 +1,57 @@
+# An in-range unsuffixed float literal narrows to float32 at EVERY store
+# position, including a CLR constructor argument (plan-14853b Decision 6, #1688).
+
+import System.Numerics
+
+
+class Holder:
+    value: float32
+
+    def __init__(self):
+        self.value = 0.0
+
+
+def takes(x: float32 = 0.25) -> float32:
+    return x
+
+
+def gives() -> float32:
+    return 0.5
+
+
+def main():
+    # Declaration and plain store
+    f: float32 = 1.5
+    print(f)
+    f = 0.75
+    print(f)
+
+    # Return, parameter default, positional and keyword argument
+    print(gives())
+    print(takes())
+    print(takes(0.125))
+    print(takes(x=0.375))
+
+    # Member store
+    h: Holder = Holder()
+    h.value = 2.5
+    print(h.value)
+
+    # Collection element and conditional
+    xs: list[float32] = [3.5]
+    print(xs[0])
+    flag: bool = True
+    picked: float32 = 4.5 if flag else 5.5
+    print(picked)
+
+    # Lambda body under a typed target
+    make: () -> float32 = lambda: 6.5
+    print(make())
+
+    # CLR constructor argument — the cell #1688 was filed for
+    v: System.Numerics.Vector2 = System.Numerics.Vector2(1.0, 2.0)
+    print(v.X)
+
+    # Augmented assignment
+    f += 0.25
+    print(f)

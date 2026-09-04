@@ -1,0 +1,46 @@
+# Some(v) and None() are the only Optional constructors, and they work at every
+# store position (plan-14853b Phase 6, R-G on #1720).
+
+class Holder:
+    slot: int?
+
+    def __init__(self):
+        self.slot = None()
+
+
+def takes(o: int?) -> str:
+    if o is not None:
+        return "some"
+    return "none"
+
+
+def gives() -> int?:
+    return Some(7)
+
+
+def default_arg(o: int? = None()) -> str:
+    return takes(o)
+
+
+def main():
+    # Declaration and plain store
+    a: int? = Some(1)
+    print(takes(a))
+    a = None()
+    print(takes(a))
+
+    # Member store
+    h: Holder = Holder()
+    h.slot = Some(2)
+    print(takes(h.slot))
+
+    # Return, positional argument, keyword argument, parameter default
+    print(takes(gives()))
+    print(takes(Some(3)))
+    print(takes(o=None()))
+    print(default_arg())
+
+    # Collection element
+    xs: list[int?] = [Some(4), None()]
+    print(takes(xs[0]))
+    print(takes(xs[1]))

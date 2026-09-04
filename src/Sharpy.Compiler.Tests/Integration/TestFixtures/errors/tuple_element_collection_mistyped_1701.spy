@@ -1,0 +1,24 @@
+# Tuple elements are compared through the checker's IsAssignable, and a
+# tuple-unpacking element is a store into its target's DECLARED slot — never a
+# data-level shortcut that reaches codegen as CS0029 (plan-14853b, #1701, #1706).
+
+class Base:
+    def __init__(self):
+        pass
+
+
+class Derived(Base):
+    def __init__(self):
+        super().__init__()
+
+
+def main():
+    bases: list[Base] = []
+    pair: tuple[list[Derived], int] = (bases, 1)
+    print(len(pair[0]))
+
+    a: int = 0
+    b: int = 0
+    a, b = "not an int", 2
+    print(a)
+    print(b)

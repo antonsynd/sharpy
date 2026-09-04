@@ -1,0 +1,93 @@
+# Every store position admits the same value shapes (plan-14853b, #1698 #1688 #1731).
+# Collection elements, conditionals, lambda bodies, keyword arguments and
+# tuple-unpacking elements all reach the ONE store-conversion seam.
+
+def takes_narrow(n: int8) -> int8:
+    return n
+
+def takes_small(f: float32) -> float32:
+    return f
+
+def takes_money(d: decimal) -> decimal:
+    return d
+
+def takes_literal(s: LiteralString) -> str:
+    return s
+
+def main():
+    # Collection-literal elements
+    xs: list[int8] = [1, 2]
+    print(xs[0])
+
+    ss: set[int8] = {3}
+    print(len(ss))
+
+    dv: dict[str, int8] = {"a": 4}
+    print(dv["a"])
+
+    dk: dict[int8, str] = {5: "five"}
+    print(dk[5])
+
+    tp: tuple[LiteralString, int8] = ("six", 6)
+    print(tp[0])
+    print(tp[1])
+
+    nested: list[list[int8]] = [[7]]
+    print(nested[0][0])
+
+    comp: list[int8] = [8 for _ in range(1)]
+    print(comp[0])
+
+    small: list[float32] = [0.5]
+    print(small[0])
+
+    money: list[decimal] = [1.5]
+    print(money[0])
+
+    literals: list[LiteralString] = ["nine"]
+    print(literals[0])
+
+    # Conditional-of-constants
+    flag: bool = True
+    narrow: int8 = 10 if flag else 11
+    print(narrow)
+
+    tiny: float32 = 0.25 if flag else 0.75
+    print(tiny)
+
+    cash: decimal = 2.5 if flag else 3.5
+    print(cash)
+
+    word: LiteralString = "yes" if flag else "no"
+    print(word)
+
+    other: bool = False
+    nestcond: int8 = 12 if flag else (13 if other else 14)
+    print(nestcond)
+
+    # Lambda body under a typed target
+    make_narrow: () -> int8 = lambda: 15
+    print(make_narrow())
+
+    make_small: () -> float32 = lambda: 0.125
+    print(make_small())
+
+    make_word: () -> LiteralString = lambda: "lambda"
+    print(make_word())
+
+    # Keyword arguments
+    print(takes_narrow(n=16))
+    print(takes_small(f=0.75))
+    print(takes_money(d=4.5))
+    print(takes_literal(s="keyword"))
+
+    # Tuple-unpacking elements
+    a: int8 = 0
+    b: float32 = 0.0
+    a, b = 17, 2.5
+    print(a)
+    print(b)
+
+    # Nullable target keeps the loose C# rule
+    maybe_narrow: int8 | None = 18
+    print(maybe_narrow)

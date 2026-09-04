@@ -1,0 +1,5 @@
+bare None is not an Optional[int8]; use None(), or declare the slot 'int8 | None' @21:5
+bare None is not an Optional[int32]; use None(), or declare the slot 'int32 | None' @25:5
+bare None is not an Optional[str]; use None(), or declare the slot 'str | None' @29:5
+bare None is not an Optional[float64]; use None(), or declare the slot 'float64 | None' @32:22
+bare None is not an Optional[bool]; use None(), or declare the slot 'bool | None' @33:22

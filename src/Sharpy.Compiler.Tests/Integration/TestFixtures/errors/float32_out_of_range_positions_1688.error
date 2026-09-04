@@ -1,0 +1,4 @@
+Cannot return type 'float64' from function expecting 'float32' @10:5
+Cannot assign type 'float64' to variable of type 'float32' @14:5
+Cannot pass argument of type 'float64' to parameter 'x' of type 'float32' @17:17
+Cannot assign type 'list[float64]' to variable of type 'list[float32]' @19:5

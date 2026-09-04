@@ -1,0 +1,5 @@
+'int32' is not an Optional[int8]; construct it with Some(...) @23:5
+'int32' is not an Optional[int32]; construct it with Some(...) @27:5
+'str' is not an Optional[str]; construct it with Some(...) @31:5
+'float64' is not an Optional[float64]; construct it with Some(...) @34:22
+'bool' is not an Optional[bool]; construct it with Some(...) @35:22

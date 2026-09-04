@@ -1,0 +1,22 @@
+# A float literal outside float32's range stays refused at every store position,
+# and so does a float64 VARIABLE — the seam admits the literal's SHAPE, never the
+# double type (plan-14853b Decision 6, #1688).
+
+def takes(x: float32) -> float32:
+    return x
+
+
+def gives() -> float32:
+    return 1e40
+
+
+def main():
+    declared: float32 = 1e40
+    print(declared)
+
+    print(takes(x=1e40))
+
+    elements: list[float32] = [1e40]
+    print(elements[0])
+
+    print(gives())

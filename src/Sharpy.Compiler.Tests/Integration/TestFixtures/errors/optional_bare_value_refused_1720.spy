@@ -1,0 +1,36 @@
+# R-G (#1720): a bare value is not an Optional. Some(v) is the only constructor,
+# and the refusal is SPY0604 at EVERY store position — including the argument and
+# keyword positions, which reported a plain SPY0220 before the seam reached them.
+# One position per underlying type, because the .error matcher binds the FIRST
+# diagnostic whose text matches.
+
+class Holder:
+    slot: str?
+
+    def __init__(self):
+        self.slot = None()
+
+
+def takes_real(o: float?) -> str:
+    return "x"
+
+
+def takes_flag(o: bool?) -> str:
+    return "x"
+
+
+def gives() -> int8?:
+    return 5
+
+
+def main():
+    declared: int? = 1
+    print(declared)
+
+    h: Holder = Holder()
+    h.slot = "two"
+    print(h.slot)
+
+    print(takes_real(3.5))
+    print(takes_flag(o=True))
+    print(gives())

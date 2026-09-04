@@ -1,0 +1,25 @@
+# Controls: the store seam admits a value SHAPE, not a type. An out-of-range
+# constant and a variable of the wider type stay refused at every position
+# (plan-14853b, #1698, #1688).
+
+def takes_narrow(n: int8) -> int8:
+    return n
+
+
+def main():
+    wide: float = 1.5
+
+    elements: list[int8] = [300]
+    print(elements[0])
+
+    flag: bool = True
+    branch: int8 = 7 if flag else 300
+    print(branch)
+
+    print(takes_narrow(n=300))
+
+    variable: float32 = wide
+    print(variable)
+
+    huge: list[float32] = [1e40]
+    print(huge[0])

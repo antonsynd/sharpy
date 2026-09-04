@@ -1,0 +1,34 @@
+# R-G (#1720): bare None belongs to `T | None`, not to Optional[T]. None() is the
+# constructor, and the refusal names both remedies at EVERY store position. One
+# position per underlying type — the .error matcher binds the FIRST match.
+
+class Holder:
+    slot: str?
+
+    def __init__(self):
+        self.slot = None()
+
+
+def takes_real(o: float?) -> str:
+    return "x"
+
+
+def takes_flag(o: bool?) -> str:
+    return "x"
+
+
+def gives() -> int8?:
+    return None
+
+
+def main():
+    declared: int? = None
+    print(declared)
+
+    h: Holder = Holder()
+    h.slot = None
+    print(h.slot)
+
+    print(takes_real(None))
+    print(takes_flag(o=None))
+    print(gives())
