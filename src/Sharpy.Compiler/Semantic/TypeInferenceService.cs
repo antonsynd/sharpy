@@ -1624,20 +1624,12 @@ internal class TypeInferenceService
         => promoted == SemanticType.UInt ? SemanticType.Long : promoted;
 
     /// <summary>
-    /// The result width of an integer <c>**</c>: <c>int64</c> for an unsigned 32- or 64-bit
-    /// promoted type, unchanged otherwise. <c>**</c> is lowered to
-    /// <c>Builtins.CheckedIntPow</c>, whose only overloads are <c>(int, int)</c> and
-    /// <c>(long, long)</c> (<c>Pow.cs:83/:132</c>); an unsigned operand pair has no arm of its
-    /// own, so it is evaluated — and must therefore be TYPED — as <c>int64</c>. Before this,
-    /// <c>uint32 ** uint32</c> and <c>uint64 ** uint64</c> were typed as their operand and lowered
-    /// to the <c>(int, int)</c> overload, which is SPY0908/CS0266 in both directions (#1666).
-    /// A <c>uint64</c> base above 2^63 wraps in the <c>(long)</c> operand cast — the corner
-    /// #1700 tracks, whose cure is a <c>CheckedIntPow(ulong, ulong)</c> overload.
+    /// The result width of an integer <c>**</c>: <c>uint32</c> widens to <c>int64</c> (the
+    /// <c>(long, long)</c> overload binds); <c>uint64</c> stays <c>uint64</c> because
+    /// <c>CheckedIntPow(ulong, ulong|long)</c> overloads now exist (#1700).
     /// </summary>
     private static SemanticType ApplyIntegerPowWidth(SemanticType promoted)
-        => promoted == SemanticType.UInt || promoted == SemanticType.ULong
-            ? SemanticType.Long
-            : promoted;
+        => promoted == SemanticType.UInt ? SemanticType.Long : promoted;
 
     // C# promotes all narrow integers (int8, int16, uint8, uint16) to int in
     // arithmetic, bitwise, and unary operations.  Match that so the checker's

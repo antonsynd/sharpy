@@ -414,29 +414,9 @@ internal partial class TypeChecker
             }
 
             if (assignment.Operator == AssignmentOperator.PowerAssign
-                && targetType is not UserDefinedType and not GenericType
-                && valueType is not UserDefinedType and not GenericType)
+                && ClassifyIntegerPower(targetType, valueType) is { } powKind)
             {
-                if (PrimitiveCatalog.IsDecimal(targetType) || PrimitiveCatalog.IsDecimal(valueType))
-                {
-                    _semanticInfo.SetOperatorLowering(assignment,
-                        new OperatorLowering(OperatorLoweringKind.DecimalPow));
-                }
-                else if (PrimitiveCatalog.IsFloatingPoint(targetType) || PrimitiveCatalog.IsFloatingPoint(valueType))
-                {
-                    _semanticInfo.SetOperatorLowering(assignment,
-                        new OperatorLowering(OperatorLoweringKind.FloatPow));
-                }
-                else if (resultType == SemanticType.Long)
-                {
-                    _semanticInfo.SetOperatorLowering(assignment,
-                        new OperatorLowering(OperatorLoweringKind.IntegerPowLong));
-                }
-                else if (TypeUtils.IsInteger(targetType) && TypeUtils.IsInteger(valueType))
-                {
-                    _semanticInfo.SetOperatorLowering(assignment,
-                        new OperatorLowering(OperatorLoweringKind.IntegerPowInt));
-                }
+                _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(powKind));
             }
 
             // `//=` and `%=` read the same tags as their binary forms, from the ONE classifier

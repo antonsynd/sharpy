@@ -238,29 +238,9 @@ internal partial class TypeChecker
         }
 
         if (binOp.Operator == BinaryOperator.Power
-            && leftType is not UserDefinedType and not GenericType
-            && rightType is not UserDefinedType and not GenericType)
+            && ClassifyIntegerPower(leftType, rightType) is { } powKind)
         {
-            if (PrimitiveCatalog.IsDecimal(leftType) || PrimitiveCatalog.IsDecimal(rightType))
-            {
-                _semanticInfo.SetOperatorLowering(binOp,
-                    new OperatorLowering(OperatorLoweringKind.DecimalPow));
-            }
-            else if (PrimitiveCatalog.IsFloatingPoint(leftType) || PrimitiveCatalog.IsFloatingPoint(rightType))
-            {
-                _semanticInfo.SetOperatorLowering(binOp,
-                    new OperatorLowering(OperatorLoweringKind.FloatPow));
-            }
-            else if (resultType == SemanticType.Long)
-            {
-                _semanticInfo.SetOperatorLowering(binOp,
-                    new OperatorLowering(OperatorLoweringKind.IntegerPowLong));
-            }
-            else if (TypeUtils.IsInteger(leftType) && TypeUtils.IsInteger(rightType))
-            {
-                _semanticInfo.SetOperatorLowering(binOp,
-                    new OperatorLowering(OperatorLoweringKind.IntegerPowInt));
-            }
+            _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(powKind));
         }
 
         // `//` and `%` (#1658): ONE classifier shared with the augmented `//=` / `%=` site.
@@ -301,6 +281,50 @@ internal partial class TypeChecker
         }
 
         return resultType;
+    }
+
+    /// <summary>
+    /// Classifies how a <c>**</c> lowers — the single classifier shared by the binary site
+    /// (<see cref="CheckBinaryOp"/>) and the augmented <c>**=</c> site, so the two cannot
+    /// drift (#1700, the #1623 shape). Returns <c>null</c> for user-defined / CLR operands and
+    /// non-integer types (float/decimal are handled separately at the call site).
+    /// </summary>
+    private static OperatorLoweringKind? ClassifyIntegerPower(
+        SemanticType leftType, SemanticType rightType)
+    {
+        if (leftType is UserDefinedType or GenericType
+            || rightType is UserDefinedType or GenericType)
+            return null;
+
+        if (PrimitiveCatalog.IsDecimal(leftType) || PrimitiveCatalog.IsDecimal(rightType))
+            return OperatorLoweringKind.DecimalPow;
+
+        if (PrimitiveCatalog.IsFloatingPoint(leftType) || PrimitiveCatalog.IsFloatingPoint(rightType))
+            return OperatorLoweringKind.FloatPow;
+
+        if (!TypeUtils.IsInteger(leftType) || !TypeUtils.IsInteger(rightType))
+            return null;
+
+        var leftInfo = PrimitiveCatalog.GetPrimitiveInfo(leftType);
+        var rightInfo = PrimitiveCatalog.GetPrimitiveInfo(rightType);
+        if (leftInfo == null || rightInfo == null)
+            return null;
+
+        var leftIsULong = leftType == SemanticType.ULong;
+        var rightIsULong = rightType == SemanticType.ULong;
+
+        if (leftIsULong && (rightIsULong || !rightInfo.IsSigned))
+            return OperatorLoweringKind.IntegerPowULong;
+        if (leftIsULong && rightInfo.IsSigned)
+            return OperatorLoweringKind.IntegerPowULongExponentLong;
+        if (rightIsULong)
+            return OperatorLoweringKind.IntegerPowLongExponentULong;
+
+        var promoted = PrimitiveCatalog.GetPromotedType(leftType, rightType);
+        if (promoted == SemanticType.Long || promoted == SemanticType.UInt)
+            return OperatorLoweringKind.IntegerPowLong;
+
+        return OperatorLoweringKind.IntegerPowInt;
     }
 
     /// <summary>

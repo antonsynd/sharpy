@@ -2305,6 +2305,12 @@ public enum OperatorLoweringKind
     FloatPow,
     IntegerPowInt,
     IntegerPowLong,
+    /// <summary><c>CheckedIntPow(ulong, ulong)</c> — both operands are unsigned 64-bit (#1700).</summary>
+    IntegerPowULong,
+    /// <summary><c>CheckedIntPow(ulong, long)</c> — unsigned base, signed exponent (#1700).</summary>
+    IntegerPowULongExponentLong,
+    /// <summary><c>CheckedIntPow(long, ulong)</c> — signed base, unsigned exponent (#1700).</summary>
+    IntegerPowLongExponentULong,
     NegateLiteralInt,
     NegateLiteralLong,
     /// <summary><c>//</c> with a <c>decimal</c> operand: <c>Builtins.DecimalFloorDiv</c> (native truncating quotient) (#1658).</summary>
