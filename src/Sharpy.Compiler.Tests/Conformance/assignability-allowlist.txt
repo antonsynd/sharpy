@@ -1,3 +1,23 @@
-# Rows cite the issue that drains them. A surviving call to TupleType.IsAssignableTo
-# in TypeChecker*.cs outside IsAssignable is a regression.
-TypeChecker.Expressions.Operators.cs:1184-1187 # #1677 ternary join — drains in P7
+# Data-level SemanticType.IsAssignableTo calls inside TypeChecker*.cs, outside IsAssignable itself.
+#
+# Read by StoreSeamConformanceTests.DataLevelIsAssignableTo_IsBannedInTheCheckerOutsideIsAssignable.
+# Rows are `File.cs::MethodName # issue` — method-scoped, not line-scoped, so a row does not go
+# stale when the file shifts, and it stays as small as the reason for it. Every row cites the issue
+# that drains it; a row matching NOTHING fails the test (drain on fix).
+#
+# Decision 4 (plan-14853b): the checker has one assignability authority, IsAssignable. A data-level
+# call skips the variance, CLR-provenance and tuple arms only the checker can reach — the shape that
+# let a tuple element slip through to CS0029 (#1701).
+
+TypeChecker.Expressions.Operators.cs::CheckConditionalExpression # #1677 ternary join — drains in P7
+
+# The class issue for the remaining pre-existing sites is being filed by the round lead; substitute
+# its number for #TBD-lead when it exists. None of these is a store position: they compare function
+# SIGNATURES, pipe-forward operands, type-parameter default constraints and a compound-assignment
+# operand.
+TypeChecker.Expressions.Access.Calls.Overloads.cs::SignatureSatisfiesPartialTarget # #TBD-lead
+TypeChecker.Expressions.Access.Calls.Overloads.cs::SignatureSatisfiesTarget # #TBD-lead
+TypeChecker.Definitions.cs::ValidateTypeParameterDefaultConstraints # #TBD-lead
+TypeChecker.Expressions.Operators.cs::CheckPipeForward # #TBD-lead
+TypeChecker.Expressions.Operators.cs::CheckPipeForwardWithFunctionCall # #TBD-lead
+TypeChecker.Utilities.cs::TryNarrowAugmentedResult # #TBD-lead

@@ -607,9 +607,6 @@ internal partial class TypeChecker
         };
     }
 
-    private static bool FitsInRange(System.Numerics.BigInteger constant, Registry.PrimitiveCatalog.PrimitiveInfo target)
-        => ImplicitConversions.FitsInRange(constant, target);
-
     /// <summary>
     /// The ONE decision behind <c>x op= y</c> on an integer target whose binary result is wider
     /// than the target: whether C# would narrow the result back into the target, in which case the
