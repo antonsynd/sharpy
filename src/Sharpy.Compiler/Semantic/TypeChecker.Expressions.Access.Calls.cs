@@ -288,7 +288,7 @@ internal partial class TypeChecker
             if (!id.IsNameBacktickEscaped && !shadowsBuiltin)
             {
                 var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
-                    builtinName, argTypes, _typeInference);
+                    builtinName, EffectiveMinMaxArgumentTypes(call, argTypes), _typeInference);
                 if (builtinReturn != null)
                 {
                     if (builtinReturn is UnknownType
@@ -1551,7 +1551,8 @@ internal partial class TypeChecker
         // Data-driven inference (len, hash, reversed, sorted, min, max) — bare checks this before
         // anything else, so a name it answers must not be answered by construction or by overload
         // ranking here either.
-        var builtinReturn = BuiltinReturnTypeInference.InferReturnType(name, argTypes, _typeInference);
+        var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
+            name, EffectiveMinMaxArgumentTypes(call, argTypes), _typeInference);
         if (builtinReturn != null)
         {
             if (builtinReturn is UnknownType
@@ -1982,7 +1983,9 @@ internal partial class TypeChecker
     {
         var typeNames = string.Join(", ", argTypes.Select(t => $"'{t.GetDisplayName()}'"));
         AddError(
-            $"Cannot determine common numeric type for '{calleeName}' with argument types {typeNames}",
+            $"Cannot determine common numeric type for '{calleeName}' with argument types {typeNames}"
+            + " — no numeric promotion covers this pair (C# §12.4.7: uint64 has no operator with a signed operand);"
+            + " cast one argument to a shared type, e.g. int64(x) or uint64(x)",
             call.LineStart, call.ColumnStart,
             code: DiagnosticCodes.Semantic.TypeMismatch,
             span: call.Span);
@@ -2456,7 +2459,7 @@ internal partial class TypeChecker
         if (IsBuiltinsModule(moduleSymbol))
         {
             var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
-                memberAccess.Member, argTypes, _typeInference);
+                memberAccess.Member, EffectiveMinMaxArgumentTypes(call, argTypes), _typeInference);
             if (builtinReturn != null)
             {
                 if (builtinReturn is UnknownType
