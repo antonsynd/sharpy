@@ -166,7 +166,7 @@ internal partial class RoslynEmitter
                     var hasFieldType = fieldTypeMapping.TryGetValue(memberAccess.Member, out var fieldType);
                     // `self.field = None` for an Optional<T> field → Optional<T>.None.
                     assignValue = (hasFieldType
-                            ? GenerateInitializerValue(assign.Value, fieldType)
+                            ? GenerateExpression(assign.Value)
                             : null)
                         ?? GenerateExpression(assign.Value);
 
@@ -263,7 +263,7 @@ internal partial class RoslynEmitter
                     ? (GetCodeGenInfo(fieldSymbol)?.CSharpName ?? NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped))
                     : NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped);
 
-                var defaultExpr = GenerateInitializerValue(fieldDecl.InitialValue!, fieldDecl.Type);
+                var defaultExpr = GenerateExpression(fieldDecl.InitialValue!);
                 parameterlessStatements.Add(ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
@@ -295,7 +295,7 @@ internal partial class RoslynEmitter
             // Add default value if present
             if (fieldDecl.InitialValue != null)
             {
-                var defaultExpr = GenerateInitializerValue(fieldDecl.InitialValue, fieldDecl.Type);
+                var defaultExpr = GenerateExpression(fieldDecl.InitialValue);
                 param = param.WithDefault(EqualsValueClause(defaultExpr));
             }
 

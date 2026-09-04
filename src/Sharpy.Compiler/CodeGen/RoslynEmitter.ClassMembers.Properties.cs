@@ -43,7 +43,7 @@ internal partial class RoslynEmitter
         // Add initializer if present
         if (varDecl.InitialValue != null)
         {
-            var initExpr = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
+            var initExpr = GenerateExpression(varDecl.InitialValue);
             variable = variable.WithInitializer(EqualsValueClause(initExpr));
         }
 
@@ -771,7 +771,7 @@ internal partial class RoslynEmitter
         var fieldVariable = VariableDeclarator(EscapedIdentifier(backingFieldName));
         if (propDef.DefaultValue != null)
         {
-            var initExpr = GenerateInitializerValue(propDef.DefaultValue, propDef.Type);
+            var initExpr = GenerateExpression(propDef.DefaultValue);
             fieldVariable = fieldVariable.WithInitializer(EqualsValueClause(initExpr));
         }
 

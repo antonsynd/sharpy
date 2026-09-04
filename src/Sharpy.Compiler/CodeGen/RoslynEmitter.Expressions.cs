@@ -264,18 +264,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Retired by R-G (#1720): bare None into T? is now refused at the semantic level (SPY0604).
-    /// Always returns null so callers fall through to <see cref="GenerateExpression"/>.
-    /// </summary>
-    private ExpressionSyntax? TryGenerateBareNoneForOptional(Expression valueAst, SemanticType? targetType)
-        => null;
-
-    private ExpressionSyntax GenerateInitializerValue(Expression valueAst, TypeAnnotation? targetAnnotation)
-    {
-        return GenerateExpression(valueAst);
-    }
-
-    /// <summary>
     /// Generates an identifier expression, with Optional narrowing support.
     /// When a variable has been narrowed from Optional&lt;T&gt; to T (via an is-not-None check),
     /// emits identifier.Unwrap() to extract the underlying value.
@@ -726,7 +714,27 @@ internal partial class RoslynEmitter
         ulong u => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(u)),
         long l when constant.Type == SemanticType.Long =>
             LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(l)),
-        long l => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)l)),
+
+        // The int-literal arm. It prints a C# `int`, so it is correct only for a recorded type an
+        // int literal represents exactly: int32 and the narrower widths a constant int converts to
+        // implicitly (ECMA-334 §10.2.11), plus uint32 for a non-negative in-range value. Two folds
+        // must NEVER arrive here and did silently before this guard (#1700):
+        //   * a uint64-typed value boxed as `long` — the folder boxes ULong results as `ulong`
+        //     (LoweringPass.cs:242), so a `long` box under a ULong type means the fold lost the
+        //     type and `(int)l` would truncate it;
+        //   * any value outside int range under a non-int64 type — `(int)l` wraps unchecked and
+        //     the emitted program silently computes a different number.
+        // Both are mis-typed folds, which is a compiler bug, so they are loud here rather than
+        // wrong at runtime. A null recorded type keeps the old behavior (error recovery).
+        long l when constant.Type != SemanticType.ULong && l is >= int.MinValue and <= int.MaxValue =>
+            LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal((int)l)),
+        long l => throw new System.InvalidOperationException(
+            $"A folded constant of type '{constant.Type?.GetDisplayName() ?? "<null>"}' and value "
+            + $"{l} reached EmitFoldedConstant's int-literal arm, which prints a C# 'int'. A "
+            + "uint64-typed fold must be boxed as 'ulong' by the folder, and no other non-int64 "
+            + "type may carry a value outside int range. This is a compiler bug in the constant "
+            + "folder, not a case for truncating the value."),
+
         _ => throw new System.InvalidOperationException(
             $"Unexpected folded constant value kind: {constant.Value?.GetType().Name ?? "null"}"),
     };

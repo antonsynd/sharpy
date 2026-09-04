@@ -115,22 +115,9 @@ internal partial class RoslynEmitter
                     // Variable exists - just update it with a regular assignment
                     var currentName = GetMangledVariableName(name, isNewDeclaration: false);
 
-                    // `x = None` for an Optional<T> variable must produce Optional<T>.None
-                    // rather than a bare `null` (which cannot convert to the struct).
-                    // Use the symbol's type (authoritative since semantic analysis) or the
-                    // target expression type.
-                    var assignTargetType = (symbol is VariableSymbol varSym ? GetVariableType(varSym) : null)
-                        ?? GetExpressionSemanticType(assign.Target)
-                        ?? (symbol as VariableSymbol)?.Type;
-                    var bareNoneValue = TryGenerateBareNoneForOptional(assign.Value, assignTargetType);
-                    if (bareNoneValue != null)
-                    {
-                        value = bareNoneValue;
-                    }
-                    else if (symbol is VariableSymbol declaredVarSym)
-                    {
+                    // Method group → Optional<delegate> variable needs an explicit delegate cast.
+                    if (symbol is VariableSymbol declaredVarSym)
                         value = ApplyOptionalDelegateConversion(assign.Value, value, declaredVarSym.Type);
-                    }
 
                     return ExpressionStatement(
                         AssignmentExpression(
@@ -357,11 +344,9 @@ internal partial class RoslynEmitter
             }
 
             // Method group → Optional<delegate> field needs an explicit delegate cast.
-            // `obj.field = None` for an Optional<T> field must produce Optional<T>.None.
-            var targetMemberType = GetExpressionSemanticType(assign.Target);
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
-                ? TryGenerateBareNoneForOptional(assign.Value, targetMemberType)
-                    ?? ApplyOptionalDelegateConversion(assign.Value, value, targetMemberType)
+                ? ApplyOptionalDelegateConversion(
+                    assign.Value, value, GetExpressionSemanticType(assign.Target))
                 : GenerateAugmentedValue(assign.Operator, target, value, assign.Target, assign.Value, assign);
 
             return ExpressionStatement(
@@ -943,22 +928,12 @@ internal partial class RoslynEmitter
             return GenerateLambdaAsLocalFunction(lambdaWithDefaults, localFuncName);
         }
 
-        // Resolve the declared type up front so a direct `x: T? = None` initializer can
-        // target Optional<T>.None and later reassignments can do the same.
-        var declaredType = varDecl.Type != null
-            ? _context.SemanticInfo?.GetTypeAnnotation(varDecl.Type)
-            : null;
-
         // IMPORTANT: Generate the initializer expression FIRST, before updating version tracking.
         // This ensures that references to the same variable in the initializer (e.g., x: int = x + 1)
         // use the PREVIOUS version of the variable, not the new one being declared.
-        ExpressionSyntax? initialValue = null;
-        if (varDecl.InitialValue != null)
-        {
-            // `x: T? = None` (direct bare None) must produce Optional<T>.None.
-            initialValue = TryGenerateBareNoneForOptional(varDecl.InitialValue, declaredType)
-                ?? GenerateExpression(varDecl.InitialValue);
-        }
+        ExpressionSyntax? initialValue = varDecl.InitialValue != null
+            ? GenerateExpression(varDecl.InitialValue)
+            : null;
 
         // The declared name is the symbol's recorded spelling — for a local const too. The
         // allocator versions a const re-declared in a sibling block (K, K_1) and every reference
@@ -1141,7 +1116,7 @@ internal partial class RoslynEmitter
         VariableDeclaratorSyntax declarator;
         if (varDecl.InitialValue != null)
         {
-            var value = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
+            var value = GenerateExpression(varDecl.InitialValue);
             declarator = VariableDeclarator(EscapedIdentifier(varName))
                 .WithInitializer(EqualsValueClause(value));
         }

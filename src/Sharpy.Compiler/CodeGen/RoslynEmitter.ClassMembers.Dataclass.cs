@@ -58,7 +58,7 @@ internal partial class RoslynEmitter
         // Add default value initializer if present
         if (varDecl.InitialValue != null)
         {
-            var initExpr = GenerateInitializerValue(varDecl.InitialValue, varDecl.Type);
+            var initExpr = GenerateExpression(varDecl.InitialValue);
             propDecl = propDecl.WithInitializer(EqualsValueClause(initExpr))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
@@ -172,7 +172,7 @@ internal partial class RoslynEmitter
                     .FirstOrDefault(v => v.Name == field.Name);
                 if (fieldDecl?.InitialValue != null)
                 {
-                    var defaultExpr = GenerateInitializerValue(fieldDecl.InitialValue, fieldDecl.Type);
+                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue);
 
                     // A PARAMETER default must be a compile-time constant; a PROPERTY initializer
                     // need not be, and the two share one generator. `label: str? = None` produced
