@@ -242,17 +242,30 @@ x ??= y ?? 5  # Equivalent to: x ??= (y ?? 5)
 
 ## Optional (Tagged Union)
 
-The `Optional[T]` tagged union (written as `T?`) works with null-coalescing assignment, with its empty case (`None()`) being treated similarly to bare `None`:
+The `Optional[T]` tagged union (written as `T?`) works with null-coalescing assignment. The RHS
+is a **store into the left slot**: both a bare payload value and an `Optional` value are accepted,
+and a constant converts to the payload width:
 
 ```python
-maybe_str: str? = Some("HELLO")
-maybe_str ??= Some("hello")  # maybe_str is still Some("HELLO")
+x: int? = None()
+x ??= 42          # accepted — wraps as Some(42)
+x ??= Some(42)    # also accepted — already an Optional
 
-maybe_str = None()
-maybe_str ??= Some("hello")  # maybe_str is now Some("hello")
+y: int8? = None()
+y ??= 7            # accepted — the constant 7 converts to int8
 ```
 
-In this situation, the return type is `T?` where `T` is the expected type of the entire expression if it had evaluated.
+Cross-family stores are refused with a steer:
+
+```python
+a: int? = None()
+b: int | None = None
+# a ??= b    # SPY0220 — use `maybe b` to wrap
+# b ??= a    # SPY0220 — unwrap with `.unwrap()` or `match`
+```
+
+`None` and `None()` as the RHS keep today's refusals (SPY0222 / SPY0244): assigning emptiness
+to an already-empty slot is a no-op and likely a mistake.
 
 ## Limitations
 

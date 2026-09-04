@@ -21,9 +21,12 @@ Default parameter values must be compile-time constants, matching C# semantics. 
 | Numeric literals | `42`, `3.14`, `0xFF`, `1_000_000` | Any numeric literal |
 | String literals | `"hello"`, `'world'`, `r"path\to\file"` | Including raw strings |
 | Boolean literals | `True`, `False` | |
-| `None` | `None` | Only for nullable parameter types |
+| `None` | `None` | Only for nullable parameter types (`T \| None`) |
+| `None()` | `None()` | Only for Optional parameter types (`T?`) |
 | Enum values | `Color.RED`, `HttpMethod.GET` | |
 | Constant references | `MAX_SIZE`, `DEFAULT_NAME` | Must reference a `const` declaration |
+| Negated literals | `-1`, `-3.14` | |
+| Conditional of constants | `1 if DEBUG else 0` | Both branches must be constants |
 
 ## Examples
 
@@ -61,7 +64,34 @@ def also_broken(config: dict[str, str] = {}) -> None:  # ERROR: {} is not a comp
 
 def still_broken(point: Point = Point(0, 0)) -> None:  # ERROR: constructor call is not constant
     pass
+
+# ❌ Invalid: tagged union case constructors are not compile-time constants
+def bad_opt(x: int? = Some(42)) -> None:     # ERROR SPY0401: use None() default, assign with ??=
+    pass
+
+def bad_result(r: int!str = Ok(1)) -> None:  # ERROR SPY0401
+    pass
+
+def bad_tuple(t: tuple[int, int] = (1, 2)) -> None:  # ERROR SPY0401
+    pass
 ```
+
+The pattern for `Some`/`Ok`/`Err` defaults is to declare the parameter with `None()` and assign
+inside the body:
+
+```python
+def f(x: int? = None()) -> None:
+    x ??= Some(42)   # assigns Some(42) only when x is None()
+    print(x)
+
+def main():
+    f()         # 42
+    f(Some(1))  # 1
+```
+
+*Implementation*
+- *A future lowering (option C: forward-overload synthesis) may lift this restriction for
+  `Some`/`Ok`/`Err` defaults; the `??=` pattern is the stable idiom.*
 
 ## Pattern for Optional Mutable Arguments
 
