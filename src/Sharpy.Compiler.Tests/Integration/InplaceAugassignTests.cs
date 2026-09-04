@@ -37,7 +37,7 @@ def f(x: list[int]?) -> None:
 
 def main() -> None:
     xs: list[int] = [1, 2, 3]
-    f(xs)
+    f(Some(xs))
     print(len(xs))
 ";
 

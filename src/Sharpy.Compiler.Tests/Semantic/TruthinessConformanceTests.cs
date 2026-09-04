@@ -43,8 +43,8 @@ class PlainObject:
         yield return new object[] { "list", "x: list[int] = [1, 2]" };
         yield return new object[] { "dict", "x: dict[str, int] = {\"a\": 1}" };
         yield return new object[] { "set", "x: set[int] = {1, 2}" };
-        yield return new object[] { "Optional", "x: int? = 42" };
-        yield return new object[] { "None", "x: int? = None" };
+        yield return new object[] { "Optional", "x: int? = Some(42)" };
+        yield return new object[] { "None", "x: int? = None()" };
         yield return new object[] { "UDT __bool__", "x: HasBool = HasBool()" };
         yield return new object[] { "UDT __len__", "x: HasLen = HasLen()" };
     }

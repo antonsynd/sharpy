@@ -180,10 +180,10 @@ def foo() -> None:
     }
 
     [Fact]
-    public void None_BareOnOptional_IsAccepted()
+    public void None_CallOnOptional_IsAccepted()
     {
         var source = @"
-x: int? = None
+x: int? = None()
 ";
         var (module, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);

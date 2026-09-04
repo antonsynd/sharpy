@@ -234,7 +234,7 @@ namespace Sharpy
                     Sharpy.List<string> fields = _ParseLine(line);
                     if (isFirstRow)
                     {
-                        this._Fieldnames = fields;
+                        this._Fieldnames = Optional<Sharpy.List<string>>.Some(fields);
                         isFirstRow = false;
                         continue;
                     }

@@ -1857,7 +1857,7 @@ def main():
         // Since they're separate functions, the narrowing state should reset.
         var source = @"
 def first():
-    x: int? = 42
+    x: int? = Some(42)
     if x is not None:
         y: int = x  # x is narrowed inside if block
 
@@ -1881,7 +1881,7 @@ def second():
         // Verify that narrowing in one function doesn't affect another
         var source = @"
 def first():
-    x: int? = 42
+    x: int? = Some(42)
     if x is not None:
         y: int = x  # x narrowed here
 
@@ -1907,12 +1907,12 @@ def second():
         // (TypeChecker.Definitions.cs:49) to ensure narrowings don't cross function boundaries.
         var source = @"
 def first():
-    x: int? = 42
+    x: int? = Some(42)
     if x is not None:
         y: int = x  # x is narrowed inside if block
 
 def second():
-    z: int? = 42
+    z: int? = Some(42)
     if z is not None:
         w: int = z  # z is narrowed independently
 ";
@@ -1931,7 +1931,7 @@ def second():
         // This is critical for correctness: each function gets a fresh narrowing context.
         var source = @"
 def check_and_use() -> int:
-    value: int? = 42
+    value: int? = Some(42)
     if value is not None:
         return value  # value is narrowed to int here
     return 0
@@ -1959,7 +1959,7 @@ def another_check() -> int:
         // in Sharpy yet, the same isolation mechanism applies to sibling functions.
         var source = @"
 def func_with_narrowing() -> int:
-    x: int? = 42
+    x: int? = Some(42)
     if x is not None:
         return x  # x is narrowed to int here
     return 0
@@ -1996,14 +1996,14 @@ def func_without_narrowing() -> int?:
         // Note: This tests the isolation mechanism at the function boundary level.
         var source = @"
 def first() -> int:
-    value: int? = 42
+    value: int? = Some(42)
     if value is not None:
         return value  # value is narrowed to int
     return 0
 
 def second() -> int:
     # Even if first() was just processed, second() has its own isolated context
-    data: int? = 42
+    data: int? = Some(42)
     if data is not None:
         return data  # data narrowed independently
     return -1
@@ -2023,7 +2023,7 @@ def second() -> int:
         // narrowing contexts. This is critical for the isolation mechanism.
         var source = @"
 def check_a() -> int:
-    x: int? = 42
+    x: int? = Some(42)
     if x is not None:
         return x  # x is narrowed to int
 
@@ -2035,7 +2035,7 @@ def check_b() -> int?:
     return x
 
 def check_c() -> int:
-    x: int? = 100
+    x: int? = Some(100)
     if x is not None:
         # x narrowed independently in check_c()
         return x
@@ -2074,7 +2074,7 @@ def check_c() -> int:
         // the narrowing isolation mechanism must still be correct for when they are.
         var source = @"
 def main():
-    x: int? = 42
+    x: int? = Some(42)
     if x is not None:
         # x is narrowed to int here in the outer function
         y: int = x  # This works - x is narrowed
@@ -2115,7 +2115,7 @@ def main():
         // Verify that nested functions in while loops also have isolated narrowing
         var source = @"
 def process():
-    value: int? = 42
+    value: int? = Some(42)
     while value is not None:
         # value is narrowed to int here
         temp: int = value  # This works
@@ -2150,19 +2150,19 @@ def process():
         // Verify that deeply nested functions each have their own isolated narrowing
         var source = @"
 def outer():
-    a: int? = 1
+    a: int? = Some(1)
     if a is not None:
         # a narrowed to int
         x: int = a
 
         def middle():
-            b: int? = 2
+            b: int? = Some(2)
             if b is not None:
                 # b narrowed to int, but a is NOT narrowed here
                 y: int = b
 
                 def inner():
-                    c: int? = 3
+                    c: int? = Some(3)
                     if c is not None:
                         # c narrowed, but a and b are NOT narrowed here
                         z: int = c
@@ -2189,7 +2189,7 @@ def outer():
         // inherit the narrowing.
         var source = @"
 def process() -> int:
-    value: int? = 42
+    value: int? = Some(42)
     if value is not None:
         # value is narrowed to int here in the outer scope
         y: int = value  # This works - value is narrowed
@@ -2214,7 +2214,7 @@ def process() -> int:
         // Verify that lambdas in while loops also have isolated narrowing scopes
         var source = @"
 def process() -> int:
-    value: int? = 42
+    value: int? = Some(42)
     while value is not None:
         # value is narrowed to int here
         temp: int = value  # This works in outer scope

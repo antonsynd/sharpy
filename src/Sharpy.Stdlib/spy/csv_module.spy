@@ -130,7 +130,7 @@ class CsvDictReader:
         for line in self._lines:
             fields: list[str] = _parse_line(line)
             if is_first_row:
-                self._fieldnames = fields
+                self._fieldnames = Some(fields)
                 is_first_row = False
                 continue
             if self._fieldnames is not None:

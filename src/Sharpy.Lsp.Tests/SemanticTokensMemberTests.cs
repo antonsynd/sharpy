@@ -103,7 +103,7 @@ public class SemanticTokensMemberTests
             + "    value: int = 1\n"
             + "\n"
             + "def main() -> None:\n"
-            + "    b: Box? = Box()\n"
+            + "    b: Box? = Some(Box())\n"
             + "    print(b?.value)\n";
 
         var tokens = CollectAnalyzed(source);
@@ -177,7 +177,7 @@ public class SemanticTokensMemberTests
             + "    value: int = 1\n"
             + "\n"
             + "def main() -> None:\n"
-            + "    b: Box? = Box()\n"
+            + "    b: Box? = Some(Box())\n"
             + "    print(b ?. value)\n";
 
         var tokens = CollectAnalyzed(source);

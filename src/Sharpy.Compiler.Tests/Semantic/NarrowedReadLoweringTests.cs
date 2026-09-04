@@ -251,7 +251,7 @@ def bump(x: int?) -> int:
 from lib import bump
 
 def main() -> None:
-    print(bump(5))
+    print(bump(Some(5)))
 ");
         helper.CreateProjectFile();
 

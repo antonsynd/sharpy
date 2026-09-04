@@ -347,7 +347,7 @@ def main():
     {
         var source = @"
 def main():
-    x: int? = 42
+    x: int? = Some(42)
     result = x ?? 0
 ";
         var (module, typeChecker, semanticInfo) = CompileAndCheck(source);

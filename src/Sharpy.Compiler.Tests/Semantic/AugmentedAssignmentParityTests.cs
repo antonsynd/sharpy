@@ -250,9 +250,9 @@ def main() -> None:
     {
         var source = @"
 def main():
-    x: int? = None
+    x: int? = None()
     y: int = 42
-    x ??= y
+    x ??= Some(y)
     print(x)
 ";
         var result = CompileAndExecute(source);
