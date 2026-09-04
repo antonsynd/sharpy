@@ -166,7 +166,7 @@ public class SemanticInfo : ISemanticQuery
     // compile-time literal strings (string literals, parenthesized literals, `str + str` where
     // both operands are literal-derived). The StoreConversion seam reads this to accept a `str`
     // into a `LiteralString` slot at every store position.
-    private readonly HashSet<Expression> _literalDerivedStrings = new(ReferenceEqualityComparer.Instance);
+    private readonly ConcurrentDictionary<Expression, byte> _literalDerivedStrings = new(ReferenceEqualityComparer.Instance);
 
     // plan-14853b Decision 1 / #1698: a branch of a ConditionalExpression admitted into a narrow
     // integer slot by the §10.2.11 constant arm. C# gives `c ? 7 : 8` the natural type int, so
@@ -1003,12 +1003,12 @@ public class SemanticInfo : ISemanticQuery
     /// <summary>
     /// Marks an expression as a compile-time literal-derived string (PEP 675 #1731).
     /// </summary>
-    public void SetLiteralDerived(Expression expr) => _literalDerivedStrings.Add(expr);
+    public void SetLiteralDerived(Expression expr) => _literalDerivedStrings.TryAdd(expr, 0);
 
     /// <summary>
     /// Returns true if the expression was marked as a literal-derived string.
     /// </summary>
-    public bool IsLiteralDerived(Expression expr) => _literalDerivedStrings.Contains(expr);
+    public bool IsLiteralDerived(Expression expr) => _literalDerivedStrings.ContainsKey(expr);
 
     /// <summary>
     /// Records that <paramref name="branch"/> (an arm of a conditional expression) was admitted into
@@ -1645,8 +1645,8 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._typeReferenceNodes)
             _typeReferenceNodes.TryAdd(kvp.Key, kvp.Value);
 
-        foreach (var expr in other._literalDerivedStrings)
-            _literalDerivedStrings.Add(expr);
+        foreach (var kvp in other._literalDerivedStrings)
+            _literalDerivedStrings.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._conditionalBranchNarrowing)
             _conditionalBranchNarrowing.TryAdd(kvp.Key, kvp.Value);
