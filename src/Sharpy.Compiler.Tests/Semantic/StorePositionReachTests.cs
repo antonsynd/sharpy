@@ -227,9 +227,12 @@ public class StorePositionReachTests : IntegrationTestBase
     public void LiteralNarrowing_RefusesWhatItCannotRepresent(string cell, string body, string message)
         => AssertRefused(cell, body, code: null, message: message);
 
-    [Fact]
-    public void Float32_AdmitsAnInRangeExponentLiteral()
-        => AssertPrints("float32-exponent", "x: float32 = 1.5e2\n    print(x)", "150.0\n");
+    [Theory]
+    [InlineData("float32-exponent", "x: float32 = 1.5e2\n    print(x)", "150.0\n")]
+    [InlineData("decimal-exponent", "d: decimal = 1.5e2\n    print(d)", "150\n")]
+    [InlineData("decimal-negative-exponent", "d: decimal = 2.5e-2\n    print(d)", "0.025\n")]
+    public void LiteralNarrowing_AdmitsAnInRangeExponentLiteral(string cell, string body, string expected)
+        => AssertPrints(cell, body, expected);
 
     /// <summary>
     /// #1756: an INDEX store writes the container's declared element type. The local and attribute
