@@ -43,19 +43,35 @@ Bare `None` belongs to `T | None` (C# nullable interop) — see [Nullable Types]
 Use pattern matching to handle both Some and None cases:
 
 ```python
-def find_user(id: int) -> User?:
-    user = database.find(id)
-    if user is not None:
-        return Some(user)
-    return None
+class User:
+    name: str
 
-result = find_user(123)
-match result:
-    case Some(user):
-        print(f"Found user: {user.name}")
-    case None:
-        print("User not found")
+    def __init__(self, name: str):
+        self.name = name
+
+def find_user(user_id: int, database: dict[int, User]) -> User?:
+    if user_id in database:
+        return Some(database[user_id])
+    return None()
+
+def main():
+    database: dict[int, User] = {123: User("ada")}
+    match find_user(123, database):
+        case Some(user):
+            print(f"Found user: {user.name}")     # Found user: ada
+        case None:
+            print("User not found")
+    match find_user(999, database):
+        case Some(user):
+            print(f"Found user: {user.name}")
+        case None:
+            print("User not found")               # User not found
 ```
+
+Both returns construct the Optional: `Some(user)` for the present case and `None()` for the empty
+one. A bare `return None` here is **SPY0604** — `None` belongs to `User | None`, not to `User?`
+(see [Creating Optional Values](#creating-optional-values)). `case None:` in the match is a
+*pattern*, not the `None` value, and is unaffected.
 
 ### Matching the payload by type
 
@@ -146,7 +162,7 @@ union Optional[T]:
             case Some(value):
                 return Some(f(value))
             case None:
-                return None
+                return None()
 ```
 
 ## Constructor Shorthand

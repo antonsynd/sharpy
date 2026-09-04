@@ -90,6 +90,26 @@ name: str | None = None
 name: str? = None()
 ```
 
+The two spellings take different values, and the compiler enforces the split:
+
+| Slot | Empty value | Present value |
+|------|-------------|---------------|
+| `T \| None` (this page) | bare `None` | the bare value: `name = "ada"` |
+| `T?` = `Optional[T]` ([Optional Type](tagged_unions_optional.md)) | `None()` | `Some("ada")` |
+
+Bare `None` belongs to `T | None`. It is **not** an `Optional[T]`, and neither is a bare `T`:
+
+```python
+# x: str? = None      # ERROR (SPY0604): bare None is not an Optional[str];
+#                     #   use None(), or declare the slot 'str | None'
+# y: str? = "ada"     # ERROR (SPY0604): 'str' is not an Optional[str];
+#                     #   construct it with Some(...)
+```
+
+Crossing between the two is explicit in both directions: [`maybe`](maybe_expressions.md) lifts a
+`T | None` into a `T?` (below), and narrowing a `T?` with `is not None` reads the payload back out
+(see [Optional Type](tagged_unions_optional.md#pattern-matching)).
+
 ## Converting to Safe Optionals
 
 Use `maybe` to convert a `T | None` value into a safe `T?` (`Optional[T]`):

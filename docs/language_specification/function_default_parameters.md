@@ -65,19 +65,40 @@ def still_broken(point: Point = Point(0, 0)) -> None:  # ERROR: constructor call
 
 ## Pattern for Optional Mutable Arguments
 
-Use `None` as the default and create the mutable object inside the function:
+Declare the parameter as an optional (`T?`, see [Optional Type](tagged_unions_optional.md)) with
+`None()` as its default, and build the mutable object in a **local** — the optional parameter is
+the *input*, the local is the list you work with:
 
 ```python
 def append_to(item: int, target: list[int]? = None()) -> list[int]:
-    if target is None:
-        target = []
-    target.append(item)
-    return target
+    result: list[int] = []
+    if target is not None:
+        result = target
+    result.append(item)
+    return result
 
-# Each call gets a fresh list
-list1 = append_to(1)  # [1]
-list2 = append_to(2)  # [2] - separate list, not [1, 2]
+def main():
+    print(append_to(1))              # [1]
+    print(append_to(2))              # [2] — a separate list, not [1, 2]
+    shared: list[int] = [0]
+    print(append_to(3, Some(shared)))  # [0, 3]
+    print(shared)                    # [0, 3] — the caller's list, mutated in place
 ```
+
+Each call that omits `target` gets a fresh list, which is the point of the pattern; a caller that
+passes one gets it mutated, exactly as in Python.
+
+**Do not rebind the parameter itself.** `target = []` inside the function does not turn `target`
+into a list: the name keeps its declared type `list[int]?` for the rest of the body, so the
+following `target.append(item)` is SPY0229 (`Type 'list[int32]?' has no member 'append'`), and the
+bare `[]` is not an `Optional` value either. Rebinding it as `target = Some(fresh)` does not help —
+a store never re-narrows the name, so `len(target)` after it is SPY0326. Read the optional into a
+local of the payload type instead, as above; the `is not None` branch narrows on the read.
+
+Callers pass `Some(value)`, not a bare value, because `T?` is constructed only by `Some(…)`/`None()`
+(see [Creating Optional Values](tagged_unions_optional.md#creating-optional-values)). Use
+`target: list[int] | None = None` instead only when the parameter exists to talk to C# nullable
+APIs — [Nullable Types](nullable_types.md) has that split.
 
 *Implementation*
 - *✅ Native - Direct mapping to C# optional parameters.*
