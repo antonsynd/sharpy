@@ -153,21 +153,40 @@ internal partial class TypeChecker
                 }
             }
 
-            if (existingSymbol is VariableSymbol boundSymbol)
+            if (storePredecessor != null && storeTarget is not UnknownType
+                && inferredType is not UnknownType
+                && !IsAssignable(inferredType, storeTarget))
             {
-                var boundExisting = DeclaredBindingType(boundSymbol);
-                if (boundExisting is not UnknownType
-                    && inferredType is not UnknownType
-                    && !IsAssignable(inferredType, boundExisting))
+                // R-T: when the target is narrowed and the declared type is a wrapper,
+                // classify against the payload first — a payload-accepted value re-wraps.
+                var payloadType = storeTarget is OptionalType opt ? opt.UnderlyingType
+                    : storeTarget is NullableType { IsValueType: true } nt ? nt.UnderlyingType
+                    : (SemanticType?)null;
+
+                if (payloadType != null
+                    && HasRemoveNoneFact(targetId.Name)
+                    && (IsAssignable(inferredType, payloadType)
+                        || IsAcceptedVerdict(ClassifyStore(StorePosition.PlainStore, assignment.Value, inferredType, payloadType))))
                 {
-                    if (!CheckStore(StorePosition.PlainStore, assignment.Value, inferredType, boundExisting,
-                            assignment, assignment.Span))
-                        return;
-                    inferredType = ClassifyStore(StorePosition.PlainStore, assignment.Value, inferredType, boundExisting) switch
+                    if (storeTarget is OptionalType wrapOpt)
+                        _semanticInfo.SetOptionalStoreWrap(assignment, wrapOpt);
+                    inferredType = ClassifyStore(StorePosition.PlainStore, assignment.Value, inferredType, payloadType) switch
                     {
                         StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
                         StoreVerdict.AcceptedDecimalNarrowing => SemanticType.Decimal,
-                        _ => boundExisting,
+                        _ => payloadType,
+                    };
+                }
+                else
+                {
+                    if (!CheckStore(StorePosition.PlainStore, assignment.Value, inferredType, storeTarget,
+                            assignment, assignment.Span))
+                        return;
+                    inferredType = ClassifyStore(StorePosition.PlainStore, assignment.Value, inferredType, storeTarget) switch
+                    {
+                        StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
+                        StoreVerdict.AcceptedDecimalNarrowing => SemanticType.Decimal,
+                        _ => storeTarget,
                     };
                 }
             }
@@ -468,6 +487,19 @@ internal partial class TypeChecker
                 var existing = _semanticInfo.GetOperatorLowering(assignment);
                 var kind = existing?.Kind ?? OperatorLoweringKind.Native;
                 _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(kind, narrowTo));
+            }
+
+            // R-T: an augmented result on a narrowed Optional identifier re-wraps.
+            if (assignment.Target is Identifier augWrapId)
+            {
+                var augPred = (_symbolTable.Lookup(augWrapId.Name, searchParents: false)
+                    ?? _symbolTable.Lookup(augWrapId.Name, searchParents: true)) as VariableSymbol;
+                if (augPred != null
+                    && DeclaredBindingType(augPred) is OptionalType augWrapOpt
+                    && HasRemoveNoneFact(augWrapId.Name))
+                {
+                    _semanticInfo.SetOptionalStoreWrap(assignment, augWrapOpt);
+                }
             }
 
             return;

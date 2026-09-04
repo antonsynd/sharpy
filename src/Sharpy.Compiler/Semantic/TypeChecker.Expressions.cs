@@ -558,6 +558,23 @@ internal partial class TypeChecker
             }
         }
 
+        // R-T read-side: a rebinding version whose type is the payload of a wrapper
+        // root binding needs the accessor to read through the C# slot (#1768).
+        if (symbol is VariableSymbol rebindVar && !ReferenceEquals(id, _typeTestOperand))
+        {
+            var rootBinding = _semanticInfo.GetRootBinding(rebindVar);
+            if (!ReferenceEquals(rootBinding, rebindVar))
+            {
+                var rootType = GetVariableType(rootBinding);
+                var versionType = GetVariableType(rebindVar);
+                var lowering = LoweringForRemoveNone(rootType);
+                if (lowering != null && versionType == lowering.Value.Type)
+                {
+                    RecordNarrowedReadLowering(id, lowering.Value.Lowering);
+                }
+            }
+        }
+
         var identifierType = symbol switch
         {
             VariableSymbol varSymbol => GetVariableType(varSymbol),

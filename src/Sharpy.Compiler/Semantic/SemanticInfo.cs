@@ -68,6 +68,13 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, NarrowedReadLowering> _narrowedReadLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map an Assignment or WalrusExpression node to the OptionalType the emitter must wrap the
+    // stored value in. Recorded by the TypeChecker when a payload-typed value stores into a
+    // narrowed Optional slot (R-T payload rule, #1755 B) so the emitter prints
+    // Optional<T>.Some(value) at that site. Rule 2: the checker decides, the emitter prints.
+    private readonly ConcurrentDictionary<Node, OptionalType> _optionalStoreWraps =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map expressions whose SEMANTIC type is a Sharpy collection but whose EMITTED type is the CLR
     // sequence the bridge mapped it from, to the Sharpy collection they must be materialized into
     // (#1251, Critical Rule 2 pattern (b)). A BCL extension call typed `list[str]` emits as
@@ -670,6 +677,16 @@ public class SemanticInfo : ISemanticQuery
     public NarrowedReadLowering? GetNarrowedReadLowering(Expression expr)
     {
         return _narrowedReadLowerings.TryGetValue(expr, out var lowering) ? lowering : null;
+    }
+
+    public void SetOptionalStoreWrap(Node storeNode, OptionalType wrapAs)
+    {
+        _optionalStoreWraps[storeNode] = wrapAs;
+    }
+
+    public OptionalType? GetOptionalStoreWrap(Node storeNode)
+    {
+        return _optionalStoreWraps.TryGetValue(storeNode, out var opt) ? opt : null;
     }
 
     /// <summary>
@@ -1620,6 +1637,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._narrowedReadLowerings)
             _narrowedReadLowerings.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._optionalStoreWraps)
+            _optionalStoreWraps.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._sequenceMaterializations)
             _sequenceMaterializations.TryAdd(kvp.Key, kvp.Value);

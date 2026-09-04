@@ -595,7 +595,18 @@ internal static class NarrowingFlowAnalysis
         {
             foreach (var assignedKey in CollectAssignedKeys(assignment.Target))
             {
-                facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, assignedKey));
+                if (assignment.Operator != AssignmentOperator.Assign)
+                {
+                    // Augmented: the result is payload-typed by construction (the checker
+                    // refuses otherwise); ??= on a non-None name is a no-op. RemoveNone
+                    // facts survive; IsType facts are killed (the type may have changed).
+                    facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, assignedKey)
+                        && fact.Kind != NarrowingActionKind.RemoveNone);
+                }
+                else
+                {
+                    facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, assignedKey));
+                }
             }
         }
 

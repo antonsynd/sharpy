@@ -119,6 +119,10 @@ internal partial class RoslynEmitter
                     if (symbol is VariableSymbol declaredVarSym)
                         value = ApplyOptionalDelegateConversion(assign.Value, value, declaredVarSym.Type);
 
+                    // R-T: a payload store into a narrowed Optional wraps the value.
+                    if (_context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } wrapOpt)
+                        value = WrapInOptionalSome(value, wrapOpt);
+
                     return ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
@@ -192,6 +196,10 @@ internal partial class RoslynEmitter
                 var readExpr = ApplyNarrowedReadLowering(name, EscapedIdentifierName(varName));
 
                 var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, assign.Target, assign.Value, assign);
+
+                // R-T: a narrowed Optional augmented result re-wraps.
+                if (_context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } augWrapOpt)
+                    augmentedValue = WrapInOptionalSome(augmentedValue, augWrapOpt);
 
                 return ExpressionStatement(
                     AssignmentExpression(

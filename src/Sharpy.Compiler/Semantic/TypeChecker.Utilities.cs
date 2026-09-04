@@ -454,6 +454,16 @@ internal partial class TypeChecker
     /// wins — matching the dict-overwrite precedence in <see cref="ExtractNarrowedTypes"/>'s <c>and</c>
     /// handling. The lowering is materialized per read node so codegen never re-derives flow (#1081).
     /// </summary>
+    private bool HasRemoveNoneFact(string key)
+    {
+        foreach (var fact in _currentFacts)
+        {
+            if (fact.Key == key && fact.Kind == NarrowingActionKind.RemoveNone)
+                return true;
+        }
+        return false;
+    }
+
     private (SemanticType Type, NarrowedReadLowering Lowering)? ResolveNarrowedTypeFromFacts(string key, SemanticType liveType)
     {
         NarrowingFact? isTypeFact = null;
