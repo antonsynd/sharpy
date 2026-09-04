@@ -1,0 +1,12 @@
+# #1699: min/max with mixed-signedness where a promotion exists records the type argument
+# so the emitted call binds (e.g. Builtins.Min<long>(a, b)).
+def main() -> None:
+    a: uint32 = 5
+    b: int16 = 3
+    c: int64 = min(a, b)
+    print(c)
+
+    x: uint64 = 10
+    y: uint32 = 7
+    z: uint64 = max(x, y)
+    print(z)

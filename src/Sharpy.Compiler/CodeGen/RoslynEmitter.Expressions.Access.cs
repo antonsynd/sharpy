@@ -282,9 +282,23 @@ internal partial class RoslynEmitter
                 // (#1637). Which conversion a spelling denotes is a fact of the CLR type, decided
                 // once in semantic analysis; the emitter reads it (repo rule 2).
                 var recordedBuiltinTarget = _context.SemanticInfo?.GetCallTarget(call);
-                var builtinName = MakeGlobalQualifiedName("Sharpy", "Builtins",
-                    NameCasing.ResolveMethod(funcName.Name, funcName.IsNameBacktickEscaped,
-                        GetClrMethodName(recordedBuiltinTarget)));
+                var csharpMethodName = NameCasing.ResolveMethod(funcName.Name,
+                    funcName.IsNameBacktickEscaped, GetClrMethodName(recordedBuiltinTarget));
+                var inferredTypeArgs = _context.SemanticInfo?.GetInferredTypeArguments(call);
+                if (inferredTypeArgs is { Count: > 0 })
+                {
+                    var qualifiedBase = MakeGlobalQualifiedName("Sharpy", "Builtins");
+                    var typeArgSyntax = inferredTypeArgs
+                        .Select(t => _typeMapper.MapSemanticType(t)).ToArray();
+                    var genericMethod = GenericName(csharpMethodName)
+                        .WithTypeArgumentList(TypeArgumentList(
+                            SeparatedList(typeArgSyntax)));
+                    return InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            qualifiedBase, genericMethod))
+                        .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+                }
+                var builtinName = MakeGlobalQualifiedName("Sharpy", "Builtins", csharpMethodName);
                 return InvocationExpression(builtinName)
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }

@@ -1,0 +1,5 @@
+# #1699: min/max over uint64 x signed has no common promotion — named refusal, not ICE.
+def main() -> None:
+    a: uint64 = 5
+    b: int32 = 3
+    print(min(a, b))

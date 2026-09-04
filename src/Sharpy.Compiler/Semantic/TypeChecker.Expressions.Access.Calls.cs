@@ -291,6 +291,14 @@ internal partial class TypeChecker
                     builtinName, argTypes, _typeInference);
                 if (builtinReturn != null)
                 {
+                    if (builtinReturn is UnknownType
+                        && builtinName is BuiltinNames.Min or BuiltinNames.Max
+                        && argTypes.Count >= 2)
+                    {
+                        ReportMinMaxPromotionFailure(call, builtinName, argTypes);
+                        return SemanticType.Unknown;
+                    }
+                    RecordMinMaxTypeArguments(call, builtinName, argTypes, builtinReturn);
                     ValidateMinMaxValueFormKey(builtinName, call, argTypes, kwargTypes);
                     return builtinReturn;
                 }
@@ -1546,6 +1554,14 @@ internal partial class TypeChecker
         var builtinReturn = BuiltinReturnTypeInference.InferReturnType(name, argTypes, _typeInference);
         if (builtinReturn != null)
         {
+            if (builtinReturn is UnknownType
+                && name is BuiltinNames.Min or BuiltinNames.Max
+                && argTypes.Count >= 2)
+            {
+                ReportMinMaxPromotionFailure(call, name, argTypes);
+                return SemanticType.Unknown;
+            }
+            RecordMinMaxTypeArguments(call, name, argTypes, builtinReturn);
             ValidateMinMaxValueFormKey(name, call, argTypes, kwargTypes);
             return builtinReturn;
         }
@@ -1960,6 +1976,26 @@ internal partial class TypeChecker
             keyArg?.LineStart, keyArg?.ColumnStart,
             code: DiagnosticCodes.Semantic.NotCallable,
             span: keyArg?.Span);
+    }
+
+    private void ReportMinMaxPromotionFailure(FunctionCall call, string calleeName, List<SemanticType> argTypes)
+    {
+        var typeNames = string.Join(", ", argTypes.Select(t => $"'{t.GetDisplayName()}'"));
+        AddError(
+            $"Cannot determine common numeric type for '{calleeName}' with argument types {typeNames}",
+            call.LineStart, call.ColumnStart,
+            code: DiagnosticCodes.Semantic.TypeMismatch,
+            span: call.Span);
+    }
+
+    private void RecordMinMaxTypeArguments(FunctionCall call, string calleeName, List<SemanticType> argTypes, SemanticType returnType)
+    {
+        if (calleeName is not (BuiltinNames.Min or BuiltinNames.Max))
+            return;
+        if (argTypes.Count < 2 || _semanticInfo == null)
+            return;
+        if (argTypes.Any(t => !Equals(t, returnType)))
+            _semanticInfo.SetInferredTypeArguments(call, new List<SemanticType> { returnType });
     }
 
     /// <summary>
@@ -2426,7 +2462,17 @@ internal partial class TypeChecker
             var builtinReturn = BuiltinReturnTypeInference.InferReturnType(
                 memberAccess.Member, argTypes, _typeInference);
             if (builtinReturn != null)
+            {
+                if (builtinReturn is UnknownType
+                    && memberAccess.Member is BuiltinNames.Min or BuiltinNames.Max
+                    && argTypes.Count >= 2)
+                {
+                    ReportMinMaxPromotionFailure(call, memberAccess.Member, argTypes);
+                    return SemanticType.Unknown;
+                }
+                RecordMinMaxTypeArguments(call, memberAccess.Member, argTypes, builtinReturn);
                 return builtinReturn;
+            }
         }
 
         if (!moduleSymbol.FunctionOverloads.TryGetValue(memberAccess.Member, out var overloads) || overloads.Count <= 1)

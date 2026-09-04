@@ -142,6 +142,8 @@ internal static class BuiltinReturnTypeInference
                 promoted = PrimitiveCatalog.GetPromotedType(promoted, argTypes[i]);
             if (promoted is not null and not UnknownType)
                 return promoted;
+            if (promoted is null && argTypes.All(PrimitiveCatalog.IsNumeric))
+                return SemanticType.Unknown;
         }
 
         // Iterable form: min(iterable) / max(iterable) -> element type.
