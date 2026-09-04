@@ -17,6 +17,23 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal partial class RoslynEmitter
 {
+    /// <summary>
+    /// Builds the single argument of an in-place collection mutation (#1428, #1682).
+    ///
+    /// <para>The RHS carries the iterable projection the TypeChecker recorded on it
+    /// (<c>SetIterableProjection</c>, <see cref="ApplyIterableProjection"/>): a tuple source becomes
+    /// a typed array, a <c>str</c> source becomes <c>Builtins.ListFromStr(s)</c>, a <c>dict</c>
+    /// source becomes <c>d.Keys()</c> — exactly as the same value does in call-argument position.
+    /// Without the projection the raw value cannot bind the mutator's
+    /// <c>IEnumerable&lt;T&gt;</c> parameter and the emitted C# is CS1503 (#1682).</para>
+    ///
+    /// <para>ONE seam for all three augmented targets (local, index, member) so a new target kind
+    /// cannot skip the projection. Rule 2: the emitter applies a recorded mark and decides
+    /// nothing — an absent mark passes the value through unchanged.</para>
+    /// </summary>
+    private ArgumentSyntax GenerateMutationArgument(Assignment assign, ExpressionSyntax value)
+        => Argument(ApplyIterableProjection(assign.Value, value));
+
     private StatementSyntax GenerateAssignment(Assignment assign)
     {
         // A ConstructorReferenceType value here is unreachable, and this is the tripwire that says
@@ -170,7 +187,7 @@ internal partial class RoslynEmitter
                                 ApplyNarrowedReadLowering(name, EscapedIdentifierName(varName)),
                                 IdentifierName(mutationMethod)))
                         .WithArgumentList(
-                            ArgumentList(SingletonSeparatedList(Argument(value)))));
+                            ArgumentList(SingletonSeparatedList(GenerateMutationArgument(assign, value)))));
                 }
 
                 // Augmented assignment: x += value — references the current version and rebinds it.
@@ -215,7 +232,7 @@ internal partial class RoslynEmitter
                             element,
                             IdentifierName(mutationMethod)))
                     .WithArgumentList(
-                        ArgumentList(SingletonSeparatedList(Argument(value)))));
+                        ArgumentList(SingletonSeparatedList(GenerateMutationArgument(assign, value)))));
             }
 
             var obj = GenerateExpression(indexAccess.Object);
@@ -297,7 +314,7 @@ internal partial class RoslynEmitter
                             receiver,
                             IdentifierName(mutationMethod)))
                     .WithArgumentList(
-                        ArgumentList(SingletonSeparatedList(Argument(value)))));
+                        ArgumentList(SingletonSeparatedList(GenerateMutationArgument(assign, value)))));
             }
 
             // Event subscription/unsubscription: obj.on_change += handler / -= handler

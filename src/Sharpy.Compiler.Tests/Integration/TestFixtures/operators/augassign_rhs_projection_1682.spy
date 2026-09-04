@@ -1,0 +1,42 @@
+# The RHS of an augmented collection assignment reaches the mutator through the iterable
+# projection the TypeChecker recorded on it (#1682) — a tuple, a str and a dict source project
+# exactly as they do in call-argument position. Values verified against python3 3.12.
+
+def main() -> None:
+    # Tuple literal RHS -> TupleToArray projection. python3: [1, 2, 3]
+    xs: list[int] = [1]
+    xs += (2, 3)
+    print(xs)
+
+    # Tuple VARIABLE RHS -> same projection off a named operand. python3: [4, 5, 6]
+    t: tuple[int, int] = (5, 6)
+    ys: list[int] = [4]
+    ys += t
+    print(ys)
+
+    # str RHS -> StrToList projection (python iterates characters). python3: ['x', 'a', 'b']
+    ss: list[str] = ["x"]
+    ss += "ab"
+    print(ss)
+
+    # dict RHS -> DictKeys projection (python iterates keys). python3: ['x', 'a']
+    zs: list[str] = ["x"]
+    d: dict[str, int] = {"a": 1}
+    zs += d
+    print(zs)
+
+    # Two-key dict, order-independent. python3 sorted: ['a', 'b', 'x']
+    ws: list[str] = ["x"]
+    d2: dict[str, int] = {"b": 2, "a": 1}
+    ws += d2
+    print(sorted(ws))
+
+    # Controls: sources that already implement IEnumerable<T> carry the Direct projection and
+    # must keep working unchanged. python3: [1, 9] and [1, 0, 1]
+    fs: list[int] = [1]
+    fs += frozenset({9})
+    print(fs)
+
+    rs: list[int] = [1]
+    rs += range(2)
+    print(rs)
