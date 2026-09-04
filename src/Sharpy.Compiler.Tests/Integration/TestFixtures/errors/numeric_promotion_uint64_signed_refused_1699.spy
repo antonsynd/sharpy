@@ -1,0 +1,4 @@
+def main() -> None:
+    a: uint64 = 5
+    b: int32 = 4
+    print(a + b)

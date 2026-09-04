@@ -1,0 +1,8 @@
+def main() -> None:
+    x: uint64 = 9223372036854775808UL
+    y: uint64 = 1
+    z: uint64 = x ** y
+    print(z)
+    print(x ** y)
+    print(3 ** 2)
+    print(2UL ** 63)

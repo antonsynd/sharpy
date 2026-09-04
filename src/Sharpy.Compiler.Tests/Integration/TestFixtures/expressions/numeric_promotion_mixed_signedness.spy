@@ -1,0 +1,17 @@
+def main() -> None:
+    a: uint32 = 5
+    b: int16 = 4
+    c: int64 = a + b
+    print(c)
+
+    d: uint32 = 5
+    e: uint32 = d + 1
+    print(e)
+
+    f: uint64 = 5
+    g: uint64 = f + 1
+    print(g)
+
+    h: uint64 = 9223372036854775808UL
+    i: uint64 = 1
+    print(h ** i)
