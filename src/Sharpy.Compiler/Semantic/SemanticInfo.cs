@@ -175,6 +175,13 @@ public class SemanticInfo : ISemanticQuery
     // branches need no entry — their literals are re-typed and print their own suffix).
     private readonly ConcurrentDictionary<Expression, SemanticType> _conditionalBranchNarrowing = new(ReferenceEqualityComparer.Instance);
 
+    // #1747: a null-conditional access (`obj?.member`, `obj?.method()`) whose member/result type
+    // is a bare T that the checker WRAPPED into Optional<T> (the "flatten" rule leaves an already
+    // Optional member unwrapped). The recorded type of the node is Optional<T> in both cases, so
+    // the emitter cannot tell them apart without re-deriving the member's own type (Rule 2); this
+    // fact, keyed on the MemberAccess node, names the Optional the true branch must construct.
+    private readonly ConcurrentDictionary<Expression, OptionalType> _nullConditionalOptionalWraps = new(ReferenceEqualityComparer.Instance);
+
     // Track arguments that name a type used as a zero-argument factory callable — Python's
     // defaultdict(list) convention, where the argument is a type name, not a value. Whether an
     // identifier denotes such a factory is a semantic question (it may resolve as a TypeSymbol, as a
@@ -1018,6 +1025,24 @@ public class SemanticInfo : ISemanticQuery
         => _conditionalBranchNarrowing.TryGetValue(branch, out var t) ? t : null;
 
     /// <summary>
+    /// Records that the checker added an <c>Optional</c> layer to the null-conditional access
+    /// <paramref name="access"/> (a <c>MemberAccess</c>, or the <c>FunctionCall</c> of a
+    /// null-conditional method call) because the member's (or called method's) own type was a bare
+    /// <c>T</c>; <paramref name="wrappedAs"/> is the resulting <c>Optional[T]</c> the emitter must
+    /// construct in the true branch (<c>Optional&lt;T&gt;.Some(…)</c>) rather than relying on the
+    /// C# implicit operator (#1747, #1720 R-G).
+    /// </summary>
+    public void SetNullConditionalOptionalWrap(Expression access, OptionalType wrappedAs)
+        => _nullConditionalOptionalWraps[access] = wrappedAs;
+
+    /// <summary>
+    /// The Optional the checker wrapped a null-conditional access into, or null when the member was
+    /// already Optional/nullable (no wrap — the "flatten" rule) or the access is not null-conditional.
+    /// </summary>
+    public OptionalType? GetNullConditionalOptionalWrap(Expression access)
+        => _nullConditionalOptionalWraps.TryGetValue(access, out var t) ? t : null;
+
+    /// <summary>
     /// Marks an expression as denoting a type reference (rather than a value), e.g., a
     /// module-qualified reference to an exported TypeSymbol.
     /// </summary>
@@ -1625,6 +1650,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._conditionalBranchNarrowing)
             _conditionalBranchNarrowing.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._nullConditionalOptionalWraps)
+            _nullConditionalOptionalWraps.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._typeFactoryArguments)
             _typeFactoryArguments.TryAdd(kvp.Key, kvp.Value);

@@ -14,6 +14,29 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 internal partial class TypeChecker
 {
+    /// <summary>
+    /// The type of a null-conditional access whose member (or called method) has its own type
+    /// <paramref name="memberType"/>. An already <c>Optional</c>/nullable member is returned as-is
+    /// (the "flatten" rule); a bare <c>T</c> is wrapped — <c>Optional[T]</c> when the receiver is
+    /// <c>Optional</c>, <c>T | None</c> otherwise. When the <c>Optional</c> layer is ADDED here the
+    /// fact is recorded on <paramref name="node"/> (the <c>MemberAccess</c>, or the
+    /// <c>FunctionCall</c> of a null-conditional method call) so the emitter constructs
+    /// <c>Optional&lt;T&gt;.Some(…)</c> in the true branch instead of leaning on the C# implicit
+    /// operator (#1747, R-G #1720). Every null-conditional wrap site goes through this one seam.
+    /// </summary>
+    private SemanticType WrapNullConditionalResult(Expression node, SemanticType memberType, bool receiverIsOptional)
+    {
+        if (memberType is NullableType or OptionalType)
+            return memberType;
+        if (receiverIsOptional)
+        {
+            var wrapped = new OptionalType { UnderlyingType = memberType };
+            _semanticInfo.SetNullConditionalOptionalWrap(node, wrapped);
+            return wrapped;
+        }
+        return new NullableType { UnderlyingType = memberType };
+    }
+
     private SemanticType CheckMemberAccess(MemberAccess memberAccess)
     {
         // A plain-store TARGET is typed by its declaration, never by a read narrowing: the store
@@ -459,14 +482,9 @@ internal partial class TypeChecker
                     _semanticInfo.SetMemberAccessResolution(memberAccess, fieldOwner, field);
                 }
 
-                // Wrap result in optional/nullable for null conditional access
-                if (memberAccess.IsNullConditional && fieldType is not NullableType and not OptionalType)
-                {
-                    // Use OptionalType when object is Optional, NullableType for C# nullable
-                    if (objectType is OptionalType)
-                        return new OptionalType { UnderlyingType = fieldType };
-                    return new NullableType { UnderlyingType = fieldType };
-                }
+                // Wrap result in optional/nullable for null conditional access (one seam, #1747)
+                if (memberAccess.IsNullConditional)
+                    return WrapNullConditionalResult(memberAccess, fieldType, objectType is OptionalType);
                 return fieldType;
             }
 
@@ -485,13 +503,9 @@ internal partial class TypeChecker
                 var propType = SubstituteMemberForReceiver(
                     udt.Symbol, Array.Empty<SemanticType>(), propOwner, prop.Type);
 
-                // Wrap result in optional/nullable for null conditional access
-                if (memberAccess.IsNullConditional && propType is not NullableType and not OptionalType)
-                {
-                    if (objectType is OptionalType)
-                        return new OptionalType { UnderlyingType = propType };
-                    return new NullableType { UnderlyingType = propType };
-                }
+                // Wrap result in optional/nullable for null conditional access (one seam, #1747)
+                if (memberAccess.IsNullConditional)
+                    return WrapNullConditionalResult(memberAccess, propType, objectType is OptionalType);
                 return propType;
             }
 
