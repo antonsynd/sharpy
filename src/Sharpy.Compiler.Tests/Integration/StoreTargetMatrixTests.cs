@@ -535,113 +535,343 @@ def main() -> None:
     //   - Walrus + tuple/starred: walrus is always a single-name binding
     //   - Del + starred: `del *a` is a SyntaxError in python3 as well
 
-    // ── Declared-type stores (#1706) ──
-    // A store is checked against the target's DECLARED type; the assigned value's type and
-    // control-flow facts are READ narrowings. Axes: target {local, self.field, obj.field,
-    // tuple-element attribute} × narrowing source {prior store, assert, if-block} × store {None,
-    // wider subtype}. The two controls at the end prove (a) a non-nullable declaration still refuses
-    // None and (b) reads DO narrow to the stored value's type — both are what a permissive cure
-    // would silently lose.
+    // ── Declared-type stores (#1706): the generated product ──
+    //
+    // Contract: a value entering a typed slot is admitted or refused against the slot's DECLARED
+    // type. The assigned value's type and control-flow facts are READ narrowings and must not
+    // change what a store admits.
+    //
+    // Axes (the product is generated, not hand-listed, so a dropped arm cannot hide):
+    //   target  {local, self.field, obj.field, tuple-element attribute, walrus, index}
+    //   source  {prior store, assert x is not None, if isinstance(x, T)}   — how the slot narrowed
+    //   store   {None into a `T | None` slot, a wider subtype into an `object`-typed slot}
+    // 6 × 3 × 2 = 36 cells, each a complete program that RUNS and prints a discriminating value:
+    // with the defect present the cell does not print, it reports SPY0229/SPY0220.
+    //
+    // Three cells are known-red and ratcheted against #1756 (the index position still checks the
+    // store against the predicate-narrowed element type). They assert the CURRENT refusal by its
+    // code, so fixing #1756 turns them red and forces the entry to drain — they are not an
+    // expectation that the refusal is correct. `MatrixIsTotalOverItsAxes` counts live + known-red
+    // + N/A against the declared axes, so neither list can silently shrink.
+    //
+    // Shapes that had to be chosen, with the reason (each is a defect elsewhere, not the property
+    // under test):
+    //   - the tuple-element cells store a `str | None`/`object` VARIABLE rather than a bare `None`
+    //     literal: `b.v, n = None, 1` emits `var __t = (null, 1)` and ICEs with CS0815 behind
+    //     SPY0908 (#1707), which would make the cell measure tuple-literal emission instead.
+    //   - the walrus cells read the target AFTER the narrowing block ends: a walrus store does not
+    //     invalidate its target's narrowing (#1757), so a read INSIDE the block casts to the stale
+    //     type and throws at runtime. That defect has its own known-red cell below.
 
-    private const string NullableBoxPreamble = @"
-class NBox:
-    v: str | None = None
-    def clear_if_set(self) -> None:
-        if self.v is not None:
-            self.v = None
-";
+    private enum StoreTargetKind { Local, SelfField, ObjField, TupleElementAttribute, Walrus, Index }
+
+    private enum NarrowingSourceKind { PriorStore, Assert, IsInstance }
+
+    private enum StoreShapeKind { NoneIntoNullable, WiderIntoObject }
+
+    private sealed record StoreShape(
+        string Slot,
+        string Seed,
+        string Stored,
+        string IsInstanceType,
+        string WalrusTest,
+        string TupleVarDecl,
+        string TupleVar,
+        string ExpectedOutput)
+    {
+        public string Probe(string name) =>
+            Slot == "object" ? name : name + " is None";
+    }
+
+    private static StoreShape ShapeOf(StoreShapeKind kind) => kind switch
+    {
+        StoreShapeKind.NoneIntoNullable => new StoreShape(
+            Slot: "str | None", Seed: "\"a\"", Stored: "None", IsInstanceType: "str",
+            WalrusTest: "is None", TupleVarDecl: "empty: str | None = None", TupleVar: "empty",
+            ExpectedOutput: "True"),
+        StoreShapeKind.WiderIntoObject => new StoreShape(
+            Slot: "object", Seed: "1", Stored: "\"s\"", IsInstanceType: "int",
+            WalrusTest: "is not None", TupleVarDecl: "wide: object = \"s\"", TupleVar: "wide",
+            ExpectedOutput: "s"),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
+
+    private sealed record StoreProductCell(
+        StoreTargetKind Target,
+        NarrowingSourceKind Source,
+        StoreShapeKind Store,
+        string Program,
+        string ExpectedOutput,
+        string? KnownRedIssue = null,
+        string? KnownRedCode = null)
+    {
+        public string Id => $"{Target}/{Source}/{Store}";
+        public bool IsKnownRed => KnownRedIssue != null;
+    }
+
+    /// <summary>N/A cells: none. Every (target, source, store) triple is expressible.</summary>
+    private static readonly (string Cell, string Reason)[] StoreProductNaCells = Array.Empty<(string, string)>();
+
+    private static void AppendNarrowAndStore(
+        List<string> lines, NarrowingSourceKind source, string name, StoreShape shape,
+        IEnumerable<string> storeLines, string indent)
+    {
+        // Every source starts from the same prior store, so the three cells of a row differ only
+        // in the narrowing construct layered on top of it.
+        lines.Add($"{indent}{name} = {shape.Seed}");
+        var storeIndent = indent;
+        switch (source)
+        {
+            case NarrowingSourceKind.PriorStore:
+                break;
+            case NarrowingSourceKind.Assert:
+                lines.Add($"{indent}assert {name} is not None");
+                break;
+            case NarrowingSourceKind.IsInstance:
+                lines.Add($"{indent}if isinstance({name}, {shape.IsInstanceType}):");
+                storeIndent = indent + "    ";
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(source));
+        }
+
+        foreach (var line in storeLines)
+            lines.Add(storeIndent + line);
+    }
+
+    private static string BuildStoreProductProgram(
+        StoreTargetKind target, NarrowingSourceKind source, StoreShapeKind store)
+    {
+        var s = ShapeOf(store);
+        var lines = new List<string>();
+
+        switch (target)
+        {
+            case StoreTargetKind.Local:
+                lines.Add("def main() -> None:");
+                lines.Add($"    x: {s.Slot} = {s.Seed}");
+                AppendNarrowAndStore(lines, source, "x", s, new[] { $"x = {s.Stored}" }, "    ");
+                lines.Add($"    print({s.Probe("x")})");
+                break;
+
+            case StoreTargetKind.SelfField:
+                lines.Add("class NBox:");
+                lines.Add($"    v: {s.Slot} = {s.Seed}");
+                lines.Add("");
+                lines.Add("    def mutate(self) -> None:");
+                AppendNarrowAndStore(lines, source, "self.v", s,
+                    new[] { $"self.v = {s.Stored}" }, "        ");
+                lines.Add("");
+                lines.Add("def main() -> None:");
+                lines.Add("    b: NBox = NBox()");
+                lines.Add("    b.mutate()");
+                lines.Add($"    print({s.Probe("b.v")})");
+                break;
+
+            case StoreTargetKind.ObjField:
+                lines.Add("class NBox:");
+                lines.Add($"    v: {s.Slot} = {s.Seed}");
+                lines.Add("");
+                lines.Add("def main() -> None:");
+                lines.Add("    b: NBox = NBox()");
+                AppendNarrowAndStore(lines, source, "b.v", s, new[] { $"b.v = {s.Stored}" }, "    ");
+                lines.Add($"    print({s.Probe("b.v")})");
+                break;
+
+            case StoreTargetKind.TupleElementAttribute:
+                lines.Add("class NBox:");
+                lines.Add($"    v: {s.Slot} = {s.Seed}");
+                lines.Add("");
+                lines.Add("def main() -> None:");
+                lines.Add("    b: NBox = NBox()");
+                lines.Add("    n: int = 0");
+                lines.Add($"    {s.TupleVarDecl}");
+                AppendNarrowAndStore(lines, source, "b.v", s,
+                    new[] { $"b.v, n = {s.TupleVar}, 1" }, "    ");
+                lines.Add($"    print({s.Probe("b.v")})");
+                lines.Add("    print(n)");
+                break;
+
+            case StoreTargetKind.Walrus:
+                lines.Add("def main() -> None:");
+                lines.Add($"    x: {s.Slot} = {s.Seed}");
+                AppendNarrowAndStore(lines, source, "x", s,
+                    new[] { $"if (x := {s.Stored}) {s.WalrusTest}:", "    pass" }, "    ");
+                lines.Add($"    print({s.Probe("x")})");
+                break;
+
+            case StoreTargetKind.Index:
+                lines.Add("def main() -> None:");
+                lines.Add($"    d: dict[str, {s.Slot}] = {{\"k\": {s.Seed}}}");
+                AppendNarrowAndStore(lines, source, "d[\"k\"]", s,
+                    new[] { $"d[\"k\"] = {s.Stored}" }, "    ");
+                lines.Add($"    print({s.Probe("d[\"k\"]")})");
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(target));
+        }
+
+        return string.Join("\n", lines) + "\n";
+    }
+
+    // The three live-red cells of #1756, with the code each currently reports. Fixing #1756 makes
+    // KnownRed_IsStillRefused fail, which is the signal to delete the entry and let the cell join
+    // the live product.
+    private static (string? Issue, string? Code) KnownRedOf(
+        StoreTargetKind target, NarrowingSourceKind source, StoreShapeKind store)
+    {
+        if (target != StoreTargetKind.Index)
+            return (null, null);
+
+        return (source, store) switch
+        {
+            (NarrowingSourceKind.Assert, StoreShapeKind.NoneIntoNullable) =>
+                ("#1756", DiagnosticCodes.Semantic.NullabilityViolation),
+            (NarrowingSourceKind.IsInstance, StoreShapeKind.NoneIntoNullable) =>
+                ("#1756", DiagnosticCodes.Semantic.NullabilityViolation),
+            (NarrowingSourceKind.IsInstance, StoreShapeKind.WiderIntoObject) =>
+                ("#1756", DiagnosticCodes.Semantic.TypeMismatch),
+            _ => (null, null)
+        };
+    }
+
+    private static IReadOnlyList<StoreProductCell> BuildStoreProduct()
+    {
+        var cells = new List<StoreProductCell>();
+
+        foreach (var target in Enum.GetValues<StoreTargetKind>())
+            foreach (var source in Enum.GetValues<NarrowingSourceKind>())
+                foreach (var store in Enum.GetValues<StoreShapeKind>())
+                {
+                    var (issue, code) = KnownRedOf(target, source, store);
+                    cells.Add(new StoreProductCell(
+                        target, source, store,
+                        BuildStoreProductProgram(target, source, store),
+                        ShapeOf(store).ExpectedOutput,
+                        issue, code));
+                }
+
+        return cells;
+    }
+
+    public static IEnumerable<object[]> LiveStoreProductCells() =>
+        BuildStoreProduct().Where(c => !c.IsKnownRed).Select(c => new object[] { c.Id });
+
+    public static IEnumerable<object[]> KnownRedStoreProductCells() =>
+        BuildStoreProduct().Where(c => c.IsKnownRed).Select(c => new object[] { c.Id });
+
+    private static StoreProductCell CellById(string id) =>
+        BuildStoreProduct().Single(c => c.Id == id);
+
+    [Theory]
+    [MemberData(nameof(LiveStoreProductCells))]
+    public void DeclaredTypeStore_ProductCell_AdmitsTheStoreAgainstTheDeclaredType(string id)
+    {
+        var cell = CellById(id);
+        var result = CompileAndExecute(cell.Program);
+
+        result.Success.Should().BeTrue(
+            $"{id} stores a value of the slot's DECLARED type\n{cell.Program}\n"
+            + string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Contain(cell.ExpectedOutput,
+            $"{id} prints the stored value; the defect would print nothing and report SPY0229/SPY0220");
+    }
+
+    [Theory]
+    [MemberData(nameof(KnownRedStoreProductCells))]
+    public void DeclaredTypeStore_KnownRedCell_IsStillRefused(string id)
+    {
+        // Ratchet, not an expectation: these three cells SHOULD compile and print. They are
+        // recorded here with the code they currently report so that the fix for #1756 fails this
+        // test and drains the entry (`KnownRedOf`), moving the cell into the live product.
+        var cell = CellById(id);
+        var result = CompileAndExecute(cell.Program);
+
+        result.Success.Should().BeFalse(
+            $"{id} is known-red under {cell.KnownRedIssue}; if it now RUNS, delete its KnownRedOf "
+            + $"entry so the cell joins the live product\n{cell.Program}");
+        result.RawDiagnostics.Should().Contain(d => d.Code == cell.KnownRedCode,
+            $"{id} reports {cell.KnownRedCode} today ({cell.KnownRedIssue})");
+    }
 
     [Fact]
-    public void DeclaredTypeStore_Local_NoneAfterValueStore()
+    public void DeclaredTypeStore_MatrixIsTotalOverItsAxes()
     {
+        var cells = BuildStoreProduct();
+        var targets = Enum.GetValues<StoreTargetKind>().Length;
+        var sources = Enum.GetValues<NarrowingSourceKind>().Length;
+        var stores = Enum.GetValues<StoreShapeKind>().Length;
+
+        cells.Select(c => c.Id).Should().OnlyHaveUniqueItems("each cell appears once");
+
+        // The axis sizes are anchored to literals ON PURPOSE. Deriving both the cell list and the
+        // expected count from the same enums would make this assertion vacuous: deleting a member
+        // of StoreTargetKind would shrink both sides and stay green. Widening or narrowing an axis
+        // is a deliberate change to the class and must be made here as well.
+        targets.Should().Be(6,
+            "targets = local, self.field, obj.field, tuple-element attribute, walrus, index");
+        sources.Should().Be(3, "sources = prior store, assert, isinstance");
+        stores.Should().Be(2, "stores = None into a nullable slot, a wider subtype into an object slot");
+        (cells.Count + StoreProductNaCells.Length).Should().Be(36,
+            "live + known-red + N/A covers the declared axes; a dropped arm must fail here, not "
+            + "leave the survivors green");
+        (targets * sources * stores).Should().Be(36, "the axes and the cell count agree");
+
+        foreach (var target in Enum.GetValues<StoreTargetKind>())
+            foreach (var source in Enum.GetValues<NarrowingSourceKind>())
+                foreach (var store in Enum.GetValues<StoreShapeKind>())
+                    cells.Should().Contain(
+                        c => c.Target == target && c.Source == source && c.Store == store,
+                        $"{target} × {source} × {store} is a cell of the matrix");
+
+        cells.Where(c => c.IsKnownRed).Should().OnlyContain(
+            c => c.KnownRedIssue!.StartsWith('#') && c.KnownRedCode != null,
+            "every known-red cell cites the issue it drains on and the code it reports");
+        StoreProductNaCells.Should().OnlyContain(n => n.Reason.Length > 20,
+            "every N/A cell states why, and 'uncommon' is not a reason");
+
+        // The two shapes must actually differ in what they store, or the store axis is one axis.
+        ShapeOf(StoreShapeKind.NoneIntoNullable).Stored.Should()
+            .NotBe(ShapeOf(StoreShapeKind.WiderIntoObject).Stored);
+    }
+
+    [Fact]
+    public void DeclaredTypeStore_Control_IndexStoreWithoutNarrowingIsAdmitted()
+    {
+        // Positive control for the three #1756 known-reds: the same store, same container, no
+        // narrowing. If this were red too, the known-reds would be measuring the store and not
+        // the narrowing leak.
         var result = CompileAndExecute(@"
 def main() -> None:
-    x: str | None = None
-    x = ""a""
-    x = None
-    print(x is None)
+    d: dict[str, str | None] = {""k"": ""a""}
+    d[""k""] = None
+    print(d[""k""] is None)
 ");
-        result.Success.Should().BeTrue(result.StandardError);
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
         result.StandardOutput.Should().Contain("True");
     }
 
     [Fact]
-    public void DeclaredTypeStore_Local_WiderDeclaredObjectRebindsAcrossTypes()
+    public void DeclaredTypeStore_KnownRed_WalrusStoreLeavesStaleNarrowing_1757()
     {
+        // Ratchet for #1757: the store IS admitted (that is #1706's property, and the walrus row
+        // of the product above is green), but the walrus does not invalidate the isinstance
+        // narrowing, so the read one line later casts to the stale `int` and throws. When #1757
+        // is fixed this program prints `s` and this test fails — delete it then.
         var result = CompileAndExecute(@"
 def main() -> None:
     x: object = 1
-    x = ""a""
-    x = 2
-    print(x)
+    if isinstance(x, int):
+        y: object = (x := ""s"")
+        print(x)
 ");
-        result.Success.Should().BeTrue(result.StandardError);
-        result.StandardOutput.Should().Contain("2");
-    }
-
-    [Fact]
-    public void DeclaredTypeStore_Local_NoneAfterAssertNarrowing()
-    {
-        var result = CompileAndExecute(@"
-def main() -> None:
-    x: str | None = None
-    x = ""a""
-    assert x is not None
-    x = None
-    print(x is None)
-");
-        result.Success.Should().BeTrue(result.StandardError);
-        result.StandardOutput.Should().Contain("True");
-    }
-
-    [Fact]
-    public void DeclaredTypeStore_SelfField_InsideNarrowingBlock()
-    {
-        var result = CompileAndExecute(NullableBoxPreamble + @"
-def main() -> None:
-    b: NBox = NBox()
-    b.v = ""a""
-    b.clear_if_set()
-    print(b.v is None)
-");
-        result.Success.Should().BeTrue(result.StandardError);
-        result.StandardOutput.Should().Contain("True");
-    }
-
-    [Fact]
-    public void DeclaredTypeStore_ObjField_NoneAfterAssertNarrowing()
-    {
-        var result = CompileAndExecute(NullableBoxPreamble + @"
-def main() -> None:
-    b: NBox = NBox()
-    b.v = ""a""
-    assert b.v is not None
-    b.v = None
-    print(b.v is None)
-");
-        result.Success.Should().BeTrue(result.StandardError);
-        result.StandardOutput.Should().Contain("True");
-    }
-
-    [Fact]
-    public void DeclaredTypeStore_TupleElementAttribute_InsideIsinstanceNarrowing()
-    {
-        // The value is assignable to the DECLARED `object` but not to the isinstance-narrowed `int`;
-        // BASE 6e2b68812 refused it (SPY0220 "'str' to 'int32' in tuple unpacking"). A `None` element
-        // cannot be the discriminator here: a None inside a tuple-literal RHS is its own class
-        // (`var __t = (null, 1)`, CS0815 behind SPY0908 — #1707).
-        var result = CompileAndExecute(@"
-class OBox:
-    v: object = 0
-
-def main() -> None:
-    b: OBox = OBox()
-    if isinstance(b.v, int):
-        b.v, n = ""s"", 1
-        print(b.v, n)
-");
-        result.Success.Should().BeTrue(result.StandardError);
-        result.StandardOutput.Should().Contain("s 1");
+        result.Success.Should().BeFalse(
+            "#1757: a walrus store leaves the narrowing stale; if this now runs, delete this cell");
+        string.Join("\n", result.CompilationErrors).Should().Contain("InvalidCastException",
+            "the emitted read casts to the stale narrowed type");
+        result.StandardOutput.Should().NotContain("s",
+            "the program never reaches the print");
     }
 
     [Fact]
