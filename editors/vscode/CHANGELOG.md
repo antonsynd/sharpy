@@ -7,6 +7,10 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-09-05
+
+No extension-facing changes; version bumped with the toolchain.
+
 ## [0.18.0] - 2026-09-04
 
 ### Changed
