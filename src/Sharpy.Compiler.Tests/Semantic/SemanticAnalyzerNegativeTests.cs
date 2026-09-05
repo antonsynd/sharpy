@@ -331,7 +331,11 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Cannot assign"));
+        // The dict literal reports its key and its value separately at the element span
+        // (plan-757fbb Decision 7) and the container never re-reports — exactly two, both the
+        // seam's store refusal. `Contain` alone would also pass a third, container-level line.
+        typeChecker.Diagnostics.GetErrors().Should().HaveCount(2)
+            .And.OnlyContain(e => e.Message.Contains("Cannot assign"));
     }
 
     #endregion
