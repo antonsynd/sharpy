@@ -296,6 +296,15 @@ internal partial class TypeChecker
             }
         }
 
+        // `??=` is a store into the LEFT slot, decided by the store seam at
+        // StorePosition.CoalesceAssign for every target kind — never the augmented operator path
+        // (plan-757fbb Decision 6, #1767).
+        if (assignment.Operator == AssignmentOperator.NullCoalesceAssign)
+        {
+            CheckNullCoalesceAssignment(assignment);
+            return;
+        }
+
         // Check target and value types. An index-access target is checked in STORE position (#1620).
         // A plain-store target is typed by its DECLARATION: a member access in store position takes
         // no read narrowing (`assert b.v is not None; b.v = None` writes the declared `str | None`),
@@ -356,49 +365,6 @@ internal partial class TypeChecker
                     return;
                 }
                 _semanticInfo.SetAugmentedAssignMutation(assignment, classified.ClrName);
-                return;
-            }
-
-            // ??= is a store into the left slot: the RHS is classified by the store seam,
-            // not the binary ?? operator. Cross-family cells refuse with steers; constants
-            // and float32 literals convert to the payload width; Optional→wrap fact (#1767).
-            if (assignment.Operator == AssignmentOperator.NullCoalesceAssign
-                && assignment.Target is Identifier coalTargetId)
-            {
-                var coalPred = (_symbolTable.Lookup(coalTargetId.Name, searchParents: false)
-                    ?? _symbolTable.Lookup(coalTargetId.Name, searchParents: true)) as VariableSymbol;
-                var coalDeclaredType = coalPred != null ? DeclaredBindingType(coalPred) : targetType;
-
-                if (coalDeclaredType is not UnknownType && valueType is not UnknownType
-                    && !IsAssignable(valueType, coalDeclaredType))
-                {
-                    // Try payload first for wrapper types
-                    var coalPayload = coalDeclaredType is OptionalType coalOpt ? coalOpt.UnderlyingType
-                        : coalDeclaredType is NullableType { IsValueType: true } coalNt ? coalNt.UnderlyingType
-                        : (SemanticType?)null;
-
-                    if (coalPayload != null
-                        && (IsAssignable(valueType, coalPayload)
-                            || IsAcceptedVerdict(ClassifyStore(StorePosition.Augmented, assignment.Value, valueType, coalPayload))))
-                    {
-                        if (coalDeclaredType is OptionalType wrapOpt)
-                            _semanticInfo.SetOptionalStoreWrap(assignment, wrapOpt);
-                    }
-                    else
-                    {
-                        CheckStore(StorePosition.Augmented, assignment.Value, valueType, coalDeclaredType,
-                            assignment, assignment.Span);
-                    }
-                }
-
-                // The emitter needs the Optional coalesce lowering to generate
-                // x.IsSome ? x : value (the C# ?? operator doesn't work on Optional<T>).
-                if (coalDeclaredType is OptionalType)
-                {
-                    _semanticInfo.SetOperatorLowering(assignment,
-                        new OperatorLowering(OperatorLoweringKind.OptionalCoalesceBothOptional));
-                }
-
                 return;
             }
 
@@ -494,13 +460,6 @@ internal partial class TypeChecker
                     new OperatorLowering(OperatorLoweringKind.ShiftCountCastToInt));
             }
 
-            if (assignment.Operator == AssignmentOperator.NullCoalesceAssign
-                && targetType is OptionalType)
-            {
-                _semanticInfo.SetOperatorLowering(assignment,
-                    new OperatorLowering(OperatorLoweringKind.OptionalCoalesceBothOptional));
-            }
-
             // `x *= n` reads the same string-repeat tag family as the binary form (#1623): the
             // target is the string (StrLeft) or the count (StrRight — refused above as a str
             // result assigned to a non-str target, but classified identically all the same).
@@ -563,6 +522,114 @@ internal partial class TypeChecker
             : StorePosition.IndexStore;
         CheckStore(storePos, assignment.Value, valueType, assignmentTargetType,
             assignment, assignment.Span);
+    }
+
+    /// <summary>
+    /// <c>x ??= v</c> is a store into the LEFT slot, decided by the store seam at
+    /// <see cref="StorePosition.CoalesceAssign"/> for EVERY target kind — local, member, index,
+    /// narrowed local (plan-757fbb Decision 6, #1767). The one route for all of them: the
+    /// identifier-only arm this replaces reused <c>StorePosition.Augmented</c>, classified without
+    /// applying (the float32 literal stayed a <c>double</c>, the conditional's branches carried no
+    /// cast — CS0266/CS1503 behind SPY0908), let a non-nullable left through to CS0019, and left
+    /// member and index targets on the operator path that refused every payload form.
+    ///
+    /// <para>The target is typed by its DECLARATION. The operator reads the whole slot
+    /// (<c>x.IsSome ? x : …</c> / <c>x ?? …</c>), so a read narrowing on the target must not apply —
+    /// a narrowed <c>x</c> reads <c>x.Unwrap()</c>, which has no <c>IsSome</c> (CS1061) — and
+    /// <c>??=</c> on a non-None name is a no-op whose <c>RemoveNone</c> fact survives (Decision 4,
+    /// <c>NarrowingFlowAnalysis.Kill</c>). <c>_plainStoreTarget</c> gives member and index targets
+    /// the declared slot; <c>_typeTestOperand</c> is what <c>CheckIdentifier</c> honours for the
+    /// same raw read.</para>
+    ///
+    /// <para>Order of decisions. (a) A non-nullable, non-Optional left is refused SPY0222 BEFORE
+    /// the value is checked (spec: "y is not nullable or optional"): the refusal is about the
+    /// left, and checking a <c>Some(v)</c> RHS against a non-Optional expectation cascades a wrong
+    /// SPY0230. (b) A bare <c>None</c> RHS keeps its SPY0222 — assigning absence to an absent slot
+    /// is a no-op and likely a mistake; <c>None()</c> is typed by the slot like any RHS (SPY0244 at
+    /// a <c>T | None</c> slot from the constructor itself, a running no-op at a <c>T?</c> slot).
+    /// (c) The seam: whole slot first (<c>T?</c> into <c>T?</c>, <c>T | None</c> into
+    /// <c>T | None</c>), then the payload — the constant, float32, decimal, LiteralString and
+    /// conditional arms record the SAME node-keyed facts a plain store records, the cross-family
+    /// cells refuse with the <c>maybe</c>/unwrap steers, and an Optional slot taking a payload
+    /// records the wrap fact <c>GenerateNullCoalesceValue</c> prints as <c>Optional&lt;T&gt;.Some(…)</c>.</para>
+    /// </summary>
+    private void CheckNullCoalesceAssignment(Assignment assignment)
+    {
+        SemanticType targetType;
+        using (ScopedValue.Push(ref _indexStoreTarget, IndexStoreTarget.Of(assignment)))
+        using (ScopedValue.Push(ref _plainStoreTarget, assignment.Target))
+        using (ScopedValue.Push(ref _typeTestOperand, assignment.Target))
+            targetType = CheckExpression(assignment.Target);
+
+        if (assignment.Target is Identifier targetId)
+        {
+            var symbol = _symbolTable.Lookup(targetId.Name, searchParents: true);
+            if (symbol is VariableSymbol { IsConstant: true })
+            {
+                AddError($"Cannot use augmented assignment on constant variable '{targetId.Name}'",
+                    assignment.LineStart, assignment.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
+                    span: assignment.Span);
+                return;
+            }
+
+            // The whole slot is the ROOT binding's declared type, not a payload-typed rebinding
+            // version's (R-T): after `x = 5` inside `if x is not None:`, `x ??= 7` still stores
+            // into the `int?` slot.
+            if (symbol is VariableSymbol variable)
+                targetType = DeclaredBindingType(variable);
+        }
+
+        if (targetType is UnknownType)
+        {
+            // Error recovery: the target was already refused; still type the RHS for its own sake.
+            CheckExpression(assignment.Value);
+            return;
+        }
+
+        // (a) The left must be able to hold absence.
+        if (targetType is not (OptionalType or NullableType))
+        {
+            var slot = targetType.GetDisplayName();
+            AddError(
+                $"Type '{slot}' does not support operator '??=': the target must be nullable "
+                + $"('{slot} | None') or Optional ('{slot}?')",
+                assignment.LineStart, assignment.ColumnStart,
+                code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                span: assignment.Span);
+            return;
+        }
+
+        SemanticType valueType;
+        using (EnterStore(StorePosition.CoalesceAssign, targetType, assignment.Value))
+            valueType = CheckExpression(assignment.Value);
+
+        if (valueType is UnknownType)
+            return;
+
+        // (b) Bare None keeps its operator refusal.
+        if (valueType is VoidType)
+        {
+            ReportUnsupportedBinaryOperator(assignment, "??=", targetType, valueType);
+            return;
+        }
+
+        // (c) The seam decides the RHS against the whole slot, payload second (StoreSlotType).
+        if (!CheckStore(StorePosition.CoalesceAssign, assignment.Value, valueType, targetType,
+                assignment, assignment.Span))
+            return;
+
+        if (targetType is OptionalType optionalSlot)
+        {
+            // C#'s `??` does not apply to Optional<T>: the emitter prints x.IsSome ? x : value.
+            _semanticInfo.SetOperatorLowering(assignment,
+                new OperatorLowering(OperatorLoweringKind.OptionalCoalesceBothOptional));
+
+            // A payload RHS wraps (`x ??= 42` → Optional<int>.Some(42)); an Optional RHS
+            // (`x ??= Some(42)`, `x ??= o`) is the whole slot and does not.
+            if (!IsAssignable(valueType, optionalSlot))
+                _semanticInfo.SetOptionalStoreWrap(assignment, optionalSlot);
+        }
     }
 
     /// <summary>

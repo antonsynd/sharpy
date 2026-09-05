@@ -76,8 +76,8 @@ public class AugmentedAssignmentParityTests : IntegrationTestBase
 
     public static IEnumerable<object[]> NullCoalesceIncompatiblePairs()
     {
-        yield return new object[] { "int?", "None", "str", "\"hello\"" };
-        yield return new object[] { "int?", "None", "bytes", "b\"ab\"" };
+        yield return new object[] { "int?", "None()", "str", "\"hello\"" };
+        yield return new object[] { "int?", "None()", "bytes", "b\"ab\"" };
     }
 
     [Theory]
@@ -137,11 +137,24 @@ def main():
         augResult.Success.Should().BeFalse($"augmented `{lType} ??= {rType}` should refuse");
         binResult.Success.Should().BeFalse($"binary `{lType} ?? {rType}` should refuse");
 
-        // Parity is a CODE claim: both spellings refuse through the same SPY0222 seam
-        // (InferNullCoalesceType → ReportUnsupportedBinaryOperator), not merely "some error".
-        augResult.RawDiagnostics.Should().Contain(d =>
-            d.Code == DiagnosticCodes.Semantic.InvalidBinaryOperation,
-            $"augmented `{lType} ??= {rType}` should produce SPY0222");
+        // Both spellings refuse, but through DIFFERENT seams, each a CODE claim: `x ?? y` is the
+        // binary operator (InferNullCoalesceType → ReportUnsupportedBinaryOperator, SPY0222), while
+        // `x ??= y` is a STORE into the left slot decided by the store seam at
+        // StorePosition.CoalesceAssign (plan-757fbb Decision 6, #1767) — SPY0220 with the seam's
+        // phrasing, exactly once, and never SPY0908.
+        augResult.RawDiagnostics.Should().ContainSingle(d =>
+            d.Code == DiagnosticCodes.Semantic.TypeMismatch,
+            $"augmented `{lType} ??= {rType}` is refused by the store seam (SPY0220). Got: "
+            + string.Join(" | ", augResult.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
+        var augRefusal = augResult.RawDiagnostics.Single(d => d.Code == DiagnosticCodes.Semantic.TypeMismatch);
+        augRefusal.Message.Should().Contain($"to '??=' target of type '{lType.Replace("int?", "int32?")}'");
+        augRefusal.Message.Should().Contain($"Cannot assign type '{rType}'",
+            "a mistyped payload's refusal names BOTH types");
+        augRefusal.Message.Should().NotContain("Some(",
+            $"`Some({rType})` is Optional[{rType}], still not Optional[int32] — the steer would be untruthful "
+            + "(852bf488b said \"construct it with Some(...)\", SPY0604)");
+        augResult.RawDiagnostics.Should().NotContain(d =>
+            d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
         binResult.RawDiagnostics.Should().Contain(d =>
             d.Code == DiagnosticCodes.Semantic.InvalidBinaryOperation,
             $"binary `{lType} ?? {rType}` should produce SPY0222");

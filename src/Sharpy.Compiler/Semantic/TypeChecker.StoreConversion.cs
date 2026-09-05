@@ -31,6 +31,17 @@ internal partial class TypeChecker
         CollectionElement,
         LambdaBody,
         Augmented,
+
+        /// <summary>
+        /// The RHS of <c>x ??= v</c> — a store into the LEFT slot for every target kind (local,
+        /// member, index, narrowed local), never an operator question (plan-757fbb Decision 6,
+        /// #1767). Whole slot first (<c>T?</c> into <c>T?</c>, <c>T | None</c> into
+        /// <c>T | None</c>), then the payload: the value-shape arms measure against the payload of
+        /// an Optional slot too, because a bare payload IS the accepted form at this position
+        /// (null_coalescing_assignment.md §Optional) and the emitter wraps it from the recorded
+        /// <see cref="SemanticInfo.SetOptionalStoreWrap"/> fact.
+        /// </summary>
+        CoalesceAssign,
     }
 
     internal enum StoreVerdict
@@ -84,11 +95,15 @@ internal partial class TypeChecker
         if (IsAssignable(valueType, targetType))
             return StoreVerdict.Accepted;
 
-        // The SLOT the value-shape arms measure against. `T | None` is real C# nullability and
-        // stays loose (Decision 7): `sbyte? x = 7;` and `float? f = 0.5f;` compile, so a value
-        // shape admitted into `T` is admitted into `T | None`. `T?` (Optional) is NOT unwrapped —
-        // it is a tagged union whose only constructors are Some(v)/None() (R-G, #1720).
-        var slotType = targetType is NullableType nullableSlot ? nullableSlot.UnderlyingType : targetType;
+        var slotType = StoreSlotType(position, targetType);
+
+        // 1b. `??=` admits a bare payload into an Optional slot — the one position where the slot
+        //     the value-shape arms measure against is the Optional's payload (see StoreSlotType).
+        //     `x: int? = None(); x ??= 42` is the spec's own example; the caller records the wrap.
+        if (position == StorePosition.CoalesceAssign
+            && targetType is OptionalType
+            && IsAssignable(valueType, slotType))
+            return StoreVerdict.Accepted;
 
         // 2. Integer constant conversion
         if (allowConstantConversion
@@ -147,9 +162,15 @@ internal partial class TypeChecker
         {
             // A `T | None` value into `T?` is a NOTATION mismatch, not a missing constructor: the
             // value already carries its absence. Steering it to Some(...) would be wrong advice.
-            return valueType is NullableType
-                ? StoreVerdict.RefusedNullableIntoOptional
-                : StoreVerdict.RefusedOptionalConstruction;
+            if (valueType is NullableType)
+                return StoreVerdict.RefusedNullableIntoOptional;
+
+            // At `??=` a bare payload was already admitted at 1b–6, so what reaches here is a
+            // payload-SHAPE refusal (mistyped, out of range) — "construct it with Some(...)" would
+            // be wrong advice (`Some(300)` into `uint8?` is refused too); it takes the seam's plain
+            // refusal against the whole slot, the same text a declaration gives the payload.
+            if (position != StorePosition.CoalesceAssign)
+                return StoreVerdict.RefusedOptionalConstruction;
         }
 
         // 8. VoidType into non-nullable
@@ -186,6 +207,27 @@ internal partial class TypeChecker
 
         return unnarrowed != null && unnarrowed.Equals(targetType);
     }
+
+    /// <summary>
+    /// The SLOT the value-shape arms (constant, float32/decimal literal, LiteralString, conditional
+    /// branch cast) measure against, at one position. `T | None` is real C# nullability and stays
+    /// loose (Decision 7): `sbyte? x = 7;` and `float? f = 0.5f;` compile, so a value shape admitted
+    /// into `T` is admitted into `T | None`. `T?` (Optional) is NOT unwrapped — it is a tagged
+    /// union whose only constructors are Some(v)/None() (R-G, #1720) — except at
+    /// <see cref="StorePosition.CoalesceAssign"/>, where a bare payload is the accepted form
+    /// (`x ??= 42` wraps as Some(42), null_coalescing_assignment.md §Optional) and the emitter
+    /// wraps from the recorded fact. One helper for <see cref="ClassifyStore"/> and
+    /// <see cref="ApplyConditionalBranchVerdicts"/>, so the arm that admits `7 if c else 8` into an
+    /// `int8?` and the cast it records agree on the width (#1767: the cast said `int8?`, CS1503).
+    /// </summary>
+    private static SemanticType StoreSlotType(StorePosition position, SemanticType targetType)
+        => targetType switch
+        {
+            NullableType nullableSlot => nullableSlot.UnderlyingType,
+            OptionalType optionalSlot when position == StorePosition.CoalesceAssign
+                => optionalSlot.UnderlyingType,
+            _ => targetType,
+        };
 
     /// <summary>
     /// Classifies one arm of a conditional-expression value against the store's slot, or null when
@@ -270,10 +312,7 @@ internal partial class TypeChecker
             ApplyAcceptedVerdict(position, verdict, branch, branchType, targetType);
 
             if (verdict == StoreVerdict.AcceptedConstantConversion)
-            {
-                var slotType = targetType is NullableType nullable ? nullable.UnderlyingType : targetType;
-                _semanticInfo.SetConditionalBranchNarrowing(branch, slotType);
-            }
+                _semanticInfo.SetConditionalBranchNarrowing(branch, StoreSlotType(position, targetType));
         }
     }
 
@@ -462,6 +501,11 @@ internal partial class TypeChecker
 
             StorePosition.Augmented
                 => $"Result type '{value}' of augmented assignment is not assignable to target type '{target}'",
+
+            // The refusal names the WHOLE slot (`int32?`, `int8 | None`), because that is what the
+            // operator reads and what the cross-family steers (`maybe` / unwrap) are phrased against.
+            StorePosition.CoalesceAssign
+                => $"Cannot assign type '{value}' to '??=' target of type '{target}'",
 
             StorePosition.TupleElement or StorePosition.CollectionElement
                 => $"Cannot assign type '{value}' to '{target}'",

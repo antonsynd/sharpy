@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 ///
 /// <para><b>Contract.</b> A value entering a typed slot is admitted or refused by ONE seam
 /// (<c>TypeChecker.ClassifyStore</c>) consulted at every store position, against the DECLARED slot.
-/// The matrix is the product of that contract's two axes: the 17 members of the seam's
+/// The matrix is the product of that contract's two axes: the 18 members of the seam's
 /// <c>StorePosition</c> enum and the 24 value shapes the seam distinguishes.</para>
 ///
 /// <para><b>Every cell executes.</b> An accepted cell compiles, runs, and prints the stored value —
@@ -41,10 +41,10 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     // with itself. These are written down, and Positions_AreExactlyTheStorePositionEnum compares
     // the roster to the enum, so ADDING a StorePosition member fails here until its row is added.
 
-    private const int PositionCount = 17;
+    private const int PositionCount = 18;
     private const int ShapeCount = 24;
-    private const int AcceptedCellCount = 229;
-    private const int RefusedCellCount = 175;
+    private const int AcceptedCellCount = 234;
+    private const int RefusedCellCount = 194;
     private const int KnownRedCellCount = 0;
     private const int NotApplicableCellCount = 4;
 
@@ -229,6 +229,14 @@ public class StoreConversionMatrixTests : IntegrationTestBase
             s => $"def main():\n    x: {s.Slot} = {s.Seed}\n    x += {s.Value}\n    print(x)\n",
             3, DiagnosticCodes.Semantic.TypeMismatch,
             (v, t) => $"Result type '{v}' of augmented assignment is not assignable to target type '{t}'"),
+
+        // `??=` is a store into the LEFT slot (plan-757fbb Decision 6, #1767). The refusal names
+        // the whole slot; a bare payload into an Optional slot is ACCEPTED here (the override below)
+        // because that is the spec's own form (`x ??= 42` wraps as Some(42)).
+        new("CoalesceAssign",
+            s => $"def main():\n    x: {s.Slot} = {s.Seed}\n    x ??= {s.Value}\n    print(x)\n",
+            3, DiagnosticCodes.Semantic.TypeMismatch,
+            (v, t) => $"Cannot assign type '{v}' to '??=' target of type '{t}'"),
     };
 
     // ── Cells whose refusal is decided BEFORE any store ───────────────────────────────────────
@@ -244,6 +252,38 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         "Augmented×NullableIntoOptional", "Augmented×OptionalIntoNullable",
         "Augmented×OptionalIntoNonOptional", "Augmented×SomeConstantIntoNarrowOptional",
         "Augmented×ConstantIntoNarrowNullable",
+    };
+
+    // ── `??=` cells decided BEFORE the seam, and the two cells the seam decides differently ───
+    // A left that cannot hold absence is refused SPY0222 before the RHS is checked (spec: "y is not
+    // nullable or optional") — every shape whose slot is a plain `int8`/`float32`/`decimal`/
+    // `LiteralString`/`int`. A bare `None` RHS keeps its operator refusal (SPY0222, "operand of type
+    // 'None'"). Listed explicitly, so a shape added with a plain slot shows up as a red cell.
+
+    private static readonly HashSet<string> CoalesceLeftRefusalCells = new()
+    {
+        "CoalesceAssign×InRangeIntConstant", "CoalesceAssign×OutOfRangeIntConstant",
+        "CoalesceAssign×ConstReference", "CoalesceAssign×FoldedConstant",
+        "CoalesceAssign×NegativeConstant", "CoalesceAssign×NegativeOutOfRangeConstant",
+        "CoalesceAssign×FloatLiteralIntoFloat32", "CoalesceAssign×FloatLiteralIntoDecimal",
+        "CoalesceAssign×OutOfRangeFloatLiteral",
+        "CoalesceAssign×StringLiteralIntoLiteralString", "CoalesceAssign×ParenthesizedLiteralIntoLiteralString",
+        "CoalesceAssign×ConcatLiteralIntoLiteralString", "CoalesceAssign×StrValueIntoLiteralString",
+        "CoalesceAssign×NoneIntoNonNullable", "CoalesceAssign×OptionalIntoNonOptional",
+    };
+
+    private static readonly HashSet<string> CoalesceNoneRefusalCells = new()
+    {
+        "CoalesceAssign×BareNoneIntoOptional", "CoalesceAssign×NoneIntoNullable",
+    };
+
+    // At `??=` a bare payload into an Optional slot is the accepted form, and `None()` into a
+    // PRESENT Optional is a no-op that keeps the seed — the two cells whose verdict or output differs
+    // from the shape's plain-store row.
+    private static readonly Dictionary<string, string> CoalesceAcceptedOverrides = new()
+    {
+        ["CoalesceAssign×BareValueIntoOptional"] = "42\n",
+        ["CoalesceAssign×NoneCallIntoOptional"] = "1\n",
     };
 
     // ── N/A cells ────────────────────────────────────────────────────────────────────────────
@@ -307,10 +347,17 @@ public class StoreConversionMatrixTests : IntegrationTestBase
             return Verdict.NotApplicable;
         if (KnownRedCells.ContainsKey(key))
             return Verdict.KnownRed;
-        if (OperatorRefusalCells.Contains(key))
+        if (OperatorRefusalCells.Contains(key)
+            || CoalesceLeftRefusalCells.Contains(key)
+            || CoalesceNoneRefusalCells.Contains(key))
             return Verdict.Refused;
+        if (CoalesceAcceptedOverrides.ContainsKey(key))
+            return Verdict.Accepted;
         return s.AcceptedOutput != null ? Verdict.Accepted : Verdict.Refused;
     }
+
+    private static string AcceptedOutputOf(Position p, Shape s)
+        => CoalesceAcceptedOverrides.TryGetValue(Key(p, s), out var overridden) ? overridden : s.AcceptedOutput!;
 
     /// <summary>The code and message a refused cell must carry — read off the two axis tables.</summary>
     private static (string Code, string Head, string Tail) RefusalOf(Position p, Shape s)
@@ -318,6 +365,17 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         if (OperatorRefusalCells.Contains(Key(p, s)))
             return (DiagnosticCodes.Semantic.InvalidBinaryOperation,
                 $"Type '{s.SlotType}' does not support operator '+=' with operand of type '{s.ValueType}'",
+                "");
+
+        if (CoalesceLeftRefusalCells.Contains(Key(p, s)))
+            return (DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                $"Type '{s.SlotType}' does not support operator '??=': the target must be nullable "
+                + $"('{s.SlotType} | None') or Optional ('{s.SlotType}?')",
+                "");
+
+        if (CoalesceNoneRefusalCells.Contains(Key(p, s)))
+            return (DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                $"Type '{s.SlotType}' does not support operator '??=' with operand of type 'None'",
                 "");
 
         if (s.RefusedCode != null)
@@ -359,7 +417,7 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         result.Success.Should().BeTrue(
             $"[{position} × {shape}] must compile — the seam admits this shape at every position. "
             + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
-        result.StandardOutput.Should().Be(s.AcceptedOutput,
+        result.StandardOutput.Should().Be(AcceptedOutputOf(p, s),
             $"[{position} × {shape}] prints the value that was stored, so a fact recorded but never "
             + $"applied fails here\n{source}");
     }
@@ -510,6 +568,9 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
         foreach (var key in OperatorRefusalCells)
             product.Should().Contain(key, $"operator-refusal row '{key}' names no cell");
+
+        foreach (var key in CoalesceLeftRefusalCells.Concat(CoalesceNoneRefusalCells).Concat(CoalesceAcceptedOverrides.Keys))
+            product.Should().Contain(key, $"??= row '{key}' names no cell");
 
         foreach (var key in NotApplicableCells.Keys)
             product.Should().Contain(key, $"N/A row '{key}' names no cell");

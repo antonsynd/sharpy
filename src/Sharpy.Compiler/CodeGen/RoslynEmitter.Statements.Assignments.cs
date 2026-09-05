@@ -882,8 +882,20 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generates a null-coalescing value, aware of Optional vs nullable types.
-    /// Reads the OperatorLowering tag to decide between Optional ternary and native ?? (#1623).
+    /// Generates the value of <c>x ??= v</c>, aware of Optional vs nullable slots.
+    /// Reads the OperatorLowering tag to decide between the Optional ternary and native ?? (#1623).
+    ///
+    /// <para><c>??=</c> is a store into the left slot (plan-757fbb Decision 6, #1767), so its RHS
+    /// gets the SAME value lowerings a plain store's RHS gets, from the same node-keyed facts:
+    /// the float32/decimal literal re-typing and the conditional branch casts are already applied
+    /// by the time <paramref name="right"/> reaches here — <c>GenerateExpression(assign.Value)</c>
+    /// reads them per node, exactly as the plain-store path does — and the Optional wrap is the
+    /// plain store's <c>WrapInOptionalSome</c> from the same <c>SetOptionalStoreWrap</c> fact.
+    /// Rule 2: nothing here asks what the slot is or whether the value fits; an absent wrap fact
+    /// means the checker admitted the RHS as the whole slot (<c>x ??= Some(v)</c>, <c>x ??= o</c>).
+    /// <paramref name="left"/> is the raw slot: the checker types a <c>??=</c> target by its
+    /// declaration and records no read narrowing on it, so a narrowed <c>x</c> is not spliced as
+    /// <c>x.Unwrap()</c> (which has no <c>IsSome</c> — CS1061 before this fix).</para>
     /// </summary>
     private ExpressionSyntax GenerateNullCoalesceValue(ExpressionSyntax left, ExpressionSyntax right, Assignment? assignNode)
     {
@@ -891,7 +903,7 @@ internal partial class RoslynEmitter
             && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind
                 == OperatorLoweringKind.OptionalCoalesceBothOptional)
         {
-            // ??= with a bare-value RHS wraps the value in Some() (#1767)
+            // A payload RHS into an Optional slot wraps: x ??= 42 → x.IsSome ? x : Optional<int>.Some(42).
             if (_context.SemanticInfo?.GetOptionalStoreWrap(assignNode) is { } coalWrapOpt)
                 right = WrapInOptionalSome(right, coalWrapOpt);
 
@@ -900,6 +912,10 @@ internal partial class RoslynEmitter
                 left,
                 right);
         }
+
+        // A nullable slot: native `??`. The RHS already carries its own lowerings (a re-typed
+        // literal prints `0.5f`; an admitted conditional prints `c ? (sbyte)7 : (sbyte)8`), so C#
+        // types `x ?? right` as the slot's payload.
         return Binary(SyntaxKind.CoalesceExpression, left, right);
     }
 
