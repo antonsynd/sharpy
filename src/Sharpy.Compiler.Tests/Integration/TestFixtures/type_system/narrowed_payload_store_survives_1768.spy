@@ -1,0 +1,20 @@
+def main() -> None:
+    # An augmented store on a narrowed Optional keeps the narrowing (R-T): the read after it is the payload.
+    x: int? = Some(10)
+    if x is not None:
+        x += 5
+        n: int = x
+        print(n)
+
+    # A payload store on a narrowed Optional re-wraps and the narrowing survives.
+    d: int? = Some(1)
+    if d is not None:
+        d = 5
+        e: int = d + 1
+        print(e)
+
+    # A rebinding-narrowed read of a value-type `T | None` carries its accessor.
+    m: int | None = None
+    m = 5
+    k: int = m
+    print(k)

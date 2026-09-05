@@ -1,0 +1,15 @@
+x: int = 42
+
+def bump() -> None:
+    x = "s"
+
+def main() -> None:
+    d: float = 1.0
+    if True:
+        d = "t"
+    c: bool = True
+    def inner() -> None:
+        c = "u"
+    inner()
+    bump()
+    print(d, c, x)
