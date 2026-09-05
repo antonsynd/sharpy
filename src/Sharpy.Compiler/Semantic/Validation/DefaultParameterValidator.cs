@@ -203,11 +203,11 @@ internal class DefaultParameterValidator : ValidatingAstWalker
             return;
         }
 
-        var kind = ConstantDefaultClassifier.Classify(defaultValue, name =>
-        {
-            var symbol = Context.SymbolTable.Lookup(name);
-            return symbol is VariableSymbol { IsConstant: true };
-        });
+        // A reference resolves iff it names a const with the same backtick-escape spelling — the
+        // rule TypeChecker.TryFoldConstantValue applies when it folds the const's own value.
+        var kind = ConstantDefaultClassifier.Classify(defaultValue, id =>
+            Context.SymbolTable.Lookup(id.Name) is VariableSymbol { IsConstant: true } constSymbol
+            && constSymbol.IsNameBacktickEscaped == id.IsNameBacktickEscaped);
 
         if (!ConstantDefaultClassifier.IsAdmitted(kind, table))
         {

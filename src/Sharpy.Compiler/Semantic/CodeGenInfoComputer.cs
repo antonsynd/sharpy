@@ -21,6 +21,14 @@ internal class CodeGenInfoComputer
     private HashSet<string> _variablesWithExecutionOrderIssues = new();
     private string? _sourceFilePath;
 
+    // Module-level `const` declarations by name, and the memoized "emits as C# const" answer for
+    // each — see IsModuleConstCompileTime. Built once per module before any const is processed so
+    // a reference to a const declared LATER in the file resolves through its declaration rather
+    // than through processing order.
+    private readonly Dictionary<string, VariableDeclaration> _moduleConstDecls = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, bool> _moduleConstIsCompileTime = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _moduleConstsInProgress = new(StringComparer.Ordinal);
+
     public CodeGenInfoComputer(SymbolTable symbolTable, SemanticBinding? semanticBinding = null,
         DiagnosticBag? diagnostics = null, SemanticInfo? semanticInfo = null)
     {
@@ -100,6 +108,15 @@ internal class CodeGenInfoComputer
 
     private void ProcessModuleLevelDeclarations(Module module)
     {
+        _moduleConstDecls.Clear();
+        _moduleConstIsCompileTime.Clear();
+        _moduleConstsInProgress.Clear();
+        foreach (var stmt in module.Body)
+        {
+            if (stmt.UnwrapDecorated() is VariableDeclaration { IsConst: true } constDecl)
+                _moduleConstDecls[constDecl.Name] = constDecl;
+        }
+
         foreach (var stmt in module.Body)
         {
             // Unwrap for classification only: a suppress-decorated import (#1124) must still
@@ -184,10 +201,6 @@ internal class CodeGenInfoComputer
         var symbol = _symbolTable.Lookup(constDecl.Name);
         if (symbol is VariableSymbol varSymbol)
         {
-            var isCompileTimeConstant = varSymbol.ConstantValue != null
-                && IsConstEligibleVariable(varSymbol)
-                && IsClassifiedAsModuleConst(constDecl.InitialValue);
-
             SetCodeGenInfo(varSymbol, new CodeGenInfo
             {
                 CSharpName = NameCasing.ResolveConstant(constDecl.Name, constDecl.IsNameBacktickEscaped),
@@ -195,30 +208,188 @@ internal class CodeGenInfoComputer
                 Version = 0,
                 IsModuleLevel = true,
                 IsConstant = true,
-                IsCompileTimeConstant = isCompileTimeConstant,
+                IsCompileTimeConstant = IsModuleConstCompileTime(constDecl.Name),
                 HasExecutionOrderIssues = false
             });
         }
     }
 
-    private static bool IsClassifiedAsModuleConst(Expression? expr)
+    /// <summary>
+    /// Whether the module-level <c>const</c> named <paramref name="name"/> emits as a C# <c>const</c>
+    /// — a compile-time constant every constant-position consumer can read: a def/lambda/method
+    /// parameter default, a <c>case</c> pattern, another const's initializer — rather than as
+    /// <c>public static readonly</c>, which those positions refuse (CS1736 / CS9135 / CS0133).
+    ///
+    /// <para><b>Contract.</b> A const is compile-time iff (1) its declared type is one C# admits for
+    /// <c>const</c> — every <c>PrimitiveCatalog</c> primitive except <c>object</c> and <c>void</c>:
+    /// all integer widths, <c>float32</c>/<c>float64</c>, <c>decimal</c>, <c>bool</c>, <c>str</c>,
+    /// <c>char</c>; (2) the <c>ConstantDefaultClassifier</c> admits its initializer for
+    /// <c>AdmissionTable.ModuleConst</c> where an identifier resolves iff it names a module const that
+    /// is itself compile-time under this same rule and every operator node lowers to a C# constant
+    /// operator (<see cref="LowersToConstantExpression"/>); and (3) for the integer kinds only, the
+    /// checker folded a value (<c>VariableSymbol.ConstantValue</c>), which is the range/overflow
+    /// gate #1460 established. Forward references resolve through the declaration index, not
+    /// processing order, because C# resolves const dependency order itself
+    /// (<c>const double A = B; const double B = 4.0d;</c> is legal); a reference cycle answers false
+    /// for every member and is the checker's SPY0278 to report.</para>
+    ///
+    /// <para><b>Why.</b> dfcdd47fa deleted the emitter's literal-only fallback (Rule 2) but the
+    /// semantic fact that replaced it was integer-only — <c>ConstantValue</c> is folded only for
+    /// integer kinds — so <c>const F: float = 4.0</c>, <c>const S: str = "a"</c> and
+    /// <c>const B: bool = True</c> fell to <c>static readonly</c>: a float const used as a parameter
+    /// default (the spec's own example, function_default_parameters.md) ICEd CS1736 and a forward
+    /// reference <c>const A: float = B</c> read B's zero-initialized field (0.0 / None / False)
+    /// instead of its value (#1762 follow-up).</para>
+    /// </summary>
+    private bool IsModuleConstCompileTime(string name)
     {
-        if (expr == null)
+        if (_moduleConstIsCompileTime.TryGetValue(name, out var known))
+            return known;
+        if (!_moduleConstDecls.TryGetValue(name, out var decl))
             return false;
-        Func<string, bool> constResolver = _ => true;
-        var kind = Validation.ConstantDefaultClassifier.Classify(expr, constResolver);
-        return Validation.ConstantDefaultClassifier.IsAdmitted(kind, Validation.AdmissionTable.ModuleConst);
+        if (!_moduleConstsInProgress.Add(name))
+            return false; // cycle: no member of it can fold
+
+        var result = _symbolTable.Lookup(name) is VariableSymbol varSymbol
+            && ComputeModuleConstIsCompileTime(varSymbol, decl);
+
+        _moduleConstsInProgress.Remove(name);
+        _moduleConstIsCompileTime[name] = result;
+        return result;
     }
 
-    private bool IsConstEligibleVariable(VariableSymbol symbol)
+    private bool ComputeModuleConstIsCompileTime(VariableSymbol varSymbol, VariableDeclaration decl)
+    {
+        if (decl.InitialValue == null)
+            return false;
+
+        var primitive = ConstEligiblePrimitive(varSymbol);
+        if (primitive == null)
+            return false;
+
+        var kind = Validation.ConstantDefaultClassifier.Classify(
+            decl.InitialValue, ResolvesToCompileTimeConst, LowersToConstantExpression);
+        if (!Validation.ConstantDefaultClassifier.IsAdmitted(kind, Validation.AdmissionTable.ModuleConst))
+            return false;
+
+        var isInteger = primitive.Kind is Registry.PrimitiveCatalog.NumericKind.SignedInteger
+            or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger;
+        return !isInteger || varSymbol.ConstantValue != null;
+    }
+
+    /// <summary>
+    /// The declared (or, absent an annotation, inferred) type of <paramref name="symbol"/> when C#
+    /// admits it for <c>const</c>; null otherwise. <c>object</c> and <c>void</c> are the two catalog
+    /// entries C# does not (a const of a reference type other than string may only be null).
+    /// </summary>
+    private Registry.PrimitiveCatalog.PrimitiveInfo? ConstEligiblePrimitive(VariableSymbol symbol)
     {
         var type = _semanticBinding.GetVariableType(symbol);
         if (type is UnknownType)
             type = symbol.Type;
         var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(type);
-        return info != null && info.Kind is Registry.PrimitiveCatalog.NumericKind.SignedInteger
-            or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger;
+        if (info == null || info.ClrType == typeof(object) || info.ClrType == typeof(void))
+            return null;
+        return info;
     }
+
+    /// <summary>
+    /// The classifier's identifier hook for module consts: the name resolves iff it is a
+    /// <c>const</c> symbol (with the same backtick-escape spelling, the rule
+    /// TypeChecker.TryFoldConstantValue applies) that emits as a C# const — a const declared in
+    /// this module whose own initializer is compile-time, or an IMPORTED const carrying a folded
+    /// <c>ConstantValue</c>. The declaration of an imported const is not in this module, so the only
+    /// compile-time fact that travels with its symbol is the integer value ModuleLoader folds through
+    /// the same IntegerConstantEvaluator gate; an integer const with a folded value emits as a C#
+    /// const in its own module under this same rule (the #1601 chained-const contract:
+    /// <c>const BETA: int = ALPHA</c> narrows into <c>uint8</c> only because both are constants). A
+    /// non-integer imported const carries no such fact and stays a static-readonly read, which is
+    /// what BASE emitted for every identifier initializer.
+    /// </summary>
+    private bool ResolvesToCompileTimeConst(Identifier id)
+    {
+        var sym = _symbolTable.Lookup(id.Name);
+        if (sym is not VariableSymbol { IsConstant: true } constSymbol
+            || sym.IsNameBacktickEscaped != id.IsNameBacktickEscaped)
+            return false;
+        if (_moduleConstDecls.ContainsKey(id.Name))
+            return IsModuleConstCompileTime(id.Name);
+        return constSymbol.ConstantValue != null;
+    }
+
+    /// <summary>
+    /// The classifier's operator hook for module consts: whether the checker's recorded lowering for
+    /// one operator node is a C# constant operator. Reads only recorded facts — the operator
+    /// allowlist, <c>OperatorLowering</c>, <c>BinaryOpLowering</c> and the operands' expression
+    /// types — never the emitter's choices. Anything not provably native answers false, and the const
+    /// stays <c>static readonly</c>, which is exactly what the pre-dfcdd47fa emitter did for every
+    /// non-literal initializer; so widening the const set here can only turn a working
+    /// <c>static readonly</c> into a working <c>const</c>, never into CS0133.
+    /// </summary>
+    private bool LowersToConstantExpression(Expression node)
+    {
+        if (_semanticInfo == null)
+            return false;
+
+        if (node is BinaryOp binary)
+        {
+            // `//`, `%`, `**`, `@`, `in`/`not in`, `is`/`is not` and `??` lower to calls or to
+            // non-constant constructs at every operand type; the rest are C# operators whose
+            // constant-expression evaluation Roslyn performs (C# spec §12.23).
+            if (binary.Operator is not (BinaryOperator.Add or BinaryOperator.Subtract
+                or BinaryOperator.Multiply or BinaryOperator.Divide
+                or BinaryOperator.Equal or BinaryOperator.NotEqual
+                or BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
+                or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual
+                or BinaryOperator.And or BinaryOperator.Or
+                or BinaryOperator.BitwiseAnd or BinaryOperator.BitwiseOr or BinaryOperator.BitwiseXor
+                or BinaryOperator.LeftShift or BinaryOperator.RightShift))
+                return false;
+
+            // Equality that lowers to an Equals call (tuples, CLR value types, reference types
+            // without op_Equality) is not a constant expression.
+            if (_semanticInfo.GetBinaryOpLoweringForIr(binary) != BinaryOpLowering.NativeOperator)
+                return false;
+
+            // Both operands must be primitive-typed: `typeof(int) == typeof(int)` and enum-member
+            // arithmetic are not constant expressions even when both sides are "constants".
+            if (!IsPrimitiveTyped(binary.Left) || !IsPrimitiveTyped(binary.Right))
+                return false;
+
+            // `and`/`or` on a non-bool operand is wrapped in a truthiness test (`x.Length > 0`,
+            // `x != 0`) by the emitter (#1558) — only the bool form is the native `&&`/`||`.
+            if (binary.Operator is BinaryOperator.And or BinaryOperator.Or
+                && !(IsBoolTyped(binary.Left) && IsBoolTyped(binary.Right)))
+                return false;
+        }
+        else if (node is UnaryOp { Operator: UnaryOperator.Not } logicalNot)
+        {
+            if (!IsBoolTyped(logicalNot.Operand))
+                return false;
+        }
+        else if (node is ConditionalExpression cond)
+        {
+            if (!IsBoolTyped(cond.Test))
+                return false;
+        }
+
+        var lowering = _semanticInfo.GetOperatorLowering(node);
+        return lowering == null || lowering.Kind is OperatorLoweringKind.Native
+            // `(double)(a) / b` and `a << (int)b`: explicit numeric conversions of constants are
+            // constant expressions; the negate-literal kinds emit the literal itself.
+            or OperatorLoweringKind.TrueDivisionCastLeft
+            or OperatorLoweringKind.ShiftCountCastToInt
+            or OperatorLoweringKind.NegateLiteralInt
+            or OperatorLoweringKind.NegateLiteralLong;
+    }
+
+    private bool IsBoolTyped(Expression expr) =>
+        _semanticInfo?.GetExpressionType(AstHelper.UnwrapParenthesized(expr)) is { } type
+        && TypeUtils.IsBool(type);
+
+    private bool IsPrimitiveTyped(Expression expr) =>
+        _semanticInfo?.GetExpressionType(AstHelper.UnwrapParenthesized(expr)) is { } type
+        && (Registry.PrimitiveCatalog.GetPrimitiveInfo(type) != null || TypeUtils.IsString(type));
 
     private void ProcessImport(ImportStatement import)
     {
