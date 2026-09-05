@@ -1,1 +1,2 @@
-must be a compile-time constant expression
+must be a compile-time constant expression @1:7
+Use 'def f(x: int? = None()) -> ...: x ??= Some(...)' instead.

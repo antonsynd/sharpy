@@ -168,6 +168,26 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
             $"[{host} × {kind}] must never produce SPY0908\n{source}");
     }
 
+    /// <summary>
+    /// The SPY0401 steer quotes the parameter's type as the user SPELLED it. Before the fix it
+    /// interpolated the <c>TypeAnnotation</c> record's <c>ToString()</c>, so users saw
+    /// <c>TypeAnnotation { LineStart = 1, ColumnStart = 10, … }</c> in place of <c>int?</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("Def", "def f(x: int? = None()) -> ...: x ??= Some(...)")]
+    [InlineData("Dataclass", "x: int? = None()")]
+    public void RefusedSomeCell_SteerSpellsTheAnnotation(string host, string spelledSteer)
+    {
+        var source = H(host).Compose(K("SomeIntoOptional"));
+
+        var result = CompileAndExecute(source);
+
+        var message = result.RawDiagnostics
+            .Single(d => d.Code == DiagnosticCodes.Validation.NonConstDefault).Message;
+        message.Should().Contain(spelledSteer, $"the steer quotes the annotation's source spelling\n{source}");
+        message.Should().NotContain("TypeAnnotation {", "a record dump is not a type spelling");
+    }
+
     // ── Totality ─────────────────────────────────────────────────────────────────────────────
 
     [Fact]

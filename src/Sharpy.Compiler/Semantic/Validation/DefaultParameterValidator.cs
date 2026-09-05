@@ -275,7 +275,7 @@ internal class DefaultParameterValidator : ValidatingAstWalker
     /// SPY0401 steer before this helper.
     /// </summary>
     private static string TypeSpelling(TypeAnnotation? type) =>
-        type?.ToString() ?? "T?";
+        type != null ? TypeAnnotationHelper.GetName(type) : "T?";
 
     /// <summary>
     /// Validates a single slot's default value against the host's admission table.

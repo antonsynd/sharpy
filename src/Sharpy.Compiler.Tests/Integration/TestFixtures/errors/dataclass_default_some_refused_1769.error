@@ -1,1 +1,2 @@
 Default value for field 'x' in dataclass 'D' must be a compile-time constant expression @3:5
+Use 'x: int? = None()' and assign 'self.x ??= Some(...)' in __post_init__ instead.
