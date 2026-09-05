@@ -400,7 +400,7 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     [Fact]
     public void ClassifierSwitch_IsScannedByThisMatrix()
     {
-        var repoRoot = FindRepoRoot();
+        var repoRoot = Infrastructure.DispatchSiteScan.FindRepoRoot();
         var path = Path.Combine(repoRoot, "src", "Sharpy.Compiler",
             "Semantic", "Validation", "ConstantDefaultClassifier.cs");
 
@@ -409,11 +409,4 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
             "this test guards the \"Classify\" switch in it");
     }
 
-    private static string FindRepoRoot()
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir != null && !Directory.Exists(Path.Combine(dir, ".git")))
-            dir = Directory.GetParent(dir)?.FullName;
-        return dir ?? throw new InvalidOperationException("Could not find repo root");
-    }
 }
