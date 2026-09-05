@@ -1516,6 +1516,16 @@ internal static class SymbolSerializer
             Register<TemplateType>("template",
                 _ => "",
                 _ => TemplateType.Instance);
+
+            Register<LiteralStringType>("literalstring",
+                _ => "",
+                _ => LiteralStringType.Instance);
+
+            Register<SelfType>("self",
+                st => st.DeclaringType?.Name ?? "",
+                value => string.IsNullOrEmpty(value)
+                    ? new SelfType()
+                    : new SelfType { DeclaringType = new TypeSymbol { Name = value, Kind = SymbolKind.Type } });
         }
 
         public static string Serialize(SemanticType type)
