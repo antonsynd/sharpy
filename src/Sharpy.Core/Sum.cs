@@ -158,5 +158,233 @@ namespace Sharpy
 
             return start + iterable.Sum();
         }
+
+        /// <summary>
+        /// Sums a sequence of signed bytes, accumulating into int.
+        /// </summary>
+        public static int Sum(IEnumerable<sbyte> iterable)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                int result = 0;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of bytes, accumulating into int.
+        /// </summary>
+        public static int Sum(IEnumerable<byte> iterable)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                int result = 0;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of short integers, accumulating into int.
+        /// </summary>
+        public static int Sum(IEnumerable<short> iterable)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                int result = 0;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned short integers, accumulating into int.
+        /// </summary>
+        public static int Sum(IEnumerable<ushort> iterable)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                int result = 0;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned integers.
+        /// </summary>
+        public static uint Sum(IEnumerable<uint> iterable)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                uint result = 0;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned long integers.
+        /// </summary>
+        public static ulong Sum(IEnumerable<ulong> iterable)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                ulong result = 0;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of signed bytes with a start value, accumulating into int.
+        /// </summary>
+        public static int Sum(IEnumerable<sbyte> iterable, int start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                int result = start;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of bytes with a start value, accumulating into int.
+        /// </summary>
+        public static int Sum(IEnumerable<byte> iterable, int start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                int result = start;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of short integers with a start value, accumulating into int.
+        /// </summary>
+        public static int Sum(IEnumerable<short> iterable, int start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                int result = start;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned short integers with a start value, accumulating into int.
+        /// </summary>
+        public static int Sum(IEnumerable<ushort> iterable, int start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                int result = start;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned integers with a start value.
+        /// </summary>
+        public static uint Sum(IEnumerable<uint> iterable, uint start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                uint result = start;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Sums a sequence of unsigned long integers with a start value.
+        /// </summary>
+        public static ulong Sum(IEnumerable<ulong> iterable, ulong start)
+        {
+            if (iterable is null)
+            {
+                throw TypeError.ArgNone("sum", "iterable");
+            }
+
+            checked
+            {
+                ulong result = start;
+                foreach (var item in iterable)
+                    result += item;
+                return result;
+            }
+        }
     }
 }
