@@ -46,7 +46,7 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     private const int ShapeCount = 24;
     private const int AcceptedCellCount = 225;
     private const int RefusedCellCount = 166;
-    private const int KnownRedCellCount = 17;
+    private const int KnownRedCellCount = 5;
     private const int NotApplicableCellCount = 0;
 
     // ── Axis 1: value shapes ─────────────────────────────────────────────────────────────────
@@ -278,41 +278,6 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
     private static readonly Dictionary<string, KnownRed> KnownRedCells = new()
     {
-        // #1759 — the element's refusal is re-raised by the container, which also changes the CODE.
-        ["TupleElement×BareValueIntoOptional"] = new("#1759", "SPY0220 naming the tuple pair",
-            RedContract.Code, DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction,
-            "'int32' is not an Optional[int32]; construct it with Some(...)"),
-        ["TupleElement×BareNoneIntoOptional"] = new("#1759", "SPY0220 naming the tuple pair",
-            RedContract.Code, DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction,
-            "bare None is not an Optional[int32]; use None(), or declare the slot 'int32 | None'"),
-        ["TupleElement×NoneIntoNonNullable"] = new("#1759", "SPY0220 naming the tuple pair",
-            RedContract.Code, DiagnosticCodes.Semantic.NullabilityViolation,
-            "Cannot assign 'None' to non-nullable type 'int32'"),
-        ["CollectionElement×BareValueIntoOptional"] = new("#1759", "SPY0220 naming the list pair",
-            RedContract.Code, DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction,
-            "'int32' is not an Optional[int32]; construct it with Some(...)"),
-        ["LambdaBody×BareValueIntoOptional"] = new("#1759", "SPY0220 naming the function-type pair",
-            RedContract.Code, DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction,
-            "'int32' is not an Optional[int32]; construct it with Some(...)"),
-
-        // #1760 — an all-`None` list literal infers its element type without the declared slot.
-        ["CollectionElement×BareNoneIntoOptional"] = new("#1760",
-            "SPY0227 'Cannot infer element type from a list of only None'",
-            RedContract.Code, DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction,
-            "bare None is not an Optional[int32]; use None(), or declare the slot 'int32 | None'"),
-        ["CollectionElement×NoneIntoNonNullable"] = new("#1760",
-            "SPY0227 'Cannot infer element type from a list of only None'",
-            RedContract.Code, DiagnosticCodes.Semantic.NullabilityViolation,
-            "Cannot assign 'None' to non-nullable type 'int32'"),
-
-        // #1761 — `lambda: None` emits a C# lambda with no return on any path.
-        ["LambdaBody×BareNoneIntoOptional"] = new("#1761", "SPY0908 / CS1643 in Func<Optional<int>>",
-            RedContract.Code, DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction,
-            "bare None is not an Optional[int32]; use None(), or declare the slot 'int32 | None'"),
-        ["LambdaBody×NoneIntoNonNullable"] = new("#1761", "SPY0908 / CS1643 in Func<int>",
-            RedContract.Code, DiagnosticCodes.Semantic.NullabilityViolation,
-            "Cannot assign 'None' to non-nullable type 'int32'"),
-
         // #1762 — an Optional constructor as a parameter default reaches C# as a non-constant.
         // Refuse-or-lower is the open ruling, so the contract asserted here is only "not an ICE".
         ["ParameterDefault×SomeIntoOptional"] = new("#1762", "SPY0908 / CS1736", RedContract.NotAnIce),
@@ -321,14 +286,6 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         ["LambdaParameterDefault×SomeConstantIntoNarrowOptional"] = new("#1762", "SPY0908 / CS1736", RedContract.NotAnIce),
         ["LambdaParameterDefault×NoneCallIntoOptional"] = new("#1762", "SPY0908 / CS1736", RedContract.NotAnIce),
 
-        // #1763 — the walrus does not push its target's declared slot as the expected type, so the
-        // Optional constructors infer against whatever the enclosing expression expects.
-        ["Walrus×SomeIntoOptional"] = new("#1763", "SPY0230 'Some must be called as a function'",
-            RedContract.Accepted, Output: "42\n"),
-        ["Walrus×NoneCallIntoOptional"] = new("#1763", "SPY0244 'None() can only construct Optional types'",
-            RedContract.Accepted, Output: "None\n"),
-        ["Walrus×SomeConstantIntoNarrowOptional"] = new("#1763", "SPY0230 'Some must be called as a function'",
-            RedContract.Accepted, Output: "7\n"),
     };
 
     // ── Cell resolution ──────────────────────────────────────────────────────────────────────
@@ -467,15 +424,12 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     }
 
     /// <summary>
-    /// The contract for the known-red cells, in full. Skipped while #1759–#1763 are open; deleting
+    /// The contract for the known-red cells, in full. Skipped while #1762 is open; deleting
     /// the Skip is how each issue is verified closed, and a row whose issue is fixed but whose
     /// entry survives fails <see cref="Matrix_IsTotalOverItsAxes"/>'s stale-key check only after
     /// the entry is removed — so the drain is: fix, unskip, delete the row.
     /// </summary>
-    [Theory(Skip = "Known red: #1759 (container re-reports the element's refusal), #1760 (all-None "
-        + "list literal ignores the declared element type), #1761 (lambda: None ICEs CS1643), "
-        + "#1762 (Optional constructor as a parameter default ICEs CS1736), #1763 (walrus does not "
-        + "push its declared slot as the expected type)")]
+    [Theory(Skip = "Known red: #1762 (Optional constructor as a parameter default ICEs CS1736)")]
     [MemberData(nameof(KnownRedCellData))]
     public void KnownRedCell_MeetsTheSeamContract(string position, string shape)
     {
@@ -570,7 +524,7 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
         accepted.Should().Be(AcceptedCellCount, "the accepted half is written down");
         refused.Should().Be(RefusedCellCount, "the refused half is written down");
-        red.Should().Be(KnownRedCellCount, "known-red cells drain as #1759–#1763 close");
+        red.Should().Be(KnownRedCellCount, "known-red cells drain as #1762 closes");
         na.Should().Be(NotApplicableCellCount,
             "every position can host every shape; an exemption here would be a claim that needs a "
             + "reason which is not the property under test");
