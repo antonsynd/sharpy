@@ -1,0 +1,15 @@
+# Reassigning an object kills the narrowing facts on its MEMBERS even when the new value is
+# definitely not None: the object itself stays narrowed (it is still not None), but `a.v` belongs
+# to a different object now. With a value-blind survival the read below compiled to `a.v.Value`
+# and could throw at runtime; the seam refuses it instead (plan-757fbb verification, exact-key rule).
+
+class Box:
+    v: int | None = None
+
+def main() -> None:
+    a: Box | None = Box()
+    c: Box | None = Box()
+    if a is not None and a.v is not None and c is not None:
+        a = c
+        n: int = a.v
+        print(n)

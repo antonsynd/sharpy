@@ -625,16 +625,27 @@ internal static class NarrowingFlowAnalysis
         }
     }
 
+    /// <summary>
+    /// Kills every fact <paramref name="assignedKey"/> invalidates. When the stored value is
+    /// definitely not None (<paramref name="keepRemoveNone"/>), the <c>RemoveNone</c> fact on
+    /// EXACTLY that key survives — the slot still holds a non-None value. Facts on nested keys
+    /// (<c>x.y</c>, <c>x[0]</c>) always die when <c>x</c> is reassigned: the new object's members
+    /// are unknown whatever the object itself is, so a surviving <c>x.y</c> fact would let the
+    /// next read <c>.Value</c> a None.
+    /// </summary>
     private static void KillKey(HashSet<NarrowingFact> facts, string assignedKey, bool keepRemoveNone)
     {
         facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, assignedKey)
-            && !(keepRemoveNone && fact.Kind == NarrowingActionKind.RemoveNone));
+            && !(keepRemoveNone && fact.Kind == NarrowingActionKind.RemoveNone && fact.Key == assignedKey));
     }
 
     /// <summary>
     /// Whether a stored value cannot be None, decided from its syntactic shape and the facts in
-    /// effect before the store (see <see cref="Kill"/> for the soundness argument). Conservative:
-    /// a shape this method does not recognise is treated as possibly None.
+    /// effect before the store (see <see cref="Kill"/> for the soundness argument). Deliberately
+    /// partial: the default arm is the conservative answer — a shape this method does not recognise
+    /// is treated as possibly None, so an unlisted node kind can only ever kill a fact, never keep
+    /// one it should not (documented-by-design; the block-kind and kill-control cells of
+    /// StoreTargetMatrixTests and NarrowingFlowAnalysisTests exercise both directions).
     /// </summary>
     private static bool ValueIsDefinitelyNotNone(Expression value, HashSet<NarrowingFact> facts)
     {

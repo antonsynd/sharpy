@@ -226,6 +226,9 @@ public class DispatchSiteInventoryTests
         ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.CollectAssignedNames"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs::DefiniteAssignmentAnalysis.CollectTargetReads"] = "guarded-by:AssignmentTargetDispatchTotalityTests",
         ["Analysis/ControlFlow/NarrowingFlowAnalysis.cs::NarrowingConditionInterpreter.DescribeTupleTypeExpression"] = "documented-by-design:Analysis/ControlFlow/NarrowingFlowAnalysis.cs:DescribeTupleTypeExpression",
+        // ValueIsDefinitelyNotNone — the RemoveNone-survival predicate of Kill (plan-757fbb Decision 4): a
+        // shape it does not list answers "possibly None" and kills, so partiality is the safe direction.
+        ["Analysis/ControlFlow/NarrowingFlowAnalysis.cs::NarrowingFlowAnalysis.ValueIsDefinitelyNotNone"] = "documented-by-design:Analysis/ControlFlow/NarrowingFlowAnalysis.cs:ValueIsDefinitelyNotNone",
         ["Analysis/ControlFlow/NarrowingFlowAnalysis.cs::NarrowingConditionInterpreter.DescribeTypeExpression"] = "documented-by-design:Analysis/ControlFlow/NarrowingFlowAnalysis.cs:DescribeTypeExpression",
         // GetLruCacheMaxSize deleted: emitter reads FunctionSymbol.CacheMaxSize (#1716)
         ["Semantic/TypeChecker.cs::TypeChecker.CheckStatementCore"] = "guarded-by:CheckStatementCoreTotalityTests",

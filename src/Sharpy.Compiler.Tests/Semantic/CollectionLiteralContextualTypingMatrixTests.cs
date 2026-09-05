@@ -307,9 +307,11 @@ public class CollectionLiteralContextualTypingMatrixTests : IntegrationTestBase
             Outcome.RefusedMutableDefault,
             Note: "N/A: mutable default value (SPY0400)");
 
-        // N/A — @dataclass lowers the field default to a constructor parameter default, which
-        // C# requires to be a compile-time constant: CS1736 behind SPY0908 @ c68a2683d. When
-        // that ICE is fixed this row goes red — promote the cell then.
+        // @dataclass lowers the field default to a constructor parameter default. Until
+        // 4eee3b8ec (plan-757fbb remediation) the validator never saw dataclass fields and the
+        // list literal reached C# as CS1736 behind SPY0908; the dataclass host now consults the
+        // same constant-default table as `def`, and a list literal is a mutable default (SPY0400),
+        // so this context cannot hold a collection literal at all — refused, not N/A.
         yield return new Cell("B/dataclass-default", Axis, Program(
             "@dataclass\n"
             + "class Holder:\n"
@@ -319,8 +321,8 @@ public class CollectionLiteralContextualTypingMatrixTests : IntegrationTestBase
             + "    h: Holder = Holder()\n"
             + "    h.v[0].append(Base())\n"
             + "    print(len(h.v[0]))\n"),
-            Outcome.RefusedKnownCsError, ExpectedInnerCsError: "CS1736",
-            Note: "N/A: dataclass default ICEs (SPY0908/CS1736) @ c68a2683d");
+            Outcome.RefusedMutableDefault,
+            Note: "dataclass field default: mutable default refused (SPY0400) since 4eee3b8ec; was CS1736 behind SPY0908 @ c68a2683d");
 
         // N/A — property observers are gated behind the experimental `property_observers`
         // feature; ungated use is SPY0331 before any typing happens.

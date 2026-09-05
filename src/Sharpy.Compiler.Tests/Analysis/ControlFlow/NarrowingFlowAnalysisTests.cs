@@ -60,8 +60,17 @@ public class NarrowingFlowAnalysisTests
 
     private static AssertStatement Assert_(Expression test) => new AssertStatement { Test = test };
 
+    /// <summary>A store of a literal — definitely not None, so a RemoveNone fact on the key survives (R-T, plan-757fbb Decision 4).</summary>
     private static Assignment Assign(Expression target) =>
         new Assignment { Target = target, Value = Int(0) };
+
+    /// <summary>A store of a call result — possibly None (`g() -> int?`), so every fact on the key dies.</summary>
+    private static Assignment AssignCall(Expression target) =>
+        new Assignment
+        {
+            Target = target,
+            Value = new FunctionCall { Function = Id("g"), Arguments = ImmutableArray<Expression>.Empty }
+        };
 
     #endregion
 
@@ -214,35 +223,68 @@ public class NarrowingFlowAnalysisTests
     }
 
     [Fact]
-    public void Assignment_KillsNarrowingOnTheKey()
+    public void Assignment_OfDefinitelyNonNoneValue_KeepsNarrowingOnTheKey()
     {
+        // R-T (plan-757fbb Decision 4): a store whose value cannot be None keeps the RemoveNone
+        // fact — the slot still holds a non-None value, so `d = 5` under `if d is not None:`
+        // re-wraps and the narrowing survives. Before that ruling every store killed the fact.
         var assert = Assert_(IsNotNone("x"));
-        var kill = Assign(Id("x"));
+        var store = Assign(Id("x"));
+        var after = Assign(Id("y"));
+        var cfg = CreateLinearCfg(assert, store, after);
+
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
+
+        Assert.True(HasRemoveNone(result.FactsBefore(store), "x"));
+        Assert.True(HasRemoveNone(result.FactsBefore(after), "x"));
+    }
+
+    [Fact]
+    public void Assignment_OfCall_KillsNarrowingOnTheKey()
+    {
+        // The kill control: a call may return None, so the fact dies (the checker would otherwise
+        // `.Unwrap()` a None at the next read).
+        var assert = Assert_(IsNotNone("x"));
+        var kill = AssignCall(Id("x"));
         var after = Assign(Id("y"));
         var cfg = CreateLinearCfg(assert, kill, after);
 
         var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
-        // Narrowed just before the reassignment...
         Assert.True(HasRemoveNone(result.FactsBefore(kill), "x"));
-        // ...and un-narrowed after it.
         Assert.False(HasRemoveNone(result.FactsBefore(after), "x"));
     }
 
     [Fact]
-    public void Assignment_ToPrefix_KillsNarrowingOnNestedKey()
+    public void Assignment_ToPrefix_KillsNarrowingOnNestedKey_EvenWhenTheValueIsNonNone()
     {
-        // Narrow both x and x.y, then reassign x — both facts must be killed.
+        // Narrow both x and x.y, then reassign x to a definitely-non-None value: x itself stays
+        // narrowed (it is still not None) but x.y MUST die — the new object's members are unknown.
         var assertX = Assert_(IsNotNone("x"));
         var assertXy = Assert_(MemberIsNotNone("x", "y"));
-        var killX = Assign(Id("x"));
+        var storeX = Assign(Id("x"));
+        var after = Assign(Id("z"));
+        var cfg = CreateLinearCfg(assertX, assertXy, storeX, after);
+
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
+
+        Assert.True(HasRemoveNone(result.FactsBefore(storeX), "x"));
+        Assert.True(HasRemoveNone(result.FactsBefore(storeX), "x.y"));
+        Assert.True(HasRemoveNone(result.FactsBefore(after), "x"));
+        Assert.False(HasRemoveNone(result.FactsBefore(after), "x.y"));
+    }
+
+    [Fact]
+    public void Assignment_OfCallToPrefix_KillsNarrowingOnKeyAndNestedKey()
+    {
+        var assertX = Assert_(IsNotNone("x"));
+        var assertXy = Assert_(MemberIsNotNone("x", "y"));
+        var killX = AssignCall(Id("x"));
         var after = Assign(Id("z"));
         var cfg = CreateLinearCfg(assertX, assertXy, killX, after);
 
         var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
-        Assert.True(HasRemoveNone(result.FactsBefore(killX), "x"));
-        Assert.True(HasRemoveNone(result.FactsBefore(killX), "x.y"));
         Assert.False(HasRemoveNone(result.FactsBefore(after), "x"));
         Assert.False(HasRemoveNone(result.FactsBefore(after), "x.y"));
     }
@@ -250,30 +292,56 @@ public class NarrowingFlowAnalysisTests
     [Fact]
     public void Assignment_ToMember_DoesNotKillNarrowingOnObject()
     {
-        // Narrow x and x.y, then reassign x.y — only x.y is killed, x survives.
+        // Narrow x and x.y, then store into x.y: x survives (the object is untouched); x.y
+        // survives too when the value is definitely non-None (payload store, R-T) ...
         var assertX = Assert_(IsNotNone("x"));
         var assertXy = Assert_(MemberIsNotNone("x", "y"));
-        var killXy = Assign(Member("x", "y"));
+        var storeXy = Assign(Member("x", "y"));
         var after = Assign(Id("z"));
-        var cfg = CreateLinearCfg(assertX, assertXy, killXy, after);
+        var cfg = CreateLinearCfg(assertX, assertXy, storeXy, after);
 
         var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
         Assert.True(HasRemoveNone(result.FactsBefore(after), "x"));
-        Assert.False(HasRemoveNone(result.FactsBefore(after), "x.y"));
+        Assert.True(HasRemoveNone(result.FactsBefore(after), "x.y"));
+
+        // ... and dies when the value is a call (possibly None) — x still survives.
+        var killXy = AssignCall(Member("x", "y"));
+        var after2 = Assign(Id("z"));
+        var cfg2 = CreateLinearCfg(Assert_(IsNotNone("x")), Assert_(MemberIsNotNone("x", "y")), killXy, after2);
+
+        var result2 = NarrowingFlowAnalysis.Analyze(cfg2, NoBuiltinsModule);
+
+        Assert.True(HasRemoveNone(result2.FactsBefore(after2), "x"));
+        Assert.False(HasRemoveNone(result2.FactsBefore(after2), "x.y"));
     }
 
     [Fact]
-    public void Loop_ReassignmentInBody_KillsNarrowingAtHeader()
+    public void Loop_PayloadReassignmentInBody_KeepsNarrowingAtHeader()
     {
-        var kill = Assign(Id("x"));
+        // The plan-757fbb block-kind rule: `d = 5` in a for/while body under `if d is not None:`
+        // keeps d narrowed at the loop head, as it does in a try/with body.
+        var store = Assign(Id("x"));
+        var (cfg, header) = BuildPreheaderLoop(
+            preheaderStatements: new Statement[] { Assert_(IsNotNone("x")) },
+            bodyStatements: new Statement[] { store });
+
+        var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
+
+        Assert.True(HasRemoveNone(result.FactsAtEntry(header), "x"));
+    }
+
+    [Fact]
+    public void Loop_CallReassignmentInBody_KillsNarrowingAtHeader()
+    {
+        var kill = AssignCall(Id("x"));
         var (cfg, header) = BuildPreheaderLoop(
             preheaderStatements: new Statement[] { Assert_(IsNotNone("x")) },
             bodyStatements: new Statement[] { kill });
 
         var result = NarrowingFlowAnalysis.Analyze(cfg, NoBuiltinsModule);
 
-        // The narrowing established before the loop does not survive the reassignment on the back edge.
+        // The narrowing established before the loop does not survive a possibly-None store on the back edge.
         Assert.False(HasRemoveNone(result.FactsAtEntry(header), "x"));
     }
 
