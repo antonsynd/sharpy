@@ -2,11 +2,13 @@ using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Shared;
+using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler.Semantic.Validation;
 
 /// <summary>
-/// Validates default parameter values in function definitions:
+/// Validates default parameter values in function definitions and <c>@dataclass</c> field defaults
+/// (which become the synthesized constructor's parameter defaults):
 /// - Early-bound defaults must be compile-time constant expressions
 /// - Mutable defaults ([], {}, set()) are not allowed in early-bound position
 /// - None is only allowed for nullable parameter types
@@ -41,6 +43,41 @@ internal class DefaultParameterValidator : ValidatingAstWalker
         base.VisitLambdaExpression(node);
     }
 
+    public override void VisitClassDef(ClassDef node)
+    {
+        ValidateDataclassFieldDefaults(node);
+        base.VisitClassDef(node);
+    }
+
+    /// <summary>
+    /// A <c>@dataclass</c> field default IS a constructor-parameter default: DataclassSynthesis
+    /// orders the fields into the synthesized <c>__init__</c>'s parameter vector and the emitter hands
+    /// each field's initializer to the same GenerateParameterDefault the def/lambda/__init__ hosts
+    /// use — so it is admitted by the same table. Unvisited, <c>x: int? = Some(1)</c>, <c>(1, 2)</c>,
+    /// <c>[1]</c>, <c>g()</c> and <c>Ok(1)</c> reached Roslyn as parameter defaults and ICEd CS1736
+    /// while their def twins were SPY0401/SPY0402 (#1762, #1769). An explicit <c>__init__</c>
+    /// suppresses the synthesis (DataclassSynthesis.SynthesizeMembers), and with it this check: the
+    /// initializer is then an ordinary property initializer, where any expression is legal.
+    /// </summary>
+    private void ValidateDataclassFieldDefaults(ClassDef classDef)
+    {
+        if (DataclassSynthesis.ReadOptions(classDef) == null)
+            return;
+        if (classDef.Body.OfType<FunctionDef>().Any(f => f.Name == DunderNames.Init))
+            return;
+
+        foreach (var field in classDef.Body.OfType<VariableDeclaration>())
+        {
+            // The membership rule of DataclassSynthesis.CollectFields: static and unannotated
+            // fields are not dataclass fields, so they are not constructor parameters.
+            if (field.InitialValue == null || field.Type == null
+                || field.Decorators.Any(d => d.Name == DecoratorNames.Static))
+                continue;
+
+            ValidateDefaultValue(DataclassFieldSlot(field, classDef.Name), AdmissionTable.ParameterDefault);
+        }
+    }
+
     /// <summary>
     /// Validates all default parameter values in a function definition.
     /// </summary>
@@ -62,7 +99,7 @@ internal class DefaultParameterValidator : ValidatingAstWalker
             }
             else
             {
-                ValidateDefaultValue(param, functionDef.Name, AdmissionTable.ParameterDefault);
+                ValidateDefaultValue(ParameterSlot(param, functionDef.Name), AdmissionTable.ParameterDefault);
             }
         }
     }
@@ -74,7 +111,7 @@ internal class DefaultParameterValidator : ValidatingAstWalker
             if (param.DefaultValue == null || param.IsLateBound)
                 continue;
 
-            ValidateDefaultValue(param, "lambda", AdmissionTable.LambdaParameterDefault);
+            ValidateDefaultValue(ParameterSlot(param, "lambda"), AdmissionTable.LambdaParameterDefault);
         }
     }
 
@@ -185,21 +222,77 @@ internal class DefaultParameterValidator : ValidatingAstWalker
     }
 
     /// <summary>
-    /// Validates a single parameter's default value.
+    /// One constant-position slot — a def/lambda parameter or a <c>@dataclass</c> field. The hosts
+    /// share every rule; they differ only in how a diagnostic names the slot (<see cref="Subject"/>
+    /// in <see cref="Host"/>), the noun the None steer uses, and where the steer says to initialize
+    /// instead (<see cref="BodySteer"/>).
     /// </summary>
-    private void ValidateDefaultValue(Parameter param, string functionName, AdmissionTable table)
+    private sealed record DefaultSlot(
+        string Name,
+        TypeAnnotation? Type,
+        Expression DefaultValue,
+        int LineStart,
+        int ColumnStart,
+        TextSpan? Span,
+        string Subject,
+        string Host,
+        string Noun,
+        string BodySteer,
+        string CaseConstructorSteer);
+
+    private static DefaultSlot ParameterSlot(Parameter param, string functionName) => new(
+        param.Name,
+        param.Type,
+        param.DefaultValue!,
+        param.LineStart,
+        param.ColumnStart,
+        param.Span,
+        Subject: $"parameter '{param.Name}'",
+        Host: $"function '{functionName}'",
+        Noun: "parameter",
+        BodySteer: "the function body",
+        CaseConstructorSteer:
+            $"Use 'def {functionName}({param.Name}: {TypeSpelling(param.Type)} = None()) -> ...: {param.Name} ??= Some(...)' instead.");
+
+    private static DefaultSlot DataclassFieldSlot(VariableDeclaration field, string className) => new(
+        field.Name,
+        field.Type,
+        field.InitialValue!,
+        field.LineStart,
+        field.ColumnStart,
+        field.Span,
+        Subject: $"field '{field.Name}'",
+        Host: $"dataclass '{className}'",
+        Noun: "field",
+        BodySteer: "__post_init__",
+        CaseConstructorSteer:
+            $"Use '{field.Name}: {TypeSpelling(field.Type)} = None()' and assign 'self.{field.Name} ??= Some(...)' in __post_init__ instead.");
+
+    /// <summary>
+    /// The annotation's SOURCE spelling (<c>int?</c>, <c>list[int]</c>, <c>str | None</c>) for a
+    /// steer that quotes it. A <see cref="TypeAnnotation"/> is a record, so its <c>ToString()</c> is
+    /// the record dump (<c>TypeAnnotation { LineStart = 1, … }</c>) — which is what users saw in the
+    /// SPY0401 steer before this helper.
+    /// </summary>
+    private static string TypeSpelling(TypeAnnotation? type) =>
+        type?.ToString() ?? "T?";
+
+    /// <summary>
+    /// Validates a single slot's default value against the host's admission table.
+    /// </summary>
+    private void ValidateDefaultValue(DefaultSlot slot, AdmissionTable table)
     {
-        var defaultValue = param.DefaultValue!;
+        var defaultValue = slot.DefaultValue;
 
         // Check for mutable defaults first (these are never allowed)
         if (IsMutableDefault(defaultValue))
         {
             AddError(
-                $"Mutable default value is not allowed for parameter '{param.Name}' in function '{functionName}'. " +
-                "Use None as default and initialize in the function body instead.",
-                param.LineStart,
-                param.ColumnStart, code: DiagnosticCodes.Validation.MutableDefault,
-                span: param.Span);
+                $"Mutable default value is not allowed for {slot.Subject} in {slot.Host}. " +
+                $"Use None as default and initialize in {slot.BodySteer} instead.",
+                slot.LineStart,
+                slot.ColumnStart, code: DiagnosticCodes.Validation.MutableDefault,
+                span: slot.Span);
             return;
         }
 
@@ -211,38 +304,37 @@ internal class DefaultParameterValidator : ValidatingAstWalker
 
         if (!ConstantDefaultClassifier.IsAdmitted(kind, table))
         {
+            var refusal = $"Default value for {slot.Subject} in {slot.Host} must be a compile-time constant expression";
             var steer = kind switch
             {
-                EmittableConstantKind.CaseConstructor => FormatCaseConstructorSteer(param, functionName),
+                EmittableConstantKind.CaseConstructor => $"{refusal}. {slot.CaseConstructorSteer}",
                 EmittableConstantKind.TupleLiteral =>
-                    $"Default value for parameter '{param.Name}' in function '{functionName}' must be a compile-time constant expression. " +
-                    "Tuple literals are not emittable as parameter defaults; initialize in the function body instead.",
-                _ =>
-                    $"Default value for parameter '{param.Name}' in function '{functionName}' must be a compile-time constant expression",
+                    $"{refusal}. Tuple literals are not emittable as parameter defaults; initialize in {slot.BodySteer} instead.",
+                _ => refusal,
             };
 
             AddError(
                 steer,
-                param.LineStart,
-                param.ColumnStart, code: DiagnosticCodes.Validation.NonConstDefault,
-                span: param.Span);
+                slot.LineStart,
+                slot.ColumnStart, code: DiagnosticCodes.Validation.NonConstDefault,
+                span: slot.Span);
             return;
         }
 
         // Check None assignment to non-nullable types
         if (defaultValue is NoneLiteral)
         {
-            var paramType = Context.TypeResolver.ResolveTypeAnnotation(param.Type);
+            var slotType = Context.TypeResolver.ResolveTypeAnnotation(slot.Type);
 
             // None is only valid for nullable/optional types
-            if (paramType is not NullableType and not OptionalType && paramType is not UnknownType)
+            if (slotType is not NullableType and not OptionalType && slotType is not UnknownType)
             {
                 AddError(
-                    $"Cannot use 'None' as default value for non-nullable parameter '{param.Name}' of type '{paramType.GetDisplayName()}' in function '{functionName}'. " +
-                    $"Use '{paramType.GetDisplayName()}?' to make the parameter nullable.",
-                    param.LineStart,
-                    param.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDefaultValue,
-                    span: param.Span);
+                    $"Cannot use 'None' as default value for non-nullable {slot.Subject} of type '{slotType.GetDisplayName()}' in {slot.Host}. " +
+                    $"Use '{slotType.GetDisplayName()}?' to make the {slot.Noun} nullable.",
+                    slot.LineStart,
+                    slot.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDefaultValue,
+                    span: slot.Span);
             }
         }
 
@@ -250,24 +342,18 @@ internal class DefaultParameterValidator : ValidatingAstWalker
         if (defaultValue is FunctionCall { Function: NoneLiteral } noneCall
             && noneCall.Arguments.Length == 0 && noneCall.KeywordArguments.Length == 0)
         {
-            var paramType = Context.TypeResolver.ResolveTypeAnnotation(param.Type);
+            var slotType = Context.TypeResolver.ResolveTypeAnnotation(slot.Type);
 
-            if (paramType is not OptionalType && paramType is not UnknownType)
+            if (slotType is not OptionalType && slotType is not UnknownType)
             {
                 AddError(
-                    $"Cannot use 'None()' as default value for non-optional parameter '{param.Name}' of type '{paramType.GetDisplayName()}' in function '{functionName}'. " +
-                    $"Use '{paramType.GetDisplayName()}?' to make the parameter optional.",
-                    param.LineStart,
-                    param.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDefaultValue,
-                    span: param.Span);
+                    $"Cannot use 'None()' as default value for non-optional {slot.Subject} of type '{slotType.GetDisplayName()}' in {slot.Host}. " +
+                    $"Use '{slotType.GetDisplayName()}?' to make the {slot.Noun} optional.",
+                    slot.LineStart,
+                    slot.ColumnStart, code: DiagnosticCodes.Semantic.InvalidDefaultValue,
+                    span: slot.Span);
             }
         }
-    }
-
-    private static string FormatCaseConstructorSteer(Parameter param, string functionName)
-    {
-        return $"Default value for parameter '{param.Name}' in function '{functionName}' must be a compile-time constant expression. " +
-            $"Use 'def {functionName}({param.Name}: {param.Type?.ToString() ?? "T?"} = None()) -> ...: {param.Name} ??= Some(...)' instead.";
     }
 
     /// <summary>

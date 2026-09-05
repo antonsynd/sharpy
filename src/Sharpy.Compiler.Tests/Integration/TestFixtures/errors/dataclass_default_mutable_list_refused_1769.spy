@@ -1,0 +1,6 @@
+@dataclass
+class D:
+    xs: list[int] = [1]
+
+def main() -> None:
+    print(D().xs)

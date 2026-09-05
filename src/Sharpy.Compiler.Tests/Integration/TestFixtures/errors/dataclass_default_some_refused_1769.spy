@@ -1,0 +1,6 @@
+@dataclass
+class D:
+    x: int? = Some(1)
+
+def main() -> None:
+    print(D().x)

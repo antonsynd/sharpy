@@ -15,11 +15,14 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <c>ConstantDefaultClassifier</c> via <c>DefaultParameterValidator</c>. The classifier
 /// maps the default's AST shape to an <c>EmittableConstantKind</c>, and the validator checks
 /// that kind against the <c>AdmissionTable</c> for the host position. Admitted defaults compile
-/// and run with the printed value. Refused defaults report SPY0401. No cell produces SPY0908.</para>
+/// and run with the printed value. Refused defaults report SPY0401. No cell produces SPY0908.
+/// A <c>@dataclass</c> field default is a host too: it becomes the synthesized constructor's
+/// parameter default, so it is admitted by the same table (#1769 — unvisited, the refused kinds
+/// ICEd CS1736 there while their def twins were SPY0401).</para>
 ///
 /// <para><b>Axes.</b> Kind: {Literal, NegatedLiteral, ConstReference, EnumMember, NoneLiteral,
-/// NoneCall, SomeIntoOptional, TupleLiteral, ConditionalOfConstants} × Host: {Def, Lambda, Init}.
-/// Totality: 9 × 3 = 27 cells.</para>
+/// NoneCall, SomeIntoOptional, TupleLiteral, ConditionalOfConstants} × Host: {Def, Lambda, Init,
+/// Dataclass}. Totality: 9 × 4 = 36 cells.</para>
 ///
 /// <para><b>Contract (module consts).</b> A module <c>const</c> whose declared type C# admits for
 /// <c>const</c> — every <c>PrimitiveCatalog</c> primitive but <c>object</c>/<c>void</c> — and whose
@@ -44,9 +47,9 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
 
     // ── Axis sizes, anchored to literals ─────────────────────────────────────────────────────
     private const int KindCount = 9;
-    private const int HostCount = 3;
-    private const int AdmittedCellCount = 21;
-    private const int RefusedCellCount = 6;
+    private const int HostCount = 4;
+    private const int AdmittedCellCount = 28;
+    private const int RefusedCellCount = 8;
 
     // ── Axis 1: default-value kinds ──────────────────────────────────────────────────────────
 
@@ -90,6 +93,10 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
 
         new("Init", k =>
             $"{k.Prelude}class C:\n    x: {k.ParamType}\n\n    def __init__(self, x: {k.ParamType} = {k.DefaultExpr}):\n        self.x = x\n\ndef main():\n    print(C().x)\n"),
+
+        // The field default becomes the synthesized constructor's parameter default (#1769).
+        new("Dataclass", k =>
+            $"{k.Prelude}@dataclass\nclass D:\n    x: {k.ParamType} = {k.DefaultExpr}\n\ndef main():\n    print(D().x)\n"),
     };
 
     // ── Cell resolution ──────────────────────────────────────────────────────────────────────
