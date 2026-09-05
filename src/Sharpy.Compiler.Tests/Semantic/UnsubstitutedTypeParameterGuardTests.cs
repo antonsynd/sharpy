@@ -246,6 +246,203 @@ def main():
         AssertNoDiagnosticNamesATypeParameter(result, "Empty() no slot");
     }
 
+    private const string UnionShapeDecl =
+        "union Shape:\n    case Circle(r: int)\n    case Square(s: int)\n\n";
+
+    /// <summary>A two-arm match on <c>b</c>: the discriminator of the inferred-union-local class.</summary>
+    private const string MatchB =
+        "    match b:\n        case Full(x):\n            print(x)\n        case Empty():\n            print(\"empty\")\n";
+
+    /// <summary>
+    /// An INFERRED union local is the union at every later use (#1770, plan-757fbb Decision 10). The
+    /// checker records the closed union type for <c>b = Box.Full(7)</c>, but the emitted
+    /// <c>var b = new Box&lt;int&gt;.Full(7);</c> let C# infer the CASE class, so a second match arm
+    /// was CS8121 and a store of another case CS0029 — at every declaration site: plain assignment,
+    /// tuple / mixed / star / nested unpacking, the walrus hoist, a conditional RHS, a nested-block
+    /// store. BASE (dff55b2cd) hid the class behind SPY0220 "expects 'T'"; HEAD-before (852bf488b)
+    /// ICEd SPY0908 on every cell here except the slot-present twin and the list/dict cells, whose
+    /// element type was already the union. Every cell executes and its stdout is asserted (§4
+    /// recorded ≠ applied) — the ICE class is refuted only by <c>run</c>, never by <c>emit</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    b = Box.Full(7)\n" + MatchB, "7", "two-arm match on an inferred local")]
+    [InlineData("def main():\n    b = Box.Full(7)\n    b = Box.Empty()\n" + MatchB, "empty", "store of the other case, then match")]
+    [InlineData("def main():\n    b = Box.Full(7)\n" + MatchB + "    b = Box.Empty()\n" + MatchB, "7\nempty", "match, store, match")]
+    [InlineData("def main():\n    b = Box.Full(7)\n    if len(\"ab\") == 2:\n        b = Box.Empty()\n" + MatchB, "empty", "nested-block store")]
+    [InlineData("def main():\n    flag = len(\"a\") == 1\n    b = Box.Full(1) if flag else Box.Full(2)\n    b = Box.Empty()\n" + MatchB, "empty", "conditional RHS")]
+    [InlineData("def mk() -> int:\n    return 99\n\ndef main():\n    b = Box.Full(mk())\n" + MatchB, "99", "nested-call argument")]
+    [InlineData("def main():\n    xs = [Box.Full(1), Box.Full(2)]\n    xs.append(Box.Empty())\n    for b in xs:\n"
+        + "        match b:\n            case Full(x):\n                print(x)\n            case Empty():\n                print(\"empty\")\n",
+        "1\n2\nempty", "list literal joins to list[Box[int]]; append takes the slot")]
+    [InlineData("def main():\n    xs: list[Box[int]] = [Box.Full(1), Box.Empty()]\n    for b in xs:\n"
+        + "        match b:\n            case Full(x):\n                print(x)\n            case Empty():\n                print(\"empty\")\n",
+        "1\nempty", "list with a slot")]
+    [InlineData("def main():\n    d = {\"k\": Box.Full(1)}\n    for k, v in d.items():\n"
+        + "        match v:\n            case Full(x):\n                print(k, x)\n            case Empty():\n                print(\"empty\")\n",
+        "k 1", "dict value")]
+    [InlineData("def main():\n    b = Box.Full(Box.Full(1))\n    match b:\n        case Full(inner):\n"
+        + "            match inner:\n                case Full(x):\n                    print(x)\n                case Empty():\n                    print(\"inner empty\")\n"
+        + "        case Empty():\n            print(\"empty\")\n",
+        "1", "nested Box.Full(Box.Full(1))")]
+    [InlineData("def main():\n    o: int? = Some(1)\n    b = Box.Full(o)\n    match b:\n        case Full(x):\n"
+        + "            match x:\n                case Some(v):\n                    print(v)\n                case None():\n                    print(\"none\")\n"
+        + "        case Empty():\n            print(\"empty\")\n",
+        "1", "Optional payload: Box[int?]")]
+    [InlineData("def main():\n    x = (b := Box.Full(1))\n    b = Box.Empty()\n" + MatchB, "empty", "walrus target")]
+    [InlineData("def main():\n    a, b = Box.Full(1), Box.Full(2)\n    b = Box.Empty()\n"
+        + "    match a:\n        case Full(x):\n            print(x)\n        case Empty():\n            print(\"empty\")\n" + MatchB,
+        "1\nempty", "tuple deconstruction, all new")]
+    [InlineData("def main():\n    a = Box.Full(1)\n    a, b = Box.Full(2), Box.Full(3)\n    b = Box.Empty()\n"
+        + "    match a:\n        case Full(x):\n            print(x)\n        case Empty():\n            print(\"empty\")\n" + MatchB,
+        "2\nempty", "tuple deconstruction, mixed new/existing")]
+    [InlineData("def main():\n    first, *rest = Box.Full(1), Box.Full(2), Box.Full(3)\n    first = Box.Empty()\n"
+        + "    match first:\n        case Full(x):\n            print(x)\n        case Empty():\n            print(\"empty\")\n    print(len(rest))\n",
+        "empty\n2", "star unpacking")]
+    [InlineData("def main():\n    (a, b), c = (Box.Full(1), Box.Full(2)), Box.Full(3)\n    a = Box.Empty()\n    c = Box.Empty()\n"
+        + "    match a:\n        case Full(x):\n            print(x)\n        case Empty():\n            print(\"empty\")\n" + MatchB
+        + "    match c:\n        case Full(x):\n            print(x)\n        case Empty():\n            print(\"empty\")\n",
+        "empty\n2\nempty", "nested tuple unpacking")]
+    [InlineData("def main():\n    b: Box[int] = Box.Full(7)\n    b = Box.Empty()\n" + MatchB, "empty", "slot-present twin (kept)")]
+    public void InferredUnionLocal_IsTheUnionAtEveryLaterUse(string body, string expectedStdout, string cell)
+    {
+        var result = CompileAndExecute(UnionBoxDecl + body);
+
+        result.Success.Should().BeTrue(
+            $"{cell}: " + string.Join("; ", result.CompilationErrors));
+        result.StandardOutput.Replace("\r\n", "\n").TrimEnd('\n').Should().Be(expectedStdout, cell);
+        AssertNoDiagnosticNamesATypeParameter(result, cell);
+    }
+
+    /// <summary>
+    /// The same seam for a NON-generic union and a two-parameter union: <c>var s = new Shape.Circle(1)</c>
+    /// was <c>Shape.Circle</c>, so <c>s = Shape.Square(2)</c> ICEd CS0029 at BASE and HEAD alike —
+    /// the class predates Phase 5, which only made it reachable for generic unions.
+    /// </summary>
+    [Fact]
+    public void InferredUnionLocal_NonGenericUnion_TakesTheOtherCase()
+    {
+        var result = CompileAndExecute(UnionShapeDecl
+            + "def main():\n    s = Shape.Circle(1)\n    s = Shape.Square(2)\n"
+            + "    match s:\n        case Circle(r):\n            print(r)\n        case Square(side):\n            print(side)\n");
+
+        result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
+        result.StandardOutput.Trim().Should().Be("2");
+    }
+
+    [Fact]
+    public void InferredUnionLocal_TwoParameterUnion_TakesTheOtherCase()
+    {
+        var result = CompileAndExecute(UnionPairDecl
+            + "def main():\n    p = Pair.Both(1, \"s\")\n    p = Pair.Neither()\n"
+            + "    match p:\n        case Both(a, b):\n            print(a, b)\n        case Neither():\n            print(\"neither\")\n");
+
+        result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
+        result.StandardOutput.Trim().Should().Be("neither");
+        AssertNoDiagnosticNamesATypeParameter(result, "two-parameter union, other case");
+    }
+
+    /// <summary>
+    /// <c>None</c> is a value with no type of its own: inferring <c>T := None</c> (or a tuple that
+    /// contains it) printed <c>void</c> as a C# type argument — SPY0599 at HEAD-before, SPY0220
+    /// "expects 'T'" at BASE. The refusal is SPY0227 with the nullable steer; its text quotes no type
+    /// parameter and no message anywhere says <c>void</c>. The absence assertions have their positive
+    /// control in the mutation record (disable <c>MentionsNoneType</c> → SPY0599 "Keyword 'void'").
+    /// The slot-present twin <c>b: Box[int | None] = Box.Full(None)</c> runs.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    b = Box.Full(None)\n    print(b)\n", "bare None argument")]
+    [InlineData("def main():\n    b = Box.Full((1, None))\n    print(b)\n", "None inside a tuple argument")]
+    public void QualifiedUnionCase_NoneArgument_IsSPY0227WithTheNullableSteer_NeverVoid(string body, string cell)
+    {
+        var result = CompileAndExecute(UnionBoxDecl + body);
+
+        result.Success.Should().BeFalse($"{cell}: None names no type argument");
+        var refusal = result.RawDiagnostics.Should().ContainSingle(
+            d => d.Code == DiagnosticCodes.Semantic.CannotInferType,
+            $"{cell}: SPY0227 with the nullable steer; got "
+            + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}"))).Subject;
+        refusal.Message.Should().Contain("| None", "the steer spells the payload as nullable");
+        refusal.Message.Should().NotContain(TypeParameterToken, "the refusal quotes no type parameter");
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.CodeGen.InternalGeneratedCSharpParseError
+              || d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            "void must not reach the emitter");
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Message.Contains("void", StringComparison.Ordinal),
+            "no message says void");
+        AssertNoDiagnosticNamesATypeParameter(result, cell);
+    }
+
+    [Fact]
+    public void QualifiedUnionCase_NoneArgument_TwoParameterUnion_IsSPY0227()
+    {
+        var result = CompileAndExecute(UnionPairDecl + "def main():\n    p = Pair.Both(None, 1)\n    print(p)\n");
+
+        result.Success.Should().BeFalse("None names no type argument");
+        result.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.CannotInferType);
+        result.RawDiagnostics.Should().NotContain(d => d.Message.Contains("void", StringComparison.Ordinal));
+        AssertNoDiagnosticNamesATypeParameter(result, "Pair.Both(None, 1)");
+    }
+
+    [Fact]
+    public void QualifiedUnionCase_NoneArgument_WithNullableSlot_Runs()
+    {
+        var result = CompileAndExecute(UnionBoxDecl
+            + "def main():\n    b: Box[int | None] = Box.Full(None)\n" + MatchB);
+
+        result.Success.Should().BeTrue(string.Join("; ", result.CompilationErrors));
+        result.StandardOutput.Trim().Should().Be("None");
+    }
+
+    /// <summary>
+    /// <c>Box[str].Full("s")</c>: type arguments on the qualifier are not a spelling the language
+    /// has (tagged_unions.md — the qualified form takes them from the annotation or the arguments).
+    /// It reached Roslyn as <c>Box&lt;string&gt;.Full("s")</c>, CS1955, at BASE and HEAD alike; it is
+    /// refused by name with the annotation steer.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    b = Box[str].Full(\"s\")\n    print(b)\n", "type argument on Full")]
+    [InlineData("def main():\n    b = Box[int].Empty()\n    print(b)\n", "type argument on Empty")]
+    public void QualifiedUnionCase_TypeArgumentsOnTheQualifier_AreRefusedByName_NeverCS1955(string body, string cell)
+    {
+        var result = CompileAndExecute(UnionBoxDecl + body);
+
+        result.Success.Should().BeFalse($"{cell}: the qualifier spelling is refused");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.UnsupportedFeature
+                 && d.Message.Contains("Box[...].", StringComparison.Ordinal)
+                 && d.Message.Contains("x: Box[T] = Box.", StringComparison.Ordinal),
+            $"{cell}: SPY0358 naming the spelling and steering to the annotation; got "
+            + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            "the spelling must not reach Roslyn");
+        AssertNoDiagnosticNamesATypeParameter(result, cell);
+    }
+
+    /// <summary>
+    /// Arity is checked before inference, so <c>Box.Full(1, 2)</c> is SPY0224 with or without a slot.
+    /// Without one it used to fall into inference and surface as SPY0227 "cannot infer".
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    b = Box.Full(1, 2)\n    print(b)\n", "no slot, too many")]
+    [InlineData("def main():\n    b: Box[int] = Box.Full(1, 2)\n    print(b)\n", "slot, too many")]
+    [InlineData("def main():\n    e = Box.Empty(1)\n    print(e)\n", "no slot, Empty with an argument")]
+    [InlineData("def main():\n    e: Box[int] = Box.Empty(1)\n    print(e)\n", "slot, Empty with an argument")]
+    public void QualifiedUnionCase_WrongArity_IsSPY0224_WithOrWithoutASlot(string body, string cell)
+    {
+        var result = CompileAndExecute(UnionBoxDecl + body);
+
+        result.Success.Should().BeFalse($"{cell}: the arity error is refused");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.WrongArgumentCount,
+            $"{cell}: SPY0224; got " + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Semantic.CannotInferType,
+            $"{cell}: an arity error is not an inference failure");
+        AssertNoDiagnosticNamesATypeParameter(result, cell);
+    }
+
     private static void AssertNoDiagnosticNamesATypeParameter(ExecutionResult result, string cell)
     {
         // SPY0237 and SPY0227 ("Cannot infer type arguments …") are ABOUT the parameter they name

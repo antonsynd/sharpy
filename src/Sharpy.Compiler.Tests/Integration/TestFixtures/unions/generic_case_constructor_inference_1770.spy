@@ -10,29 +10,52 @@ def mk() -> int:
     return 99
 
 def main():
-    # Inference from a single argument
+    # Inference from a single argument. The local is the UNION (not the case class),
+    # so a second match arm compiles ...
     b = Box.Full(1)
     match b:
         case Full(v):
             print(v)
+        case Empty():
+            print("empty")
 
-    # Two-parameter union inference
+    # ... and a store of another case is a store into the union slot
+    b = Box.Empty()
+    match b:
+        case Full(v):
+            print(v)
+        case Empty():
+            print("empty")
+
+    # Two-parameter union inference, then the other case
     p = Pair.Both(1, "hello")
     match p:
         case Both(first, second):
             print(first, second)
+        case Neither():
+            print("neither")
+    p = Pair.Neither()
+    match p:
+        case Both(first, second):
+            print(first, second)
+        case Neither():
+            print("neither")
 
     # Inference from a nested call's return type
     c = Box.Full(mk())
     match c:
         case Full(v):
             print(v)
+        case Empty():
+            print("empty")
 
     # Slot-based (existing path, positive control)
     d: Box[int] = Box.Full(42)
     match d:
         case Full(v):
             print(v)
+        case Empty():
+            print("empty")
 
     # Empty with slot (existing path, positive control)
     e: Box[str] = Box.Empty()
