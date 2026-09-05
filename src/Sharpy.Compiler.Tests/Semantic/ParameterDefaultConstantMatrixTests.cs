@@ -457,7 +457,8 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
 
         var start = source.IndexOf("public static EmittableConstantKind Classify(", StringComparison.Ordinal);
         var end = source.IndexOf("public static bool IsAdmitted(", StringComparison.Ordinal);
-        start.Should().BeGreaterThan(-1); end.Should().BeGreaterThan(start);
+        start.Should().BeGreaterThan(-1);
+        end.Should().BeGreaterThan(start);
         var classifyBody = source.Substring(start, end - start);
         var returned = Regex.Matches(classifyBody, @"EmittableConstantKind\.(?<name>[A-Z]\w*)")
             .Select(m => m.Groups["name"].Value).ToHashSet(StringComparer.Ordinal);
