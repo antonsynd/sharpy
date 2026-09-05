@@ -1,0 +1,57 @@
+# ??= is a store into the LEFT slot at every target kind (#1767): the RHS gets the same value
+# lowerings a plain store gets — float32 literal re-typing, conditional branch casts, Optional
+# wrap — for a local, a member, an index and a narrowed local. Every line here either ICEd
+# (CS0266 / CS1503 / CS1061 / CS0019) or was refused SPY0222 at 852bf488b.
+class Box:
+    v: float32? = None()
+    w: int8 | None = None
+
+    def fill(self) -> None:
+        self.v ??= 0.5
+        self.w ??= 7 if True else 8
+
+
+def main():
+    a: float32 | None = None
+    a ??= 0.5
+    print(a)
+
+    b: float32? = None()
+    b ??= 0.5
+    print(b)
+
+    c: bool = True
+    d: int8? = None()
+    d ??= 7 if c else 8
+    print(d)
+
+    e: int8 | None = None
+    e ??= -7
+    print(e)
+
+    box: Box = Box()
+    box.fill()
+    print(box.v)
+    print(box.w)
+
+    m: dict[str, int8?] = {"k": None()}
+    m["k"] ??= 7
+    print(m["k"])
+
+    # A narrowed name is known not to be None: ??= is a no-op and the narrowing survives.
+    n: int8? = Some(1)
+    if n is not None:
+        n ??= 5
+        print(n)
+    print(n)
+
+    o: int? = Some(1)
+    if o is not None:
+        o ??= Some(9)
+        print(o)
+
+    p: int? = None()
+    p ??= 42
+    print(p)
+    p ??= 99
+    print(p)

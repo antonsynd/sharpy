@@ -1,0 +1,10 @@
+# ??= is a store into the LEFT slot (#1767): a `T | None` value into a `T?` slot and the
+# reverse are cross-family stores, refused through the store seam with its steers — not an
+# operator question, and never an ICE (both ICEd CS0029 at dff55b2cd).
+def main():
+    a: int? = None()
+    b: int | None = None
+    a ??= b
+    b ??= a
+    print(a)
+    print(b)

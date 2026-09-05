@@ -1,0 +1,2 @@
+Cannot assign type 'int32 | None' to '??=' target of type 'int32?' — the value is 'int32 | None' (C# nullability) and the slot is Optional[int32]; cross with 'maybe' @7:5
+Cannot assign type 'int32?' to '??=' target of type 'int32 | None' — the value is Optional[int32]; narrow it ('if x is not None:') or unwrap it first @8:5
