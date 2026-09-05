@@ -49,6 +49,52 @@ rule**: the value is classified against the payload first, then against the decl
 payload-accepted value re-wraps and the narrowing survives; a `None()`/`Some(…)` store or a
 refused value falls back to the declared slot and ends the narrowing.
 
+A narrowed read stored into a slot of its own declared type **passes the Optional through**: the
+value is the wrapper the slot holds, so no `Some(…)` is needed and nothing is unwrapped. The target
+is not narrowed by it — a read of the target after the block sees the declared wrapper.
+
+```python
+def main() -> None:
+    a: int? = Some(1)
+    b: int? = None()
+    if a is not None:
+        b = a               # passes the Optional through; emitted as b = a
+        y: int? = a         # same rule at a declaration
+        print(y)
+    print(b)
+```
+
+```
+1
+1
+```
+
+The narrowing **survives** a store whose value is definitely not `None` — a literal, an arithmetic
+or comparison result, a conditional whose arms all qualify, or a read that is itself narrowed —
+whatever block the store sits in (`try`, `with`, `for`, `while`, `else`, a nested `if`); a `for`
+or `while` body is not different from a `try` body. A store of a call result (including `Some(…)`
+and `None()`), of an un-narrowed name, or of `None` ends the narrowing, because the stored value
+may be `None`:
+
+```python
+def g() -> int?:
+    return None()
+
+def main() -> None:
+    d: int? = Some(10)
+    if d is not None:
+        for i in range(2):
+            d = 5           # payload store inside a loop body; d stays narrowed
+        e: int = d + 1
+        print(e)
+        d = g()             # a call may return None(): the narrowing ends
+        # n: int = d        # SPY0220 — d is int? again
+```
+
+```
+6
+```
+
 ```python
 class Box:
     v: str | None = None
@@ -71,15 +117,16 @@ def main() -> None:
 
 A non-nullable declaration is unaffected: `y: str = "a"; y = None` is SPY0229.
 
-A store to a name from an **enclosing block** (inside `if`, `while`, `for`, `try`, `with`, `else`,
-or a nested `def`) is a store into that name's declared slot — the emitted C# local keeps its
-type across blocks:
+A store to a name from an **enclosing scope** (inside `if`, `while`, `for`, `try`, `with`, `else`,
+a nested `def`, or a function storing to a module-level name) is a store into that name's declared
+slot — the emitted C# local or field keeps its type across blocks and functions
+(see [Variable Scoping](variable_scoping.md), *Write-Through Assignment*):
 
 ```python
 def main() -> None:
     d: int? = Some(10)
     if True:
-        d = 5   # SPY0604 — use Some(5); the name's slot is int?
+        d = 5   # SPY0604 — use Some(5); the name's slot is int? and d is not narrowed here
 ```
 
 No narrowing of `d` is in effect inside `if True:`, so the declared slot decides. Inside

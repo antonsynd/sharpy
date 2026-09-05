@@ -153,12 +153,17 @@ internal partial class TypeChecker
                 }
             }
 
-            // The seam predecessor: same-scope (existingSymbol) OR a parent-scope predecessor
-            // within the current function (block scopes and closures, NOT module-level shadowing).
-            var seamPredecessor = existingSymbol as VariableSymbol
-                ?? (IsParentScopePredecessorWithinFunction(targetId.Name) ? storePredecessor : null);
-
-            if (seamPredecessor != null && storeTarget is not UnknownType
+            // The seam predecessor is the store predecessor, WHATEVER scope declared it: the same
+            // scope, an enclosing block, the enclosing function (closure), or the module. A bare
+            // `x = value` inside a function whose name exists at module level is a write-through
+            // store into the module slot (variable_scoping.md §Write-Through Assignment: "Assignment
+            // to a name that already exists in an enclosing scope writes through to it — no
+            // `nonlocal` keyword needed … To create a new local that shadows an outer name, use an
+            // annotated declaration"), and the emitter already assigns the static field — so a
+            // module-level exclusion here left the seam skipped while the write went through:
+            // `x: int = 42; def bump(): x = "s"` ICEd CS0029 and `d: int? = Some(1); def f(): d = 5`
+            // ran through the retired implicit operator (#1768).
+            if (storePredecessor != null && storeTarget is not UnknownType
                 && inferredType is not UnknownType
                 && !IsAssignable(inferredType, storeTarget))
             {

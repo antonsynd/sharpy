@@ -588,51 +588,133 @@ internal static class NarrowingFlowAnalysis
     /// the SAME statement still sees the fact. That is the same resolution the assignment half has
     /// (an assignment's own RHS reads the pre-store facts), and the same one
     /// <see cref="DefiniteAssignmentAnalysis"/> documents for its walrus collection.</para>
+    ///
+    /// <para><b>RemoveNone facts survive a store whose value is definitely not None</b> (R-T; the
+    /// augmented form was the first case, #1755 B). The soundness argument is syntactic because
+    /// this analysis runs before type checking and cannot see the checker's verdict: a
+    /// <c>RemoveNone</c> fact says "the slot holds a non-None value"; after <c>x = v</c> it still
+    /// does exactly when <c>v</c> is not None. <see cref="ValueIsDefinitelyNotNone"/> admits only
+    /// shapes whose value cannot be None whatever the checker decides — literals, collection and
+    /// comprehension literals, lambdas, arithmetic/comparison/bitwise operators (an Optional or
+    /// <c>T | None</c> operand is refused SPY0222/SPY0223, so an accepted operation is
+    /// payload-typed), the boolean operators and conditionals when every arm qualifies, and a read
+    /// whose own narrowing key carries a RemoveNone fact. Everything else kills — a call
+    /// (including <c>Some(…)</c> and <c>None()</c>, which the checker admits as declared-slot
+    /// stores: the value is a wrapper, and <c>g() -> int?</c> may be None), an un-narrowed read,
+    /// bare <c>None</c>. Without the survival, the back edge of a <c>for</c>/<c>while</c> body
+    /// killed the fact at the loop head, so <c>d = 5</c> inside a loop under
+    /// <c>if d is not None:</c> was SPY0604 while the same store in a <c>try</c> body ran; with a
+    /// value-blind survival, <c>d = g()</c> would keep a fact the value no longer satisfies and the
+    /// next read would <c>.Unwrap()</c> a None at runtime. <c>IsType</c> facts keep today's kill:
+    /// the stored value's type may differ from the tested one.</para>
     /// </summary>
     private static void Kill(HashSet<NarrowingFact> facts, Statement statement)
     {
         if (statement is Assignment assignment)
         {
+            var valueKeepsNonNone = assignment.Operator != AssignmentOperator.Assign
+                || ValueIsDefinitelyNotNone(assignment.Value, facts);
+
             foreach (var assignedKey in CollectAssignedKeys(assignment.Target))
-            {
-                if (assignment.Operator != AssignmentOperator.Assign)
-                {
-                    // Augmented: the result is payload-typed by construction (the checker
-                    // refuses otherwise); ??= on a non-None name is a no-op. RemoveNone
-                    // facts survive; IsType facts are killed (the type may have changed).
-                    facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, assignedKey)
-                        && fact.Kind != NarrowingActionKind.RemoveNone);
-                }
-                else
-                {
-                    facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, assignedKey));
-                }
-            }
+                KillKey(facts, assignedKey, keepRemoveNone: valueKeepsNonNone);
         }
 
-        foreach (var walrusKey in CollectWalrusTargetKeys(statement))
+        foreach (var walrus in CollectWalrusExpressions(statement))
         {
-            facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, walrusKey));
+            KillKey(facts, walrus.Target, keepRemoveNone: ValueIsDefinitelyNotNone(walrus.Value, facts));
+        }
+    }
+
+    private static void KillKey(HashSet<NarrowingFact> facts, string assignedKey, bool keepRemoveNone)
+    {
+        facts.RemoveWhere(fact => KeyIsInvalidatedBy(fact.Key, assignedKey)
+            && !(keepRemoveNone && fact.Kind == NarrowingActionKind.RemoveNone));
+    }
+
+    /// <summary>
+    /// Whether a stored value cannot be None, decided from its syntactic shape and the facts in
+    /// effect before the store (see <see cref="Kill"/> for the soundness argument). Conservative:
+    /// a shape this method does not recognise is treated as possibly None.
+    /// </summary>
+    private static bool ValueIsDefinitelyNotNone(Expression value, HashSet<NarrowingFact> facts)
+    {
+        switch (value)
+        {
+            case Parenthesized paren:
+                return ValueIsDefinitelyNotNone(paren.Expression, facts);
+
+            case IntegerLiteral or FloatLiteral or StringLiteral or BytesLiteralExpression
+                or FStringLiteral or TStringLiteral or BooleanLiteral
+                or ListLiteral or DictLiteral or SetLiteral or TupleLiteral
+                or ListComprehension or SetComprehension or DictComprehension or DictSpreadComprehension
+                or LambdaExpression:
+                return true;
+
+            case NoneLiteral:
+                return false;
+
+            case Identifier or MemberAccess or IndexAccess:
+                {
+                    var key = AstHelper.ExtractNarrowingKey(value);
+                    if (key == null)
+                        return false;
+                    foreach (var fact in facts)
+                    {
+                        if (fact.Key == key && fact.Kind == NarrowingActionKind.RemoveNone)
+                            return true;
+                    }
+                    return false;
+                }
+
+            case BinaryOp binary:
+                return binary.Operator switch
+                {
+                    // `a and b` / `a or b` evaluate to one of their operands.
+                    BinaryOperator.And or BinaryOperator.Or
+                        => ValueIsDefinitelyNotNone(binary.Left, facts) && ValueIsDefinitelyNotNone(binary.Right, facts),
+                    // `a ?? b` evaluates to b when a is None.
+                    BinaryOperator.NullCoalesce => ValueIsDefinitelyNotNone(binary.Right, facts),
+                    // Arithmetic, comparison, membership, identity and bitwise operators produce a
+                    // value; a wrapper operand is refused by the checker (SPY0222).
+                    _ => true,
+                };
+
+            case ComparisonChain:
+                return true;
+
+            case UnaryOp unary:
+                return unary.Operator == UnaryOperator.Not || ValueIsDefinitelyNotNone(unary.Operand, facts);
+
+            case ConditionalExpression conditional:
+                return ValueIsDefinitelyNotNone(conditional.ThenValue, facts)
+                    && ValueIsDefinitelyNotNone(conditional.ElseValue, facts);
+
+            case WalrusExpression walrus:
+                return ValueIsDefinitelyNotNone(walrus.Value, facts);
+
+            default:
+                // Calls (Some(…), None(), g()), await, casts, slices, maybe/try — possibly None.
+                return false;
         }
     }
 
     /// <summary>
-    /// The narrowing keys every walrus in <paramref name="node"/> writes. Does not descend into a
-    /// lambda body — a walrus there binds when the lambda RUNS, not where it is written, which is
-    /// the same boundary <see cref="DefiniteAssignmentAnalysis"/> draws.
+    /// Every walrus in <paramref name="node"/>. Does not descend into a lambda body — a walrus
+    /// there binds when the lambda RUNS, not where it is written, which is the same boundary
+    /// <see cref="DefiniteAssignmentAnalysis"/> draws.
     /// </summary>
-    private static IEnumerable<string> CollectWalrusTargetKeys(Node node)
+    private static IEnumerable<WalrusExpression> CollectWalrusExpressions(Node node)
     {
         if (node is LambdaExpression)
             yield break;
 
         if (node is WalrusExpression walrus)
-            yield return walrus.Target;
+            yield return walrus;
 
         foreach (var child in node.GetChildNodes())
         {
-            foreach (var key in CollectWalrusTargetKeys(child))
-                yield return key;
+            foreach (var nested in CollectWalrusExpressions(child))
+                yield return nested;
         }
     }
 

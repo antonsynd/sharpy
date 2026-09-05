@@ -42,6 +42,15 @@ internal partial class TypeChecker
         AcceptedDecimalNarrowing,
         AcceptedLiteralString,
         AcceptedConditional,
+
+        /// <summary>
+        /// A RemoveNone-narrowed read stored into a slot of its OWN declared wrapper type passes the
+        /// wrapper through (R-T pass-through): `b = a` inside `if a is not None:` with both `int?`
+        /// is a whole-slot store — no unwrap, no wrap fact — and the narrowing of the target does
+        /// not enter into it. Applying the verdict removes the read's accessor so the emitter
+        /// prints the raw read.
+        /// </summary>
+        AcceptedNarrowedPassThrough,
         Refused,
         RefusedNoneIntoNonNullable,
         RefusedOptionalConstruction,
@@ -61,7 +70,8 @@ internal partial class TypeChecker
             or StoreVerdict.AcceptedFloat32Narrowing
             or StoreVerdict.AcceptedDecimalNarrowing
             or StoreVerdict.AcceptedLiteralString
-            or StoreVerdict.AcceptedConditional;
+            or StoreVerdict.AcceptedConditional
+            or StoreVerdict.AcceptedNarrowedPassThrough;
 
     private StoreVerdict ClassifyStore(
         StorePosition position,
@@ -115,6 +125,23 @@ internal partial class TypeChecker
             return StoreVerdict.AcceptedConditional;
         }
 
+        // 6b. Narrowed pass-through (R-T): the value is a read that a RemoveNone narrowing stripped
+        //     of its wrapper, and the slot IS that wrapper. The read's un-narrowed type is
+        //     reconstructed from the accessor kind the checker recorded for it — UnwrapOptional
+        //     means the slot the read comes from is `Optional[valueType]`, the nullable accessors
+        //     mean `valueType | None` — so an Identifier, MemberAccess or IndexAccess read is
+        //     covered by one rule at every position (declaration, return, argument, member/index
+        //     store, walrus, tuple element). Before this arm the read was refused SPY0604 as a bare
+        //     payload into `T?`, which no spelling of the read could satisfy but `Some(a)` —
+        //     re-wrapping a value that is already the wrapper (type_narrowing.md §Stores Use the
+        //     Declared Type, "a narrowed read stored into a slot of its own declared type passes
+        //     the Optional through").
+        if (value != null
+            && NarrowedReadPassesThrough(AstHelper.UnwrapParenthesized(value), valueType, targetType))
+        {
+            return StoreVerdict.AcceptedNarrowedPassThrough;
+        }
+
         // 7. Strict Optional construction — bare values and bare None are refused into T?
         if (targetType is OptionalType)
         {
@@ -131,6 +158,33 @@ internal partial class TypeChecker
 
         // 9. Otherwise
         return StoreVerdict.Refused;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="read"/> is a RemoveNone-narrowed read whose un-narrowed wrapper is
+    /// exactly <paramref name="targetType"/> (see <see cref="StoreVerdict.AcceptedNarrowedPassThrough"/>).
+    /// Side-effect free — it runs during overload probing too. Idempotent across the two
+    /// classifications a store site performs: once <see cref="ApplyAcceptedVerdict"/> has removed
+    /// the read's accessor it records the pass-through, and the second classification reads that
+    /// record instead of the (now absent) lowering.
+    /// </summary>
+    private bool NarrowedReadPassesThrough(Expression read, SemanticType narrowedType, SemanticType targetType)
+    {
+        if (read is not (Identifier or MemberAccess or IndexAccess))
+            return false;
+
+        if (_semanticInfo.GetNarrowedReadPassThrough(read) is { } passedAs)
+            return passedAs.Equals(targetType);
+
+        SemanticType? unnarrowed = _semanticInfo.GetNarrowedReadLowering(read)?.Kind switch
+        {
+            NarrowedReadKind.UnwrapOptional => new OptionalType { UnderlyingType = narrowedType },
+            NarrowedReadKind.NullableValue or NarrowedReadKind.NullForgiving
+                => new NullableType { UnderlyingType = narrowedType },
+            _ => null,
+        };
+
+        return unnarrowed != null && unnarrowed.Equals(targetType);
     }
 
     /// <summary>
@@ -179,6 +233,14 @@ internal partial class TypeChecker
 
             case StoreVerdict.AcceptedConditional when value != null:
                 ApplyConditionalBranchVerdicts(position, value, targetType);
+                break;
+
+            case StoreVerdict.AcceptedNarrowedPassThrough when value != null:
+                // The read is the wrapper again: drop its accessor and narrowed type so the emitter
+                // prints `a`, not `a.Unwrap()`, and record the pass-through so the store site's
+                // second classification (the version-typing switch) reaches the same verdict.
+                _semanticInfo.PassNarrowedReadThrough(AstHelper.UnwrapParenthesized(value), targetType);
+                _semanticInfo.SetExpressionType(value, targetType);
                 break;
         }
 

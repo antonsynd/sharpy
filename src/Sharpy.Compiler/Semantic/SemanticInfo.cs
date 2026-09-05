@@ -75,6 +75,13 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Node, OptionalType> _optionalStoreWraps =
         new(ReferenceEqualityComparer.Instance);
 
+    // Map a narrowed read (Identifier / MemberAccess / IndexAccess) that a store PASSED THROUGH as
+    // its own declared wrapper (StoreVerdict.AcceptedNarrowedPassThrough, R-T) to that wrapper
+    // type. Recording it removes the read's accessor and narrowed type — the emitter prints the
+    // raw read — and lets the store site's second classification reach the same verdict.
+    private readonly ConcurrentDictionary<Expression, SemanticType> _narrowedReadPassThroughs =
+        new(ReferenceEqualityComparer.Instance);
+
     // Map expressions whose SEMANTIC type is a Sharpy collection but whose EMITTED type is the CLR
     // sequence the bridge mapped it from, to the Sharpy collection they must be materialized into
     // (#1251, Critical Rule 2 pattern (b)). A BCL extension call typed `list[str]` emits as
@@ -687,6 +694,24 @@ public class SemanticInfo : ISemanticQuery
     public OptionalType? GetOptionalStoreWrap(Node storeNode)
     {
         return _optionalStoreWraps.TryGetValue(storeNode, out var opt) ? opt : null;
+    }
+
+    /// <summary>
+    /// Records that a RemoveNone-narrowed <paramref name="read"/> was stored into a slot of its own
+    /// declared wrapper type <paramref name="passedAs"/> and passes the wrapper through unchanged:
+    /// its accessor lowering and narrowed type are removed so codegen prints the raw read.
+    /// </summary>
+    public void PassNarrowedReadThrough(Expression read, SemanticType passedAs)
+    {
+        _narrowedReadLowerings.TryRemove(read, out _);
+        _narrowedExpressionTypes.TryRemove(read, out _);
+        _narrowedReadPassThroughs[read] = passedAs;
+    }
+
+    /// <summary>The wrapper type a narrowed read was passed through as, or null.</summary>
+    public SemanticType? GetNarrowedReadPassThrough(Expression read)
+    {
+        return _narrowedReadPassThroughs.TryGetValue(read, out var passedAs) ? passedAs : null;
     }
 
     /// <summary>
@@ -1640,6 +1665,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._optionalStoreWraps)
             _optionalStoreWraps.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._narrowedReadPassThroughs)
+            _narrowedReadPassThroughs.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._sequenceMaterializations)
             _sequenceMaterializations.TryAdd(kvp.Key, kvp.Value);
