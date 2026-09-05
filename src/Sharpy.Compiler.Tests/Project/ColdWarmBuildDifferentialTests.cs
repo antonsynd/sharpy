@@ -478,6 +478,116 @@ def main() -> None:
         }
     }
 
+    // -----------------------------------------------------------------------
+    // LiteralString and Self cells (#1766, #1751)
+    // -----------------------------------------------------------------------
+
+    private const string LiteralStringLibSource = @"def tag(s: LiteralString) -> str:
+    return s.upper()
+
+class Config:
+    label: LiteralString
+
+    def __init__(self, label: LiteralString) -> None:
+        self.label = label
+
+    def get_label(self) -> LiteralString:
+        return self.label
+";
+
+    private const string LiteralStringMainSource = @"from lib import tag, Config
+
+def main() -> None:
+    c = Config(""hello"")
+    print(tag(""world""))
+    print(c.get_label())
+";
+
+    /// <summary>
+    /// A <c>LiteralString</c> signature, return type and field must survive the serializer
+    /// round trip: cold == warm output. Without the <c>Register&lt;LiteralStringType&gt;</c>
+    /// added in eac345708, the second build ICEd SPY0909 (#1751).
+    /// </summary>
+    [Fact]
+    public void WarmBuild_LiteralStringSignature_IsObservationallyIdenticalToCold()
+    {
+        var lib = Write("litstr", "lib.spy", LiteralStringLibSource);
+        var main = Write("litstr", "main.spy", LiteralStringMainSource);
+        var config = Config("litstr", lib, main);
+
+        var cold = Build(config);
+        cold.Success.Should().BeTrue(
+            "the LiteralString specimen must compile cold. Diagnostics:\n" + Diagnostics(cold));
+        var coldGenerated = Generated(cold);
+        var coldDiagnostics = Diagnostics(cold);
+
+        var warm = Build(config);
+        warm.Success.Should().BeTrue(
+            "a warm build of the LiteralString specimen must succeed — SPY0909 here means "
+            + "the serializer has no arm for LiteralStringType (#1751). Diagnostics:\n"
+            + Diagnostics(warm));
+
+        Skipped(warm).Should().BeEquivalentTo(new[] { "lib.spy", "main.spy" },
+            "both files must come from the cache for this to measure the serializer");
+
+        Diagnostics(warm).Should().Be(coldDiagnostics,
+            "warm must report what cold reported");
+
+        Generated(warm).Should().BeEquivalentTo(coldGenerated,
+            "warm must emit what cold emitted — a dropped LiteralString fact changes the C#");
+    }
+
+    private const string SelfLibSource = @"class Builder:
+    value: int
+
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def clone(self) -> Self:
+        return Builder(self.value)
+";
+
+    private const string SelfMainSource = @"from lib import Builder
+
+def main() -> None:
+    b = Builder(42)
+    c = b.clone()
+    print(c.value)
+";
+
+    /// <summary>
+    /// A <c>-> Self</c> return type must survive the serializer round trip: cold == warm output.
+    /// Without the <c>Register&lt;SelfType&gt;</c>, the second build ICEd SPY0909.
+    /// </summary>
+    [Fact]
+    public void WarmBuild_SelfReturnType_IsObservationallyIdenticalToCold()
+    {
+        var lib = Write("selfrt", "lib.spy", SelfLibSource);
+        var main = Write("selfrt", "main.spy", SelfMainSource);
+        var config = Config("selfrt", lib, main);
+
+        var cold = Build(config);
+        cold.Success.Should().BeTrue(
+            "the Self specimen must compile cold. Diagnostics:\n" + Diagnostics(cold));
+        var coldGenerated = Generated(cold);
+        var coldDiagnostics = Diagnostics(cold);
+
+        var warm = Build(config);
+        warm.Success.Should().BeTrue(
+            "a warm build of the Self specimen must succeed — SPY0909 here means "
+            + "the serializer has no arm for SelfType (#1751). Diagnostics:\n"
+            + Diagnostics(warm));
+
+        Skipped(warm).Should().BeEquivalentTo(new[] { "lib.spy", "main.spy" },
+            "both files must come from the cache for this to measure the serializer");
+
+        Diagnostics(warm).Should().Be(coldDiagnostics,
+            "warm must report what cold reported");
+
+        Generated(warm).Should().BeEquivalentTo(coldGenerated,
+            "warm must emit what cold emitted — a dropped Self fact changes the C#");
+    }
+
     /// <summary>
     /// The headline divergence, other direction: with -warnaserror from the start, the cold build
     /// fails — and a failing build writes NO cache (save-only-on-success), so the warm no-edit

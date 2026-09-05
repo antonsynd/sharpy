@@ -33,9 +33,9 @@ public class SemanticTypeSerializerTotalityTests
         ["GenericFunctionType"] = "DocumentedLossy: decodes to GenericType by design (SymbolSerializer:1408); the function signature is reconstructed at use site",
         ["ModuleType"] = "DocumentedLossy: registered channel encodes Symbol.Name only and decodes to a placeholder name-only ModuleSymbol (SymbolSerializer Register<ModuleType>); record equality compares Symbol by reference, so a round trip cannot attest it",
         ["UnionType"] = "DocumentedLossy: registered placeholder channel for v0.2.x tagged unions decodes Name+CaseTypes structurally, but UnionType has no structural Equals over CaseTypes, so record equality cannot attest it; revisit when tagged unions land",
-        ["SelfType"] = "OutOfScope: never reaches serialization; the NotSupportedException throw in SymbolSerializer's Serialize is the loud backstop",
+        ["SelfType"] = "RoundTrips",
         ["ConstructorReferenceType"] = "OutOfScope: never reaches serialization; pinned or rejected (SPY0342) in semantic analysis",
-        ["LiteralStringType"] = "OutOfScope: compile-time-only distinction; emits as string, never serialized",
+        ["LiteralStringType"] = "RoundTrips",
     };
 
     [Fact]
@@ -132,6 +132,8 @@ public class SemanticTypeSerializerTotalityTests
         "TaskType" => new TaskType { ResultType = SemanticType.Int },
         "TemplateType" => TemplateType.Instance,
         "TypeParameterType" => new TypeParameterType { Name = "T" },
+        "LiteralStringType" => LiteralStringType.Instance,
+        "SelfType" => new SelfType(),
         _ => null,
     };
 }

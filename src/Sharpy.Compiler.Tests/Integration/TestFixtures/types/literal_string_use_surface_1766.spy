@@ -1,0 +1,27 @@
+def accept_str(s: str) -> str:
+    return s
+
+def main() -> None:
+    x: LiteralString = "a,b"
+
+    # Comparison
+    print(x == "a,b")
+
+    # len
+    print(len(x))
+
+    # split (discriminating: prints list repr)
+    print(x.split(","))
+
+    # upper
+    print(x.upper())
+
+    # Truthiness
+    if x:
+        print("truthy")
+
+    # Indexing
+    print(x[0])
+
+    # Passed to str parameter
+    print(accept_str(x))
