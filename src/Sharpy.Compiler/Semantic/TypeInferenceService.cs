@@ -293,6 +293,10 @@ internal class TypeInferenceService
 
     private SemanticType? TryInferBuiltinBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
     {
+        // #1766: a LiteralString is a str at every value-use route.
+        left = TypeChecker.OperandView(left);
+        right = TypeChecker.OperandView(right);
+
         // Shift operators: result type = promoted left operand alone; the count (right)
         // must be an integer but does not widen the result (#1315).
         if (TypeUtils.IsInteger(left) && TypeUtils.IsInteger(right)
@@ -941,15 +945,19 @@ internal class TypeInferenceService
     /// comparison: <c>str</c>, collection generics, and class/interface/delegate user-defined types
     /// are reference types; numerics, bools, structs, enums, and unions are value types.
     /// </summary>
-    private static bool IsNoneCheckReferenceType(SemanticType type) => type switch
+    private static bool IsNoneCheckReferenceType(SemanticType type)
     {
-        // Among builtin primitives only str (System.String) is a reference type.
-        BuiltinType => type == SemanticType.Str,
-        // Collection generics (list/dict/set/...) are reference types.
-        GenericType => true,
-        UserDefinedType udt => IsReferenceUserType(udt),
-        _ => false,
-    };
+        type = TypeChecker.OperandView(type);
+        return type switch
+        {
+            // Among builtin primitives only str (System.String) is a reference type.
+            BuiltinType => type == SemanticType.Str,
+            // Collection generics (list/dict/set/...) are reference types.
+            GenericType => true,
+            UserDefinedType udt => IsReferenceUserType(udt),
+            _ => false,
+        };
+    }
 
     private static bool IsReferenceUserType(UserDefinedType udt)
     {
@@ -1255,7 +1263,7 @@ internal class TypeInferenceService
         }
 
         // Strings
-        if (iterableType == SemanticType.Str)
+        if (TypeChecker.OperandView(iterableType) == SemanticType.Str)
         {
             return SemanticType.Str;
         }
@@ -1408,7 +1416,7 @@ internal class TypeInferenceService
         }
 
         // Strings
-        if (container == SemanticType.Str)
+        if (TypeChecker.OperandView(container) == SemanticType.Str)
         {
             return SemanticType.Str;
         }

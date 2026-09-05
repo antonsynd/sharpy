@@ -33,12 +33,22 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// #1766: a LiteralString is a str at every VALUE-USE route — operators, protocols,
+    /// truthiness, indexing, iteration, method dispatch. The store seam is untouched
+    /// (LiteralString is already assignable to str).
+    /// </summary>
+    internal static SemanticType OperandView(SemanticType type)
+        => type is LiteralStringType ? SemanticType.Str : type;
+
+    /// <summary>
     /// Returns whether the type can be used in a truthiness context and, when true, the lowering
     /// tag codegen must apply (#1558). A type is truth-testable when it has a falsy case — types
     /// with no falsy case (objects, functions, delegates) are refused.
     /// </summary>
     private (bool isTruthTestable, TruthinessLowering lowering) ClassifyTruthiness(SemanticType type)
     {
+        type = OperandView(type);
+
         if (type == SemanticType.Bool)
             return (true, TruthinessLowering.NativeBool);
 
@@ -1603,7 +1613,7 @@ internal partial class TypeChecker
     {
         if (type is NullableType nullable)
             type = nullable.UnderlyingType;
-        return type == SemanticType.Str
+        return OperandView(type) == SemanticType.Str
             || type is UserDefinedType { Name: BuiltinNames.Bytes }
             || type is GenericType { Name: BuiltinNames.List or BuiltinNames.Array };
     }

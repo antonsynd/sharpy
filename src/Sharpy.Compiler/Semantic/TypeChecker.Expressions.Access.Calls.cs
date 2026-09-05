@@ -4263,7 +4263,7 @@ internal partial class TypeChecker
         // IEnumerable<string> — but Python iterates a string as one-character STRINGS, and
         // Builtins.ListFromStr is exactly that bridge (list(s) has always used it). Kept here, next
         // to the proof it fails, because that is where the question is asked (#1209).
-        if (argType == SemanticType.Str)
+        if (OperandView(argType) == SemanticType.Str)
         {
             return new IterableArgumentProjection(IterableProjectionKind.StrToList, SemanticType.Str);
         }
@@ -4367,7 +4367,7 @@ internal partial class TypeChecker
             return null;
 
         var receiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
-        return receiverType == SemanticType.Str ? IterablePositionZero : null;
+        return receiverType != null && OperandView(receiverType) == SemanticType.Str ? IterablePositionZero : null;
     }
 
     /// <summary>

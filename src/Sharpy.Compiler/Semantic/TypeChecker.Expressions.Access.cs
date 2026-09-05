@@ -1500,6 +1500,7 @@ internal partial class TypeChecker
     /// </remarks>
     private (TypeSymbol? TypeSymbol, List<SemanticType>? TypeArgs) ResolveBuiltinTypeInfo(SemanticType type)
     {
+        type = OperandView(type);
         return type switch
         {
             GenericType gt => (_symbolTable.BuiltinRegistry.GetType(gt.Name), gt.TypeArguments),
@@ -2525,7 +2526,7 @@ internal partial class TypeChecker
     /// </summary>
     private void RecordStaticExtensionDispatch(MemberAccess memberAccess, SemanticType objectType)
     {
-        if (objectType != SemanticType.Str)
+        if (OperandView(objectType) != SemanticType.Str)
             return;
 
         // str's builtin TypeSymbol.Methods are populated exclusively from Sharpy.StringExtensions
@@ -2566,7 +2567,7 @@ internal partial class TypeChecker
         if (index is TupleLiteral && Discovery.ClrTypeHelper.HasParamsIndexer(objectType))
             return IndexAccessLowering.ParamsSpread;
 
-        if (objectType == SemanticType.Str)
+        if (OperandView(objectType) == SemanticType.Str)
             return IndexAccessLowering.String;
 
         if (objectType is GenericType { Name: BuiltinNames.Array })

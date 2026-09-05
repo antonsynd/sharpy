@@ -233,6 +233,8 @@ internal class OperatorValidator : ValidatingAstWalker
 
     private bool SupportsOperator(SemanticType type, string dunderName)
     {
+        type = TypeChecker.OperandView(type);
+
         // String supports concatenation and comparison (check first, before BuiltinType)
         if (type == SemanticType.Str)
         {
@@ -367,7 +369,7 @@ internal class OperatorValidator : ValidatingAstWalker
 
     private bool IsPrimitiveType(SemanticType type)
     {
-        return type is BuiltinType || type == SemanticType.Str;
+        return type is BuiltinType || TypeChecker.OperandView(type) == SemanticType.Str;
     }
 
     /// <summary>

@@ -1232,7 +1232,7 @@ internal partial class TypeChecker
             }
         }
 
-        if (iterType == SemanticType.Str)
+        if (OperandView(iterType) == SemanticType.Str)
         {
             _semanticInfo.SetIterationLowering(forStmt.Iterator,
                 new IterationLowering(IterationLoweringKind.StringChars));

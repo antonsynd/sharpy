@@ -270,7 +270,7 @@ internal class ProtocolValidator : ValidatingAstWalker
             return HasProtocol(nullableType.UnderlyingType, dunderName);
 
         // Check Sharpy built-in types first
-        if (type == SemanticType.Str)
+        if (TypeChecker.OperandView(type) == SemanticType.Str)
         {
             return dunderName is DunderNames.Len or DunderNames.Iter or DunderNames.Contains or DunderNames.GetItem;
         }

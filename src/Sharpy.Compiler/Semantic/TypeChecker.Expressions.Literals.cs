@@ -527,7 +527,7 @@ internal partial class TypeChecker
             }
         }
 
-        if (iterType == SemanticType.Str)
+        if (OperandView(iterType) == SemanticType.Str)
         {
             _semanticInfo.SetIterationLowering(forClause.Iterator,
                 new IterationLowering(IterationLoweringKind.StringChars));
@@ -719,7 +719,7 @@ internal partial class TypeChecker
             _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.List));
             return objType;
         }
-        if (objType == SemanticType.Str)
+        if (OperandView(objType) == SemanticType.Str)
         {
             _semanticInfo.SetSliceLowering(sliceAccess, new SliceLowering(SliceLoweringKind.Str));
             return SemanticType.Str;

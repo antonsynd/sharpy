@@ -608,6 +608,11 @@ internal partial class TypeChecker
                     "a non-primitive type reference is typed at the call site, not here"));
         }
 
+        // #1766: a LiteralString-typed identifier read is literal-derived, so
+        // `x + "b"` stays admissible into a LiteralString slot (#1731).
+        if (identifierType is LiteralStringType)
+            _semanticInfo.SetLiteralDerived(id);
+
         return identifierType;
     }
 

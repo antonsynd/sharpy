@@ -56,6 +56,10 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // #1766: a LiteralString is a str at every value-use route.
+        leftType = OperandView(leftType);
+        rightType = OperandView(rightType);
+
         // #1750 (R-U): the needle of in/not in is an argument into the container's element
         // slot. The container-presence check (SPY0320) stays in ProtocolValidator; this arm
         // runs only when an element type resolves, so the two stages never overlap.
@@ -1121,8 +1125,8 @@ internal partial class TypeChecker
         var links = ImmutableArray.CreateBuilder<ComparisonLinkLowering>(chain.Operators.Length);
         for (int i = 0; i < chain.Operators.Length; i++)
         {
-            var leftType = operandTypes[i];
-            var rightType = operandTypes[i + 1];
+            var leftType = OperandView(operandTypes[i]);
+            var rightType = OperandView(operandTypes[i + 1]);
 
             // Skip validation if either operand is Unknown to avoid cascading errors
             if (leftType is UnknownType || rightType is UnknownType)
