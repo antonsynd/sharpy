@@ -134,8 +134,14 @@ internal sealed class SharpyInlayHintHandler : InlayHintsHandlerBase
             {
                 // TryDeclare must run for augmented assignments too — they bind the name for
                 // the rest of the scope — but only `=` introduces a value worth annotating.
+                // Whether a bare `x = value` declares or rebinds is the checker's recorded
+                // TargetBinding, not this walker's lexical scope: a def body starts a fresh
+                // BindingScope, but a store to a name that exists in an ENCLOSING scope — the
+                // module or the enclosing function — writes through to that binding
+                // (variable_scoping.md §Write-Through Assignment) and is not a declaration.
                 var isDeclaring = scope.TryDeclare(assignTarget.Name)
-                    && assignment.Operator == AssignmentOperator.Assign;
+                    && assignment.Operator == AssignmentOperator.Assign
+                    && analysis.SemanticInfo?.GetTargetBinding(assignTarget)?.Kind != TargetBindingKind.Rebinds;
 
                 if (typeAnnotations && isDeclaring)
                 {

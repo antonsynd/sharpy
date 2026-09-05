@@ -90,18 +90,66 @@ public class InlayHintTests : IDisposable
     }
 
     [Fact]
-    public async Task ShadowedName_HintsAtEachDeclaringBindingAsync()
+    public async Task ModuleLevelName_ReboundInAFunction_IsOneDeclarationAsync()
     {
-        // A nested scope's binding is a different symbol with a different type; both declare.
+        // variable_scoping.md §Write-Through Assignment: "Assignment to a name that already exists
+        // in an enclosing scope writes through to it — no `nonlocal` keyword needed … To create a
+        // new local that shadows an outer name, use an annotated declaration." A bare `x = "hello"`
+        // inside main is therefore a write-through STORE into the module-level `x`, refused
+        // SPY0220 (str into int32) — not a second declaration. The pre-spec version of this test
+        // (ShadowedName_HintsAtEachDeclaringBindingAsync, 2026-07-31) encoded the shadow reading
+        // and asserted a second `: str` hint at (2, 5); that reading contradicted the spec, and the
+        // seam restriction written to keep it green (2e45f55df) skipped the store seam for every
+        // module-level name (#1768).
         var source = "x = 42\ndef main():\n    x = \"hello\"\n    print(x)";
         var hints = await GetHintsAsync(source);
 
         var typeHints = TypeHints(hints);
-        typeHints.Should().HaveCount(2);
-        typeHints.Should().ContainSingle(h => h.Position == new Position(0, 1))
-            .Which.Label.String.Should().Be(": int32");
-        typeHints.Should().ContainSingle(h => h.Position == new Position(2, 5))
-            .Which.Label.String.Should().Be(": str");
+        typeHints.Should().ContainSingle("the module declaration is the only declaring binding")
+            .Which.Position.Should().Be(new Position(0, 1));
+        typeHints.Single().Label.String.Should().Be(": int32");
+    }
+
+    [Fact]
+    public async Task ModuleLevelName_SameTypeWriteThrough_IsARebindingNotADeclarationAsync()
+    {
+        // The accepted twin of the cell above: `x = 5` in main writes through to the module `x`
+        // (the emitted C# assigns the static field). The handler reads the checker's TargetBinding
+        // (Rebinds) for it — its own lexical BindingScope, which opens fresh per def, would have
+        // called it a declaration and hinted `: int32` a second time.
+        var source = "x = 42\ndef main():\n    x = 5\n    print(x)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle("a write-through store is not a declaration")
+            .Which.Position.Should().Be(new Position(0, 1));
+    }
+
+    [Fact]
+    public async Task EnclosingFunctionName_ReboundInANestedDef_IsARebindingAsync()
+    {
+        // The closure cell of the same rule (variable_scoping.md: "This applies to nested functions
+        // too (C# closure semantics — captured by reference)"): `n = 2` inside inner writes through
+        // to main's `n`; only main's binding hints.
+        var source = "def main():\n    n = 1\n    def inner():\n        n = 2\n    inner()\n    print(n)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle("the enclosing function's binding is the one declaration")
+            .Which.Position.Should().Be(new Position(1, 5));
+    }
+
+    [Fact]
+    public async Task AnnotatedDeclarationInAFunction_ShadowsWithoutAHint_ModuleHintStaysAsync()
+    {
+        // The spec's shadowing form: an ANNOTATED declaration creates a new local. It carries its
+        // own annotation, so it needs no inferred-type hint; the module declaration still hints.
+        var source = "x = 42\ndef main():\n    x: str = \"hello\"\n    print(x)";
+        var hints = await GetHintsAsync(source);
+
+        var typeHints = TypeHints(hints);
+        typeHints.Should().ContainSingle()
+            .Which.Position.Should().Be(new Position(0, 1));
     }
 
     [Fact]
