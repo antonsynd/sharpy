@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Xunit;
 using FluentAssertions;
 
@@ -219,19 +220,19 @@ public class SumNarrowWidth_Tests
     }
 
     [Fact]
-    public void Sum_UintList_Overflow_ThrowsOverflowException()
+    public void Sum_UintList_Overflow_ThrowsOverflowError()
     {
         var list = new List<uint> { uint.MaxValue, 1u };
         FluentActions.Invoking(() => Sum(list))
-            .Should().Throw<OverflowException>();
+            .Should().Throw<OverflowError>().WithMessage("*uint32*");
     }
 
     [Fact]
-    public void Sum_UintList_WithStart_Overflow_ThrowsOverflowException()
+    public void Sum_UintList_WithStart_Overflow_ThrowsOverflowError()
     {
         var list = new List<uint> { uint.MaxValue };
         FluentActions.Invoking(() => Sum(list, 1u))
-            .Should().Throw<OverflowException>();
+            .Should().Throw<OverflowError>().WithMessage("*uint32*");
     }
 
     [Fact]
@@ -280,19 +281,19 @@ public class SumNarrowWidth_Tests
     }
 
     [Fact]
-    public void Sum_UlongList_Overflow_ThrowsOverflowException()
+    public void Sum_UlongList_Overflow_ThrowsOverflowError()
     {
         var list = new List<ulong> { ulong.MaxValue, 1UL };
         FluentActions.Invoking(() => Sum(list))
-            .Should().Throw<OverflowException>();
+            .Should().Throw<OverflowError>().WithMessage("*uint64*");
     }
 
     [Fact]
-    public void Sum_UlongList_WithStart_Overflow_ThrowsOverflowException()
+    public void Sum_UlongList_WithStart_Overflow_ThrowsOverflowError()
     {
         var list = new List<ulong> { ulong.MaxValue };
         FluentActions.Invoking(() => Sum(list, 1UL))
-            .Should().Throw<OverflowException>();
+            .Should().Throw<OverflowError>().WithMessage("*uint64*");
     }
 
     [Fact]
@@ -343,5 +344,125 @@ public class SumNarrowWidth_Tests
     {
         var list = new List<ulong> { 10_000_000_000UL, 20_000_000_000UL };
         Sum(list).Should().Be(30_000_000_000UL);
+    }
+
+    // ── overflow raises OverflowError at every integer width (#1749) ──
+    //
+    // The spec (builtin_functions.md, sum) says "Overflow raises OverflowError"; Core's convention
+    // (Pow, FloorDiv, NumericCheckedCast) converts the CLR OverflowException. Before this, every
+    // integer arm let System.OverflowException escape, so `except OverflowError:` did not catch a
+    // sum overflow. One cell per accumulator width, plus the start twin, both asserting the Sharpy
+    // exception type and the width the message names.
+
+    [Fact]
+    public void Sum_SbyteList_Overflow_ThrowsOverflowError()
+    {
+        // 127 × 16 909 321 = 2 147 483 767 > int.MaxValue
+        var items = Enumerable.Repeat((sbyte)127, 16_909_321);
+        FluentActions.Invoking(() => Sum(items))
+            .Should().Throw<OverflowError>().WithMessage("*int32*");
+    }
+
+    [Fact]
+    public void Sum_SbyteList_WithStart_Overflow_ThrowsOverflowError()
+    {
+        var list = new List<sbyte> { 1 };
+        FluentActions.Invoking(() => Sum(list, int.MaxValue))
+            .Should().Throw<OverflowError>().WithMessage("*int32*");
+    }
+
+    [Fact]
+    public void Sum_ByteList_Overflow_ThrowsOverflowError()
+    {
+        // 255 × 8 421 505 = 2 147 483 775 > int.MaxValue
+        var items = Enumerable.Repeat((byte)255, 8_421_505);
+        FluentActions.Invoking(() => Sum(items))
+            .Should().Throw<OverflowError>().WithMessage("*int32*");
+    }
+
+    [Fact]
+    public void Sum_ByteList_WithStart_Overflow_ThrowsOverflowError()
+    {
+        var list = new List<byte> { 1 };
+        FluentActions.Invoking(() => Sum(list, int.MaxValue))
+            .Should().Throw<OverflowError>().WithMessage("*int32*");
+    }
+
+    [Fact]
+    public void Sum_ShortList_Overflow_ThrowsOverflowError()
+    {
+        // 32 767 × 65 539 = 2 147 516 413 > int.MaxValue
+        var items = Enumerable.Repeat((short)32767, 65_539);
+        FluentActions.Invoking(() => Sum(items))
+            .Should().Throw<OverflowError>().WithMessage("*int32*");
+    }
+
+    [Fact]
+    public void Sum_ShortList_WithStart_Overflow_ThrowsOverflowError()
+    {
+        var list = new List<short> { 1 };
+        FluentActions.Invoking(() => Sum(list, int.MaxValue))
+            .Should().Throw<OverflowError>().WithMessage("*int32*");
+    }
+
+    [Fact]
+    public void Sum_UshortList_Overflow_ThrowsOverflowError()
+    {
+        // 65 535 × 32 769 = 2 147 516 415 > int.MaxValue
+        var items = Enumerable.Repeat((ushort)65535, 32_769);
+        FluentActions.Invoking(() => Sum(items))
+            .Should().Throw<OverflowError>().WithMessage("*int32*");
+    }
+
+    [Fact]
+    public void Sum_UshortList_WithStart_Overflow_ThrowsOverflowError()
+    {
+        var list = new List<ushort> { 1 };
+        FluentActions.Invoking(() => Sum(list, int.MaxValue))
+            .Should().Throw<OverflowError>().WithMessage("*int32*");
+    }
+
+    [Fact]
+    public void Sum_IntList_Overflow_ThrowsOverflowError()
+    {
+        var list = new List<int> { int.MaxValue, 1 };
+        FluentActions.Invoking(() => Sum(list))
+            .Should().Throw<OverflowError>().WithMessage("*int32*");
+    }
+
+    [Fact]
+    public void Sum_IntList_WithStart_Overflow_ThrowsOverflowError()
+    {
+        // The start twin was `start + iterable.Sum()` in an unchecked context: this wrapped to a
+        // negative value instead of raising anything.
+        var list = new List<int> { 1 };
+        FluentActions.Invoking(() => Sum(list, int.MaxValue))
+            .Should().Throw<OverflowError>().WithMessage("*int32*");
+    }
+
+    [Fact]
+    public void Sum_LongList_Overflow_ThrowsOverflowError()
+    {
+        var list = new List<long> { long.MaxValue, 1L };
+        FluentActions.Invoking(() => Sum(list))
+            .Should().Throw<OverflowError>().WithMessage("*int64*");
+    }
+
+    [Fact]
+    public void Sum_LongList_WithStart_Overflow_ThrowsOverflowError()
+    {
+        var list = new List<long> { 1L };
+        FluentActions.Invoking(() => Sum(list, long.MaxValue))
+            .Should().Throw<OverflowError>().WithMessage("*int64*");
+    }
+
+    [Fact]
+    public void Sum_Overflow_IsAnArithmeticError_LikePythons()
+    {
+        // Python: OverflowError is a subclass of ArithmeticError, so `except ArithmeticError:`
+        // also catches it.
+        var list = new List<int> { int.MaxValue, 1 };
+        FluentActions.Invoking(() => Sum(list))
+            .Should().Throw<ArithmeticError>();
     }
 }
