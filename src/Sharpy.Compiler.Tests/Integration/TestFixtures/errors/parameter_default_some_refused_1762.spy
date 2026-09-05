@@ -1,0 +1,5 @@
+def f(x: int? = Some(42)) -> None:
+    print(x)
+
+def main():
+    f()

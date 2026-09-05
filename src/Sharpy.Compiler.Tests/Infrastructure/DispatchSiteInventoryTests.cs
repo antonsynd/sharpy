@@ -109,7 +109,7 @@ public class DispatchSiteInventoryTests
         // walker-default-contract: validator whose default-ignore is contractual
         // ══════════════════════════════════════════════════════════════════════
 
-        ["Semantic/Validation/ConstantDefaultClassifier.cs::ConstantDefaultClassifier.Classify"] = "pending-guard:#1762",
+        ["Semantic/Validation/ConstantDefaultClassifier.cs::ConstantDefaultClassifier.Classify"] = "guarded-by:ParameterDefaultConstantMatrixTests",
         ["Semantic/Validation/DefaultParameterValidator.cs::DefaultParameterValidator.CollectIdentifierNamesInto"] = "walker-default-contract",
         ["Semantic/Validation/DefaultParameterValidator.cs::DefaultParameterValidator.IsMutableDefault"] = "walker-default-contract",
         ["Semantic/Validation/EqualityContractValidator.cs::EqualityContractValidator.Validate"] = "walker-default-contract",
@@ -162,7 +162,6 @@ public class DispatchSiteInventoryTests
         ["CodeGen/RoslynEmitter.Patterns.cs::RoslynEmitter.GenerateMatchPattern"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Statements.Assignments.cs::RoslynEmitter.IsRepeatableOperand"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Statements.cs::RoslynEmitter.GenerateBodyStatements"] = "refusal-net:FileBasedIntegrationTests",
-        ["CodeGen/RoslynEmitter.Statements.cs::RoslynEmitter.IsCompileTimeLiteral"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.TypeDeclarations.cs::RoslynEmitter.GenerateAttributeArgumentExpression"] = "refusal-net:FileBasedIntegrationTests",
         ["Parser/Parser.cs::Parser.ParseDecoratedStatement"] = "refusal-net:FileBasedIntegrationTests",
         ["Parser/Parser.Primaries.cs::Parser.ContainsPlaceholderIdentifier"] = "refusal-net:FileBasedIntegrationTests",

@@ -22,11 +22,10 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// double). A refused cell asserts the diagnostic's CODE, the position's own message phrasing, the
 /// LINE, and that exactly one diagnostic carries that code.</para>
 ///
-/// <para><b>No cell is exempt.</b> <see cref="NotApplicableCells"/> is empty: every one of the 17
-/// positions can host every one of the 24 shapes, so there is nothing the matrix declines to
-/// measure. 17 cells are KNOWN RED against filed issues (#1759–#1763); their contract assertion is
-/// skipped and drains when the issue closes, and the nine of them whose contract is a refusal are
-/// still asserted live to be refused, so a regression to silent acceptance fails here.</para>
+/// <para><b>N/A cells.</b> Four cells at the ParameterDefault and LambdaParameterDefault positions
+/// are refused by <c>DefaultParameterValidator</c> (SPY0401) before the value reaches the store
+/// seam — they are tested in <c>ParameterDefaultConstantMatrixTests</c> instead. All known-red
+/// cells have been drained (#1762 closed).</para>
 ///
 /// <para><b>Sibling harnesses.</b> <c>StorePositionReachTests</c> covers the routes that were found
 /// bypassing the seam; <c>StoreSeamConformanceTests</c> is the Roslyn source scan that keeps the
@@ -44,10 +43,10 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
     private const int PositionCount = 17;
     private const int ShapeCount = 24;
-    private const int AcceptedCellCount = 225;
-    private const int RefusedCellCount = 166;
-    private const int KnownRedCellCount = 5;
-    private const int NotApplicableCellCount = 0;
+    private const int AcceptedCellCount = 229;
+    private const int RefusedCellCount = 175;
+    private const int KnownRedCellCount = 0;
+    private const int NotApplicableCellCount = 4;
 
     // ── Axis 1: value shapes ─────────────────────────────────────────────────────────────────
 
@@ -248,11 +247,17 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     };
 
     // ── N/A cells ────────────────────────────────────────────────────────────────────────────
-    // Empty, and that is the measured result: every one of the 17 positions can host every one of
-    // the 24 shapes as a running program. A reason such as "same conversion as Declaration" or
-    // "no declared target" would assume the property under test, so no such row exists.
+    // These cells are refused by DefaultParameterValidator (SPY0401) BEFORE the value reaches the
+    // store seam — the store conversion is never consulted, so the matrix declines to measure it.
+    // Tested in ParameterDefaultConstantMatrixTests instead.
 
-    private static readonly Dictionary<string, string> NotApplicableCells = new();
+    private static readonly Dictionary<string, string> NotApplicableCells = new()
+    {
+        ["ParameterDefault×SomeIntoOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
+        ["ParameterDefault×SomeConstantIntoNarrowOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
+        ["LambdaParameterDefault×SomeIntoOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
+        ["LambdaParameterDefault×SomeConstantIntoNarrowOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
+    };
 
     // ── Known-red cells ──────────────────────────────────────────────────────────────────────
 
@@ -278,14 +283,6 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
     private static readonly Dictionary<string, KnownRed> KnownRedCells = new()
     {
-        // #1762 — an Optional constructor as a parameter default reaches C# as a non-constant.
-        // Refuse-or-lower is the open ruling, so the contract asserted here is only "not an ICE".
-        ["ParameterDefault×SomeIntoOptional"] = new("#1762", "SPY0908 / CS1736", RedContract.NotAnIce),
-        ["ParameterDefault×SomeConstantIntoNarrowOptional"] = new("#1762", "SPY0908 / CS1736", RedContract.NotAnIce),
-        ["LambdaParameterDefault×SomeIntoOptional"] = new("#1762", "SPY0908 / CS1736", RedContract.NotAnIce),
-        ["LambdaParameterDefault×SomeConstantIntoNarrowOptional"] = new("#1762", "SPY0908 / CS1736", RedContract.NotAnIce),
-        ["LambdaParameterDefault×NoneCallIntoOptional"] = new("#1762", "SPY0908 / CS1736", RedContract.NotAnIce),
-
     };
 
     // ── Cell resolution ──────────────────────────────────────────────────────────────────────
@@ -406,7 +403,7 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     /// carry today is the wrong one (#1759, #1760, #1761), but a regression that ADMITS the value
     /// would be a soundness hole, and this cell catches it while the issue is open.
     /// </summary>
-    [Theory]
+    [Theory(Skip = "All known-red cells drained (#1762 closed)")]
     [MemberData(nameof(KnownRedRefusalCells))]
     public void KnownRedRefusal_IsStillRefused(string position, string shape)
     {
@@ -424,12 +421,12 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     }
 
     /// <summary>
-    /// The contract for the known-red cells, in full. Skipped while #1762 is open; deleting
+    /// The contract for the known-red cells, in full. Skipped while issues are open; deleting
     /// the Skip is how each issue is verified closed, and a row whose issue is fixed but whose
     /// entry survives fails <see cref="Matrix_IsTotalOverItsAxes"/>'s stale-key check only after
     /// the entry is removed — so the drain is: fix, unskip, delete the row.
     /// </summary>
-    [Theory(Skip = "Known red: #1762 (Optional constructor as a parameter default ICEs CS1736)")]
+    [Theory(Skip = "All known-red cells drained (#1762 closed)")]
     [MemberData(nameof(KnownRedCellData))]
     public void KnownRedCell_MeetsTheSeamContract(string position, string shape)
     {
@@ -524,10 +521,9 @@ public class StoreConversionMatrixTests : IntegrationTestBase
 
         accepted.Should().Be(AcceptedCellCount, "the accepted half is written down");
         refused.Should().Be(RefusedCellCount, "the refused half is written down");
-        red.Should().Be(KnownRedCellCount, "known-red cells drain as #1762 closes");
+        red.Should().Be(KnownRedCellCount, "known-red cells are drained (#1762 closed)");
         na.Should().Be(NotApplicableCellCount,
-            "every position can host every shape; an exemption here would be a claim that needs a "
-            + "reason which is not the property under test");
+            "N/A cells are refused by a validator before the store seam, not by the store seam itself");
 
         (accepted + refused + red + na).Should().Be(PositionCount * ShapeCount,
             $"live ({accepted + refused}) + known-red ({red}) + N/A ({na}) must be the whole "
