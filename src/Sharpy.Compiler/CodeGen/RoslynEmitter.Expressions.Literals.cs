@@ -1107,11 +1107,12 @@ internal partial class RoslynEmitter
             varName = GetCSharpNameForSymbol(symbol);
             if (binding.Kind == TargetBindingKind.Rebinds)
             {
-                return ParenthesizedExpression(
+                var assignExpr = ParenthesizedExpression(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         EscapedIdentifierName(varName),
                         value));
+                return ApplyNarrowedReadLowering(walrus, assignExpr);
             }
         }
         else

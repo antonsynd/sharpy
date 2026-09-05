@@ -1,0 +1,10 @@
+# R-V: walrus reads as its value type, not the declared type.
+
+def main():
+    m: int | None = None
+    n: int = (m := 5)
+    print(n)
+
+    o: object = "x"
+    s: str = (o := "s")
+    print(s)

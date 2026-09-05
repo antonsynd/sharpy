@@ -698,14 +698,6 @@ internal partial class TypeChecker
 
     private SemanticType CheckWalrusExpression(WalrusExpression walrus)
     {
-        var valueType = CheckExpression(walrus.Value);
-
-        // `x := v` binds exactly as `x = v` does (#1560 D1 §2): a name already bound — in this
-        // scope or an enclosing one, write-through per the owner ruling — is rebound by a CHAINED
-        // successor symbol, never mutated in place, so the ledger records the binding and the
-        // emitter assigns to the chain head's one C# local instead of declaring a second one
-        // (CS0128/CS0136 behind SPY0908, R2). The escape is part of the binding's identity, so a
-        // `` `len` := 5 `` never rebinds a bare `len` already in scope and vice versa (#1326).
         if (TryReportNonVariableRedefinition(walrus.Target, walrus.LineStart, walrus.ColumnStart, walrus.Span))
             return SemanticType.Unknown;
 
@@ -720,26 +712,65 @@ internal partial class TypeChecker
         }
 
         var predecessor = ExpressionRebindingPredecessor(candidate, walrus.IsNameBacktickEscaped);
+
+        SemanticType valueType;
+        if (predecessor != null)
+        {
+            var boundExisting = DeclaredBindingType(predecessor);
+            using (EnterStore(StorePosition.Walrus, boundExisting, walrus.Value))
+                valueType = CheckExpression(walrus.Value);
+        }
+        else
+        {
+            valueType = CheckExpression(walrus.Value);
+        }
+
+        // R-V: the walrus reads as the value's type when directly assignable (the rebinding
+        // version), not the declared type. A rebind of `m: int | None` by `5` reads as `int32`.
+        // VoidType (None) falls back to the declared type — it has no width of its own.
         var bindingType = valueType;
         if (predecessor != null)
         {
             var boundExisting = DeclaredBindingType(predecessor);
-            if (boundExisting is not UnknownType && valueType is not UnknownType
-                && !IsAssignable(valueType, boundExisting))
-            {
-                if (!CheckStore(StorePosition.Walrus, walrus.Value, valueType, boundExisting,
-                        walrus, walrus.Span))
-                    return SemanticType.Unknown;
-                bindingType = ClassifyStore(StorePosition.Walrus, walrus.Value, valueType, boundExisting) switch
-                {
-                    StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
-                    StoreVerdict.AcceptedDecimalNarrowing => SemanticType.Decimal,
-                    _ => boundExisting,
-                };
-            }
-            else if (boundExisting is not UnknownType)
+            if (boundExisting is not UnknownType && valueType is VoidType
+                && IsAssignable(valueType, boundExisting))
             {
                 bindingType = boundExisting;
+            }
+            else if (boundExisting is not UnknownType && valueType is not UnknownType
+                && !IsAssignable(valueType, boundExisting))
+            {
+                // R-T: payload-first classification when the target is narrowed under a wrapper.
+                var payloadType = boundExisting is OptionalType opt ? opt.UnderlyingType
+                    : boundExisting is NullableType { IsValueType: true } nt ? nt.UnderlyingType
+                    : (SemanticType?)null;
+
+                if (payloadType != null
+                    && HasRemoveNoneFact(walrus.Target)
+                    && (IsAssignable(valueType, payloadType)
+                        || IsAcceptedVerdict(ClassifyStore(StorePosition.Walrus, walrus.Value, valueType, payloadType))))
+                {
+                    if (boundExisting is OptionalType wrapOpt)
+                        _semanticInfo.SetOptionalStoreWrap(walrus, wrapOpt);
+                    bindingType = ClassifyStore(StorePosition.Walrus, walrus.Value, valueType, payloadType) switch
+                    {
+                        StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
+                        StoreVerdict.AcceptedDecimalNarrowing => SemanticType.Decimal,
+                        _ => payloadType,
+                    };
+                }
+                else
+                {
+                    if (!CheckStore(StorePosition.Walrus, walrus.Value, valueType, boundExisting,
+                            walrus, walrus.Span))
+                        return SemanticType.Unknown;
+                    bindingType = ClassifyStore(StorePosition.Walrus, walrus.Value, valueType, boundExisting) switch
+                    {
+                        StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
+                        StoreVerdict.AcceptedDecimalNarrowing => SemanticType.Decimal,
+                        _ => boundExisting,
+                    };
+                }
             }
         }
 
@@ -761,9 +792,15 @@ internal partial class TypeChecker
         RecordExpressionBinding(walrus, newSymbol, predecessor, bindingType);
         _semanticInfo.SetWalrusSymbol(walrus, newSymbol);
 
-        // The walrus expression both assigns and evaluates to the variable — so its type is the
-        // variable's (a rebind of a float by an int literal reads as float, as the C# assignment
-        // expression does).
+        if (predecessor != null && !ReferenceEquals(bindingType, DeclaredBindingType(predecessor)))
+        {
+            var declaredType = DeclaredBindingType(predecessor);
+            if (LoweringForRemoveNone(declaredType) is { } lowering)
+                RecordNarrowedReadLowering(walrus, lowering.Lowering);
+            else if (bindingType is not UnknownType)
+                RecordNarrowedReadLowering(walrus, new NarrowedReadLowering(NarrowedReadKind.Cast, bindingType));
+        }
+
         return bindingType;
     }
 
