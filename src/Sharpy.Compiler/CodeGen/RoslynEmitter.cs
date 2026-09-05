@@ -1032,6 +1032,13 @@ internal partial class RoslynEmitter : ICodeEmitter
         };
     }
 
+    /// <summary>
+    /// The one parameter-default printer (def, lambda, constructor, dataclass). A <c>None</c> /
+    /// <c>None()</c> default on an <c>Optional&lt;T&gt;</c> slot prints <c>default</c> (the struct has no
+    /// null); every other slot — including a C# nullable <c>T | None</c> — prints the expression
+    /// itself, so a nullable's <c>None</c> stays <c>null</c> (the generated stdlib C# and its docs
+    /// read <c>null</c> back as <c>None</c>; <c>default</c> is not Sharpy syntax).
+    /// </summary>
     private EqualsValueClauseSyntax GenerateParameterDefault(Expression defaultValue, bool isOptionalSlot)
     {
         if (isOptionalSlot && IsNoneOrNoneCall(defaultValue))

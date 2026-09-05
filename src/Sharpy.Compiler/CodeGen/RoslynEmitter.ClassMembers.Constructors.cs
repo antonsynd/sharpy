@@ -297,7 +297,7 @@ internal partial class RoslynEmitter
             {
                 param = param.WithDefault(GenerateParameterDefault(
                     fieldDecl.InitialValue,
-                    fieldDecl.Type is { IsOptional: true } or { IsCSharpNullable: true }));
+                    fieldDecl.Type is { IsOptional: true }));
             }
 
             parameters.Add(param);
@@ -433,7 +433,7 @@ internal partial class RoslynEmitter
                 {
                     paramSyntax = paramSyntax.WithDefault(GenerateParameterDefault(
                         p.DefaultValue,
-                        p.Type is Semantic.OptionalType or Semantic.NullableType));
+                        p.Type is Semantic.OptionalType));
                 }
 
                 return paramSyntax;

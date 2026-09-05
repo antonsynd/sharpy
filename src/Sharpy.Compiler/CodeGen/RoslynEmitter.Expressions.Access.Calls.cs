@@ -180,7 +180,7 @@ internal partial class RoslynEmitter
             {
                 paramSyntax = paramSyntax.WithDefault(GenerateParameterDefault(
                     param.DefaultValue,
-                    param.Type is { IsOptional: true } or { IsCSharpNullable: true }));
+                    param.Type is { IsOptional: true }));
             }
 
             parameters.Add(paramSyntax);

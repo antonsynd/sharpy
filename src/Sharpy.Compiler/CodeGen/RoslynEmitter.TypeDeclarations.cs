@@ -218,7 +218,7 @@ internal partial class RoslynEmitter
         {
             parameter = parameter.WithDefault(GenerateParameterDefault(
                 param.DefaultValue,
-                param.Type is { IsOptional: true } or { IsCSharpNullable: true }));
+                param.Type is { IsOptional: true }));
         }
 
         return parameter;
