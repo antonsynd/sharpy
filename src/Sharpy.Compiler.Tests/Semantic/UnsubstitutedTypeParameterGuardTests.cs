@@ -445,11 +445,13 @@ def main():
 
     private static void AssertNoDiagnosticNamesATypeParameter(ExecutionResult result, string cell)
     {
-        // SPY0237 and SPY0227 ("Cannot infer type arguments …") are ABOUT the parameter they name
-        // — the diagnostic whose subject is the type parameter itself, not a type that leaked one.
+        // SPY0237 ("cannot infer generic type …") is ABOUT the parameter it names — the diagnostic
+        // whose subject is the type parameter itself, not a type that leaked one. SPY0227 is NOT
+        // exempt: its annotation steer spells `Box[T]` as a placeholder without quoting 'T', so a
+        // SPY0227 that renders a quoted 'T' is a leak like any other (the exemption used to cover
+        // exactly the diagnostic Phase 5 introduced — plan-757fbb verification, §2 exemption ≠ subject).
         var offenders = result.RawDiagnostics
-            .Where(d => d.Code != DiagnosticCodes.Semantic.CannotInferGenericType
-                     && d.Code != DiagnosticCodes.Semantic.CannotInferType)
+            .Where(d => d.Code != DiagnosticCodes.Semantic.CannotInferGenericType)
             .Where(d => d.Message.Contains(TypeParameterToken, StringComparison.Ordinal))
             .Select(d => $"{d.Code}:{d.Message}")
             .ToList();

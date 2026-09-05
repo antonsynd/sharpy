@@ -170,6 +170,38 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
     /// LiteralString variable cannot be augmented-assigned from a str because the store seam
     /// checks the DECLARED type, not the value-use view.
     /// </summary>
+    /// <summary>The twin axis is anchored to a literal so a dropped cell is not silent.</summary>
+    private const int TwinCellCount = 25;
+
+    [Fact]
+    public void MatrixHasTheDeclaredCellCount()
+    {
+        BuildCells().Should().HaveCount(TwinCellCount,
+            "every twin cell added to BuildCells must raise this literal (§ totality anchored to literals)");
+    }
+
+    /// <summary>
+    /// A <c>LiteralString</c>-typed identifier READ is literal-derived (<c>SetLiteralDerived</c> in
+    /// <c>CheckIdentifier</c>, plan-757fbb Decision 11), so <c>x + "b"</c> is still admissible into a
+    /// <c>LiteralString</c> slot — #1741's binary cell, SPY0222 at dff55b2cd. The <c>str</c> column has
+    /// no twin (a <c>str</c> is never literal-derived), so this is a single-column executing cell with
+    /// the R-P control beside it: a non-literal operand makes the result a plain <c>str</c>.
+    /// </summary>
+    [Fact]
+    public void IdentifierRead_IsLiteralDerived_ConcatIntoLiteralStringSlot()
+    {
+        var accepted = CompileAndExecuteWithGC(
+            "def main() -> None:\n    x: LiteralString = \"a\"\n    z: LiteralString = x + \"b\"\n    w: LiteralString = (x + \"b\") + x\n    print(z, w)\n");
+        accepted.Success.Should().BeTrue(
+            $"x + \"b\" on a LiteralString read is literal-derived; got: {string.Join(" | ", accepted.CompilationErrors)}");
+        accepted.StandardOutput.Should().Be("ab aba\n");
+
+        var refused = CompileAndExecuteWithGC(
+            "def main() -> None:\n    x: LiteralString = \"a\"\n    s: str = \"b\"\n    z: LiteralString = x + s\n    print(z)\n");
+        refused.Success.Should().BeFalse("x + s (s: str) is not literal-derived — R-P");
+        refused.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.TypeMismatch);
+    }
+
     [Fact]
     public void AugmentedAssign_StrIntoLiteralString_IsRefusedOnlyInLiteralStringColumn()
     {

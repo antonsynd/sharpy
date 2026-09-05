@@ -416,7 +416,9 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
             sb.Add($"    y: {w.Name} = {RightValue}");
             sb.Add($"    i: int = {RightValue}");
             sb.Add($"    seed: {w.Name} = {LeftValue}");
-            sb.Add("    print(y == y and i == i and seed == seed)");
+            // Singleton-comparison sanity check (#1666) — an assert, not a print: the harness compares
+            // stdout line-for-line with the cells, so no non-cell line may be printed.
+            sb.Add("    assert y == y and i == i and seed == seed");
 
             switch (targetKind)
             {
@@ -1028,7 +1030,7 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
     private static readonly string[] ConsumerKinds = { "sum", "in", "not in" };
 
     private static readonly string[] ConsumerShapes =
-        { "const-in-range", "const-out-of-range", "same-width-var",
+        { "const-in-range", "const-present", "const-out-of-range", "same-width-var",
           "narrower-signed-var", "signed-vs-unsigned", "non-numeric" };
 
     private static readonly string[] ConsumerContainers = { "list", "set", "dict" };
@@ -1056,6 +1058,8 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         {
             return shape switch
             {
+                "const-present" =>
+                    "sum has no needle; present-vs-absent is a membership distinction",
                 "narrower-signed-var" =>
                     "sum's start cross-family goes through overload resolution, not the promotion seam",
                 "signed-vs-unsigned" =>
@@ -1141,6 +1145,16 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         var l3 = sb.Add("    print(7 in xs)");
         cells.Add(new Cell($"consumer/in/const-in-range/{w.Name}/{container}",
             "consumer/in", w.Name, "const-in-range", container, true, l3, "False", null));
+
+        // Positive membership controls: an absent needle printing False cannot tell a working `in`
+        // from one that always answers False, so the present needle must print True (and `not in`
+        // of an absent one must print True).
+        var l3p = sb.Add("    print(2 in xs)");
+        cells.Add(new Cell($"consumer/in/const-present/{w.Name}/{container}",
+            "consumer/in", w.Name, "const-present", container, true, l3p, "True", null));
+        var l5p = sb.Add("    print(7 not in xs)");
+        cells.Add(new Cell($"consumer/not-in/const-present/{w.Name}/{container}",
+            "consumer/not in", w.Name, "const-present", container, true, l5p, "True", null));
 
         sb.Add($"    _inv: {w.Name} = 7");
         var l4 = sb.Add("    print(_inv in xs)");
@@ -1287,7 +1301,7 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
             var printed = result.StandardOutput
                 .Split('\n', StringSplitOptions.RemoveEmptyEntries)
                 .Select(line => line.Trim())
-                .Where(line => line.Length > 0 && line != "True")
+                .Where(line => line.Length > 0)
                 .ToList();
 
             printed.Should().HaveCount(program.Cells.Count,
@@ -1442,7 +1456,7 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         var totalConsumer = ConsumerKinds.Length * ConsumerWidths.Length
                             * ConsumerShapes.Length * ConsumerContainers.Length;
         (consumerLive.Count + consumerNa.Length).Should().Be(totalConsumer,
-            $"consumer live ({consumerLive.Count}) + N/A ({consumerNa.Length}) = 3 × 8 × 6 × 3");
+            $"consumer live ({consumerLive.Count}) + N/A ({consumerNa.Length}) = 3 × 8 × 7 × 3");
     }
 
     /// <summary>

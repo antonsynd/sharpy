@@ -61,6 +61,8 @@ public class StoreSeamConformanceTests
         "TypeChecker.Expressions.Access.Calls.cs::ClrParameterAccepts",
         "TypeChecker.Expressions.Access.Calls.Overloads.cs::ResolveOverloadCore",
         "TypeChecker.cs::TypeChecker",
+        // R-U (#1750): the needle of `in`/`not in` is an ARGUMENT into the container's element slot,
+        // so the membership arm calls IsArgumentAssignable exactly as a call site does (plan-757fbb).
         "TypeChecker.Expressions.Operators.cs::ClassifyMembership",
     };
 

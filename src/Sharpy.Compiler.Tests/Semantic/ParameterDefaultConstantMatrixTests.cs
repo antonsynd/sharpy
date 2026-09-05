@@ -21,8 +21,10 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// ICEd CS1736 there while their def twins were SPY0401).</para>
 ///
 /// <para><b>Axes.</b> Kind: {Literal, NegatedLiteral, ConstReference, EnumMember, NoneLiteral,
-/// NoneCall, SomeIntoOptional, TupleLiteral, ConditionalOfConstants} × Host: {Def, Lambda, Init,
-/// Dataclass}. Totality: 9 × 4 = 36 cells.</para>
+/// NoneCall, SomeIntoOptional, TupleLiteral, ConditionalOfConstants, Folded, ResultOk, ResultErr,
+/// NestedTuple, ListLiteral, DictLiteral, Call, Constructor, Lambda} × Host: {Def, Lambda, Init, Method,
+/// Dataclass}. Totality: 18 × 5 = 90 cells (40 admitted, 50 refused — SPY0401, or SPY0400 for the
+/// mutable list/dict literals).</para>
 ///
 /// <para><b>Contract (module consts).</b> A module <c>const</c> whose declared type C# admits for
 /// <c>const</c> — every <c>PrimitiveCatalog</c> primitive but <c>object</c>/<c>void</c> — and whose
@@ -46,10 +48,11 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     public ParameterDefaultConstantMatrixTests(ITestOutputHelper output) : base(output) { }
 
     // ── Axis sizes, anchored to literals ─────────────────────────────────────────────────────
-    private const int KindCount = 9;
-    private const int HostCount = 4;
-    private const int AdmittedCellCount = 28;
-    private const int RefusedCellCount = 8;
+    private const int KindCount = 18;
+    private const int HostCount = 5;
+    private const int AdmittedCellCount = 40;
+    private const int RefusedCellCount = 49;
+    private const int NotApplicableCellCount = 1;
 
     // ── Axis 1: default-value kinds ──────────────────────────────────────────────────────────
 
@@ -59,7 +62,8 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         string DefaultExpr,
         string Prelude,
         string? AcceptedOutput,
-        string? RefusedFragment);
+        string? RefusedFragment,
+        string RefusedCode = DiagnosticCodes.Validation.NonConstDefault);
 
     private static readonly Kind[] Kinds =
     {
@@ -75,6 +79,25 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         new("TupleLiteral", "tuple[int, int]", "(1, 2)", "", null,
             "Tuple literals are not emittable as parameter defaults"),
         new("ConditionalOfConstants", "int", "1 if True else 2", "", "1\n", null),
+        // Plan-757fbb Phase 4 acceptance names these too (added in the verification round):
+        new("Folded", "int", "1 + 2", "", "3\n", null),
+        new("ResultOk", "int!str", "Ok(1)", "", null,
+            "must be a compile-time constant expression"),
+        new("ResultErr", "int!str", "Err(\"e\")", "", null,
+            "must be a compile-time constant expression"),
+        new("NestedTuple", "tuple[tuple[int, int], int]", "((1, 2), 3)", "", null,
+            "Tuple literals are not emittable"),
+        new("ListLiteral", "list[int]", "[1]", "", null,
+            "Mutable default value", DiagnosticCodes.Validation.MutableDefault),
+        new("DictLiteral", "dict[str, int]", "{\"a\": 1}", "", null,
+            "Mutable default value", DiagnosticCodes.Validation.MutableDefault),
+        new("Call", "int", "g()", "def g() -> int:\n    return 1\n\n", null,
+            "must be a compile-time constant expression"),
+        new("Constructor", "Box", "Box(1)",
+            "class Box:\n    v: int\n\n    def __init__(self, v: int) -> None:\n        self.v = v\n\n", null,
+            "must be a compile-time constant expression"),
+        new("Lambda", "() -> int", "lambda: 1", "", null,
+            "must be a compile-time constant expression"),
     };
 
     // ── Axis 2: host positions ───────────────────────────────────────────────────────────────
@@ -94,6 +117,9 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         new("Init", k =>
             $"{k.Prelude}class C:\n    x: {k.ParamType}\n\n    def __init__(self, x: {k.ParamType} = {k.DefaultExpr}):\n        self.x = x\n\ndef main():\n    print(C().x)\n"),
 
+        new("Method", k =>
+            $"{k.Prelude}class C:\n    def m(self, x: {k.ParamType} = {k.DefaultExpr}) -> None:\n        print(x)\n\ndef main():\n    C().m()\n"),
+
         // The field default becomes the synthesized constructor's parameter default (#1769).
         new("Dataclass", k =>
             $"{k.Prelude}@dataclass\nclass D:\n    x: {k.ParamType} = {k.DefaultExpr}\n\ndef main():\n    print(D().x)\n"),
@@ -112,10 +138,21 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     private static Verdict Classify(Kind k) =>
         k.AcceptedOutput != null ? Verdict.Admitted : Verdict.Refused;
 
+    /// <summary>
+    /// Cells that are not this seam's to decide, each with the reason (no entry without one). A
+    /// lambda-typed default inside a lambda's own parameter list —
+    /// <c>lambda x: () -> int = lambda: 1: x</c> — does not parse (SPY0103 at the nested lambda's
+    /// colon); the grammar, not the constant-default table, refuses it.
+    /// </summary>
+    private static readonly Dictionary<string, string> NotApplicableCells = new(StringComparer.Ordinal)
+    {
+        ["Lambda×Lambda"] = "a lambda default inside a lambda parameter list is a parse error (SPY0103) — parser grammar, not the admission table",
+    };
+
     private static IEnumerable<object[]> CellsWhere(Verdict verdict)
         => from h in Hosts
            from k in Kinds
-           where Classify(k) == verdict
+           where Classify(k) == verdict && !NotApplicableCells.ContainsKey(Key(h, k))
            select new object[] { h.Name, k.Name };
 
     public static IEnumerable<object[]> AdmittedCells => CellsWhere(Verdict.Admitted);
@@ -157,10 +194,10 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         result.Success.Should().BeFalse(
             $"[{host} × {kind}] must be refused\n{source}");
         result.RawDiagnostics.Should().Contain(
-            d => d.Code == DiagnosticCodes.Validation.NonConstDefault,
-            $"[{host} × {kind}] must report SPY0401. Got: "
+            d => d.Code == k.RefusedCode,
+            $"[{host} × {kind}] must report {k.RefusedCode}. Got: "
             + $"{string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}"))}\n{source}");
-        result.RawDiagnostics.Where(d => d.Code == DiagnosticCodes.Validation.NonConstDefault)
+        result.RawDiagnostics.Where(d => d.Code == k.RefusedCode)
             .First().Message.Should().Contain(k.RefusedFragment!,
                 $"[{host} × {kind}] must carry the expected diagnostic text\n{source}");
         result.RawDiagnostics.Should().NotContain(
@@ -206,8 +243,10 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
 
         admitted.Should().Be(AdmittedCellCount, "the admitted half is written down");
         refused.Should().Be(RefusedCellCount, "the refused half is written down");
-        (admitted + refused).Should().Be(KindCount * HostCount,
-            $"admitted ({admitted}) + refused ({refused}) must be the whole product "
+        NotApplicableCells.Should().HaveCount(NotApplicableCellCount, "every N/A cell is written down with its reason");
+        NotApplicableCells.Keys.Should().OnlyContain(key => product.Contains(key), "an N/A key must name a real cell (stale entries fail)");
+        (admitted + refused + NotApplicableCells.Count).Should().Be(KindCount * HostCount,
+            $"admitted ({admitted}) + refused ({refused}) + N/A ({NotApplicableCells.Count}) must be the whole product "
             + $"({KindCount} × {HostCount})");
     }
 
@@ -393,20 +432,38 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     }
 
     // ── Classifier scan (guarded-by anchor for DispatchSiteInventoryTests) ───────────────────
-    // DispatchSiteInventoryTests checks that THIS test's source contains both the production file
-    // name ("ConstantDefaultClassifier.cs") and the method name ("Classify") as string literals.
-    // The Path.Combine below satisfies that check.
+    // DispatchSiteInventoryTests requires the guarded-by class to SCAN the site: this test reads
+    // ConstantDefaultClassifier.cs, collects every EmittableConstantKind the "Classify" switch
+    // returns, and asserts the set equals the enum's members — a kind added to the enum without a
+    // classifying arm (or an arm deleted) goes red. The enum size is anchored to a literal so the
+    // comparison is not "the enum against itself".
+
+    private const int EmittableConstantKindCount = 16;
 
     [Fact]
-    public void ClassifierSwitch_IsScannedByThisMatrix()
+    public void ClassifierSwitch_ReturnsEveryEmittableConstantKind()
     {
         var repoRoot = Infrastructure.DispatchSiteScan.FindRepoRoot();
         var path = Path.Combine(repoRoot, "src", "Sharpy.Compiler",
             "Semantic", "Validation", "ConstantDefaultClassifier.cs");
+        var source = File.ReadAllText(path);
 
-        File.Exists(path).Should().BeTrue(
-            "the production file ConstantDefaultClassifier.cs must exist — " +
-            "this test guards the \"Classify\" switch in it");
+        var enumBody = Regex.Match(source, @"enum EmittableConstantKind\s*\{(?<body>[^}]*)\}",
+            RegexOptions.Singleline).Groups["body"].Value;
+        var declared = Regex.Matches(enumBody, @"^\s*(?<name>[A-Z]\w*)\s*,?\s*$", RegexOptions.Multiline)
+            .Select(m => m.Groups["name"].Value).ToHashSet(StringComparer.Ordinal);
+        declared.Should().HaveCount(EmittableConstantKindCount,
+            "the kind axis is anchored to a literal, not to the enum this test scans");
+
+        var start = source.IndexOf("public static EmittableConstantKind Classify(", StringComparison.Ordinal);
+        var end = source.IndexOf("public static bool IsAdmitted(", StringComparison.Ordinal);
+        start.Should().BeGreaterThan(-1); end.Should().BeGreaterThan(start);
+        var classifyBody = source.Substring(start, end - start);
+        var returned = Regex.Matches(classifyBody, @"EmittableConstantKind\.(?<name>[A-Z]\w*)")
+            .Select(m => m.Groups["name"].Value).ToHashSet(StringComparer.Ordinal);
+
+        returned.Should().BeEquivalentTo(declared,
+            "every kind the enum declares is produced by Classify, and Classify names no kind the enum lacks");
     }
 
 }

@@ -307,6 +307,8 @@ internal class DefaultParameterValidator : ValidatingAstWalker
             var refusal = $"Default value for {slot.Subject} in {slot.Host} must be a compile-time constant expression";
             var steer = kind switch
             {
+                EmittableConstantKind.CaseConstructor when IsResultConstructor(slot.DefaultValue) =>
+                    $"{refusal}. A Result is not a compile-time constant: make the {slot.Noun} required and pass Ok(...)/Err(...) at the call site.",
                 EmittableConstantKind.CaseConstructor => $"{refusal}. {slot.CaseConstructorSteer}",
                 EmittableConstantKind.TupleLiteral =>
                     $"{refusal}. Tuple literals are not emittable as parameter defaults; initialize in {slot.BodySteer} instead.",
@@ -386,4 +388,8 @@ internal class DefaultParameterValidator : ValidatingAstWalker
         };
     }
 
+
+    /// <summary>`Ok(…)` / `Err(…)`: the Optional steer (`= None()` … `??= Some(...)`) would be false for a Result slot.</summary>
+    private static bool IsResultConstructor(Expression defaultValue) =>
+        defaultValue is FunctionCall { Function: Identifier { Name: "Ok" or "Err" } };
 }
