@@ -4185,7 +4185,7 @@ internal partial class TypeChecker
                 break;
 
             case MemberAccess memberAccess:
-                positions = GetMemberIterableKeyPositions(memberAccess, call.Arguments.Length);
+                positions = GetMemberIterableKeyPositions(memberAccess, call.Arguments);
                 break;
 
             default:
@@ -4355,19 +4355,50 @@ internal partial class TypeChecker
     /// <summary>
     /// Returns the positional argument indices a METHOD treats as an iterable-of-keys, or <c>null</c>
     /// when the method does not consume an iterable this way — the member-call twin of
-    /// <see cref="GetBuiltinIterableKeyPositions"/> (#1159).
-    ///
-    /// <para>The one member of the ring today is <c>str.join(iterable)</c>: Python's
-    /// <c>", ".join(d)</c> joins the KEYS. The receiver type is checked, so a same-named
-    /// <c>join</c> on any other type (a user class, a stdlib module's path join) is untouched.</para>
+    /// <see cref="GetBuiltinIterableKeyPositions"/> (#1159, #1754).
     /// </summary>
-    private IReadOnlyList<int>? GetMemberIterableKeyPositions(MemberAccess memberAccess, int argCount)
+    private IReadOnlyList<int>? GetMemberIterableKeyPositions(
+        MemberAccess memberAccess, IReadOnlyList<Expression> arguments)
     {
-        if (memberAccess.Member != BuiltinNames.Join || argCount != 1)
+        if (arguments.Count != 1)
             return null;
 
         var receiverType = _semanticInfo.GetExpressionType(memberAccess.Object);
-        return receiverType != null && OperandView(receiverType) == SemanticType.Str ? IterablePositionZero : null;
+        if (receiverType == null)
+            return null;
+
+        var receiver = OperandView(receiverType);
+
+        switch (memberAccess.Member)
+        {
+            case BuiltinNames.Join:
+                return receiver == SemanticType.Str ? IterablePositionZero : null;
+
+            case "extend":
+                return receiver is GenericType { Name: BuiltinNames.List }
+                    ? IterablePositionZero : null;
+
+            case "update":
+                if (receiver is GenericType { Name: BuiltinNames.Set })
+                    return IterablePositionZero;
+                if (receiver is GenericType { Name: BuiltinNames.Dict })
+                {
+                    var argType = _semanticInfo.GetExpressionType(arguments[0]);
+                    if (argType != null && OperandView(argType) is GenericType { Name: BuiltinNames.Dict })
+                        return null;
+                    return IterablePositionZero;
+                }
+                return null;
+
+            case "intersection_update":
+            case "difference_update":
+            case "symmetric_difference_update":
+                return receiver is GenericType { Name: BuiltinNames.Set }
+                    ? IterablePositionZero : null;
+
+            default:
+                return null;
+        }
     }
 
     /// <summary>
