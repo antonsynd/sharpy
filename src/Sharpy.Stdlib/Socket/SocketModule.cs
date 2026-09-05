@@ -608,7 +608,7 @@ namespace Sharpy
         /// <summary>
         /// Connect to a TCP (host, port) address and return the connected socket.
         /// </summary>
-        public static Socket CreateConnection((string host, int port) address, double? timeout = null)
+        public static Socket CreateConnection((string host, int port) address, double? timeout = default)
         {
             Socket sock = new Socket(AF_INET, SOCK_STREAM, 0);
             try

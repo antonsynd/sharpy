@@ -315,7 +315,7 @@ namespace Sharpy
             /// <summary>
             /// Create an error with the specified message and optional pattern/position info.
             /// </summary>
-            public Error(string msg, string? pattern = null, int? pos = null) : base(msg)
+            public Error(string msg, string? pattern = default, int? pos = default) : base(msg)
             {
                 this.Msg = msg;
                 this.Pattern = pattern;
@@ -360,7 +360,7 @@ namespace Sharpy
             /// <summary>
             /// Scan through string looking for the first match.
             /// </summary>
-            public MatchResult? Search(string s, int pos = 0, int? endpos = null)
+            public MatchResult? Search(string s, int pos = 0, int? endpos = default)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
@@ -381,7 +381,7 @@ namespace Sharpy
             /// <summary>
             /// Try to apply the pattern at the start of the string.
             /// </summary>
-            public MatchResult? Match(string s, int pos = 0, int? endpos = null)
+            public MatchResult? Match(string s, int pos = 0, int? endpos = default)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
@@ -402,7 +402,7 @@ namespace Sharpy
             /// <summary>
             /// Try to apply the pattern to the entire string.
             /// </summary>
-            public MatchResult? Fullmatch(string s, int pos = 0, int? endpos = null)
+            public MatchResult? Fullmatch(string s, int pos = 0, int? endpos = default)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.Match m = this._Regex.Match(target, pos);
@@ -423,7 +423,7 @@ namespace Sharpy
             /// <summary>
             /// Return all non-overlapping matches as a list.
             /// </summary>
-            public Sharpy.List<object> Findall(string s, int pos = 0, int? endpos = null)
+            public Sharpy.List<object> Findall(string s, int pos = 0, int? endpos = default)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.MatchCollection matches = this._Regex.Matches(target);
@@ -472,7 +472,7 @@ namespace Sharpy
             /// <summary>
             /// Return a list of MatchResult objects over all non-overlapping matches.
             /// </summary>
-            public Sharpy.List<MatchResult> Finditer(string s, int pos = 0, int? endpos = null)
+            public Sharpy.List<MatchResult> Finditer(string s, int pos = 0, int? endpos = default)
             {
                 string target = _ApplyEndpos(s, endpos);
                 global::System.Text.RegularExpressions.MatchCollection matches = this._Regex.Matches(target);
@@ -958,7 +958,7 @@ namespace Sharpy
             /// <summary>
             /// Create a MatchResult wrapping a .NET Match object.
             /// </summary>
-            public MatchResult(global::System.Text.RegularExpressions.Match netMatch, string @string, string patternStr, int pos, int endpos, Pattern? compiledPattern = null)
+            public MatchResult(global::System.Text.RegularExpressions.Match netMatch, string @string, string patternStr, int pos, int endpos, Pattern? compiledPattern = default)
             {
                 this._Match = netMatch;
                 this._String = @string;
