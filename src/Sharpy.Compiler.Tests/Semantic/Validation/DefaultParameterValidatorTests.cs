@@ -1,4 +1,5 @@
 using Xunit;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
@@ -162,9 +163,8 @@ def foo(data: dict[str, int] = {}) -> None:
     }
 
     [Fact]
-    public void TupleDefault_IsValid()
+    public void TupleDefault_IsRefused()
     {
-        // Tuples are immutable, so they are allowed as defaults
         var code = @"
 def foo(point: tuple[int, int] = (0, 0)) -> None:
     pass
@@ -174,7 +174,10 @@ def foo(point: tuple[int, int] = (0, 0)) -> None:
         var validator = new DefaultParameterValidator();
         validator.Validate(module, context);
 
-        Assert.False(context.Diagnostics.HasErrors);
+        Assert.True(context.Diagnostics.HasErrors);
+        Assert.Contains(context.Diagnostics.GetErrors(),
+            e => e.Code == DiagnosticCodes.Validation.NonConstDefault
+                && e.Message.Contains("Tuple literals are not emittable"));
     }
 
     [Fact]

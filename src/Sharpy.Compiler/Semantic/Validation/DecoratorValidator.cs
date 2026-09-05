@@ -379,7 +379,8 @@ internal partial class DecoratorValidator : ValidatingAstWalker
     {
         foreach (var arg in decorator.Arguments)
         {
-            if (!IsCompileTimeConstant(arg))
+            var kind = ConstantDefaultClassifier.Classify(arg);
+            if (!ConstantDefaultClassifier.IsAdmitted(kind, AdmissionTable.DecoratorArgument))
             {
                 var message = arg is Identifier id
                     ? $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access"
@@ -395,7 +396,8 @@ internal partial class DecoratorValidator : ValidatingAstWalker
 
         foreach (var kwArg in decorator.KeywordArguments)
         {
-            if (!IsCompileTimeConstant(kwArg.Value))
+            var kind = ConstantDefaultClassifier.Classify(kwArg.Value);
+            if (!ConstantDefaultClassifier.IsAdmitted(kind, AdmissionTable.DecoratorArgument))
             {
                 var message = kwArg.Value is Identifier id
                     ? $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access"
@@ -408,37 +410,6 @@ internal partial class DecoratorValidator : ValidatingAstWalker
                     span: kwArg.Value.Span);
             }
         }
-    }
-
-    /// <summary>
-    /// Returns true if the expression is a compile-time constant suitable for a decorator argument.
-    /// Allowed forms:
-    /// - Literals: string, int, float, bool, None
-    /// - Enum member access: dotted name like EnumType.member (MemberAccess with Identifier object)
-    /// - type(X): FunctionCall with name "type" and exactly one argument
-    /// </summary>
-    private static bool IsCompileTimeConstant(Expression expr)
-    {
-        return expr switch
-        {
-            StringLiteral => true,
-            IntegerLiteral => true,
-            FloatLiteral => true,
-            BooleanLiteral => true,
-            NoneLiteral => true,
-            // Enum member access or const field: SomeType.Member
-            // Intentionally permissive: an ARGUMENT's type is not resolved at this validation
-            // phase (Order 60), so invalid cases (non-const fields, instance members) are left to
-            // the C# compiler. This is about argument expressions only — the attribute NAME is
-            // resolved here, via Discovery/ClrAttributeResolver, so that a name denoting nothing
-            // is refused instead of leaking CS0246 behind SPY0908 (#1427).
-            MemberAccess { Object: Identifier } => true,
-            // type(X) is allowed as typeof equivalent
-            FunctionCall { Function: Identifier { Name: "type" }, Arguments.Length: 1, KeywordArguments.Length: 0 } => true,
-            // Negative numeric literals: -42, -3.14
-            UnaryOp { Operator: UnaryOperator.Minus, Operand: IntegerLiteral or FloatLiteral } => true,
-            _ => false,
-        };
     }
 
     /// <summary>

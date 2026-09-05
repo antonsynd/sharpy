@@ -1,5 +1,6 @@
 using Xunit;
 using FluentAssertions;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Logging;
@@ -126,7 +127,7 @@ def foo(x: int = -1):
     }
 
     [Fact]
-    public void AllowsTupleDefault()
+    public void RefusesTupleDefault()
     {
         var source = @"
 def foo(point: tuple[int, int] = (0, 0)):
@@ -135,7 +136,9 @@ def foo(point: tuple[int, int] = (0, 0)):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(
+            e => e.Code == DiagnosticCodes.Validation.NonConstDefault
+                && e.Message.Contains("Tuple literals are not emittable"));
     }
 
     [Fact]
@@ -626,7 +629,7 @@ def foo(x: bool = not False):
     }
 
     [Fact]
-    public void AllowsNestedTupleConstant()
+    public void RefusesNestedTupleDefault()
     {
         var source = @"
 def foo(point: tuple[tuple[int, int], tuple[int, int]] = ((0, 0), (1, 1))):
@@ -635,7 +638,9 @@ def foo(point: tuple[tuple[int, int], tuple[int, int]] = ((0, 0), (1, 1))):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().BeEmpty();
+        typeChecker.Diagnostics.GetErrors().Should().Contain(
+            e => e.Code == DiagnosticCodes.Validation.NonConstDefault
+                && e.Message.Contains("Tuple literals are not emittable"));
     }
 
     [Fact]

@@ -109,9 +109,8 @@ public class DispatchSiteInventoryTests
         // walker-default-contract: validator whose default-ignore is contractual
         // ══════════════════════════════════════════════════════════════════════
 
-        ["Semantic/Validation/DecoratorValidator.cs::DecoratorValidator.IsCompileTimeConstant"] = "walker-default-contract",
+        ["Semantic/Validation/ConstantDefaultClassifier.cs::ConstantDefaultClassifier.Classify"] = "pending-guard:#1762",
         ["Semantic/Validation/DefaultParameterValidator.cs::DefaultParameterValidator.CollectIdentifierNamesInto"] = "walker-default-contract",
-        ["Semantic/Validation/DefaultParameterValidator.cs::DefaultParameterValidator.IsCompileTimeConstant"] = "walker-default-contract",
         ["Semantic/Validation/DefaultParameterValidator.cs::DefaultParameterValidator.IsMutableDefault"] = "walker-default-contract",
         ["Semantic/Validation/EqualityContractValidator.cs::EqualityContractValidator.Validate"] = "walker-default-contract",
         ["Semantic/Validation/EventValidator.cs::EventValidator.TypeStatementName"] = "walker-default-contract",

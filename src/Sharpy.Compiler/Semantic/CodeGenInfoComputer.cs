@@ -185,7 +185,8 @@ internal class CodeGenInfoComputer
         if (symbol is VariableSymbol varSymbol)
         {
             var isCompileTimeConstant = varSymbol.ConstantValue != null
-                && IsConstEligibleVariable(varSymbol);
+                && IsConstEligibleVariable(varSymbol)
+                && IsClassifiedAsModuleConst(constDecl.InitialValue);
 
             SetCodeGenInfo(varSymbol, new CodeGenInfo
             {
@@ -198,6 +199,15 @@ internal class CodeGenInfoComputer
                 HasExecutionOrderIssues = false
             });
         }
+    }
+
+    private static bool IsClassifiedAsModuleConst(Expression? expr)
+    {
+        if (expr == null)
+            return false;
+        Func<string, bool> constResolver = _ => true;
+        var kind = Validation.ConstantDefaultClassifier.Classify(expr, constResolver);
+        return Validation.ConstantDefaultClassifier.IsAdmitted(kind, Validation.AdmissionTable.ModuleConst);
     }
 
     private bool IsConstEligibleVariable(VariableSymbol symbol)

@@ -35,6 +35,12 @@ internal class DefaultParameterValidator : ValidatingAstWalker
         base.VisitFunctionDef(node);
     }
 
+    public override void VisitLambdaExpression(LambdaExpression node)
+    {
+        ValidateLambdaDefaults(node);
+        base.VisitLambdaExpression(node);
+    }
+
     /// <summary>
     /// Validates all default parameter values in a function definition.
     /// </summary>
@@ -56,8 +62,19 @@ internal class DefaultParameterValidator : ValidatingAstWalker
             }
             else
             {
-                ValidateDefaultValue(param, functionDef.Name);
+                ValidateDefaultValue(param, functionDef.Name, AdmissionTable.ParameterDefault);
             }
+        }
+    }
+
+    private void ValidateLambdaDefaults(LambdaExpression lambda)
+    {
+        foreach (var param in lambda.Parameters)
+        {
+            if (param.DefaultValue == null || param.IsLateBound)
+                continue;
+
+            ValidateDefaultValue(param, "lambda", AdmissionTable.LambdaParameterDefault);
         }
     }
 
@@ -170,7 +187,7 @@ internal class DefaultParameterValidator : ValidatingAstWalker
     /// <summary>
     /// Validates a single parameter's default value.
     /// </summary>
-    private void ValidateDefaultValue(Parameter param, string functionName)
+    private void ValidateDefaultValue(Parameter param, string functionName, AdmissionTable table)
     {
         var defaultValue = param.DefaultValue!;
 
@@ -186,11 +203,26 @@ internal class DefaultParameterValidator : ValidatingAstWalker
             return;
         }
 
-        // Check that the default value is a compile-time constant
-        if (!IsCompileTimeConstant(defaultValue))
+        var kind = ConstantDefaultClassifier.Classify(defaultValue, name =>
         {
+            var symbol = Context.SymbolTable.Lookup(name);
+            return symbol is VariableSymbol { IsConstant: true };
+        });
+
+        if (!ConstantDefaultClassifier.IsAdmitted(kind, table))
+        {
+            var steer = kind switch
+            {
+                EmittableConstantKind.CaseConstructor => FormatCaseConstructorSteer(param, functionName),
+                EmittableConstantKind.TupleLiteral =>
+                    $"Default value for parameter '{param.Name}' in function '{functionName}' must be a compile-time constant expression. " +
+                    "Tuple literals are not emittable as parameter defaults; initialize in the function body instead.",
+                _ =>
+                    $"Default value for parameter '{param.Name}' in function '{functionName}' must be a compile-time constant expression",
+            };
+
             AddError(
-                $"Default value for parameter '{param.Name}' in function '{functionName}' must be a compile-time constant expression",
+                steer,
                 param.LineStart,
                 param.ColumnStart, code: DiagnosticCodes.Validation.NonConstDefault,
                 span: param.Span);
@@ -232,6 +264,12 @@ internal class DefaultParameterValidator : ValidatingAstWalker
         }
     }
 
+    private static string FormatCaseConstructorSteer(Parameter param, string functionName)
+    {
+        return $"Default value for parameter '{param.Name}' in function '{functionName}' must be a compile-time constant expression. " +
+            $"Use 'def {functionName}({param.Name}: {param.Type?.ToString() ?? "T?"} = None()) -> ...: {param.Name} ??= Some(...)' instead.";
+    }
+
     /// <summary>
     /// Checks if an expression is a mutable default value.
     /// Mutable defaults include: [], {}, set()
@@ -262,113 +300,4 @@ internal class DefaultParameterValidator : ValidatingAstWalker
         };
     }
 
-    /// <summary>
-    /// Checks if an expression is a compile-time constant.
-    /// Compile-time constants include:
-    /// - Literal values (int, float, string, bool, None)
-    /// - Tuples of compile-time constants
-    /// - Unary operations on constants (-1, +1, not True)
-    /// - Binary operations on constants (1 + 2) - though typically not recommended
-    /// - Enum member access (Color.RED, HttpMethod.GET)
-    /// - References to const declarations (MAX_SIZE, DEFAULT_NAME)
-    /// </summary>
-    private bool IsCompileTimeConstant(Expression expr)
-    {
-        return expr switch
-        {
-            // Primitive literals are always compile-time constants
-            IntegerLiteral => true,
-            FloatLiteral => true,
-            StringLiteral => true,
-            BooleanLiteral => true,
-            NoneLiteral => true,
-
-            // Tuple of constants is a constant (immutable)
-            TupleLiteral tuple => tuple.Elements.All(IsCompileTimeConstant),
-
-            // Unary operations on constants
-            UnaryOp unary => IsCompileTimeConstant(unary.Operand),
-
-            // Binary operations on constants (e.g., 1 + 2)
-            BinaryOp binary => IsCompileTimeConstant(binary.Left) && IsCompileTimeConstant(binary.Right),
-
-            // Parenthesized expression
-            Parenthesized paren => IsCompileTimeConstant(paren.Expression),
-
-            // Conditional expression with all constant parts
-            ConditionalExpression cond =>
-                IsCompileTimeConstant(cond.Test) &&
-                IsCompileTimeConstant(cond.ThenValue) &&
-                IsCompileTimeConstant(cond.ElseValue),
-
-            // Identifiers referencing const declarations are compile-time constants
-            Identifier id => IsConstReference(id),
-
-            // None() is a compile-time constant (empty Optional). Matched against the canonical
-            // (paren-stripped) callee, like every other callee-shape test (#1170).
-            FunctionCall call when AstHelper.UnwrapParenthesized(call.Function) is NoneLiteral
-                && call.Arguments.Length == 0
-                => true,
-
-            // Some(const), Ok(const), Err(const) are compile-time constants
-            FunctionCall call when AstHelper.UnwrapParenthesized(call.Function) is Identifier fid
-                && fid.Name is "Some" or "Ok" or "Err"
-                && call.Arguments.Length == 1
-                => IsCompileTimeConstant(call.Arguments[0]),
-
-            // Other function calls are generally NOT compile-time constants
-            FunctionCall => false,
-
-            // Member access to enum members is a compile-time constant
-            MemberAccess memberAccess => IsEnumMemberAccess(memberAccess),
-
-            // Index access is NOT a compile-time constant
-            IndexAccess => false,
-
-            // Mutable collections are NOT compile-time constants
-            ListLiteral => false,
-            DictLiteral => false,
-            SetLiteral => false,
-
-            // Comprehensions are NOT compile-time constants
-            ListComprehension => false,
-            SetComprehension => false,
-            DictComprehension => false,
-            DictSpreadComprehension => false,
-
-            // Lambda expressions are NOT compile-time constants
-            LambdaExpression => false,
-
-            // Default: not a compile-time constant
-            _ => false
-        };
-    }
-
-    /// <summary>
-    /// Checks if an identifier references a const declaration.
-    /// </summary>
-    private bool IsConstReference(Identifier id)
-    {
-        var symbol = Context.SymbolTable.Lookup(id.Name);
-        return symbol is VariableSymbol { IsConstant: true };
-    }
-
-    /// <summary>
-    /// Checks if a member access expression refers to an enum member.
-    /// E.g., Color.RED, HttpMethod.GET
-    /// </summary>
-    private bool IsEnumMemberAccess(MemberAccess memberAccess)
-    {
-        // The object must be an identifier (the enum type name)
-        if (memberAccess.Object is not Identifier typeId)
-        {
-            return false;
-        }
-
-        // Look up the type in the symbol table
-        var symbol = Context.SymbolTable.Lookup(typeId.Name);
-
-        // Check if it's an enum type
-        return symbol is TypeSymbol { TypeKind: TypeKind.Enum };
-    }
 }
