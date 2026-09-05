@@ -245,6 +245,7 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         programs.AddRange(AugmentedMixedPrograms());
         programs.AddRange(IntegerPowerPrograms());
         programs.AddRange(MinMaxPrograms());
+        programs.AddRange(ConsumerPrograms());
         return programs;
     }
 
@@ -1007,6 +1008,264 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         }
     }
 
+    // ── consumer axis: sum, in, not in across integer widths (#1749, #1750) ──
+
+    private sealed record ConsumerWidth(
+        string Name, string SumResult, bool Signed, int Bits, string? Oor);
+
+    private static readonly ConsumerWidth[] ConsumerWidths =
+    {
+        new("int8", "int32", true, 8, "300"),
+        new("int16", "int32", true, 16, "40000"),
+        new("int32", "int32", true, 32, "2147483648"),
+        new("int64", "int64", true, 64, null),
+        new("uint8", "int32", false, 8, "300"),
+        new("uint16", "int32", false, 16, "70000"),
+        new("uint32", "uint32", false, 32, "5000000000"),
+        new("uint64", "uint64", false, 64, "(-1)"),
+    };
+
+    private static readonly string[] ConsumerKinds = { "sum", "in", "not in" };
+
+    private static readonly string[] ConsumerShapes =
+        { "const-in-range", "const-out-of-range", "same-width-var",
+          "narrower-signed-var", "signed-vs-unsigned", "non-numeric" };
+
+    private static readonly string[] ConsumerContainers = { "list", "set", "dict" };
+
+    private static string CDisplay(ConsumerWidth w, string c) => c switch
+    {
+        "list" => $"list[{w.Name}]",
+        "set" => $"set[{w.Name}]",
+        "dict" => $"dict[{w.Name}, str]",
+        _ => throw new ArgumentOutOfRangeException(nameof(c)),
+    };
+
+    private static string? NarrowerSigned(ConsumerWidth w) =>
+        !w.Signed && w.Bits > 8 ? $"int{w.Bits / 2}" : null;
+
+    private static string? SameWidthSigned(ConsumerWidth w) =>
+        w.Signed ? null : $"int{w.Bits}";
+
+    private sealed record ConsumerNaCell(
+        string Consumer, string Width, string Shape, string Container, string Reason);
+
+    private static string? ConsumerNaReason(string consumer, ConsumerWidth w, string shape)
+    {
+        if (consumer == "sum")
+        {
+            return shape switch
+            {
+                "narrower-signed-var" =>
+                    "sum's start cross-family goes through overload resolution, not the promotion seam",
+                "signed-vs-unsigned" =>
+                    "sum's start cross-family goes through overload resolution, not the promotion seam",
+                "const-out-of-range" when w.SumResult != "uint64" =>
+                    w.SumResult == "int64"
+                        ? "int64 is the widest signed result type; no literal exceeds its range"
+                        : "sum's OOR start for widths with non-uint64 result produces an overload ICE",
+                _ => null,
+            };
+        }
+
+        return shape switch
+        {
+            "const-out-of-range" when w.Oor == null =>
+                "int64 is the widest signed integer type; no literal exceeds its range",
+            "narrower-signed-var" when w.Signed =>
+                "a narrower signed var implicitly widens to a wider signed type",
+            "narrower-signed-var" when !w.Signed && w.Bits == 8 =>
+                "uint8 is 8 bits; no signed integer type is narrower",
+            "signed-vs-unsigned" when w.Signed =>
+                "signed-vs-unsigned tests cross-family refusal; not applicable to signed containers",
+            _ => null,
+        };
+    }
+
+    private static ConsumerNaCell[] BuildConsumerNaCells() =>
+        (from container in ConsumerContainers
+         from w in ConsumerWidths
+         from consumer in ConsumerKinds
+         from shape in ConsumerShapes
+         let na = ConsumerNaReason(consumer, w, shape)
+         where na != null
+         select new ConsumerNaCell(consumer, w.Name, shape, container, na))
+        .ToArray();
+
+    private static void AddContainerDecl(SourceBuilder sb, ConsumerWidth w, string container)
+    {
+        switch (container)
+        {
+            case "list":
+                sb.Add($"    xs: list[{w.Name}] = [_a, _b, _c]");
+                break;
+            case "set":
+                sb.Add($"    xs: set[{w.Name}] = {{_a, _b, _c}}");
+                break;
+            case "dict":
+                sb.Add($"    xs: dict[{w.Name}, str] = {{_a: \"x\", _b: \"y\", _c: \"z\"}}");
+                break;
+        }
+    }
+
+    private static IEnumerable<MatrixProgram> ConsumerPrograms()
+    {
+        foreach (var w in ConsumerWidths)
+            foreach (var container in ConsumerContainers)
+            {
+                yield return ConsumerAcceptedProgram(w, container);
+                yield return ConsumerRefusedProgram(w, container);
+            }
+    }
+
+    private static MatrixProgram ConsumerAcceptedProgram(ConsumerWidth w, string container)
+    {
+        var sb = new SourceBuilder();
+        sb.Add("def main() -> None:");
+        sb.Add($"    _a: {w.Name} = 1");
+        sb.Add($"    _b: {w.Name} = 2");
+        sb.Add($"    _c: {w.Name} = 3");
+        AddContainerDecl(sb, w, container);
+
+        var cells = new List<Cell>();
+
+        var l1 = sb.Add("    print(sum(xs, 2))");
+        cells.Add(new Cell($"consumer/sum/const-in-range/{w.Name}/{container}",
+            "consumer/sum", w.Name, "const-in-range", container, true, l1, "8", null));
+
+        sb.Add($"    _sn: {w.SumResult} = 10");
+        var l2 = sb.Add("    print(sum(xs, _sn))");
+        cells.Add(new Cell($"consumer/sum/same-width-var/{w.Name}/{container}",
+            "consumer/sum", w.Name, "same-width-var", container, true, l2, "16", null));
+
+        var l3 = sb.Add("    print(7 in xs)");
+        cells.Add(new Cell($"consumer/in/const-in-range/{w.Name}/{container}",
+            "consumer/in", w.Name, "const-in-range", container, true, l3, "False", null));
+
+        sb.Add($"    _inv: {w.Name} = 7");
+        var l4 = sb.Add("    print(_inv in xs)");
+        cells.Add(new Cell($"consumer/in/same-width-var/{w.Name}/{container}",
+            "consumer/in", w.Name, "same-width-var", container, true, l4, "False", null));
+
+        var l5 = sb.Add("    print(2 not in xs)");
+        cells.Add(new Cell($"consumer/not-in/const-in-range/{w.Name}/{container}",
+            "consumer/not in", w.Name, "const-in-range", container, true, l5, "False", null));
+
+        sb.Add($"    _niv: {w.Name} = 2");
+        var l6 = sb.Add("    print(_niv not in xs)");
+        cells.Add(new Cell($"consumer/not-in/same-width-var/{w.Name}/{container}",
+            "consumer/not in", w.Name, "same-width-var", container, true, l6, "False", null));
+
+        return new MatrixProgram($"consumer/accepted/{w.Name}/{container}", sb.Text, true, cells);
+    }
+
+    private static MatrixProgram ConsumerRefusedProgram(ConsumerWidth w, string container)
+    {
+        var sb = new SourceBuilder();
+        sb.Add("def main() -> None:");
+        sb.Add($"    _a: {w.Name} = 1");
+        sb.Add($"    _b: {w.Name} = 2");
+        sb.Add($"    _c: {w.Name} = 3");
+        AddContainerDecl(sb, w, container);
+
+        var cells = new List<Cell>();
+        var display = CDisplay(w, container);
+
+        if (w.SumResult == "uint64")
+        {
+            var l = sb.Add("    print(sum(xs, -1))");
+            cells.Add(new Cell($"consumer/sum/const-out-of-range/{w.Name}/{container}",
+                "consumer/sum", w.Name, "const-out-of-range", container,
+                false, l, "No overload of 'sum' matches the argument types",
+                DiagnosticCodes.Semantic.NoMatchingOverload));
+        }
+
+        {
+            var l = sb.Add("    print(sum(xs, \"hello\"))");
+            cells.Add(new Cell($"consumer/sum/non-numeric/{w.Name}/{container}",
+                "consumer/sum", w.Name, "non-numeric", container,
+                false, l, "No overload of 'sum' matches the argument types",
+                DiagnosticCodes.Semantic.NoMatchingOverload));
+        }
+
+        if (w.Oor != null)
+        {
+            var l = sb.Add($"    print({w.Oor} in xs)");
+            cells.Add(new Cell($"consumer/in/const-out-of-range/{w.Name}/{container}",
+                "consumer/in", w.Name, "const-out-of-range", container,
+                false, l, $"does not support operator 'in' with operand of type '{display}'",
+                DiagnosticCodes.Semantic.InvalidBinaryOperation));
+        }
+
+        var narrower = NarrowerSigned(w);
+        if (narrower != null)
+        {
+            sb.Add($"    _ns: {narrower} = 2");
+            var l = sb.Add("    print(_ns in xs)");
+            cells.Add(new Cell($"consumer/in/narrower-signed-var/{w.Name}/{container}",
+                "consumer/in", w.Name, "narrower-signed-var", container,
+                false, l, $"does not support operator 'in' with operand of type '{display}'",
+                DiagnosticCodes.Semantic.InvalidBinaryOperation));
+        }
+
+        var sameSigned = SameWidthSigned(w);
+        if (sameSigned != null)
+        {
+            sb.Add($"    _ss: {sameSigned} = 2");
+            var l = sb.Add("    print(_ss in xs)");
+            cells.Add(new Cell($"consumer/in/signed-vs-unsigned/{w.Name}/{container}",
+                "consumer/in", w.Name, "signed-vs-unsigned", container,
+                false, l, $"does not support operator 'in' with operand of type '{display}'",
+                DiagnosticCodes.Semantic.InvalidBinaryOperation));
+        }
+
+        sb.Add("    _str: str = \"hello\"");
+        {
+            var l = sb.Add("    print(_str in xs)");
+            cells.Add(new Cell($"consumer/in/non-numeric/{w.Name}/{container}",
+                "consumer/in", w.Name, "non-numeric", container,
+                false, l, $"does not support operator 'in' with operand of type '{display}'",
+                DiagnosticCodes.Semantic.InvalidBinaryOperation));
+        }
+
+        if (w.Oor != null)
+        {
+            var l = sb.Add($"    print({w.Oor} not in xs)");
+            cells.Add(new Cell($"consumer/not-in/const-out-of-range/{w.Name}/{container}",
+                "consumer/not in", w.Name, "const-out-of-range", container,
+                false, l, $"does not support operator 'not in' with operand of type '{display}'",
+                DiagnosticCodes.Semantic.InvalidBinaryOperation));
+        }
+
+        if (narrower != null)
+        {
+            var l = sb.Add("    print(_ns not in xs)");
+            cells.Add(new Cell($"consumer/not-in/narrower-signed-var/{w.Name}/{container}",
+                "consumer/not in", w.Name, "narrower-signed-var", container,
+                false, l, $"does not support operator 'not in' with operand of type '{display}'",
+                DiagnosticCodes.Semantic.InvalidBinaryOperation));
+        }
+
+        if (sameSigned != null)
+        {
+            var l = sb.Add("    print(_ss not in xs)");
+            cells.Add(new Cell($"consumer/not-in/signed-vs-unsigned/{w.Name}/{container}",
+                "consumer/not in", w.Name, "signed-vs-unsigned", container,
+                false, l, $"does not support operator 'not in' with operand of type '{display}'",
+                DiagnosticCodes.Semantic.InvalidBinaryOperation));
+        }
+
+        {
+            var l = sb.Add("    print(_str not in xs)");
+            cells.Add(new Cell($"consumer/not-in/non-numeric/{w.Name}/{container}",
+                "consumer/not in", w.Name, "non-numeric", container,
+                false, l, $"does not support operator 'not in' with operand of type '{display}'",
+                DiagnosticCodes.Semantic.InvalidBinaryOperation));
+        }
+
+        return new MatrixProgram($"consumer/refused/{w.Name}/{container}", sb.Text, false, cells);
+    }
+
     // ───────────────────────────── the tests ─────────────────────────────
 
     public static IEnumerable<object[]> Programs()
@@ -1141,8 +1400,8 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
         live.Count(c => c.Store == "augmented/mixed").Should().Be(AugmentedMixedCases.Length,
             "the augmented column of the mixed axis is exactly its declared cases");
 
-        // Every non-augmented cell is accounted for by a declared axis — no magic constant, so a
-        // generator that stopped emitting an arm fails here instead of silently shrinking.
+        // Every non-augmented, non-consumer cell is accounted for by a declared axis — no magic
+        // constant, so a generator that stopped emitting an arm fails here instead of silently shrinking.
         var expectedNonAugmented =
             (4 * Widths.Length * Ops.Length)                       // plain decl / print / argument / return
             + UnsignedWideKeeps.Length + UnsignedWideRefusals.Length
@@ -1152,8 +1411,38 @@ public class NarrowWidthArithmeticMatrixTests : IntegrationTestBase
             + PowerCases.Length + PowerRefusedCases.Length
             + MinMaxCases.Length;
 
-        live.Count(c => !c.Store.StartsWith("augmented/", StringComparison.Ordinal))
+        live.Count(c => !c.Store.StartsWith("augmented/", StringComparison.Ordinal)
+                        && !c.Store.StartsWith("consumer/", StringComparison.Ordinal))
             .Should().Be(expectedNonAugmented);
+
+        // Consumer axis (#1749, #1750): consumer × width × shape × container, minus declared N/A.
+        var consumerLive = live
+            .Where(c => c.Store.StartsWith("consumer/", StringComparison.Ordinal)).ToList();
+        var consumerNa = BuildConsumerNaCells();
+
+        foreach (var consumer in ConsumerKinds)
+            foreach (var cw in ConsumerWidths)
+                foreach (var shape in ConsumerShapes)
+                    foreach (var container in ConsumerContainers)
+                    {
+                        if (ConsumerNaReason(consumer, cw, shape) != null)
+                            continue;
+
+                        consumerLive.Should().Contain(
+                            c => c.Store == $"consumer/{consumer}"
+                                 && c.Width == cw.Name
+                                 && c.Op == shape
+                                 && c.TargetKind == container,
+                            $"consumer/{consumer}/{shape}/{cw.Name}/{container} is a cell");
+                    }
+
+        consumerNa.Should().OnlyContain(n => n.Reason.Length > 20,
+            "every consumer N/A cell states why");
+
+        var totalConsumer = ConsumerKinds.Length * ConsumerWidths.Length
+                            * ConsumerShapes.Length * ConsumerContainers.Length;
+        (consumerLive.Count + consumerNa.Length).Should().Be(totalConsumer,
+            $"consumer live ({consumerLive.Count}) + N/A ({consumerNa.Length}) = 3 × 8 × 6 × 3");
     }
 
     /// <summary>
