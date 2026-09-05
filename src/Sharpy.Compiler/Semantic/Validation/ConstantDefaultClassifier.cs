@@ -50,61 +50,61 @@ internal static class ConstantDefaultClassifier
                 return EmittableConstantKind.NegatedLiteral;
 
             case UnaryOp unary:
-            {
-                var operandKind = Classify(unary.Operand, constResolver);
-                return IsAdmittedForFolding(operandKind)
-                    ? EmittableConstantKind.FoldedOfAdmitted
-                    : EmittableConstantKind.Other;
-            }
+                {
+                    var operandKind = Classify(unary.Operand, constResolver);
+                    return IsAdmittedForFolding(operandKind)
+                        ? EmittableConstantKind.FoldedOfAdmitted
+                        : EmittableConstantKind.Other;
+                }
 
             case BinaryOp binary:
-            {
-                var leftKind = Classify(binary.Left, constResolver);
-                var rightKind = Classify(binary.Right, constResolver);
-                return IsAdmittedForFolding(leftKind) && IsAdmittedForFolding(rightKind)
-                    ? EmittableConstantKind.FoldedOfAdmitted
-                    : EmittableConstantKind.Other;
-            }
+                {
+                    var leftKind = Classify(binary.Left, constResolver);
+                    var rightKind = Classify(binary.Right, constResolver);
+                    return IsAdmittedForFolding(leftKind) && IsAdmittedForFolding(rightKind)
+                        ? EmittableConstantKind.FoldedOfAdmitted
+                        : EmittableConstantKind.Other;
+                }
 
             case Parenthesized paren:
                 return Classify(paren.Expression, constResolver);
 
             case ConditionalExpression cond:
-            {
-                var testKind = Classify(cond.Test, constResolver);
-                var thenKind = Classify(cond.ThenValue, constResolver);
-                var elseKind = Classify(cond.ElseValue, constResolver);
-                return IsAdmittedForFolding(testKind)
-                    && IsAdmittedForFolding(thenKind)
-                    && IsAdmittedForFolding(elseKind)
-                    ? EmittableConstantKind.ConditionalOfAdmitted
-                    : EmittableConstantKind.Other;
-            }
+                {
+                    var testKind = Classify(cond.Test, constResolver);
+                    var thenKind = Classify(cond.ThenValue, constResolver);
+                    var elseKind = Classify(cond.ElseValue, constResolver);
+                    return IsAdmittedForFolding(testKind)
+                        && IsAdmittedForFolding(thenKind)
+                        && IsAdmittedForFolding(elseKind)
+                        ? EmittableConstantKind.ConditionalOfAdmitted
+                        : EmittableConstantKind.Other;
+                }
 
             case Identifier id:
-            {
-                if (constResolver != null && constResolver(id.Name))
-                    return EmittableConstantKind.ConstReference;
-                return EmittableConstantKind.Other;
-            }
+                {
+                    if (constResolver != null && constResolver(id.Name))
+                        return EmittableConstantKind.ConstReference;
+                    return EmittableConstantKind.Other;
+                }
 
             case MemberAccess { Object: Identifier }:
                 return EmittableConstantKind.EnumMember;
 
             case FunctionCall call:
-            {
-                var callee = AstHelper.UnwrapParenthesized(call.Function);
-                if (callee is NoneLiteral && call.Arguments.Length == 0 && call.KeywordArguments.Length == 0)
-                    return EmittableConstantKind.NoneCall;
+                {
+                    var callee = AstHelper.UnwrapParenthesized(call.Function);
+                    if (callee is NoneLiteral && call.Arguments.Length == 0 && call.KeywordArguments.Length == 0)
+                        return EmittableConstantKind.NoneCall;
 
-                if (callee is Identifier { Name: "type" } && call.Arguments.Length == 1 && call.KeywordArguments.Length == 0)
-                    return EmittableConstantKind.TypeOf;
+                    if (callee is Identifier { Name: "type" } && call.Arguments.Length == 1 && call.KeywordArguments.Length == 0)
+                        return EmittableConstantKind.TypeOf;
 
-                if (callee is Identifier fid && fid.Name is "Some" or "Ok" or "Err" && call.Arguments.Length == 1)
-                    return EmittableConstantKind.CaseConstructor;
+                    if (callee is Identifier fid && fid.Name is "Some" or "Ok" or "Err" && call.Arguments.Length == 1)
+                        return EmittableConstantKind.CaseConstructor;
 
-                return EmittableConstantKind.Call;
-            }
+                    return EmittableConstantKind.Call;
+                }
 
             case TupleLiteral:
                 return EmittableConstantKind.TupleLiteral;
