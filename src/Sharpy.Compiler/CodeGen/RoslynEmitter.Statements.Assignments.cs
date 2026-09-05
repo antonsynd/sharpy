@@ -1149,9 +1149,7 @@ internal partial class RoslynEmitter
         // Regular variables become "public static"
         SyntaxTokenList modifiers;
         var codeGenInfo = symbol != null ? GetCodeGenInfo(symbol) : null;
-        if (varDecl.IsConst
-            && (codeGenInfo?.IsCompileTimeConstant == true
-                || (IsCompileTimeLiteral(varDecl.InitialValue) && IsConstEligibleType(typeSyntax))))
+        if (varDecl.IsConst && codeGenInfo?.IsCompileTimeConstant == true)
         {
             // Use const for compile-time literals with const-eligible types
             modifiers = TokenList(

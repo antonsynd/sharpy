@@ -1031,4 +1031,17 @@ internal partial class RoslynEmitter : ICodeEmitter
             _ => SyntaxKind.PublicKeyword,
         };
     }
+
+    private EqualsValueClauseSyntax GenerateParameterDefault(Expression defaultValue, bool isOptionalSlot)
+    {
+        if (isOptionalSlot && IsNoneOrNoneCall(defaultValue))
+            return EqualsValueClause(LiteralExpression(SyntaxKind.DefaultLiteralExpression));
+        return EqualsValueClause(GenerateExpression(defaultValue));
+    }
+
+    private static bool IsNoneOrNoneCall(Expression expr)
+    {
+        return expr is NoneLiteral
+            || (expr is FunctionCall { Function: NoneLiteral } call && call.Arguments.Length == 0);
+    }
 }

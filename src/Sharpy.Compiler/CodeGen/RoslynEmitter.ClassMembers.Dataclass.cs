@@ -167,28 +167,13 @@ internal partial class RoslynEmitter
             // Add default value if present
             if (field.HasDefaultValue)
             {
-                // Find the corresponding VariableDeclaration AST node for the initializer
                 var fieldDecl = classBody.OfType<VariableDeclaration>()
                     .FirstOrDefault(v => v.Name == field.Name);
                 if (fieldDecl?.InitialValue != null)
                 {
-                    var defaultExpr = GenerateExpression(fieldDecl.InitialValue);
-
-                    // A PARAMETER default must be a compile-time constant; a PROPERTY initializer
-                    // need not be, and the two share one generator. `label: str? = None` produced
-                    // `Optional<string> label = Optional<string>.None` — correct as the property's
-                    // initializer, CS1736 behind SPY0908 as the parameter's, so a dataclass with
-                    // any optional field did not compile at all. `default` is the constant spelling
-                    // of the same value: Optional<T>.None is `new Optional<T>(default!, false)` and
-                    // the struct's default is `_hasValue == false`, i.e. None. Found while writing
-                    // #1505's absent-`T?` acceptance cell, which could not otherwise be written.
-                    if (fieldDecl.InitialValue is NoneLiteral
-                        && GetVariableType(field) is Semantic.OptionalType)
-                    {
-                        defaultExpr = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
-                    }
-
-                    param = param.WithDefault(EqualsValueClause(defaultExpr));
+                    param = param.WithDefault(GenerateParameterDefault(
+                        fieldDecl.InitialValue,
+                        GetVariableType(field) is Semantic.OptionalType or Semantic.NullableType));
                 }
             }
 

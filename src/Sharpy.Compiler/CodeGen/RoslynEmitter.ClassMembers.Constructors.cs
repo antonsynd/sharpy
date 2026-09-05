@@ -295,8 +295,9 @@ internal partial class RoslynEmitter
             // Add default value if present
             if (fieldDecl.InitialValue != null)
             {
-                var defaultExpr = GenerateExpression(fieldDecl.InitialValue);
-                param = param.WithDefault(EqualsValueClause(defaultExpr));
+                param = param.WithDefault(GenerateParameterDefault(
+                    fieldDecl.InitialValue,
+                    fieldDecl.Type is { IsOptional: true } or { IsCSharpNullable: true }));
             }
 
             parameters.Add(param);
@@ -430,8 +431,9 @@ internal partial class RoslynEmitter
                 // Handle default values
                 if (p.DefaultValue != null)
                 {
-                    paramSyntax = paramSyntax.WithDefault(
-                        EqualsValueClause(GenerateExpression(p.DefaultValue)));
+                    paramSyntax = paramSyntax.WithDefault(GenerateParameterDefault(
+                        p.DefaultValue,
+                        p.Type is Semantic.OptionalType or Semantic.NullableType));
                 }
 
                 return paramSyntax;

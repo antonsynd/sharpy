@@ -852,20 +852,6 @@ internal partial class RoslynEmitter
         return type is GenericType { Name: Shared.CSharpTypeNames.IAsyncEnumerable };
     }
 
-    private static bool IsCompileTimeLiteral(Expression? expr)
-    {
-        // Check if the expression is a compile-time literal that can be used with C# const
-        return expr switch
-        {
-            IntegerLiteral => true,
-            FloatLiteral => true,
-            StringLiteral => true,
-            BooleanLiteral => true,
-            NoneLiteral => true,
-            _ => false
-        };
-    }
-
     /// <summary>
     /// Checks if the resolved C# type is eligible for the 'const' modifier.
     /// C# only allows const for built-in primitive types (int, long, double, float, bool,

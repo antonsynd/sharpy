@@ -178,8 +178,9 @@ internal partial class RoslynEmitter
             // Handle default value
             if (param.DefaultValue != null)
             {
-                paramSyntax = paramSyntax.WithDefault(
-                    EqualsValueClause(GenerateExpression(param.DefaultValue)));
+                paramSyntax = paramSyntax.WithDefault(GenerateParameterDefault(
+                    param.DefaultValue,
+                    param.Type is { IsOptional: true } or { IsCSharpNullable: true }));
             }
 
             parameters.Add(paramSyntax);

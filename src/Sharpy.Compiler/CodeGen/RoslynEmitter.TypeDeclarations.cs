@@ -216,20 +216,9 @@ internal partial class RoslynEmitter
         // Add default value if present
         if (param.DefaultValue != null)
         {
-            ExpressionSyntax defaultExpr;
-            // None or None() as default param → default (Optional<T> is a struct, default = None)
-            if ((param.DefaultValue is NoneLiteral
-                || (param.DefaultValue is FunctionCall { Function: NoneLiteral } noneCall
-                    && noneCall.Arguments.Length == 0))
-                && param.Type is { IsOptional: true })
-            {
-                defaultExpr = LiteralExpression(SyntaxKind.DefaultLiteralExpression);
-            }
-            else
-            {
-                defaultExpr = GenerateExpression(param.DefaultValue);
-            }
-            parameter = parameter.WithDefault(EqualsValueClause(defaultExpr));
+            parameter = parameter.WithDefault(GenerateParameterDefault(
+                param.DefaultValue,
+                param.Type is { IsOptional: true } or { IsCSharpNullable: true }));
         }
 
         return parameter;
