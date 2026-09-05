@@ -2363,6 +2363,54 @@ Sums a sequence of doubles with a start value.
 
 Sums a sequence of decimals with a start value.
 
+### `sum(iterable: Iterable[sbyte]) -> int`
+
+Sums a sequence of signed bytes, accumulating into int.
+
+### `sum(iterable: Iterable[byte]) -> int`
+
+Sums a sequence of bytes, accumulating into int.
+
+### `sum(iterable: Iterable[short]) -> int`
+
+Sums a sequence of short integers, accumulating into int.
+
+### `sum(iterable: Iterable[ushort]) -> int`
+
+Sums a sequence of unsigned short integers, accumulating into int.
+
+### `sum(iterable: Iterable[uint]) -> uint`
+
+Sums a sequence of unsigned integers.
+
+### `sum(iterable: Iterable[ulong]) -> ulong`
+
+Sums a sequence of unsigned long integers.
+
+### `sum(iterable: Iterable[sbyte], start: int) -> int`
+
+Sums a sequence of signed bytes with a start value, accumulating into int.
+
+### `sum(iterable: Iterable[byte], start: int) -> int`
+
+Sums a sequence of bytes with a start value, accumulating into int.
+
+### `sum(iterable: Iterable[short], start: int) -> int`
+
+Sums a sequence of short integers with a start value, accumulating into int.
+
+### `sum(iterable: Iterable[ushort], start: int) -> int`
+
+Sums a sequence of unsigned short integers with a start value, accumulating into int.
+
+### `sum(iterable: Iterable[uint], start: uint) -> uint`
+
+Sums a sequence of unsigned integers with a start value.
+
+### `sum(iterable: Iterable[ulong], start: ulong) -> ulong`
+
+Sums a sequence of unsigned long integers with a start value.
+
 ### `type(obj: object | None) -> Type`
 
 Return the type of an object.
