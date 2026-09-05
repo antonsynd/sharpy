@@ -1144,10 +1144,11 @@ internal partial class RoslynEmitter
                     value));
         }
 
-        // Hoist: var varName = value;
+        // Hoist: var varName = value; — or the recorded type where var would infer narrower (a
+        // union case construction is its case class under var, #1770; see LocalDeclarationType).
         _hoistedStatements.Add(
             LocalDeclarationStatement(
-                VariableDeclaration(IdentifierName("var"))
+                VariableDeclaration(LocalDeclarationType(symbol, GetExpressionSemanticType(walrus.Value)))
                     .WithVariables(SingletonSeparatedList(
                         VariableDeclarator(EscapedIdentifier(varName))
                             .WithInitializer(EqualsValueClause(value))))));

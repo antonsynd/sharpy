@@ -134,20 +134,10 @@ internal partial class RoslynEmitter
                     // First declaration of this variable in this scope
                     var varName = GetMangledVariableName(name, isNewDeclaration: true);
 
-                    // Check if the value is a lambda/function — C# can't infer delegate
-                    // types with 'var'. Use explicit Func<>/Action<> from semantic type.
-                    TypeSyntax declType;
-                    var semanticType = GetExpressionSemanticType(assign.Value);
-                    if (semanticType is not Semantic.FunctionType)
-                    {
-                        var varSymbol = _context.LookupSymbol(name.Name);
-                        if (varSymbol is VariableSymbol vs && vs.Type is Semantic.FunctionType)
-                            semanticType = vs.Type;
-                    }
-                    if (semanticType is Semantic.FunctionType ft && !ft.HasUnresolvedTypes())
-                        declType = _typeMapper.MapSemanticType(semanticType);
-                    else
-                        declType = IdentifierName("var");
+                    // var, unless C# would infer a narrower type than the checker recorded for the
+                    // variable — a lambda (delegate type) or a union case construction (the union,
+                    // #1770). One seam for every declaration site: LocalDeclarationType.
+                    var declType = LocalDeclarationType(DeclaredTargetSymbol(name), GetExpressionSemanticType(assign.Value));
 
                     var declaration = VariableDeclaration(declType)
                         .WithVariables(SingletonSeparatedList(
@@ -413,21 +403,31 @@ internal partial class RoslynEmitter
 
                 if (noneExist)
                 {
-                    // All new — emit: var (a, b) = expr
-                    var variables = identifiers
-                        .Select(id =>
-                        {
-                            var varName = GetMangledVariableName(id, isNewDeclaration: true);
-                            return SingleVariableDesignation(EscapedIdentifier(varName));
-                        })
+                    // All new — emit: var (a, b) = expr. When an element's recorded type must be
+                    // printed (a union-typed element under var would be its case class, #1770), the
+                    // deconstruction becomes a tuple of typed declarations: (Box<int> a, var b) = expr.
+                    var designations = identifiers
+                        .Select(id => (
+                            Name: GetMangledVariableName(id, isNewDeclaration: true),
+                            ExplicitType: ExplicitLocalDeclarationType(DeclaredTargetSymbol(id), valueType: null)))
                         .ToList();
 
-                    var tuplePattern = ParenthesizedVariableDesignation(
-                        SeparatedList<VariableDesignationSyntax>(variables));
-
-                    var declExpr = DeclarationExpression(
-                        IdentifierName("var"),
-                        tuplePattern);
+                    ExpressionSyntax declExpr;
+                    if (designations.All(d => d.ExplicitType == null))
+                    {
+                        var tuplePattern = ParenthesizedVariableDesignation(
+                            SeparatedList<VariableDesignationSyntax>(
+                                designations.Select(d => SingleVariableDesignation(EscapedIdentifier(d.Name)))));
+                        declExpr = DeclarationExpression(IdentifierName("var"), tuplePattern);
+                    }
+                    else
+                    {
+                        declExpr = TupleExpression(SeparatedList(
+                            designations.Select(d => Argument(
+                                DeclarationExpression(
+                                    d.ExplicitType ?? IdentifierName("var"),
+                                    SingleVariableDesignation(EscapedIdentifier(d.Name)))))));
+                    }
 
                     return ExpressionStatement(
                         AssignmentExpression(
@@ -496,7 +496,7 @@ internal partial class RoslynEmitter
                             {
                                 var varName = GetMangledVariableName(id, isNewDeclaration: true);
                                 stmts.Add(LocalDeclarationStatement(
-                                    VariableDeclaration(IdentifierName("var"))
+                                    VariableDeclaration(LocalDeclarationType(DeclaredTargetSymbol(id), valueType: null))
                                         .WithVariables(SingletonSeparatedList(
                                             VariableDeclarator(EscapedIdentifier(varName))
                                                 .WithInitializer(EqualsValueClause(itemAccess))))));
@@ -537,7 +537,7 @@ internal partial class RoslynEmitter
                             {
                                 var varName = GetMangledVariableName(id, isNewDeclaration: true);
                                 stmts.Add(LocalDeclarationStatement(
-                                    VariableDeclaration(IdentifierName("var"))
+                                    VariableDeclaration(LocalDeclarationType(DeclaredTargetSymbol(id), valueType: null))
                                         .WithVariables(SingletonSeparatedList(
                                             VariableDeclarator(EscapedIdentifier(varName))
                                                 .WithInitializer(EqualsValueClause(tempRef))))));
@@ -1333,7 +1333,7 @@ internal partial class RoslynEmitter
             {
                 var starVarName = GetMangledVariableName(starId, isNewDeclaration: true);
                 statements.Add(LocalDeclarationStatement(
-                    VariableDeclaration(IdentifierName("var"))
+                    VariableDeclaration(LocalDeclarationType(DeclaredTargetSymbol(starId), valueType: null))
                         .WithVariables(SingletonSeparatedList(
                             VariableDeclarator(EscapedIdentifier(starVarName))
                                 .WithInitializer(EqualsValueClause(starValueExpr))))));
@@ -1419,7 +1419,7 @@ internal partial class RoslynEmitter
 
                     var varName = GetMangledVariableName(id, isNewDeclaration: true);
                     return LocalDeclarationStatement(
-                        VariableDeclaration(IdentifierName("var"))
+                        VariableDeclaration(LocalDeclarationType(DeclaredTargetSymbol(id), valueType: null))
                             .WithVariables(SingletonSeparatedList(
                                 VariableDeclarator(EscapedIdentifier(varName))
                                     .WithInitializer(EqualsValueClause(value)))));
