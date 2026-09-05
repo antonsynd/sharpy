@@ -1,2 +1,2 @@
-Cannot assign type 'tuple[list[Base], int32]' to variable of type 'tuple[list[Derived], int32]' @17:5
+Cannot assign type 'list[Base]' to 'list[Derived]' @17:40
 Cannot assign type 'str' to 'int32' in tuple unpacking @22:5

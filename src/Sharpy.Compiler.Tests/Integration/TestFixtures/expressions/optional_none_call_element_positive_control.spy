@@ -1,0 +1,8 @@
+# Positive control: None() is a valid Optional constructor in collection/lambda positions.
+
+def main():
+    xs: list[int?] = [None()]
+    print(xs[0])
+
+    f: () -> int? = lambda: None()
+    print(f())

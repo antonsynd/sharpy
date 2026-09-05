@@ -209,8 +209,7 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         new("TupleElement",
             s => $"def main():\n    t: tuple[{s.Slot}, int] = ({s.Value}, 1)\n    print(t[0])\n",
             2, DiagnosticCodes.Semantic.TypeMismatch,
-            (v, t) => $"Cannot assign type 'tuple[{v}, int32]' to variable of type 'tuple[{t}, int32]'",
-            ReportsAtContainerLevel: true),
+            (v, t) => $"Cannot assign type '{v}' to '{t}'"),
 
         new("Walrus",
             s => $"def main():\n    x: {s.Slot} = {s.Seed}\n    (x := {s.Value})\n    print(x)\n",
@@ -220,14 +219,12 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         new("CollectionElement",
             s => $"def main():\n    xs: list[{s.Slot}] = [{s.Value}]\n    print(xs[0])\n",
             2, DiagnosticCodes.Semantic.TypeMismatch,
-            (v, t) => $"Cannot assign type 'list[{v}]' to variable of type 'list[{t}]'",
-            ReportsAtContainerLevel: true),
+            (v, t) => $"Cannot assign type '{v}' to '{t}'"),
 
         new("LambdaBody",
             s => $"def main():\n    f: () -> {s.Slot} = lambda: {s.Value}\n    print(f())\n",
             2, DiagnosticCodes.Semantic.TypeMismatch,
-            (v, t) => $"Cannot assign type '() -> {v}' to variable of type '() -> {t}'",
-            ReportsAtContainerLevel: true),
+            (v, t) => $"Arrow lambda body type '{v}' is not assignable to declared return type '{t}'"),
 
         new("Augmented",
             s => $"def main():\n    x: {s.Slot} = {s.Seed}\n    x += {s.Value}\n    print(x)\n",

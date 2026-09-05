@@ -1,1 +1,1 @@
-Argument 1 of 'select[...]' expects '(int32) -> str' but got '(int32) -> int32' @11:30
+Arrow lambda body type 'int32' is not assignable to declared return type 'str'

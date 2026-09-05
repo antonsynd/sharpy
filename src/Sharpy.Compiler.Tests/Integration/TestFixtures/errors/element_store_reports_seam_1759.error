@@ -1,0 +1,3 @@
+'int32' is not an Optional[int32]; construct it with Some(...) @2:23
+'str' is not an Optional[str]; construct it with Some(...) @3:28
+bare None is not an Optional[int32]; use None(), or declare the slot 'int32 | None' @4:29

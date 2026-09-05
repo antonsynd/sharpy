@@ -1,5 +1,5 @@
-Cannot assign type 'list[int32]' to variable of type 'list[int8]' @12:5
+Cannot assign type 'int32' to 'int8' @12:29
 Cannot assign type 'int32' to variable of type 'int8' @16:5
 Cannot pass argument of type 'int32' to parameter 'n' of type 'int8' @19:24
 Cannot assign type 'float64' to variable of type 'float32' @21:5
-Cannot assign type 'list[float64]' to variable of type 'list[float32]' @24:5
+Cannot assign type 'float64' to 'float32' @24:28

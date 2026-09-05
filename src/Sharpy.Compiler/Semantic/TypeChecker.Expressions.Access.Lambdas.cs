@@ -136,10 +136,17 @@ internal partial class TypeChecker
             using (EnterStore(StorePosition.LambdaBody, expectedReturn, lambda.Body))
                 bodyType = CheckExpression(lambda.Body);
 
-            returnType = bodyType is not UnknownType
-                && CheckStoreQuietly(StorePosition.LambdaBody, lambda.Body, bodyType, expectedReturn)
-                    ? expectedReturn
-                    : bodyType;
+            if (bodyType is not UnknownType)
+            {
+                if (!CheckStoreQuietly(StorePosition.LambdaBody, lambda.Body, bodyType, expectedReturn))
+                    CheckStore(StorePosition.LambdaBody, lambda.Body, bodyType, expectedReturn,
+                        lambda.Body, lambda.Body.Span);
+                returnType = expectedReturn;
+            }
+            else
+            {
+                returnType = bodyType;
+            }
         }
         else
         {

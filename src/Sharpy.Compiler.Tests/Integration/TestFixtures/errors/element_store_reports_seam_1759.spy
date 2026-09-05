@@ -1,0 +1,4 @@
+def main():
+    xs: list[int?] = [42]
+    t: tuple[str?, int] = ("hi", 1)
+    f: () -> int? = lambda: None

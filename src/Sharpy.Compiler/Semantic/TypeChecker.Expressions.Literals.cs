@@ -99,7 +99,8 @@ internal partial class TypeChecker
         // (list[Base] = [Derived()]), depth > 1 contextual inference (#1671), and every value shape
         // the seam knows — an in-range constant, an unsuffixed float literal into list[float32], a
         // literal-derived string into list[LiteralString] (#1698, #1688, #1731).
-        if (elementExpectation != null && AdmitCollectionElements(elements, elementExpectation))
+        if (elementExpectation != null && !ContainsTypeParameterType(elementExpectation)
+            && AdmitCollectionElements(elements, elementExpectation) != ElementAdmissionResult.Refused)
             commonType = elementExpectation;
 
         commonType = ResolveVoidElementType(
@@ -159,9 +160,11 @@ internal partial class TypeChecker
 
         // When a contextual key/value type is available and every element is admitted by the store
         // seam, record the expected type (#1671, #1698).
-        if (keyExpectation != null && AdmitCollectionElements(keys, keyExpectation))
+        if (keyExpectation != null && !ContainsTypeParameterType(keyExpectation)
+            && AdmitCollectionElements(keys, keyExpectation) != ElementAdmissionResult.Refused)
             commonKeyType = keyExpectation;
-        if (valueExpectation != null && AdmitCollectionElements(values, valueExpectation))
+        if (valueExpectation != null && !ContainsTypeParameterType(valueExpectation)
+            && AdmitCollectionElements(values, valueExpectation) != ElementAdmissionResult.Refused)
             commonValueType = valueExpectation;
 
         commonKeyType = ResolveVoidElementType(
@@ -213,7 +216,8 @@ internal partial class TypeChecker
 
         var commonType = FindLeastCommonAncestor(elements.Select(e => e.Type).ToList());
 
-        if (elementExpectation != null && AdmitCollectionElements(elements, elementExpectation))
+        if (elementExpectation != null && !ContainsTypeParameterType(elementExpectation)
+            && AdmitCollectionElements(elements, elementExpectation) != ElementAdmissionResult.Refused)
             commonType = elementExpectation;
 
         commonType = ResolveVoidElementType(
@@ -287,7 +291,8 @@ internal partial class TypeChecker
         // nothing, for the same reason the other literals are: a refused index keeps the produced
         // types so the enclosing store reports the composite mismatch unchanged (#1698, #1701).
         if (indexExpectations != null
-            && AdmitTupleElements(directElements, indexExpectations))
+            && !indexExpectations.Any(ContainsTypeParameterType)
+            && AdmitTupleElements(directElements, indexExpectations) != ElementAdmissionResult.Refused)
         {
             directElementTypes = indexExpectations.ToList();
         }

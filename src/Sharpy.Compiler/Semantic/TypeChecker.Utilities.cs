@@ -1707,10 +1707,12 @@ internal partial class TypeChecker
         return invoke;
     }
 
+    private enum ElementAdmissionResult { Admitted, Refused, RefusedReported }
+
     /// <summary>
     /// Whether every element of a collection literal is admitted into the contextual element slot,
     /// applying each element's accepted verdict when they ALL are — the collection-element store
-    /// position (plan-14853b Decision 1).
+    /// position (plan-14853b Decision 1, plan-757fbb Decision 7).
     ///
     /// <para>Each element is classified with its own NODE, which is what makes the value-shape arms
     /// reachable here at all: without the node, <see cref="ClassifyStore"/> sees only types, so
@@ -1719,12 +1721,13 @@ internal partial class TypeChecker
     /// here) and stays type-only.</para>
     ///
     /// <para>Two passes on purpose: the side effects (float32/decimal re-typing, conditional-branch
-    /// casts, sequence materialization) run only once the WHOLE literal is admitted. A literal with
-    /// one refused element keeps its produced element type, so the enclosing store reports the
-    /// composite mismatch exactly as it did before — half-re-typed elements would emit C# for a
-    /// program the checker refused.</para>
+    /// casts, sequence materialization) run only once the WHOLE literal is admitted. A refused
+    /// non-spread element reports its own refusal at its span and returns
+    /// <see cref="ElementAdmissionResult.RefusedReported"/>; the caller adopts the expected type so
+    /// the enclosing store never re-reports. A refused spread (Node == null) returns
+    /// <see cref="ElementAdmissionResult.Refused"/> for the container to handle.</para>
     /// </summary>
-    private bool AdmitCollectionElements(
+    private ElementAdmissionResult AdmitCollectionElements(
         IReadOnlyList<(Expression? Node, SemanticType Type)> elements, SemanticType expectation)
     {
         var verdicts = new StoreVerdict[elements.Count];
@@ -1733,7 +1736,15 @@ internal partial class TypeChecker
             verdicts[i] = ClassifyStore(
                 StorePosition.CollectionElement, elements[i].Node, elements[i].Type, expectation);
             if (!IsAcceptedVerdict(verdicts[i]))
-                return false;
+            {
+                if (elements[i].Node != null)
+                {
+                    CheckStore(StorePosition.CollectionElement, elements[i].Node, elements[i].Type,
+                        expectation, elements[i].Node!, elements[i].Node!.Span);
+                    return ElementAdmissionResult.RefusedReported;
+                }
+                return ElementAdmissionResult.Refused;
+            }
         }
 
         for (int i = 0; i < elements.Count; i++)
@@ -1742,19 +1753,20 @@ internal partial class TypeChecker
                 StorePosition.CollectionElement, verdicts[i], elements[i].Node, elements[i].Type, expectation);
         }
 
-        return true;
+        return ElementAdmissionResult.Admitted;
     }
 
     /// <summary>
     /// The positional twin of <see cref="AdmitCollectionElements"/>: each index of a tuple literal
-    /// is classified against its OWN slot. Same all-or-nothing side-effect rule.
+    /// is classified against its OWN slot. Same all-or-nothing side-effect rule and per-element
+    /// reporting (Decision 7).
     /// </summary>
-    private bool AdmitTupleElements(
+    private ElementAdmissionResult AdmitTupleElements(
         IReadOnlyList<(Expression? Node, SemanticType Type)> elements,
         IReadOnlyList<SemanticType> expectations)
     {
         if (elements.Count != expectations.Count)
-            return false;
+            return ElementAdmissionResult.Refused;
 
         var verdicts = new StoreVerdict[elements.Count];
         for (int i = 0; i < elements.Count; i++)
@@ -1762,7 +1774,15 @@ internal partial class TypeChecker
             verdicts[i] = ClassifyStore(
                 StorePosition.CollectionElement, elements[i].Node, elements[i].Type, expectations[i]);
             if (!IsAcceptedVerdict(verdicts[i]))
-                return false;
+            {
+                if (elements[i].Node != null)
+                {
+                    CheckStore(StorePosition.CollectionElement, elements[i].Node, elements[i].Type,
+                        expectations[i], elements[i].Node!, elements[i].Node!.Span);
+                    return ElementAdmissionResult.RefusedReported;
+                }
+                return ElementAdmissionResult.Refused;
+            }
         }
 
         for (int i = 0; i < elements.Count; i++)
@@ -1771,7 +1791,7 @@ internal partial class TypeChecker
                 StorePosition.CollectionElement, verdicts[i], elements[i].Node, elements[i].Type, expectations[i]);
         }
 
-        return true;
+        return ElementAdmissionResult.Admitted;
     }
 
     /// <summary>
