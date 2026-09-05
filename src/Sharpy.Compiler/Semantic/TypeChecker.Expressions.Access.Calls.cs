@@ -414,10 +414,12 @@ internal partial class TypeChecker
                     return importedOverloadResult;
             }
         }
-        // Handle union case construction: Shape.Circle(5.0) → new Shape.Circle(5.0)
+        // Handle union case construction: Shape.Circle(5.0) → new Shape.Circle(5.0). A case behind a
+        // generic type reference (Box[str].Full("s")) is routed here too, from the qualifier's
+        // recorded type, so CheckUnionCaseConstruction can refuse the spelling by name (#1770).
         else if (callee is MemberAccess unionCaseAccess
-            && calleeType is UserDefinedType caseUdt
-            && caseUdt.Symbol?.BaseType is { TypeKind: TypeKind.Union } unionBaseSymbol)
+            && ResolveUnionCaseCallee(unionCaseAccess, calleeType) is var (caseUdt, unionBaseSymbol)
+            && caseUdt != null && unionBaseSymbol != null)
         {
             return CheckUnionCaseConstruction(call, caseUdt, unionBaseSymbol, argTypes);
         }
@@ -3821,21 +3823,63 @@ internal partial class TypeChecker
         List<SemanticType> argTypes)
     {
         var caseFields = caseUdt.Symbol!.Fields;
-
         var typeParams = unionBaseSymbol.TypeParameters;
+        var caseName = $"{unionBaseSymbol.Name}.{caseUdt.Name}";
+        var typeParamNames = string.Join(", ", typeParams.Select(tp => tp.Name));
+
+        // Box[str].Full("s"): type arguments on the qualifier are not a spelling the language has —
+        // the qualified form takes its type arguments from the annotation or the arguments
+        // (tagged_unions.md). Refuse by name: through the generic member-call route it reached
+        // Roslyn as Box<string>.Full("s"), CS1955 behind SPY0908 (#1770).
+        if (call.Function is MemberAccess { Object: IndexAccess })
+        {
+            var steer = typeParams.Count > 0
+                ? $"x: {unionBaseSymbol.Name}[{typeParamNames}] = {caseName}(...)"
+                : $"{caseName}(...)";
+            AddError(
+                $"Type arguments cannot be written on a union case constructor's qualifier ('{unionBaseSymbol.Name}[...].{caseUdt.Name}'); " +
+                $"a union case takes its type arguments from the annotation or the arguments — write {steer}",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.UnsupportedFeature,
+                span: call.Span);
+            return SemanticType.Unknown;
+        }
+
+        // The annotation slot, when it names this union: b: Box[int] = Box.Full(1).
+        List<SemanticType>? slotTypeArgs = null;
+        if (typeParams.Count > 0
+            && _expectedType is GenericType expectedGenericType
+            && NamesSameDeclaration(expectedGenericType, unionBaseSymbol)
+            && expectedGenericType.TypeArguments.Count == typeParams.Count)
+        {
+            slotTypeArgs = expectedGenericType.TypeArguments;
+        }
+
+        // Arity before inference, so Box.Full(1, 2) reports SPY0224 with or without a slot; without
+        // one it used to fall into inference and surface as SPY0227 (#1770).
+        if (argTypes.Count != caseFields.Count)
+        {
+            AddError($"Union case '{caseName}' expects {caseFields.Count} argument(s) but got {argTypes.Count}",
+                call.LineStart, call.ColumnStart,
+                code: DiagnosticCodes.Semantic.WrongArgumentCount,
+                span: call.Span);
+            // Error recovery: the type the slot names (so the store does not re-report), the union
+            // itself for a non-generic union, else Unknown.
+            if (typeParams.Count == 0)
+                return new UserDefinedType { Name = unionBaseSymbol.Name, Symbol = unionBaseSymbol };
+            return slotTypeArgs != null
+                ? new GenericType { Name = unionBaseSymbol.Name, TypeArguments = slotTypeArgs, GenericDefinition = unionBaseSymbol }
+                : SemanticType.Unknown;
+        }
+
         List<SemanticType>? typeArgs = null;
         if (typeParams.Count > 0)
         {
-            // Try 1: annotation slot (e.g. b: Box[int] = Box.Full(1))
-            if (_expectedType is GenericType expectedGenericType
-                && NamesSameDeclaration(expectedGenericType, unionBaseSymbol)
-                && expectedGenericType.TypeArguments.Count == typeParams.Count)
-            {
-                typeArgs = expectedGenericType.TypeArguments;
-            }
+            // Try 1: the annotation slot
+            typeArgs = slotTypeArgs;
 
             // Try 2: infer from the arguments (e.g. Box.Full(1) → Box[int])
-            if (typeArgs == null && caseFields.Count > 0 && argTypes.Count == caseFields.Count)
+            if (typeArgs == null && caseFields.Count > 0)
             {
                 var syntheticParams = caseFields.Select(f => new ParameterSymbol
                 {
@@ -3844,24 +3888,46 @@ internal partial class TypeChecker
                 }).ToList();
                 var syntheticFunc = new FunctionSymbol
                 {
-                    Name = $"{unionBaseSymbol.Name}.{caseUdt.Name}",
+                    Name = caseName,
                     Parameters = syntheticParams,
                     TypeParameters = typeParams,
                 };
                 var inferenceResult = _genericInference.InferTypeArguments(syntheticFunc, argTypes);
                 if (inferenceResult.Success && inferenceResult.InferredTypes != null)
                 {
-                    typeArgs = inferenceResult.InferredTypes;
+                    var inferred = inferenceResult.InferredTypes;
+
+                    // None is a value with no type of its own: T := None (Box.Full(None)) or
+                    // T := tuple[int, None] would print `void` as a C# type argument — SPY0599
+                    // (#1770). Refuse with the nullable steer; with a slot, Box[int | None] admits
+                    // the None through the ordinary field check below.
+                    if (inferred.Any(MentionsNoneType))
+                    {
+                        var offending = argTypes.FindIndex(MentionsNoneType);
+                        var argDesc = offending >= 0
+                            ? $"argument {offending + 1} has type '{argTypes[offending].GetDisplayName()}'"
+                            : "an argument is None";
+                        var steerParams = string.Join(", ", typeParams.Select((tp, i) =>
+                            i < inferred.Count && MentionsNoneType(inferred[i]) ? $"{tp.Name} | None" : tp.Name));
+                        AddError(
+                            $"Cannot infer type arguments for '{caseName}': {argDesc}, and None is not a type; " +
+                            $"add a type annotation that spells the payload as nullable (e.g., x: {unionBaseSymbol.Name}[{steerParams}] = {caseName}(...))",
+                            call.LineStart, call.ColumnStart,
+                            code: DiagnosticCodes.Semantic.CannotInferType,
+                            span: call.Span);
+                        return SemanticType.Unknown;
+                    }
+
+                    typeArgs = inferred;
                 }
             }
 
             // Inference failed — report SPY0227 with an annotation steer
             if (typeArgs == null)
             {
-                var typeParamNames = string.Join(", ", typeParams.Select(tp => tp.Name));
                 AddError(
-                    $"Cannot infer type arguments for '{unionBaseSymbol.Name}.{caseUdt.Name}'; " +
-                    $"add a type annotation (e.g., x: {unionBaseSymbol.Name}[{typeParamNames}] = {unionBaseSymbol.Name}.{caseUdt.Name}(...))",
+                    $"Cannot infer type arguments for '{caseName}'; " +
+                    $"add a type annotation (e.g., x: {unionBaseSymbol.Name}[{typeParamNames}] = {caseName}(...))",
                     call.LineStart, call.ColumnStart,
                     code: DiagnosticCodes.Semantic.CannotInferType,
                     span: call.Span);
@@ -3869,32 +3935,21 @@ internal partial class TypeChecker
             }
         }
 
-        // Validate argument count
-        if (argTypes.Count != caseFields.Count)
+        // Validate argument types (with type parameter substitution for generics)
+        for (int i = 0; i < caseFields.Count; i++)
         {
-            AddError($"Union case '{unionBaseSymbol.Name}.{caseUdt.Name}' expects {caseFields.Count} argument(s) but got {argTypes.Count}",
-                call.LineStart, call.ColumnStart,
-                code: DiagnosticCodes.Semantic.WrongArgumentCount,
-                span: call.Span);
-        }
-        else
-        {
-            // Validate argument types (with type parameter substitution for generics)
-            for (int i = 0; i < caseFields.Count; i++)
+            var expectedFieldType = caseFields[i].Type;
+            if (typeArgs != null)
             {
-                var expectedFieldType = caseFields[i].Type;
-                if (typeArgs != null)
-                {
-                    expectedFieldType = SubstituteTypeParameters(expectedFieldType, typeParams, typeArgs);
-                }
+                expectedFieldType = SubstituteTypeParameters(expectedFieldType, typeParams, typeArgs);
+            }
 
-                if (!IsAssignable(argTypes[i], expectedFieldType))
-                {
-                    AddError($"Argument {i + 1} has type '{argTypes[i].GetDisplayName()}' but field '{caseFields[i].Name}' expects '{expectedFieldType.GetDisplayName()}'",
-                        call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
-                        code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: call.Arguments[i].Span);
-                }
+            if (!IsAssignable(argTypes[i], expectedFieldType))
+            {
+                AddError($"Argument {i + 1} has type '{argTypes[i].GetDisplayName()}' but field '{caseFields[i].Name}' expects '{expectedFieldType.GetDisplayName()}'",
+                    call.Arguments[i].LineStart, call.Arguments[i].ColumnStart,
+                    code: DiagnosticCodes.Semantic.TypeMismatch,
+                    span: call.Arguments[i].Span);
             }
         }
 
@@ -3912,6 +3967,63 @@ internal partial class TypeChecker
         // For non-generic unions, return the union base type
         return new UserDefinedType { Name = unionBaseSymbol.Name, Symbol = unionBaseSymbol };
     }
+
+    /// <summary>
+    /// The case type and union symbol a call's callee names, when the callee is a union case
+    /// constructor. Two shapes: <c>Shape.Circle</c> / <c>Box.Full</c>, where the callee itself typed
+    /// as the case (its symbol's base is the union); and <c>Box[str].Full</c>, where the qualifier is
+    /// a generic type reference whose RECORDED type is a user union and the member is one of its
+    /// cases — member resolution on the qualifier finds no field/property/method by that name, so
+    /// the callee typed Unknown with no diagnostic and the call reached Roslyn as
+    /// <c>Box&lt;string&gt;.Full("s")</c>, CS1955 (#1770). Routing the second shape into
+    /// <see cref="CheckUnionCaseConstruction"/> lets it be refused by name. Returns
+    /// <c>(null, null)</c> when the callee is not a union case.
+    /// </summary>
+    private (UserDefinedType? CaseType, TypeSymbol? UnionSymbol) ResolveUnionCaseCallee(
+        MemberAccess callee, SemanticType calleeType)
+    {
+        if (calleeType is UserDefinedType { Symbol: { BaseType: { TypeKind: TypeKind.Union } directUnion } } directCase)
+            return (directCase, directUnion);
+
+        if (callee.Object is IndexAccess qualifier
+            && GenericQualifierSymbol(qualifier) is { TypeKind: TypeKind.Union } qualifiedUnion
+            && qualifiedUnion.UnionCases.FirstOrDefault(c => c.Name == callee.Member) is { } caseSymbol)
+        {
+            return (new UserDefinedType { Name = caseSymbol.Name, Symbol = caseSymbol }, qualifiedUnion);
+        }
+
+        return (null, null);
+    }
+
+    /// <summary>
+    /// The type symbol a generic type reference qualifier (<c>Box[str]</c>) names: the recorded
+    /// <see cref="GenericType.GenericDefinition"/> when the resolver materialized it, else the
+    /// bare type name looked up in the symbol table.
+    /// </summary>
+    private TypeSymbol? GenericQualifierSymbol(IndexAccess qualifier)
+        => _semanticInfo.GetExpressionType(qualifier) is GenericType { GenericDefinition: { } definition }
+            ? definition
+            : qualifier.Object is Identifier typeName ? _symbolTable.LookupType(typeName.Name) : null;
+
+    /// <summary>
+    /// Whether a type mentions <c>None</c> (<see cref="VoidType"/>) as a TYPE — a type argument, a
+    /// tuple element, a parameter type — which no C# type can carry (<c>void</c> is not a type
+    /// argument). A function's None RETURN type is not such a mention: <c>() -> None</c> is
+    /// <c>Action</c>. Used by <see cref="CheckUnionCaseConstruction"/> to refuse an inferred type
+    /// argument that would print <c>void</c> (#1770).
+    /// </summary>
+    private static bool MentionsNoneType(SemanticType type) => type switch
+    {
+        VoidType => true,
+        GenericType gt => gt.TypeArguments.Any(MentionsNoneType),
+        TupleType tt => tt.ElementTypes.Any(MentionsNoneType),
+        NullableType nt => MentionsNoneType(nt.UnderlyingType),
+        OptionalType ot => MentionsNoneType(ot.UnderlyingType),
+        ResultType rt => MentionsNoneType(rt.OkType) || MentionsNoneType(rt.ErrorType),
+        FunctionType ft => ft.ParameterTypes.Any(MentionsNoneType)
+            || (ft.ReturnType is not VoidType && MentionsNoneType(ft.ReturnType)),
+        _ => false,
+    };
 
     /// <summary>
     /// Checks call arguments and keyword arguments, collecting their types.
