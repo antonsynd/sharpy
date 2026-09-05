@@ -1,0 +1,27 @@
+# Module consts of every C#-const-eligible width, read through a forward reference and as a
+# parameter default. Between dfcdd47fa and the #1762 follow-up only integer consts emitted as a
+# C# const: FA/GA/DA/SA/BA read the referenced const's zero-initialized static readonly field
+# (0.0 / 0.0 / 0 / None / False) and the float default ICEd CS1736.
+const FA: float = FB
+const FB: float = 4.0
+const GA: float32 = GB
+const GB: float32 = 2.5
+const DA: decimal = DB
+const DB: decimal = 1.5
+const SA: str = SB
+const SB: str = "x"
+const BA: bool = BB
+const BB: bool = True
+const IA: int8 = IB
+const IB: int8 = 100
+const UA: uint64 = UB
+const UB: uint64 = 4
+const TIMEOUT: float = 30.0
+const GREETING: str = "hi" + "!"
+
+def fetch(timeout: float = TIMEOUT, greeting: str = GREETING) -> None:
+    print(timeout, greeting)
+
+def main() -> None:
+    print(FA, GA, DA, SA, BA, IA, UA)
+    fetch()

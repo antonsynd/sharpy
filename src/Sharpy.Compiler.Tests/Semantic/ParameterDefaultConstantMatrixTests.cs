@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
@@ -7,9 +8,10 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// The parameter-default constant matrix — kind × host (#1762, #1769, R-R).
+/// The parameter-default constant matrix — kind × host (#1762, #1769, R-R) — and its sibling, the
+/// module-const matrix — declared type × reference kind × consumer (#1762 follow-up).
 ///
-/// <para><b>Contract.</b> A default value for a parameter is admitted or refused by
+/// <para><b>Contract (defaults).</b> A default value for a parameter is admitted or refused by
 /// <c>ConstantDefaultClassifier</c> via <c>DefaultParameterValidator</c>. The classifier
 /// maps the default's AST shape to an <c>EmittableConstantKind</c>, and the validator checks
 /// that kind against the <c>AdmissionTable</c> for the host position. Admitted defaults compile
@@ -18,6 +20,22 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para><b>Axes.</b> Kind: {Literal, NegatedLiteral, ConstReference, EnumMember, NoneLiteral,
 /// NoneCall, SomeIntoOptional, TupleLiteral, ConditionalOfConstants} × Host: {Def, Lambda, Init}.
 /// Totality: 9 × 3 = 27 cells.</para>
+///
+/// <para><b>Contract (module consts).</b> A module <c>const</c> whose declared type C# admits for
+/// <c>const</c> — every <c>PrimitiveCatalog</c> primitive but <c>object</c>/<c>void</c> — and whose
+/// initializer the classifier admits for <c>AdmissionTable.ModuleConst</c> emits as
+/// <c>public const</c> (<c>CodeGenInfo.IsCompileTimeConstant</c>), so every constant-position
+/// consumer reads it: a def/lambda/method parameter default, a <c>case</c> pattern, another const,
+/// a plain read. Between dfcdd47fa and the fix the fact was integer-only, so float/float32/decimal/
+/// str/bool consts fell to <c>static readonly</c>: the parameter defaults ICEd CS1736, the case
+/// pattern CS9135, and a forward reference read the zero-initialized field (0.0 / None / False).</para>
+///
+/// <para><b>Axes.</b> Type: {int, int8, uint64, float, float32, decimal, str, bool} × Reference:
+/// {Backward, ForwardThroughConst, Folded} × Consumer: {Print, DefDefault, LambdaDefault,
+/// MethodDefault, MatchCase}. Totality: 8 × 3 × 5 = 120 cells, of which the Folded × {float32,
+/// decimal} × 5 = 10 are declared N/A (the checker refuses every binary literal expression into a
+/// float32/decimal slot — SPY0220 "float64 → decimal" — at BASE and HEAD alike; a sibling of the
+/// literal-derived-fact class, #1731/#1741, not of this seam).</para>
 /// </summary>
 [Collection("HeavyCompilation")]
 public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
@@ -164,6 +182,187 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         (admitted + refused).Should().Be(KindCount * HostCount,
             $"admitted ({admitted}) + refused ({refused}) must be the whole product "
             + $"({KindCount} × {HostCount})");
+    }
+
+    // ══ Module-const matrix: declared type × reference kind × consumer ═══════════════════════
+
+    private const int ConstTypeCount = 8;
+    private const int ReferenceKindCount = 3;
+    private const int ConsumerCount = 5;
+    private const int ModuleConstNotApplicableCellCount = 10; // Folded × {float32, decimal} × 5 consumers
+
+    /// <summary>
+    /// A C#-const-eligible declared type: its Sharpy spelling, the C# keyword the emitted
+    /// declaration must carry, a literal, the folded form (null when the checker refuses every
+    /// binary literal expression into the slot — see the class remarks), and what <c>print</c>
+    /// shows for the value.
+    /// </summary>
+    private sealed record ConstType(string Name, string CSharpType, string Literal, string? Folded, string Printed);
+
+    private static readonly ConstType[] ConstTypes =
+    {
+        new("int", "int", "4", "2 + 2", "4"),
+        new("int8", "sbyte", "100", "50 + 50", "100"),
+        new("uint64", "ulong", "4", "2 + 2", "4"),
+        new("float", "double", "4.0", "2.0 + 2.0", "4.0"),
+        new("float32", "float", "4.0", null, "4.0"),
+        new("decimal", "decimal", "4.0", null, "4.0"),
+        new("str", "string", "\"ab\"", "\"a\" + \"b\"", "ab"),
+        new("bool", "bool", "True", "True and True", "True"),
+    };
+
+    /// <summary>
+    /// How <c>A</c> is declared. ForwardThroughConst declares <c>A</c> BEFORE the const it reads —
+    /// the cell that printed B's zero-initialized field (0.0 / None / False) at HEAD-before-fix.
+    /// Its operands are distinct from the literal only through B, so a wrong reading cannot
+    /// coincide with the right one.
+    /// </summary>
+    private sealed record ReferenceKind(string Name, Func<ConstType, string?> Decls, bool DeclaresB);
+
+    private static readonly ReferenceKind[] ReferenceKinds =
+    {
+        new("Backward", t => $"const A: {t.Name} = {t.Literal}\n", DeclaresB: false),
+        new("ForwardThroughConst", t => $"const A: {t.Name} = B\nconst B: {t.Name} = {t.Literal}\n", DeclaresB: true),
+        new("Folded", t => t.Folded == null ? null : $"const A: {t.Name} = {t.Folded}\n", DeclaresB: false),
+    };
+
+    /// <summary>A constant-position consumer of <c>A</c> and the stdout it must produce.</summary>
+    private sealed record Consumer(string Name, Func<ConstType, string> Program, Func<ConstType, string> Expected);
+
+    private static readonly Consumer[] Consumers =
+    {
+        new("Print",
+            _ => "def main():\n    print(A)\n",
+            t => t.Printed + "\n"),
+        new("DefDefault",
+            t => $"def f(x: {t.Name} = A) -> None:\n    print(x)\n\ndef main():\n    f()\n",
+            t => t.Printed + "\n"),
+        new("LambdaDefault",
+            t => $"def main():\n    f = lambda x: {t.Name} = A: x\n    print(f())\n",
+            t => t.Printed + "\n"),
+        new("MethodDefault",
+            t => $"class C:\n    def m(self, x: {t.Name} = A) -> None:\n        print(x)\n\ndef main():\n    C().m()\n",
+            t => t.Printed + "\n"),
+        new("MatchCase",
+            t => $"def main():\n    v: {t.Name} = {t.Literal}\n    match v:\n        case A:\n            print(\"hit\")\n        case _:\n            print(\"miss\")\n",
+            _ => "hit\n"),
+    };
+
+    private static ConstType T(string name) => ConstTypes.Single(t => t.Name == name);
+
+    private static ReferenceKind R(string name) => ReferenceKinds.Single(r => r.Name == name);
+
+    private static Consumer C(string name) => Consumers.Single(c => c.Name == name);
+
+    private static bool IsApplicable(ConstType t, ReferenceKind r) => r.Decls(t) != null;
+
+    public static IEnumerable<object[]> ModuleConstCells =>
+        from t in ConstTypes
+        from r in ReferenceKinds
+        from c in Consumers
+        where IsApplicable(t, r)
+        select new object[] { t.Name, r.Name, c.Name };
+
+    public static IEnumerable<object[]> ModuleConstDeclarationCells =>
+        from t in ConstTypes
+        from r in ReferenceKinds
+        where IsApplicable(t, r)
+        select new object[] { t.Name, r.Name };
+
+    [Theory]
+    [MemberData(nameof(ModuleConstCells))]
+    public void ModuleConstCell_ConsumerReadsTheConstsValue(string type, string reference, string consumer)
+    {
+        var t = T(type);
+        var r = R(reference);
+        var c = C(consumer);
+        var source = r.Decls(t) + "\n" + c.Program(t);
+
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"[{type} × {reference} × {consumer}] must never produce SPY0908 — a const in a constant "
+            + $"position must emit as a C# const. Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.Success.Should().BeTrue(
+            $"[{type} × {reference} × {consumer}] must compile and run. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Should().Be(c.Expected(t),
+            $"[{type} × {reference} × {consumer}] reads the const's declared value\n{source}");
+    }
+
+    /// <summary>
+    /// The materialized fact itself: <c>CodeGenInfo.IsCompileTimeConstant</c> drives the emitted
+    /// modifier, so every applicable declaration is <c>public const &lt;type&gt;</c>. This is what
+    /// makes the Backward × Print cells discriminating — a <c>static readonly</c> prints the same
+    /// value there and only its consumers reveal the difference.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ModuleConstDeclarationCells))]
+    public void ModuleConstDeclaration_EmitsAsCSharpConst(string type, string reference)
+    {
+        var t = T(type);
+        var r = R(reference);
+        var source = r.Decls(t) + "\ndef main():\n    print(A)\n";
+
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue(
+            $"[{type} × {reference}] must compile. Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.GeneratedCSharp.Should().NotBeNull();
+        result.GeneratedCSharp.Should().MatchRegex(
+            $@"\bpublic const {Regex.Escape(t.CSharpType)} A = ",
+            $"[{type} × {reference}] A is a compile-time constant\n{result.GeneratedCSharp}");
+        if (r.DeclaresB)
+        {
+            result.GeneratedCSharp.Should().MatchRegex(
+                $@"\bpublic const {Regex.Escape(t.CSharpType)} B = ",
+                $"[{type} × {reference}] the referenced const is compile-time too\n{result.GeneratedCSharp}");
+        }
+    }
+
+    /// <summary>
+    /// The N/A cells are refused by the checker, not by this seam: a binary literal expression into
+    /// a float32/decimal slot is SPY0220 at BASE and HEAD alike. The control keeps the N/A
+    /// declaration honest — when the checker learns to narrow it, the cell rejoins the matrix.
+    /// </summary>
+    [Theory]
+    [InlineData("float32")]
+    [InlineData("decimal")]
+    public void ModuleConstFoldedCell_NotApplicable_IsTheCheckersRefusal(string type)
+    {
+        var t = T(type);
+        t.Folded.Should().BeNull("the cell is declared N/A");
+
+        var result = CompileAndExecute($"const A: {t.Name} = 2.0 + 2.0\n\ndef main():\n    print(A)\n");
+
+        result.Success.Should().BeFalse($"the checker refuses the fold into {type} today");
+        result.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.TypeMismatch,
+            "the refusal is SPY0220, upstream of this seam — if this cell starts compiling, give the type a "
+            + "Folded form and drop it from ModuleConstNotApplicableCellCount");
+    }
+
+    [Fact]
+    public void ModuleConstMatrix_IsTotalOverItsAxes()
+    {
+        ConstTypes.Length.Should().Be(ConstTypeCount);
+        ReferenceKinds.Length.Should().Be(ReferenceKindCount);
+        Consumers.Length.Should().Be(ConsumerCount);
+        ConstTypes.Select(t => t.Name).Should().OnlyHaveUniqueItems();
+        ReferenceKinds.Select(r => r.Name).Should().OnlyHaveUniqueItems();
+        Consumers.Select(c => c.Name).Should().OnlyHaveUniqueItems();
+
+        var product = ConstTypeCount * ReferenceKindCount * ConsumerCount;
+        var applicable = ModuleConstCells.Count();
+        var notApplicable = product - applicable;
+
+        notApplicable.Should().Be(ModuleConstNotApplicableCellCount,
+            "every N/A cell is declared with its reason (Folded × {float32, decimal} × every consumer)");
+        (applicable + notApplicable).Should().Be(product,
+            $"applicable ({applicable}) + N/A ({notApplicable}) must be the whole product "
+            + $"({ConstTypeCount} × {ReferenceKindCount} × {ConsumerCount})");
+        ModuleConstDeclarationCells.Count().Should().Be(
+            ConstTypeCount * ReferenceKindCount - ModuleConstNotApplicableCellCount / ConsumerCount);
     }
 
     // ── Classifier scan (guarded-by anchor for DispatchSiteInventoryTests) ───────────────────
