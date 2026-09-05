@@ -3822,14 +3822,51 @@ internal partial class TypeChecker
     {
         var caseFields = caseUdt.Symbol!.Fields;
 
-        // For generic unions, substitute type parameters using the expected type
         var typeParams = unionBaseSymbol.TypeParameters;
         List<SemanticType>? typeArgs = null;
-        if (typeParams.Count > 0 && _expectedType is GenericType expectedGenericType
-            && NamesSameDeclaration(expectedGenericType, unionBaseSymbol)
-            && expectedGenericType.TypeArguments.Count == typeParams.Count)
+        if (typeParams.Count > 0)
         {
-            typeArgs = expectedGenericType.TypeArguments;
+            // Try 1: annotation slot (e.g. b: Box[int] = Box.Full(1))
+            if (_expectedType is GenericType expectedGenericType
+                && NamesSameDeclaration(expectedGenericType, unionBaseSymbol)
+                && expectedGenericType.TypeArguments.Count == typeParams.Count)
+            {
+                typeArgs = expectedGenericType.TypeArguments;
+            }
+
+            // Try 2: infer from the arguments (e.g. Box.Full(1) → Box[int])
+            if (typeArgs == null && caseFields.Count > 0 && argTypes.Count == caseFields.Count)
+            {
+                var syntheticParams = caseFields.Select(f => new ParameterSymbol
+                {
+                    Name = f.Name,
+                    Type = f.Type,
+                }).ToList();
+                var syntheticFunc = new FunctionSymbol
+                {
+                    Name = $"{unionBaseSymbol.Name}.{caseUdt.Name}",
+                    Parameters = syntheticParams,
+                    TypeParameters = typeParams,
+                };
+                var inferenceResult = _genericInference.InferTypeArguments(syntheticFunc, argTypes);
+                if (inferenceResult.Success && inferenceResult.InferredTypes != null)
+                {
+                    typeArgs = inferenceResult.InferredTypes;
+                }
+            }
+
+            // Inference failed — report SPY0227 with an annotation steer
+            if (typeArgs == null)
+            {
+                var typeParamNames = string.Join(", ", typeParams.Select(tp => tp.Name));
+                AddError(
+                    $"Cannot infer type arguments for '{unionBaseSymbol.Name}.{caseUdt.Name}'; " +
+                    $"add a type annotation (e.g., x: {unionBaseSymbol.Name}[{typeParamNames}] = {unionBaseSymbol.Name}.{caseUdt.Name}(...))",
+                    call.LineStart, call.ColumnStart,
+                    code: DiagnosticCodes.Semantic.CannotInferType,
+                    span: call.Span);
+                return SemanticType.Unknown;
+            }
         }
 
         // Validate argument count
@@ -3861,7 +3898,7 @@ internal partial class TypeChecker
             }
         }
 
-        // For generic unions, return a GenericType matching the expected type
+        // For generic unions, return the closed GenericType
         if (typeArgs != null)
         {
             return new GenericType
