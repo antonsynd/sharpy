@@ -52,6 +52,20 @@ def main() -> None:
 5
 ```
 
+`Some(…)` and `None()` take the target's declared slot, so a walrus that stores an Optional reads
+as the declared type:
+
+```python
+def main() -> None:
+    x: int? = None()
+    y: int? = (x := Some(2))   # stores Some(2); reads as int?
+    print(y)
+```
+
+```
+2
+```
+
 **Type Inference Only:**
 
 The walrus operator always infers the type from the right-hand side expression. Type annotations are not supported with `:=` (matching Python 3.8+ behavior):

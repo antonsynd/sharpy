@@ -1717,3 +1717,21 @@ deviations:
         type bint = int
         v: bint = bint("42")  # compiles, prints 42
 
+
+  - id: membership-needle-type-mismatch
+    code: SPY0222
+    category: operators
+    audience: python
+    severity: error
+    python_behavior: "`x in xs` never fails on a type mismatch; a needle no element can equal is simply `False`."
+    sharpy_behavior: "The needle is an argument into the container's element slot: a constant converts when in range, a variable C# cannot implicitly convert is refused by name with a cast steer, and a non-numeric mismatch is refused — a value the element type cannot hold can never be a member, so the test is a type error rather than a constant False (plan-757fbb, #1750, R-U)."
+    spec_ref: docs/language_specification/membership_operators.md#needle-type
+    existing_diagnostic: SPY0222
+    planned_diagnostic: null
+    example:
+      python: |
+        xs = [1, 2]
+        print("a" in xs)     # False
+      sharpy: |
+        xs: list[int] = [1, 2]
+        print("a" in xs)     # ERROR SPY0222: Type 'str' does not support operator 'in' with operand of type 'list[int32]'

@@ -94,5 +94,10 @@ print(1 in [1, 2, 3])     # True  — same-width, always works
 
 Tuples are not containers — `2 in (1, 2)` is SPY0320.
 
+**Departure from Python.** Python's `in` never fails on a type mismatch — `"a" in [1, 2]` is simply
+`False`. Sharpy refuses the needle at compile time (SPY0222): a value the element type cannot hold can
+never be a member, so the test is a type error rather than a constant `False` (Axiom 2, type safety
+over Python syntax). Catalogued as `membership-needle-type-mismatch` in `docs/deviations.yaml`.
+
 *Implementation*
 - *Lowered: `x in y` emits `y.Contains(x)`. For Sharpy classes, `__contains__` compiles to a C# `Contains` method, so the same `.Contains()` call dispatches correctly for both Sharpy and .NET types.*

@@ -78,9 +78,12 @@ type across blocks:
 ```python
 def main() -> None:
     d: int? = Some(10)
-    if d is not None:
+    if True:
         d = 5   # SPY0604 — use Some(5); the name's slot is int?
 ```
+
+No narrowing of `d` is in effect inside `if True:`, so the declared slot decides. Inside
+`if d is not None:` the payload rule above applies instead and `d = 5` re-wraps as `Some(5)`.
 
 The walrus operator follows the same rule — its target slot is the declared binding type
 (see [Walrus Operator](walrus_operator.md)):

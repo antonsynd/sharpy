@@ -39,6 +39,31 @@ A bare value or bare `None` is **not** accepted for `T?` — use `Some(…)` or 
 
 Bare `None` belongs to `T | None` (C# nullable interop) — see [Nullable Types](nullable_types.md). The `maybe` expression bridges a `T` value into `T?`: `z: int? = maybe x` wraps `x` in `Some` when non-null.
 
+The one place a bare payload value is accepted is **inside a narrowing** of the Optional name: the
+store is classified against the payload first, re-wraps, and the narrowing survives (the payload
+rule — see [Stores Use the Declared Type](type_narrowing.md#stores-use-the-declared-type)):
+
+```python
+def main() -> None:
+    x: int? = Some(10)
+    if x is not None:
+        x += 5          # payload store — x re-wraps as Some(15) and stays narrowed
+        n: int = x      # the narrowing survives the store
+        print(n)
+        x = 7           # payload store — Some(7)
+        print(x)
+    print(x)
+```
+
+```
+15
+7
+7
+```
+
+Outside a narrowing (`if True:`, a `while` body, a nested `def`) the declared slot decides and a bare
+payload is SPY0604 as above.
+
 ## Pattern Matching
 
 Use pattern matching to handle both Some and None cases:
