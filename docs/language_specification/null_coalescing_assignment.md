@@ -57,8 +57,10 @@ class DataManager:
 
 ## Dictionary Operations
 
+> **Status (#1790):** the element type must be nullable or Optional (see [Type Requirements](#type-requirements)), and today a subscript store on a *missing* key raises `KeyError` before the coalesce — the missing-key behaviour below is the intended semantics, not yet the implemented one.
+
 ```python
-cache: dict[str, Data] = {}
+cache: dict[str, Data | None] = {}
 
 def get_or_create(key: str) -> Data:
     # Compute only if key is missing or maps to None
@@ -66,11 +68,13 @@ def get_or_create(key: str) -> Data:
     return cache[key]
 
 # Works with dictionary subscript
-settings: dict[str, int] = {}
+settings: dict[str, int | None] = {}
 settings["timeout"] ??= 30  # Set default if not present
 ```
 
 ## Return Value
+
+> **Status (#1790):** `??=` is a statement today — the expression forms below are `SPY0104` until the expression form is ruled and implemented.
 
 The `??=` operator returns the final value (either existing or newly assigned):
 
