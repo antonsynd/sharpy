@@ -1,0 +1,5 @@
+# str needle in list[int] -> SPY0222 (#1750, R-U)
+
+def main():
+    xs: list[int] = [1, 2, 3]
+    print("a" in xs)

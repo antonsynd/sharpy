@@ -1,0 +1,13 @@
+# Constant needle in range converts: 2 in list[uint64] runs (#1750, R-U)
+
+def main():
+    xs: list[uint64] = [1, 2, 3]
+    # constant 2 fits in uint64 -> accepted
+    print(2 in xs)
+    print(5 in xs)
+    # int8 widening into int32 -> accepted
+    ys: list[int32] = [10, 20, 30]
+    n: int8 = 10
+    print(n in ys)
+    # str in str -> accepted (substring test)
+    print("ell" in "Hello")

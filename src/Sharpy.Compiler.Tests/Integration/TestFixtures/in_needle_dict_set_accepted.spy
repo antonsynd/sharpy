@@ -1,0 +1,13 @@
+# in/not in with dict (keys) and set containers (#1750, R-U)
+
+def main():
+    d: dict[str, int] = {"a": 1, "b": 2}
+    # str needle in dict[str,int] checks against key type str -> accepted
+    print("a" in d)
+    print("c" in d)
+    print("a" not in d)
+
+    s: set[int] = {1, 2, 3}
+    # int needle in set[int] -> accepted
+    print(2 in s)
+    print(5 not in s)

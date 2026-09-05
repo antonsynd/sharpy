@@ -1,0 +1,8 @@
+# Needle type checking for in/not in: SPY0222 for type mismatches (#1750, R-U)
+
+def main():
+    xs: list[uint64] = [1, 2, 3]
+    n: int32 = 2
+
+    # signed variable vs unsigned container -> SPY0222
+    print(n in xs)

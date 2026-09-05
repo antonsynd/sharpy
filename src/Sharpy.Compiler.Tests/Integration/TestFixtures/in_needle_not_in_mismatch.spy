@@ -1,0 +1,6 @@
+# not in also checks needle type (#1750, R-U)
+
+def main():
+    xs: list[uint64] = [1, 2, 3]
+    n: int32 = 2
+    print(n not in xs)

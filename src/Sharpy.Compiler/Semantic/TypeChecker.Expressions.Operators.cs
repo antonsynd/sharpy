@@ -56,6 +56,15 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // #1750 (R-U): the needle of in/not in is an argument into the container's element
+        // slot. The container-presence check (SPY0320) stays in ProtocolValidator; this arm
+        // runs only when an element type resolves, so the two stages never overlap.
+        if (binOp.Operator is BinaryOperator.In or BinaryOperator.NotIn)
+        {
+            ClassifyMembership(binOp, binOp.Left, leftType, rightType);
+            return SemanticType.Bool;
+        }
+
         // Reject void-returning call operands in equality comparisons (#911). A `None`-typed
         // (VoidType) operand that is NOT the literal `None` is a void-returning call used as a
         // comparand (e.g. `s == f()` where `f() -> None`). Python would evaluate the call and
@@ -1124,6 +1133,15 @@ internal partial class TypeChecker
 
             // Map ComparisonOperator to BinaryOperator and validate
             var binaryOp = TypeUtils.ComparisonOperatorToBinaryOperator(chain.Operators[i]);
+
+            // #1750 (R-U): in/not in links go through the same needle check as the binary form.
+            if (binaryOp is BinaryOperator.In or BinaryOperator.NotIn)
+            {
+                ClassifyMembership(chain, chain.Operands[i], leftType, rightType);
+                links.Add(new ComparisonLinkLowering(OperatorLoweringKind.Native, null));
+                continue;
+            }
+
             var resultType = _typeInference.InferBinaryOpType(binaryOp, leftType, rightType);
 
             // If type inference fails, report the error directly
@@ -1184,6 +1202,116 @@ internal partial class TypeChecker
         }
 
         return new ComparisonLinkLowering(OperatorLoweringKind.Native, null);
+    }
+
+    /// <summary>
+    /// The needle-vs-element check for <c>in</c>/<c>not in</c> (#1750, R-U). Resolves the
+    /// container's element type and checks the needle against it via the store seam's argument
+    /// arm. A container without a resolvable element type is oblivious — the container-presence
+    /// check (SPY0320) in <see cref="Validation.ProtocolValidator"/> handles that stage.
+    /// </summary>
+    private void ClassifyMembership(
+        Node diagnosticNode, Expression needle, SemanticType needleType, SemanticType containerType)
+    {
+        var elementType = ResolveMembershipElementType(containerType);
+        if (elementType == null)
+            return;
+
+        if (IsArgumentAssignable(needleType, elementType, needle))
+            return;
+
+        var opSpelling = diagnosticNode is BinaryOp binOp
+            ? GetOperatorSymbol(binOp.Operator)
+            : "in";
+
+        var message = $"Type '{needleType.GetDisplayName()}' does not support operator " +
+            $"'{opSpelling}' with operand of type '{containerType.GetDisplayName()}'";
+
+        var needleSpelling = SpellOperand(needle, "x");
+        var steer = MembershipNeedleSteer(needleType, elementType, needleSpelling);
+        steer ??= DescribeOptionalArgument(needleType, elementType, "needle");
+
+        if (steer.Length > 0)
+            message += steer;
+
+        AddError(message, needle.LineStart, needle.ColumnStart,
+            code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+            span: diagnosticNode.Span);
+    }
+
+    /// <summary>
+    /// Resolves the element type a membership needle is checked against. Builtin containers
+    /// go through <see cref="TypeInferenceService.InferIterableElementType"/> (dict yields
+    /// keys, str yields str); user types with <c>__contains__</c> yield its parameter type;
+    /// CLR types with a typed <c>Contains</c> method yield that parameter type.
+    /// Returns null when no element type can be determined.
+    /// </summary>
+    private SemanticType? ResolveMembershipElementType(SemanticType containerType)
+    {
+        // NullableType (T | None) exposes the underlying container's element type
+        if (containerType is NullableType nullable)
+            return ResolveMembershipElementType(nullable.UnderlyingType);
+
+        // str in str is always str (substring test)
+        if (containerType == SemanticType.Str)
+            return SemanticType.Str;
+
+        // Generic containers: list[T] → T, set[T] → T, dict[K,V] → K (keys)
+        if (containerType is GenericType generic && generic.TypeArguments.Count > 0)
+            return generic.TypeArguments[0];
+
+        // User-defined types: look for __contains__ parameter type
+        TypeSymbol? typeSymbol = containerType switch
+        {
+            UserDefinedType udt => udt.Symbol,
+            _ => null
+        };
+
+        if (typeSymbol != null)
+        {
+            // Check ProtocolMethods first (where __contains__ is registered)
+            if (typeSymbol.ProtocolMethods.TryGetValue(DunderNames.Contains, out var containsMethods))
+            {
+                var best = containsMethods.FirstOrDefault(m =>
+                    m.Parameters.Count(p => p.Name != Shared.PythonNames.Self) >= 1);
+                if (best != null)
+                {
+                    var itemParam = best.Parameters.FirstOrDefault(
+                        p => p.Name != Shared.PythonNames.Self);
+                    if (itemParam != null)
+                        return itemParam.Type;
+                }
+            }
+
+            // Check regular Methods
+            var containsMethod = typeSymbol.Methods.FirstOrDefault(
+                m => m.Name == DunderNames.Contains
+                     && m.Parameters.Count(p => p.Name != Shared.PythonNames.Self) >= 1);
+            if (containsMethod != null)
+            {
+                var itemParam = containsMethod.Parameters.FirstOrDefault(
+                    p => p.Name != Shared.PythonNames.Self);
+                if (itemParam != null)
+                    return itemParam.Type;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The cast steer for a membership needle whose type C# cannot bind to the element type.
+    /// Shaped for the needle position: only the needle is cast, not the container.
+    /// </summary>
+    private static string? MembershipNeedleSteer(
+        SemanticType needleType, SemanticType elementType, string needleSpelling)
+    {
+        if (!PrimitiveCatalog.IsNumeric(needleType) || !PrimitiveCatalog.IsNumeric(elementType))
+            return null;
+        if (PrimitiveCatalog.GetPromotedType(needleType, elementType) != null)
+            return null;
+
+        return $" — cast the needle: '{elementType.GetDisplayName()}({needleSpelling})'";
     }
 
     private SemanticType CheckConditionalExpression(ConditionalExpression cond)
