@@ -1,0 +1,39 @@
+union Box[T]:
+    case Full(v: T)
+    case Empty()
+
+union Pair[A, B]:
+    case Both(first: A, second: B)
+    case Neither()
+
+def mk() -> int:
+    return 99
+
+def main():
+    # Inference from a single argument
+    b = Box.Full(1)
+    match b:
+        case Full(v):
+            print(v)
+
+    # Two-parameter union inference
+    p = Pair.Both(1, "hello")
+    match p:
+        case Both(first, second):
+            print(first, second)
+
+    # Inference from a nested call's return type
+    c = Box.Full(mk())
+    match c:
+        case Full(v):
+            print(v)
+
+    # Slot-based (existing path, positive control)
+    d: Box[int] = Box.Full(42)
+    match d:
+        case Full(v):
+            print(v)
+
+    # Empty with slot (existing path, positive control)
+    e: Box[str] = Box.Empty()
+    print(isinstance(e, Box))

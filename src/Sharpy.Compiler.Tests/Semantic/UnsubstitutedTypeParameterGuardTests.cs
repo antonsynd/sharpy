@@ -166,12 +166,93 @@ def main():
             + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
     }
 
+    private const string UnionBoxDecl =
+        "union Box[T]:\n    case Full(v: T)\n    case Empty()\n\n";
+
+    private const string UnionPairDecl =
+        "union Pair[A, B]:\n    case Both(first: A, second: B)\n    case Neither()\n\n";
+
+    /// <summary>
+    /// The qualified-union route (#1770): a generic user union's case constructor infers its type
+    /// arguments from the slot or the arguments and never types open. Before the fix,
+    /// <c>Box.Full(1)</c> reported "expects 'T'" and <c>Box.Empty()</c> without a slot ICEd CS0305
+    /// (open generic reached Roslyn). After the fix, every cell runs (or is refused by name with
+    /// only closed types) and no diagnostic renders an unsubstituted type parameter.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    print(Box.Full(1))\n", "print: inference from argument")]
+    [InlineData("def main():\n    b = Box.Full(1)\n    print(isinstance(b, Box))\n", "untyped local: inference from argument")]
+    [InlineData("def mk() -> int:\n    return 99\n\ndef main():\n    c = Box.Full(mk())\n    print(isinstance(c, Box))\n",
+        "nested-call arg: infers from return type")]
+    [InlineData("def main():\n    f = Box.Full(lambda: 1)\n    print(isinstance(f, Box))\n",
+        "lambda arg: infers Box[() -> int]")]
+    [InlineData("def main():\n    d: Box[int] = Box.Full(42)\n    print(isinstance(d, Box))\n",
+        "slot-based (existing path, positive control)")]
+    public void QualifiedUnionCase_InfersClosedType_AndNoDiagnosticNamesATypeParameter(
+        string body, string cell)
+    {
+        var result = CompileAndExecute(UnionBoxDecl + body);
+
+        result.Success.Should().BeTrue(
+            $"{cell}: " + string.Join("; ", result.CompilationErrors));
+        AssertNoDiagnosticNamesATypeParameter(result, cell);
+    }
+
+    [Fact]
+    public void QualifiedUnionCase_TwoParameterUnion_InfersClosedType()
+    {
+        var result = CompileAndExecute(
+            UnionPairDecl + "def main():\n    p = Pair.Both(1, \"hello\")\n    print(isinstance(p, Pair))\n");
+
+        result.Success.Should().BeTrue(
+            "two-parameter inference: " + string.Join("; ", result.CompilationErrors));
+        AssertNoDiagnosticNamesATypeParameter(result, "two-parameter union");
+    }
+
+    /// <summary>
+    /// Wrong-slot cells: the diagnostic names only closed types, never the raw type parameter.
+    /// </summary>
+    [Theory]
+    [InlineData("def main():\n    x: bool = Box.Full(1)\n    print(x)\n",
+        "bool slot: SPY0220 names a closed type, not T")]
+    [InlineData("def main():\n    b: Box[int] = Box.Full(\"s\")\n    print(b)\n",
+        "mistyped with slot: SPY0220 names int32, not T")]
+    public void QualifiedUnionCase_WrongSlot_RefusesByClosedType_NeverT(string body, string cell)
+    {
+        var result = CompileAndExecute(UnionBoxDecl + body);
+
+        result.Success.Should().BeFalse($"{cell}: the slot mismatch is refused");
+        AssertNoDiagnosticNamesATypeParameter(result, cell);
+    }
+
+    /// <summary>
+    /// <c>Box.Empty()</c> without a slot cannot infer type arguments (no fields to unify
+    /// against) and must report SPY0227, not ICE with CS0305 (open generic reaching Roslyn).
+    /// </summary>
+    [Fact]
+    public void QualifiedUnionCase_EmptyNoSlot_IsSPY0227_NotCS0305()
+    {
+        var result = CompileAndExecute(
+            UnionBoxDecl + "def main():\n    e = Box.Empty()\n    print(e)\n");
+
+        result.Success.Should().BeFalse("Empty() without a slot cannot infer type arguments");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Semantic.CannotInferType,
+            "SPY0227 with annotation steer, not CS0305; got "
+            + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}:{d.Message}")));
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            "the open generic must not reach Roslyn");
+        AssertNoDiagnosticNamesATypeParameter(result, "Empty() no slot");
+    }
+
     private static void AssertNoDiagnosticNamesATypeParameter(ExecutionResult result, string cell)
     {
-        // SPY0237 ("Type parameter 'T' cannot be inferred") is ABOUT the parameter it names — the
-        // one diagnostic whose subject is the type parameter itself, not a type that leaked one.
+        // SPY0237 and SPY0227 ("Cannot infer type arguments …") are ABOUT the parameter they name
+        // — the diagnostic whose subject is the type parameter itself, not a type that leaked one.
         var offenders = result.RawDiagnostics
-            .Where(d => d.Code != DiagnosticCodes.Semantic.CannotInferGenericType)
+            .Where(d => d.Code != DiagnosticCodes.Semantic.CannotInferGenericType
+                     && d.Code != DiagnosticCodes.Semantic.CannotInferType)
             .Where(d => d.Message.Contains(TypeParameterToken, StringComparison.Ordinal))
             .Select(d => $"{d.Code}:{d.Message}")
             .ToList();
