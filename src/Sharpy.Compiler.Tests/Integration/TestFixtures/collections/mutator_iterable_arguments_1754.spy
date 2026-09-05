@@ -1,0 +1,47 @@
+# Mutator iterable argument acceptance: tuple, str, dict-keys, and range RHS shapes
+# require the iterable-projection ring in GetMemberIterableKeyPositions (#1754).
+def main() -> None:
+    # list.extend with tuple literal (TupleToArray projection)
+    xs: list[int] = [1, 2]
+    xs.extend((3, 4))
+    print(len(xs))
+
+    # list.extend with range (Direct projection)
+    xs2: list[int] = [1, 2]
+    xs2.extend(range(3, 6))
+    print(len(xs2))
+
+    # list.extend with dict keys (DictKeys projection)
+    xs3: list[int] = [1, 2]
+    xs3.extend({3: "a", 4: "b"})
+    print(len(xs3))
+
+    # list.extend with str (StrToList projection)
+    xs4: list[str] = ["a"]
+    xs4.extend("bc")
+    print(len(xs4))
+
+    # set.update with tuple literal
+    s: set[int] = {1, 2}
+    s.update((3, 4))
+    print(len(s))
+
+    # set.intersection_update with list
+    s2: set[int] = {1, 2, 3}
+    s2.intersection_update([2, 3])
+    print(len(s2))
+
+    # set.difference_update with set
+    s3: set[int] = {1, 2, 3}
+    s3.difference_update({1})
+    print(len(s3))
+
+    # set.symmetric_difference_update with range
+    s4: set[int] = {1, 2, 3}
+    s4.symmetric_difference_update(range(3, 6))
+    print(len(s4))
+
+    # dict.update with dict
+    d: dict[str, int] = {"a": 1}
+    d.update({"b": 2})
+    print(len(d))
