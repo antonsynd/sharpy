@@ -95,7 +95,7 @@ Return the default timeout in seconds for new sockets, or None.
 
 Set the default timeout for new sockets. None means blocking mode.
 
-### `socket.create_connection(address: tuple[string host, int port], timeout: float | None = None) -> Socket`
+### `socket.create_connection(address: tuple[string host, int port], timeout: float | None = default) -> Socket`
 
 Connect to a TCP (host, port) address and return the connected socket.
 
