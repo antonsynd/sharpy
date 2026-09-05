@@ -2279,6 +2279,7 @@ sum([])              # 0
 **Raises:**
 
 - `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int32`
 
 ### `sum(iterable: Iterable[long]) -> long`
 
@@ -2293,6 +2294,7 @@ Sums a sequence of longs.
 **Raises:**
 
 - `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int64`
 
 ### `sum(iterable: Iterable[float32]) -> float32`
 
@@ -2347,9 +2349,19 @@ Sums a sequence of integers with a start value.
 
 **Returns:** The total sum plus start
 
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int32`
+
 ### `sum(iterable: Iterable[long], start: long) -> long`
 
 Sums a sequence of longs with a start value.
+
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int64`
 
 ### `sum(iterable: Iterable[float32], start: float32) -> float32`
 
@@ -2367,49 +2379,109 @@ Sums a sequence of decimals with a start value.
 
 Sums a sequence of signed bytes, accumulating into int.
 
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int32`
+
 ### `sum(iterable: Iterable[byte]) -> int`
 
 Sums a sequence of bytes, accumulating into int.
+
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int32`
 
 ### `sum(iterable: Iterable[short]) -> int`
 
 Sums a sequence of short integers, accumulating into int.
 
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int32`
+
 ### `sum(iterable: Iterable[ushort]) -> int`
 
 Sums a sequence of unsigned short integers, accumulating into int.
+
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int32`
 
 ### `sum(iterable: Iterable[uint]) -> uint`
 
 Sums a sequence of unsigned integers.
 
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit a `uint32`
+
 ### `sum(iterable: Iterable[ulong]) -> ulong`
 
 Sums a sequence of unsigned long integers.
+
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit a `uint64`
 
 ### `sum(iterable: Iterable[sbyte], start: int) -> int`
 
 Sums a sequence of signed bytes with a start value, accumulating into int.
 
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int32`
+
 ### `sum(iterable: Iterable[byte], start: int) -> int`
 
 Sums a sequence of bytes with a start value, accumulating into int.
+
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int32`
 
 ### `sum(iterable: Iterable[short], start: int) -> int`
 
 Sums a sequence of short integers with a start value, accumulating into int.
 
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int32`
+
 ### `sum(iterable: Iterable[ushort], start: int) -> int`
 
 Sums a sequence of unsigned short integers with a start value, accumulating into int.
+
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit an `int32`
 
 ### `sum(iterable: Iterable[uint], start: uint) -> uint`
 
 Sums a sequence of unsigned integers with a start value.
 
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit a `uint32`
+
 ### `sum(iterable: Iterable[ulong], start: ulong) -> ulong`
 
 Sums a sequence of unsigned long integers with a start value.
+
+**Raises:**
+
+- `TypeError` -- Thrown when *iterable* is null
+- `OverflowError` -- Thrown when the sum does not fit a `uint64`
 
 ### `type(obj: object | None) -> Type`
 
