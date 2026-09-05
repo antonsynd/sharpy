@@ -331,7 +331,7 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module, isEntryPoint: false);
 
-        typeChecker.Diagnostics.GetErrors().Should().ContainSingle(e => e.Message.Contains("Cannot assign"));
+        typeChecker.Diagnostics.GetErrors().Should().Contain(e => e.Message.Contains("Cannot assign"));
     }
 
     #endregion

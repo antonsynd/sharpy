@@ -179,11 +179,11 @@ public class StorePositionReachTests : IntegrationTestBase
     /// </summary>
     [Theory]
     [InlineData("out-of-range-element", "xs: list[int8] = [300]\n    print(xs[0])",
-        "Cannot assign type 'list[int32]' to variable of type 'list[int8]'")]
+        "Cannot assign type 'int32' to 'int8'")]
     [InlineData("out-of-range-float32-element", "xs: list[float32] = [1e40]\n    print(xs[0])",
-        "Cannot assign type 'list[float64]' to variable of type 'list[float32]'")]
+        "Cannot assign type 'float64' to 'float32'")]
     [InlineData("str-variable-into-literalstring", "v: str = \"a\"\n    xs: list[LiteralString] = [v]\n    print(xs[0])",
-        "Cannot assign type 'list[str]' to variable of type 'list[LiteralString]'")]
+        "Cannot assign type 'str' to 'LiteralString'")]
     [InlineData("out-of-range-conditional", "c: bool = True\n    x: int8 = 7 if c else 300\n    print(x)",
         "Cannot assign type 'int32' to variable of type 'int8'")]
     [InlineData("set-augmented-list-rhs", "s: set[int] = {1}\n    s |= [2]\n    print(len(s))",

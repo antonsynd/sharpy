@@ -356,7 +356,9 @@ internal partial class TypeChecker
     {
         var expectations = ComprehensionElementExpectations(BuiltinNames.List, 1);
 
+        var savedExpected = _expectedType;
         _symbolTable.EnterScope("list-comprehension");
+        _expectedType = null;
         CheckComprehensionClauses(listComp.Clauses);
 
         SemanticType elementType;
@@ -368,11 +370,10 @@ internal partial class TypeChecker
         }
         else
         {
-            var previousExpected = _expectedType;
             _expectedType = expectations?[0];
             elementType = CheckExpression(listComp.Element);
-            _expectedType = previousExpected;
         }
+        _expectedType = savedExpected;
 
         _symbolTable.ExitScope();
 
@@ -391,7 +392,9 @@ internal partial class TypeChecker
     {
         var expectations = ComprehensionElementExpectations(BuiltinNames.Set, 1);
 
+        var savedExpected = _expectedType;
         _symbolTable.EnterScope("set-comprehension");
+        _expectedType = null;
         CheckComprehensionClauses(setComp.Clauses);
 
         SemanticType elementType;
@@ -403,11 +406,10 @@ internal partial class TypeChecker
         }
         else
         {
-            var previousExpected = _expectedType;
             _expectedType = expectations?[0];
             elementType = CheckExpression(setComp.Element);
-            _expectedType = previousExpected;
         }
+        _expectedType = savedExpected;
 
         _symbolTable.ExitScope();
 
@@ -426,15 +428,16 @@ internal partial class TypeChecker
     {
         var expectations = ComprehensionElementExpectations(BuiltinNames.Dict, 2);
 
+        var savedExpected = _expectedType;
         _symbolTable.EnterScope("dict-comprehension");
+        _expectedType = null;
         CheckComprehensionClauses(dictComp.Clauses);
 
-        var previousExpected = _expectedType;
         _expectedType = expectations?[0];
         var keyType = CheckExpression(dictComp.Key);
         _expectedType = expectations?[1];
         var valueType = CheckExpression(dictComp.Value);
-        _expectedType = previousExpected;
+        _expectedType = savedExpected;
 
         _symbolTable.ExitScope();
 
@@ -452,8 +455,11 @@ internal partial class TypeChecker
     private SemanticType CheckDictSpreadComprehension(DictSpreadComprehension dictSpreadComp)
     {
         // {**d for d in dicts} — result type is dict[K, V] from the spread value type
+        var savedExpected = _expectedType;
         _symbolTable.EnterScope("dict-spread-comprehension");
+        _expectedType = null;
         CheckComprehensionClauses(dictSpreadComp.Clauses);
+        _expectedType = savedExpected;
 
         var spreadType = CheckExpression(dictSpreadComp.Spread);
 

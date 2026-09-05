@@ -61,6 +61,7 @@ public class StoreSeamConformanceTests
         "TypeChecker.Expressions.Access.Calls.cs::ClrParameterAccepts",
         "TypeChecker.Expressions.Access.Calls.Overloads.cs::ResolveOverloadCore",
         "TypeChecker.cs::TypeChecker",
+        "TypeChecker.Expressions.Operators.cs::ClassifyMembership",
     };
 
     [Fact]

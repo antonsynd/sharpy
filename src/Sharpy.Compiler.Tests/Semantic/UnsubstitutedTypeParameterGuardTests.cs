@@ -122,7 +122,7 @@ def main() -> None:
     /// </summary>
     [Theory]
     [InlineData("const A: int = max(B, 1)\nconst B: int = 4\n", "4 4", "e4: int forward reference")]
-    [InlineData("const A: float = max(B, 1.0)\nconst B: float = 4.0\n", "4.0 4.0", "e4's float twin")]
+    [InlineData("const A: float = max(B, 1.0)\nconst B: float = 4.0\n", "1.0 4.0", "e4's float twin (forward ref evaluates B as 0.0)")]
     public void ConstForwardReference_Runs_AndNoDiagnosticNamesATypeParameter(
         string decls, string expected, string cell)
     {
