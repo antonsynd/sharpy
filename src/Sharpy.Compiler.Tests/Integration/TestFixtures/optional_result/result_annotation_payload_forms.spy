@@ -1,0 +1,58 @@
+# A `T !E` ANNOTATION whose Ok side is not a plain nominal type must print the RECORDED Result
+# type, not a re-synthesized spelling of the annotation's name (TypeSyntaxMapper.MapType consulted
+# SemanticInfo only after its IsResult arm had already re-synthesized the Ok side, so LiteralString,
+# an expanded generic alias, Self and a builtins.-qualified primitive reached C# as their Sharpy
+# spelling: CS0246 / a syntax error behind SPY0908). Every form below is a discriminating cell: each
+# was SPY0908 (or SPY0260 before the modifier tail formed it) at 646b9cf08.
+import builtins
+
+type GAlias[T] = list[T]
+
+
+class C:
+    def __init__(self):
+        pass
+
+    def make(self) -> Self !str:
+        return Ok(self)
+
+    def name(self) -> str:
+        return "C"
+
+
+def literal_string_payload() -> LiteralString !str:
+    return Ok("a")
+
+
+def main() -> None:
+    a: LiteralString !str = Ok("a")
+    b: GAlias[int] !str = Ok([1, 2])
+    c: C = C()
+    d: C !str = c.make()
+    e: builtins.int !str = Ok(3)
+    f: LiteralString !str = literal_string_payload()
+    match a:
+        case Ok(v):
+            print("a", v)
+        case Err(err):
+            print("a err", err)
+    match b:
+        case Ok(v):
+            print("b", v)
+        case Err(err):
+            print("b err", err)
+    match d:
+        case Ok(v):
+            print("d", v.name())
+        case Err(err):
+            print("d err", err)
+    match e:
+        case Ok(v):
+            print("e", v)
+        case Err(err):
+            print("e err", err)
+    match f:
+        case Ok(v):
+            print("f", v)
+        case Err(err):
+            print("f err", err)

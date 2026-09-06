@@ -315,7 +315,28 @@ internal class TypeSyntaxMapper
             return PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
-        // Handle T !E → Result<T, E>
+        // Check SemanticInfo first for the resolved type. The TypeResolver (during type checking)
+        // resolves each TypeAnnotation instance to the correct SemanticType, accounting for scoped
+        // alias shadowing. SemanticInfo uses reference equality on TypeAnnotation, so each usage
+        // site gets its own resolution — this correctly handles shadowing.
+        //
+        // This lookup runs BEFORE the `T !E` arm below: a recorded ResultType already carries the
+        // resolved Ok and Err types (LiteralString → string, an expanded generic alias, Self → the
+        // declaring class, a builtins.-qualified primitive), and MapSemanticType's ResultType arm
+        // prints them. Synthesizing a fresh Ok-side annotation here would key SemanticInfo on a node
+        // the checker never saw, fall through to the name-keyed fallback, and print the Sharpy
+        // spelling as a C# type (CS0246 'LiteralString' / 'T' / 'Self' behind SPY0908).
+        {
+            var resolvedFromSemantic = _context.SemanticInfo?.GetTypeAnnotation(type);
+            if (resolvedFromSemantic != null && resolvedFromSemantic is not UnknownType)
+            {
+                return MapSemanticType(resolvedFromSemantic);
+            }
+        }
+
+        // Handle T !E → Result<T, E> for an annotation the checker did not resolve (AST-only unit
+        // tests; base lists). The Ok side is re-synthesized from the annotation's own name, so this
+        // arm can only print what the name says — every checked program takes the recorded route above.
         if (type.IsResult)
         {
             var okType = MapType(new TypeAnnotation { Name = type.Name, IsNameBacktickEscaped = type.IsNameBacktickEscaped, TypeArguments = type.TypeArguments });
@@ -323,18 +344,6 @@ internal class TypeSyntaxMapper
             return GenericName(Identifier("Result"))
                 .WithTypeArgumentList(
                     TypeArgumentList(SeparatedList(new[] { okType, errType })));
-        }
-
-        // Check SemanticInfo first for the resolved type. The TypeResolver (during type checking)
-        // resolves each TypeAnnotation instance to the correct SemanticType, accounting for scoped
-        // alias shadowing. SemanticInfo uses reference equality on TypeAnnotation, so each usage
-        // site gets its own resolution — this correctly handles shadowing.
-        {
-            var resolvedFromSemantic = _context.SemanticInfo?.GetTypeAnnotation(type);
-            if (resolvedFromSemantic != null && resolvedFromSemantic is not UnknownType)
-            {
-                return MapSemanticType(resolvedFromSemantic);
-            }
         }
 
         // Fall back to SymbolTable alias lookup (for annotations not yet resolved by TypeResolver).
