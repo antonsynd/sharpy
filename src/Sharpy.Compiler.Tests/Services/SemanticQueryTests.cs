@@ -100,7 +100,7 @@ public class SemanticQueryTests
     {
         var info = new SemanticInfo();
         var annotation = new TypeAnnotation { Name = "int" };
-        info.SetTypeAnnotation(annotation, SemanticType.Int);
+        info.SetTypeAnnotation(annotation, SemanticType.Int, boundSymbol: null);
 
         ISemanticQuery query = info;
         Assert.Equal(SemanticType.Int, query.GetTypeAnnotation(annotation));

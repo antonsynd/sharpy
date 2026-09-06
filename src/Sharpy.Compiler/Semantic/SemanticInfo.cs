@@ -638,9 +638,18 @@ public class SemanticInfo : ISemanticQuery
         return _calleeAliasTargetNames.TryGetValue(call, out var name) ? name : null;
     }
 
-    public void SetTypeAnnotation(TypeAnnotation annotation, SemanticType type)
+    /// <summary>
+    /// Records the resolved type for a type annotation and, when <paramref name="boundSymbol"/> is
+    /// non-null, records a reference to that symbol at the annotation's position. Every producer
+    /// must answer "which symbol did this annotation bind?" — builtins, primitives, <c>Self</c>,
+    /// <c>LiteralString</c>, <c>Template</c> and <c>auto</c> pass <c>null</c>; user-defined types,
+    /// type aliases, type parameters and CLR imports pass the resolved symbol (#1737).
+    /// </summary>
+    public void SetTypeAnnotation(TypeAnnotation annotation, SemanticType type, Symbol? boundSymbol)
     {
         _typeAnnotations[annotation] = type;
+        if (boundSymbol != null)
+            RecordReference(boundSymbol, annotation);
     }
 
     public SemanticType? GetTypeAnnotation(TypeAnnotation annotation)

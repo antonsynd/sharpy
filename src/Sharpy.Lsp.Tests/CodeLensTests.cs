@@ -118,8 +118,8 @@ public class CodeLensTests : IDisposable
         foreach (var (line, kind) in new[] { (0, "enum"), (3, "union") })
         {
             lenses!.Should().Contain(l => l.Range.Start.Line == line && l.Command != null
-                    && l.Command.Title == "1 reference",
-                $"the {kind} declaration on line {line} counts its identifier use like a class");
+                    && l.Command.Title == "2 references",
+                $"the {kind} declaration on line {line} counts its identifier use and annotation use (#1737)");
         }
     }
 
@@ -139,9 +139,8 @@ public class CodeLensTests : IDisposable
         var classTitle = TitleAt(0);
         TitleAt(3).Should().Be(classTitle, "a delegate counts exactly like a class");
         TitleAt(5).Should().Be(classTitle, "a type alias counts exactly like a class");
-        // Pins #1737 (measured): annotation-only uses are not recorded references, for a class as
-        // for anything else. Drain on fix: when #1737 lands this reads "1 reference".
-        classTitle.Should().Be("0 references", "#1737: type-annotation uses are not recorded as symbol references");
+        // #1737 drain: annotation uses are now recorded as references.
+        classTitle.Should().Be("1 reference", "#1737: annotation uses are recorded as symbol references");
     }
 
     public void Dispose()

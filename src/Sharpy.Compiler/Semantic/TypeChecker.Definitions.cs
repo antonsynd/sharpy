@@ -1012,7 +1012,7 @@ internal partial class TypeChecker
 
         var resolved = _typeResolver.ResolveTypeAnnotation(source with { TypeArguments = completed });
         if (resolved is not UnknownType)
-            _semanticInfo.SetTypeAnnotation(source, resolved);
+            _semanticInfo.SetTypeAnnotation(source, resolved, boundSymbol: null); // cache update — recursive call recorded
     }
 
     private void CheckClass(ClassDef classDef)
@@ -2070,7 +2070,7 @@ internal partial class TypeChecker
                 propertyType = NativeCollectionForm(defaultType);
                 if (propDef.Type != null)
                 {
-                    _semanticInfo.SetTypeAnnotation(propDef.Type, propertyType);
+                    _semanticInfo.SetTypeAnnotation(propDef.Type, propertyType, boundSymbol: null); // inferred
                 }
             }
             else

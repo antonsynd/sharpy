@@ -102,7 +102,7 @@ internal class TypeResolver
         if (!escaped && annotation.Name == "auto")
         {
             result = SemanticType.Unknown;
-            _semanticInfo.SetTypeAnnotation(annotation, result);
+            _semanticInfo.SetTypeAnnotation(annotation, result, boundSymbol: null); // keyword
             return result;
         }
 
@@ -135,7 +135,7 @@ internal class TypeResolver
                 if (annotation.IsCSharpNullable)
                     result = new NullableType { UnderlyingType = result };
             }
-            _semanticInfo.SetTypeAnnotation(annotation, result);
+            _semanticInfo.SetTypeAnnotation(annotation, result, boundSymbol: null); // keyword
             return result;
         }
 
@@ -154,13 +154,15 @@ internal class TypeResolver
         {
             var bareAnnotation = annotation with { Name = bareTypeName };
             var bareResult = ResolveTypeAnnotation(bareAnnotation);
-            _semanticInfo.SetTypeAnnotation(annotation, bareResult);
+            // The recursive call recorded the reference on bareAnnotation; pass null to
+            // avoid double-recording on the original node at the same span (#1737).
+            _semanticInfo.SetTypeAnnotation(annotation, bareResult, boundSymbol: null);
             return bareResult;
         }
 
-        // Handle LiteralString compile-time type (PEP 675) — falls through to the shared
-        // modifier tail so LiteralString?, LiteralString | None, and LiteralString !E all
-        // resolve correctly (#1781).
+        // Track the symbol this annotation binds to, for reference recording (#1737).
+        Symbol? boundSymbol = null;
+
         if (!escaped && annotation.Name == "LiteralString")
         {
             result = LiteralStringType.Instance;
@@ -174,6 +176,7 @@ internal class TypeResolver
         else if (!escaped && TryResolveBuiltinType(annotation.Name, out var builtinType))
         {
             result = builtinType;
+            // boundSymbol stays null — primitive
         }
         // Check for type alias and expand it. A module-qualified spelling reaches the same arm
         // through the alias-aware sibling of the qualified TYPE lookup: `type Handle = int`
@@ -185,6 +188,8 @@ internal class TypeResolver
                      is TypeAliasSymbol aliasSymbol
                  && (escaped || !aliasSymbol.IsNameBacktickEscaped))
         {
+            // Record the ALIAS symbol, not the expansion — this is what code lens counts (#1737).
+            boundSymbol = aliasSymbol;
             if (aliasSymbol.TypeParameters.Count > 0)
             {
                 // Generic type alias: resolve type arguments and substitute
@@ -194,6 +199,7 @@ internal class TypeResolver
                         annotation.LineStart, annotation.ColumnStart,
                         code: DiagnosticCodes.Semantic.TypeAliasArityMismatch, span: annotation.Span);
                     result = SemanticType.Unknown;
+                    boundSymbol = null; // error — no reference
                 }
                 else if (annotation.TypeArguments.Length != aliasSymbol.TypeParameters.Count)
                 {
@@ -201,6 +207,7 @@ internal class TypeResolver
                         annotation.LineStart, annotation.ColumnStart,
                         code: DiagnosticCodes.Semantic.TypeAliasArityMismatch, span: annotation.Span);
                     result = SemanticType.Unknown;
+                    boundSymbol = null; // error — no reference
                 }
                 else
                 {
@@ -217,11 +224,16 @@ internal class TypeResolver
         else if (annotation.TypeArguments.Length > 0)
         {
             result = ResolveGenericType(annotation);
+            // Extract the outer symbol when user-defined; type-argument annotations record
+            // themselves through the recursion (#1737).
+            if (result is GenericType gt && gt.GenericDefinition != null)
+                boundSymbol = gt.GenericDefinition;
         }
         // Check for type parameter (e.g., T in class Box[T])
         else if (_symbolTable.Lookup(annotation.Name) is TypeParameterSymbol typeParamSymbol
                  && (escaped || !typeParamSymbol.IsNameBacktickEscaped))
         {
+            boundSymbol = typeParamSymbol;
             result = new TypeParameterType
             {
                 Name = annotation.Name,
@@ -285,9 +297,13 @@ internal class TypeResolver
                     && !bareGenericFillsFromContext)
                 {
                     result = ResolveGenericType(annotation);
+                    // The GenericDefinition carries the symbol; prefer the already-resolved
+                    // typeSymbol in case ResolveGenericType normalised the name (#1134).
+                    boundSymbol = (result is GenericType gt2 ? gt2.GenericDefinition : null) ?? typeSymbol;
                 }
                 else
                 {
+                    boundSymbol = typeSymbol;
                     result = new UserDefinedType
                     {
                         Name = isModuleQualified ? typeSymbol.Name : annotation.Name,
@@ -302,6 +318,7 @@ internal class TypeResolver
                 var clrTypeSymbol = escaped ? null : _symbolTable.BuiltinRegistry.TryResolveClrType(annotation.Name, annotation.TypeArguments.Length);
                 if (clrTypeSymbol != null)
                 {
+                    boundSymbol = clrTypeSymbol;
                     result = new UserDefinedType
                     {
                         Name = annotation.Name,
@@ -359,7 +376,7 @@ internal class TypeResolver
         // Cache the result (skip when resolving inside generic alias body)
         if (!_suppressAnnotationCache)
         {
-            _semanticInfo.SetTypeAnnotation(annotation, result);
+            _semanticInfo.SetTypeAnnotation(annotation, result, boundSymbol);
         }
         return result;
     }

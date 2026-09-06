@@ -974,7 +974,7 @@ internal partial class TypeChecker
                 declaredType = NativeCollectionForm(initType);
                 if (varDecl.Type != null)
                 {
-                    _semanticInfo.SetTypeAnnotation(varDecl.Type, declaredType);
+                    _semanticInfo.SetTypeAnnotation(varDecl.Type, declaredType, boundSymbol: null); // inferred
                 }
             }
             else
