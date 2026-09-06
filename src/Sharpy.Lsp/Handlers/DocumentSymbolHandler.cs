@@ -145,17 +145,39 @@ internal sealed class SharpyDocumentSymbolHandler : DocumentSymbolHandlerBase
     {
         switch (stmt)
         {
-            case FunctionDef f: scope.MarkBound(f.Name); break;
-            case ClassDef c: scope.MarkBound(c.Name); break;
-            case StructDef s: scope.MarkBound(s.Name); break;
-            case InterfaceDef i: scope.MarkBound(i.Name); break;
-            case EnumDef e: scope.MarkBound(e.Name); break;
-            case VariableDeclaration v: scope.MarkBound(v.Name); break;
-            case TypeAlias t: scope.MarkBound(t.Name); break;
-            case UnionDef u: scope.MarkBound(u.Name); break;
-            case DelegateDef d: scope.MarkBound(d.Name); break;
-            case PropertyDef p: scope.MarkBound(p.Name); break;
-            case EventDef e: scope.MarkBound(e.Name); break;
+            case FunctionDef f:
+                scope.MarkBound(f.Name);
+                break;
+            case ClassDef c:
+                scope.MarkBound(c.Name);
+                break;
+            case StructDef s:
+                scope.MarkBound(s.Name);
+                break;
+            case InterfaceDef i:
+                scope.MarkBound(i.Name);
+                break;
+            case EnumDef e:
+                scope.MarkBound(e.Name);
+                break;
+            case VariableDeclaration v:
+                scope.MarkBound(v.Name);
+                break;
+            case TypeAlias t:
+                scope.MarkBound(t.Name);
+                break;
+            case UnionDef u:
+                scope.MarkBound(u.Name);
+                break;
+            case DelegateDef d:
+                scope.MarkBound(d.Name);
+                break;
+            case PropertyDef p:
+                scope.MarkBound(p.Name);
+                break;
+            case EventDef e:
+                scope.MarkBound(e.Name);
+                break;
         }
     }
 

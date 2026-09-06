@@ -458,7 +458,8 @@ internal class ConstantPositionValidator : ValidatingAstWalker
         // is compile-time if we cannot prove otherwise. Class/local consts with literal initializers
         // are the common case; the module-const check above handles the detailed analysis.
         var type = Context.SemanticBinding.GetVariableType(sym);
-        if (type is UnknownType) type = sym.Type;
+        if (type is UnknownType)
+            type = sym.Type;
         var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(type);
         if (info != null && info.ClrType != typeof(object) && info.ClrType != typeof(void))
             return true;
@@ -495,7 +496,8 @@ internal class ConstantPositionValidator : ValidatingAstWalker
             return false;
 
         var type = Context.SemanticBinding.GetVariableType(sym);
-        if (type is UnknownType) type = sym.Type;
+        if (type is UnknownType)
+            type = sym.Type;
 
         if (type is NullableType or OptionalType)
             return false;
@@ -556,7 +558,8 @@ internal class ConstantPositionValidator : ValidatingAstWalker
                         "'*' on str lowers to string.Repeat which is not a C# constant operator",
                     _ => null,
                 };
-                if (operatorName != null) return operatorName;
+                if (operatorName != null)
+                    return operatorName;
             }
 
             if (defaultValue is Identifier refId)
@@ -684,7 +687,8 @@ internal class ConstantPositionValidator : ValidatingAstWalker
             else
             {
                 var type = Context.SemanticBinding.GetVariableType(constSym);
-                if (type is UnknownType) type = constSym.Type;
+                if (type is UnknownType)
+                    type = constSym.Type;
                 var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(type);
                 isCompileTime = info != null
                     && info.ClrType != typeof(object) && info.ClrType != typeof(void);

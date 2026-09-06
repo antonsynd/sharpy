@@ -1159,7 +1159,8 @@ internal partial class TypeChecker
         // Pass 2: check needle operands under the container's element type expectation.
         for (int ni = 0; ni < chain.Operands.Length; ni++)
         {
-            if (!needleIndices.Contains(ni) || operandTypes[ni] != null) continue;
+            if (!needleIndices.Contains(ni) || operandTypes[ni] != null)
+                continue;
 
             // Ensure the container (ni + 1) is checked — it might itself be a needle for a
             // later link and was deferred in pass 1.

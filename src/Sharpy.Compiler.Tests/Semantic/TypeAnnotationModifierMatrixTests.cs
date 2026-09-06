@@ -194,18 +194,40 @@ public class TypeAnnotationModifierMatrixTests
     {
         switch (kind)
         {
-            case "int": type.Should().Be(SemanticType.Int); break;
-            case "str": type.Should().Be(SemanticType.Str); break;
-            case "LiteralString": type.Should().BeOfType<LiteralStringType>(); break;
-            case "Template": type.Should().BeOfType<TemplateType>(); break;
-            case "Self": type.Should().BeOfType<SelfType>(); break;
-            case "UserDefined": type.Should().BeOfType<UserDefinedType>(); break;
-            case "GenericType": type.Should().BeOfType<GenericType>(); break;
-            case "TypeParameter": type.Should().BeOfType<TypeParameterType>(); break;
-            case "TupleType": type.Should().BeOfType<SemanticTupleType>(); break;
-            case "FunctionType": type.Should().BeOfType<SemanticFunctionType>(); break;
+            case "int":
+                type.Should().Be(SemanticType.Int);
+                break;
+            case "str":
+                type.Should().Be(SemanticType.Str);
+                break;
+            case "LiteralString":
+                type.Should().BeOfType<LiteralStringType>();
+                break;
+            case "Template":
+                type.Should().BeOfType<TemplateType>();
+                break;
+            case "Self":
+                type.Should().BeOfType<SelfType>();
+                break;
+            case "UserDefined":
+                type.Should().BeOfType<UserDefinedType>();
+                break;
+            case "GenericType":
+                type.Should().BeOfType<GenericType>();
+                break;
+            case "TypeParameter":
+                type.Should().BeOfType<TypeParameterType>();
+                break;
+            case "TupleType":
+                type.Should().BeOfType<SemanticTupleType>();
+                break;
+            case "FunctionType":
+                type.Should().BeOfType<SemanticFunctionType>();
+                break;
             // TypeAlias expands to its underlying type (int)
-            case "TypeAlias": type.Should().Be(SemanticType.Int); break;
+            case "TypeAlias":
+                type.Should().Be(SemanticType.Int);
+                break;
         }
     }
 
@@ -216,18 +238,40 @@ public class TypeAnnotationModifierMatrixTests
     {
         switch (kind)
         {
-            case "int": payload.Should().Be(SemanticType.Int); break;
-            case "str": payload.Should().Be(SemanticType.Str); break;
-            case "LiteralString": payload.Should().BeOfType<LiteralStringType>(); break;
-            case "Template": payload.Should().BeOfType<TemplateType>(); break;
-            case "Self": payload.Should().BeOfType<SelfType>(); break;
-            case "UserDefined": payload.Should().BeOfType<UserDefinedType>(); break;
-            case "GenericType": payload.Should().BeOfType<GenericType>(); break;
-            case "TypeParameter": payload.Should().BeOfType<TypeParameterType>(); break;
-            case "TupleType": payload.Should().BeOfType<SemanticTupleType>(); break;
-            case "FunctionType": payload.Should().BeOfType<SemanticFunctionType>(); break;
+            case "int":
+                payload.Should().Be(SemanticType.Int);
+                break;
+            case "str":
+                payload.Should().Be(SemanticType.Str);
+                break;
+            case "LiteralString":
+                payload.Should().BeOfType<LiteralStringType>();
+                break;
+            case "Template":
+                payload.Should().BeOfType<TemplateType>();
+                break;
+            case "Self":
+                payload.Should().BeOfType<SelfType>();
+                break;
+            case "UserDefined":
+                payload.Should().BeOfType<UserDefinedType>();
+                break;
+            case "GenericType":
+                payload.Should().BeOfType<GenericType>();
+                break;
+            case "TypeParameter":
+                payload.Should().BeOfType<TypeParameterType>();
+                break;
+            case "TupleType":
+                payload.Should().BeOfType<SemanticTupleType>();
+                break;
+            case "FunctionType":
+                payload.Should().BeOfType<SemanticFunctionType>();
+                break;
             // TypeAlias expands: UserId? -> OptionalType { UnderlyingType = int }
-            case "TypeAlias": payload.Should().Be(SemanticType.Int); break;
+            case "TypeAlias":
+                payload.Should().Be(SemanticType.Int);
+                break;
         }
     }
 
