@@ -1,0 +1,17 @@
+# The discriminating twin of module_variable_shadowed_by_class_attribute: the module variable and
+# the class attribute have DIFFERENT types, so binding the wrong one is not merely a wrong value —
+# the unqualified emission was CS0029 'cannot convert int to string' behind SPY0908.
+v: str = "module"
+
+
+class C:
+    v: int = 1
+
+    def read(self) -> str:
+        return v
+
+
+def main() -> None:
+    c: C = C()
+    print(c.read())
+    print(c.v)

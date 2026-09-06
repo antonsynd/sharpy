@@ -1,0 +1,55 @@
+# The host axis for the module/class-member shadow (#1786, R-Y). Every host reads the bare name
+# from inside a type body, so every one of them must reach the module variable. Two of these were
+# CS0120 'an object reference is required' rather than a wrong value, because a bare instance-field
+# name is not even legal from a static or a nested-class context.
+v: int = 99
+
+
+class WithStatic:
+    v: int = 1
+
+    @static
+    def read() -> int:
+        return v
+
+
+struct AsStruct:
+    v: int = 2
+
+    def read(self) -> int:
+        return v
+
+
+class WithConstMember:
+    const v: int = 3
+
+    def read(self) -> int:
+        return v
+
+
+class WithLambda:
+    v: int = 4
+
+    def read(self) -> int:
+        f = lambda: v
+        return f()
+
+
+class Outer:
+    v: int = 5
+
+    class Inner:
+        def read(self) -> int:
+            return v
+
+
+def main() -> None:
+    print(WithStatic.read())
+    s: AsStruct = AsStruct()
+    print(s.read())
+    c: WithConstMember = WithConstMember()
+    print(c.read())
+    l: WithLambda = WithLambda()
+    print(l.read())
+    i: Outer.Inner = Outer.Inner()
+    print(i.read())

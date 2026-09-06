@@ -374,12 +374,31 @@ internal partial class RoslynEmitter
         if (_parameterNameOverrides != null
             && _parameterNameOverrides.TryGetValue(mangledName, out var overrideName))
             mangledName = overrideName;
-        ExpressionSyntax expr = EscapedIdentifierName(mangledName);
+        ExpressionSyntax expr = _context.SemanticInfo?.ModuleAccessCrossesClassMember(name) == true
+            ? ModuleQualified(mangledName)
+            : EscapedIdentifierName(mangledName);
 
         // Apply the narrowed-read accessor the TypeChecker recorded for this identifier node, if any
         // (Optional → .Unwrap(), value-nullable → .Value, reference-nullable → !, isinstance → cast).
         return ApplyNarrowedReadLowering(name, expr);
     }
+
+    /// <summary>
+    /// <c>Module.Name</c> — a module-level member reached from inside a type body, where a bare
+    /// name would bind to the type's own member instead. The same spelling
+    /// <c>BuildQualifiedTypeAccess</c> already uses for a module-level TYPE named from inside a
+    /// class (RoslynEmitter.Expressions.Access.Calls.cs). Emitted only where semantic analysis recorded
+    /// <c>SetModuleAccessCrossesClassMember</c>: the checker decided which binding the name has
+    /// (#1786, R-Y — Python resolves a bare name in a method body to the module, skipping the
+    /// class body), and this prints that decision. Unqualified, the emitted C# silently read the
+    /// class field: <c>v: int = 99</c> at module level with <c>class C: v: int = 1</c> printed
+    /// <c>1</c> where python3 prints <c>99</c>, and the mistyped twin was CS0029 behind SPY0908.
+    /// </summary>
+    private ExpressionSyntax ModuleQualified(string csharpName)
+        => MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            IdentifierName(_resolvedModuleClassName ?? GetModuleClassName()),
+            EscapedIdentifierName(csharpName));
 
     /// <summary>
     /// Emits a builtin constructor reference that semantic analysis pinned to a concrete signature

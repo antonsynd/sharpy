@@ -1,0 +1,17 @@
+# A bare name in a method body resolves to the MODULE variable, skipping the class body
+# (variable_scoping.md, R-Y #1786). The emitted C# must say so: an unqualified `V` in the method
+# binds to the class field, which printed 1 where python3 prints 99.
+v: int = 99
+
+
+class C:
+    v: int = 1
+
+    def read(self) -> int:
+        return v
+
+
+def main() -> None:
+    c: C = C()
+    print(c.read())
+    print(c.v)
