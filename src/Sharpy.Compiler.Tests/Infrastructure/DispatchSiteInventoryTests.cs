@@ -182,6 +182,7 @@ public class DispatchSiteInventoryTests
         ["CodeGen/RoslynEmitter.TypeDeclarations.cs::RoslynEmitter.GenerateParametrizeAttributes"] = "refusal-net:FileBasedIntegrationTests",
         // Callee-shape resolvers — refusal via metamorphic ParensWrapCalleeTransform
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.CalleeDenotesOverloadSet"] = "refusal-net:MetamorphicCorpusSweepTests",
+        ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.CalleeDisplayName"] = "walker-default-contract",
         ["Semantic/TypeChecker.Expressions.Access.Calls.Overloads.cs::TypeChecker.ResolveReferencedCallableOverloads"] = "refusal-net:MetamorphicCorpusSweepTests",
         // Semantic callee/reference helpers
         ["Semantic/GenericReferenceResolver.cs::TypeChecker.LookupNestedTypeSymbol"] = "refusal-net:FileBasedIntegrationTests",
