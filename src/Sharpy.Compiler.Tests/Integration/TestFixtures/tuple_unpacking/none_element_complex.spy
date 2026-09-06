@@ -1,0 +1,10 @@
+# The NESTED unpacking arm: the temp holds a tuple whose own element is a tuple, and the `None`
+# sits one level down, in `x`'s declared `str | None` slot. The temp prints the recorded tuple
+# type, so the composed slot type has to survive the recursion — `var __t0 = ((null, "b"), 1)` is
+# CS0815 and a `void` element is SPY0599 (#1707).
+def main() -> None:
+    x: str | None = "a"
+    y: str = "z"
+    n: int = 0
+    (x, y), n = (None, "b"), 1
+    print(x is None, y, n)

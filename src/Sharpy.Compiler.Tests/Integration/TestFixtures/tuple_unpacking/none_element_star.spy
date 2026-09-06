@@ -1,0 +1,6 @@
+# The STAR unpacking arm: a pre-declared target before the star takes `None` into its declared
+# `str | None` slot, and the rest become a list. python3 prints `True [1, 2]` (#1707).
+def main() -> None:
+    x: str | None = "a"
+    x, *rest = None, 1, 2
+    print(x is None, rest)
