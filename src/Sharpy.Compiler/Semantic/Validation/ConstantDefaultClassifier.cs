@@ -183,6 +183,7 @@ internal static class ConstantDefaultClassifier
                 EmittableConstantKind.NegatedLiteral or
                 EmittableConstantKind.FoldedOfAdmitted or
                 EmittableConstantKind.ConstReference or
+                EmittableConstantKind.EnumMember or
                 EmittableConstantKind.ConditionalOfAdmitted,
 
             _ => false,
