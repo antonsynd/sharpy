@@ -48,6 +48,24 @@ internal partial class TypeChecker
             }
         }
 
+        // Python class-scope rule (#1786, R-Y): a bare STORE to a name the enclosing class body
+        // declares is refused by name, in EVERY assignment form. Before the target is resolved,
+        // because the augmented and '??=' forms read their target first and would otherwise report
+        // the READ code (SPY0200) for a write.
+        if (assignment.Target is Identifier bareStoreTarget
+            && TryRefuseBareClassAttributeStore(
+                bareStoreTarget.Name,
+                assignment.Operator switch
+                {
+                    AssignmentOperator.Assign => BareStoreForm.Plain,
+                    AssignmentOperator.NullCoalesceAssign => BareStoreForm.CoalesceAssign,
+                    _ => BareStoreForm.Augmented,
+                },
+                assignment.LineStart, assignment.ColumnStart, assignment.Span))
+        {
+            return;
+        }
+
         // Handle tuple unpacking: x, y = expr  or  first, *rest = items
         if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is TupleLiteral targetTuple)
         {
@@ -147,27 +165,6 @@ internal partial class TypeChecker
                     assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidAssignmentTarget,
                     span: assignment.Span);
                 return;
-            }
-
-            // Python class-scope rule (#1786, R-Y): if the bare name matches a class attribute
-            // that was skipped in the scope walk, refuse the store with steers.
-            if (existingSymbol == null && parentSymbol == null)
-            {
-                var classHit = _symbolTable.LookupInSkippedClassScope(targetId.Name);
-                if (classHit != null)
-                {
-                    var (className, _) = classHit.Value;
-                    AddError(
-                        $"Cannot assign to class attribute '{targetId.Name}' by bare name — "
-                        + $"class-body names are not visible inside methods. Use "
-                        + $"'self.{targetId.Name} = ...' for the instance attribute, "
-                        + $"'{className}.{targetId.Name} = ...' for the class attribute, "
-                        + $"or '{targetId.Name}: <type> = ...' to declare a shadowing local",
-                        assignment.LineStart, assignment.ColumnStart,
-                        code: DiagnosticCodes.SemanticOverflow.ClassAttributeBareStore,
-                        span: assignment.Span);
-                    return;
-                }
             }
 
             var storePredecessor = (existingSymbol ?? parentSymbol) as VariableSymbol;

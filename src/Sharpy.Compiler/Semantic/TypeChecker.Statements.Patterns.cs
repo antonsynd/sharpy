@@ -152,7 +152,18 @@ internal partial class TypeChecker
 
                     // RFC 3535: Check if the identifier resolves to a module-level
                     // constant (Final-annotated or IsConstant) before treating as capture.
-                    var existingSymbol = _symbolTable.Lookup(binding.Name.Name, searchParents: true) as VariableSymbol;
+                    //
+                    // A class-body const the scope walk crossed (#1786, R-Y) counts here too. R-Y
+                    // makes a class member invisible to a bare READ and refuses a bare STORE; a
+                    // pattern head is neither — degrading it to a capture would silently change
+                    // what the program MATCHES, and `case A:` naming a class const printed `hit`
+                    // before the rule existed. The constant is bound; the capture arm below never
+                    // sees it.
+                    var patternResolution = _symbolTable.Resolve(binding.Name.Name);
+                    var existingSymbol = (patternResolution.Bound
+                        ?? (patternResolution.CrossedMember is { IsConstant: true } crossedConst
+                            ? crossedConst
+                            : null)) as VariableSymbol;
                     if (existingSymbol is { IsConstant: true })
                     {
                         _diagnostics.AddWarning(
@@ -1343,6 +1354,16 @@ internal partial class TypeChecker
 
             if (targetElem is Identifier tupleTargetId)
             {
+                // Python class-scope rule (#1786, R-Y): an unpacking element is a store, refused
+                // by name like the plain form. Without this the element declared a fresh local and
+                // the program compiled silently.
+                if (TryRefuseBareClassAttributeStore(
+                        tupleTargetId.Name, BareStoreForm.TupleElement,
+                        tupleTargetId.LineStart, tupleTargetId.ColumnStart, tupleTargetId.Span))
+                {
+                    continue;
+                }
+
                 var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: false)
                     ?? _symbolTable.Lookup(tupleTargetId.Name, searchParents: true);
 

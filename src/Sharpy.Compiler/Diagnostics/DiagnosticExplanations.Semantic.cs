@@ -1276,16 +1276,21 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.SemanticOverflow.ClassAttributeBareStore,
             "Cannot assign to class attribute by bare name",
             "Semantic",
-            "A bare assignment 'x = value' inside a method body where 'x' is a class attribute " +
-            "is refused. Class-body names are not visible by bare name inside methods — this is " +
-            "Python's class-scope rule (the class body is not a closure scope for methods). " +
-            "Use 'self.x' for instance attribute access, 'ClassName.x' for the class attribute, " +
-            "or declare a shadowing local with a type annotation.",
+            "A bare store inside a method body, where the name is declared in the enclosing class " +
+            "or struct body, is refused — in every store form: plain, augmented, walrus, " +
+            "tuple-unpacking element and '??='. Class-body names are not visible by bare name " +
+            "inside methods; this is Python's class-scope rule (the class body is not a closure " +
+            "scope for its methods). Write 'self.x' for an instance attribute, 'ClassName.x' for a " +
+            "'@static' field, or declare a shadowing local with a type annotation. An instance " +
+            "field reached through the type name is a different error (SPY0290), so the diagnostic " +
+            "offers 'ClassName.x' only for a type-level member; a 'const' cannot be assigned " +
+            "through any spelling, so only the shadowing local is offered for one.",
             "class Counter:\n    count: int = 0\n    def increment(self) -> None:\n" +
             "        count = count + 1  # SPY0606 — bare name 'count' is a class attribute",
-            "Access through self or the class name:\n" +
-            "    self.count = self.count + 1  # instance attribute\n" +
-            "    Counter.count = Counter.count + 1  # class attribute\n\n" +
+            "Access through self, or through the class name for a '@static' field:\n" +
+            "    self.count = self.count + 1  # instance attribute\n\n" +
+            "    @static\n    total: int = 0\n" +
+            "    Registry.total = Registry.total + 1  # @static field\n\n" +
             "Or shadow with a typed local:\n" +
             "    count: int = self.count + 1  # new local variable");
 

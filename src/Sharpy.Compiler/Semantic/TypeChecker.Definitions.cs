@@ -316,11 +316,8 @@ internal partial class TypeChecker
         // _isInTestFunction propagates through nested generation.
         //
         // Python class-scope rule (#1786, R-Y): class-body names are invisible by bare name inside
-        // function bodies. Set the skip flag AFTER parameter defaults (which must see class members)
-        // and restore on exit. Nested functions inherit the flag, so their own parameter defaults also
-        // skip class scopes (matching Python: a nested def's defaults can't see the class body either).
-        var previousSkipClassScopes = _symbolTable.SkipClassScopesInLookup;
-        _symbolTable.SkipClassScopesInLookup = true;
+        // function bodies. Nothing is set here — the rule is a property of the scope chain, decided
+        // in Scope.ResolveName, so every lookup from inside this `function:` scope inherits it.
         using (ScopedValue.Push(ref _inTestFunction,
                    _inTestFunction || functionDef.Decorators.Any(DecoratorNames.IsTestDecorator)))
         {
@@ -329,7 +326,6 @@ internal partial class TypeChecker
                 CheckStatement(statement);
             }
         }
-        _symbolTable.SkipClassScopesInLookup = previousSkipClassScopes;
 
         _narrowingFlow = previousFlow;
         _currentFacts = previousFacts;
@@ -729,13 +725,21 @@ internal partial class TypeChecker
 
             if (param.DefaultValue != null)
             {
+                // A default belongs to the SIGNATURE, and C# resolves a signature in the scope that
+                // declares the function — a method's default sees the class body, its body does not
+                // (#1786, R-Y; the signature-position axis). Resolving it in the declaring scope is
+                // what makes that true of the scope CHAIN, so the walk needs no mode: from here the
+                // chain runs class body → module, with this function's own scope suspended.
                 SemanticType defaultType;
-                using (EnterStore(StorePosition.ParameterDefault, paramType, param.DefaultValue))
-                    defaultType = CheckExpression(param.DefaultValue);
-                if (paramType is not UnknownType)
+                using (_symbolTable.ResolveInDeclaringScope())
                 {
-                    CheckStore(StorePosition.ParameterDefault, param.DefaultValue, defaultType, paramType,
-                        param.DefaultValue, param.DefaultValue?.Span);
+                    using (EnterStore(StorePosition.ParameterDefault, paramType, param.DefaultValue))
+                        defaultType = CheckExpression(param.DefaultValue);
+                    if (paramType is not UnknownType)
+                    {
+                        CheckStore(StorePosition.ParameterDefault, param.DefaultValue, defaultType, paramType,
+                            param.DefaultValue, param.DefaultValue?.Span);
+                    }
                 }
             }
         }
@@ -2013,15 +2017,12 @@ internal partial class TypeChecker
         var previousFunctionReturnType = _currentFunctionReturnType;
         _currentFunctionReturnType = SemanticType.Void;
 
-        // Type-check the accessor body.
-        // Python class-scope rule (#1786, R-Y): event accessor bodies skip class scopes.
-        var previousSkipClassScopes = _symbolTable.SkipClassScopesInLookup;
-        _symbolTable.SkipClassScopesInLookup = true;
+        // Type-check the accessor body. The `event:` scope is function-like, so the class-scope
+        // rule (#1786, R-Y) applies through the walk without anything being set here.
         foreach (var stmt in eventDef.Body)
         {
             CheckStatement(stmt);
         }
-        _symbolTable.SkipClassScopesInLookup = previousSkipClassScopes;
 
         _currentFunctionReturnType = previousFunctionReturnType;
 
@@ -2179,14 +2180,10 @@ internal partial class TypeChecker
         _narrowingFlow = ComputeNarrowingFlow(propDef.Body);
         _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
 
-        // Python class-scope rule (#1786, R-Y): property accessor bodies skip class scopes.
-        var previousSkipClassScopes = _symbolTable.SkipClassScopesInLookup;
-        _symbolTable.SkipClassScopesInLookup = true;
         foreach (var stmt in propDef.Body)
         {
             CheckStatement(stmt);
         }
-        _symbolTable.SkipClassScopesInLookup = previousSkipClassScopes;
 
         _narrowingFlow = previousFlow;
         _currentFacts = previousFacts;
@@ -2420,14 +2417,10 @@ internal partial class TypeChecker
             _narrowingFlow = ComputeNarrowingFlow(observer.Body);
             _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
 
-            // Python class-scope rule (#1786, R-Y): observer bodies skip class scopes.
-            var previousSkipClassScopes = _symbolTable.SkipClassScopesInLookup;
-            _symbolTable.SkipClassScopesInLookup = true;
             foreach (var stmt in observer.Body)
             {
                 CheckStatement(stmt);
             }
-            _symbolTable.SkipClassScopesInLookup = previousSkipClassScopes;
 
             _narrowingFlow = previousFlow;
             _currentFacts = previousFacts;

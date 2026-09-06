@@ -477,17 +477,13 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
 
-            // Python class-scope rule (#1786, R-Y): if the name exists in a class/struct
-            // scope that was skipped by the function-body walk, steer toward self. or ClassName.
-            var classHit = _symbolTable.LookupInSkippedClassScope(id.Name);
-            if (classHit != null)
+            // Python class-scope rule (#1786, R-Y): the name denotes a member of an enclosing
+            // type that a bare spelling cannot reach. One description, one set of steers, shared
+            // with the store forms (TypeChecker.ClassScopeRule).
+            if (DescribeBareClassMemberRead(id.Name) is { } crossedMemberTail)
             {
-                var (className, _) = classHit.Value;
                 AddError(
-                    $"Undefined identifier '{id.Name}'. "
-                    + $"'{id.Name}' is a class attribute of '{className}' — class-body names are "
-                    + $"not visible by bare name inside methods. Use 'self.{id.Name}' or "
-                    + $"'{className}.{id.Name}' to access it",
+                    $"Undefined identifier '{id.Name}'" + crossedMemberTail,
                     id.LineStart, id.ColumnStart,
                     code: DiagnosticCodes.Semantic.UndefinedVariable,
                     span: id.Span);
@@ -529,6 +525,18 @@ internal partial class TypeChecker
                 span: id.Span,
                 data: SuggestionData(suggestedName));
             return SemanticType.Unknown;
+        }
+
+        // #1786 (R-Y): the name bound, but the walk passed a class/struct body that declares the
+        // same name. The binding is right — Python resolves the module variable too — and the
+        // EMISSION is not: a bare name in a C# method body binds the field. Record the crossing so
+        // the emitter qualifies the access (Rule 2 node-keyed fact; see SemanticInfo.MergeFrom).
+        if (symbol is VariableSymbol
+            && _symbolTable.Resolve(id.Name) is
+                { CrossedMember: not null, DeclaringScope: { } declaringScope }
+            && SymbolTable.ClassifyScope(declaringScope.Name) == SymbolTable.ScopeKind.Module)
+        {
+            _semanticInfo.SetModuleAccessCrossesClassMember(id);
         }
 
         // Check if this is an error recovery symbol — a name whose DECLARATION was already refused,
@@ -722,6 +730,16 @@ internal partial class TypeChecker
     {
         if (TryReportNonVariableRedefinition(walrus.Target, walrus.LineStart, walrus.ColumnStart, walrus.Span))
             return SemanticType.Unknown;
+
+        // Python class-scope rule (#1786, R-Y): ':=' is a store, so a bare walrus onto a name the
+        // enclosing class body declares is refused like every other store form. Without this it
+        // declared a fresh local and the program compiled, writing nothing the reader meant.
+        if (TryRefuseBareClassAttributeStore(
+                walrus.Target, BareStoreForm.Walrus,
+                walrus.LineStart, walrus.ColumnStart, walrus.Span))
+        {
+            return SemanticType.Unknown;
+        }
 
         var candidate = _symbolTable.Lookup(walrus.Target, searchParents: false)
             ?? _symbolTable.Lookup(walrus.Target, searchParents: true);

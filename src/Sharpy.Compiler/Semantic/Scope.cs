@@ -1,6 +1,37 @@
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
+/// The outcome of one <see cref="Scope.ResolveName"/> walk.
+/// </summary>
+/// <param name="Bound">The symbol the name binds to, or null when nothing bound it.</param>
+/// <param name="CrossedMember">
+/// A class/struct-body variable the walk passed WITHOUT binding, because a function-like scope lay
+/// between it and the name's use (#1786, R-Y). Non-null whether or not <paramref name="Bound"/> is:
+/// a module variable shadowed by a class attribute of the same name binds the module variable and
+/// still reports the crossing, which is what the emitter needs to qualify the access.
+/// </param>
+/// <param name="DeclaringScope">The scope that declared <paramref name="Bound"/>, or null.</param>
+/// <param name="CrossedScope">
+/// The class-like scope that declared <paramref name="CrossedMember"/>, or null. Its name carries
+/// the owning type's spelling, which the <c>self.</c>/<c>C.</c> steers quote.
+/// </param>
+public readonly record struct NameResolution(
+    Symbol? Bound,
+    VariableSymbol? CrossedMember,
+    Scope? DeclaringScope,
+    Scope? CrossedScope)
+{
+    /// <summary>
+    /// The spelling of the type whose body declared <see cref="CrossedMember"/>, or null when
+    /// nothing was crossed. Taken from the scope name (<c>class:Counter</c> → <c>Counter</c>).
+    /// </summary>
+    public string? CrossedMemberOwner
+        => CrossedScope is null
+            ? null
+            : CrossedScope.Name[(CrossedScope.Name.IndexOf(':', StringComparison.Ordinal) + 1)..];
+}
+
+/// <summary>
 /// Manages symbol scopes during semantic analysis
 /// </summary>
 public class Scope
@@ -58,17 +89,73 @@ public class Scope
 
     public Symbol? Lookup(string name, bool searchParent = true)
     {
-        if (_symbols.TryGetValue(name, out var symbol))
+        if (!searchParent)
+            return _symbols.GetValueOrDefault(name);
+
+        return ResolveName(name, fromFunctionLikeContext: false).Bound;
+    }
+
+    /// <summary>
+    /// Resolves <paramref name="name"/> up the scope chain and reports both what it bound and what
+    /// it had to walk past to get there.
+    /// </summary>
+    /// <param name="name">The bare name being resolved.</param>
+    /// <param name="fromFunctionLikeContext">
+    /// Whether a function-like boundary has already been passed before this scope. Callers start a
+    /// walk with <c>false</c>; the walk sets it itself as it crosses
+    /// <see cref="SymbolTable.IsFunctionLikeScope"/> scopes.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// This is the ONE walk (#1786, R-Y). Python's class-scope rule — a class-body name is not
+    /// visible by its bare name inside a method — is a property of the scope CHAIN, so it is
+    /// decided here rather than by a mode the type checker switches on: <see cref="Lookup"/>,
+    /// <c>SymbolTable.Lookup</c>, the <c>NameResolver</c> pre-pass and every LSP consumer all
+    /// resolve through this method and inherit the rule, and a new function-like host (a property
+    /// accessor, an event accessor, a lambda in a field initializer) is covered by having a scope
+    /// on the chain, not by remembering to set a flag at a fifth call site. The predecessor was a
+    /// <c>SymbolTable.SkipClassScopesInLookup</c> mode set at four checker sites, which left the
+    /// property-accessor and field-initializer-lambda hosts ICEing.
+    /// </para>
+    /// <para>
+    /// <b>Variable-only.</b> Once a function-like scope has been passed, a
+    /// <see cref="VariableSymbol"/> found in a class-like scope is NOT bound — it is reported as
+    /// <see cref="NameResolution.CrossedMember"/> and the walk continues outward, so a module-level
+    /// name of the same spelling still binds. Types, type aliases, type parameters and functions
+    /// bind as they always did: nested types and generic parameters scope over the whole class
+    /// body, including its methods, and a bare method name is already an ordinary unresolved-name
+    /// error.
+    /// </para>
+    /// </remarks>
+    public NameResolution ResolveName(string name, bool fromFunctionLikeContext)
+    {
+        VariableSymbol? crossedMember = null;
+        Scope? crossedScope = null;
+        bool passedFunctionLike = fromFunctionLikeContext;
+
+        for (Scope? scope = this; scope != null; scope = scope._parent)
         {
-            return symbol;
+            if (scope._symbols.TryGetValue(name, out var hit))
+            {
+                if (passedFunctionLike
+                    && SymbolTable.IsClassLikeScope(scope.Name)
+                    && hit is VariableSymbol member)
+                {
+                    // Innermost crossing wins: an inner class's member is the one the reader meant.
+                    crossedMember ??= member;
+                    crossedScope ??= scope;
+                }
+                else
+                {
+                    return new NameResolution(hit, crossedMember, scope, crossedScope);
+                }
+            }
+
+            if (SymbolTable.IsFunctionLikeScope(scope.Name))
+                passedFunctionLike = true;
         }
 
-        if (searchParent && _parent != null)
-        {
-            return _parent.Lookup(name, searchParent);
-        }
-
-        return null;
+        return new NameResolution(null, crossedMember, null, crossedScope);
     }
 
     public bool Contains(string name)

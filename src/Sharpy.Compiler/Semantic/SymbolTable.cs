@@ -29,16 +29,6 @@ public class SymbolTable : IGlobalSymbolTable
     private int _currentFunctionScopeId = -1;
 
     /// <summary>
-    /// When true, <see cref="Lookup"/> skips class/struct scopes that follow a function-like
-    /// scope in the parent chain — Python's rule that class-body names are invisible to methods
-    /// by bare name (#1786, R-Y). Set to true by the TypeChecker when entering a function body
-    /// (after parameter defaults are resolved), and restored on exit. Parameter defaults,
-    /// decorator arguments and type annotations are resolved with this flag false, so they
-    /// retain access to class members.
-    /// </summary>
-    internal bool SkipClassScopesInLookup { get; set; }
-
-    /// <summary>
     /// Names bound by a <c>from M import *</c> that displace a builtin, mapped to the module they
     /// came from. Recorded here rather than reported at the import, because the collision is an
     /// error only where the name is actually USED — C#'s CS0104 rule (#1324).
@@ -254,33 +244,122 @@ public class SymbolTable : IGlobalSymbolTable
     }
 
     /// <summary>
-    /// Returns true if the scope name represents a function-like boundary — a function or method
-    /// body, a lambda, a property/event accessor, a property observer, or the type-checker's
-    /// signature pre-pass. Crossing such a boundary invalidates exited-variable tracking from the
-    /// prior function, and every such scope owns a <see cref="LocalBindingLedger"/>. This is the
-    /// ONE predicate that decides ledger ownership; a new scope-name family that emits its own C#
-    /// method body is added here, nowhere else.
+    /// What a scope name means to the walk. Every <c>EnterScope</c> literal in the semantic
+    /// pipeline classifies into exactly one of these; <c>ScopeKindRosterTests</c> scans the
+    /// literals and fails when one is unclassified, so a new scope family cannot silently pick up
+    /// the behaviour of whichever arm happens not to match it.
     /// </summary>
-    internal static bool IsFunctionLikeScope(string scopeName)
+    internal enum ScopeKind
     {
-        return scopeName == "lambda"
+        /// <summary>A body that emits its own C# method body: it owns a
+        /// <see cref="LocalBindingLedger"/>, and names outside it are read across a function
+        /// boundary (#1786, R-Y).</summary>
+        FunctionLike,
+
+        /// <summary>A type declaration's body. Its variable members are invisible by bare name
+        /// from inside a function-like scope nested in it.</summary>
+        TypeBody,
+
+        /// <summary>A statement block or comprehension: transparent to both rules, but its
+        /// declarations go out of view when it exits.</summary>
+        Block,
+
+        /// <summary>The global scope or a per-file module scope.</summary>
+        Module,
+
+        /// <summary>A scope pushed only to hold type parameters for one resolution step
+        /// (generic-type resolution, alias parameters, constraint resolution). It declares no
+        /// variables and no C# body, so it is transparent to both rules.</summary>
+        Transparent,
+    }
+
+    /// <summary>
+    /// Classifies a scope name, or returns null when the name belongs to no known family.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The single roster behind <see cref="IsFunctionLikeScope"/> and
+    /// <see cref="IsClassLikeScope"/>. Unclassified returns null rather than falling into a
+    /// default arm: production then treats the scope as neither function-like nor a type body
+    /// (the pre-#1786 behaviour of an unrecognised name), and the roster guard — not a user's
+    /// program — is what goes red.
+    /// </para>
+    /// <para>
+    /// <b><c>interface-method:</c> is function-like.</b> An interface default method emits a C#
+    /// method body with its own locals, which is the stated membership rule for this predicate
+    /// (#1560 C1), so it owns a ledger like every other body. For R-Y itself the answer is inert
+    /// today — an interface body declares no variables for a nested body to cross — which is why
+    /// the plan recorded either answer as safe; the ledger contract decides it.
+    /// </para>
+    /// <para>
+    /// <b><c>union:</c>, <c>interface:</c> and <c>delegate:</c> are type bodies</b> alongside
+    /// <c>class:</c>/<c>struct:</c>. Only <c>class:</c>/<c>struct:</c> declare member variables
+    /// today, so the other three are R-Y-inert; classifying them by what they are keeps the answer
+    /// right if a union or interface ever gains a <c>const</c>, rather than silently binding it.
+    /// </para>
+    /// </remarks>
+    internal static ScopeKind? ClassifyScope(string scopeName)
+    {
+        if (scopeName == "lambda"
             || scopeName.StartsWith("function:", StringComparison.Ordinal)
             || scopeName.StartsWith("pre-pass:", StringComparison.Ordinal)
             || scopeName.StartsWith("property:", StringComparison.Ordinal)
             || scopeName.StartsWith("event:", StringComparison.Ordinal)
-            || scopeName.StartsWith("observer:", StringComparison.Ordinal);
+            || scopeName.StartsWith("observer:", StringComparison.Ordinal)
+            || scopeName.StartsWith("interface-method:", StringComparison.Ordinal))
+        {
+            return ScopeKind.FunctionLike;
+        }
+
+        if (scopeName.StartsWith("class:", StringComparison.Ordinal)
+            || scopeName.StartsWith("struct:", StringComparison.Ordinal)
+            || scopeName.StartsWith("union:", StringComparison.Ordinal)
+            || scopeName.StartsWith("interface:", StringComparison.Ordinal)
+            || scopeName.StartsWith("delegate:", StringComparison.Ordinal))
+        {
+            return ScopeKind.TypeBody;
+        }
+
+        if (scopeName == "global" || scopeName.StartsWith("module:", StringComparison.Ordinal))
+            return ScopeKind.Module;
+
+        if (scopeName is "type-parameter-scope" or "type-alias-params" or "constraint-resolution")
+            return ScopeKind.Transparent;
+
+        return scopeName switch
+        {
+            "if-then" or "elif" or "if-else"
+                or "while-body" or "while-else"
+                or "for-body" or "for-else"
+                or "try" or "except" or "try-else" or "finally"
+                or "with" or "defer"
+                or "match-case" or "match-arm"
+                or "list-comprehension" or "set-comprehension"
+                or "dict-comprehension" or "dict-spread-comprehension" => ScopeKind.Block,
+            _ => null,
+        };
     }
 
     /// <summary>
-    /// Returns true if the scope name represents a class or struct body — the kind of scope
-    /// whose members are invisible by bare name inside function bodies (Python's class-scope
-    /// rule: methods cannot see class-body names without <c>self.</c> or <c>ClassName.</c>).
+    /// Returns true if the scope name represents a function-like boundary — a function or method
+    /// body, a lambda, a property/event accessor, a property observer, an interface default
+    /// method, or the type-checker's signature pre-pass. Crossing such a boundary invalidates
+    /// exited-variable tracking from the prior function, makes class-body names invisible by bare
+    /// name (#1786, R-Y), and every such scope owns a <see cref="LocalBindingLedger"/>. This is
+    /// the ONE predicate that decides all three; a new scope-name family that emits its own C#
+    /// method body is added to <see cref="ClassifyScope"/>, nowhere else.
+    /// </summary>
+    internal static bool IsFunctionLikeScope(string scopeName)
+        => ClassifyScope(scopeName) == ScopeKind.FunctionLike;
+
+    /// <summary>
+    /// Returns true if the scope name represents a type declaration's body — the kind of scope
+    /// whose member variables are invisible by bare name inside function bodies (Python's
+    /// class-scope rule: methods cannot see class-body names without <c>self.</c> or
+    /// <c>ClassName.</c>).
     /// </summary>
     internal static bool IsClassLikeScope(string scopeName)
-    {
-        return scopeName.StartsWith("class:", StringComparison.Ordinal)
-            || scopeName.StartsWith("struct:", StringComparison.Ordinal);
-    }
+        => ClassifyScope(scopeName) == ScopeKind.TypeBody;
 
     /// <summary>
     /// True for the function-like scope names whose C# body has the implicit <c>value</c>
@@ -324,72 +403,60 @@ public class SymbolTable : IGlobalSymbolTable
 
     public Symbol? Lookup(string name, bool searchParents = true)
     {
-        if (!searchParents || !SkipClassScopesInLookup)
-            return CurrentScope.Lookup(name, searchParents);
-
-        // Python class-scope rule (#1786, R-Y): when inside a function body, variable and
-        // constant bindings in class/struct scopes are invisible by bare name — methods
-        // cannot see class-body names without self. or ClassName. Types, type aliases, and
-        // type parameters remain visible (nested types and generic parameters scope over the
-        // entire class body, including methods).
-        bool insideFunction = false;
-        var scope = CurrentScope;
-        while (scope != null)
-        {
-            if (insideFunction && IsClassLikeScope(scope.Name))
-            {
-                // In a class scope crossed by a function boundary, only non-variable symbols
-                // pass through — types, type aliases, and type parameters are still visible.
-                if (scope.Lookup(name, searchParent: false) is { } classSymbol
-                    && classSymbol is not VariableSymbol)
-                {
-                    return classSymbol;
-                }
-            }
-            else
-            {
-                if (scope.Lookup(name, searchParent: false) is { } found)
-                    return found;
-            }
-
-            if (IsFunctionLikeScope(scope.Name))
-                insideFunction = true;
-
-            scope = scope.Parent;
-        }
-
-        return null;
+        return searchParents
+            ? Resolve(name).Bound
+            : CurrentScope.Lookup(name, searchParent: false);
     }
 
     /// <summary>
-    /// Checks whether a name exists as a <see cref="VariableSymbol"/> in a class/struct scope
-    /// that was skipped by the class-scope rule (#1786, R-Y). Returns the enclosing class name
-    /// and the bound symbol, or null if the name is not in any skipped class scope (or exists
-    /// there only as a type/alias, which is NOT skipped). Used by the TypeChecker to emit
-    /// SPY0200/SPY0606 with steers suggesting <c>self.x</c> or <c>ClassName.x</c>.
+    /// Resolves a bare name from the current scope through the ONE walk
+    /// (<see cref="Scope.ResolveName"/>), reporting both the binding and any class-body member the
+    /// walk passed without binding (#1786, R-Y). <see cref="Lookup"/> returns the binding half, so
+    /// every existing caller inherits the rule; the diagnostic arms read the crossing half.
     /// </summary>
-    public (string ClassName, Symbol Symbol)? LookupInSkippedClassScope(string name)
-    {
-        bool insideFunction = false;
-        var scope = CurrentScope;
-        while (scope != null)
-        {
-            if (IsFunctionLikeScope(scope.Name))
-                insideFunction = true;
+    public NameResolution Resolve(string name)
+        => CurrentScope.ResolveName(name, fromFunctionLikeContext: false);
 
-            if (insideFunction && IsClassLikeScope(scope.Name))
+    /// <summary>
+    /// Resolves the enclosing SIGNATURE's expressions — a parameter default — in the scope that
+    /// declares the function, exactly as C# does: <c>class C { const int K = 1; void M(int x = K) }</c>
+    /// binds <c>K</c> in the class body while <c>M</c>'s body cannot see it bare (#1786, R-Y; the
+    /// signature-position axis plan-4e3055 added, which plan-202526's <c>ClassConstRef</c> cell
+    /// consumes). Expressed by resolving in the declaring scope rather than by a lookup mode, so the
+    /// walk stays a pure function of the chain and a name in a default is subject to exactly the
+    /// rules of the place C# evaluates it: an earlier parameter is NOT in scope there (Python agrees
+    /// — defaults evaluate in the enclosing scope), and a class member IS.
+    /// </summary>
+    internal ScopeSuspension ResolveInDeclaringScope() => new(this);
+
+    /// <summary>
+    /// The token returned by <see cref="ResolveInDeclaringScope"/>. Restores the suspended scope on
+    /// dispose. Never suspends the last scope — the global scope has no enclosing scope to fall
+    /// back to.
+    /// </summary>
+    internal readonly struct ScopeSuspension : IDisposable
+    {
+        private readonly SymbolTable? _table;
+        private readonly Scope? _suspended;
+
+        internal ScopeSuspension(SymbolTable table)
+        {
+            if (table._scopeStack.Count <= 1)
             {
-                if (scope.Lookup(name, searchParent: false) is VariableSymbol varSymbol)
-                {
-                    var className = scope.Name[(scope.Name.IndexOf(':', StringComparison.Ordinal) + 1)..];
-                    return (className, varSymbol);
-                }
+                _table = null;
+                _suspended = null;
+                return;
             }
 
-            scope = scope.Parent;
+            _table = table;
+            _suspended = table._scopeStack.Pop();
         }
 
-        return null;
+        public void Dispose()
+        {
+            if (_table != null && _suspended != null)
+                _table._scopeStack.Push(_suspended);
+        }
     }
 
     public TypeSymbol? LookupType(string name)

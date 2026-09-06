@@ -52,9 +52,9 @@ public interface IGlobalSymbolTable
     bool TryGetExitedVariable(string name, out string blockType, out int line);
 
     /// <summary>
-    /// Checks whether a name exists in a class/struct scope that was skipped by the
-    /// class-scope rule (#1786, R-Y). Returns the enclosing class name and the bound symbol,
-    /// or null if the name is not in any skipped class scope.
+    /// Resolves a bare name through the one scope walk, reporting both the binding and any
+    /// class/struct-body member the walk passed without binding (#1786, R-Y).
+    /// <see cref="Lookup(string, bool)"/> is the binding half of this call.
     /// </summary>
-    (string ClassName, Symbol Symbol)? LookupInSkippedClassScope(string name);
+    NameResolution Resolve(string name);
 }
