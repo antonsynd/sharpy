@@ -1696,4 +1696,86 @@ def bar():
     }
 
     #endregion
+
+    #region Suite Extent Matrix (#1736)
+
+    // Suite-kind x follower matrix: each suite kind's LineEnd/ColumnEnd must end at the last
+    // body statement, not at the Dedent token. The "followed" variant places a statement after
+    // the suite to prove the extent doesn't leak into it; the "EOF" variant has no follower.
+
+    [Theory]
+    [InlineData("if True:\n    x = 1\n    y = 2\nz = 3", 3, 10, "if-followed")]
+    [InlineData("if True:\n    x = 1\n    y = 2", 3, 10, "if-eof")]
+    [InlineData("while True:\n    x = 1\n    y = 2\nz = 3", 3, 10, "while-followed")]
+    [InlineData("while True:\n    x = 1\n    y = 2", 3, 10, "while-eof")]
+    [InlineData("for i in range(3):\n    x = 1\n    y = 2\nz = 3", 3, 10, "for-followed")]
+    [InlineData("for i in range(3):\n    x = 1\n    y = 2", 3, 10, "for-eof")]
+    [InlineData("def f():\n    x = 1\n    y = 2\nz = 3", 3, 10, "def-followed")]
+    [InlineData("def f():\n    x = 1\n    y = 2", 3, 10, "def-eof")]
+    [InlineData("class C:\n    x: int = 1\n    y: int = 2\nz = 3", 3, 16, "class-followed")]
+    [InlineData("class C:\n    x: int = 1\n    y: int = 2", 3, 15, "class-eof")]
+    public void SuiteExtent_EndsAtLastBodyStatement(
+        string source, int expectedEndLine, int expectedEndColumn, string label)
+    {
+        var module = Parse(source);
+        var stmt = module.Body[0];
+
+        stmt.LineEnd.Should().Be(expectedEndLine,
+            $"suite kind '{label}': LineEnd should be the last body statement's line");
+        stmt.ColumnEnd.Should().Be(expectedEndColumn,
+            $"suite kind '{label}': ColumnEnd should be the last body statement's column-end");
+    }
+
+    [Fact]
+    public void SuiteExtent_IfElif_EndsAtLastClauseBody()
+    {
+        // if/elif/else: the overall statement ends at the last clause's body
+        var source = "if True:\n    a = 1\nelif False:\n    b = 2\nelse:\n    c = 3\nz = 4";
+        var module = Parse(source);
+        var ifStmt = module.Body[0].Should().BeOfType<IfStatement>().Subject;
+
+        // Overall statement ends at the else body's last statement (line 6: c = 3)
+        ifStmt.LineEnd.Should().Be(6, "if-elif-else ends at else body");
+        ifStmt.ColumnEnd.Should().Be(10, "c = 3: '3' at col 9 + length 1 = 10");
+    }
+
+    [Fact]
+    public void SuiteExtent_TryExceptFinally_EndsAtLastClauseBody()
+    {
+        var source = "try:\n    a = 1\nexcept Exception:\n    b = 2\nfinally:\n    c = 3\nz = 4";
+        var module = Parse(source);
+        var tryStmt = module.Body[0].Should().BeOfType<TryStatement>().Subject;
+
+        // Overall statement ends at finally body's last statement (line 6: c = 3)
+        tryStmt.LineEnd.Should().Be(6, "try/except/finally ends at finally body");
+        tryStmt.ColumnEnd.Should().Be(10, "c = 3: '3' at col 9 + length 1 = 10");
+    }
+
+    [Fact]
+    public void SuiteExtent_BlankLineFollower_DoesNotExtendSuite()
+    {
+        // A blank line between the suite and the follower must not extend the suite.
+        // Line 1: def f():  Line 2:     x = 1  Line 3: (blank)  Line 4: z = 3
+        var source = "def f():\n    x = 1\n\nz = 3";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+
+        funcDef.LineEnd.Should().Be(2, "blank line after suite does not extend it");
+        funcDef.ColumnEnd.Should().Be(10, "x = 1: '1' at col 9 + length 1 = 10");
+    }
+
+    [Fact]
+    public void SuiteExtent_CommentFollower_DoesNotExtendSuite()
+    {
+        // A comment after the suite must not extend it.
+        // Line 1: def f():  Line 2:     x = 1  Line 3: # comment  Line 4: z = 3
+        var source = "def f():\n    x = 1\n# comment\nz = 3";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+
+        funcDef.LineEnd.Should().Be(2, "comment after suite does not extend it");
+        funcDef.ColumnEnd.Should().Be(10, "x = 1: '1' at col 9 + length 1 = 10");
+    }
+
+    #endregion
 }
