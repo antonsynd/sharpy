@@ -427,7 +427,12 @@ public class SymbolTable : IGlobalSymbolTable
     /// rules of the place C# evaluates it: an earlier parameter is NOT in scope there (Python agrees
     /// — defaults evaluate in the enclosing scope), and a class member IS.
     /// </summary>
-    internal ScopeSuspension ResolveInDeclaringScope() => new(this);
+    /// <param name="enabled">
+    /// When false the call is a no-op, so a caller with a per-case answer — a LATE-bound parameter
+    /// default is evaluated in the body, not in the signature — stays one expression rather than
+    /// two branches around the same block.
+    /// </param>
+    internal ScopeSuspension ResolveInDeclaringScope(bool enabled = true) => new(this, enabled);
 
     /// <summary>
     /// The token returned by <see cref="ResolveInDeclaringScope"/>. Restores the suspended scope on
@@ -439,9 +444,9 @@ public class SymbolTable : IGlobalSymbolTable
         private readonly SymbolTable? _table;
         private readonly Scope? _suspended;
 
-        internal ScopeSuspension(SymbolTable table)
+        internal ScopeSuspension(SymbolTable table, bool enabled)
         {
-            if (table._scopeStack.Count <= 1)
+            if (!enabled || table._scopeStack.Count <= 1)
             {
                 _table = null;
                 _suspended = null;

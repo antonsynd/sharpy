@@ -725,13 +725,20 @@ internal partial class TypeChecker
 
             if (param.DefaultValue != null)
             {
-                // A default belongs to the SIGNATURE, and C# resolves a signature in the scope that
-                // declares the function — a method's default sees the class body, its body does not
-                // (#1786, R-Y; the signature-position axis). Resolving it in the declaring scope is
-                // what makes that true of the scope CHAIN, so the walk needs no mode: from here the
-                // chain runs class body → module, with this function's own scope suspended.
+                // An EAGER default (`x = expr`) belongs to the SIGNATURE, and C# resolves a
+                // signature in the scope that declares the function — a method's default sees the
+                // class body, its body does not (#1786, R-Y; the signature-position axis).
+                // Resolving it in the declaring scope is what makes that true of the scope CHAIN,
+                // so the walk needs no mode: the chain runs class body → module, with this
+                // function's own scope suspended. Python agrees — a default evaluates in the
+                // enclosing scope, so an earlier parameter is not in scope for it.
+                //
+                // A LATE-BOUND default (`x => expr`, PEP 671) is the opposite: it is evaluated at
+                // CALL time, inside the body, and referring to an earlier parameter is the point
+                // of the feature (`def f(x: int, y: int => x + 1)`). It resolves in the function
+                // scope, where the class body is correctly invisible.
                 SemanticType defaultType;
-                using (_symbolTable.ResolveInDeclaringScope())
+                using (_symbolTable.ResolveInDeclaringScope(enabled: !param.IsLateBound))
                 {
                     using (EnterStore(StorePosition.ParameterDefault, paramType, param.DefaultValue))
                         defaultType = CheckExpression(param.DefaultValue);
