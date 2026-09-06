@@ -209,9 +209,6 @@ class Grid:
 The same holds for decorator arguments and type annotations. Names in the method's **body** are
 resolved by the rule above.
 
-> **Status:** name resolution follows this rule — the default binds the class constant. Emitting
-> the bare spelling, and emitting an integer class `const` as a C# `const`, are both still landing,
-> so this example reports SPY0909 today and its `Grid.SIZE` twin reports SPY0908 (CS1736).
 
 ### Pattern heads are not reads
 
