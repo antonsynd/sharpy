@@ -967,6 +967,8 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         new("Folded", "str", "\"d\"", "", "\"a\" + \"b\"", "\"a\" + \"b\"", null),
         new("ConditionalOfConsts", "str", "\"d\"", "const ON: bool = True\n\n",
             "\"a\" if ON else \"b\"", "ON ? \"a\" : \"b\"", null),
+        // The UNARY arm of the same rule: `not` is native for the only operand type it takes.
+        new("NegatedBool", "bool", "False", "", "not True", "!true", null),
         new("OptionalConst", "int", "1", "const O: int? = Some(1)\n\n", "O", null,
             "is not a compile-time constant"),
         new("CallInitializedConst", "str", "\"d\"", "const CI: str = \"a\".upper()\n\n", "CI", null,
@@ -984,9 +986,9 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     };
 
     // Anchored to literals, not to the arrays under test.
-    private const int DecoratorArgumentCount = 10;
+    private const int DecoratorArgumentCount = 11;
     private const int DecoratorPositionCount = 2;
-    private const int DecoratorAdmittedCount = 7;
+    private const int DecoratorAdmittedCount = 8;
     private const int DecoratorRefusedCount = 3;
 
     private static DecoratorArgument DA(string name) => DecoratorArguments.Single(a => a.Name == name);
