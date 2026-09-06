@@ -612,11 +612,8 @@ internal static class NarrowingFlowAnalysis
     {
         if (statement is Assignment assignment)
         {
-            var valueKeepsNonNone = assignment.Operator != AssignmentOperator.Assign
-                || ValueIsDefinitelyNotNone(assignment.Value, facts);
-
-            foreach (var assignedKey in CollectAssignedKeys(assignment.Target))
-                KillKey(facts, assignedKey, keepRemoveNone: valueKeepsNonNone);
+            KillStore(facts, assignment.Target, assignment.Value,
+                augmented: assignment.Operator != AssignmentOperator.Assign);
         }
 
         foreach (var walrus in CollectWalrusExpressions(statement))
@@ -624,6 +621,60 @@ internal static class NarrowingFlowAnalysis
             KillKey(facts, walrus.Target, keepRemoveNone: ValueIsDefinitelyNotNone(walrus.Value, facts));
         }
     }
+
+    /// <summary>
+    /// Kills the facts one store invalidates, pairing a tuple target with a tuple-literal value
+    /// ELEMENT BY ELEMENT.
+    /// </summary>
+    /// <remarks>
+    /// <para>Each target gets its OWN value's verdict. Asking
+    /// <see cref="ValueIsDefinitelyNotNone"/> of the whole right-hand side answers for the tuple
+    /// literal — which is a literal, hence never None — and then applied that answer to every
+    /// element key, so <c>d, n = None(), 2</c> under <c>if d is not None:</c> KEPT the RemoveNone
+    /// fact on <c>d</c> and the next read emitted <c>d.Unwrap()</c> on an empty Optional: a
+    /// program that compiles and crashes, where the plain twin <c>d = None()</c> is correct
+    /// (#1786 round; the tuple-element store position was newly admitted by plan-ebd58b).</para>
+    ///
+    /// <para>Pairing needs BOTH sides to be tuples of equal arity and no star element: anything
+    /// else — a call, a variable, a starred target — leaves each element's value unknown, so every
+    /// key is killed without keeping, which is this analysis's conservative direction (a fact
+    /// wrongly kept crashes at runtime; a fact wrongly killed only refuses a store the reader can
+    /// spell differently).</para>
+    /// </remarks>
+    private static void KillStore(
+        HashSet<NarrowingFact> facts, Expression target, Expression value, bool augmented)
+    {
+        var unwrappedTarget = Unparenthesize(target);
+        var unwrappedValue = Unparenthesize(value);
+
+        if (unwrappedTarget is TupleLiteral targetTuple)
+        {
+            bool pairable = unwrappedValue is TupleLiteral valueTuple
+                && valueTuple.Elements.Length == targetTuple.Elements.Length
+                && !targetTuple.Elements.Any(e => Unparenthesize(e) is StarExpression)
+                && !valueTuple.Elements.Any(e => Unparenthesize(e) is StarExpression);
+
+            if (pairable)
+            {
+                var valueElements = ((TupleLiteral)unwrappedValue).Elements;
+                for (int i = 0; i < targetTuple.Elements.Length; i++)
+                    KillStore(facts, targetTuple.Elements[i], valueElements[i], augmented);
+                return;
+            }
+
+            foreach (var assignedKey in CollectAssignedKeys(targetTuple))
+                KillKey(facts, assignedKey, keepRemoveNone: augmented);
+            return;
+        }
+
+        var keepRemoveNone = augmented || ValueIsDefinitelyNotNone(unwrappedValue, facts);
+        foreach (var assignedKey in CollectAssignedKeys(unwrappedTarget))
+            KillKey(facts, assignedKey, keepRemoveNone: keepRemoveNone);
+    }
+
+    /// <summary>Strips redundant parentheses from a store's target or value.</summary>
+    private static Expression Unparenthesize(Expression expression)
+        => expression is Parenthesized paren ? Unparenthesize(paren.Expression) : expression;
 
     /// <summary>
     /// Kills every fact <paramref name="assignedKey"/> invalidates. When the stored value is
