@@ -196,7 +196,8 @@ def foo():
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DecoratorValidator();
+        // Constant-argument validation moved to ConstantPositionValidator (#1788).
+        var validator = new ConstantPositionValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -219,7 +220,8 @@ def foo():
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DecoratorValidator();
+        // Constant-argument validation moved to ConstantPositionValidator (#1788).
+        var validator = new ConstantPositionValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -318,7 +320,8 @@ def foo():
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DecoratorValidator();
+        // Constant-argument validation moved to ConstantPositionValidator (#1788).
+        var validator = new ConstantPositionValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);
@@ -379,7 +382,8 @@ def foo():
 ";
         var (module, context) = Parse(code);
 
-        var validator = new DecoratorValidator();
+        // Constant-argument validation moved to ConstantPositionValidator (#1788).
+        var validator = new ConstantPositionValidator();
         validator.Validate(module, context);
 
         Assert.True(context.Diagnostics.HasErrors);

@@ -175,7 +175,7 @@ public class ValidationPipelineTests
         Assert.Contains(validators, v => v is GeneratorValidator);
         Assert.Contains(validators, v => v is EqualityContractValidator);
         Assert.Contains(validators, v => v is InterfaceConflictValidator);
-        Assert.Contains(validators, v => v is DefaultParameterValidator);
+        Assert.Contains(validators, v => v is ConstantPositionValidator);
         Assert.Contains(validators, v => v is ControlFlowValidator);
         Assert.Contains(validators, v => v is ExhaustivenessValidator);
         Assert.Contains(validators, v => v is PropertyValidator);

@@ -934,7 +934,8 @@ public static class DiagnosticCodes
         public const string MultiAxisNotSupported = "SPY0602"; // Active (#1644)
         public const string ExpressionStatementNotDiscardable = "SPY0603"; // Active (#1622)
         public const string StrictOptionalConstruction = "SPY0604"; // Active (#1720)
-        // SPY0605-SPY0699: Available for new semantic diagnostics
+        public const string ConstantPatternNotCompileTime = "SPY0605"; // Active (#1788) — match-case constant pattern whose const is not compile-time
+        // SPY0606-SPY0699: Available for new semantic diagnostics
     }
 
     /// <summary>

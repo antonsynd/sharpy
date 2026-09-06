@@ -380,6 +380,7 @@ class Target:
     {
         // Sanity check: when the bracket attribute is NOT a source generator,
         // the constant-argument check must still apply.
+        // Constant-argument validation moved to ConstantPositionValidator (#1788).
         var code = @"
 @[custom(1 + 2)]
 class Target:
@@ -388,8 +389,8 @@ class Target:
         var (module, context) = Parse(code);
         // No symbol marked as a generator.
 
-        var decoratorValidator = new DecoratorValidator();
-        decoratorValidator.Validate(module, context);
+        var constValidator = new ConstantPositionValidator();
+        constValidator.Validate(module, context);
 
         Assert.Contains(context.Diagnostics.GetErrors(),
             e => e.Code == DiagnosticCodes.Validation.NonConstantDecoratorArgument);

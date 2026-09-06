@@ -282,7 +282,7 @@ internal partial class DecoratorValidator : ValidatingAstWalker
             {
                 if (!IsSourceGeneratorBracketAttribute(decorator))
                 {
-                    ValidateDecoratorArgumentsAreConstants(decorator);
+                    // Constant-argument validation is handled by ConstantPositionValidator (Order 250).
                     ValidateBracketAttributeResolves(decorator);
                 }
                 continue;
@@ -369,47 +369,6 @@ internal partial class DecoratorValidator : ValidatingAstWalker
     {
         var symbol = Context.SymbolTable.LookupType(decorator.Name);
         return symbol is { IsSourceGenerator: true };
-    }
-
-    /// <summary>
-    /// Validates that all arguments to a custom decorator are compile-time constant expressions.
-    /// Allowed: string/int/float/bool literals, None, enum member access (dotted names), type(X).
-    /// </summary>
-    private void ValidateDecoratorArgumentsAreConstants(Decorator decorator)
-    {
-        foreach (var arg in decorator.Arguments)
-        {
-            var kind = ConstantDefaultClassifier.Classify(arg);
-            if (!ConstantDefaultClassifier.IsAdmitted(kind, AdmissionTable.DecoratorArgument))
-            {
-                var message = arg is Identifier id
-                    ? $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access"
-                    : "Decorator argument must be a compile-time constant";
-                AddError(
-                    message,
-                    arg.LineStart,
-                    arg.ColumnStart,
-                    code: DiagnosticCodes.Validation.NonConstantDecoratorArgument,
-                    span: arg.Span);
-            }
-        }
-
-        foreach (var kwArg in decorator.KeywordArguments)
-        {
-            var kind = ConstantDefaultClassifier.Classify(kwArg.Value);
-            if (!ConstantDefaultClassifier.IsAdmitted(kind, AdmissionTable.DecoratorArgument))
-            {
-                var message = kwArg.Value is Identifier id
-                    ? $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access"
-                    : "Decorator argument must be a compile-time constant";
-                AddError(
-                    message,
-                    kwArg.Value.LineStart,
-                    kwArg.Value.ColumnStart,
-                    code: DiagnosticCodes.Validation.NonConstantDecoratorArgument,
-                    span: kwArg.Value.Span);
-            }
-        }
     }
 
     /// <summary>

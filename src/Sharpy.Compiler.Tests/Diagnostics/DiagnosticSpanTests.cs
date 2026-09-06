@@ -377,7 +377,7 @@ public class DiagnosticSpanTests
         var source = "def foo(items: list[int] = []):\n    pass\n";
         var (module, context) = ParseForValidation(source);
 
-        var validator = new DefaultParameterValidator();
+        var validator = new ConstantPositionValidator();
         validator.Validate(module, context);
 
         var error = context.Diagnostics.GetErrors()

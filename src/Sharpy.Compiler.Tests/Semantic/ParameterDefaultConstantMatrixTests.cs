@@ -12,7 +12,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// module-const matrix — declared type × reference kind × consumer (#1762 follow-up).
 ///
 /// <para><b>Contract (defaults).</b> A default value for a parameter is admitted or refused by
-/// <c>ConstantDefaultClassifier</c> via <c>DefaultParameterValidator</c>. The classifier
+/// <c>ConstantDefaultClassifier</c> via <c>ConstantPositionValidator</c>. The classifier
 /// maps the default's AST shape to an <c>EmittableConstantKind</c>, and the validator checks
 /// that kind against the <c>AdmissionTable</c> for the host position. Admitted defaults compile
 /// and run with the printed value. Refused defaults report SPY0401. No cell produces SPY0908.

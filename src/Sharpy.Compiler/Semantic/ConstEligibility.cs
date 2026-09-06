@@ -237,9 +237,12 @@ internal sealed class ConstEligibility
     /// The classifier's operator hook: whether the checker's recorded lowering for one operator
     /// node is a C# constant operator. Reads only recorded facts.
     /// </summary>
-    private bool LowersToConstantExpression(Expression node)
+    private bool LowersToConstantExpression(Expression node) =>
+        LowersToConstantExpression(node, _semanticInfo);
+
+    internal static bool LowersToConstantExpression(Expression node, SemanticInfo? semanticInfo)
     {
-        if (_semanticInfo == null)
+        if (semanticInfo == null)
             return false;
 
         if (node is BinaryOp binary)
@@ -254,28 +257,28 @@ internal sealed class ConstEligibility
                 or BinaryOperator.LeftShift or BinaryOperator.RightShift))
                 return false;
 
-            if (_semanticInfo.GetBinaryOpLoweringForIr(binary) != BinaryOpLowering.NativeOperator)
+            if (semanticInfo.GetBinaryOpLoweringForIr(binary) != BinaryOpLowering.NativeOperator)
                 return false;
 
-            if (!IsPrimitiveTyped(binary.Left) || !IsPrimitiveTyped(binary.Right))
+            if (!IsPrimitiveTyped(binary.Left, semanticInfo) || !IsPrimitiveTyped(binary.Right, semanticInfo))
                 return false;
 
             if (binary.Operator is BinaryOperator.And or BinaryOperator.Or
-                && !(IsBoolTyped(binary.Left) && IsBoolTyped(binary.Right)))
+                && !(IsBoolTyped(binary.Left, semanticInfo) && IsBoolTyped(binary.Right, semanticInfo)))
                 return false;
         }
         else if (node is UnaryOp { Operator: UnaryOperator.Not } logicalNot)
         {
-            if (!IsBoolTyped(logicalNot.Operand))
+            if (!IsBoolTyped(logicalNot.Operand, semanticInfo))
                 return false;
         }
         else if (node is ConditionalExpression cond)
         {
-            if (!IsBoolTyped(cond.Test))
+            if (!IsBoolTyped(cond.Test, semanticInfo))
                 return false;
         }
 
-        var lowering = _semanticInfo.GetOperatorLowering(node);
+        var lowering = semanticInfo.GetOperatorLowering(node);
         return lowering == null || lowering.Kind is OperatorLoweringKind.Native
             or OperatorLoweringKind.TrueDivisionCastLeft
             or OperatorLoweringKind.ShiftCountCastToInt
@@ -283,12 +286,16 @@ internal sealed class ConstEligibility
             or OperatorLoweringKind.NegateLiteralLong;
     }
 
-    private bool IsBoolTyped(Expression expr) =>
-        _semanticInfo?.GetExpressionType(AstHelper.UnwrapParenthesized(expr)) is { } type
+    private bool IsBoolTyped(Expression expr) => IsBoolTyped(expr, _semanticInfo);
+
+    private bool IsPrimitiveTyped(Expression expr) => IsPrimitiveTyped(expr, _semanticInfo);
+
+    private static bool IsBoolTyped(Expression expr, SemanticInfo? semanticInfo) =>
+        semanticInfo?.GetExpressionType(AstHelper.UnwrapParenthesized(expr)) is { } type
         && TypeUtils.IsBool(type);
 
-    private bool IsPrimitiveTyped(Expression expr) =>
-        _semanticInfo?.GetExpressionType(AstHelper.UnwrapParenthesized(expr)) is { } type
+    private static bool IsPrimitiveTyped(Expression expr, SemanticInfo? semanticInfo) =>
+        semanticInfo?.GetExpressionType(AstHelper.UnwrapParenthesized(expr)) is { } type
         && (Registry.PrimitiveCatalog.GetPrimitiveInfo(type) != null || TypeUtils.IsString(type));
 
     /// <summary>

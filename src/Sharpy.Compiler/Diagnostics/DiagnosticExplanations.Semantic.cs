@@ -1263,5 +1263,15 @@ public static partial class DiagnosticExplanations
             "Assign a value before using the variable:\n    x: int = 0\n    print(x)\n\n" +
             "Or assign on all branches:\n    x: int\n    if condition:\n        x = 1\n    else:\n        x = 2\n    print(x)");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.ConstantPatternNotCompileTime,
+            "Constant pattern requires a compile-time constant",
+            "Semantic",
+            "A match-case pattern resolved to a const variable, but the const is not a compile-time " +
+            "constant (its initializer is a function call, a tagged-union constructor, or its type is " +
+            "not C#-const-eligible). C# requires constant patterns to be compile-time constants; a " +
+            "static readonly field cannot appear in a case label (CS9135). Use a guard instead.",
+            "const FM: float = max(4.0, 1.0)\n\ndef main():\n    v: float = 4.0\n    match v:\n        case FM:  # SPY0605\n            print(\"hit\")",
+            "Compare in a guard clause:\n    match v:\n        case _ if v == FM:\n            print(\"hit\")");
+
     }
 }

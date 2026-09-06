@@ -34,7 +34,7 @@ internal static class ValidationPipelineFactory
             .AddValidator(new GeneratorValidator())         // Order: 155 (generator guard rails)
             .AddValidator(new EqualityContractValidator())  // Order: 160 (warns on __eq__ without object overload)
             .AddValidator(new InterfaceConflictValidator()) // Order: 170 (detects conflicting synthesized interfaces)
-            .AddValidator(new DefaultParameterValidator())  // Order: 250
+            .AddValidator(new ConstantPositionValidator())  // Order: 250
             .AddValidator(new ControlFlowValidator())       // Order: 400 (CFG-based, handles unreachable code)
             .AddValidator(new DefiniteAssignmentValidator()) // Order: 402 (bare-declared variable use-before-assign — #1559)
             .AddValidator(new ExhaustivenessValidator())    // Order: 405 (match exhaustiveness)

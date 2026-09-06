@@ -111,6 +111,10 @@ public class DispatchSiteInventoryTests
         // ══════════════════════════════════════════════════════════════════════
 
         ["Semantic/Validation/ConstantDefaultClassifier.cs::ConstantDefaultClassifier.Classify"] = "guarded-by:ParameterDefaultConstantMatrixTests",
+        ["Semantic/Validation/ConstantPositionValidator.cs::ConstantPositionValidator.CollectIdentifierNamesInto"] = "walker-default-contract",
+        ["Semantic/Validation/ConstantPositionValidator.cs::ConstantPositionValidator.IsMutableDefault"] = "walker-default-contract",
+        // DefaultParameterValidator is superseded by ConstantPositionValidator but its file
+        // remains in the tree (shared worktree cannot delete) — these drain when it is deleted.
         ["Semantic/Validation/DefaultParameterValidator.cs::DefaultParameterValidator.CollectIdentifierNamesInto"] = "walker-default-contract",
         ["Semantic/Validation/DefaultParameterValidator.cs::DefaultParameterValidator.IsMutableDefault"] = "walker-default-contract",
         ["Semantic/Validation/EqualityContractValidator.cs::EqualityContractValidator.Validate"] = "walker-default-contract",

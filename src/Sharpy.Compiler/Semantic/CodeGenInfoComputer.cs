@@ -204,6 +204,8 @@ internal class CodeGenInfoComputer
         }
     }
 
+    // Phase 1 moved const-eligibility analysis to ConstEligibility.cs.
+    // The ConstantPositionValidator calls ConstEligibility.LowersToConstantExpression directly.
     private void ProcessImport(ImportStatement import)
     {
         foreach (var alias in import.Names)
