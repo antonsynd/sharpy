@@ -173,6 +173,43 @@ if condition:
 - *Relational patterns use C# `RelationalPattern` and require numeric scrutinee types.*
 - *Positional patterns are mapped to property patterns using field declaration order (no `Deconstruct` required).*
 
+## Constant Patterns
+
+A constant pattern (`case C:` where `C` is a `const` name) matches when the scrutinee equals the
+constant's value. The referenced `const` must be a **compile-time constant** — that is, its declared
+type must be C#-const-eligible (a numeric primitive, `str`, `bool`, or an enum) and its initializer
+must fold to a constant expression without runtime calls. A `const` that is not compile-time (e.g.,
+its initializer is a function call, or its type is `T?`) cannot appear as a constant pattern; compare
+in a guard instead:
+
+```python
+const THRESHOLD: int = 100
+
+def classify(n: int) -> str:
+    match n:
+        case THRESHOLD:
+            return "exact"
+        case _ if n > THRESHOLD:
+            return "above"
+        case _:
+            return "below"
+```
+
+A `const` whose initializer is a call (e.g., `const FM: float = max(4.0, 1.0)`) emits as
+`static readonly` and cannot be used as a constant pattern. Use a guard:
+
+```python
+const FM: float = max(4.0, 1.0)   # not a compile-time constant
+
+def check(v: float) -> str:
+    match v:
+        # case FM:                 # ERROR SPY0605: 'FM' is not a compile-time constant
+        case _ if v == FM:         # OK: compare in a guard
+            return "hit"
+        case _:
+            return "miss"
+```
+
 ## Tuple Patterns
 
 ```python

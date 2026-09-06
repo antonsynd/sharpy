@@ -24,9 +24,59 @@ Default parameter values must be compile-time constants, matching C# semantics. 
 | `None` | `None` | Only for nullable parameter types (`T \| None`) |
 | `None()` | `None()` | Only for Optional parameter types (`T?`) |
 | Enum values | `Color.RED`, `HttpMethod.GET` | |
-| Constant references | `MAX_SIZE`, `DEFAULT_NAME` | Must reference a `const` declaration |
+| Constant references | `MAX_SIZE`, `DEFAULT_NAME` | Must reference a `const` declaration that is itself a compile-time constant |
 | Negated literals | `-1`, `-3.14` | |
 | Conditional of constants | `1 if DEBUG else 0` | Both branches must be constants |
+
+## What is not a compile-time constant
+
+A `const` declaration is a compile-time constant only when its **declared type** is C#-const-eligible
+(a numeric primitive, `str`, `bool`, or an enum) **and** its **initializer** folds to a constant
+expression without runtime calls. The following are not compile-time constants:
+
+**Call-lowered operators.** The floor-division (`//`), floor-modulo (`%`), float exponentiation
+(`**`), and string repetition (`*`) operators lower to runtime helper calls (`FloorDiv`, `FloorMod`,
+`Math.Pow`, `Repeat`), not to C# constant operators. A default that uses one is refused:
+
+```python
+# ❌ Call-lowered operators are not compile-time constants
+def f(x: int = 7 // 2) -> None: ...       # ERROR SPY0401: '//' lowers to a call
+def g(x: int = 7 % 3) -> None: ...        # ERROR SPY0401: '%' lowers to a call
+def h(x: float = 2.0 ** 3.0) -> None: ... # ERROR SPY0401: float '**' lowers to Math.Pow
+def k(x: str = "ab" * 2) -> None: ...     # ERROR SPY0401: str '*' lowers to Repeat
+
+# ✅ Native operators that fold at compile time
+def ok(x: int = 7 * 2 - 1) -> None: ...   # OK: arithmetic on int is a C# constant expression
+def ok2(x: int = 2 ** 3) -> None: ...     # OK: integer '**' folds to a constant
+def ok3(x: str = "a" + "b") -> None: ...  # OK: string concatenation folds
+```
+
+**Call initializers.** A `const` whose initializer is a function call (e.g. `max(...)`) is not a
+compile-time constant. Referencing it from a default is refused:
+
+```python
+const FM: float = max(4.0, 1.0)   # legal declaration, but emits 'static readonly'
+
+def f(t: float = FM) -> None: ... # ERROR SPY0401: 'FM' is not a compile-time constant
+```
+
+**Optional (`T?`) types.** An `Optional` is a struct with case constructors (`Some`/`None()`), not a
+C# primitive. A `const` of type `T?` is never a compile-time constant:
+
+```python
+const O: int? = Some(1)
+
+def g(o: int? = O) -> None: ...   # ERROR SPY0401: an Optional cannot be a compile-time constant
+```
+
+The pattern for `T?` defaults is `None()` with a coalesce in the body (see
+[Pattern for Optional Mutable Arguments](#pattern-for-optional-mutable-arguments)):
+
+```python
+def g(o: int? = None()) -> None:
+    o ??= Some(1)    # assigns Some(1) only when o is None()
+    print(o)
+```
 
 ## Examples
 

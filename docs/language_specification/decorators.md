@@ -246,8 +246,26 @@ Bracket attribute arguments must be **compile-time constants**, matching C# attr
 - Enum member access (e.g., `StringComparison.ordinal`)
 - `type(X)` (maps to `typeof(X)` in C#)
 - Negative numeric literals (e.g., `-42`, `-3.14`)
+- Constant references (`const` declarations that are themselves compile-time constants)
+- Folded constant expressions (e.g., `1 + 2`, `"a" + "b"`) and conditional-of-constants
 
-Non-constant expressions (e.g., `1 + 2`, variable references, function calls other than `type()`) are rejected at compile time with SPY0425.
+Non-constant expressions (e.g., variable references, function calls other than `type()`, operators
+that lower to runtime calls) are rejected at compile time with SPY0425. A `const` reference whose
+initializer is not a compile-time constant (e.g., `const FM: float = max(4.0, 1.0)`) is also
+rejected with SPY0425 naming the reason.
+
+```python
+# ✅ Compile-time const reference in a bracket attribute argument
+const MSG: str = "Use bar() instead"
+
+@[obsolete(MSG)]
+def foo() -> None:
+    pass
+
+# ❌ A const whose initializer is a call is not compile-time
+const DYNAMIC: float = max(4.0, 1.0)   # emits 'static readonly', not 'const'
+# @[some_attr(DYNAMIC)]                # ERROR SPY0425: 'DYNAMIC' is not a compile-time constant
+```
 
 ### Known Decorators vs. Bracket Attributes
 
