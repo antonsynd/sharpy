@@ -125,7 +125,8 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         // because the host composer provides the scope. Only the listed hosts apply — all others are
         // N/A because the scope that owns the const is absent in those hosts.
         new("LocalConstRef", "int", "K", "", "1\n", null),
-        // ClassConstRef uses qualified C.K access (MemberAccess → EnumMember kind, admitted).
+        // ClassConstRef: C.K qualified access is admitted by the validator (EnumMember kind)
+        // and the class field's IsCompileTimeConstant fact makes it emit as `const`.
         new("ClassConstRef", "int", "C.K",
             "class C:\n    const K: int = 1\n\n", "1\n", null),
     };
