@@ -76,6 +76,12 @@ public class SemanticBinding
     private readonly ConcurrentDictionary<Symbol, IReadOnlyList<SynthesizedInterfaceInfo>> _synthesizedInterfaces =
         new(ReferenceEqualityComparer.Instance);
 
+    // #1791: compile-time constant fact for const declarations. Written by ConstEligibility during
+    // the semantic analysis pass (before CodeGenInfoComputer); bridged onto
+    // CodeGenInfo.IsCompileTimeConstant at MaterializeCodeGenInfo so the emitter reads a frozen fact.
+    private readonly ConcurrentDictionary<VariableSymbol, bool> _compileTimeConstants =
+        new(ReferenceEqualityComparer.Instance);
+
     // Maps variable symbols to their resolved types
     private readonly ConcurrentDictionary<VariableSymbol, SemanticType> _variableTypes =
         new(ReferenceEqualityComparer.Instance);
@@ -264,6 +270,27 @@ public class SemanticBinding
 
     public IReadOnlyList<SynthesizedInterfaceInfo>? GetSynthesizedInterfaces(Symbol symbol)
         => _synthesizedInterfaces.TryGetValue(symbol, out var ifaces) ? ifaces : null;
+
+    /// <summary>
+    /// Records the compile-time constant fact for a const variable (#1791). Written by
+    /// <see cref="ConstEligibility"/> during the semantic analysis pass. Bridged onto
+    /// <see cref="CodeGenInfo.IsCompileTimeConstant"/> at <see cref="MaterializeCodeGenInfo"/>
+    /// so code generation reads a frozen fact.
+    /// </summary>
+    public void SetCompileTimeConstant(VariableSymbol symbol, bool isCompileTime)
+    {
+        if (_codeGenInfoFrozen)
+        {
+            AssertNotFrozen("CodeGenInfo", symbol.Name);
+        }
+        _compileTimeConstants[symbol] = isCompileTime;
+    }
+
+    /// <summary>
+    /// Whether a const variable was computed to be a compile-time constant.
+    /// </summary>
+    public bool GetCompileTimeConstant(VariableSymbol symbol)
+        => _compileTimeConstants.TryGetValue(symbol, out var val) && val;
 
     #endregion
 
@@ -465,6 +492,14 @@ public class SemanticBinding
                 && _synthesizedInterfaces.TryGetValue(symbol, out var synthesized))
                 effective = effective with { SynthesizedInterfaces = synthesized };
 
+            // Bridge compile-time constant fact (#1791): ConstEligibility computed this before
+            // CodeGenInfoComputer ran, so the fact travels through the binding.
+            if (!effective.IsCompileTimeConstant
+                && symbol is VariableSymbol varSym
+                && _compileTimeConstants.TryGetValue(varSym, out var isCompileTime)
+                && isCompileTime)
+                effective = effective with { IsCompileTimeConstant = true };
+
             _codeGenInfo[symbol] = effective;
         }
     }
@@ -499,6 +534,11 @@ public class SemanticBinding
 
         foreach (var (symbol, ifaces) in other._synthesizedInterfaces)
             _synthesizedInterfaces.TryAdd(symbol, ifaces);
+
+        // Same consumption point (#1791): compile-time constant facts are bridged at
+        // MaterializeCodeGenInfo on the project-level binding, after this merge.
+        foreach (var (symbol, isConst) in other._compileTimeConstants)
+            _compileTimeConstants.TryAdd(symbol, isConst);
 
         foreach (var (symbol, type) in other._variableTypes)
             _variableTypes.TryAdd(symbol, type);

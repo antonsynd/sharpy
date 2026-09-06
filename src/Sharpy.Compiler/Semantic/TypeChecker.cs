@@ -612,6 +612,12 @@ internal partial class TypeChecker
         _narrowingFlow = previousFlow;
         _currentFacts = previousFacts;
 
+        // Compute compile-time constant facts for every const declaration (#1791).
+        // Runs after type checking (needs expression types and operator lowerings) but before
+        // the validation pipeline, so CodeGenInfoComputer copies a frozen fact.
+        new ConstEligibility(_symbolTable, SemanticBinding, _semanticInfo)
+            .AnalyzeModule(module);
+
         // Run pipeline validators (always enabled)
         var context = CreateSemanticContext();
         context.Diagnostics.Merge(_diagnostics);
