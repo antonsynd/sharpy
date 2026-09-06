@@ -12,7 +12,8 @@ namespace Sharpy.Compiler.Tests.Parser;
 /// <summary>
 /// Guards the suite-seam consolidation (#1736): every <c>Expect(TokenType.Dedent)</c> in the
 /// parser must live inside one of the two suite helpers -- <c>ParseIndentedSuite</c> or
-/// <c>CloseSuite</c> -- and those helpers must have at least 26 call sites across the parser.
+/// <c>CloseSuite</c> -- and those helpers must have exactly the measured census of call sites
+/// across the parser.
 /// A raw <c>Expect(Dedent)</c> outside the helpers means a suite whose end position is still
 /// keyed on the Dedent token rather than the last body statement, which causes folding ranges,
 /// selection ranges, and document symbols to extend one line past the suite's content.
@@ -59,8 +60,17 @@ public class ParserSuiteSeamConformanceTests
             + string.Join("\n", violations));
     }
 
+    /// <summary>
+    /// The measured census of suite-helper call sites in the parser, counted at fb728b9be by this
+    /// very scan. Anchored to a LITERAL rather than a lower bound: a bound cannot detect a site
+    /// drifting upward, and a new Indent/Dedent suite that bypasses the helpers would sit under it
+    /// unnoticed. A change to this number is a change to the seam's reach -- re-measure, name the
+    /// site, and update the literal in the same commit.
+    /// </summary>
+    private const int SuiteHelperCallSiteCensus = 26;
+
     [Fact]
-    public void AtLeast26_SuiteHelperCallSites()
+    public void SuiteHelperCallSites_MatchTheMeasuredCensus()
     {
         var callSites = new List<string>();
 
@@ -86,9 +96,11 @@ public class ParserSuiteSeamConformanceTests
             }
         }
 
-        callSites.Should().HaveCountGreaterThanOrEqualTo(26,
-            "the parser has 26 Indent/Dedent suite sites that must all route through "
-            + "ParseIndentedSuite or CloseSuite (#1736).\nSites found:\n"
+        callSites.Should().HaveCount(SuiteHelperCallSiteCensus,
+            "every Indent/Dedent suite site in the parser routes through ParseIndentedSuite or "
+            + $"CloseSuite, and there are exactly {SuiteHelperCallSiteCensus} of them (#1736). "
+            + "Fewer means a suite left the seam; more means a new suite arrived and its extent "
+            + "behaviour is unmeasured.\nSites found:\n"
             + string.Join("\n", callSites));
     }
 
