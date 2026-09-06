@@ -1675,6 +1675,95 @@ def main() -> None:
             $"[{shape}] the read after the store is the declared int?\n" + string.Join("\n", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
     }
 
+    // ── Nested and starred unpacking: the RHS literal's recorded type is recomposed ──
+
+    /// <summary>
+    /// A tuple literal is typed bottom-up before any slot is pushed, so a bare <c>None</c> element
+    /// types as <c>void</c> and the literal records <c>tuple[None, …]</c>. The unpacking path
+    /// re-checks each element under its target's declared slot, and the literal's own type is
+    /// recomposed from those checked elements — which is what the emitter reads to declare its
+    /// deconstruction temp. Without the recomposition the nested shape emits
+    /// <c>var __t = ((null, "b"), 1)</c> (CS0815) and the starred shape binds a <c>void</c> local
+    /// (SPY0599). Executing on purpose: both defects are invisible at the diagnostic level.
+    /// </summary>
+    public static IEnumerable<object[]> UnpackingShapesWithANoneElement() => new[]
+    {
+        new object[]
+        {
+            "nested",
+            "    x: str | None = \"a\"\n    y: str = \"z\"\n    n: int = 0\n"
+                + "    (x, y), n = (None, \"b\"), 1\n    print(x is None, y, n)",
+            "True b 1",
+        },
+        new object[]
+        {
+            "starred",
+            "    x: str | None = \"a\"\n    x, *rest = None, 1, 2\n    print(x is None, rest)",
+            "True [1, 2]",
+        },
+        new object[]
+        {
+            "starred, non-None control",
+            "    x: str | None = \"a\"\n    x, *rest = \"b\", 1, 2\n    print(x, rest)",
+            "b [1, 2]",
+        },
+        new object[]
+        {
+            "starred, target after the star",
+            "    z: str | None = \"z\"\n    a, *mid, z = 1, 2, 3, None\n    print(a, mid, z is None)",
+            "1 [2, 3] True",
+        },
+        new object[]
+        {
+            "starred, all fresh targets",
+            "    a, *rest = 1, 2, 3\n    print(a, rest)",
+            "1 [2, 3]",
+        },
+        new object[]
+        {
+            "starred, list RHS (no per-element nodes)",
+            "    xs: list[int] = [1, 2, 3]\n    a, *rest = xs\n    print(a, rest)",
+            "1 [2, 3]",
+        },
+    };
+
+    [Theory]
+    [MemberData(nameof(UnpackingShapesWithANoneElement))]
+    public void UnpackingShape_RecomposesTheRhsTupleTypeFromItsCheckedElements(
+        string shape, string body, string expected)
+    {
+        var source = "def main() -> None:\n" + body + "\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue($"[{shape}]\n{source}\n" + string.Join("\n", result.CompilationErrors));
+        IsIce(result).Should().BeFalse(
+            $"[{shape}] the temp's declared type comes from the recorded tuple type, so Roslyn is "
+            + $"never the refusing party\n" + string.Join("\n", result.CompilationErrors));
+        LastOutputLine(result).Should().Be(expected, $"[{shape}]\n{source}");
+    }
+
+    /// <summary>
+    /// The starred path's binding control: a target that already has a declared binding is a STORE
+    /// into it, not a fresh local. Before the slot push, even the non-None control emitted
+    /// <c>var x_1 = __t.Item1</c>, a new local shadowing the declared <c>x</c>, so <c>x</c> ended
+    /// up <c>str</c> instead of <c>str | None</c> and the later None store was refused.
+    /// </summary>
+    [Fact]
+    public void StarredUnpacking_PreDeclaredTarget_KeepsItsDeclaredType()
+    {
+        var result = CompileAndExecute(@"
+def main() -> None:
+    x: str | None = ""a""
+    x, *rest = ""b"", 1, 2
+    x = None
+    print(x is None, rest)
+");
+        result.Success.Should().BeTrue(
+            "the starred store writes into the declared str | None slot, so a later None fits\n"
+            + string.Join("\n", result.CompilationErrors));
+        LastOutputLine(result).Should().Be("True [1, 2]");
+    }
+
     // ── Tuple-element stores under a narrowing: each element carries its OWN value ──
 
     /// <summary>

@@ -1328,6 +1328,34 @@ internal partial class TypeChecker
     /// the per-element nodes the store seam needs to see a value's shape. Parentheses are
     /// transparent, as they are everywhere else the seam looks at a value.
     /// </summary>
+    /// <summary>
+    /// Re-records a tuple LITERAL's own type from the types its elements were just checked with.
+    /// </summary>
+    /// <remarks>
+    /// A tuple literal is typed bottom-up before anything pushes a slot, so a bare <c>None</c>
+    /// element types as <c>void</c> and the literal records <c>tuple[None, …]</c>. The unpacking
+    /// path then re-checks each element UNDER its target's declared slot, which fixes the element
+    /// nodes but leaves the literal's own recorded type stale — and that recorded type is what the
+    /// emitter reads to declare its deconstruction temp, so a stale one prints
+    /// <c>var __t = (null, 1)</c>: CS0815, "cannot assign null to an implicitly-typed variable"
+    /// (#1707). ONE recomposition point, called by every unpacking shape — flat, nested and
+    /// starred — so a fourth shape cannot arrive with its own copy or with none.
+    /// </remarks>
+    private void RecomposeTupleLiteralType(
+        Expression? valueNode, IReadOnlyList<Expression>? elementNodes)
+    {
+        if (valueNode == null || elementNodes == null)
+            return;
+        if (AstHelper.UnwrapParenthesized(valueNode) is not TupleLiteral literal)
+            return;
+
+        var checkedTypes = new List<SemanticType>(elementNodes.Count);
+        foreach (var node in elementNodes)
+            checkedTypes.Add(_semanticInfo.GetExpressionType(node) ?? SemanticType.Unknown);
+
+        _semanticInfo.SetExpressionType(literal, new TupleType { ElementTypes = checkedTypes });
+    }
+
     private static IReadOnlyList<Expression>? TupleLiteralElements(Expression? value)
         => value != null && AstHelper.UnwrapParenthesized(value) is TupleLiteral literal
             && !literal.Elements.Any(e => e is SpreadElement)
@@ -1525,9 +1553,14 @@ internal partial class TypeChecker
                     continue;
                 }
 
-                // Recurse into nested tuple
+                // Recurse into nested tuple, then recompose the inner literal's own type from
+                // the elements the recursion just checked under their targets' slots. Without the
+                // recomposition the OUTER recomposition reads the stale inner type and the temp is
+                // still `var __t = ((null, "b"), 1)` — CS0815 (#1707).
+                var nestedValueNodes = TupleLiteralElements(valueElemNode);
                 CheckTupleUnpackingElements(nestedTuple.Elements, nestedTupleType.ElementTypes,
-                    TupleLiteralElements(valueElemNode));
+                    nestedValueNodes);
+                RecomposeTupleLiteralType(valueElemNode, nestedValueNodes);
             }
             else
             {
@@ -1586,7 +1619,109 @@ internal partial class TypeChecker
     /// Type-checks star unpacking patterns: first, *rest = items
     /// The RHS can be a list[T] or tuple[...].
     /// </summary>
-    private void CheckStarUnpacking(TupleLiteral targetTuple, SemanticType valueType, Assignment assignment)
+    /// <summary>
+    /// Checks each RHS element of a starred unpacking under the DECLARED slot of the target it
+    /// lands on, and returns the checked element types in RHS order.
+    /// </summary>
+    /// <remarks>
+    /// The mapping is positional and the star absorbs the middle: the first
+    /// <paramref name="targetsBefore"/> values belong to the targets before the star, the last
+    /// <paramref name="targetsAfter"/> to the targets after it, and everything between goes into
+    /// the star's list and is checked with no slot.
+    /// </remarks>
+    private IReadOnlyList<SemanticType> CheckStarValueElements(
+        TupleLiteral targetTuple, IReadOnlyList<Expression> valueNodes,
+        int targetsBefore, int targetsAfter)
+    {
+        var types = new List<SemanticType>(valueNodes.Count);
+
+        for (int i = 0; i < valueNodes.Count; i++)
+        {
+            var target = StarTargetForValueIndex(targetTuple, valueNodes.Count, i, targetsBefore, targetsAfter);
+            var slot = target is Identifier id
+                && (_symbolTable.Lookup(id.Name, searchParents: false) as VariableSymbol
+                    ?? _symbolTable.Lookup(id.Name, searchParents: true) as VariableSymbol)
+                    is { } predecessor
+                ? DeclaredBindingType(predecessor)
+                : null;
+
+            SemanticType elementType;
+            if (slot is not null and not UnknownType)
+            {
+                using (EnterStore(StorePosition.TupleElement, slot, valueNodes[i]))
+                    elementType = CheckExpression(valueNodes[i]);
+
+                // A bare None into a nullable slot carries the SLOT as its recorded type, so the
+                // emitter's temp is typed rather than `var __t = (null, …)` — the same arm the flat
+                // path applies (#1707).
+                if (elementType is VoidType && slot is NullableType)
+                {
+                    _semanticInfo.SetExpressionType(valueNodes[i], slot);
+                    elementType = slot;
+                }
+            }
+            else
+            {
+                elementType = CheckExpression(valueNodes[i]);
+            }
+
+            types.Add(elementType);
+        }
+
+        return types;
+    }
+
+    /// <summary>
+    /// The non-star target a starred unpacking's value at <paramref name="valueIndex"/> lands on,
+    /// or null when it falls inside the star's span.
+    /// </summary>
+    private static Expression? StarTargetForValueIndex(
+        TupleLiteral targetTuple, int valueCount, int valueIndex, int targetsBefore, int targetsAfter)
+    {
+        if (valueIndex < targetsBefore)
+            return targetTuple.Elements[valueIndex];
+
+        int fromEnd = valueCount - valueIndex;
+        if (fromEnd <= targetsAfter)
+            return targetTuple.Elements[targetTuple.Elements.Length - fromEnd];
+
+        return null;
+    }
+
+    /// <summary>
+    /// The type a non-star target takes when it has no declared binding: its OWN element's checked
+    /// type when the RHS was a literal, else the one type derived for the star's list.
+    /// </summary>
+    private static SemanticType NonStarTargetType(
+        TupleLiteral targetTuple, Identifier target,
+        IReadOnlyList<SemanticType>? perElement, SemanticType fallback)
+    {
+        if (perElement == null)
+            return fallback;
+
+        int starPosition = targetTuple.Elements.ToList().FindIndex(e => e is StarExpression);
+        int targetIndex = targetTuple.Elements.ToList().FindIndex(e => ReferenceEquals(e, target));
+        if (targetIndex < 0)
+            return fallback;
+
+        if (targetIndex < starPosition)
+            return targetIndex < perElement.Count ? perElement[targetIndex] : fallback;
+
+        int fromEnd = targetTuple.Elements.Length - targetIndex;
+        int valueIndex = perElement.Count - fromEnd;
+        return valueIndex >= 0 && valueIndex < perElement.Count ? perElement[valueIndex] : fallback;
+    }
+
+    /// <param name="valueNodes">
+    /// The RHS element EXPRESSIONS when the value is a tuple literal, else null. Given them, each
+    /// non-star target's DECLARED slot is pushed before its own element is checked, exactly as the
+    /// flat unpacking path does (#1785): the whole-expression check types a bare <c>None</c> as
+    /// <c>void</c> before any slot exists, and binding that void to the target made
+    /// <c>x: str | None = "a"; x, *rest = None, 1, 2</c> a SPY0599 void local. It also gives each
+    /// target its OWN element's type instead of the one type derived for the star's list.
+    /// </param>
+    private void CheckStarUnpacking(
+        TupleLiteral targetTuple, Assignment assignment, IReadOnlyList<Expression>? valueNodes)
     {
         // Validate only one star expression
         int starCount = targetTuple.Elements.Count(e => e is StarExpression);
@@ -1598,6 +1733,26 @@ internal partial class TypeChecker
             return;
         }
 
+        int starPosition = targetTuple.Elements.ToList().FindIndex(e => e is StarExpression);
+        int targetsBefore = starPosition;
+        int targetsAfter = targetTuple.Elements.Length - starPosition - 1;
+
+        // Per-element types when the RHS is a literal of sufficient arity; otherwise the whole
+        // expression's type, as before.
+        IReadOnlyList<SemanticType>? perElement = null;
+        SemanticType valueType;
+        if (valueNodes != null && valueNodes.Count >= targetsBefore + targetsAfter)
+        {
+            perElement = CheckStarValueElements(targetTuple, valueNodes, targetsBefore, targetsAfter);
+            RecomposeTupleLiteralType(assignment.Value, valueNodes);
+            valueType = new TupleType { ElementTypes = perElement.ToList() };
+            _semanticInfo.SetExpressionType(assignment.Value, valueType);
+        }
+        else
+        {
+            valueType = CheckExpression(assignment.Value);
+        }
+
         // Determine element type from the source
         SemanticType elementType;
         if (valueType is GenericType { Name: BuiltinNames.List } listType && listType.TypeArguments.Count > 0)
@@ -1607,9 +1762,8 @@ internal partial class TypeChecker
         else if (valueType is TupleType tupleType)
         {
             // For tuples, compute the starred variable's element type from the rest elements
-            int starIdx = targetTuple.Elements.ToList().FindIndex(e => e is StarExpression);
-            int nBefore = starIdx;
-            int nAfter = targetTuple.Elements.Length - starIdx - 1;
+            int nBefore = targetsBefore;
+            int nAfter = targetsAfter;
             int tupleArity = tupleType.ElementTypes.Count;
 
             // Collect the types of elements that go into the rest variable
@@ -1673,11 +1827,24 @@ internal partial class TypeChecker
             }
             else if (targetElem is Identifier id)
             {
+                // A target that already has a declared binding is a STORE into it, not a fresh
+                // local: the emitted C# assigns INTO that local and it keeps its declared type
+                // (#1706). Without this even the non-None control shadowed the declared name —
+                // `x: str | None = "a"; x, *rest = "b", 1, 2` emitted `var x_1 = __t.Item1`, so
+                // `x` ended up `str`.
+                var predecessor = _symbolTable.Lookup(id.Name, searchParents: false)
+                    as VariableSymbol
+                    ?? _symbolTable.Lookup(id.Name, searchParents: true) as VariableSymbol;
+
+                var boundType = predecessor != null
+                    ? DeclaredBindingType(predecessor)
+                    : NonStarTargetType(targetTuple, id, perElement, elementType);
+
                 var symbol = new VariableSymbol
                 {
                     Name = id.Name,
                     Kind = SymbolKind.Variable,
-                    Type = elementType,
+                    Type = boundType,
                     IsConstant = false,
                     DeclarationLine = id.LineStart,
                     DeclarationColumn = id.ColumnStart,
@@ -1686,10 +1853,18 @@ internal partial class TypeChecker
                     AccessLevel = AccessLevel.Public
                 };
                 _symbolTable.Define(symbol);
-                SemanticBinding.SetVariableType(symbol, elementType);
+                SemanticBinding.SetVariableType(symbol, boundType);
                 _semanticInfo.SetIdentifierSymbol(id, symbol);
-                _semanticInfo.SetTargetBinding(id, new TargetBinding(TargetBindingKind.Declares));
-                _semanticInfo.SetExpressionType(id, elementType);
+                if (predecessor != null)
+                {
+                    _semanticInfo.SetRebindingPredecessor(symbol, predecessor);
+                    _semanticInfo.SetTargetBinding(id, new TargetBinding(TargetBindingKind.Rebinds));
+                }
+                else
+                {
+                    _semanticInfo.SetTargetBinding(id, new TargetBinding(TargetBindingKind.Declares));
+                }
+                _semanticInfo.SetExpressionType(id, boundType);
             }
         }
     }

@@ -88,27 +88,22 @@ internal partial class TypeChecker
                     targetTuple.Elements, placeholderTypes, elemNodes);
 
                 // Build the tuple's recorded type from the individually-checked elements.
-                if (AstHelper.UnwrapParenthesized(assignment.Value) is TupleLiteral rhsTupleLit)
-                {
-                    var checkedTypes = new List<SemanticType>(elemNodes.Count);
-                    foreach (var node in elemNodes)
-                        checkedTypes.Add(
-                            _semanticInfo.GetExpressionType(node) ?? SemanticType.Unknown);
-                    var tupleType = new TupleType { ElementTypes = checkedTypes };
-                    _semanticInfo.SetExpressionType(rhsTupleLit, tupleType);
-                }
+                RecomposeTupleLiteralType(assignment.Value, elemNodes);
 
                 return;
             }
-
-            // Non-literal RHS (or star pattern): check the whole expression first.
-            var tupleValueType = CheckExpression(assignment.Value);
 
             if (hasStar)
             {
-                CheckStarUnpacking(targetTuple, tupleValueType, assignment);
+                // A starred target with a tuple-LITERAL value is checked per element, like the flat
+                // path: the whole-expression check types a bare `None` element as void before any
+                // slot is pushed, and the star path then bound that void to the target (#1707).
+                CheckStarUnpacking(targetTuple, assignment, TupleLiteralElements(assignment.Value));
                 return;
             }
+
+            // Non-literal RHS: check the whole expression first.
+            var tupleValueType = CheckExpression(assignment.Value);
 
             // Value must be a tuple type
             if (tupleValueType is not TupleType tupleType2)
