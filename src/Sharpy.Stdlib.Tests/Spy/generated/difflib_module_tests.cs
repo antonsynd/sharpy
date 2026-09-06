@@ -45,7 +45,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (15, 5) - (15, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                 var blocks = sm.GetMatchingBlocks();
 #line (16, 5) - (16, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
-                var last = blocks[global::Sharpy.Builtins.Len(blocks) - 1];
+                global::System.ValueTuple<int, int, int> last = blocks[global::Sharpy.Builtins.Len(blocks) - 1];
 #line (17, 5) - (17, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"
                 Xunit.Assert.Equal((5, 5, 0), last);
 #line (18, 5) - (18, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/difflib/difflib_module_tests.spy"

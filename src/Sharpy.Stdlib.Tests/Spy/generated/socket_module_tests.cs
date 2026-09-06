@@ -187,7 +187,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (129, 5) - (129, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 server.Listen(5);
 #line (131, 5) - (131, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var serverAddr = server.Getsockname();
+                global::System.ValueTuple<string, int> serverAddr = server.Getsockname();
 #line (132, 5) - (132, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.Equal("127.0.0.1", serverAddr.Item1);
 #line (133, 5) - (133, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -617,7 +617,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (362, 5) - (362, 75) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 global::Sharpy.SocketModule.Socket client = socket.CreateConnection(("127.0.0.1", port));
 #line (364, 5) - (364, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var peer = client.Getpeername();
+                global::System.ValueTuple<string, int> peer = client.Getpeername();
 #line (365, 5) - (365, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.Equal("127.0.0.1", peer.Item1);
 #line (366, 5) - (366, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
@@ -694,7 +694,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line (407, 5) - (407, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 client.Connect(("127.0.0.1", port));
 #line (409, 5) - (409, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
-                var peer = client.Getpeername();
+                global::System.ValueTuple<string, int> peer = client.Getpeername();
 #line (410, 5) - (410, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.Equal("127.0.0.1", peer.Item1);
 #line (411, 5) - (411, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
