@@ -326,9 +326,10 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Records <paramref name="expectation"/> as the comprehension's element type when the produced
-    /// element is assignable to it; otherwise keeps the produced type so assignability decides
-    /// (a mistyped comprehension stays SPY0220). The comprehension twin of the collection literals'
-    /// <c>AllAssignableTo</c> arm (#1671).
+    /// element is assignable to it; otherwise keeps the produced type so assignability decides.
+    /// Now only used for SPREAD comprehension elements, which have no single node to anchor a
+    /// diagnostic. Non-spread comprehension elements route through
+    /// <see cref="AdmitCollectionElements"/> instead (#1776).
     /// </summary>
     private SemanticType ContextualElementType(
         SemanticType produced, SemanticType? expectation, Expression? element = null)
@@ -370,14 +371,27 @@ internal partial class TypeChecker
 
         _symbolTable.ExitScope();
 
+        // Non-spread comprehension elements route through AdmitCollectionElements so a
+        // refused value reports at the ELEMENT span, matching the literal twin ([v]).
+        // Spreads keep ContextualElementType because there is no single element node.
+        var commonType = elementType;
+        if (listComp.Element is not SpreadElement
+            && expectations?[0] is { } expectation && !ContainsTypeParameterType(expectation)
+            && AdmitCollectionElements(
+                new (Expression?, SemanticType)[] { (listComp.Element, elementType) },
+                expectation) != ElementAdmissionResult.Refused)
+        {
+            commonType = expectation;
+        }
+        else if (listComp.Element is SpreadElement)
+        {
+            commonType = ContextualElementType(elementType, expectations?[0]);
+        }
+
         return new GenericType
         {
             Name = BuiltinNames.List,
-            TypeArguments = new List<SemanticType>
-            {
-                ContextualElementType(elementType, expectations?[0],
-                    listComp.Element is SpreadElement ? null : listComp.Element)
-            }
+            TypeArguments = new List<SemanticType> { commonType }
         };
     }
 
@@ -407,14 +421,24 @@ internal partial class TypeChecker
 
         _symbolTable.ExitScope();
 
+        var commonType = elementType;
+        if (setComp.Element is not SpreadElement
+            && expectations?[0] is { } expectation && !ContainsTypeParameterType(expectation)
+            && AdmitCollectionElements(
+                new (Expression?, SemanticType)[] { (setComp.Element, elementType) },
+                expectation) != ElementAdmissionResult.Refused)
+        {
+            commonType = expectation;
+        }
+        else if (setComp.Element is SpreadElement)
+        {
+            commonType = ContextualElementType(elementType, expectations?[0]);
+        }
+
         return new GenericType
         {
             Name = BuiltinNames.Set,
-            TypeArguments = new List<SemanticType>
-            {
-                ContextualElementType(elementType, expectations?[0],
-                    setComp.Element is SpreadElement ? null : setComp.Element)
-            }
+            TypeArguments = new List<SemanticType> { commonType }
         };
     }
 
@@ -438,14 +462,30 @@ internal partial class TypeChecker
 
         _symbolTable.ExitScope();
 
+        // Dict comprehension keys and values always have a node — route both through
+        // AdmitCollectionElements so refusals report at the element span.
+        var commonKeyType = keyType;
+        if (expectations?[0] is { } keyExpectation && !ContainsTypeParameterType(keyExpectation)
+            && AdmitCollectionElements(
+                new (Expression?, SemanticType)[] { (dictComp.Key, keyType) },
+                keyExpectation) != ElementAdmissionResult.Refused)
+        {
+            commonKeyType = keyExpectation;
+        }
+
+        var commonValueType = valueType;
+        if (expectations?[1] is { } valueExpectation && !ContainsTypeParameterType(valueExpectation)
+            && AdmitCollectionElements(
+                new (Expression?, SemanticType)[] { (dictComp.Value, valueType) },
+                valueExpectation) != ElementAdmissionResult.Refused)
+        {
+            commonValueType = valueExpectation;
+        }
+
         return new GenericType
         {
             Name = BuiltinNames.Dict,
-            TypeArguments = new List<SemanticType>
-            {
-                ContextualElementType(keyType, expectations?[0], dictComp.Key),
-                ContextualElementType(valueType, expectations?[1], dictComp.Value)
-            }
+            TypeArguments = new List<SemanticType> { commonKeyType, commonValueType }
         };
     }
 
