@@ -968,6 +968,16 @@ internal partial class TypeChecker
 
     private void CheckVariableDeclaration(VariableDeclaration varDecl)
     {
+        // A type body's const fields go into scope BEFORE any initializer is checked, so the body
+        // resolves its own const dependency order exactly as C# does. Two defects came from their
+        // absence. The declaration below found nothing in scope and built a SECOND VariableSymbol
+        // for a const NameResolver had already put in the type's Fields — every reference bound to
+        // that second symbol while code generation named the first, so a bare read in a signature
+        // position had no CodeGenInfo and the emitter threw SPY0909 (#1791). And the body was read
+        // strictly top to bottom, so `const A: int = B` above `const B: int = 3` reported SPY0200
+        // for a name the class plainly declares (#1795).
+        DefineTypeBodyConstFields();
+
         var declaredType = _typeResolver.ResolveTypeAnnotation(varDecl.Type);
 
         if (varDecl.InitialValue != null)
@@ -1032,13 +1042,15 @@ internal partial class TypeChecker
 
         // For constants:
         // - Module-level consts are already created by NameResolver, so we update their type
+        // - A class/struct FIELD const is created by NameResolver too, in the TYPE's Fields, and
+        //   DefineTypeBodyConstFields put that object in scope, so it takes the same arm
         // - Function-level consts are NOT created by NameResolver, so we need to create them
         if (varDecl.IsConst)
         {
             if (existingSymbol is VariableSymbol existingConst)
             {
-                // Module-level const was already created by NameResolver
-                // Update its type now that we've resolved it
+                // Already created by NameResolver — a module const, or a field const the type body
+                // put in scope. Update its type now that we've resolved it.
                 SemanticBinding.SetVariableType(existingConst, declaredType);
                 _semanticInfo.SetDeclarationSymbol(varDecl, existingConst);
                 TryFoldConstantValue(existingConst, declaredType, varDecl.InitialValue);
@@ -2459,6 +2471,24 @@ internal partial class TypeChecker
             {
                 CheckExpression(targetElem);
             }
+        }
+    }
+
+    /// <summary>
+    /// Puts every <c>const</c> field of the type whose body the checker is standing in into scope,
+    /// so the body's declarations resolve each other in any order (C# resolves const dependency
+    /// order itself). Idempotent, and confined to consts: an INSTANCE field is deliberately not
+    /// visible by bare name, which is the class-scope rule R-Y enforces.
+    /// </summary>
+    private void DefineTypeBodyConstFields()
+    {
+        if (_currentClass == null || !SymbolTable.IsClassLikeScope(_symbolTable.CurrentScope.Name))
+            return;
+
+        foreach (var field in _currentClass.Fields)
+        {
+            if (field.IsConstant)
+                _symbolTable.TryDefine(field);
         }
     }
 

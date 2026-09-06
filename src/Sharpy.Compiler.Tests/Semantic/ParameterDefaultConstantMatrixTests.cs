@@ -854,6 +854,88 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
                 $"[{host} × {consumer}] names the const that broke constancy\n{source}");
     }
 
+    // ══ One declaration, one symbol: the class-body const spellings ══════════════════════════
+
+    /// <summary>
+    /// A <c>const</c> declared in a type body is ONE symbol at every spelling that reads it (#1791,
+    /// #1795).
+    ///
+    /// <para>It was two. <c>NameResolver</c> creates the field symbol and puts it in the type's
+    /// <c>Fields</c>; the checker enters a FRESH scope for the body, so its
+    /// <c>Lookup(name, searchParents: false)</c> missed that symbol and took the function-level-const
+    /// arm, defining a SECOND one. Every reference bound to the second while
+    /// <c>CodeGenInfoComputer.ProcessField</c> named the first, so a bare read in a signature
+    /// position had no CodeGenInfo and the emitter threw SPY0909, and a sibling-const initializer
+    /// could not resolve the name at all.</para>
+    ///
+    /// <para>Each cell EXECUTES, because the failure was at code generation: a cell that only
+    /// checked diagnostics would have passed over the ICE.</para>
+    /// </summary>
+    [Theory]
+    // The bare spelling in an instance method's parameter default — SPY0401 at 646b9cf08,
+    // SPY0909 at fb728b9be.
+    [InlineData("BareInstanceMethodDefault",
+        "class C:\n    const K: int = 1\n\n    def m(self, x: int = K) -> None:\n        print(x)\n\ndef main():\n    C().m()\n",
+        "1\n")]
+    // The @static twin, same history.
+    [InlineData("BareStaticMethodDefault",
+        "class C:\n    const K: int = 1\n\n    @static\n    def m(x: int = K) -> None:\n        print(x)\n\ndef main():\n    C.m()\n",
+        "1\n")]
+    // The qualified spelling, which printed 1 at 646b9cf08 and CS1736 at fb728b9be.
+    [InlineData("QualifiedMethodDefault",
+        "class C:\n    const K: int = 1\n\nclass D:\n    def m(self, x: int = C.K) -> None:\n        print(x)\n\ndef main():\n    D().m()\n",
+        "1\n")]
+    // A sibling const read BACKWARD — SPY0909 at both shas (#1795).
+    [InlineData("SiblingConstBackward",
+        "class C:\n    const A: int = 3\n    const B: int = A\n\ndef main():\n    print(C.B)\n",
+        "3\n")]
+    // A sibling const read FORWARD — SPY0200 at both shas. A type body resolves its own const
+    // dependency order, as C# does (#1795).
+    [InlineData("SiblingConstForward",
+        "class C:\n    const A: int = B\n    const B: int = 3\n\ndef main():\n    print(C.A)\n",
+        "3\n")]
+    // A bare read in a method BODY still resolves the const (the class-scope rule R-Y refuses
+    // instance fields by bare name, not consts a signature or initializer reads).
+    [InlineData("QualifiedBodyRead",
+        "class C:\n    const K: int = 7\n\n    def m(self) -> None:\n        print(C.K)\n\ndef main():\n    C().m()\n",
+        "7\n")]
+    public void ClassBodyConst_IsOneSymbol_AtEverySpelling(string label, string source, string expected)
+    {
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.InternalCompilerError
+                || d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"[{label}] two symbols for one const is what produced SPY0909/SPY0908 here. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.Success.Should().BeTrue(
+            $"[{label}] must compile and run. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Should().Be(expected,
+            $"[{label}] reads the const's declared value\n{source}");
+    }
+
+    /// <summary>
+    /// The emitted declaration for the sibling chain: BOTH consts carry <c>const</c>, so the second
+    /// is a compile-time constant built from the first rather than a <c>static readonly</c> read at
+    /// runtime. This is what makes the executing cell above discriminating — a pair of
+    /// <c>static readonly</c> fields prints 3 too.
+    /// </summary>
+    [Fact]
+    public void SiblingConstChain_BothEmitAsCSharpConst()
+    {
+        var result = CompileAndExecute(
+            "class C:\n    const A: int = 3\n    const B: int = A\n\ndef main():\n    print(C.B)\n");
+
+        result.Success.Should().BeTrue(
+            $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}");
+        result.GeneratedCSharp.Should().NotBeNull();
+        result.GeneratedCSharp.Should().Contain("public const int A = 3",
+            $"the referenced const is compile-time\n{result.GeneratedCSharp}");
+        result.GeneratedCSharp.Should().Contain("public const int B = A",
+            $"and so is the one that reads it\n{result.GeneratedCSharp}");
+    }
+
     // ══ The decorator-argument matrix ════════════════════════════════════════════════════════
 
     /// <summary>

@@ -294,6 +294,11 @@ public class DispatchSiteInventoryTests
         ["Sharpy.Lsp/Handlers/DefinitionHandler.cs::SharpyDefinitionHandler.ResolveSymbol"] = "walker-default-contract",
         ["Sharpy.Lsp/Handlers/ImplementationHandler.cs::SharpyImplementationHandler.ResolveSymbol"] = "walker-default-contract",
         ["Sharpy.Lsp/Handlers/TypeDefinitionHandler.cs::SharpyTypeDefinitionHandler.ResolveType"] = "walker-default-contract",
+        // AnnotationsOf lists only the declaration kinds this handler's callers reach; every other
+        // kind yields nothing and the caller falls through to the expression route. Rostered as a
+        // net rather than a totality guard because the navigation tests, not a scan, are what cover
+        // it — WP-LSP can upgrade the row to guarded-by once TypeDefinitionTests scans the site.
+        ["Sharpy.Lsp/Handlers/TypeDefinitionHandler.cs::SharpyTypeDefinitionHandler.AnnotationsOf"] = "refusal-net:TypeDefinitionTests",
         ["Sharpy.Lsp/Handlers/TypeHierarchyPrepareHandler.cs::SharpyTypeHierarchyPrepareHandler.ResolveTypeSymbol"] = "walker-default-contract",
         // DeclarationCursorMatrixTests (src/Sharpy.Lsp.Tests) exercises the resolver behaviorally:
         // rename/references parity across the declaration-cursor matrix.
