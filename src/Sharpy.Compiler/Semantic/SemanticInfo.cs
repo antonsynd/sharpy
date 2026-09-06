@@ -171,6 +171,16 @@ public class SemanticInfo : ISemanticQuery
     // Track member access expressions that resolve to events (for codegen to emit +=/-= correctly)
     private readonly ConcurrentDictionary<Expression, byte> _eventAccessNodes = new(ReferenceEqualityComparer.Instance);
 
+    // #1786 (R-Y): an identifier that BOUND a module-level variable after the scope walk crossed a
+    // class/struct body declaring a member of the SAME name. The checker's answer is the module
+    // variable (Python's answer too), but the emitter writes bare names and C# binds a bare name
+    // inside a method to the field first, so an unqualified emission silently reads the field —
+    // `v = 99` at module level with `class C: v = 1` printed 1 where Python prints 99, and the
+    // typed twin was CS0029 behind SPY0908. Which name shadows which is a resolution fact the
+    // emitter must not re-derive (Rule 2), so it is recorded here and codegen qualifies the access.
+    private readonly ConcurrentDictionary<Identifier, byte> _moduleAccessCrossingClassMembers =
+        new(ReferenceEqualityComparer.Instance);
+
     // Track expressions that denote a type rather than a value (e.g., a module-qualified
     // reference to an exported TypeSymbol). Used to accept such expressions for parameters
     // backed by CLR System.Type (e.g., assert_raises(zoneinfo.ZoneInfoNotFoundError)).
@@ -1052,6 +1062,21 @@ public class SemanticInfo : ISemanticQuery
     public bool IsEventAccess(Expression expr) => _eventAccessNodes.ContainsKey(expr);
 
     /// <summary>
+    /// Records that <paramref name="identifier"/> binds a module-level variable that a class or
+    /// struct body shadows with a same-named member (#1786, R-Y). Codegen must spell the access
+    /// module-qualified: a bare name in the emitted method body binds the FIELD in C#.
+    /// </summary>
+    public void SetModuleAccessCrossesClassMember(Identifier identifier)
+        => _moduleAccessCrossingClassMembers.TryAdd(identifier, 0);
+
+    /// <summary>
+    /// Whether <paramref name="identifier"/> binds a module-level variable shadowed by a same-named
+    /// class or struct member, so the emitted access must be module-qualified (#1786, R-Y).
+    /// </summary>
+    public bool ModuleAccessCrossesClassMember(Identifier identifier)
+        => _moduleAccessCrossingClassMembers.ContainsKey(identifier);
+
+    /// <summary>
     /// Marks an expression as a compile-time literal-derived string (PEP 675 #1731).
     /// </summary>
     public void SetLiteralDerived(Expression expr) => _literalDerivedStrings.TryAdd(expr, 0);
@@ -1650,6 +1675,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._augmentedAssignMutations)
             _augmentedAssignMutations.TryAdd(kvp.Key, kvp.Value);
+
+        foreach (var kvp in other._moduleAccessCrossingClassMembers)
+            _moduleAccessCrossingClassMembers.TryAdd(kvp.Key, kvp.Value);
 
         foreach (var kvp in other._defaultInterfaceDispatches)
             _defaultInterfaceDispatches.TryAdd(kvp.Key, kvp.Value);
