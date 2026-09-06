@@ -48,11 +48,11 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     public ParameterDefaultConstantMatrixTests(ITestOutputHelper output) : base(output) { }
 
     // ── Axis sizes, anchored to literals ─────────────────────────────────────────────────────
-    private const int KindCount = 18;
+    private const int KindCount = 28;
     private const int HostCount = 5;
-    private const int AdmittedCellCount = 40;
-    private const int RefusedCellCount = 49;
-    private const int NotApplicableCellCount = 1;
+    private const int AdmittedCellCount = 47;
+    private const int RefusedCellCount = 89;
+    private const int NotApplicableCellCount = 4;
 
     // ── Axis 1: default-value kinds ──────────────────────────────────────────────────────────
 
@@ -98,6 +98,36 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
             "must be a compile-time constant expression"),
         new("Lambda", "() -> int", "lambda: 1", "", null,
             "must be a compile-time constant expression"),
+        // ── Phase 2 additions: operator/const-ref/T? kinds (#1788) ──────
+        new("FloorDiv", "int", "7 // 2", "", null,
+            "'//' lowers to FloorDiv which is not a C# constant operator"),
+        new("FloorMod", "int", "7 % 3", "", null,
+            "'%' lowers to FloorMod which is not a C# constant operator"),
+        new("FloatFloorDiv", "float", "7.0 // 2.0", "", null,
+            "'//' lowers to FloorDiv which is not a C# constant operator"),
+        new("FloatPow", "float", "2.0 ** 3.0", "", null,
+            "'**' lowers to Math.Pow which is not a C# constant operator"),
+        new("StrRepeat", "str", "\"ab\" * 2", "", null,
+            "'*' on str lowers to string.Repeat which is not a C# constant operator"),
+        new("ConstRefCall", "float", "FM",
+            "const FM: float = max(4.0, 1.0)\n\n", null,
+            "is not a compile-time constant"),
+        new("OptionalConstRef", "int?", "O",
+            "const O: int? = Some(1)\n\n", null,
+            "is not a compile-time constant"),
+        // EnumConstRef: enum types are not C#-const-eligible in PrimitiveCatalog, so enum consts
+        // emit as static readonly and cannot appear in parameter defaults. Phase 1 extends const
+        // eligibility to enums; until that merge, this kind is REFUSED.
+        new("EnumConstRef", "Color", "E",
+            "enum Color:\n    RED = 1\n    GREEN = 2\n\nconst E: Color = Color.RED\n\n", null,
+            "is not a compile-time constant"),
+        // LocalConstRef and ClassConstRef have host-specific preludes; their Kind.Prelude is empty
+        // because the host composer provides the scope. Only the listed hosts apply — all others are
+        // N/A because the scope that owns the const is absent in those hosts.
+        new("LocalConstRef", "int", "K", "", "1\n", null),
+        // ClassConstRef uses qualified C.K access (MemberAccess → EnumMember kind, admitted).
+        new("ClassConstRef", "int", "C.K",
+            "class C:\n    const K: int = 1\n\n", "1\n", null),
     };
 
     // ── Axis 2: host positions ───────────────────────────────────────────────────────────────
@@ -108,17 +138,25 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
 
     private static readonly Host[] Hosts =
     {
-        new("Def", k =>
-            $"{k.Prelude}def f(x: {k.ParamType} = {k.DefaultExpr}) -> None:\n    print(x)\n\ndef main():\n    f()\n"),
+        new("Def", k => k.Name switch
+        {
+            "LocalConstRef" =>
+                "def outer():\n    const K: int = 1\n    def inner(x: int = K) -> None:\n        print(x)\n    inner()\n\ndef main():\n    outer()\n",
+            _ => $"{k.Prelude}def f(x: {k.ParamType} = {k.DefaultExpr}) -> None:\n    print(x)\n\ndef main():\n    f()\n",
+        }),
 
-        new("Lambda", k =>
-            $"{k.Prelude}def main():\n    f = lambda x: {k.ParamType} = {k.DefaultExpr}: x\n    print(f())\n"),
+        new("Lambda", k => k.Name switch
+        {
+            "LocalConstRef" =>
+                "def outer():\n    const K: int = 1\n    f = lambda x: int = K: x\n    print(f())\n\ndef main():\n    outer()\n",
+            _ => $"{k.Prelude}def main():\n    f = lambda x: {k.ParamType} = {k.DefaultExpr}: x\n    print(f())\n",
+        }),
 
         new("Init", k =>
-            $"{k.Prelude}class C:\n    x: {k.ParamType}\n\n    def __init__(self, x: {k.ParamType} = {k.DefaultExpr}):\n        self.x = x\n\ndef main():\n    print(C().x)\n"),
+            $"{k.Prelude}class D:\n    x: {k.ParamType}\n\n    def __init__(self, x: {k.ParamType} = {k.DefaultExpr}):\n        self.x = x\n\ndef main():\n    print(D().x)\n"),
 
         new("Method", k =>
-            $"{k.Prelude}class C:\n    def m(self, x: {k.ParamType} = {k.DefaultExpr}) -> None:\n        print(x)\n\ndef main():\n    C().m()\n"),
+            $"{k.Prelude}class D:\n    def m(self, x: {k.ParamType} = {k.DefaultExpr}) -> None:\n        print(x)\n\ndef main():\n    D().m()\n"),
 
         // The field default becomes the synthesized constructor's parameter default (#1769).
         new("Dataclass", k =>
@@ -147,6 +185,11 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     private static readonly Dictionary<string, string> NotApplicableCells = new(StringComparer.Ordinal)
     {
         ["Lambda×Lambda"] = "a lambda default inside a lambda parameter list is a parse error (SPY0103) — parser grammar, not the admission table",
+        // LocalConstRef: the const K lives in an enclosing function scope — only Def and Lambda
+        // place the default inside that scope; Init/Method/Dataclass have no enclosing function.
+        ["Init×LocalConstRef"] = "a local const lives in function scope — Init is a class member with no enclosing function to own the const",
+        ["Method×LocalConstRef"] = "a local const lives in function scope — Method is a class member with no enclosing function to own the const",
+        ["Dataclass×LocalConstRef"] = "a local const lives in function scope — Dataclass is a class member with no enclosing function to own the const",
     };
 
     private static IEnumerable<object[]> CellsWhere(Verdict verdict)
@@ -429,6 +472,68 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
             + $"({ConstTypeCount} × {ReferenceKindCount} × {ConsumerCount})");
         ModuleConstDeclarationCells.Count().Should().Be(
             ConstTypeCount * ReferenceKindCount - ModuleConstNotApplicableCellCount / ConsumerCount);
+    }
+
+    // ── Classifier scan (guarded-by anchor for DispatchSiteInventoryTests) ───────────────────
+    // DispatchSiteInventoryTests requires the guarded-by class to SCAN the site: this test reads
+    // ConstantDefaultClassifier.cs, collects every EmittableConstantKind the "Classify" switch
+    // returns, and asserts the set equals the enum's members — a kind added to the enum without a
+    // classifying arm (or an arm deleted) goes red. The enum size is anchored to a literal so the
+    // comparison is not "the enum against itself".
+
+    // ══ Match-case constant-pattern matrix ════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Match-case constant patterns: a const used in <c>case NAME:</c> must be compile-time.
+    /// Compile-time consts match and print "hit"; non-compile-time consts report SPY0605 with
+    /// the guard steer. Positive control: <c>case 3:</c> (literal) always matches.
+    /// </summary>
+    [Theory]
+    [InlineData("Literal", "const A: int = 3\n", "case A:", true, null)]
+    [InlineData("Folded", "const A: int = 1 + 2\n", "case A:", true, null)]
+    [InlineData("ConstRefCall", "const FM: float = max(4.0, 1.0)\n", "case FM:", false,
+        DiagnosticCodes.SemanticOverflow.ConstantPatternNotCompileTime)]
+    [InlineData("OptionalConstRef", "const O: int? = Some(1)\n", "case O:", false,
+        DiagnosticCodes.SemanticOverflow.ConstantPatternNotCompileTime)]
+    public void MatchCaseConstantPattern_AdmittedOrRefused(
+        string label, string prelude, string caseArm, bool shouldCompile, string? expectedCode)
+    {
+        var scrutineeType = label.Contains("float") ? "float" : (label.Contains("Optional") ? "int?" : "int");
+        var scrutineeValue = label.Contains("float") ? "4.0" : (label.Contains("Optional") ? "Some(3)" : "3");
+        var source =
+            $"{prelude}\ndef main():\n    v: {scrutineeType} = {scrutineeValue}\n    match v:\n" +
+            $"        {caseArm}\n            print(\"hit\")\n        case _:\n            print(\"miss\")\n";
+
+        var result = CompileAndExecute(source);
+
+        if (shouldCompile)
+        {
+            result.Success.Should().BeTrue(
+                $"[MatchCase × {label}] must compile. Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+            result.StandardOutput.Should().Be("hit\n",
+                $"[MatchCase × {label}] the const matches its own value\n{source}");
+        }
+        else
+        {
+            result.Success.Should().BeFalse(
+                $"[MatchCase × {label}] must be refused\n{source}");
+            result.RawDiagnostics.Should().Contain(
+                d => d.Code == expectedCode,
+                $"[MatchCase × {label}] must report {expectedCode}. Got: "
+                + $"{string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}"))}\n{source}");
+        }
+    }
+
+    /// <summary>Positive control: a literal in a case arm always works.</summary>
+    [Fact]
+    public void MatchCaseLiteral_PositiveControl()
+    {
+        var source = "def main():\n    v: int = 3\n    match v:\n        case 3:\n            print(\"hit\")\n        case _:\n            print(\"miss\")\n";
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue(
+            $"literal case must compile. Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Should().Be("hit\n");
     }
 
     // ── Classifier scan (guarded-by anchor for DispatchSiteInventoryTests) ───────────────────
