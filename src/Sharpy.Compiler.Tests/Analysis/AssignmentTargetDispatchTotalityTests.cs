@@ -86,7 +86,7 @@ public class AssignmentTargetDispatchTotalityTests
         ("src/Sharpy.Compiler/Analysis/ControlFlow/DefiniteAssignmentAnalysis.cs", "CollectTargetReads"),
         ("src/Sharpy.Compiler/Semantic/TypeChecker.Statements.cs", "TargetBindsName"),
         ("src/Sharpy.Lsp/Refactoring/ScopeAnalyzer.cs", "CollectAssignmentTargets"),
-        ("src/Sharpy.Lsp/Handlers/InlayHintHandler.cs", "MarkTargetBound"),
+        ("src/Sharpy.Lsp/Handlers/BindingScopeWalker.cs", "MarkTargetBound"),
     };
 
     [Fact]
@@ -226,7 +226,7 @@ public class AssignmentTargetDispatchTotalityTests
     public void MarkTargetBound_Arms_AreKnown()
     {
         var arms = SwitchArmScan.CaseTypeNames(
-            "src/Sharpy.Lsp/Handlers/InlayHintHandler.cs",
+            "src/Sharpy.Lsp/Handlers/BindingScopeWalker.cs",
             "MarkTargetBound");
         Assert.NotEmpty(arms);
         _output.WriteLine($"MarkTargetBound arms: {string.Join(", ", arms.OrderBy(a => a))}");

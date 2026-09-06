@@ -116,7 +116,7 @@ public class InlayHintDispatchTotalityTests
     {
         LspDispatchTotality.Verify(
             _output,
-            "src/Sharpy.Lsp/Handlers/InlayHintHandler.cs",
+            "src/Sharpy.Lsp/Handlers/BindingScopeWalker.cs",
             "MarkPatternBound",
             typeof(Pattern),
             MarkPatternBoundArms,
