@@ -298,6 +298,71 @@ def main():
             "the plain assignment is listed once by the new arm");
     }
 
+    // The remaining hosts of the plan's host axis: a struct body and a nested class body.
+    // Each carries the rebinding twin, since "listed once" is the contract and a bare
+    // "appears" assertion cannot tell one entry from two.
+
+    [Fact]
+    public async Task StructLevelPlainAssignment_AppearsAsField()
+    {
+        var symbols = await GetOutlineAsync("struct S:\n    n = 0\n");
+
+        var structSymbol = symbols.Should().ContainSingle(s => s.Name == "S").Which;
+        structSymbol.Children!.Should().ContainSingle(c => c.Name == "n"
+            && c.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Field,
+            "a plain assignment in a struct body declares a field, listed once");
+    }
+
+    [Fact]
+    public async Task StructLevelRebinding_ProducesNoSecondEntry()
+    {
+        var symbols = await GetOutlineAsync("struct S:\n    n = 0\n    n = 1\n");
+
+        var structSymbol = symbols.Should().ContainSingle(s => s.Name == "S").Which;
+        structSymbol.Children!.Where(c => c.Name == "n").Should().ContainSingle(
+            "the first binding declares the field; the second is a rebinding in the same scope");
+    }
+
+    [Fact]
+    public async Task NestedClassBodyPlainAssignment_AppearsAsFieldOfTheNestedClass()
+    {
+        var symbols = await GetOutlineAsync("class Outer:\n    class Inner:\n        x = 1\n");
+
+        var outer = symbols.Should().ContainSingle(s => s.Name == "Outer").Which;
+        var inner = outer.Children!.Should().ContainSingle(c => c.Name == "Inner").Which;
+        inner.Children!.Should().ContainSingle(c => c.Name == "x"
+            && c.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Field,
+            "the nested class body is its own binding scope; its field is listed under Inner");
+        outer.Children!.Should().NotContain(c => c.Name == "x",
+            "the nested class's field does not leak into the outer class's children");
+    }
+
+    [Fact]
+    public async Task NestedClassBodyRebinding_ProducesNoSecondEntry()
+    {
+        var symbols = await GetOutlineAsync("class Outer:\n    class Inner:\n        x = 1\n        x = 2\n");
+
+        var outer = symbols.Should().ContainSingle(s => s.Name == "Outer").Which;
+        var inner = outer.Children!.Should().ContainSingle(c => c.Name == "Inner").Which;
+        inner.Children!.Where(c => c.Name == "x").Should().ContainSingle(
+            "the second binding in the nested class body is a rebinding, not a second field");
+    }
+
+    [Fact]
+    public async Task SameNameInOuterAndNestedClassBodies_AreSeparateEntries()
+    {
+        // Control for the two rebinding cells above: "listed once" is per SCOPE, not per
+        // document. Two different scopes binding the same spelling yield two entries.
+        var symbols = await GetOutlineAsync("class Outer:\n    x = 1\n    class Inner:\n        x = 2\n");
+
+        var outer = symbols.Should().ContainSingle(s => s.Name == "Outer").Which;
+        outer.Children!.Where(c => c.Name == "x").Should().ContainSingle(
+            "the outer class binds x once");
+        var inner = outer.Children!.Should().ContainSingle(c => c.Name == "Inner").Which;
+        inner.Children!.Where(c => c.Name == "x").Should().ContainSingle(
+            "the nested class binds its own x, and it is not suppressed by the outer binding");
+    }
+
     [Fact]
     public async Task AnnotatedDeclaration_ThenSameNamePlainAssignment_IsRebinding()
     {
