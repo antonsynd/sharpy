@@ -72,3 +72,5 @@ compile::errors/parser_recovery_deeply_nested
 compile::exception_handling/raise_from_variable_0001
 compile::errors/parser_recovery_expression_error
 compile::lambdas/lambda_operand_not
+# #1790: compile path drops SPY0451 (unused-variable warnings) for ??=/+= expression-form fixture
+compile::errors/coalesce_assign_expression_form_1790
