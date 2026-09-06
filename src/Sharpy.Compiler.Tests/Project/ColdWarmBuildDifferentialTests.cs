@@ -387,6 +387,120 @@ def main() -> None:
             "the cached lib's LIMIT must still emit as a C# const, not static readonly (#1460)");
     }
 
+    private const string NonIntegerConstLibSource = @"enum Color:
+    RED = 1
+    GREEN = 2
+
+
+const RATE: float = 4.0
+const NAME: str = ""ab""
+const ON: bool = True
+const PRIMARY: Color = Color.RED
+";
+
+    private const string NonIntegerConstMainInitialSource = @"from lib import Color, RATE, NAME, ON, PRIMARY
+
+
+def main() -> None:
+    print(RATE)
+    print(NAME)
+    print(ON)
+    print(PRIMARY)
+";
+
+    private const string NonIntegerConstMainConsumingSource = @"from lib import Color, RATE, NAME, ON, PRIMARY
+
+
+def show(r: float = RATE, n: str = NAME, o: bool = ON) -> None:
+    print(r)
+    print(n)
+    print(o)
+
+
+def main() -> None:
+    show()
+    c: Color = Color.RED
+    match c:
+        case PRIMARY:
+            print(""primary"")
+        case _:
+            print(""other"")
+";
+
+    /// <summary>
+    /// The const-eligibility fact making the round trip for the kinds <c>ConstantValue</c> cannot
+    /// carry (#1791): float, str, bool and enum.
+    ///
+    /// <para>An integer const travels as its folded value, which is why
+    /// <see cref="AfterAWarmRestore_AConstReferenceIsStillAConstantExpression"/> passed before this
+    /// fact existed. Every other const-eligible type has no folded value, so the importing module
+    /// can only know the answer if the EXPORTING module's analysis result travelled with the symbol.
+    /// Before the fix the fallback was "an integer with a folded value", so these four were refused
+    /// SPY0401 as defaults and SPY0605 as a pattern head — on a cold build as well as a warm one.</para>
+    ///
+    /// <para>The warm arm's SUCCESS is the discriminating observation, and the consuming edit is
+    /// what makes it one: a plain <c>print</c> of a <c>static readonly</c> prints the same text, so
+    /// only a constant POSITION can tell the two apart. Dropping the serialized bool turns this
+    /// build red while the cold arm stays green.</para>
+    /// </summary>
+    [Fact]
+    public void AfterAWarmRestore_ANonIntegerConstIsStillCompileTime()
+    {
+        // --- Warm arm: a succeeding build writes the cache; the edit then makes main CONSUME the
+        //     imported consts at constant positions. lib.spy is untouched throughout.
+        var warmLib = Write("ncwarm", "lib.spy", NonIntegerConstLibSource);
+        var warmMain = Write("ncwarm", "main.spy", NonIntegerConstMainInitialSource);
+        var warmConfig = Config("ncwarm", warmLib, warmMain);
+
+        Build(warmConfig).Success.Should().BeTrue(
+            "the cache is only written by a build that succeeds — a failing first build leaves "
+            + "nothing to restore and this cell would measure the cold path twice");
+
+        File.WriteAllText(warmMain, NonIntegerConstMainConsumingSource);
+        var warm = Build(warmConfig);
+
+        Skipped(warm).Should().BeEquivalentTo(new[] { "lib.spy" },
+            "lib.spy must be the file served from cache, or the compile-time-constant fact never "
+            + "makes the round trip this test is about");
+
+        warm.Success.Should().BeTrue(
+            "a float/str/bool/enum const restored from the cache must still be admitted at a "
+            + "constant position — the fact rides the symbol because a project build gives every "
+            + "file its own SemanticBinding (#1791). Diagnostics:\n" + Diagnostics(warm));
+
+        // --- Cold arm: the SAME final sources, in a directory that has never been built.
+        var coldLib = Write("nccold", "lib.spy", NonIntegerConstLibSource);
+        var coldMain = Write("nccold", "main.spy", NonIntegerConstMainConsumingSource);
+        var cold = Build(Config("nccold", coldLib, coldMain));
+
+        Skipped(cold).Should().BeEmpty("the cold arm must have no cache to skip from");
+        cold.Success.Should().BeTrue(
+            "the cold reading of the same source must compile. Diagnostics:\n" + Diagnostics(cold));
+
+        Diagnostics(warm).Should().Be(Diagnostics(cold),
+            "warm ≡ cold for the const-eligibility fact (#1791, the #1553 contract)");
+
+        var warmGenerated = Generated(warm).ToDictionary(
+            kv => kv.Key, kv => kv.Value.Replace("ncwarm", "AREA"), StringComparer.Ordinal);
+        var coldGenerated = Generated(cold).ToDictionary(
+            kv => kv.Key, kv => kv.Value.Replace("nccold", "AREA"), StringComparer.Ordinal);
+        warmGenerated.Should().BeEquivalentTo(coldGenerated,
+            "the const/static-readonly decision must not depend on whether lib's symbols were "
+            + "compiled or restored (#1791)");
+
+        // Non-vacuity: all four kinds must actually emit as C# consts in the specimen, or the
+        // comparison could agree on a static-readonly regression in both arms.
+        var emitted = string.Concat(warmGenerated.Values);
+        emitted.Should().Contain("const double RATE = 4",
+            "the cached lib's float const must still emit as a C# const (#1791)");
+        emitted.Should().Contain("const string NAME = \"ab\"",
+            "the cached lib's str const must still emit as a C# const (#1791)");
+        emitted.Should().Contain("const bool ON = true",
+            "the cached lib's bool const must still emit as a C# const (#1791)");
+        emitted.Should().Contain("const Color PRIMARY = Color.RED",
+            "the cached lib's enum const must still emit as a C# const (#1782)");
+    }
+
     /// <summary>
     /// Design Decision 10 (#1553): policy is configuration, not cache content. The cache stores
     /// the policy-free per-unit diagnostics; warnings-as-errors is applied by the project bag AT

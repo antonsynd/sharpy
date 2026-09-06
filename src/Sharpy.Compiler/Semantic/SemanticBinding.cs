@@ -79,7 +79,7 @@ public class SemanticBinding
     // #1791: compile-time constant fact for const declarations. Written by ConstEligibility during
     // the semantic analysis pass (before CodeGenInfoComputer); bridged onto
     // CodeGenInfo.IsCompileTimeConstant at MaterializeCodeGenInfo so the emitter reads a frozen fact.
-    private readonly ConcurrentDictionary<VariableSymbol, bool> _compileTimeConstants =
+    private readonly ConcurrentDictionary<VariableSymbol, ConstFact> _compileTimeConstants =
         new(ReferenceEqualityComparer.Instance);
 
     // Maps variable symbols to their resolved types
@@ -277,20 +277,60 @@ public class SemanticBinding
     /// <see cref="CodeGenInfo.IsCompileTimeConstant"/> at <see cref="MaterializeCodeGenInfo"/>
     /// so code generation reads a frozen fact.
     /// </summary>
-    public void SetCompileTimeConstant(VariableSymbol symbol, bool isCompileTime)
+    public void SetCompileTimeConstant(
+        VariableSymbol symbol,
+        bool isCompileTime,
+        ConstIneligibilityCause cause = ConstIneligibilityCause.None,
+        string? declaredSpelling = null)
     {
         if (_codeGenInfoFrozen)
         {
             AssertNotFrozen("CodeGenInfo", symbol.Name);
         }
-        _compileTimeConstants[symbol] = isCompileTime;
+        _compileTimeConstants[symbol] = new ConstFact(isCompileTime, cause, declaredSpelling);
     }
 
     /// <summary>
-    /// Whether a const variable was computed to be a compile-time constant.
+    /// Whether a const variable was computed to be a compile-time constant. False both for a const
+    /// this analysis answered "no" for and for a symbol it never walked — use
+    /// <see cref="TryGetCompileTimeConstant"/> when the two must be told apart (an imported symbol
+    /// carries its own fact).
     /// </summary>
     public bool GetCompileTimeConstant(VariableSymbol symbol)
-        => _compileTimeConstants.TryGetValue(symbol, out var val) && val;
+        => _compileTimeConstants.TryGetValue(symbol, out var fact) && fact.IsCompileTime;
+
+    /// <summary>
+    /// Whether <see cref="ConstEligibility"/> recorded a fact for <paramref name="symbol"/> at all.
+    /// A symbol declared in another module was never walked here and answers false, so its consumer
+    /// falls through to the fact that travelled with the symbol.
+    /// </summary>
+    public bool TryGetCompileTimeConstant(VariableSymbol symbol, out bool isCompileTime)
+    {
+        if (_compileTimeConstants.TryGetValue(symbol, out var fact))
+        {
+            isCompileTime = fact.IsCompileTime;
+            return true;
+        }
+        isCompileTime = false;
+        return false;
+    }
+
+    /// <summary>
+    /// Why <paramref name="symbol"/> is not a compile-time constant, as
+    /// <see cref="ConstEligibility"/> decided it — the ONE analysis names the cause so every
+    /// consumer's refusal can steer without re-deriving anything.
+    /// </summary>
+    public ConstIneligibilityCause GetConstIneligibilityCause(VariableSymbol symbol)
+        => _compileTimeConstants.TryGetValue(symbol, out var fact)
+            ? fact.Cause
+            : ConstIneligibilityCause.None;
+
+    /// <summary>
+    /// The declared type of a <c>const</c> as its source SPELLED it, for a refusal that quotes the
+    /// user's own words. Null for a symbol this analysis never walked.
+    /// </summary>
+    public string? GetConstDeclaredSpelling(VariableSymbol symbol)
+        => _compileTimeConstants.TryGetValue(symbol, out var fact) ? fact.DeclaredSpelling : null;
 
     #endregion
 
@@ -496,8 +536,8 @@ public class SemanticBinding
             // CodeGenInfoComputer ran, so the fact travels through the binding.
             if (!effective.IsCompileTimeConstant
                 && symbol is VariableSymbol varSym
-                && _compileTimeConstants.TryGetValue(varSym, out var isCompileTime)
-                && isCompileTime)
+                && _compileTimeConstants.TryGetValue(varSym, out var constFact)
+                && constFact.IsCompileTime)
                 effective = effective with { IsCompileTimeConstant = true };
 
             _codeGenInfo[symbol] = effective;
@@ -537,8 +577,8 @@ public class SemanticBinding
 
         // Same consumption point (#1791): compile-time constant facts are bridged at
         // MaterializeCodeGenInfo on the project-level binding, after this merge.
-        foreach (var (symbol, isConst) in other._compileTimeConstants)
-            _compileTimeConstants.TryAdd(symbol, isConst);
+        foreach (var (symbol, fact) in other._compileTimeConstants)
+            _compileTimeConstants.TryAdd(symbol, fact);
 
         foreach (var (symbol, type) in other._variableTypes)
             _variableTypes.TryAdd(symbol, type);

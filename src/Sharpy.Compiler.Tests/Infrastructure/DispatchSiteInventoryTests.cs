@@ -66,7 +66,10 @@ public class DispatchSiteInventoryTests
         ["Semantic/ExecutionOrderAnalyzer.cs::ExecutionOrderAnalyzer.CollectDeclarationNames"] = "guarded-by:ExecutionOrderAnalyzerTotalityTests",
 
         // CodeGenInfoComputer — code generation info over module/type members
-        ["Semantic/ConstEligibility.cs::ConstEligibility.AnalyzeModule"] = "refusal-net:ParameterDefaultConstantMatrixTests",
+        // ConstEligibility — the ONE walk over every const host (#1791). Collect dispatches on
+        // statement kind; IsOperandTypeIndependentNativeOperator on the cross-module operator roster.
+        ["Semantic/ConstEligibility.cs::ConstEligibility.Collect"] = "guarded-by:ConstEligibleTypeTotalityTests",
+        ["Semantic/ConstEligibility.cs::ConstEligibility.IsOperandTypeIndependentNativeOperator"] = "guarded-by:ConstEligibleTypeTotalityTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.ComputeForModule"] = "guarded-by:CodeGenInfoComputerTotalityTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.DetectModuleLevelCollisions"] = "guarded-by:CodeGenInfoComputerTotalityTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.ProcessTypeMembers"] = "guarded-by:CodeGenInfoComputerTotalityTests",
@@ -111,6 +114,7 @@ public class DispatchSiteInventoryTests
         // ══════════════════════════════════════════════════════════════════════
 
         ["Semantic/Validation/ConstantDefaultClassifier.cs::ConstantDefaultClassifier.Classify"] = "guarded-by:ParameterDefaultConstantMatrixTests",
+        ["Semantic/Validation/ConstantDefaultClassifier.cs::ConstantDefaultClassifier.RootsInIdentifier"] = "guarded-by:ParameterDefaultConstantMatrixTests",
         ["Semantic/Validation/ConstantPositionValidator.cs::ConstantPositionValidator.CollectIdentifierNamesInto"] = "walker-default-contract",
         ["Semantic/Validation/ConstantPositionValidator.cs::ConstantPositionValidator.IsMutableDefault"] = "walker-default-contract",
         // DefaultParameterValidator is superseded by ConstantPositionValidator but its file

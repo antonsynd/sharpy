@@ -234,6 +234,19 @@ internal class ModuleLoader
     /// Extract exported symbols from a statement.
     /// All top-level symbols are added to ExportedSymbols, but visibility is enforced during import.
     /// </summary>
+    /// <summary>
+    /// The const-reference hook for <see cref="ConstEligibility.IsExportedConstCompileTime"/>: a
+    /// name in an exported const's initializer resolves iff it names another export of the SAME
+    /// module that is itself a compile-time constant. Extraction is in declaration order, so a
+    /// FORWARD reference answers false here — conservative, and the only consequence is a refusal
+    /// by name at the importing site rather than an acceptance.
+    /// </summary>
+    private static bool IsExportedCompileTimeConst(ModuleInfo moduleInfo, Identifier id)
+        => moduleInfo.ExportedSymbols.TryGetValue(id.Name, out var symbol)
+            && symbol is VariableSymbol { IsConstant: true } constSymbol
+            && constSymbol.IsNameBacktickEscaped == id.IsNameBacktickEscaped
+            && (constSymbol.IsCompileTimeConstant || constSymbol.ConstantValue != null);
+
     internal void ExtractExportedSymbol(Statement statement, ModuleInfo moduleInfo)
     {
         switch (statement)
@@ -331,6 +344,14 @@ internal class ModuleLoader
                 var varConstValue = varDecl.IsConst
                     ? IntegerConstantEvaluator.TryFoldConstDeclaration(varType, varDecl.InitialValue)
                     : null;
+                // The exported const's compile-time fact travels with the symbol (#1791, plan E
+                // Phase 1 Task 5): without it the importing module fell back to "an integer with a
+                // folded value", so an imported float/str/bool const used as a parameter default was
+                // refused by name while the exporting module emitted it as `public const`.
+                var varIsCompileTime = varDecl.IsConst
+                    && ConstEligibility.IsExportedConstCompileTime(
+                        varType, varDecl.InitialValue, varConstValue,
+                        id => IsExportedCompileTimeConst(moduleInfo, id));
                 var varSymbol = new VariableSymbol
                 {
                     Name = varDecl.Name,
@@ -340,6 +361,7 @@ internal class ModuleLoader
                     IsFinal = varDecl.Decorators.Any(d => d.Name == DecoratorNames.Final),
                     HasDefaultValue = !varDecl.IsConst && varDecl.InitialValue != null,
                     ConstantValue = varConstValue,
+                    IsCompileTimeConstant = varIsCompileTime,
                     AccessLevel = varAccessLevel,
                     DeclarationLine = varDecl.LineStart,
                     DeclarationColumn = varDecl.ColumnStart,

@@ -265,6 +265,8 @@ internal static class SymbolSerializer
             OriginalModule = vs.OriginalModule,
             CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(vs)),
             ConstantValue = vs.ConstantValue?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            IsCompileTimeConstant =
+                vs.IsCompileTimeConstant || (binding != null && binding.GetCompileTimeConstant(vs)),
             Documentation = vs.Documentation,
             // #1444
             DeprecationMessage = vs.DeprecationMessage,
@@ -697,7 +699,10 @@ internal static class SymbolSerializer
             ClrFieldName = GetStringProperty(props, "ClrFieldName"),
             ConstantValue = !string.IsNullOrEmpty(cached.ConstantValue)
                 ? System.Numerics.BigInteger.Parse(cached.ConstantValue, System.Globalization.CultureInfo.InvariantCulture)
-                : null
+                : null,
+            // #1791: a warm build reads the exporting module's compile-time-constant fact from the
+            // cache, so the const emitted as `const` in the cold build is admitted in the warm one.
+            IsCompileTimeConstant = cached.IsCompileTimeConstant
         };
         if (cached.CodeGenInfo != null && binding != null)
             binding.SetCodeGenInfo(symbol, DeserializeCodeGenInfo(cached.CodeGenInfo)!);

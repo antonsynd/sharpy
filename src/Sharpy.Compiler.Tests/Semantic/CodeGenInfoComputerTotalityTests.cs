@@ -175,6 +175,12 @@ public class CodeGenInfoComputerTotalityTests
     {
         nameof(VariableDeclaration),
         nameof(FunctionDef),
+        // A nested type's own members reach no other pass (#1791): the module-body loop sees only
+        // top-level declarations, so without these arms a nested class's field consts carried no
+        // CodeGenInfo and the emitter printed `static readonly` whatever the fact said.
+        nameof(ClassDef),
+        nameof(StructDef),
+        nameof(InterfaceDef),
     };
 
     private static readonly HashSet<string> ProcessTypeMembers_Skipped = new()
@@ -196,9 +202,7 @@ public class CodeGenInfoComputerTotalityTests
         nameof(TryStatement),
         nameof(WithStatement),
         nameof(DeferStatement),
-        nameof(ClassDef),
-        nameof(StructDef),
-        nameof(InterfaceDef),
+        // A nested enum declares no fields of its own to name (ProcessEnumDef owns enum members).
         nameof(EnumDef),
         nameof(TypeAlias),
         nameof(PropertyDef),

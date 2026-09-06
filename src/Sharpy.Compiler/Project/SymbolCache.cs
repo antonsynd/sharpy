@@ -297,6 +297,14 @@ internal record CachedSymbol
     public string? ConstantValue { get; init; }
 
     /// <summary>
+    /// For VariableSymbol: whether this <c>const</c> is a C# compile-time constant, as
+    /// <c>ConstEligibility</c> decided when the declaring file was compiled. Without it a warm
+    /// build fell back to "an integer with a folded value", so an imported float/str/bool/enum
+    /// const was refused in a constant position the cold build accepted (#1791).
+    /// </summary>
+    public bool IsCompileTimeConstant { get; init; }
+
+    /// <summary>
     /// Additional properties for extensibility
     /// </summary>
     public Dictionary<string, object>? Properties { get; init; }

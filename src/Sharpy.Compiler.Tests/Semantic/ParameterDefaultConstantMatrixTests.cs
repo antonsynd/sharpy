@@ -23,12 +23,12 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <para><b>Axes.</b> Kind: {Literal, NegatedLiteral, ConstReference, EnumMember, NoneLiteral,
 /// NoneCall, SomeIntoOptional, TupleLiteral, ConditionalOfConstants, Folded, ResultOk, ResultErr,
 /// NestedTuple, ListLiteral, DictLiteral, Call, Constructor, Lambda} × Host: {Def, Lambda, Init, Method,
-/// Dataclass}. Totality: 18 × 5 = 90 cells (40 admitted, 50 refused — SPY0401, or SPY0400 for the
-/// mutable list/dict literals).</para>
+/// Dataclass}. Totality: 28 × 5 = 140 cells (52 admitted, 84 refused — SPY0401, or SPY0400 for the
+/// mutable list/dict literals — and 4 N/A). There is no known-red bucket.</para>
 ///
 /// <para><b>Contract (module consts).</b> A module <c>const</c> whose declared type C# admits for
 /// <c>const</c> — every <c>PrimitiveCatalog</c> primitive but <c>object</c>/<c>void</c> — and whose
-/// initializer the classifier admits for <c>AdmissionTable.ModuleConst</c> emits as
+/// initializer the classifier admits for <c>AdmissionTable.ConstInitializer</c> emits as
 /// <c>public const</c> (<c>CodeGenInfo.IsCompileTimeConstant</c>), so every constant-position
 /// consumer reads it: a def/lambda/method parameter default, a <c>case</c> pattern, another const,
 /// a plain read. Between dfcdd47fa and the fix the fact was integer-only, so float/float32/decimal/
@@ -50,9 +50,8 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     // ── Axis sizes, anchored to literals ─────────────────────────────────────────────────────
     private const int KindCount = 28;
     private const int HostCount = 5;
-    private const int AdmittedCellCount = 42;
-    private const int RefusedCellCount = 89;
-    private const int KnownRedCellCount = 5;
+    private const int AdmittedCellCount = 52;
+    private const int RefusedCellCount = 84;
     private const int NotApplicableCellCount = 4;
 
     // ── Axis 1: default-value kinds ──────────────────────────────────────────────────────────
@@ -64,8 +63,7 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         string Prelude,
         string? AcceptedOutput,
         string? RefusedFragment,
-        string RefusedCode = DiagnosticCodes.Validation.NonConstDefault,
-        bool IsKnownRed = false);
+        string RefusedCode = DiagnosticCodes.Validation.NonConstDefault);
 
     private static readonly Kind[] Kinds =
     {
@@ -117,21 +115,18 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         new("OptionalConstRef", "int?", "O",
             "const O: int? = Some(1)\n\n", null,
             "is not a compile-time constant"),
-        // EnumConstRef: enum types are not C#-const-eligible in PrimitiveCatalog, so enum consts
-        // emit as static readonly and cannot appear in parameter defaults. Phase 1 extends const
-        // eligibility to enums; until that merge, this kind is REFUSED.
+        // EnumConstRef: C# admits `const Color C = Color.RED`, so an enum const is a compile-time
+        // constant and reads in every constant position (#1782).
         new("EnumConstRef", "Color", "E",
-            "enum Color:\n    RED = 1\n    GREEN = 2\n\nconst E: Color = Color.RED\n\n", null,
-            "is not a compile-time constant"),
+            "enum Color:\n    RED = 1\n    GREEN = 2\n\nconst E: Color = Color.RED\n\n", "RED\n", null),
         // LocalConstRef and ClassConstRef have host-specific preludes; their Kind.Prelude is empty
         // because the host composer provides the scope. Only the listed hosts apply — all others are
         // N/A because the scope that owns the const is absent in those hosts.
         new("LocalConstRef", "int", "K", "", "1\n", null),
-        // ClassConstRef: C.K is admitted by the validator (EnumMember kind) but ICEs CS1736
-        // at emit time — the class field's IsCompileTimeConstant does not travel through
-        // MemberAccess. KnownRed, drains when class-field const facts reach cross-class defaults (#1787).
+        // ClassConstRef: a class field const IS a compile-time constant — the ONE analysis walks
+        // type bodies and folds their integers, so `C.K` reads in every default position (#1791).
         new("ClassConstRef", "int", "C.K",
-            "class C:\n    const K: int = 1\n\n", null, null, IsKnownRed: true),
+            "class C:\n    const K: int = 1\n\n", "1\n", null),
     };
 
     // ── Axis 2: host positions ───────────────────────────────────────────────────────────────
@@ -199,7 +194,7 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     private static IEnumerable<object[]> CellsWhere(Verdict verdict)
         => from h in Hosts
            from k in Kinds
-           where Classify(k) == verdict && !k.IsKnownRed && !NotApplicableCells.ContainsKey(Key(h, k))
+           where Classify(k) == verdict && !NotApplicableCells.ContainsKey(Key(h, k))
            select new object[] { h.Name, k.Name };
 
     public static IEnumerable<object[]> AdmittedCells => CellsWhere(Verdict.Admitted);
@@ -292,11 +287,9 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         refused.Should().Be(RefusedCellCount, "the refused half is written down");
         NotApplicableCells.Should().HaveCount(NotApplicableCellCount, "every N/A cell is written down with its reason");
         NotApplicableCells.Keys.Should().OnlyContain(key => product.Contains(key), "an N/A key must name a real cell (stale entries fail)");
-        var knownRed = Kinds.Count(k => k.IsKnownRed) * Hosts.Length;
-        knownRed.Should().Be(KnownRedCellCount, "the known-red count is written down (#1787)");
-        (admitted + refused + NotApplicableCells.Count + knownRed).Should().Be(KindCount * HostCount,
-            $"admitted ({admitted}) + refused ({refused}) + N/A ({NotApplicableCells.Count}) + KnownRed ({knownRed}) must be the whole product "
-            + $"({KindCount} × {HostCount})");
+        (admitted + refused + NotApplicableCells.Count).Should().Be(KindCount * HostCount,
+            $"admitted ({admitted}) + refused ({refused}) + N/A ({NotApplicableCells.Count}) must be the whole product "
+            + $"({KindCount} × {HostCount}) — there is no known-red bucket");
     }
 
     // ══ Module-const matrix: declared type × reference kind × consumer ═══════════════════════
@@ -487,6 +480,540 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     // classifying arm (or an arm deleted) goes red. The enum size is anchored to a literal so the
     // comparison is not "the enum against itself".
 
+    // ══ The const-HOST matrix: one fact, every host, every consumer ═══════════════════════════
+
+    /// <summary>
+    /// A <c>const</c> DECLARATION host. <see cref="Declare"/> wraps the declaration; <see cref="Read"/>
+    /// spells the reference a consumer uses; <see cref="EmittedPattern"/> is the C# the declaration
+    /// must produce when the fact is true, and <see cref="EmittedNonConstPattern"/> when it is false.
+    /// The host is the axis the class-field regression lived on: the same initializer emitted
+    /// <c>const</c> at module scope and <c>static readonly</c> in a class body (#1791).
+    /// </summary>
+    private sealed record ConstHost(
+        string Name,
+        Func<string, string> Declare,
+        string Read,
+        Func<string, string> EmittedPattern,
+        Func<string, string> EmittedNonConstPattern,
+        bool InsideFunction);
+
+    private static readonly ConstHost[] ConstHosts =
+    {
+        new("Module",
+            decl => decl + "\n",
+            "A",
+            cs => $@"\bpublic const {Regex.Escape(cs)} A = ",
+            cs => $@"\bpublic static readonly {Regex.Escape(cs)} A = ",
+            InsideFunction: false),
+
+        new("ClassField",
+            decl => "class Holder:\n    " + decl + "\n\n",
+            "Holder.A",
+            cs => $@"\bpublic const {Regex.Escape(cs)} A = ",
+            cs => $@"\bpublic static readonly {Regex.Escape(cs)} A = ",
+            InsideFunction: false),
+
+        new("NestedClassField",
+            decl => "class Outer:\n    class Holder:\n        " + decl + "\n\n",
+            "Outer.Holder.A",
+            cs => $@"\bpublic const {Regex.Escape(cs)} A = ",
+            cs => $@"\bpublic static readonly {Regex.Escape(cs)} A = ",
+            InsideFunction: false),
+
+        new("Local",
+            decl => decl,
+            "A",
+            cs => $@"\bconst {Regex.Escape(cs)} A = ",
+            cs => $@"^\s+{Regex.Escape(cs)} A = ",
+            InsideFunction: true),
+    };
+
+    /// <summary>
+    /// A declared type for the host matrix: the Sharpy spelling, the C# keyword the emitted
+    /// declaration carries, and what <c>print</c> shows.
+    /// </summary>
+    private sealed record HostType(string Name, string CSharpType, string Printed, string Prelude = "");
+
+    private static readonly HostType[] HostTypes =
+    {
+        new("int", "int", "4"),
+        new("float", "double", "4.0"),
+        new("str", "string", "ab"),
+        new("bool", "bool", "True"),
+        // A `char` annotation maps to C# `string` at BASE and HEAD alike (`'a'` is a string literal
+        // in this grammar) — the mapping is a separate concern; what this matrix reads is whether the
+        // declaration carries `const`.
+        new("char", "string", "a"),
+        new("Color", "Color", "RED", "enum Color:\n    RED = 1\n    GREEN = 2\n\n"),
+    };
+
+    /// <summary>
+    /// An initializer form and whether the fact is true for it. <c>FoldedCallLowered</c> (<c>7 // 2</c>,
+    /// <c>max(...)</c>) is the arm that must emit NON-const and still run — the cell that ICEd CS0133
+    /// at a local host while the module host was fine.
+    /// </summary>
+    private sealed record Initializer(
+        string Name, Func<HostType, string?> Expr, bool IsCompileTime, Func<HostType, string>? Extra = null);
+
+    private static readonly Initializer[] Initializers =
+    {
+        new("Literal", t => t.Name switch
+        {
+            "int" => "4",
+            "float" => "4.0",
+            "str" => "\"ab\"",
+            "bool" => "True",
+            "char" => "'a'",
+            _ => "Color.RED",
+        }, IsCompileTime: true),
+
+        new("ForwardThroughConst", t => "B", IsCompileTime: true,
+            Extra: t => t.Name switch
+            {
+                "int" => "4",
+                "float" => "4.0",
+                "str" => "\"ab\"",
+                "bool" => "True",
+                "char" => "'a'",
+                _ => "Color.RED",
+            }),
+
+        // Native folds only: str "+" and bool "and" fold; int "2 + 2" folds; a char/enum/float
+        // fold has no admitted native form at this type, so the cell is N/A by construction.
+        new("FoldedNative", t => t.Name switch
+        {
+            "int" => "2 + 2",
+            "float" => "2.0 + 2.0",
+            "str" => "\"a\" + \"b\"",
+            "bool" => "True and True",
+            _ => null,
+        }, IsCompileTime: true),
+
+        // Lowers to a Builtins call: never a C# constant, at any host.
+        new("FoldedCallLowered", t => t.Name switch
+        {
+            "int" => "9 // 2",
+            "float" => "9.0 // 2.0",
+            _ => null,
+        }, IsCompileTime: false),
+
+        new("Call", t => t.Name switch
+        {
+            "int" => "max(1, 4)",
+            "float" => "max(1.0, 4.0)",
+            _ => null,
+        }, IsCompileTime: false),
+    };
+
+    private static ConstHost CH(string name) => ConstHosts.Single(h => h.Name == name);
+
+    private static HostType HT(string name) => HostTypes.Single(t => t.Name == name);
+
+    private static Initializer INIT(string name) => Initializers.Single(i => i.Name == name);
+
+    /// <summary>
+    /// The program for one host cell: the const declaration in its host, plus the consumer.
+    /// </summary>
+    private static string ComposeHostCell(ConstHost host, HostType type, Initializer init, string consumer)
+    {
+        var expr = init.Expr(type)!;
+        var decl = $"const A: {type.Name} = {expr}";
+        if (init.Extra != null)
+            decl = host.InsideFunction
+                ? $"const B: {type.Name} = {init.Extra(type)}\n    {decl}"
+                : $"{decl}\nconst B: {type.Name} = {init.Extra(type)}";
+
+        if (host.InsideFunction)
+            return type.Prelude + "def main():\n    " + decl + "\n    " + consumer + "\n";
+
+        return type.Prelude + host.Declare(decl) + "def main():\n    " + consumer + "\n";
+    }
+
+    public static IEnumerable<object[]> ConstHostCells =>
+        from h in ConstHosts
+        from t in HostTypes
+        from i in Initializers
+        where i.Expr(t) != null
+        select new object[] { h.Name, t.Name, i.Name };
+
+    // Anchored to literals: 4 hosts × 6 types × 5 initializers = 120, of which the initializer
+    // forms that have no spelling at a type (FoldedNative for char/Color; FoldedCallLowered and
+    // Call for str/bool/char/Color) are N/A by construction.
+    private const int ConstHostCount = 4;
+    private const int HostTypeCount = 6;
+    private const int InitializerCount = 5;
+    private const int HostCellsNotApplicable = 4 * (2 + 4 + 4); // hosts × (FoldedNative + 2×call arms)
+
+    [Fact]
+    public void ConstHostMatrix_IsTotalOverItsAxes()
+    {
+        ConstHosts.Length.Should().Be(ConstHostCount);
+        HostTypes.Length.Should().Be(HostTypeCount);
+        Initializers.Length.Should().Be(InitializerCount);
+        ConstHosts.Select(h => h.Name).Should().OnlyHaveUniqueItems();
+        HostTypes.Select(t => t.Name).Should().OnlyHaveUniqueItems();
+        Initializers.Select(i => i.Name).Should().OnlyHaveUniqueItems();
+
+        var product = ConstHostCount * HostTypeCount * InitializerCount;
+        var applicable = ConstHostCells.Count();
+        (product - applicable).Should().Be(HostCellsNotApplicable,
+            "every N/A cell is a type that has no spelling for that initializer form, counted from literals");
+    }
+
+    /// <summary>
+    /// THE host-axis cell (#1791): every const host emits <c>const</c> iff the fact, and the value
+    /// reads back through <c>print</c>. A call-lowered or call initializer emits NON-const and the
+    /// program still runs — the arm that ICEd CS0133 at a local host and CS1736 through a class-field
+    /// default. Reading the emitted C# is what makes the cell discriminating: a <c>static readonly</c>
+    /// prints the same value.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ConstHostCells))]
+    public void ConstDeclaration_EmitsConstIffTheFact(string host, string type, string initializer)
+    {
+        var h = CH(host);
+        var t = HT(type);
+        var i = INIT(initializer);
+        var source = ComposeHostCell(h, t, i, $"print({h.Read})");
+
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"[{host} × {type} × {initializer}] must never produce SPY0908. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.Success.Should().BeTrue(
+            $"[{host} × {type} × {initializer}] must compile and run. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Should().Be(t.Printed + "\n",
+            $"[{host} × {type} × {initializer}] reads the const's declared value\n{source}");
+
+        result.GeneratedCSharp.Should().NotBeNull();
+        if (i.IsCompileTime)
+        {
+            result.GeneratedCSharp.Should().MatchRegex(h.EmittedPattern(t.CSharpType),
+                $"[{host} × {type} × {initializer}] the fact is true, so the declaration carries "
+                + $"'const'\n{result.GeneratedCSharp}");
+        }
+        else
+        {
+            result.GeneratedCSharp.Should().NotMatchRegex(h.EmittedPattern(t.CSharpType),
+                $"[{host} × {type} × {initializer}] the fact is false, so the declaration must NOT "
+                + $"carry 'const' (C# would answer CS0133)\n{result.GeneratedCSharp}");
+        }
+    }
+
+    // ══ The consumer axis for the same fact ══════════════════════════════════════════════════
+
+    /// <summary>
+    /// A constant-position consumer of the const declared by a <see cref="ConstHost"/>. The two
+    /// axes are factored on purpose: <see cref="ConstDeclaration_EmitsConstIffTheFact"/> varies
+    /// host × type × initializer against the emitted declaration, and this one varies host ×
+    /// consumer against the two facts, so the product stays measurable while both axes stay total.
+    /// </summary>
+    private sealed record HostConsumer(string Name, Func<ConstHost, string, string> Compose);
+
+    private static readonly HostConsumer[] HostConsumers =
+    {
+        new("Print", (h, init) => h.InsideFunction
+            ? $"def main():\n    const A: int = {init}\n    print(A)\n"
+            : h.Declare($"const A: int = {init}") + "def main():\n    print(" + h.Read + ")\n"),
+
+        new("DefDefault", (h, init) => h.InsideFunction
+            ? $"def main():\n    const A: int = {init}\n    def f(x: int = A) -> None:\n        print(x)\n    f()\n"
+            : h.Declare($"const A: int = {init}")
+              + $"def f(x: int = {h.Read}) -> None:\n    print(x)\n\ndef main():\n    f()\n"),
+
+        new("LambdaDefault", (h, init) => h.InsideFunction
+            ? $"def main():\n    const A: int = {init}\n    f = lambda x: int = A: x\n    print(f())\n"
+            : h.Declare($"const A: int = {init}")
+              + $"def main():\n    f = lambda x: int = {h.Read}: x\n    print(f())\n"),
+
+        new("MethodDefault", (h, init) => h.Declare($"const A: int = {init}")
+            + $"class Reader:\n    def m(self, x: int = {h.Read}) -> None:\n        print(x)\n\ndef main():\n    Reader().m()\n"),
+
+        new("MatchCase", (h, init) => h.InsideFunction
+            ? $"def main():\n    const A: int = {init}\n    v: int = 4\n    match v:\n        case A:\n            print(\"hit\")\n        case _:\n            print(\"miss\")\n"
+            : h.Declare($"const A: int = {init}")
+              + $"def main():\n    v: int = 4\n    match v:\n        case {h.Read}:\n            print(\"hit\")\n        case _:\n            print(\"miss\")\n"),
+    };
+
+    /// <summary>The compile-time initializer and the one whose lowering is a call.</summary>
+    private const string CompileTimeInit = "4";
+    private const string CallInit = "max(1, 4)";
+
+    /// <summary>
+    /// Consumer cells this seam does not decide, each with its reason and the issue that owns it.
+    /// </summary>
+    private static readonly Dictionary<string, string> HostConsumerNotApplicable = new(StringComparer.Ordinal)
+    {
+        ["Local×MethodDefault"] =
+            "a local const lives in function scope — a class member has no enclosing function to own it",
+        ["NestedClassField×MatchCase"] =
+            "a three-part qualified name in a pattern head is SPY0203 'Type Outer has no member Holder' "
+            + "at BASE and HEAD alike — nested-type member access in a pattern head, #1799, not this seam",
+    };
+
+    private static HostConsumer HC(string name) => HostConsumers.Single(c => c.Name == name);
+
+    public static IEnumerable<object[]> HostConsumerCells =>
+        from h in ConstHosts
+        from c in HostConsumers
+        where !HostConsumerNotApplicable.ContainsKey($"{h.Name}×{c.Name}")
+        select new object[] { h.Name, c.Name };
+
+    private const int HostConsumerCount = 5;
+    private const int HostConsumerNotApplicableCount = 2;
+
+    [Fact]
+    public void HostConsumerMatrix_IsTotalOverItsAxes()
+    {
+        HostConsumers.Length.Should().Be(HostConsumerCount);
+        HostConsumers.Select(c => c.Name).Should().OnlyHaveUniqueItems();
+        HostConsumerNotApplicable.Should().HaveCount(HostConsumerNotApplicableCount,
+            "every N/A cell is written down with its reason and its issue");
+
+        var product = ConstHostCount * HostConsumerCount;
+        var keys = (from h in ConstHosts from c in HostConsumers select $"{h.Name}×{c.Name}").ToHashSet();
+        HostConsumerNotApplicable.Keys.Should().OnlyContain(k => keys.Contains(k),
+            "an N/A key must name a real cell (stale entries fail)");
+        (HostConsumerCells.Count() + HostConsumerNotApplicableCount).Should().Be(product,
+            $"applicable + N/A must be the whole product ({ConstHostCount} × {HostConsumerCount})");
+    }
+
+    /// <summary>
+    /// A const whose fact is TRUE reads in every constant position, at every host, and prints its
+    /// declared value.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(HostConsumerCells))]
+    public void CompileTimeConst_ReadsAtEveryConsumer(string host, string consumer)
+    {
+        var source = HC(consumer).Compose(CH(host), CompileTimeInit);
+
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"[{host} × {consumer}] must never produce SPY0908. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.Success.Should().BeTrue(
+            $"[{host} × {consumer}] must compile and run. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+        result.StandardOutput.Should().Be(consumer == "MatchCase" ? "hit\n" : "4\n",
+            $"[{host} × {consumer}] reads the const's declared value\n{source}");
+    }
+
+    /// <summary>
+    /// A const whose fact is FALSE (its initializer lowers to a call) is refused BY NAME at every
+    /// consumer that needs a C# constant — SPY0401 for a default, SPY0605 for a pattern head —
+    /// never by Roslyn behind SPY0908. A plain read is not a constant position, so it still runs.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(HostConsumerCells))]
+    public void NonCompileTimeConst_IsRefusedByNameAtEveryConsumer(string host, string consumer)
+    {
+        var source = HC(consumer).Compose(CH(host), CallInit);
+
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"[{host} × {consumer}] must never produce SPY0908 — the refusal is ours, not Roslyn's. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+
+        // A plain read is not a constant position, and a QUALIFIED pattern head is not one either:
+        // the emitter lowers `case Holder.A:` to `case var t when t == Holder.A`, a guard that needs
+        // no C# constant. Only the bare spelling becomes a C# constant pattern, so only it is
+        // refused. This is the discriminating half of the cell — the two spellings take different
+        // emitter routes for the same const.
+        var isConstantPosition = consumer != "Print"
+            && !(consumer == "MatchCase" && CH(host).Read.Contains('.', StringComparison.Ordinal));
+
+        if (!isConstantPosition)
+        {
+            result.Success.Should().BeTrue(
+                $"[{host} × {consumer}] is not a constant position — the const emits non-const and "
+                + $"the program runs. "
+                + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+            result.StandardOutput.Should().Be(consumer == "MatchCase" ? "hit\n" : "4\n",
+                $"[{host} × {consumer}] still produces the right answer\n{source}");
+            return;
+        }
+
+        var expectedCode = consumer == "MatchCase"
+            ? DiagnosticCodes.SemanticOverflow.ConstantPatternNotCompileTime
+            : DiagnosticCodes.Validation.NonConstDefault;
+
+        result.Success.Should().BeFalse($"[{host} × {consumer}] must be refused\n{source}");
+        result.RawDiagnostics.Should().Contain(d => d.Code == expectedCode,
+            $"[{host} × {consumer}] must report {expectedCode}. Got: "
+            + $"{string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}"))}\n{source}");
+        result.RawDiagnostics.First(d => d.Code == expectedCode).Message
+            .Should().Contain("is not a compile-time constant",
+                $"[{host} × {consumer}] names the const that broke constancy\n{source}");
+    }
+
+    // ══ The decorator-argument matrix ════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// A bracket-attribute argument kind: the attribute parameter type it needs, the default for the
+    /// attribute's second parameter, the declarations the argument itself needs, its spelling, the
+    /// C# text the emitted attribute argument must carry when admitted, and the refusal fragment
+    /// otherwise. Reading the EMITTED argument is what makes the cell discriminating — a program
+    /// that merely compiles says nothing about which value reached the attribute.
+    /// </summary>
+    private sealed record DecoratorArgument(
+        string Name,
+        string ParamType,
+        string ParamDefault,
+        string Prelude,
+        string Expr,
+        string? EmittedText,
+        string? RefusedFragment);
+
+    private static readonly DecoratorArgument[] DecoratorArguments =
+    {
+        new("StringLiteral", "str", "\"d\"", "", "\"gone\"", "\"gone\"", null),
+        new("IntLiteral", "int", "1", "", "3", "3", null),
+        new("EnumMember", "Color", "Color.GREEN",
+            "enum Color:\n    RED = 1\n    GREEN = 2\n\n", "Color.RED", "Color.RED", null),
+        // StrConst/IntConst: the const IS compile-time — the refusal is the emitter's missing arm
+        // (#1801), and the message says so rather than contradicting the analysis.
+        new("StrConst", "str", "\"d\"", "const MSG: str = \"gone\"\n\n", "MSG", null,
+            "not yet supported in an attribute argument"),
+        new("IntConst", "int", "1", "const N: int = 3\n\n", "N", null,
+            "not yet supported in an attribute argument"),
+        new("Folded", "str", "\"d\"", "", "\"a\" + \"b\"", null,
+            "must be a compile-time constant"),
+        new("OptionalConst", "int", "1", "const O: int? = Some(1)\n\n", "O", null,
+            "is not a compile-time constant"),
+        new("CallInitializedConst", "str", "\"d\"", "const CI: str = \"a\".upper()\n\n", "CI", null,
+            "is not a compile-time constant"),
+        new("Call", "str", "\"d\"", "def g() -> str:\n    return \"x\"\n\n", "g()", null,
+            "must be a compile-time constant"),
+    };
+
+    private sealed record DecoratorPosition(string Name, Func<DecoratorArgument, string> Spell);
+
+    private static readonly DecoratorPosition[] DecoratorPositions =
+    {
+        new("Positional", a => $"tag_attribute({a.Expr})"),
+        new("Keyword", a => $"tag_attribute({a.ParamDefault}, b={a.Expr})"),
+    };
+
+    /// <summary>
+    /// Argument kinds a C# attribute argument SHOULD admit — <c>decorators.md</c> documents all
+    /// three — but which the emitter cannot print yet: <c>GenerateAttributeArgumentExpression</c>
+    /// has no arm for an identifier or an operator node and throws SPY0909 (#1801). Admitting them
+    /// in <c>AdmissionTable.DecoratorArgument</c> without those arms would turn today's clean
+    /// SPY0425 into an internal compiler error, so the two land together. These rows assert the
+    /// refusal and DRAIN when the emitter arms do.
+    /// </summary>
+    private static readonly Dictionary<string, string> DecoratorArgumentPendingEmitterArm =
+        new(StringComparer.Ordinal)
+        {
+            ["StrConst"] = "#1801 — GenerateAttributeArgumentExpression has no Identifier arm",
+            ["IntConst"] = "#1801 — GenerateAttributeArgumentExpression has no Identifier arm",
+            ["Folded"] = "#1801 — GenerateAttributeArgumentExpression has no BinaryOp arm",
+        };
+
+    // Anchored to literals, not to the arrays under test.
+    private const int DecoratorArgumentCount = 9;
+    private const int DecoratorPositionCount = 2;
+    private const int DecoratorAdmittedCount = 3;
+    private const int DecoratorRefusedCount = 6;
+    private const int DecoratorPendingCount = 3;
+
+    private static DecoratorArgument DA(string name) => DecoratorArguments.Single(a => a.Name == name);
+
+    private static DecoratorPosition DP(string name) => DecoratorPositions.Single(p => p.Name == name);
+
+    /// <summary>
+    /// A user bracket attribute whose two parameters take the argument's own type, so positional and
+    /// keyword are the SAME argument in two positions rather than two different attributes.
+    /// </summary>
+    private static string ComposeDecoratorCell(DecoratorArgument arg, DecoratorPosition position) =>
+        "from System import Attribute\n\n"
+        + arg.Prelude
+        + $"class TagAttribute(Attribute):\n    a: {arg.ParamType}\n    b: {arg.ParamType}\n\n"
+        + $"    def __init__(self, a: {arg.ParamType}, b: {arg.ParamType} = {arg.ParamDefault}):\n"
+        + "        super().__init__()\n        self.a = a\n        self.b = b\n\n"
+        + $"@[{position.Spell(arg)}]\ndef foo() -> int:\n    return 1\n\ndef main():\n    print(foo())\n";
+
+    public static IEnumerable<object[]> DecoratorCells =>
+        from a in DecoratorArguments
+        from p in DecoratorPositions
+        select new object[] { a.Name, p.Name };
+
+    [Fact]
+    public void DecoratorMatrix_IsTotalOverItsAxes()
+    {
+        DecoratorArguments.Length.Should().Be(DecoratorArgumentCount);
+        DecoratorPositions.Length.Should().Be(DecoratorPositionCount);
+        DecoratorArguments.Select(a => a.Name).Should().OnlyHaveUniqueItems();
+        DecoratorPositions.Select(p => p.Name).Should().OnlyHaveUniqueItems();
+        DecoratorCells.Count().Should().Be(DecoratorArgumentCount * DecoratorPositionCount);
+
+        DecoratorArguments.Count(a => a.EmittedText != null).Should().Be(DecoratorAdmittedCount,
+            "the admitted half is written down");
+        DecoratorArguments.Count(a => a.EmittedText == null).Should().Be(DecoratorRefusedCount,
+            "the refused half is written down");
+        (DecoratorAdmittedCount + DecoratorRefusedCount).Should().Be(DecoratorArgumentCount);
+
+        DecoratorArgumentPendingEmitterArm.Should().HaveCount(DecoratorPendingCount,
+            "the pending count is written down and shrinks to zero when #1801 lands");
+        DecoratorArgumentPendingEmitterArm.Keys.Should()
+            .OnlyContain(k => DecoratorArguments.Any(a => a.Name == k && a.EmittedText == null),
+                "a pending entry must name a real argument kind that is currently refused "
+                + "(stale entries fail)");
+        DecoratorArgumentPendingEmitterArm.Values.Should().OnlyContain(v => v.Contains("#1801"),
+            "every pending entry cites its issue");
+    }
+
+    /// <summary>
+    /// A bracket-attribute argument is admitted iff the constant fact allows it, at BOTH positions,
+    /// and the emitted attribute carries the argument's own text. A refused argument reports SPY0425
+    /// naming the reason — never SPY0908 or SPY0909.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(DecoratorCells))]
+    public void DecoratorArgument_IsAdmittedIffTheFact(string argument, string position)
+    {
+        var a = DA(argument);
+        var source = ComposeDecoratorCell(a, DP(position));
+
+        var result = CompileAndExecute(source);
+
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError
+                || d.Code == DiagnosticCodes.Infrastructure.InternalCompilerError,
+            $"[{argument} × {position}] must never ICE — a decorator argument is refused by name. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+
+        if (a.EmittedText != null)
+        {
+            result.Success.Should().BeTrue(
+                $"[{argument} × {position}] must compile and run. "
+                + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+            result.StandardOutput.Should().Be("1\n", $"[{argument} × {position}] runs\n{source}");
+            result.GeneratedCSharp.Should().NotBeNull();
+            result.GeneratedCSharp.Should().Contain(a.EmittedText,
+                $"[{argument} × {position}] the emitted attribute carries the argument's own text — "
+                + $"an exit code alone cannot say WHICH value reached the attribute\n{result.GeneratedCSharp}");
+            return;
+        }
+
+        result.Success.Should().BeFalse($"[{argument} × {position}] must be refused\n{source}");
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.Validation.NonConstantDecoratorArgument,
+            $"[{argument} × {position}] must report SPY0425. Got: "
+            + $"{string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}"))}\n{source}");
+        result.RawDiagnostics.First(d => d.Code == DiagnosticCodes.Validation.NonConstantDecoratorArgument)
+            .Message.Should().Contain(a.RefusedFragment!,
+                $"[{argument} × {position}] names why the argument is not constant\n{source}");
+    }
+
     // ══ Match-case constant-pattern matrix ════════════════════════════════════════════════════
 
     /// <summary>
@@ -550,6 +1077,22 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     // comparison is not "the enum against itself".
 
     private const int EmittableConstantKindCount = 16;
+
+    /// <summary>
+    /// The qualified-name arm dispatches through <c>ConstantDefaultClassifier.RootsInIdentifier</c>,
+    /// which walks a member chain down to its root. Scanning it keeps this class's guarded-by claim
+    /// for that site honest: the chain must bottom out in an identifier and in nothing else.
+    /// </summary>
+    [Fact]
+    public void MemberChainRoot_DispatchesOnIdentifierAndMemberAccessOnly()
+    {
+        var arms = Infrastructure.SwitchArmScan.CaseTypeNames(
+            "src/Sharpy.Compiler/Semantic/Validation/ConstantDefaultClassifier.cs", "RootsInIdentifier");
+
+        arms.Should().BeEquivalentTo(new[] { "Identifier", "MemberAccess" },
+            "a qualified constant is an identifier under zero or more member accesses; every other "
+            + "receiver shape is a runtime expression and answers false");
+    }
 
     [Fact]
     public void ClassifierSwitch_ReturnsEveryEmittableConstantKind()

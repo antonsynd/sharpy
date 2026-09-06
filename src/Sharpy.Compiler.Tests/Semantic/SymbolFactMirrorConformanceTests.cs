@@ -445,6 +445,12 @@ def main() -> None:
         F<VariableSymbol>("ConstantValue", v => v.ConstantValue?.ToString(),
             CacheStatus.RoundTrips,
             "CachedSymbol.ConstantValue — BigInteger? serialized as invariant-culture string (#1460)"),
+        F<VariableSymbol>("IsCompileTimeConstant", v => v.IsCompileTimeConstant,
+            CacheStatus.RoundTrips,
+            "CachedSymbol.IsCompileTimeConstant — the ONE const-eligibility fact (#1791). A project "
+            + "build gives every file its own SemanticBinding, so the exporting module's fact must "
+            + "ride the symbol; without the cache round-trip a warm build refused an imported "
+            + "float/str/bool/enum const the cold build accepted"),
 
         // ---- TypeAliasSymbol ----
         F<TypeAliasSymbol>("TypeAnnotation", a => a.TypeAnnotation?.Name, CacheStatus.Dropped,

@@ -10,9 +10,9 @@ public static partial class MatchEnumMember0001
 {
     public class Color
     {
-        public static readonly int RED = 0;
-        public static readonly int GREEN = 1;
-        public static readonly int BLUE = 2;
+        public const int RED = 0;
+        public const int GREEN = 1;
+        public const int BLUE = 2;
     }
 
     public static string Describe(int c)

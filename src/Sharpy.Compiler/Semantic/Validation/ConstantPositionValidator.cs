@@ -29,33 +29,10 @@ internal class ConstantPositionValidator : ValidatingAstWalker
 
     private ICompilerLogger _logger = NullLogger.Instance;
 
-    /// <summary>
-    /// Module-level const declarations indexed by name, built once before any default is processed
-    /// so a forward-reference resolves through the declaration rather than processing order.
-    /// </summary>
-    private Dictionary<string, VariableDeclaration> _moduleConstDecls = new(StringComparer.Ordinal);
-
-    /// <summary>
-    /// Memoized compile-time fact for module consts — mirrors
-    /// <see cref="CodeGenInfoComputer"/> logic.
-    /// </summary>
-    private readonly Dictionary<string, bool> _moduleConstIsCompileTime = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _moduleConstsInProgress = new(StringComparer.Ordinal);
-
     public override void Validate(Module module, SemanticContext context)
     {
         _logger = context.Logger;
         _logger.LogDebug("Starting constant-position validation");
-
-        // Pre-index module-level const declarations for the constResolver.
-        _moduleConstDecls = new Dictionary<string, VariableDeclaration>(StringComparer.Ordinal);
-        _moduleConstIsCompileTime.Clear();
-        _moduleConstsInProgress.Clear();
-        foreach (var stmt in module.Body)
-        {
-            if (stmt is VariableDeclaration { IsConst: true } decl && decl.InitialValue != null)
-                _moduleConstDecls[decl.Name] = decl;
-        }
 
         base.Validate(module, context);
     }
@@ -357,11 +334,12 @@ internal class ConstantPositionValidator : ValidatingAstWalker
             defaultValue,
             constResolver: id => IsConstReferenceAdmissible(id, semanticInfo),
             operatorLowersToConstant: node =>
-                ConstEligibility.LowersToConstantExpression(node, semanticInfo));
+                ConstEligibility.LowersToConstantExpression(node, semanticInfo),
+            memberConstResolver: member => IsMemberConstAdmissible(member, semanticInfo));
 
         if (!ConstantDefaultClassifier.IsAdmitted(kind, table))
         {
-            var reason = DescribeRefusalReason(kind, defaultValue, semanticInfo);
+            var reason = DescribeRefusalReason(kind, defaultValue, semanticInfo, slot.Noun);
             var refusal = $"Default value for {slot.Subject} in {slot.Host} must be a compile-time constant expression";
             var steer = kind switch
             {
@@ -417,160 +395,152 @@ internal class ConstantPositionValidator : ValidatingAstWalker
     }
 
     /// <summary>
-    /// The scope-correct constResolver: an <see cref="Identifier"/> in a constant position resolves
-    /// iff it names a <c>const</c> symbol with the same backtick-escape spelling, and that const is
-    /// a compile-time constant (can emit as C# <c>const</c>, not <c>static readonly</c>).
-    /// Uses <see cref="SemanticInfo.GetIdentifierSymbol"/> for scope-correct binding.
+    /// The constResolver, for every constant position: an <see cref="Identifier"/> resolves iff the
+    /// symbol the CHECKER bound to it is a <c>const</c> with the same backtick-escape spelling and
+    /// that const's compile-time fact is true.
+    ///
+    /// <para>The binding comes from <see cref="SemanticInfo.GetIdentifierSymbol"/>, which is
+    /// scope-correct — a local const in an enclosing function, or a class const read from a method's
+    /// signature, is the symbol the checker actually bound. <c>SymbolTable.Lookup</c> answers at
+    /// MODULE scope and cannot see either; it survives only as the fallback for an identifier the
+    /// checker never visited (a decorator argument on a declaration it skipped).</para>
+    ///
+    /// <para>The fact itself is <see cref="ConstEligibility"/>'s, for every host and every route —
+    /// this validator computes no eligibility of its own (#1791).</para>
     /// </summary>
     private bool IsConstReferenceAdmissible(Identifier id, SemanticInfo semanticInfo)
     {
-        // Scope-correct binding: use the type checker's recorded symbol for this identifier.
-        var sym = semanticInfo.GetIdentifierSymbol(id) as VariableSymbol;
-        if (sym == null || !sym.IsConstant || sym.IsNameBacktickEscaped != id.IsNameBacktickEscaped)
+        var sym = ResolveConstSymbol(id, semanticInfo);
+        return sym != null && ConstEligibility.IsCompileTimeConstant(Context.SemanticBinding, sym);
+    }
+
+    /// <summary>
+    /// The qualified-name twin of <see cref="IsConstReferenceAdmissible"/>: <c>Holder.A</c> resolves
+    /// iff the member the checker bound is a <c>const</c> whose fact is true. Null when the chain
+    /// names something else (an enum member, a CLR static), where the shape rule stands.
+    /// </summary>
+    private bool? IsMemberConstAdmissible(MemberAccess member, SemanticInfo semanticInfo)
+        => ConstEligibility.ResolvesToCompileTimeMember(member, semanticInfo, Context.SemanticBinding);
+
+    /// <summary>
+    /// The <c>const</c> symbol an identifier in a constant position denotes, or null.
+    /// </summary>
+    private VariableSymbol? ResolveConstSymbol(Identifier id, SemanticInfo semanticInfo)
+    {
+        if (semanticInfo.GetIdentifierSymbol(id) is VariableSymbol { IsConstant: true } bound
+            && bound.IsNameBacktickEscaped == id.IsNameBacktickEscaped)
         {
-            // Fall back to SymbolTable.Lookup when SemanticInfo has no binding (e.g., sub-expressions
-            // within the default value that were not individually type-checked as identifiers).
-            if (Context.SymbolTable.Lookup(id.Name) is VariableSymbol { IsConstant: true } fallbackSym
-                && fallbackSym.IsNameBacktickEscaped == id.IsNameBacktickEscaped)
-            {
-                sym = fallbackSym;
-            }
-            else
-            {
-                return false;
-            }
+            return bound;
         }
 
-        // Check via CodeGenInfo if already computed (imported symbols from other files).
-        var cgi = Context.SemanticBinding.GetCodeGenInfo(sym);
-        if (cgi != null)
-            return cgi.IsCompileTimeConstant;
-
-        // For same-file module consts: replicate the CodeGenInfoComputer's compile-time check.
-        if (_moduleConstDecls.ContainsKey(sym.Name))
-            return IsModuleConstCompileTime(sym.Name, semanticInfo);
-
-        // A const with a folded integer ConstantValue is compile-time.
-        if (sym.ConstantValue != null)
-            return true;
-
-        // A const whose type is a non-integer C#-const-eligible primitive (float, str, bool, etc.)
-        // is compile-time if we cannot prove otherwise. Class/local consts with literal initializers
-        // are the common case; the module-const check above handles the detailed analysis.
-        var type = Context.SemanticBinding.GetVariableType(sym);
-        if (type is UnknownType)
-            type = sym.Type;
-        var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(type);
-        if (info != null && info.ClrType != typeof(object) && info.ClrType != typeof(void))
-            return true;
-
-        return false;
+        return Context.SymbolTable.Lookup(id.Name) is VariableSymbol { IsConstant: true } fallback
+            && fallback.IsNameBacktickEscaped == id.IsNameBacktickEscaped
+                ? fallback
+                : null;
     }
 
     /// <summary>
-    /// Mirrors <c>CodeGenInfoComputer.IsModuleConstCompileTime</c>: a module const is compile-time
-    /// iff its type is C#-const-eligible AND its initializer is admitted by
-    /// <see cref="AdmissionTable.ModuleConst"/> with the operator hook.
-    /// </summary>
-    private bool IsModuleConstCompileTime(string name, SemanticInfo semanticInfo)
-    {
-        if (_moduleConstIsCompileTime.TryGetValue(name, out var known))
-            return known;
-        if (!_moduleConstDecls.TryGetValue(name, out var decl))
-            return false;
-        if (!_moduleConstsInProgress.Add(name))
-            return false; // cycle
-
-        var sym = Context.SymbolTable.Lookup(name) as VariableSymbol;
-        var result = sym != null && ComputeModuleConstIsCompileTime(sym, decl, semanticInfo);
-
-        _moduleConstsInProgress.Remove(name);
-        _moduleConstIsCompileTime[name] = result;
-        return result;
-    }
-
-    private bool ComputeModuleConstIsCompileTime(
-        VariableSymbol sym, VariableDeclaration decl, SemanticInfo semanticInfo)
-    {
-        if (decl.InitialValue == null)
-            return false;
-
-        var type = Context.SemanticBinding.GetVariableType(sym);
-        if (type is UnknownType)
-            type = sym.Type;
-
-        if (type is NullableType or OptionalType)
-            return false;
-
-        var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(type);
-        if (info == null || info.ClrType == typeof(object) || info.ClrType == typeof(void))
-            return false;
-
-        var kind = ConstantDefaultClassifier.Classify(
-            decl.InitialValue,
-            constResolver: id => IsModuleConstReferenceCompileTime(id, semanticInfo),
-            operatorLowersToConstant: node =>
-                ConstEligibility.LowersToConstantExpression(node, semanticInfo));
-
-        if (!ConstantDefaultClassifier.IsAdmitted(kind, AdmissionTable.ModuleConst))
-            return false;
-
-        var isInteger = info.Kind is Registry.PrimitiveCatalog.NumericKind.SignedInteger
-            or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger;
-        return !isInteger || sym.ConstantValue != null;
-    }
-
-    /// <summary>
-    /// The constResolver for module-const compile-time analysis: an identifier resolves iff it
-    /// names a const that is itself compile-time (chains resolve through the same memo).
-    /// </summary>
-    private bool IsModuleConstReferenceCompileTime(Identifier id, SemanticInfo semanticInfo)
-    {
-        var sym = Context.SymbolTable.Lookup(id.Name);
-        if (sym is not VariableSymbol { IsConstant: true } constSymbol
-            || sym.IsNameBacktickEscaped != id.IsNameBacktickEscaped)
-            return false;
-        if (_moduleConstDecls.ContainsKey(id.Name))
-            return IsModuleConstCompileTime(id.Name, semanticInfo);
-        return constSymbol.ConstantValue != null;
-    }
-
-    /// <summary>
-    /// Produces a human-readable reason for why a default value was refused, naming the specific
+    /// Produces a human-readable reason for why a constant position was refused, naming the specific
     /// non-constant element. Returns null when no specific reason can be given.
+    ///
+    /// <para>An identifier's reason comes from the CAUSE <see cref="ConstEligibility"/> recorded with
+    /// the fact, so the refusal and the analysis cannot tell different stories.</para>
     /// </summary>
-    private static string? DescribeRefusalReason(
-        EmittableConstantKind kind, Expression defaultValue, SemanticInfo semanticInfo)
+    private string? DescribeRefusalReason(
+        EmittableConstantKind kind, Expression defaultValue, SemanticInfo semanticInfo, string? noun = null)
     {
-        if (kind == EmittableConstantKind.Other)
-        {
-            if (defaultValue is BinaryOp binary)
-            {
-                var operatorName = binary.Operator switch
-                {
-                    BinaryOperator.FloorDivide =>
-                        "'//' lowers to FloorDiv which is not a C# constant operator",
-                    BinaryOperator.Modulo =>
-                        "'%' lowers to FloorMod which is not a C# constant operator",
-                    BinaryOperator.Power =>
-                        "'**' lowers to Math.Pow which is not a C# constant operator",
-                    BinaryOperator.Multiply when IsStringTimesInt(binary, semanticInfo) =>
-                        "'*' on str lowers to string.Repeat which is not a C# constant operator",
-                    _ => null,
-                };
-                if (operatorName != null)
-                    return operatorName;
-            }
+        if (kind != EmittableConstantKind.Other)
+            return null;
 
-            if (defaultValue is Identifier refId)
+        if (defaultValue is BinaryOp binary)
+        {
+            var operatorName = binary.Operator switch
             {
-                var refSym = semanticInfo.GetIdentifierSymbol(refId) as VariableSymbol;
-                if (refSym is { IsConstant: true })
-                    return $"'{refId.Name}' is not a compile-time constant";
+                BinaryOperator.FloorDivide =>
+                    "'//' lowers to FloorDiv which is not a C# constant operator",
+                BinaryOperator.Modulo =>
+                    "'%' lowers to FloorMod which is not a C# constant operator",
+                BinaryOperator.Power =>
+                    "'**' lowers to Math.Pow which is not a C# constant operator",
+                BinaryOperator.Multiply when IsStringTimesInt(binary, semanticInfo) =>
+                    "'*' on str lowers to string.Repeat which is not a C# constant operator",
+                BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual
+                    or BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual
+                    when IsStringOperand(binary, semanticInfo) =>
+                    "ordering str operands lowers to string.CompareOrdinal which is not a C# constant operator",
+                BinaryOperator.In or BinaryOperator.NotIn =>
+                    "'in' lowers to a containment call which is not a C# constant operator",
+                BinaryOperator.MatMul =>
+                    "'@' lowers to a call which is not a C# constant operator",
+                _ => null,
+            };
+            if (operatorName != null)
+                return operatorName;
+        }
+
+        if (defaultValue is Identifier refId)
+        {
+            var refSym = ResolveConstSymbol(refId, semanticInfo);
+            if (refSym != null)
+                return DescribeConstReason(refSym, noun);
+        }
+
+        if (defaultValue is MemberAccess member)
+        {
+            if (ConstEligibility.MemberConstSymbol(member, semanticInfo) is { } memberSym)
+                return DescribeConstReason(memberSym, noun);
+
+            if (ConstEligibility.ResolvesToCompileTimeMember(
+                    member, semanticInfo, Context.SemanticBinding) == false)
+            {
+                return $"'{member.Member}' is a field, not a const, so it is not a compile-time constant";
             }
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Why the const <paramref name="symbol"/> is not compile-time, in the reader's words. Reads the
+    /// cause <see cref="ConstEligibility"/> recorded with the fact — no second analysis.
+    /// </summary>
+    private string? DescribeConstReason(VariableSymbol symbol, string? noun = null)
+    {
+        var name = symbol.Name;
+        var cause = Context.SemanticBinding.GetConstIneligibilityCause(symbol);
+        var type = Context.SemanticBinding.GetVariableType(symbol);
+        if (type is UnknownType)
+            type = symbol.Type;
+        var spelling = Context.SemanticBinding.GetConstDeclaredSpelling(symbol) ?? type.GetDisplayName();
+        var slot = noun ?? "variable";
+
+        return cause switch
+        {
+            ConstIneligibilityCause.OptionalType =>
+                $"'{name}' is not a compile-time constant: an Optional ('{spelling}') cannot be a "
+                + $"compile-time constant; declare the {slot} '{spelling} = None()' and coalesce in the body",
+            ConstIneligibilityCause.NullableType =>
+                $"'{name}' is not a compile-time constant: a nullable value type ('{spelling}') "
+                + "cannot be a compile-time constant in C#",
+            ConstIneligibilityCause.IneligibleType =>
+                $"'{name}' is not a compile-time constant: C# admits no const of type '{spelling}'",
+            ConstIneligibilityCause.CallInitializer =>
+                $"'{name}' is not a compile-time constant: its initializer is a call",
+            ConstIneligibilityCause.CallLoweredOperator =>
+                $"'{name}' is not a compile-time constant: its initializer uses an operator that "
+                + "lowers to a call",
+            ConstIneligibilityCause.NonConstantReference =>
+                $"'{name}' is not a compile-time constant: it reads another const that is not one",
+            ConstIneligibilityCause.UnfoldedInteger =>
+                $"'{name}' is not a compile-time constant: its integer initializer does not fold to a value",
+            _ => $"'{name}' is not a compile-time constant",
+        };
+    }
+
+    private static bool IsStringOperand(BinaryOp binary, SemanticInfo semanticInfo)
+    {
+        var leftType = semanticInfo.GetExpressionType(AstHelper.UnwrapParenthesized(binary.Left));
+        return leftType != null && TypeUtils.IsString(leftType);
     }
 
     private static bool IsStringTimesInt(BinaryOp binary, SemanticInfo semanticInfo)
@@ -611,13 +581,12 @@ internal class ConstantPositionValidator : ValidatingAstWalker
                 arg,
                 constResolver: id => IsConstReferenceAdmissible(id, semanticInfo),
                 operatorLowersToConstant: node =>
-                    ConstEligibility.LowersToConstantExpression(node, semanticInfo));
+                    ConstEligibility.LowersToConstantExpression(node, semanticInfo),
+                memberConstResolver: member => IsMemberConstAdmissible(member, semanticInfo));
 
             if (!ConstantDefaultClassifier.IsAdmitted(kind, AdmissionTable.DecoratorArgument))
             {
-                var message = arg is Identifier id
-                    ? $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access"
-                    : "Decorator argument must be a compile-time constant";
+                var message = DescribeDecoratorRefusal(arg, kind, semanticInfo);
                 AddError(
                     message,
                     arg.LineStart,
@@ -633,13 +602,12 @@ internal class ConstantPositionValidator : ValidatingAstWalker
                 kwArg.Value,
                 constResolver: id => IsConstReferenceAdmissible(id, semanticInfo),
                 operatorLowersToConstant: node =>
-                    ConstEligibility.LowersToConstantExpression(node, semanticInfo));
+                    ConstEligibility.LowersToConstantExpression(node, semanticInfo),
+                memberConstResolver: member => IsMemberConstAdmissible(member, semanticInfo));
 
             if (!ConstantDefaultClassifier.IsAdmitted(kind, AdmissionTable.DecoratorArgument))
             {
-                var message = kwArg.Value is Identifier id
-                    ? $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access"
-                    : "Decorator argument must be a compile-time constant";
+                var message = DescribeDecoratorRefusal(kwArg.Value, kind, semanticInfo);
                 AddError(
                     message,
                     kwArg.Value.LineStart,
@@ -648,6 +616,35 @@ internal class ConstantPositionValidator : ValidatingAstWalker
                     span: kwArg.Value.Span);
             }
         }
+    }
+
+    /// <summary>
+    /// The refusal text for one bracket-attribute argument, naming the constancy reason the analysis
+    /// recorded (a C# attribute argument is a constant expression, so the reasons are the same ones
+    /// a parameter default reports).
+    /// </summary>
+    private string DescribeDecoratorRefusal(
+        Expression arg, EmittableConstantKind kind, SemanticInfo semanticInfo)
+    {
+        if (arg is Identifier id)
+        {
+            var sym = ResolveConstSymbol(id, semanticInfo);
+            if (sym == null)
+                return $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access";
+
+            // A const that IS compile-time still cannot be printed here: code generation has no arm
+            // for a name in an attribute argument (#1801). Say that rather than claiming the const
+            // is not constant, which the analysis would flatly contradict.
+            return ConstEligibility.IsCompileTimeConstant(Context.SemanticBinding, sym)
+                ? $"'{id.Name}' is a compile-time constant, but a const reference is not yet "
+                  + "supported in an attribute argument; write the literal value"
+                : DescribeConstReason(sym, "argument")!;
+        }
+
+        var reason = DescribeRefusalReason(kind, arg, semanticInfo, "argument");
+        return reason == null
+            ? "Decorator argument must be a compile-time constant"
+            : $"Decorator argument must be a compile-time constant ({reason})";
     }
 
     // ── Match-case constant pattern validation ──────────────────────────
@@ -664,41 +661,16 @@ internal class ConstantPositionValidator : ValidatingAstWalker
         if (constSym == null)
             return; // not a constant pattern — it's a capture binding
 
-        // Check if the const is compile-time
-        var cgi = Context.SemanticBinding.GetCodeGenInfo(constSym);
-        bool isCompileTime;
-        if (cgi != null)
-        {
-            isCompileTime = cgi.IsCompileTimeConstant;
-        }
-        else if (_moduleConstDecls.ContainsKey(constSym.Name))
-        {
-            isCompileTime = IsModuleConstCompileTime(constSym.Name, Context.SemanticInfo);
-        }
-        else
-        {
-            // Heuristic for non-module-level consts: integer consts with ConstantValue are
-            // compile-time; non-integer consts with eligible primitive types are conservatively
-            // assumed compile-time.
-            if (constSym.ConstantValue != null)
-            {
-                isCompileTime = true;
-            }
-            else
-            {
-                var type = Context.SemanticBinding.GetVariableType(constSym);
-                if (type is UnknownType)
-                    type = constSym.Type;
-                var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(type);
-                isCompileTime = info != null
-                    && info.ClrType != typeof(object) && info.ClrType != typeof(void);
-            }
-        }
+        // The ONE fact, same as every other constant position (#1791).
+        if (ConstEligibility.IsCompileTimeConstant(Context.SemanticBinding, constSym))
+            return;
 
-        if (!isCompileTime)
+        var reason = DescribeConstReason(constSym);
+        var because = reason == null ? "" : $" ({reason})";
+
         {
             AddError(
-                $"Constant pattern '{node.Name.Name}' is not a compile-time constant; " +
+                $"Constant pattern '{node.Name.Name}' is not a compile-time constant{because}; " +
                 $"compare in a guard: 'case _ if v == {node.Name.Name}:'",
                 node.LineStart,
                 node.ColumnStart,

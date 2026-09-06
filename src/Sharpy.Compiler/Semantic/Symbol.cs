@@ -203,6 +203,17 @@ public record VariableSymbol : Symbol
     /// </summary>
     public System.Numerics.BigInteger? ConstantValue { get; internal set; }
 
+    /// <summary>
+    /// The compile-time-constant fact for a <c>const</c> symbol that arrived from ANOTHER module —
+    /// an in-project <c>.spy</c> import (<c>ModuleLoader</c> computes it from the exporting
+    /// declaration) or a warm incremental build (<c>SymbolSerializer</c> round-trips it). For a
+    /// const declared in the file under compilation the fact lives on
+    /// <c>SemanticBinding.SetCompileTimeConstant</c> instead, because it is computed after the
+    /// symbol is created; <c>ConstEligibility.IsCompileTimeConstant</c> is the ONE reader that
+    /// consults both (#1791, #1782).
+    /// </summary>
+    public bool IsCompileTimeConstant { get; internal set; }
+
     public Parser.Ast.ParameterModifier ParameterModifier { get; init; } = Parser.Ast.ParameterModifier.None;
 
     /// <summary>

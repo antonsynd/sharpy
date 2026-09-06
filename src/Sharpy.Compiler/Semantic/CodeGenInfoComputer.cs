@@ -359,8 +359,31 @@ internal class CodeGenInfoComputer
                 case FunctionDef funcDef:
                     ProcessMethodDef(typeSymbol, funcDef);
                     break;
+
+                // A NESTED type's members reach no other pass: the module-body loop sees only
+                // top-level declarations, so a nested class's field consts had no CodeGenInfo at
+                // all and the emitter read the default (`static readonly`) whatever the fact said
+                // (#1791). The nested symbol is its enclosing type's own child.
+                case ClassDef nestedClass:
+                    ProcessNestedTypeMembers(typeSymbol, nestedClass.Name, nestedClass.Body);
+                    break;
+
+                case StructDef nestedStruct:
+                    ProcessNestedTypeMembers(typeSymbol, nestedStruct.Name, nestedStruct.Body);
+                    break;
+
+                case InterfaceDef nestedInterface:
+                    ProcessNestedTypeMembers(typeSymbol, nestedInterface.Name, nestedInterface.Body);
+                    break;
             }
         }
+    }
+
+    private void ProcessNestedTypeMembers(TypeSymbol enclosing, string name, IEnumerable<Statement> body)
+    {
+        var nested = enclosing.NestedTypes.FirstOrDefault(t => t.Name == name);
+        if (nested != null)
+            ProcessTypeMembers(nested, body);
     }
 
     private void ProcessField(TypeSymbol typeSymbol, VariableDeclaration fieldDecl)

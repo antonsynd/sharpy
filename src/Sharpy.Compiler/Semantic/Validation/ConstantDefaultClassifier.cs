@@ -28,26 +28,35 @@ internal enum AdmissionTable
     ParameterDefault,
     LambdaParameterDefault,
     DecoratorArgument,
-    ModuleConst,
+
+    /// <summary>
+    /// A <c>const</c> declaration's initializer, at EVERY host — module body, function body, class
+    /// field, struct field, nested-type field. One table, because the host does not change what C#
+    /// admits in a <c>const</c> initializer (#1791).
+    /// </summary>
+    ConstInitializer,
 }
 
 /// <summary>
 /// ONE emittable-constant classifier for every constant position — def/lambda/__init__/dataclass
-/// parameter defaults, decorator arguments and module-level <c>const</c> initializers — with a
-/// per-site <see cref="AdmissionTable"/>. The classifier reads the SHAPE of the expression; the two
-/// facts a shape cannot carry are supplied by the caller:
+/// parameter defaults, decorator arguments, match-case constants and <c>const</c> initializers at
+/// every host — with a per-site <see cref="AdmissionTable"/>. The classifier reads the SHAPE of the
+/// expression; the two facts a shape cannot carry are supplied by the caller:
 /// <list type="bullet">
 /// <item><c>constResolver</c> — whether an <see cref="Identifier"/> names a constant the site may
-/// read as a C# constant. The validator answers "any <c>const</c> symbol"; the module-const computer
-/// answers "a <c>const</c> whose own initializer is compile-time", so a chain of consts folds and a
-/// forward reference to a literal const folds too (C# resolves const dependency order itself).</item>
+/// read as a C# constant. Every same-file caller answers from the ONE fact
+/// <see cref="ConstEligibility"/> computed ("a <c>const</c> whose own initializer is compile-time"),
+/// so a chain of consts folds and a forward reference to a literal const folds too (C# resolves
+/// const dependency order itself).</item>
 /// <item><c>operatorLowersToConstant</c> — whether an operator node (<see cref="BinaryOp"/>, a
 /// non-literal <see cref="UnaryOp"/>, <see cref="ConditionalExpression"/>) LOWERS to a C# constant
-/// operator. <c>//</c>, <c>%</c>, <c>**</c>, str <c>*</c> and ordinal string compares lower to calls
-/// (<c>FloorDiv</c>, <c>FloorMod</c>, <c>Math.Pow</c>, <c>Repeat</c>, <c>CompareOrdinal</c>), which
-/// C# refuses in a <c>const</c> initializer (CS0133) and in a parameter default (CS1736). A caller
-/// holding the checker's recorded lowerings passes the fact; a caller without them (the validator
-/// runs before type checking) passes null and the shape rule stands alone.</item>
+/// operator. <c>//</c>, <c>%</c>, float <c>**</c>, str <c>*</c> and ordinal string compares lower to
+/// calls (<c>FloorDiv</c>, <c>FloorMod</c>, <c>Math.Pow</c>, <c>Repeat</c>, <c>CompareOrdinal</c>),
+/// which C# refuses in a <c>const</c> initializer (CS0133) and in a parameter default (CS1736). A
+/// caller holding the checker's recorded lowerings passes
+/// <see cref="ConstEligibility.LowersToConstantExpression(Expression, SemanticInfo?)"/>; the
+/// cross-module route, which has no recorded lowerings, passes the operand-type-independent
+/// roster instead.</item>
 /// </list>
 /// </summary>
 internal static class ConstantDefaultClassifier
@@ -55,7 +64,8 @@ internal static class ConstantDefaultClassifier
     public static EmittableConstantKind Classify(
         Expression expr,
         Func<Identifier, bool>? constResolver = null,
-        Func<Expression, bool>? operatorLowersToConstant = null)
+        Func<Expression, bool>? operatorLowersToConstant = null,
+        Func<MemberAccess, bool?>? memberConstResolver = null)
     {
         switch (expr)
         {
@@ -75,7 +85,7 @@ internal static class ConstantDefaultClassifier
                 {
                     if (operatorLowersToConstant != null && !operatorLowersToConstant(unary))
                         return EmittableConstantKind.Other;
-                    var operandKind = Classify(unary.Operand, constResolver, operatorLowersToConstant);
+                    var operandKind = Classify(unary.Operand, constResolver, operatorLowersToConstant, memberConstResolver);
                     return IsAdmittedForFolding(operandKind)
                         ? EmittableConstantKind.FoldedOfAdmitted
                         : EmittableConstantKind.Other;
@@ -85,23 +95,23 @@ internal static class ConstantDefaultClassifier
                 {
                     if (operatorLowersToConstant != null && !operatorLowersToConstant(binary))
                         return EmittableConstantKind.Other;
-                    var leftKind = Classify(binary.Left, constResolver, operatorLowersToConstant);
-                    var rightKind = Classify(binary.Right, constResolver, operatorLowersToConstant);
+                    var leftKind = Classify(binary.Left, constResolver, operatorLowersToConstant, memberConstResolver);
+                    var rightKind = Classify(binary.Right, constResolver, operatorLowersToConstant, memberConstResolver);
                     return IsAdmittedForFolding(leftKind) && IsAdmittedForFolding(rightKind)
                         ? EmittableConstantKind.FoldedOfAdmitted
                         : EmittableConstantKind.Other;
                 }
 
             case Parenthesized paren:
-                return Classify(paren.Expression, constResolver, operatorLowersToConstant);
+                return Classify(paren.Expression, constResolver, operatorLowersToConstant, memberConstResolver);
 
             case ConditionalExpression cond:
                 {
                     if (operatorLowersToConstant != null && !operatorLowersToConstant(cond))
                         return EmittableConstantKind.Other;
-                    var testKind = Classify(cond.Test, constResolver, operatorLowersToConstant);
-                    var thenKind = Classify(cond.ThenValue, constResolver, operatorLowersToConstant);
-                    var elseKind = Classify(cond.ElseValue, constResolver, operatorLowersToConstant);
+                    var testKind = Classify(cond.Test, constResolver, operatorLowersToConstant, memberConstResolver);
+                    var thenKind = Classify(cond.ThenValue, constResolver, operatorLowersToConstant, memberConstResolver);
+                    var elseKind = Classify(cond.ElseValue, constResolver, operatorLowersToConstant, memberConstResolver);
                     return IsAdmittedForFolding(testKind)
                         && IsAdmittedForFolding(thenKind)
                         && IsAdmittedForFolding(elseKind)
@@ -116,8 +126,15 @@ internal static class ConstantDefaultClassifier
                     return EmittableConstantKind.Other;
                 }
 
-            case MemberAccess { Object: Identifier }:
-                return EmittableConstantKind.EnumMember;
+            // A qualified constant: an enum member (`Color.RED`), a class const (`C.K`) or a
+            // nested-type const (`Outer.Holder.K`). The chain must bottom out in an identifier —
+            // C# resolves exactly that spelling in a constant position (#1791) — and, when it names
+            // a `const`, that const's own fact decides. Without the second half a class const with a
+            // call initializer was admitted by SHAPE and refused by Roslyn (CS1736 behind SPY0908).
+            case MemberAccess member when RootsInIdentifier(member):
+                return memberConstResolver?.Invoke(member) == false
+                    ? EmittableConstantKind.Other
+                    : EmittableConstantKind.EnumMember;
 
             case FunctionCall call:
                 {
@@ -171,6 +188,15 @@ internal static class ConstantDefaultClassifier
                 EmittableConstantKind.TypeOf or
                 EmittableConstantKind.ConditionalOfAdmitted,
 
+            // A C# attribute argument IS a constant expression, so this table should admit exactly
+            // what a const initializer does — a ConstReference whose own fact is true, a
+            // FoldedOfAdmitted and a ConditionalOfAdmitted (#1782, and decorators.md already
+            // documents all three). It does not yet, because the emitter's
+            // GenerateAttributeArgumentExpression has no arm for an Identifier or an operator node
+            // and throws SPY0909 (#1801). Admitting here without that arm would turn today's clean
+            // SPY0425 into an internal compiler error — a refusal regressing into an ICE. The three
+            // rows land together with the emitter arms; ParameterDefaultConstantMatrixTests carries
+            // the draining N/A entries that cite #1801.
             AdmissionTable.DecoratorArgument => kind is
                 EmittableConstantKind.Literal or
                 EmittableConstantKind.NegatedLiteral or
@@ -178,7 +204,7 @@ internal static class ConstantDefaultClassifier
                 EmittableConstantKind.EnumMember or
                 EmittableConstantKind.TypeOf,
 
-            AdmissionTable.ModuleConst => kind is
+            AdmissionTable.ConstInitializer => kind is
                 EmittableConstantKind.Literal or
                 EmittableConstantKind.NegatedLiteral or
                 EmittableConstantKind.FoldedOfAdmitted or
@@ -189,6 +215,17 @@ internal static class ConstantDefaultClassifier
             _ => false,
         };
     }
+
+    /// <summary>
+    /// Whether a member-access chain bottoms out in a plain identifier, so its C# spelling is a
+    /// qualified name rather than an expression with a runtime receiver.
+    /// </summary>
+    private static bool RootsInIdentifier(Expression expr) => expr switch
+    {
+        Identifier => true,
+        MemberAccess member => RootsInIdentifier(member.Object),
+        _ => false,
+    };
 
     private static bool IsAdmittedForFolding(EmittableConstantKind kind) =>
         kind is EmittableConstantKind.Literal
