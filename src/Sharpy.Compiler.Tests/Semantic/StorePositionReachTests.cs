@@ -342,8 +342,8 @@ public class StorePositionReachTests : IntegrationTestBase
     private const int CoalesceRightCount = 11;
     private const int CoalesceTargetCount = 7;
     private const int CoalesceAcceptedCellCount = 224;
-    private const int CoalesceRefusedCellCount = 294;
-    private const int CoalesceNotApplicableCellCount = 21;
+    private const int CoalesceRefusedCellCount = 315;
+    private const int CoalesceNotApplicableCellCount = 0;
 
     private enum SlotFamily { Plain, Optional, Nullable }
 
