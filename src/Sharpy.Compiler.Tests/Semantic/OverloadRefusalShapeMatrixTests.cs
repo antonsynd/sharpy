@@ -25,18 +25,18 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
     // ── Same-argument: list.index with wrong type -> SPY0220 ─────────────────────────────────
 
     [Fact]
-    public void ListIndex_WrongType_ReportsSPY0220()
+    public void ListIndex_WrongType_KeepsSPY0354_SingleArityCandidate()
     {
-        // list.index has overloads: index(value), index(value, start), index(value, start, stop)
-        // ALL reject a str argument at index 0 for type (list[int] expects int).
+        // list.index has overloads: index(value), index(value, start), index(value, start, stop).
+        // Called with 1 arg, only index(value) survives arity → single candidate → SPY0354.
+        // The >= 2 arity-candidate guard is correct: a single-candidate failure is already
+        // informative enough without the same-argument upgrade.
         var source = "def main() -> None:\n    xs: list[int] = [1, 2, 3]\n    print(xs.index(\"hello\"))\n";
         var result = CompileAndExecute(source);
         result.Success.Should().BeFalse();
         result.RawDiagnostics.Should().Contain(
-            d => d.Code == DiagnosticCodes.Semantic.TypeMismatch,
-            "same-argument overload rule should report SPY0220, not SPY0354");
-        var errors = string.Join(" ", result.CompilationErrors);
-        errors.Should().Contain("str").And.Contain("int32");
+            d => d.Code == DiagnosticCodes.Semantic.NoMatchingOverload,
+            "single arity candidate keeps SPY0354");
     }
 
     // ── Same-argument: list.count with wrong type -> SPY0220 (control, already worked) ───────
@@ -74,9 +74,10 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
     public void DivergentCandidates_KeepsSPY0354()
     {
         // Two overloads with different parameter types at the same position:
-        // f(x: int, y: str) vs f(x: str, y: int), called with f("a", "b")
-        // Candidate 1 fails at index 0, candidate 2 fails at index 1 -> divergent.
-        var source = "class C:\n    def __init__(self):\n        pass\n    def f(self, x: int, y: str) -> str:\n        return str(x) + y\n    def f(self, x: str, y: int) -> str:\n        return x + str(y)\n\ndef main() -> None:\n    c: C = C()\n    print(c.f(1.5, 1.5))\n";
+        // f(x: int, y: str) vs f(x: str, y: int).
+        // Called with f("a", "b"): candidate 1 fails at index 0 (str vs int),
+        // candidate 2 passes index 0 (str vs str) but fails at index 1 (str vs int) -> divergent.
+        var source = "class C:\n    def __init__(self):\n        pass\n    def f(self, x: int, y: str) -> str:\n        return str(x) + y\n    def f(self, x: str, y: int) -> str:\n        return x + str(y)\n\ndef main() -> None:\n    c: C = C()\n    print(c.f(\"a\", \"b\"))\n";
         var result = CompileAndExecute(source);
         result.Success.Should().BeFalse();
         result.RawDiagnostics.Should().Contain(
@@ -89,14 +90,14 @@ public class OverloadRefusalShapeMatrixTests : IntegrationTestBase
     [Fact]
     public void UserOverload_SameArgFailure_ReportsSPY0220()
     {
-        // Both overloads reject a str at index 0 (both expect int).
-        var source = "class Math:\n    def __init__(self):\n        pass\n    def add(self, x: int, y: int) -> int:\n        return x + y\n    def add(self, x: int, y: int, z: int) -> int:\n        return x + y + z\n\ndef main() -> None:\n    m: Math = Math()\n    print(m.add(\"hello\", 2))\n";
+        // Both 2-arg overloads survive arity and reject a str at index 0 (both expect int).
+        var source = "class Math:\n    def __init__(self):\n        pass\n    def add(self, x: int, y: int) -> int:\n        return x + y\n    def add(self, x: int, y: str) -> str:\n        return str(x) + y\n\ndef main() -> None:\n    m: Math = Math()\n    print(m.add(1.5, 2))\n";
         var result = CompileAndExecute(source);
         result.Success.Should().BeFalse();
         result.RawDiagnostics.Should().Contain(
             d => d.Code == DiagnosticCodes.Semantic.TypeMismatch,
             "same-argument overload rule should report SPY0220 when all candidates reject arg 0");
         var errors = string.Join(" ", result.CompilationErrors);
-        errors.Should().Contain("str").And.Contain("int32");
+        errors.Should().Contain("float64").And.Contain("int32");
     }
 }

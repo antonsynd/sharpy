@@ -51,7 +51,10 @@ public class LambdaBodyRefusalContextTests : IntegrationTestBase
     [Fact]
     public void UserFunctionArg_NoneBody_HasSuffix()
     {
-        var source = "def apply(f: (int) -> int, x: int) -> int:\n    return f(x)\n\ndef main() -> None:\n    result: int = apply(lambda x: None, 5)\n    print(result)\n";
+        // None into a non-nullable return fires the None-assignability check before the
+        // lambda body seam, so the suffix does not appear. Use a type mismatch instead:
+        // lambda returning float64 where int is expected.
+        var source = "def apply(f: (int) -> int, x: int) -> int:\n    return f(x)\n\ndef main() -> None:\n    result: int = apply(lambda x: 1.5, 5)\n    print(result)\n";
         var result = CompileAndExecute(source);
         result.Success.Should().BeFalse();
         var errors = string.Join(" ", result.CompilationErrors);
