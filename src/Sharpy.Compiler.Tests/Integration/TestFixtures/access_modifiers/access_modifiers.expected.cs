@@ -24,7 +24,7 @@ public static partial class AccessModifiers
         protected bool ValidateAmount(double amount)
 #line 18 "access_modifiers.spy"
         {
-#line (19, 9) - (21, 1) 12 "access_modifiers.spy"
+#line (19, 9) - (20, 25) 12 "access_modifiers.spy"
             if (amount > 0.0d)
 #line hidden
             {
@@ -49,7 +49,7 @@ public static partial class AccessModifiers
         public virtual void Deposit(double amount)
 #line 28 "access_modifiers.spy"
         {
-#line (29, 9) - (33, 1) 12 "access_modifiers.spy"
+#line (29, 9) - (31, 41) 12 "access_modifiers.spy"
             if (this.ValidateAmount(amount))
 #line hidden
             {
@@ -80,15 +80,15 @@ public static partial class AccessModifiers
         public override bool Withdraw(double amount)
 #line 47 "access_modifiers.spy"
         {
-#line (48, 9) - (54, 1) 12 "access_modifiers.spy"
+#line (48, 9) - (53, 33) 12 "access_modifiers.spy"
             if (this.ValidateAmount(amount))
 #line hidden
             {
-#line (49, 13) - (54, 1) 16 "access_modifiers.spy"
+#line (49, 13) - (53, 33) 16 "access_modifiers.spy"
                 if (amount <= this.WithdrawalLimit)
 #line hidden
                 {
-#line (50, 17) - (54, 1) 20 "access_modifiers.spy"
+#line (50, 17) - (53, 33) 20 "access_modifiers.spy"
                     if (this.Balance >= amount)
 #line hidden
                     {
@@ -125,13 +125,13 @@ public static partial class AccessModifiers
         public override bool Withdraw(double amount)
 #line 64 "access_modifiers.spy"
         {
-#line (65, 9) - (70, 1) 12 "access_modifiers.spy"
+#line (65, 9) - (69, 29) 12 "access_modifiers.spy"
             if (this.ValidateAmount(amount))
 #line hidden
             {
 #line (66, 13) - (66, 68) 16 "access_modifiers.spy"
                 double available = this.Balance + this.OverdraftLimit;
-#line (67, 13) - (70, 1) 16 "access_modifiers.spy"
+#line (67, 13) - (69, 29) 16 "access_modifiers.spy"
                 if (amount <= available)
 #line hidden
                 {
@@ -181,7 +181,7 @@ public static partial class AccessModifiers
         global::Sharpy.Builtins.Print(savings.Balance);
 #line (85, 5) - (85, 45) 8 "access_modifiers.spy"
         bool success = savings.Withdraw(800.0d);
-#line (86, 5) - (89, 1) 8 "access_modifiers.spy"
+#line (86, 5) - (87, 20) 8 "access_modifiers.spy"
         if (success)
 #line hidden
         {
@@ -200,7 +200,7 @@ public static partial class AccessModifiers
         global::Sharpy.Builtins.Print(checking.Balance);
 #line (95, 5) - (95, 56) 8 "access_modifiers.spy"
         bool withdrawSuccess = checking.Withdraw(1100.0d);
-#line (96, 5) - (98, 1) 8 "access_modifiers.spy"
+#line (96, 5) - (97, 19) 8 "access_modifiers.spy"
         if (withdrawSuccess)
 #line hidden
         {

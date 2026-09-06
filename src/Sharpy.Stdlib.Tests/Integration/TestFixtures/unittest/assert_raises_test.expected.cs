@@ -24,7 +24,7 @@ public partial class AssertRaisesTestTests
     [Xunit.FactAttribute]
     public void TestRaisesValueError()
     {
-#line (5, 5) - (8, 1) 8 "assert_raises_test.spy"
+#line (5, 5) - (6, 34) 8 "assert_raises_test.spy"
         bool __raised_0 = false;
 #line hidden
         try
@@ -45,7 +45,7 @@ public partial class AssertRaisesTestTests
     [Xunit.FactAttribute]
     public void TestRaisesRuntimeError()
     {
-#line (10, 5) - (13, 1) 8 "assert_raises_test.spy"
+#line (10, 5) - (11, 36) 8 "assert_raises_test.spy"
         bool __raised_1 = false;
 #line hidden
         try

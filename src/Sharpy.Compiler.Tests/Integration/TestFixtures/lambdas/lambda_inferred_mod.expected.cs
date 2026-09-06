@@ -16,12 +16,12 @@ public static partial class LambdaInferredMod
 #line hidden
         {
         };
-#line (7, 5) - (10, 1) 8 "lambda_inferred_mod.spy"
+#line (7, 5) - (9, 29) 8 "lambda_inferred_mod.spy"
         foreach (var __loopVar_0 in items)
 #line hidden
         {
             var item = __loopVar_0;
-#line (8, 9) - (10, 1) 12 "lambda_inferred_mod.spy"
+#line (8, 9) - (9, 29) 12 "lambda_inferred_mod.spy"
             if (f(item))
 #line hidden
             {

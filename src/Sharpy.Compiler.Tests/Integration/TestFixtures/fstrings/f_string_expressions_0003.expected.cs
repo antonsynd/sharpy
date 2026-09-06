@@ -51,7 +51,7 @@ public static partial class FStringExpressions0003
         public override string GetRank()
 #line 38 "f_string_expressions_0003.spy"
         {
-#line (39, 9) - (41, 1) 12 "f_string_expressions_0003.spy"
+#line (39, 9) - (40, 29) 12 "f_string_expressions_0003.spy"
             if (this.GetFinalScore() >= 150)
 #line hidden
             {
@@ -60,7 +60,7 @@ public static partial class FStringExpressions0003
 #line hidden
             }
 
-#line (41, 9) - (43, 1) 12 "f_string_expressions_0003.spy"
+#line (41, 9) - (42, 29) 12 "f_string_expressions_0003.spy"
             if (this.GetFinalScore() >= 100)
 #line hidden
             {
@@ -93,7 +93,7 @@ public static partial class FStringExpressions0003
         public override string GetRank()
 #line 54 "f_string_expressions_0003.spy"
         {
-#line (55, 9) - (57, 1) 12 "f_string_expressions_0003.spy"
+#line (55, 9) - (56, 30) 12 "f_string_expressions_0003.spy"
             if (this.GamesPlayed > 10)
 #line hidden
             {

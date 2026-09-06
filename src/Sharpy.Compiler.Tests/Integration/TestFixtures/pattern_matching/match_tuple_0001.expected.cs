@@ -12,7 +12,7 @@ public static partial class MatchTuple0001
     {
 #line (2, 5) - (2, 21) 8 "match_tuple_0001.spy"
         var point = (10, 20);
-#line (3, 5) - (7, 1) 8 "match_tuple_0001.spy"
+#line (3, 5) - (6, 21) 8 "match_tuple_0001.spy"
         switch (point)
 #line hidden
         {

@@ -18,7 +18,7 @@ public static partial class ForTupleUnpackingSpacing
             (1, "a"),
             (2, "b")
         };
-#line (3, 5) - (6, 1) 8 "for_tuple_unpacking_spacing.spy"
+#line (3, 5) - (5, 21) 8 "for_tuple_unpacking_spacing.spy"
         foreach (var (num, label) in pairs)
 #line hidden
         {

@@ -19,7 +19,7 @@ public static partial class OutInlineInIf
 
     public static void Main()
     {
-#line (6, 5) - (8, 1) 8 "out_inline_in_if.spy"
+#line (6, 5) - (7, 21) 8 "out_inline_in_if.spy"
         if (TryParse("42", out int value))
 #line hidden
         {

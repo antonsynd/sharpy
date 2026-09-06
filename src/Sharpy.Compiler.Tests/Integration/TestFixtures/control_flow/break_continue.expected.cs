@@ -13,13 +13,13 @@ public static partial class BreakContinue
     {
 #line (4, 5) - (4, 10) 8 "break_continue.spy"
         var i = 0;
-#line (5, 5) - (13, 1) 8 "break_continue.spy"
+#line (5, 5) - (11, 17) 8 "break_continue.spy"
         while (i < 10)
 #line hidden
         {
 #line (6, 9) - (6, 15) 12 "break_continue.spy"
             i = i + 1;
-#line (7, 9) - (9, 1) 12 "break_continue.spy"
+#line (7, 9) - (8, 22) 12 "break_continue.spy"
             if (i == 3)
 #line hidden
             {
@@ -28,7 +28,7 @@ public static partial class BreakContinue
 #line hidden
             }
 
-#line (9, 9) - (11, 1) 12 "break_continue.spy"
+#line (9, 9) - (10, 19) 12 "break_continue.spy"
             if (i == 6)
 #line hidden
             {

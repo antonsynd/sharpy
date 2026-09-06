@@ -26,7 +26,7 @@ public static partial class NarrowingIsinstancePlainRead
             throw new global::Sharpy.AssertionError();
         }
 
-#line (11, 5) - (13, 1) 8 "narrowing_isinstance_plain_read.spy"
+#line (11, 5) - (12, 21) 8 "narrowing_isinstance_plain_read.spy"
         if (r is int)
 #line hidden
         {

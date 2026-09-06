@@ -15,7 +15,7 @@ public static partial class NullableScoreEvaluator
         public string Evaluate(Optional<int> score)
 #line 10 "nullable_score_evaluator.spy"
         {
-#line (11, 9) - (19, 1) 12 "nullable_score_evaluator.spy"
+#line (11, 9) - (17, 31) 12 "nullable_score_evaluator.spy"
             if (score.IsNone)
 #line hidden
             {
@@ -25,7 +25,7 @@ public static partial class NullableScoreEvaluator
             }
             else
             {
-#line (14, 13) - (19, 1) 16 "nullable_score_evaluator.spy"
+#line (14, 13) - (17, 31) 16 "nullable_score_evaluator.spy"
                 if (score.Unwrap() >= this.PassingGrade)
 #line hidden
                 {
@@ -45,7 +45,7 @@ public static partial class NullableScoreEvaluator
         public int GetStatus(Optional<int> score)
 #line 19 "nullable_score_evaluator.spy"
         {
-#line (20, 9) - (28, 1) 12 "nullable_score_evaluator.spy"
+#line (20, 9) - (26, 26) 12 "nullable_score_evaluator.spy"
             if (score.IsNone)
 #line hidden
             {
@@ -55,7 +55,7 @@ public static partial class NullableScoreEvaluator
             }
             else
             {
-#line (23, 13) - (28, 1) 16 "nullable_score_evaluator.spy"
+#line (23, 13) - (26, 26) 16 "nullable_score_evaluator.spy"
                 if (score.Unwrap() >= this.PassingGrade)
 #line hidden
                 {

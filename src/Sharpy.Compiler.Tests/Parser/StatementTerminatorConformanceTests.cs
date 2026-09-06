@@ -122,9 +122,11 @@ public class StatementTerminatorConformanceTests
     }
 
     /// <summary>
-    /// True when the next statement in the same block is <c>Expect(TokenType.Indent)</c> — the
-    /// mid-construct signature. Intervening statements are not tolerated: a newline that something
-    /// else happens after is exactly the shape that hides a statement terminator.
+    /// True when the next statement in the same block is <c>Expect(TokenType.Indent)</c> or a call to
+    /// <c>ParseIndentedSuite()</c> — the mid-construct signature. Both forms consume the Indent token;
+    /// <c>ParseIndentedSuite</c> wraps the <c>Expect(Indent) … Expect(Dedent)</c> pair in a single
+    /// helper (#1736). Intervening statements are not tolerated: a newline that something else happens
+    /// after is exactly the shape that hides a statement terminator.
     /// </summary>
     private static bool IsFollowedByIndentExpectation(ExpressionStatementSyntax statement)
     {
@@ -135,14 +137,40 @@ public class StatementTerminatorConformanceTests
         if (index < 0 || index + 1 >= block.Statements.Count)
             return false;
 
-        return block.Statements[index + 1] is ExpressionStatementSyntax
-        {
-            Expression: InvocationExpressionSyntax
+        var next = block.Statements[index + 1];
+
+        // Direct Expect(TokenType.Indent) call
+        if (next is ExpressionStatementSyntax
             {
-                Expression: IdentifierNameSyntax { Identifier.ValueText: "Expect" },
-                ArgumentList.Arguments.Count: 1
-            } invocation
-        } && invocation.ArgumentList.Arguments[0].ToString() == "TokenType.Indent";
+                Expression: InvocationExpressionSyntax
+                {
+                    Expression: IdentifierNameSyntax { Identifier.ValueText: "Expect" },
+                    ArgumentList.Arguments.Count: 1
+                } invocation
+            } && invocation.ArgumentList.Arguments[0].ToString() == "TokenType.Indent")
+            return true;
+
+        // ParseIndentedSuite() — the suite helper wraps Indent and Dedent (#1736).
+        // Matches: var x = ParseIndentedSuite(); or any local-declaration/assignment form.
+        if (next is LocalDeclarationStatementSyntax localDecl)
+        {
+            if (localDecl.Declaration.Variables.Count == 1 &&
+                localDecl.Declaration.Variables[0].Initializer?.Value is InvocationExpressionSyntax suiteCall &&
+                suiteCall.Expression is IdentifierNameSyntax { Identifier.ValueText: "ParseIndentedSuite" })
+                return true;
+        }
+
+        // Assignment form: bodySuite = ParseIndentedSuite();
+        if (next is ExpressionStatementSyntax
+            {
+                Expression: AssignmentExpressionSyntax
+                {
+                    Right: InvocationExpressionSyntax assignSuiteCall
+                }
+            } && assignSuiteCall.Expression is IdentifierNameSyntax { Identifier.ValueText: "ParseIndentedSuite" })
+            return true;
+
+        return false;
     }
 
     private static IEnumerable<(string FileName, CompilationUnitSyntax Root)> ParserSyntaxTrees()

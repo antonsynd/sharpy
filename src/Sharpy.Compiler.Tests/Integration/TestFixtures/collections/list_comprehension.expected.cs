@@ -21,7 +21,7 @@ public static partial class ListComprehension
 
 #line (3, 5) - (3, 51) 8 "list_comprehension.spy"
         Sharpy.List<int> result = __comp_0;
-#line (4, 5) - (6, 1) 8 "list_comprehension.spy"
+#line (4, 5) - (5, 20) 8 "list_comprehension.spy"
         foreach (var __loopVar_3 in result)
 #line hidden
         {

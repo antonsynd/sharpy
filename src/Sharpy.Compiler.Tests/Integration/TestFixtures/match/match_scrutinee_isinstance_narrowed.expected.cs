@@ -23,11 +23,11 @@ public static partial class MatchScrutineeIsinstanceNarrowed
 
     public static void NarrowedUserGeneric(object o)
     {
-#line (18, 5) - (27, 1) 8 "match_scrutinee_isinstance_narrowed.spy"
+#line (18, 5) - (25, 27) 8 "match_scrutinee_isinstance_narrowed.spy"
         if (o is Box<int>)
 #line hidden
         {
-#line (19, 9) - (24, 1) 12 "match_scrutinee_isinstance_narrowed.spy"
+#line (19, 9) - (23, 31) 12 "match_scrutinee_isinstance_narrowed.spy"
             switch (o)
 #line hidden
             {
@@ -53,11 +53,11 @@ public static partial class MatchScrutineeIsinstanceNarrowed
 
     public static void NarrowedCollection(object o)
     {
-#line (28, 5) - (37, 1) 8 "match_scrutinee_isinstance_narrowed.spy"
+#line (28, 5) - (35, 28) 8 "match_scrutinee_isinstance_narrowed.spy"
         if (o is Sharpy.List<int>)
 #line hidden
         {
-#line (29, 9) - (34, 1) 12 "match_scrutinee_isinstance_narrowed.spy"
+#line (29, 9) - (33, 31) 12 "match_scrutinee_isinstance_narrowed.spy"
             switch (o)
 #line hidden
             {
@@ -83,11 +83,11 @@ public static partial class MatchScrutineeIsinstanceNarrowed
 
     public static void NarrowedOptional(Optional<string> x)
     {
-#line (40, 5) - (47, 1) 8 "match_scrutinee_isinstance_narrowed.spy"
+#line (40, 5) - (45, 31) 8 "match_scrutinee_isinstance_narrowed.spy"
         if (x.IsSome)
 #line hidden
         {
-#line (41, 9) - (47, 1) 12 "match_scrutinee_isinstance_narrowed.spy"
+#line (41, 9) - (45, 31) 12 "match_scrutinee_isinstance_narrowed.spy"
             switch (x.Unwrap())
 #line hidden
             {

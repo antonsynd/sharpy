@@ -12,7 +12,7 @@ public static partial class MatchLiteral0001
     {
 #line (2, 5) - (2, 21) 8 "match_literal_0001.spy"
         int value = 42;
-#line (3, 5) - (10, 1) 8 "match_literal_0001.spy"
+#line (3, 5) - (9, 27) 8 "match_literal_0001.spy"
         switch (value)
 #line hidden
         {

@@ -96,7 +96,7 @@ public static partial class KeywordArgsWithDefaults
 
     public static int ProcessData(string name, int value = 100, bool enabled = true)
     {
-#line (53, 5) - (56, 1) 8 "keyword_args_with_defaults.spy"
+#line (53, 5) - (55, 22) 8 "keyword_args_with_defaults.spy"
         if (enabled)
 #line hidden
         {

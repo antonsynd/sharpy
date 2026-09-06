@@ -24,7 +24,7 @@ public partial class AssertRaisesMatchTests
     [Xunit.FactAttribute]
     public void TestMatchBasic()
     {
-#line (5, 5) - (8, 1) 8 "assert_raises_match.spy"
+#line (5, 5) - (6, 39) 8 "assert_raises_match.spy"
         ValueError __ex_0 = null!;
 #line hidden
         bool __raised_1 = false;
@@ -49,7 +49,7 @@ public partial class AssertRaisesMatchTests
     [Xunit.FactAttribute]
     public void TestMatchSubstring()
     {
-#line (10, 5) - (13, 1) 8 "assert_raises_match.spy"
+#line (10, 5) - (11, 48) 8 "assert_raises_match.spy"
         RuntimeError __ex_3 = null!;
 #line hidden
         bool __raised_4 = false;

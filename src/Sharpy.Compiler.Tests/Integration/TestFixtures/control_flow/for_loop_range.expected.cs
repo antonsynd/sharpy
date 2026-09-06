@@ -11,7 +11,7 @@ public static partial class ForLoopRange
 {
     public static void Main()
     {
-#line (2, 5) - (4, 1) 8 "for_loop_range.spy"
+#line (2, 5) - (3, 17) 8 "for_loop_range.spy"
         foreach (var __loopVar_0 in global::Sharpy.Builtins.Range(5))
 #line hidden
         {

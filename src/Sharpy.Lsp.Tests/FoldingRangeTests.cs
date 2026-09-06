@@ -145,14 +145,14 @@ public class FoldingRangeTests : IDisposable
     /// reads 7 and the cell is deleted.
     /// </summary>
     [Fact]
-    public async Task KnownExtentDefect_SuiteFollowedByStatement_EndsOneLinePastItsBody()
+    public async Task SuiteFollowedByStatement_EndsAtItsLastBodyStatement()
     {
         var source = "def f() -> None:\n    defer:\n        print(1)\n        print(2)\n    print(3)\n    if True:\n        print(4)\n        print(5)\n    print(6)";
         var ranges = await GetFoldingRangesAsync(source);
 
         ranges.Should().NotBeNull();
         var ifRange = ranges!.Should().ContainSingle(r => r.StartLine == 5).Which;
-        ifRange.EndLine.Should().Be(8, "#1736: the if-suite L5-L7 is followed by `print(6)` on L8 and the parser records the Dedent line");
+        ifRange.EndLine.Should().Be(7, "#1736 fixed: the if-suite L5-L7 ends at its last body statement, not at the Dedent line");
     }
 
     [Fact]

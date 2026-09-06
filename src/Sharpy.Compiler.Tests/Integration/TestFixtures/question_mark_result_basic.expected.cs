@@ -10,7 +10,7 @@ public static partial class QuestionMarkResultBasic
 {
     public static Result<int, string> ParseInt(string s)
     {
-#line (2, 5) - (4, 1) 8 "question_mark_result_basic.spy"
+#line (2, 5) - (3, 23) 8 "question_mark_result_basic.spy"
         if (s == "42")
 #line hidden
         {
@@ -40,7 +40,7 @@ public static partial class QuestionMarkResultBasic
     {
 #line (11, 5) - (11, 27) 8 "question_mark_result_basic.spy"
         var result = Process("42");
-#line (12, 5) - (17, 1) 8 "question_mark_result_basic.spy"
+#line (12, 5) - (16, 21) 8 "question_mark_result_basic.spy"
         switch (result)
 #line hidden
         {

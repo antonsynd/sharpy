@@ -17,7 +17,7 @@ public static partial class NarrowingRetestAfterAssert
             throw new global::Sharpy.AssertionError();
         }
 
-#line (7, 5) - (9, 1) 8 "narrowing_retest_after_assert.spy"
+#line (7, 5) - (8, 22) 8 "narrowing_retest_after_assert.spy"
         if (x != null)
 #line hidden
         {
@@ -40,7 +40,7 @@ public static partial class NarrowingRetestAfterAssert
             throw new global::Sharpy.AssertionError();
         }
 
-#line (13, 5) - (15, 1) 8 "narrowing_retest_after_assert.spy"
+#line (13, 5) - (14, 22) 8 "narrowing_retest_after_assert.spy"
         if (x.IsSome)
 #line hidden
         {

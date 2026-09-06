@@ -17,7 +17,7 @@ public static partial class ClassBankAccount
         public void Deposit(int amount)
 #line 13 "class_bank_account.spy"
         {
-#line (14, 9) - (17, 1) 12 "class_bank_account.spy"
+#line (14, 9) - (15, 35) 12 "class_bank_account.spy"
             if (this.IsActive)
 #line hidden
             {
@@ -30,7 +30,7 @@ public static partial class ClassBankAccount
         public bool Withdraw(int amount)
 #line 17 "class_bank_account.spy"
         {
-#line (18, 9) - (21, 1) 12 "class_bank_account.spy"
+#line (18, 9) - (20, 25) 12 "class_bank_account.spy"
             if (this.IsActive && this.Balance >= amount)
 #line hidden
             {

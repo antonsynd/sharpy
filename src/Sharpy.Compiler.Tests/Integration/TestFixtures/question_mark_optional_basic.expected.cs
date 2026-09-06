@@ -10,7 +10,7 @@ public static partial class QuestionMarkOptionalBasic
 {
     public static Optional<int> Find(int x)
     {
-#line (2, 5) - (4, 1) 8 "question_mark_optional_basic.spy"
+#line (2, 5) - (3, 28) 8 "question_mark_optional_basic.spy"
         if (x > 0)
 #line hidden
         {
@@ -40,7 +40,7 @@ public static partial class QuestionMarkOptionalBasic
     {
 #line (11, 5) - (11, 24) 8 "question_mark_optional_basic.spy"
         var result = Process(5);
-#line (12, 5) - (17, 1) 8 "question_mark_optional_basic.spy"
+#line (12, 5) - (16, 26) 8 "question_mark_optional_basic.spy"
         switch (result)
 #line hidden
         {

@@ -441,11 +441,8 @@ public partial class Parser
 
         ExpectNewline();
 
-        Expect(TokenType.Indent);
-        var body = ParseBlock();
-        var docString = TakeDocString(body);
-        Expect(TokenType.Dedent);
-        var endToken = Previous;
+        var bodySuite = ParseIndentedSuite();
+        var docString = TakeDocString(bodySuite.Body);
 
         return new FunctionDef
         {
@@ -457,13 +454,14 @@ public partial class Parser
             TypeParameters = typeParams.ToImmutableArray(),
             Parameters = parameters.ToImmutableArray(),
             ReturnType = returnType,
-            Body = body.ToImmutableArray(),
+            Body = bodySuite.Body.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column,
-            Span = GetSpanFromTokens(startToken, endToken)
+            LineEnd = bodySuite.EndLine,
+            ColumnEnd = bodySuite.EndColumn,
+            Span = CombineSpans(GetSpanFromToken(startToken), bodySuite.EndSpan)
+                ?? GetSpanFromToken(startToken)
         };
     }
 
@@ -566,11 +564,8 @@ public partial class Parser
         Expect(TokenType.Colon);
         ExpectNewline();
 
-        Expect(TokenType.Indent);
-        var body = ParseBlock();
-        var docString = TakeDocString(body);
-        Expect(TokenType.Dedent);
-        var endToken = Previous;
+        var bodySuite = ParseIndentedSuite();
+        var docString = TakeDocString(bodySuite.Body);
 
         return new ClassDef
         {
@@ -581,13 +576,14 @@ public partial class Parser
             IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams.ToImmutableArray(),
             BaseClasses = baseClasses.ToImmutableArray(),
-            Body = body.ToImmutableArray(),
+            Body = bodySuite.Body.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column,
-            Span = GetSpanFromTokens(startToken, endToken)
+            LineEnd = bodySuite.EndLine,
+            ColumnEnd = bodySuite.EndColumn,
+            Span = CombineSpans(GetSpanFromToken(startToken), bodySuite.EndSpan)
+                ?? GetSpanFromToken(startToken)
         };
     }
 
@@ -635,11 +631,8 @@ public partial class Parser
         Expect(TokenType.Colon);
         ExpectNewline();
 
-        Expect(TokenType.Indent);
-        var body = ParseBlock();
-        var docString = TakeDocString(body);
-        Expect(TokenType.Dedent);
-        var endToken = Previous;
+        var bodySuite = ParseIndentedSuite();
+        var docString = TakeDocString(bodySuite.Body);
 
         return new StructDef
         {
@@ -650,13 +643,14 @@ public partial class Parser
             IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams.ToImmutableArray(),
             BaseClasses = baseInterfaces.ToImmutableArray(),
-            Body = body.ToImmutableArray(),
+            Body = bodySuite.Body.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column,
-            Span = GetSpanFromTokens(startToken, endToken)
+            LineEnd = bodySuite.EndLine,
+            ColumnEnd = bodySuite.EndColumn,
+            Span = CombineSpans(GetSpanFromToken(startToken), bodySuite.EndSpan)
+                ?? GetSpanFromToken(startToken)
         };
     }
 
@@ -702,24 +696,22 @@ public partial class Parser
         }
 
         Expect(TokenType.Colon);
-        ExpectNewline();
 
-        Expect(TokenType.Indent);
-
-        // Set interface parsing flag so ParseFunctionDef knows to allow bodyless methods
+        // Set interface parsing flag so ParseFunctionDef knows to allow bodyless methods.
+        // Set before ExpectNewline so the immediately-following ParseIndentedSuite satisfies
+        // the StatementTerminatorConformanceTests mid-construct check.
         _parsingInterface = true;
-        List<Statement> body;
+        SuiteResult bodySuite;
         try
         {
-            body = ParseBlock();
+            ExpectNewline();
+            bodySuite = ParseIndentedSuite();
         }
         finally
         {
             _parsingInterface = false;
         }
-        var docString = TakeDocString(body);
-        Expect(TokenType.Dedent);
-        var endToken = Previous;
+        var docString = TakeDocString(bodySuite.Body);
 
         return new InterfaceDef
         {
@@ -730,13 +722,14 @@ public partial class Parser
             IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
             TypeParameters = typeParams.ToImmutableArray(),
             BaseInterfaces = baseInterfaces.ToImmutableArray(),
-            Body = body.ToImmutableArray(),
+            Body = bodySuite.Body.ToImmutableArray(),
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column,
-            Span = GetSpanFromTokens(startToken, endToken)
+            LineEnd = bodySuite.EndLine,
+            ColumnEnd = bodySuite.EndColumn,
+            Span = CombineSpans(GetSpanFromToken(startToken), bodySuite.EndSpan)
+                ?? GetSpanFromToken(startToken)
         };
     }
 
@@ -952,8 +945,9 @@ public partial class Parser
             SkipNewlines();
         }
 
-        Expect(TokenType.Dedent);
-        var endToken = Previous;
+        var lastMember = members.Count > 0 ? members[^1] : (EnumMember?)null;
+        var (enumEndLine, enumEndColumn, enumEndSpan) = CloseSuite(
+            lastMember?.LineEnd ?? -1, lastMember?.ColumnEnd ?? 0, lastMember?.Span);
 
         // Validate enum has at least one member
         if (members.Count == 0)
@@ -972,9 +966,10 @@ public partial class Parser
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column,
-            Span = GetSpanFromTokens(startToken, endToken)
+            LineEnd = enumEndLine,
+            ColumnEnd = enumEndColumn,
+            Span = CombineSpans(GetSpanFromToken(startToken), enumEndSpan)
+                ?? GetSpanFromToken(startToken)
         };
     }
 
@@ -1122,8 +1117,27 @@ public partial class Parser
             SkipNewlines();
         }
 
-        Expect(TokenType.Dedent);
-        var endToken = Previous;
+        // The last element of the union suite is the last method or the last case, whichever
+        // comes later in source order (methods follow cases in the union body).
+        int lastUnionEndLine = -1;
+        int lastUnionEndColumn = 0;
+        Text.TextSpan? lastUnionEndSpan = null;
+        if (body.Count > 0)
+        {
+            var last = body[^1];
+            lastUnionEndLine = last.LineEnd;
+            lastUnionEndColumn = last.ColumnEnd;
+            lastUnionEndSpan = last.Span;
+        }
+        else if (cases.Count > 0)
+        {
+            var last = cases[^1];
+            lastUnionEndLine = last.LineEnd;
+            lastUnionEndColumn = last.ColumnEnd;
+            lastUnionEndSpan = last.Span;
+        }
+        var (unionEndLine, unionEndColumn, unionEndSpan) = CloseSuite(
+            lastUnionEndLine, lastUnionEndColumn, lastUnionEndSpan);
 
         // Validate union has at least one case
         if (cases.Count == 0)
@@ -1144,9 +1158,10 @@ public partial class Parser
             DocString = docString,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = Current.Line,
-            ColumnEnd = Current.Column,
-            Span = GetSpanFromTokens(startToken, endToken)
+            LineEnd = unionEndLine,
+            ColumnEnd = unionEndColumn,
+            Span = CombineSpans(GetSpanFromToken(startToken), unionEndSpan)
+                ?? GetSpanFromToken(startToken)
         };
     }
 
@@ -1411,10 +1426,7 @@ public partial class Parser
             }
 
             ExpectNewline();
-            Expect(TokenType.Indent);
-            var body = ParseBlock();
-            Expect(TokenType.Dedent);
-            var endToken = Previous;
+            var propBodySuite = ParseIndentedSuite();
 
             return new PropertyDef
             {
@@ -1428,12 +1440,13 @@ public partial class Parser
                 Parameters = parameters.ToImmutableArray(),
                 ReturnType = returnType,
                 ExplicitInterface = explicitInterface,
-                Body = body.ToImmutableArray(),
+                Body = propBodySuite.Body.ToImmutableArray(),
                 LineStart = startLine,
                 ColumnStart = startColumn,
-                LineEnd = Current.Line,
-                ColumnEnd = Current.Column,
-                Span = GetSpanFromTokens(startToken, endToken)
+                LineEnd = propBodySuite.EndLine,
+                ColumnEnd = propBodySuite.EndColumn,
+                Span = CombineSpans(GetSpanFromToken(startToken), propBodySuite.EndSpan)
+                    ?? GetSpanFromToken(startToken)
             };
         }
 
@@ -1448,7 +1461,9 @@ public partial class Parser
             defaultValue = ParseExpression();
         }
 
-        var autoEndToken = Previous;
+        int autoEndLine = Previous.Line;
+        int autoEndColumn = Previous.Column + Previous.Length;
+        Text.TextSpan? autoEndSpan = GetSpanFromToken(Previous);
 
         // Optional observer block: the auto-property header is followed by a deeper-indented
         // suite of `before_set`/`after_set` clauses. Detected by a NEWLINE immediately followed
@@ -1471,8 +1486,12 @@ public partial class Parser
                 observerList.Add(ParsePropertyObserver());
                 SkipNewlines();
             }
-            Expect(TokenType.Dedent);
-            autoEndToken = Previous;
+            var lastObs = observerList.Count > 0 ? observerList[^1] : (PropertyObserver?)null;
+            var (obsEndLine, obsEndColumn, obsEndSpan) = CloseSuite(
+                lastObs?.LineEnd ?? -1, lastObs?.ColumnEnd ?? 0, lastObs?.Span);
+            autoEndLine = obsEndLine;
+            autoEndColumn = obsEndColumn;
+            autoEndSpan = obsEndSpan;
             observers = observerList.ToImmutableArray();
         }
         else
@@ -1495,9 +1514,10 @@ public partial class Parser
             Observers = observers,
             LineStart = startLine,
             ColumnStart = startColumn,
-            LineEnd = autoEndToken.Line,
-            ColumnEnd = autoEndToken.Column + autoEndToken.Length,
-            Span = CombineSpans(GetSpanFromToken(startToken), GetSpanFromToken(autoEndToken))
+            LineEnd = autoEndLine,
+            ColumnEnd = autoEndColumn,
+            Span = CombineSpans(GetSpanFromToken(startToken), autoEndSpan)
+                ?? GetSpanFromToken(startToken)
         };
     }
 
@@ -1530,20 +1550,18 @@ public partial class Parser
         Expect(TokenType.RightParen);
         Expect(TokenType.Colon);
         ExpectNewline();
-        Expect(TokenType.Indent);
-        var body = ParseBlock();
-        Expect(TokenType.Dedent);
-        var endToken = Previous;
+        var obsSuite = ParseIndentedSuite();
 
-        return new PropertyObserver(kind, paramName, body.ToImmutableArray())
+        return new PropertyObserver(kind, paramName, obsSuite.Body.ToImmutableArray())
         {
             LineStart = startToken.Line,
             ColumnStart = startToken.Column,
-            LineEnd = endToken.Line,
-            ColumnEnd = endToken.Column + endToken.Length,
+            LineEnd = obsSuite.EndLine,
+            ColumnEnd = obsSuite.EndColumn,
             ParamNameLine = paramToken.Line,
             ParamNameColumn = paramToken.Column,
-            Span = GetSpanFromTokens(startToken, endToken)
+            Span = CombineSpans(GetSpanFromToken(startToken), obsSuite.EndSpan)
+                ?? GetSpanFromToken(startToken)
         };
     }
 
@@ -1648,10 +1666,7 @@ public partial class Parser
             }
 
             ExpectNewline();
-            Expect(TokenType.Indent);
-            var body = ParseBlock();
-            Expect(TokenType.Dedent);
-            var endToken = Previous;
+            var evtBodySuite = ParseIndentedSuite();
 
             return new EventDef
             {
@@ -1663,12 +1678,13 @@ public partial class Parser
                 Accessor = accessor,
                 IsFunctionStyle = true,
                 Parameters = parameters.ToImmutableArray(),
-                Body = body.ToImmutableArray(),
+                Body = evtBodySuite.Body.ToImmutableArray(),
                 LineStart = startLine,
                 ColumnStart = startColumn,
-                LineEnd = Current.Line,
-                ColumnEnd = Current.Column,
-                Span = GetSpanFromTokens(startToken, endToken)
+                LineEnd = evtBodySuite.EndLine,
+                ColumnEnd = evtBodySuite.EndColumn,
+                Span = CombineSpans(GetSpanFromToken(startToken), evtBodySuite.EndSpan)
+                    ?? GetSpanFromToken(startToken)
             };
         }
 

@@ -34,7 +34,7 @@ public static partial class ListCompSizedFilter
 
 #line (3, 5) - (3, 56) 8 "list_comp_sized_filter.spy"
         Sharpy.List<int> result = __comp_0;
-#line (4, 5) - (6, 1) 8 "list_comp_sized_filter.spy"
+#line (4, 5) - (5, 17) 8 "list_comp_sized_filter.spy"
         foreach (var __loopVar_3 in result)
 #line hidden
         {

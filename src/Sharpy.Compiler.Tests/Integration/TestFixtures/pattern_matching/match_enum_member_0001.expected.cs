@@ -17,7 +17,7 @@ public static partial class MatchEnumMember0001
 
     public static string Describe(int c)
     {
-#line (7, 5) - (17, 1) 8 "match_enum_member_0001.spy"
+#line (7, 5) - (15, 30) 8 "match_enum_member_0001.spy"
         switch (c)
 #line hidden
         {

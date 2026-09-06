@@ -30,7 +30,7 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
             throw new global::Sharpy.AssertionError();
         }
 
-#line (26, 5) - (32, 1) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
+#line (26, 5) - (30, 27) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
         switch (r)
 #line hidden
         {
@@ -56,7 +56,7 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
             throw new global::Sharpy.AssertionError();
         }
 
-#line (36, 5) - (42, 1) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
+#line (36, 5) - (40, 27) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
         switch (d["key"])
 #line hidden
         {
@@ -82,7 +82,7 @@ public static partial class MatchSubjectCastNarrowingNoDeadArm
             throw new global::Sharpy.AssertionError();
         }
 
-#line (44, 5) - (50, 1) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
+#line (44, 5) - (48, 27) 8 "match_subject_cast_narrowing_no_dead_arm.spy"
         switch (h.Value)
 #line hidden
         {

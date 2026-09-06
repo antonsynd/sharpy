@@ -24,7 +24,7 @@ public partial class CapturedOutputTestTests
     [Xunit.FactAttribute]
     public void TestPrint()
     {
-#line (7, 5) - (11, 1) 8 "captured_output_test.spy"
+#line (7, 5) - (9, 47) 8 "captured_output_test.spy"
         using (var output = CapturedOutput())
 #line hidden
         {

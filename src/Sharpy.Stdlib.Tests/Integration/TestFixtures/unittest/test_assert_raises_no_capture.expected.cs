@@ -24,7 +24,7 @@ public partial class TestAssertRaisesNoCaptureTests
     [Xunit.FactAttribute]
     public void TestNoCapture()
     {
-#line (5, 5) - (8, 1) 8 "test_assert_raises_no_capture.spy"
+#line (5, 5) - (6, 34) 8 "test_assert_raises_no_capture.spy"
         bool __raised_0 = false;
 #line hidden
         try

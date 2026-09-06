@@ -11,7 +11,7 @@ public static partial class UnusedExceptVariable
 {
     public static void Main()
     {
-#line (3, 5) - (7, 1) 8 "unused_except_variable.spy"
+#line (3, 5) - (6, 24) 8 "unused_except_variable.spy"
         try
 #line hidden
         {

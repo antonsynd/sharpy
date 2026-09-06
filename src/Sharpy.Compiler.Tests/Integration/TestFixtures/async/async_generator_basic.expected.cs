@@ -12,7 +12,7 @@ public static partial class AsyncGeneratorBasic
     {
 #line (2, 5) - (2, 10) 8 "async_generator_basic.spy"
         var i = 0;
-#line (3, 5) - (7, 1) 8 "async_generator_basic.spy"
+#line (3, 5) - (5, 15) 8 "async_generator_basic.spy"
         while (i < n)
 #line hidden
         {
@@ -26,7 +26,7 @@ public static partial class AsyncGeneratorBasic
 
     public static async System.Threading.Tasks.Task Main()
     {
-#line (8, 5) - (10, 1) 8 "async_generator_basic.spy"
+#line (8, 5) - (9, 17) 8 "async_generator_basic.spy"
         await foreach (var __loopVar_0 in CountAsync(3))
 #line hidden
         {

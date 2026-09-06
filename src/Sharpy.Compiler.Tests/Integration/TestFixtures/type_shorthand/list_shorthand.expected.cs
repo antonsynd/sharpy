@@ -13,7 +13,7 @@ public static partial class ListShorthand
     {
 #line (3, 5) - (3, 20) 8 "list_shorthand.spy"
         int total = 0;
-#line (4, 5) - (6, 1) 8 "list_shorthand.spy"
+#line (4, 5) - (5, 29) 8 "list_shorthand.spy"
         foreach (var __loopVar_0 in items)
 #line hidden
         {

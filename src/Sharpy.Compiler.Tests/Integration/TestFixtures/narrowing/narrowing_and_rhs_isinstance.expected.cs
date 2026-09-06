@@ -42,7 +42,7 @@ public static partial class NarrowingAndRhsIsinstance
     {
 #line (18, 5) - (18, 58) 8 "narrowing_and_rhs_isinstance.spy"
         bool ok = a is Dog && ((Dog)a!).Bark() == "woof";
-#line (19, 5) - (21, 1) 8 "narrowing_and_rhs_isinstance.spy"
+#line (19, 5) - (20, 30) 8 "narrowing_and_rhs_isinstance.spy"
         if (ok)
 #line hidden
         {

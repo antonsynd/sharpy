@@ -17,7 +17,7 @@ public static partial class BclExtensionMethodExplicitArgs
         lst.Add(3);
 #line (13, 5) - (13, 15) 8 "bcl_extension_method_explicit_args.spy"
         lst.Add(4);
-#line (16, 5) - (22, 1) 8 "bcl_extension_method_explicit_args.spy"
+#line (16, 5) - (17, 17) 8 "bcl_extension_method_explicit_args.spy"
         foreach (var __loopVar_0 in lst.Select<int, string>(x => global::Sharpy.Builtins.Str(x)))
 #line hidden
         {
@@ -27,7 +27,7 @@ public static partial class BclExtensionMethodExplicitArgs
 #line hidden
         }
 
-#line (22, 5) - (26, 1) 8 "bcl_extension_method_explicit_args.spy"
+#line (22, 5) - (23, 17) 8 "bcl_extension_method_explicit_args.spy"
         foreach (var __loopVar_1 in lst.Cast<int>())
 #line hidden
         {
@@ -37,7 +37,7 @@ public static partial class BclExtensionMethodExplicitArgs
 #line hidden
         }
 
-#line (26, 5) - (28, 1) 8 "bcl_extension_method_explicit_args.spy"
+#line (26, 5) - (27, 17) 8 "bcl_extension_method_explicit_args.spy"
         foreach (var __loopVar_2 in lst.Select<int, string>(x => global::Sharpy.Builtins.Str(x * 2)))
 #line hidden
         {

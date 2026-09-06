@@ -12,7 +12,7 @@ public static partial class YieldBasic
     {
 #line (2, 5) - (2, 10) 8 "yield_basic.spy"
         var i = 0;
-#line (3, 5) - (7, 1) 8 "yield_basic.spy"
+#line (3, 5) - (5, 15) 8 "yield_basic.spy"
         while (i < n)
 #line hidden
         {
@@ -26,7 +26,7 @@ public static partial class YieldBasic
 
     public static void Main()
     {
-#line (8, 5) - (10, 1) 8 "yield_basic.spy"
+#line (8, 5) - (9, 17) 8 "yield_basic.spy"
         foreach (var __loopVar_0 in CountUp(5))
 #line hidden
         {

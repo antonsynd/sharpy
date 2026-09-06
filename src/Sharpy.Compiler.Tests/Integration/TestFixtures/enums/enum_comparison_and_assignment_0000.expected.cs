@@ -20,7 +20,7 @@ public static partial class EnumComparisonAndAssignment0000
 
     public static string GetStatusDescription(OrderStatus status)
     {
-#line (10, 5) - (21, 1) 8 "enum_comparison_and_assignment_0000.spy"
+#line (10, 5) - (19, 38) 8 "enum_comparison_and_assignment_0000.spy"
         if (status == OrderStatus.PENDING)
 #line hidden
         {
@@ -56,7 +56,7 @@ public static partial class EnumComparisonAndAssignment0000
 
     public static bool CanCancel(OrderStatus status)
     {
-#line (22, 5) - (30, 1) 8 "enum_comparison_and_assignment_0000.spy"
+#line (22, 5) - (27, 22) 8 "enum_comparison_and_assignment_0000.spy"
         if (status == OrderStatus.PENDING)
 #line hidden
         {

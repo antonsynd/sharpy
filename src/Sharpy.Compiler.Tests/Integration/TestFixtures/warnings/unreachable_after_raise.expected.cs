@@ -20,7 +20,7 @@ public static partial class UnreachableAfterRaise
 
     public static void Main()
     {
-#line (6, 5) - (10, 1) 8 "unreachable_after_raise.spy"
+#line (6, 5) - (9, 24) 8 "unreachable_after_raise.spy"
         try
 #line hidden
         {

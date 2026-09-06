@@ -41,7 +41,7 @@ public static partial class QuestionMarkNestedResult
     {
 #line (12, 5) - (12, 23) 8 "question_mark_nested_result.spy"
         var result = Process();
-#line (13, 5) - (18, 1) 8 "question_mark_nested_result.spy"
+#line (13, 5) - (17, 21) 8 "question_mark_nested_result.spy"
         switch (result)
 #line hidden
         {

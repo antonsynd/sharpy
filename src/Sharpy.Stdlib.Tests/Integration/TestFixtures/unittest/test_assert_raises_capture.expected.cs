@@ -24,7 +24,7 @@ public partial class TestAssertRaisesCaptureTests
     [Xunit.FactAttribute]
     public void TestCaptureException()
     {
-#line (5, 5) - (7, 1) 8 "test_assert_raises_capture.spy"
+#line (5, 5) - (6, 39) 8 "test_assert_raises_capture.spy"
         ValueError exc = null!;
 #line hidden
         bool __raised_0 = false;

@@ -85,7 +85,7 @@ public static partial class TypeAliasGameInventory
         public int GetAverageDamage()
 #line 55 "type_alias_game_inventory.spy"
         {
-#line (56, 9) - (58, 1) 12 "type_alias_game_inventory.spy"
+#line (56, 9) - (57, 22) 12 "type_alias_game_inventory.spy"
             if (this.WeaponCount == 0)
 #line hidden
             {

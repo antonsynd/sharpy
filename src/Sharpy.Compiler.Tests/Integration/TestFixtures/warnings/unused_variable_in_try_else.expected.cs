@@ -11,7 +11,7 @@ public static partial class UnusedVariableInTryElse
 {
     public static void Main()
     {
-#line (3, 5) - (9, 1) 8 "unused_variable_in_try_else.spy"
+#line (3, 5) - (8, 27) 8 "unused_variable_in_try_else.spy"
         {
 #line hidden
             bool __trySucceeded_0 = false;

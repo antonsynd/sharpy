@@ -11,7 +11,7 @@ public static partial class WhileLoop
 {
     public static void Countdown(int n)
     {
-#line (2, 5) - (6, 1) 8 "while_loop.spy"
+#line (2, 5) - (4, 18) 8 "while_loop.spy"
         while (n > 0)
 #line hidden
         {

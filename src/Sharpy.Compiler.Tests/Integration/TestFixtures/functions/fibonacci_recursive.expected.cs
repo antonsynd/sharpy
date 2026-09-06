@@ -11,7 +11,7 @@ public static partial class FibonacciRecursive
 {
     public static int Fibonacci(int n)
     {
-#line (2, 5) - (4, 1) 8 "fibonacci_recursive.spy"
+#line (2, 5) - (3, 18) 8 "fibonacci_recursive.spy"
         if (n <= 1)
 #line hidden
         {

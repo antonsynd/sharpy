@@ -28,7 +28,7 @@ public partial class TmpPathBasicTests : global::System.IDisposable
         string tmpPath = _tmpPathFixture.Value;
 #line (7, 5) - (7, 54) 8 "tmp_path_basic.spy"
         string target = os_path.Join(tmpPath, "data.txt");
-#line (8, 5) - (10, 1) 8 "tmp_path_basic.spy"
+#line (8, 5) - (9, 27) 8 "tmp_path_basic.spy"
         using (var f = global::Sharpy.Builtins.Open(target, "w"))
 #line hidden
         {

@@ -35,7 +35,7 @@ public static partial class YieldFrom
 
     public static void Main()
     {
-#line (11, 5) - (13, 1) 8 "yield_from.spy"
+#line (11, 5) - (12, 17) 8 "yield_from.spy"
         foreach (var __loopVar_1 in Outer())
 #line hidden
         {

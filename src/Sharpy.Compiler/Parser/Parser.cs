@@ -1271,6 +1271,70 @@ public partial class Parser
     }
 
     /// <summary>
+    /// Result of parsing an indented suite. <see cref="EndLine"/> and <see cref="EndColumn"/>
+    /// refer to the last body element's end (not the Dedent token), so the enclosing statement's
+    /// extent covers only meaningful source — folding ranges, selection ranges, and document
+    /// symbols no longer extend into trailing whitespace (#1736).
+    /// </summary>
+    private readonly record struct SuiteResult(
+        List<Statement> Body,
+        int EndLine,
+        int EndColumn,
+        Text.TextSpan? EndSpan);
+
+    /// <summary>
+    /// Parses an indented suite: Indent, block of statements, Dedent. The suite's end position
+    /// is the last body statement's end, not the Dedent token, so folding ranges, selection
+    /// ranges, and document symbols cover only meaningful source (#1736).
+    /// </summary>
+    private SuiteResult ParseIndentedSuite()
+    {
+        Expect(TokenType.Indent);
+        var body = ParseBlock();
+        if (body.Count > 0)
+        {
+            var last = body[^1];
+            var result = new SuiteResult(body, last.LineEnd, last.ColumnEnd, last.Span);
+            Expect(TokenType.Dedent);
+            return result;
+        }
+        var endLine = Previous.Line;
+        var endColumn = Previous.Column + Previous.Length;
+        var endSpan = GetSpanFromToken(Previous);
+        Expect(TokenType.Dedent);
+        return new SuiteResult(body, endLine, endColumn, endSpan);
+    }
+
+    /// <summary>
+    /// Closes an indented suite whose body was parsed by a custom loop (not
+    /// <see cref="ParseBlock"/>). Records the suite's end position from the supplied last-body
+    /// values (or <see cref="Previous"/> if the body is empty, indicated by passing negative
+    /// <paramref name="lastEndLine"/>) and consumes the Dedent. Use
+    /// <see cref="ParseIndentedSuite()"/> for the common case of a statement block.
+    /// </summary>
+    private (int EndLine, int EndColumn, Text.TextSpan? EndSpan) CloseSuite(
+        int lastEndLine, int lastEndColumn, Text.TextSpan? lastEndSpan)
+    {
+        int endLine;
+        int endColumn;
+        Text.TextSpan? endSpan;
+        if (lastEndLine >= 0)
+        {
+            endLine = lastEndLine;
+            endColumn = lastEndColumn;
+            endSpan = lastEndSpan;
+        }
+        else
+        {
+            endLine = Previous.Line;
+            endColumn = Previous.Column + Previous.Length;
+            endSpan = GetSpanFromToken(Previous);
+        }
+        Expect(TokenType.Dedent);
+        return (endLine, endColumn, endSpan);
+    }
+
+    /// <summary>
     /// Dispatches async statements: async def, async for, async with.
     /// Peeks at the token after 'async' to determine which form to parse.
     /// </summary>

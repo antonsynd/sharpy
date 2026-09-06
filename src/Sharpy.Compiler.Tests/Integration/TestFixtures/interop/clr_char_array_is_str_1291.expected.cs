@@ -48,7 +48,7 @@ public static partial class ClrCharArrayIsStr1291
         global::Sharpy.Builtins.Print(tail);
 #line (41, 5) - (41, 20) 8 "clr_char_array_is_str_1291.spy"
         global::Sharpy.Builtins.Print(new Sharpy.List<string>(cs));
-#line (42, 5) - (47, 1) 8 "clr_char_array_is_str_1291.spy"
+#line (42, 5) - (44, 18) 8 "clr_char_array_is_str_1291.spy"
         foreach (var __loopVar_0 in cs)
 #line hidden
         {

@@ -39,7 +39,7 @@ public static partial class DefaultParams
         int result = 1;
 #line (19, 5) - (19, 16) 8 "default_params.spy"
         int i = 0;
-#line (20, 5) - (23, 1) 8 "default_params.spy"
+#line (20, 5) - (22, 18) 8 "default_params.spy"
         while (i < exponent)
 #line hidden
         {

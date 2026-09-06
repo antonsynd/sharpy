@@ -45,7 +45,7 @@ public static partial class SpreadUnpackDict
         Sharpy.Dict<string, int> result = __comp_0;
 #line (4, 5) - (4, 45) 8 "spread_unpack_dict.spy"
         Sharpy.List<string> keys = global::Sharpy.Builtins.Sorted<string>(result.Keys());
-#line (5, 5) - (7, 1) 8 "spread_unpack_dict.spy"
+#line (5, 5) - (6, 28) 8 "spread_unpack_dict.spy"
         foreach (var __loopVar_2 in keys)
 #line hidden
         {

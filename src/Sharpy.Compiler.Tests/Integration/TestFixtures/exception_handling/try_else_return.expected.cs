@@ -14,7 +14,7 @@ public static partial class TryElseReturn
         int result = 0;
 #line (3, 5) - (3, 20) 8 "try_else_return.spy"
         int total = 0;
-#line (4, 5) - (12, 1) 8 "try_else_return.spy"
+#line (4, 5) - (10, 35) 8 "try_else_return.spy"
         {
 #line hidden
             bool __trySucceeded_0 = false;

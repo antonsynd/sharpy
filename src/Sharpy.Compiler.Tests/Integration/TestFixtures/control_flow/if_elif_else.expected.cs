@@ -11,7 +11,7 @@ public static partial class IfElifElse
 {
     public static void Categorize(int x)
     {
-#line (2, 5) - (9, 1) 8 "if_elif_else.spy"
+#line (2, 5) - (7, 22) 8 "if_elif_else.spy"
         if (x > 0)
 #line hidden
         {
