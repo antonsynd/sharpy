@@ -1,0 +1,8 @@
+# The unpacking temp now carries the recorded tuple type, so an unpacking wider than seven
+# elements prints a type C# has to accept: ValueTuple's eighth type parameter is the REST, so the
+# elements past the seventh nest (ValueTuple<T1..T7, ValueTuple<T8, T9>>). Emitted flat it is
+# CS0305 "requires 7 type arguments".
+def main() -> None:
+    a: int = 0
+    a, b, c, d, e, f, g, h, i = 1, 2, 3, 4, 5, 6, 7, 8, 9
+    print(a, b, c, d, e, f, g, h, i)

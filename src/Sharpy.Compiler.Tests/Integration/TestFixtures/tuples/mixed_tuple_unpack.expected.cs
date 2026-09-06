@@ -13,7 +13,7 @@ public static partial class MixedTupleUnpack
 #line (2, 5) - (2, 16) 8 "mixed_tuple_unpack.spy"
         int a = 1;
 #line hidden
-        var __t0 = (10, 20);
+        global::System.ValueTuple<int, int> __t0 = (10, 20);
         a = __t0.Item1;
 #line (3, 5) - (3, 18) 8 "mixed_tuple_unpack.spy"
         var b = __t0.Item2;

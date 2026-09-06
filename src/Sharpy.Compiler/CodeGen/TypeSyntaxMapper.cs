@@ -274,7 +274,31 @@ internal class TypeSyntaxMapper
         }
 
         // Use ValueTuple<T1, T2, ...>
-        return QualifiedGenericName("System.ValueTuple", globalQualified: true, elementTypes);
+        return ValueTupleName(elementTypes);
+    }
+
+    /// <summary>
+    /// <c>global::System.ValueTuple&lt;…&gt;</c> for an element list of any length. The runtime type
+    /// has at most eight type parameters, the eighth of which is the REST — itself a
+    /// <c>ValueTuple</c> carrying the remaining elements — so a 9-tuple is
+    /// <c>ValueTuple&lt;T1…T7, ValueTuple&lt;T8, T9&gt;&gt;</c>. Emitting the elements flat past
+    /// seven is CS0305 ("requires 7 type arguments"), which surfaced wherever a tuple type was
+    /// printed rather than inferred: an annotated local <c>t: tuple[…9 elements…]</c> ICEs at
+    /// 385db8c36, and so does the unpacking temp for a large spread once the recorded type is
+    /// printed.
+    /// </summary>
+    private static TypeSyntax ValueTupleName(TypeSyntax[] elementTypes)
+    {
+        const int MaxFlatArity = 7;
+
+        if (elementTypes.Length <= MaxFlatArity)
+            return QualifiedGenericName("System.ValueTuple", globalQualified: true, elementTypes);
+
+        var head = elementTypes.Take(MaxFlatArity)
+            .Append(ValueTupleName(elementTypes.Skip(MaxFlatArity).ToArray()))
+            .ToArray();
+
+        return QualifiedGenericName("System.ValueTuple", globalQualified: true, head);
     }
 
     /// <summary>

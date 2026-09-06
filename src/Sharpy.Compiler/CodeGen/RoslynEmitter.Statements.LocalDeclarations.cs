@@ -27,6 +27,11 @@ internal partial class RoslynEmitter
     /// subtype of the union. Under <c>var</c> the local IS the case class, so a later <c>match</c>
     /// arm for another case is CS8121 and a store of another case is CS0029 (#1770). The recorded
     /// union type is printed instead: <c>Box&lt;int&gt; b = new Box&lt;int&gt;.Full(7);</c>.</description></item>
+    /// <item><description>A tuple: C# infers a tuple literal's type element by element from the
+    /// written elements, and an element whose written form carries no type of its own leaves the
+    /// inference with no type to give — <c>var __t = (null, 1)</c> is CS0815 (#1707). Semantic
+    /// analysis checked every element against its unpacking target's declared slot, so the recorded
+    /// tuple type is printed and the elements convert into their slots.</description></item>
     /// </list>
     /// Rule 2: this reads the recorded symbol type (or the recorded value type at a site that has
     /// no symbol) and maps it. What the variable's type IS was decided by the checker; the emitter
@@ -64,8 +69,25 @@ internal partial class RoslynEmitter
         if (unionType != null)
             return _typeMapper.MapSemanticType(unionType);
 
+        if (valueType is TupleType tupleType && IsFullyResolved(tupleType))
+            return _typeMapper.MapSemanticType(tupleType);
+
         return null;
     }
+
+    /// <summary>
+    /// Whether every element of a recorded tuple type resolved. An <see cref="UnknownType"/>
+    /// element means an error was already reported, and <c>object</c> — what the mapper prints for
+    /// it — is a narrower type than C# would infer; <c>var</c> is the safe print, as it is for the
+    /// unresolved lambda and open-generic union arms above.
+    /// </summary>
+    private static bool IsFullyResolved(TupleType type)
+        => type.ElementTypes.All(e => e switch
+        {
+            UnknownType => false,
+            TupleType nested => IsFullyResolved(nested),
+            _ => true,
+        });
 
     /// <summary>
     /// Whether a recorded type is a user-declared union — generic and closed, or non-generic. A

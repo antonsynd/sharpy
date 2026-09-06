@@ -380,7 +380,7 @@ internal partial class RoslynEmitter
                 var starTempVar = $"__t{_tempVarCounter++}";
                 var starTupleType = GetExpressionSemanticType(assign.Value);
                 starStmts.Add(LocalDeclarationStatement(
-                    VariableDeclaration(TupleTempType(starTupleType))
+                    VariableDeclaration(LocalDeclarationType(target: null, starTupleType))
                         .WithVariables(SingletonSeparatedList(
                             VariableDeclarator(EscapedIdentifier(starTempVar))
                                 .WithInitializer(EqualsValueClause(value))))));
@@ -485,7 +485,7 @@ internal partial class RoslynEmitter
                         // ValueTuple RHS — use .ItemN access (common case: a, b = b, a + b)
                         var mixedTempName = $"__t{_tempVarCounter++}";
                         stmts.Add(LocalDeclarationStatement(
-                            VariableDeclaration(TupleTempType(rhsType))
+                            VariableDeclaration(LocalDeclarationType(target: null, rhsType))
                                 .WithVariables(SingletonSeparatedList(
                                     VariableDeclarator(EscapedIdentifier(mixedTempName))
                                         .WithInitializer(EqualsValueClause(value))))));
@@ -573,7 +573,7 @@ internal partial class RoslynEmitter
             var tempVarName = $"__t{_tempVarCounter++}";
             var complexTupleType = GetExpressionSemanticType(assign.Value);
             unpackStmts.Add(LocalDeclarationStatement(
-                VariableDeclaration(TupleTempType(complexTupleType))
+                VariableDeclaration(LocalDeclarationType(target: null, complexTupleType))
                     .WithVariables(SingletonSeparatedList(
                         VariableDeclarator(EscapedIdentifier(tempVarName))
                             .WithInitializer(EqualsValueClause(value))))));
@@ -1573,18 +1573,4 @@ internal partial class RoslynEmitter
         }
     }
 
-    /// <summary>
-    /// The type syntax for a tuple-temp local: <c>var</c> unless the recorded tuple type
-    /// contains a <see cref="NullableType"/> or <see cref="VoidType"/> element — in those
-    /// cases C# cannot infer the type of <c>null</c> and requires an explicit type (#1707).
-    /// </summary>
-    private TypeSyntax TupleTempType(SemanticType? tupleType)
-    {
-        if (tupleType is TupleType tt
-            && tt.ElementTypes.Any(e => e is Semantic.NullableType or VoidType))
-        {
-            return _typeMapper.MapSemanticType(tt);
-        }
-        return IdentifierName("var");
-    }
 }

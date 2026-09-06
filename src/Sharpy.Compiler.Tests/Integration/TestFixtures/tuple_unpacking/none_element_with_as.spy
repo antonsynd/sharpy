@@ -1,0 +1,13 @@
+# The with-as unpacking arm: `__enter__` returns tuple[str | None, int] and the binder unpacks it,
+# so the `None` element is typed by the returned tuple rather than by a written literal (#1707).
+class Pair:
+    def __enter__(self) -> tuple[str | None, int]:
+        return None, 1
+
+    def __exit__(self) -> None:
+        pass
+
+
+def main() -> None:
+    with Pair() as (x, n):
+        print(x is None, n)

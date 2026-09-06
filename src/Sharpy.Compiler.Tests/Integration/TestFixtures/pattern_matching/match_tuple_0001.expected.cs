@@ -11,7 +11,7 @@ public static partial class MatchTuple0001
     public static void Main()
     {
 #line (2, 5) - (2, 21) 8 "match_tuple_0001.spy"
-        var point = (10, 20);
+        global::System.ValueTuple<int, int> point = (10, 20);
 #line (3, 5) - (6, 21) 8 "match_tuple_0001.spy"
         switch (point)
 #line hidden

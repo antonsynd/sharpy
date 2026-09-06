@@ -1,4 +1,9 @@
+# The ALL-EXISTING unpacking arm: every target is pre-declared, so the emitter assigns into the
+# declared locals with no temp at all — `(x, n) = (null, 1);`. `None` lands in `x`'s declared
+# `str | None` slot (#1707). Kept distinct from none_element_mixed, whose second target is fresh
+# and which therefore goes through the typed temp.
 def main() -> None:
     x: str | None = "a"
+    n: int = 0
     x, n = None, 1
     print(x is None, n)
