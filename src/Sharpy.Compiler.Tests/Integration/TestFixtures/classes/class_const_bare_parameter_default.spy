@@ -1,0 +1,13 @@
+# A class const named by BARE name in a parameter default. The default is resolved in the class
+# scope, so the bare name is the class member, and C# resolves a parameter default in class scope
+# the same way. The emitter needs a C# name for the symbol the checker bound.
+class C:
+    const K: int = 1
+
+    def m(self, x: int = K) -> int:
+        return x
+
+
+def main() -> None:
+    c: C = C()
+    print(c.m())
