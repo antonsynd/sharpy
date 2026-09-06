@@ -566,7 +566,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFactorialNegativeThrowsValueError()
             {
-#line (299, 5) - (302, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (299, 5) - (300, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -587,7 +587,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFactorialTooLargeThrowsOverflowError()
             {
-#line (304, 5) - (309, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
+#line (304, 5) - (305, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional2_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try

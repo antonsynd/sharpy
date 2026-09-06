@@ -41,7 +41,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (15, 5) - (17, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
+#line (15, 5) - (16, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 foreach (var __loopVar_0 in reader)
 #line hidden
                 {
@@ -66,7 +66,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (23, 5) - (25, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
+#line (23, 5) - (24, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 foreach (var __loopVar_1 in reader)
 #line hidden
                 {
@@ -95,7 +95,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (34, 5) - (36, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
+#line (34, 5) - (35, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 foreach (var __loopVar_2 in reader)
 #line hidden
                 {
@@ -126,7 +126,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (46, 5) - (48, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
+#line (46, 5) - (47, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 foreach (var __loopVar_3 in reader)
 #line hidden
                 {
@@ -153,7 +153,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (56, 5) - (58, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
+#line (56, 5) - (57, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 foreach (var __loopVar_4 in reader)
 #line hidden
                 {
@@ -182,7 +182,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (67, 5) - (69, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
+#line (67, 5) - (68, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 foreach (var __loopVar_5 in reader)
 #line hidden
                 {
@@ -211,7 +211,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (77, 5) - (79, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
+#line (77, 5) - (78, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 foreach (var __loopVar_6 in reader)
 #line hidden
                 {
@@ -240,7 +240,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (88, 5) - (90, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
+#line (88, 5) - (89, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 foreach (var __loopVar_7 in reader)
 #line hidden
                 {
@@ -275,7 +275,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (101, 5) - (103, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
+#line (101, 5) - (102, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 foreach (var __loopVar_8 in reader)
 #line hidden
                 {
@@ -408,7 +408,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (158, 5) - (160, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
+#line (158, 5) - (159, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_reader_writer_tests.spy"
                 foreach (var __loopVar_12 in reader)
 #line hidden
                 {

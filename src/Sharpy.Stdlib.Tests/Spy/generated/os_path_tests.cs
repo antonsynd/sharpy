@@ -50,7 +50,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (25, 5) - (25, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
                 var path = tmpPath + "/f.txt";
-#line (26, 5) - (28, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
+#line (26, 5) - (27, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -88,7 +88,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (43, 5) - (43, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
                 var path = tmpPath + "/f.txt";
-#line (44, 5) - (46, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
+#line (44, 5) - (45, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -126,7 +126,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (61, 5) - (61, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
                 var path = tmpPath + "/f.txt";
-#line (62, 5) - (64, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
+#line (62, 5) - (63, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -248,7 +248,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (131, 5) - (131, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
                 var path = tmpPath + "/f.txt";
-#line (132, 5) - (134, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
+#line (132, 5) - (133, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -266,7 +266,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGetsizeNonexistentThrows()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (139, 5) - (143, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
+#line (139, 5) - (140, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try

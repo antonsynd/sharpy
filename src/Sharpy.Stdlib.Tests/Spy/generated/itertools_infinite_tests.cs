@@ -34,14 +34,14 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (8, 5) - (12, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (8, 5) - (11, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                 foreach (var __loopVar_0 in itertools.Count())
 #line hidden
                 {
                     var n = __loopVar_0;
 #line (9, 9) - (9, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     result.Append(n);
-#line (10, 9) - (12, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (10, 9) - (11, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     if (global::Sharpy.Builtins.Len(result) == 5)
 #line hidden
                     {
@@ -64,14 +64,14 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (17, 5) - (21, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (17, 5) - (20, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                 foreach (var __loopVar_1 in itertools.Count(10))
 #line hidden
                 {
                     var n = __loopVar_1;
 #line (18, 9) - (18, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     result.Append(n);
-#line (19, 9) - (21, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (19, 9) - (20, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     if (global::Sharpy.Builtins.Len(result) == 3)
 #line hidden
                     {
@@ -94,14 +94,14 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (26, 5) - (30, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (26, 5) - (29, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                 foreach (var __loopVar_2 in itertools.Count(0, 2))
 #line hidden
                 {
                     var n = __loopVar_2;
 #line (27, 9) - (27, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     result.Append(n);
-#line (28, 9) - (30, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (28, 9) - (29, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     if (global::Sharpy.Builtins.Len(result) == 4)
 #line hidden
                     {
@@ -124,14 +124,14 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (35, 5) - (39, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (35, 5) - (38, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                 foreach (var __loopVar_3 in itertools.Count(10, -1))
 #line hidden
                 {
                     var n = __loopVar_3;
 #line (36, 9) - (36, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     result.Append(n);
-#line (37, 9) - (39, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (37, 9) - (38, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     if (global::Sharpy.Builtins.Len(result) == 3)
 #line hidden
                     {
@@ -154,14 +154,14 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (46, 5) - (50, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (46, 5) - (49, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                 foreach (var __loopVar_4 in itertools.Cycle(new Sharpy.List<int>() { 1, 2, 3 }))
 #line hidden
                 {
                     var n = __loopVar_4;
 #line (47, 9) - (47, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     result.Append(n);
-#line (48, 9) - (50, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (48, 9) - (49, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     if (global::Sharpy.Builtins.Len(result) == 7)
 #line hidden
                     {
@@ -184,14 +184,14 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (55, 5) - (59, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (55, 5) - (58, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                 foreach (var __loopVar_5 in itertools.Cycle(new Sharpy.List<int>() { 42 }))
 #line hidden
                 {
                     var n = __loopVar_5;
 #line (56, 9) - (56, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     result.Append(n);
-#line (57, 9) - (59, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (57, 9) - (58, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     if (global::Sharpy.Builtins.Len(result) == 5)
 #line hidden
                     {
@@ -219,14 +219,14 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (65, 5) - (69, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (65, 5) - (68, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                 foreach (var __loopVar_6 in itertools.Cycle(empty))
 #line hidden
                 {
                     var n = __loopVar_6;
 #line (66, 9) - (66, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     result.Append(n);
-#line (67, 9) - (69, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (67, 9) - (68, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     if (global::Sharpy.Builtins.Len(result) == 10)
 #line hidden
                     {
@@ -249,14 +249,14 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (76, 5) - (80, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (76, 5) - (79, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                 foreach (var __loopVar_7 in itertools.Repeat("hello"))
 #line hidden
                 {
                     var s = __loopVar_7;
 #line (77, 9) - (77, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     result.Append(s);
-#line (78, 9) - (80, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
+#line (78, 9) - (79, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_infinite_tests.spy"
                     if (global::Sharpy.Builtins.Len(result) == 3)
 #line hidden
                     {

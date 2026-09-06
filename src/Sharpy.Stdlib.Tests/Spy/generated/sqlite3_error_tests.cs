@@ -34,7 +34,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var conn = sqlite3.Connect(":memory:");
 #line (37, 5) - (37, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 bool caught = false;
-#line (38, 5) - (42, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
+#line (38, 5) - (41, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 try
 #line hidden
                 {
@@ -67,7 +67,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 conn.Execute("INSERT INTO t VALUES (1)");
 #line (51, 5) - (51, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 bool caught = false;
-#line (52, 5) - (56, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
+#line (52, 5) - (55, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 try
 #line hidden
                 {
@@ -94,7 +94,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (62, 5) - (62, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 var conn = sqlite3.Connect(":memory:");
-#line (63, 5) - (65, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
+#line (63, 5) - (64, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -124,7 +124,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 conn.Execute("CREATE TABLE t (id INTEGER PRIMARY KEY)");
 #line (72, 5) - (72, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 conn.Execute("INSERT INTO t VALUES (1)");
-#line (73, 5) - (75, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
+#line (73, 5) - (74, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_error_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try

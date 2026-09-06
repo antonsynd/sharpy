@@ -186,7 +186,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (95, 5) - (95, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 parser.AddOptionalArgument("--name");
-#line (96, 5) - (99, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (96, 5) - (97, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -211,7 +211,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 global::Sharpy.ArgumentParser parser = new global::Sharpy.ArgumentParser(addHelp: false);
 #line (102, 5) - (102, 60) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 parser.AddOptionalArgument("--name", shortName: "-n");
-#line (103, 5) - (108, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (103, 5) - (104, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -308,7 +308,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Contains("verbose=True", s);
 #line (152, 5) - (152, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 Xunit.Assert.Contains("json=True", s);
-#line (154, 5) - (159, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
+#line (154, 5) - (155, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/argparse/argparse_additional_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try

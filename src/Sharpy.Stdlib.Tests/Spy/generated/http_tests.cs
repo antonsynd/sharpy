@@ -72,7 +72,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFromValueUnknownCodeThrowsValueError()
             {
-#line (30, 5) - (33, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
+#line (30, 5) - (31, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -181,7 +181,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestHttpConnectionEmptyHostThrowsInvalidUrl()
             {
-#line (86, 5) - (89, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
+#line (86, 5) - (87, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -204,7 +204,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (91, 5) - (91, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
                 global::Sharpy.HTTPConnection conn = new global::Sharpy.HTTPConnection("example.com");
-#line (92, 5) - (100, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
+#line (92, 5) - (93, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/http/http_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try

@@ -108,7 +108,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 global::Sharpy.OrderedDict<string, int> od = new global::Sharpy.OrderedDict<string, int>();
 #line (47, 5) - (47, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 od["a"] = 1;
-#line (48, 5) - (51, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
+#line (48, 5) - (49, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -179,7 +179,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (77, 5) - (77, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 global::Sharpy.OrderedDict<string, int> od = new global::Sharpy.OrderedDict<string, int>();
-#line (78, 5) - (81, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
+#line (78, 5) - (79, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -222,7 +222,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (93, 5) - (93, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 global::Sharpy.OrderedDict<string, int> od = new global::Sharpy.OrderedDict<string, int>();
-#line (94, 5) - (97, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
+#line (94, 5) - (95, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -357,7 +357,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (156, 5) - (156, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 global::Sharpy.OrderedDict<string, int> od = new global::Sharpy.OrderedDict<string, int>();
-#line (157, 5) - (162, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
+#line (157, 5) - (158, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -478,7 +478,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (191, 5) - (191, 75) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 global::Sharpy.ChainMap<string, int> cm = new global::Sharpy.ChainMap<string, int>();
-#line (192, 5) - (195, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
+#line (192, 5) - (193, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_additional_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try

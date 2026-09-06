@@ -167,7 +167,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var sio = new global::Sharpy.StringIO("hello");
 #line (94, 5) - (94, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                 sio.Close();
-#line (95, 5) - (99, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
+#line (95, 5) - (96, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -192,7 +192,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var sio = new global::Sharpy.StringIO("hello");
 #line (103, 5) - (103, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                 sio.Close();
-#line (104, 5) - (108, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
+#line (104, 5) - (105, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -239,7 +239,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (124, 5) - (124, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                 var sio = new global::Sharpy.StringIO();
-#line (125, 5) - (127, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
+#line (125, 5) - (126, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/io/io_module_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try

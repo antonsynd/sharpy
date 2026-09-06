@@ -298,7 +298,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestShortenVerySmallWidthThrows()
             {
-#line (151, 5) - (154, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
+#line (151, 5) - (152, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/textwrap/textwrap_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try

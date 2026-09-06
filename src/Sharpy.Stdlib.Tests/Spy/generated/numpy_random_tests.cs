@@ -116,7 +116,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRandintThrowsWhenHighEqualsLow()
             {
-#line (71, 5) - (76, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
+#line (71, 5) - (72, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -153,7 +153,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestNormalThrowsWhenScaleNegative()
             {
-#line (86, 5) - (91, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
+#line (86, 5) - (87, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -190,7 +190,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestUniformThrowsWhenHighLessThanLow()
             {
-#line (101, 5) - (106, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
+#line (101, 5) - (102, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try

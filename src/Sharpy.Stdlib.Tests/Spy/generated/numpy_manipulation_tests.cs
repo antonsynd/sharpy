@@ -90,7 +90,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var a = np.Zeros(6).Reshape(2, 3);
 #line (55, 5) - (55, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var b = np.Zeros(4).Reshape(2, 2);
-#line (56, 5) - (61, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+#line (56, 5) - (57, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -343,7 +343,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (188, 5) - (188, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d });
-#line (189, 5) - (192, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+#line (189, 5) - (190, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -366,7 +366,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (194, 5) - (194, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d });
-#line (195, 5) - (198, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+#line (195, 5) - (196, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -469,7 +469,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (248, 5) - (248, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d });
-#line (249, 5) - (253, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
+#line (249, 5) - (250, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_manipulation_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try

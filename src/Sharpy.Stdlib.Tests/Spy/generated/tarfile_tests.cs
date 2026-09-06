@@ -37,7 +37,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var archive = tmpPath + "/test.tar";
 #line (26, 5) - (26, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/hello.txt";
-#line (27, 5) - (29, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (27, 5) - (28, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -46,7 +46,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (29, 5) - (31, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (29, 5) - (30, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
 #line hidden
                 {
@@ -55,7 +55,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (31, 5) - (37, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (31, 5) - (34, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
 #line hidden
                 {
@@ -77,7 +77,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var archive = tmpPath + "/test.tar.gz";
 #line (40, 5) - (40, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/data.txt";
-#line (41, 5) - (43, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (41, 5) - (42, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -86,7 +86,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (43, 5) - (45, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (43, 5) - (44, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:gz"))
 #line hidden
                 {
@@ -95,7 +95,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (45, 5) - (51, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (45, 5) - (48, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:gz"))
 #line hidden
                 {
@@ -117,7 +117,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var archive = tmpPath + "/auto.tar.gz";
 #line (54, 5) - (54, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/auto.txt";
-#line (55, 5) - (57, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (55, 5) - (56, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -126,7 +126,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (57, 5) - (59, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (57, 5) - (58, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:gz"))
 #line hidden
                 {
@@ -135,7 +135,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (59, 5) - (67, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (59, 5) - (62, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r"))
 #line hidden
                 {
@@ -159,7 +159,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var fp = tmpPath + "/source.txt";
 #line (71, 5) - (71, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var outDir = tmpPath + "/output";
-#line (72, 5) - (74, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (72, 5) - (73, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -168,7 +168,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (74, 5) - (76, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (74, 5) - (75, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
 #line hidden
                 {
@@ -177,7 +177,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (76, 5) - (78, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (76, 5) - (77, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
 #line hidden
                 {
@@ -190,7 +190,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.True(Isfile(outDir + "/source.txt"));
 #line (79, 5) - (79, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var content = "";
-#line (80, 5) - (82, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (80, 5) - (81, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fr = global::Sharpy.Builtins.Open(outDir + "/source.txt", "r"))
 #line hidden
                 {
@@ -212,7 +212,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var archive = tmpPath + "/file.tar";
 #line (88, 5) - (88, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/content.txt";
-#line (89, 5) - (91, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (89, 5) - (90, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -221,7 +221,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (91, 5) - (93, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (91, 5) - (92, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
 #line hidden
                 {
@@ -230,7 +230,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (93, 5) - (102, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (93, 5) - (97, 59) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
 #line hidden
                 {
@@ -238,7 +238,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     var data = tr.Extractfile("content.txt");
 #line (95, 9) - (95, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     Xunit.Assert.NotNull(data);
-#line (96, 9) - (102, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (96, 9) - (97, 59) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     if (data != null)
 #line hidden
                     {
@@ -257,7 +257,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var archive = tmpPath + "/members.tar";
 #line (105, 5) - (105, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/info.txt";
-#line (106, 5) - (108, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (106, 5) - (107, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -266,7 +266,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (108, 5) - (110, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (108, 5) - (109, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
 #line hidden
                 {
@@ -275,7 +275,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (110, 5) - (119, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (110, 5) - (116, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
 #line hidden
                 {
@@ -303,7 +303,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var archive = tmpPath + "/member.tar";
 #line (122, 5) - (122, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/a.txt";
-#line (123, 5) - (125, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (123, 5) - (124, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -312,7 +312,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (125, 5) - (127, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (125, 5) - (126, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
 #line hidden
                 {
@@ -321,7 +321,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (127, 5) - (132, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (127, 5) - (129, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
 #line hidden
                 {
@@ -341,7 +341,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var archive = tmpPath + "/miss.tar";
 #line (135, 5) - (135, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/a.txt";
-#line (136, 5) - (138, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (136, 5) - (137, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -350,7 +350,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (138, 5) - (140, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (138, 5) - (139, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
 #line hidden
                 {
@@ -359,11 +359,11 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (140, 5) - (145, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (140, 5) - (142, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
 #line hidden
                 {
-#line (141, 9) - (145, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (141, 9) - (142, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                     bool __raised_0 = false;
 #line hidden
                     try
@@ -390,7 +390,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var archive = tmpPath + "/arcname.tar";
 #line (148, 5) - (148, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/original.txt";
-#line (149, 5) - (151, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (149, 5) - (150, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -399,7 +399,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (151, 5) - (153, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (151, 5) - (152, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
 #line hidden
                 {
@@ -408,7 +408,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (153, 5) - (161, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (153, 5) - (156, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
 #line hidden
                 {
@@ -430,7 +430,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var archive = tmpPath + "/valid.tar";
 #line (164, 5) - (164, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/x.txt";
-#line (165, 5) - (167, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (165, 5) - (166, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -439,7 +439,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (167, 5) - (169, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (167, 5) - (168, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
 #line hidden
                 {
@@ -459,7 +459,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (174, 5) - (174, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/notatar.txt";
-#line (175, 5) - (177, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (175, 5) - (176, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -490,7 +490,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var archive = tmpPath + "/valid.tar.gz";
 #line (188, 5) - (188, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/y.txt";
-#line (189, 5) - (191, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (189, 5) - (190, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -499,7 +499,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (191, 5) - (193, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (191, 5) - (192, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:gz"))
 #line hidden
                 {
@@ -517,7 +517,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestOpenInvalidModeThrowsValueError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (200, 5) - (204, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (200, 5) - (201, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -539,7 +539,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestOpenBz2ModeThrowsCompressionError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (206, 5) - (210, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (206, 5) - (207, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -561,7 +561,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestOpenXzModeThrowsCompressionError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (212, 5) - (216, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (212, 5) - (213, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -583,7 +583,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestOpenNonExistentFileThrowsFileNotFoundError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (218, 5) - (224, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (218, 5) - (219, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
@@ -609,7 +609,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var archive = tmpPath + "/closed.tar";
 #line (227, 5) - (227, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var fp = tmpPath + "/c.txt";
-#line (228, 5) - (230, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (228, 5) - (229, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(fp, "w"))
 #line hidden
                 {
@@ -618,7 +618,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (230, 5) - (232, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (230, 5) - (231, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
 #line hidden
                 {
@@ -631,7 +631,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var readTar = tarfile.Open(archive, "r:");
 #line (233, 5) - (233, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 readTar.Close();
-#line (234, 5) - (240, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (234, 5) - (235, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
@@ -683,7 +683,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (260, 5) - (260, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 var archive = tmpPath + "/multi.tar";
-#line (261, 5) - (263, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (261, 5) - (262, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(tmpPath + "/a.txt", "w"))
 #line hidden
                 {
@@ -692,7 +692,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (263, 5) - (265, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (263, 5) - (264, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(tmpPath + "/b.txt", "w"))
 #line hidden
                 {
@@ -701,7 +701,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (265, 5) - (268, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (265, 5) - (267, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tw = tarfile.Open(archive, "w:"))
 #line hidden
                 {
@@ -712,7 +712,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (268, 5) - (279, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
+#line (268, 5) - (274, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/tarfile/tarfile_tests.spy"
                 using (var tr = tarfile.Open(archive, "r:"))
 #line hidden
                 {

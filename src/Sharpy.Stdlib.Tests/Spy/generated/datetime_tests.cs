@@ -96,7 +96,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDateInvalidDateThrowsArgumentOutOfRange()
             {
-#line (66, 5) - (71, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
+#line (66, 5) - (67, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try

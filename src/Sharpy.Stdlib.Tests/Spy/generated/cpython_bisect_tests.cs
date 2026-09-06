@@ -158,7 +158,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 int n = 25;
 #line (91, 5) - (91, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                 int i = 0;
-#line (92, 5) - (114, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
+#line (92, 5) - (110, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                 while (i < n)
 #line hidden
                 {
@@ -169,7 +169,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     };
 #line (94, 9) - (94, 20) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                     int j = 0;
-#line (95, 9) - (98, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
+#line (95, 9) - (97, 19) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                     while (j < i)
 #line hidden
                     {
@@ -186,7 +186,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     int elem = random.Randrange(-1, n + 1);
 #line (100, 9) - (100, 50) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                     int ip = bisect.BisectLeft(data, elem);
-#line (101, 9) - (103, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
+#line (101, 9) - (102, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                     if (ip < global::Sharpy.Builtins.Len(data))
 #line hidden
                     {
@@ -195,7 +195,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                     }
 
-#line (103, 9) - (105, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
+#line (103, 9) - (104, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                     if (ip > 0)
 #line hidden
                     {
@@ -206,7 +206,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
 #line (105, 9) - (105, 45) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                     ip = bisect.BisectRight(data, elem);
-#line (106, 9) - (108, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
+#line (106, 9) - (107, 36) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                     if (ip < global::Sharpy.Builtins.Len(data))
 #line hidden
                     {
@@ -215,7 +215,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                     }
 
-#line (108, 9) - (110, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
+#line (108, 9) - (109, 41) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                     if (ip > 0)
 #line hidden
                     {
@@ -277,7 +277,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 };
 #line (130, 5) - (130, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                 int i = 0;
-#line (131, 5) - (135, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
+#line (131, 5) - (133, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                 while (i < 6)
 #line hidden
                 {
@@ -344,13 +344,13 @@ namespace Sharpy.Stdlib.Tests.Spy
                 };
 #line (150, 5) - (150, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                 int i = 0;
-#line (151, 5) - (158, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
+#line (151, 5) - (157, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                 while (i < 200)
 #line hidden
                 {
 #line (152, 9) - (152, 39) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                     int d = random.Randint(0, 9);
-#line (153, 9) - (157, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
+#line (153, 9) - (156, 53) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                     if (global::Sharpy.Builtins.FloorMod(d, 2) == 0)
 #line hidden
                     {
@@ -406,7 +406,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (168, 5) - (171, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
+#line (168, 5) - (170, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_bisect_tests.spy"
                 foreach (var __loopVar_0 in scores)
 #line hidden
                 {

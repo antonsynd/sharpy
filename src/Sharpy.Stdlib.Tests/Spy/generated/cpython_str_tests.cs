@@ -20,7 +20,7 @@ namespace Sharpy.Stdlib.Tests.Spy
         {
             internal static bool _IndexRaises(string s, string sub)
             {
-#line (248, 5) - (253, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
+#line (248, 5) - (251, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
                 try
 #line hidden
                 {
@@ -38,7 +38,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
             internal static bool _RindexRaises(string s, string sub)
             {
-#line (263, 5) - (268, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
+#line (263, 5) - (266, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
                 try
 #line hidden
                 {
@@ -784,7 +784,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (431, 5) - (433, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
+#line (431, 5) - (432, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
                 foreach (var __loopVar_0 in global::Sharpy.StringHelpers.Iterate("abc"))
 #line hidden
                 {

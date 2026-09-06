@@ -202,7 +202,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
 #line (114, 5) - (114, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
                 var b = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d });
-#line (115, 5) - (118, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
+#line (115, 5) - (116, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -227,7 +227,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var a = np.Zeros(6).Reshape(2, 3);
 #line (121, 5) - (121, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
                 var b = np.Zeros(12).Reshape(4, 3);
-#line (122, 5) - (124, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
+#line (122, 5) - (123, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_operator_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try

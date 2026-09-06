@@ -293,7 +293,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (171, 5) - (171, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 var a = np.Zeros(0);
-#line (172, 5) - (177, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
+#line (172, 5) - (173, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -402,7 +402,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (227, 5) - (227, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 var a = np.Zeros(6).Reshape(2, 3);
-#line (228, 5) - (230, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
+#line (228, 5) - (229, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_math_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try

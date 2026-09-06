@@ -154,12 +154,12 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (74, 5) - (79, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+#line (74, 5) - (78, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 foreach (var __loopVar_0 in attrs)
 #line hidden
                 {
                     var attr = __loopVar_0;
-#line (75, 9) - (79, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+#line (75, 9) - (78, 53) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                     if (attr.Item2 == null)
 #line hidden
                     {
@@ -565,12 +565,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 p.Close();
 #line (281, 5) - (281, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 string combined = "";
-#line (282, 5) - (285, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+#line (282, 5) - (284, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 foreach (var __loopVar_1 in p.Events)
 #line hidden
                 {
                     var e = __loopVar_1;
-#line (283, 9) - (285, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+#line (283, 9) - (284, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                     if (global::Sharpy.StringExtensions.Startswith(e, "data:"))
 #line hidden
                     {
@@ -772,12 +772,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 p.Close();
 #line (386, 5) - (386, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 string combined = "";
-#line (387, 5) - (390, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+#line (387, 5) - (389, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                 foreach (var __loopVar_2 in p.Events)
 #line hidden
                 {
                     var e = __loopVar_2;
-#line (388, 9) - (390, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
+#line (388, 9) - (389, 40) 20 "src/Sharpy.Stdlib.Tests/Spy/html/html_module_tests.spy"
                     if (global::Sharpy.StringExtensions.Startswith(e, "data:"))
 #line hidden
                     {

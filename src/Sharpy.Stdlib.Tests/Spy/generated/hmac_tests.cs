@@ -150,7 +150,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestUnsupportedAlgorithmThrowsValueError()
             {
-#line (68, 5) - (71, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
+#line (68, 5) - (69, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/hmac/hmac_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try

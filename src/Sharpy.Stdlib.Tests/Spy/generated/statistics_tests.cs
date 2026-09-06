@@ -51,7 +51,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (19, 5) - (22, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
+#line (19, 5) - (20, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -125,7 +125,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (53, 5) - (56, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
+#line (53, 5) - (54, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -223,7 +223,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (101, 5) - (106, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
+#line (101, 5) - (102, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -254,7 +254,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestStdevSingleElementThrowsStatisticsError()
             {
-#line (113, 5) - (116, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
+#line (113, 5) - (114, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -305,7 +305,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestVarianceSingleElementThrowsStatisticsError()
             {
-#line (137, 5) - (142, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
+#line (137, 5) - (138, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try

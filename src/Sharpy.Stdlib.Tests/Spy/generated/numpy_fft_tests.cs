@@ -78,7 +78,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFftfreqNegativeNThrows()
             {
-#line (47, 5) - (50, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
+#line (47, 5) - (48, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_fft_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try

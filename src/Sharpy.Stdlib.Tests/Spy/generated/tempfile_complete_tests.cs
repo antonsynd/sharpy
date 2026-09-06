@@ -135,7 +135,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (89, 5) - (89, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_complete_tests.spy"
                 var (_fd, path) = tempfile.Mkstemp();
-#line (91, 5) - (93, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_complete_tests.spy"
+#line (91, 5) - (92, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_complete_tests.spy"
                 using (var f = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -146,7 +146,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
 #line (93, 5) - (93, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_complete_tests.spy"
                 string content = "";
-#line (94, 5) - (96, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_complete_tests.spy"
+#line (94, 5) - (95, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/tempfile/tempfile_complete_tests.spy"
                 using (var g = global::Sharpy.Builtins.Open(path, "r"))
 #line hidden
                 {

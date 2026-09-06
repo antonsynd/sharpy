@@ -20,7 +20,7 @@ namespace Sharpy.Stdlib.Tests.Spy
         {
             internal static bool _IntRaises(string s)
             {
-#line (60, 5) - (65, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
+#line (60, 5) - (63, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_int_tests.spy"
                 try
 #line hidden
                 {

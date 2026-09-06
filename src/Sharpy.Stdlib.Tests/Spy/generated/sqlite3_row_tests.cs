@@ -49,7 +49,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 conn.Commit();
 #line (50, 5) - (50, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var cursor = conn.Execute("SELECT id, name, score FROM test_row");
-#line (51, 5) - (62, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
+#line (51, 5) - (57, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 switch (cursor.Fetchone())
 #line hidden
                 {
@@ -139,7 +139,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (104, 5) - (104, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var row = _MakeRow();
-#line (105, 5) - (109, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
+#line (105, 5) - (106, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -162,7 +162,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (111, 5) - (111, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var row = _MakeRow();
-#line (112, 5) - (118, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
+#line (112, 5) - (113, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -223,7 +223,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (142, 5) - (142, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var row = _MakeRow();
-#line (143, 5) - (149, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
+#line (143, 5) - (144, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -304,7 +304,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 conn.Commit();
 #line (187, 5) - (187, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var cursor = conn.Execute("SELECT id, val FROM t_null");
-#line (188, 5) - (194, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
+#line (188, 5) - (193, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 switch (cursor.Fetchone())
 #line hidden
                 {
@@ -354,7 +354,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 conn.Commit();
 #line (213, 5) - (213, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var cursor = conn.Execute("SELECT id, name FROM t_rf");
-#line (214, 5) - (220, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
+#line (214, 5) - (219, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 switch (cursor.Fetchone())
 #line hidden
                 {
@@ -398,7 +398,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var rows = cursor.Fetchall();
 #line (233, 5) - (233, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(rows));
-#line (235, 5) - (241, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
+#line (235, 5) - (239, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 switch (rows[0])
 #line hidden
                 {
@@ -414,7 +414,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                         break;
                 }
 
-#line (241, 5) - (246, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
+#line (241, 5) - (245, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 switch (rows[1])
 #line hidden
                 {
@@ -450,12 +450,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 conn.Commit();
 #line (256, 5) - (256, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var cursor = conn.Execute("SELECT id, name FROM t_rf3");
-#line (257, 5) - (263, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
+#line (257, 5) - (262, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 foreach (var __loopVar_3 in cursor)
 #line hidden
                 {
                     var row = __loopVar_3;
-#line (258, 9) - (263, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
+#line (258, 9) - (262, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                     switch (row)
 #line hidden
                     {
@@ -502,7 +502,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 conn.Commit();
 #line (287, 5) - (287, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 var cursor = conn.Execute("SELECT val FROM t_single");
-#line (288, 5) - (297, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
+#line (288, 5) - (296, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/sqlite3/sqlite3_row_tests.spy"
                 switch (cursor.Fetchone())
 #line hidden
                 {

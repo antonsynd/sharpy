@@ -156,7 +156,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAtIndexEqualsLengthThrowsIndexError()
             {
-#line (79, 5) - (82, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
+#line (79, 5) - (80, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -177,7 +177,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAtNegativeBeyondStartThrowsIndexError()
             {
-#line (84, 5) - (87, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
+#line (84, 5) - (85, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -198,7 +198,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestAtEmptyStringThrowsIndexError()
             {
-#line (89, 5) - (94, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
+#line (89, 5) - (90, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/grapheme/grapheme_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try

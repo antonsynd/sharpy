@@ -78,7 +78,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestConstructorInvalidZoneThrowsZoneInfoNotFoundError()
             {
-#line (36, 5) - (39, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+#line (36, 5) - (37, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -99,7 +99,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestConstructorInvalidZoneCaptureExposesException()
             {
-#line (42, 5) - (44, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+#line (42, 5) - (43, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 global::Sharpy.ZoneInfoNotFoundError exc = null!;
 #line hidden
                 bool __raised_1 = false;
@@ -127,7 +127,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestConstructorEmptyKeyThrowsZoneInfoNotFoundError()
             {
-#line (49, 5) - (52, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+#line (49, 5) - (50, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -150,7 +150,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (54, 5) - (54, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 bool caught = false;
-#line (55, 5) - (59, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
+#line (55, 5) - (58, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/zoneinfo/zoneinfo_tests.spy"
                 try
 #line hidden
                 {

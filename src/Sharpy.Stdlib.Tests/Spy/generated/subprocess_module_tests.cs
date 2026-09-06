@@ -78,7 +78,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (61, 5) - (61, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 var cp = new global::Sharpy.CompletedProcess(new Sharpy.List<string>() { "false" }, 1);
-#line (62, 5) - (64, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (62, 5) - (63, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 global::Sharpy.CalledProcessError ex = null!;
 #line hidden
                 bool __raised_0 = false;
@@ -220,7 +220,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRunCheckModeFailure()
             {
-#line (138, 5) - (140, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (138, 5) - (139, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 global::Sharpy.CalledProcessError ex = null!;
 #line hidden
                 bool __raised_2 = false;
@@ -256,7 +256,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRunTimeoutThrows()
             {
-#line (151, 5) - (155, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (151, 5) - (152, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
@@ -326,7 +326,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestCheckOutputFailureThrows()
             {
-#line (184, 5) - (190, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (184, 5) - (185, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
@@ -355,7 +355,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestCheckCallFailureThrows()
             {
-#line (197, 5) - (203, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (197, 5) - (198, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 bool __raised_6 = false;
 #line hidden
                 try
@@ -376,7 +376,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPopenBasicWait()
             {
-#line (205, 5) - (210, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (205, 5) - (207, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "true" }))
 #line hidden
                 {
@@ -391,7 +391,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPopenCommunicate()
             {
-#line (212, 5) - (217, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (212, 5) - (214, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "cat" }, stdin: subprocess.PIPE, stdout: subprocess.PIPE))
 #line hidden
                 {
@@ -406,7 +406,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPopenPidIsPositive()
             {
-#line (219, 5) - (224, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (219, 5) - (221, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "true" }))
 #line hidden
                 {
@@ -421,7 +421,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPopenKill()
             {
-#line (226, 5) - (231, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (226, 5) - (228, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "sleep", "60" }))
 #line hidden
                 {
@@ -436,7 +436,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPopenPollRunningProcess()
             {
-#line (233, 5) - (239, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (233, 5) - (236, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "sleep", "60" }))
 #line hidden
                 {
@@ -453,7 +453,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPopenDisposeCleansUp()
             {
-#line (244, 5) - (248, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (244, 5) - (245, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "sleep", "60" }))
 #line hidden
                 {
@@ -466,7 +466,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPopenTerminate()
             {
-#line (250, 5) - (255, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (250, 5) - (252, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "sleep", "60" }))
 #line hidden
                 {
@@ -481,7 +481,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPopenSendSignalUnix()
             {
-#line (257, 5) - (262, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (257, 5) - (259, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "sleep", "60" }))
 #line hidden
                 {
@@ -496,7 +496,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPopenPollCompletedProcessReturnsExitCode()
             {
-#line (264, 5) - (269, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (264, 5) - (266, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "true" }))
 #line hidden
                 {
@@ -511,7 +511,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPopenDevnullStdout()
             {
-#line (271, 5) - (276, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (271, 5) - (273, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 using (var proc = new global::Sharpy.Popen(new Sharpy.List<string>() { "echo", "discarded" }, stdout: subprocess.DEVNULL))
 #line hidden
                 {
@@ -526,7 +526,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPopenStderrStdoutThrowsNotImplemented()
             {
-#line (278, 5) - (282, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (278, 5) - (279, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 bool __raised_7 = false;
 #line hidden
                 try
@@ -547,7 +547,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRunTextFalseThrowsNotImplemented()
             {
-#line (284, 5) - (288, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (284, 5) - (285, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 bool __raised_8 = false;
 #line hidden
                 try
@@ -568,7 +568,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestCheckOutputTextFalseThrowsNotImplemented()
             {
-#line (290, 5) - (292, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
+#line (290, 5) - (291, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/subprocess/subprocess_module_tests.spy"
                 bool __raised_9 = false;
 #line hidden
                 try

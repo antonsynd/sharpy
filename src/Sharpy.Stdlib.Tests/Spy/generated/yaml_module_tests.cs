@@ -25,7 +25,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (161, 5) - (161, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object parsed = yaml.SafeLoad(text);
-#line (162, 5) - (168, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (162, 5) - (166, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (parsed)
 #line hidden
                 {
@@ -63,7 +63,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string text = yaml.SafeDump(data);
 #line (25, 5) - (25, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object parsed = yaml.SafeLoad(text);
-#line (26, 5) - (33, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (26, 5) - (31, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (parsed)
 #line hidden
                 {
@@ -102,7 +102,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string text = yaml.SafeDump(data);
 #line (41, 5) - (41, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object parsed = yaml.SafeLoad(text);
-#line (42, 5) - (53, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (42, 5) - (49, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (parsed)
 #line hidden
                 {
@@ -130,7 +130,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (55, 5) - (55, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: hello");
-#line (56, 5) - (62, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (56, 5) - (60, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -152,7 +152,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (64, 5) - (64, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: \"hello world\"");
-#line (65, 5) - (71, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (65, 5) - (69, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -174,7 +174,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (73, 5) - (73, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: 42");
-#line (74, 5) - (81, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (74, 5) - (79, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -198,7 +198,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (83, 5) - (83, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: -7");
-#line (84, 5) - (90, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (84, 5) - (88, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -220,7 +220,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (92, 5) - (92, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: 9999999999");
-#line (93, 5) - (101, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (93, 5) - (99, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -246,14 +246,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (108, 5) - (108, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: 3.14");
-#line (109, 5) - (122, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (109, 5) - (120, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
                     case global::Sharpy.IDict d:
 #line (113, 13) - (113, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<double>(d["key"]);
-#line (114, 13) - (119, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (114, 13) - (118, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         switch (d["key"])
 #line hidden
                         {
@@ -283,14 +283,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (124, 5) - (124, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: 2.0");
-#line (125, 5) - (136, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (125, 5) - (134, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
                     case global::Sharpy.IDict d:
 #line (127, 13) - (127, 48) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.IsAssignableFrom<double>(d["key"]);
-#line (128, 13) - (133, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (128, 13) - (132, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         switch (d["key"])
 #line hidden
                         {
@@ -334,7 +334,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSafeDumpSafeLoadRoundTripIsIdentity()
             {
-#line (150, 5) - (160, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (150, 5) - (157, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 foreach (var __loopVar_0 in new Sharpy.List<double>()
 #line hidden
                 {
@@ -354,7 +354,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     string text = yaml.SafeDump(value);
 #line (152, 9) - (152, 49) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                     object reloaded = yaml.SafeLoad(text);
-#line (153, 9) - (160, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (153, 9) - (157, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                     switch (reloaded)
 #line hidden
                     {
@@ -377,7 +377,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (170, 5) - (170, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: true");
-#line (171, 5) - (178, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (171, 5) - (176, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -401,7 +401,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (180, 5) - (180, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: false");
-#line (181, 5) - (187, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (181, 5) - (185, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -423,7 +423,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (189, 5) - (189, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: null");
-#line (190, 5) - (196, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (190, 5) - (194, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -445,7 +445,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (198, 5) - (198, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: ~");
-#line (199, 5) - (225, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (199, 5) - (203, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -467,7 +467,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (227, 5) - (227, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: NO");
-#line (228, 5) - (235, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (228, 5) - (233, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -491,7 +491,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (237, 5) - (237, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: no");
-#line (238, 5) - (245, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (238, 5) - (243, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -515,7 +515,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (247, 5) - (247, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: No");
-#line (248, 5) - (255, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (248, 5) - (253, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -539,7 +539,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (257, 5) - (257, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: Yes");
-#line (258, 5) - (265, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (258, 5) - (263, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -563,7 +563,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (267, 5) - (267, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: yes");
-#line (268, 5) - (275, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (268, 5) - (273, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -587,7 +587,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (277, 5) - (277, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: on");
-#line (278, 5) - (285, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (278, 5) - (283, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -611,7 +611,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (287, 5) - (287, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: On");
-#line (288, 5) - (295, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (288, 5) - (293, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -635,7 +635,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (297, 5) - (297, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: off");
-#line (298, 5) - (305, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (298, 5) - (303, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -659,7 +659,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (307, 5) - (307, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: OFF");
-#line (308, 5) - (318, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (308, 5) - (313, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -683,7 +683,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (320, 5) - (320, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: yEs");
-#line (321, 5) - (328, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (321, 5) - (326, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -707,7 +707,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (330, 5) - (330, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: Y");
-#line (331, 5) - (338, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (331, 5) - (336, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -731,7 +731,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (340, 5) - (340, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: N");
-#line (341, 5) - (350, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (341, 5) - (346, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -767,12 +767,12 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (360, 5) - (360, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("outer:\n  inner: 42\n");
-#line (361, 5) - (371, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (361, 5) - (369, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
                     case global::Sharpy.IDict d:
-#line (363, 13) - (368, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (363, 13) - (367, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         switch (d["outer"])
 #line hidden
                         {
@@ -802,12 +802,12 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (373, 5) - (373, 70) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("items:\n  - 1\n  - 2\n  - 3\n");
-#line (374, 5) - (386, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (374, 5) - (384, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
                     case global::Sharpy.IDict d:
-#line (376, 13) - (383, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (376, 13) - (382, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         switch (d["items"])
 #line hidden
                         {
@@ -841,14 +841,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (388, 5) - (388, 88) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("- id: 1\n  name: alpha\n- id: 2\n  name: beta\n");
-#line (389, 5) - (403, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (389, 5) - (399, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
                     case global::Sharpy.IList items:
 #line (391, 13) - (391, 36) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(items));
-#line (392, 13) - (398, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (392, 13) - (397, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         switch (items[0])
 #line hidden
                         {
@@ -896,7 +896,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (413, 5) - (413, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("{}");
-#line (414, 5) - (420, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (414, 5) - (418, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -918,7 +918,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (422, 5) - (422, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("[]");
-#line (423, 5) - (429, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (423, 5) - (427, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -940,7 +940,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (431, 5) - (431, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("key: café üñî");
-#line (432, 5) - (438, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (432, 5) - (436, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -962,7 +962,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (440, 5) - (440, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad("{a: 1, b: 2}");
-#line (441, 5) - (450, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (441, 5) - (446, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -1111,7 +1111,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (505, 5) - (507, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (505, 5) - (506, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 foreach (var __loopVar_1 in global::Sharpy.Builtins.Range(10))
 #line hidden
                 {
@@ -1153,7 +1153,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(docs));
 #line (529, 5) - (529, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object firstElem = docs.GetItemUnchecked(0);
-#line (530, 5) - (535, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (530, 5) - (534, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (firstElem)
 #line hidden
                 {
@@ -1171,7 +1171,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
 #line (535, 5) - (535, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object secondElem = docs.GetItemUnchecked(1);
-#line (536, 5) - (542, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (536, 5) - (540, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (secondElem)
 #line hidden
                 {
@@ -1213,7 +1213,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(docs));
 #line (554, 5) - (554, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object elem = docs.GetItemUnchecked(0);
-#line (555, 5) - (561, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (555, 5) - (559, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (elem)
 #line hidden
                 {
@@ -1239,7 +1239,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(docs));
 #line (565, 5) - (565, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object firstObj = docs.GetItemUnchecked(0);
-#line (566, 5) - (571, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (566, 5) - (570, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (firstObj)
 #line hidden
                 {
@@ -1259,7 +1259,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Null(docs.GetItemUnchecked(1));
 #line (572, 5) - (572, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object thirdObj = docs.GetItemUnchecked(2);
-#line (573, 5) - (579, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (573, 5) - (577, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (thirdObj)
 #line hidden
                 {
@@ -1352,7 +1352,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 data["name"] = "file-test";
 #line (609, 5) - (609, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 data["value"] = 7;
-#line (610, 5) - (612, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (610, 5) - (611, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 using (var fp = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -1365,18 +1365,18 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string name = "";
 #line (613, 5) - (613, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 int value = 0;
-#line (614, 5) - (630, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (614, 5) - (629, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 using (var fp2 = global::Sharpy.Builtins.Open(path, "r"))
 #line hidden
                 {
 #line (615, 9) - (615, 51) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                     object parsed = yaml.SafeLoadFile(fp2);
-#line (616, 9) - (630, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (616, 9) - (629, 30) 20 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                     switch (parsed)
 #line hidden
                     {
                         case global::Sharpy.IDict d:
-#line (618, 17) - (623, 1) 28 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (618, 17) - (622, 38) 28 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                             switch (d["name"])
 #line hidden
                             {
@@ -1392,7 +1392,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                                     break;
                             }
 
-#line (623, 17) - (628, 1) 28 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (623, 17) - (627, 38) 28 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                             switch (d["value"])
 #line hidden
                             {
@@ -1431,12 +1431,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string text = "defaults: &defaults\n  timeout: 30\n  retries: 3\nproduction: *defaults\n";
 #line (638, 5) - (638, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad(text);
-#line (639, 5) - (650, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (639, 5) - (648, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
                     case global::Sharpy.IDict d:
-#line (641, 13) - (647, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (641, 13) - (646, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                         switch (d["production"])
 #line hidden
                         {
@@ -1470,7 +1470,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string text = "first: &val hello\nsecond: *val\n";
 #line (653, 5) - (653, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 object result = yaml.SafeLoad(text);
-#line (654, 5) - (661, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (654, 5) - (659, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -1492,7 +1492,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSafeLoadUndefinedAliasThrowsParseError()
             {
-#line (663, 5) - (668, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (663, 5) - (664, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -1513,7 +1513,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSafeLoadMalformedYamlThrowsParseError()
             {
-#line (670, 5) - (673, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (670, 5) - (671, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -1534,7 +1534,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSafeLoadUnterminatedQuoteThrowsParseError()
             {
-#line (675, 5) - (678, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (675, 5) - (676, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
@@ -1555,7 +1555,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSafeLoadTabIndentationThrowsParseError()
             {
-#line (680, 5) - (683, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (680, 5) - (681, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
@@ -1576,7 +1576,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestYamlParseErrorHasLineAndColumn()
             {
-#line (685, 5) - (687, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (685, 5) - (686, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 global::Sharpy.YAMLParseError exc = null!;
 #line hidden
                 bool __raised_6 = false;
@@ -1604,7 +1604,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestYamlParseErrorIsYamlError()
             {
-#line (692, 5) - (694, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (692, 5) - (693, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 global::Sharpy.YAMLParseError exc = null!;
 #line hidden
                 bool __raised_8 = false;
@@ -1750,7 +1750,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRoundtripDumpMarksTheSameDocumentsAsSafeDump()
             {
-#line (818, 5) - (822, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
+#line (818, 5) - (819, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_module_tests.spy"
                 foreach (var __loopVar_10 in new Sharpy.List<string>()
 #line hidden
                 {

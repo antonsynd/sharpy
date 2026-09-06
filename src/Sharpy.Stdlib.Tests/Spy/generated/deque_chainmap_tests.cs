@@ -36,7 +36,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 int n = d.Count;
 #line (11, 5) - (11, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
                 Xunit.Assert.Equal(0, n);
-#line (12, 5) - (15, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
+#line (12, 5) - (13, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -225,7 +225,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 };
 #line (91, 5) - (91, 81) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
                 global::Sharpy.ChainMap<string, int> cm = new global::Sharpy.ChainMap<string, int>(d1, d2);
-#line (92, 5) - (97, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
+#line (92, 5) - (93, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/deque_chainmap_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try

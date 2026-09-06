@@ -27,7 +27,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (18, 5) - (18, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 os.Makedirs(@base + "/sub/deep", existOk: true);
-#line (19, 5) - (21, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (19, 5) - (20, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(@base + "/a.txt", "w"))
 #line hidden
                 {
@@ -36,7 +36,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (21, 5) - (23, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (21, 5) - (22, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(@base + "/b.txt", "w"))
 #line hidden
                 {
@@ -45,7 +45,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (23, 5) - (25, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (23, 5) - (24, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 using (var fc = global::Sharpy.Builtins.Open(@base + "/c.py", "w"))
 #line hidden
                 {
@@ -54,7 +54,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (25, 5) - (27, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (25, 5) - (26, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 using (var fd = global::Sharpy.Builtins.Open(@base + "/data.csv", "w"))
 #line hidden
                 {
@@ -63,7 +63,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (27, 5) - (29, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (27, 5) - (28, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 using (var fsd = global::Sharpy.Builtins.Open(@base + "/sub/d.txt", "w"))
 #line hidden
                 {
@@ -72,7 +72,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (29, 5) - (31, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (29, 5) - (30, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 using (var fse = global::Sharpy.Builtins.Open(@base + "/sub/e.py", "w"))
 #line hidden
                 {
@@ -81,7 +81,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (31, 5) - (35, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (31, 5) - (32, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 using (var fsf = global::Sharpy.Builtins.Open(@base + "/sub/deep/f.txt", "w"))
 #line hidden
                 {
@@ -96,12 +96,12 @@ namespace Sharpy.Stdlib.Tests.Spy
             /// </summary>
             public static bool EndsWithAny(Sharpy.List<string> items, string suffix)
             {
-#line (37, 5) - (40, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (37, 5) - (39, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 foreach (var __loopVar_0 in items)
 #line hidden
                 {
                     var item = __loopVar_0;
-#line (38, 9) - (40, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (38, 9) - (39, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                     if (global::Sharpy.StringExtensions.Endswith(item, suffix))
 #line hidden
                     {
@@ -208,7 +208,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Equal(global::Sharpy.Builtins.Len(expected), global::Sharpy.Builtins.Len(results));
 #line (91, 5) - (91, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 int i = 0;
-#line (92, 5) - (97, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (92, 5) - (94, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 while (i < global::Sharpy.Builtins.Len(results))
 #line hidden
                 {
@@ -300,7 +300,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 BuildTree(tmpPath);
 #line (145, 5) - (145, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 int count = 0;
-#line (146, 5) - (148, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (146, 5) - (147, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 foreach (var __loopVar_1 in glob.Iglob(tmpPath + "/*.txt"))
 #line hidden
                 {
@@ -323,7 +323,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 BuildTree(tmpPath);
 #line (163, 5) - (163, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 var lazy = glob.Iglob(tmpPath + "/*.lazytest");
-#line (164, 5) - (166, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (164, 5) - (165, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 using (var f = global::Sharpy.Builtins.Open(tmpPath + "/created_after_call.lazytest", "w"))
 #line hidden
                 {
@@ -334,7 +334,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
 #line (166, 5) - (166, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 int count = 0;
-#line (167, 5) - (169, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
+#line (167, 5) - (168, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/glob/glob_tests.spy"
                 foreach (var __loopVar_2 in lazy)
 #line hidden
                 {

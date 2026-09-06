@@ -22,7 +22,7 @@ namespace Sharpy.Stdlib.Tests.Spy
         {
             internal static void _AssertTriple(double a0, double a1, double a2, double b0, double b1, double b2)
             {
-#line (57, 5) - (59, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (57, 5) - (58, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 if (global::Sharpy.Builtins.Abs(a0 - b0) >= 1e-7d)
 #line hidden
                 {
@@ -31,7 +31,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (59, 5) - (61, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (59, 5) - (60, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 if (global::Sharpy.Builtins.Abs(a1 - b1) >= 1e-7d)
 #line hidden
                 {
@@ -40,7 +40,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (61, 5) - (64, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (61, 5) - (62, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 if (global::Sharpy.Builtins.Abs(a2 - b2) >= 1e-7d)
 #line hidden
                 {
@@ -70,17 +70,17 @@ namespace Sharpy.Stdlib.Tests.Spy
                     0.8d,
                     1.0d
                 };
-#line (17, 5) - (26, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (17, 5) - (24, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 foreach (var __loopVar_0 in vals)
 #line hidden
                 {
                     var r = __loopVar_0;
-#line (18, 9) - (26, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (18, 9) - (24, 50) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                     foreach (var __loopVar_1 in vals)
 #line hidden
                     {
                         var g = __loopVar_1;
-#line (19, 13) - (26, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (19, 13) - (24, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                         foreach (var __loopVar_2 in vals)
 #line hidden
                         {
@@ -115,17 +115,17 @@ namespace Sharpy.Stdlib.Tests.Spy
                     0.8d,
                     1.0d
                 };
-#line (29, 5) - (38, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (29, 5) - (36, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 foreach (var __loopVar_3 in vals)
 #line hidden
                 {
                     var r = __loopVar_3;
-#line (30, 9) - (38, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (30, 9) - (36, 50) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                     foreach (var __loopVar_4 in vals)
 #line hidden
                     {
                         var g = __loopVar_4;
-#line (31, 13) - (38, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (31, 13) - (36, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                         foreach (var __loopVar_5 in vals)
 #line hidden
                         {
@@ -160,17 +160,17 @@ namespace Sharpy.Stdlib.Tests.Spy
                     0.8d,
                     1.0d
                 };
-#line (41, 5) - (52, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (41, 5) - (48, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                 foreach (var __loopVar_6 in vals)
 #line hidden
                 {
                     var r = __loopVar_6;
-#line (42, 9) - (52, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (42, 9) - (48, 50) 20 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                     foreach (var __loopVar_7 in vals)
 #line hidden
                     {
                         var g = __loopVar_7;
-#line (43, 13) - (52, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
+#line (43, 13) - (48, 50) 24 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_colorsys_tests.spy"
                         foreach (var __loopVar_8 in vals)
 #line hidden
                         {

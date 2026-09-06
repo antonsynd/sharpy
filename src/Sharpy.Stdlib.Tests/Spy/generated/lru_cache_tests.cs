@@ -185,7 +185,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestUnboundedGetOrAddHitDoesNotInvokeFactory()
             {
-#line (29, 5) - (31, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
+#line (29, 5) - (30, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
                 while (global::Sharpy.Builtins.Len(UnboundedCalls) > 0)
 #line hidden
                 {
@@ -222,7 +222,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestUnboundedCacheReturnsCorrectValuesAfterHits()
             {
-#line (62, 5) - (64, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
+#line (62, 5) - (63, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
                 while (global::Sharpy.Builtins.Len(CountedCalls) > 0)
 #line hidden
                 {
@@ -261,7 +261,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestBoundedAccessingKeyMakesItMostRecentlyUsed()
             {
-#line (97, 5) - (99, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
+#line (97, 5) - (98, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
                 while (global::Sharpy.Builtins.Len(TouchCalls) > 0)
 #line hidden
                 {
@@ -326,7 +326,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (148, 5) - (148, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
                 int i = 5000;
-#line (149, 5) - (154, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
+#line (149, 5) - (152, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
                 while (i < 5050)
 #line hidden
                 {
@@ -351,7 +351,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (165, 5) - (165, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
                 int i = 0;
-#line (166, 5) - (174, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
+#line (166, 5) - (170, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/lru_cache_tests.spy"
                 while (i < 100)
 #line hidden
                 {

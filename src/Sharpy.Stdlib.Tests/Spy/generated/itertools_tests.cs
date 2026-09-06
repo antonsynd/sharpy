@@ -279,7 +279,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     1
                 };
-#line (104, 5) - (107, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
+#line (104, 5) - (105, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try

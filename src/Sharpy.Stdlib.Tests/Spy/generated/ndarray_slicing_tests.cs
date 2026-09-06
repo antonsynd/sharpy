@@ -114,7 +114,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (63, 5) - (63, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var m = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d }).Reshape(2, 3);
-#line (64, 5) - (67, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
+#line (64, 5) - (65, 15) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -201,7 +201,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (103, 5) - (103, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
-#line (104, 5) - (107, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
+#line (104, 5) - (105, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -224,7 +224,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (109, 5) - (109, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d }).Reshape(2, 2);
-#line (110, 5) - (115, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
+#line (110, 5) - (111, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -289,7 +289,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (138, 5) - (138, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
-#line (139, 5) - (142, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
+#line (139, 5) - (140, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -312,7 +312,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (144, 5) - (144, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d }).Reshape(2, 2);
-#line (145, 5) - (147, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
+#line (145, 5) - (146, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_slicing_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try

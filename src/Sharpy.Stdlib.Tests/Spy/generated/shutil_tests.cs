@@ -36,7 +36,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (25, 5) - (25, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var src = tmpPath + "/src.txt";
-#line (26, 5) - (28, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (26, 5) - (27, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -53,7 +53,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.True(Isfile(dst));
 #line (31, 5) - (31, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var content = "";
-#line (32, 5) - (34, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (32, 5) - (33, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(dst, "r"))
 #line hidden
                 {
@@ -75,7 +75,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (40, 5) - (40, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var src = tmpPath + "/src.txt";
-#line (41, 5) - (43, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (41, 5) - (42, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -103,7 +103,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCopyThrowsOnNonexistentSource()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (53, 5) - (59, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (53, 5) - (54, 67) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -127,7 +127,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (61, 5) - (61, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var src = tmpPath + "/src2.txt";
-#line (62, 5) - (64, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (62, 5) - (63, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -153,7 +153,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var srcDir = tmpPath + "/treesrc";
 #line (74, 5) - (74, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 os.Makedirs(srcDir + "/sub", existOk: true);
-#line (75, 5) - (77, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (75, 5) - (76, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(srcDir + "/a.txt", "w"))
 #line hidden
                 {
@@ -162,7 +162,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (77, 5) - (79, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (77, 5) - (78, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(srcDir + "/sub/b.txt", "w"))
 #line hidden
                 {
@@ -183,7 +183,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.True(Isfile(dstDir + "/sub/b.txt"));
 #line (84, 5) - (84, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var content = "";
-#line (85, 5) - (87, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (85, 5) - (86, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fc = global::Sharpy.Builtins.Open(dstDir + "/sub/b.txt", "r"))
 #line hidden
                 {
@@ -201,7 +201,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCopytreeThrowsOnNonexistentSource()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (92, 5) - (98, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (92, 5) - (93, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -227,7 +227,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var d = tmpPath + "/rmdir";
 #line (101, 5) - (101, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 os.Makedirs(d + "/sub", existOk: true);
-#line (102, 5) - (104, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (102, 5) - (103, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(d + "/file.txt", "w"))
 #line hidden
                 {
@@ -236,7 +236,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (104, 5) - (106, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (104, 5) - (105, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(d + "/sub/inner.txt", "w"))
 #line hidden
                 {
@@ -256,7 +256,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRmtreeThrowsOnNonexistent()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (112, 5) - (118, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (112, 5) - (113, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -280,7 +280,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (120, 5) - (120, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var src = tmpPath + "/movesrc.txt";
-#line (121, 5) - (123, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (121, 5) - (122, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -299,7 +299,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.True(Isfile(dst));
 #line (127, 5) - (127, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 var content = "";
-#line (128, 5) - (130, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (128, 5) - (129, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(dst, "r"))
 #line hidden
                 {
@@ -323,7 +323,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var srcDir = tmpPath + "/movedirsrc";
 #line (137, 5) - (137, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 os.Makedirs(srcDir, existOk: true);
-#line (138, 5) - (140, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (138, 5) - (139, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(srcDir + "/f.txt", "w"))
 #line hidden
                 {
@@ -351,7 +351,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestMoveThrowsOnNonexistentSource()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (150, 5) - (156, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (150, 5) - (151, 67) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -376,7 +376,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var result = shutil.Which("dotnet");
 #line (159, 5) - (159, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 Xunit.Assert.NotNull(result);
-#line (160, 5) - (164, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
+#line (160, 5) - (161, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_tests.spy"
                 if (result != null)
 #line hidden
                 {

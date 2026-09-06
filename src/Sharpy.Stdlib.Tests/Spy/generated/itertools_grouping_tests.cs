@@ -39,7 +39,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (13, 5) - (18, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
+#line (13, 5) - (17, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
                 foreach (var (key, group) in itertools.Groupby(empty, (int x) => x))
 #line hidden
                 {
@@ -48,7 +48,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                     {
                     };
-#line (15, 9) - (17, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
+#line (15, 9) - (16, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
                     foreach (var __loopVar_0 in group)
 #line hidden
                     {
@@ -85,7 +85,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (24, 5) - (29, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
+#line (24, 5) - (28, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
                 foreach (var (key, group) in itertools.Groupby(data, (int x) => x))
 #line hidden
                 {
@@ -94,7 +94,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                     {
                     };
-#line (26, 9) - (28, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
+#line (26, 9) - (27, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
                     foreach (var __loopVar_1 in group)
 #line hidden
                     {
@@ -139,7 +139,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (39, 5) - (44, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
+#line (39, 5) - (43, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
                 foreach (var (key, group) in itertools.Groupby(data, (string s) => s.Length))
 #line hidden
                 {
@@ -148,7 +148,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                     {
                     };
-#line (41, 9) - (43, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
+#line (41, 9) - (42, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
                     foreach (var __loopVar_2 in group)
 #line hidden
                     {
@@ -200,7 +200,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (58, 5) - (63, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
+#line (58, 5) - (62, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
                 foreach (var (key, group) in itertools.Groupby(data, (int x) => x))
 #line hidden
                 {
@@ -209,7 +209,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                     {
                     };
-#line (60, 9) - (62, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
+#line (60, 9) - (61, 31) 20 "src/Sharpy.Stdlib.Tests/Spy/itertools/itertools_grouping_tests.spy"
                     foreach (var __loopVar_3 in group)
 #line hidden
                     {

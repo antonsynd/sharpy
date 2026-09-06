@@ -214,7 +214,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var p = new global::Sharpy.Path(tmpPath + "/dup_dir");
 #line (143, 5) - (143, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 p.Mkdir();
-#line (144, 5) - (148, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (144, 5) - (145, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -236,7 +236,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestMkdirMissingParentThrowsWithoutParentsFlag()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (150, 5) - (156, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (150, 5) - (151, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -275,7 +275,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var p = new global::Sharpy.Path(tmpPath + "/enc.txt");
 #line (166, 5) - (166, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 p.WriteText("data");
-#line (167, 5) - (173, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (167, 5) - (168, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -297,7 +297,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestTouchMissingParentDirThrowsFileNotFoundError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (175, 5) - (181, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (175, 5) - (176, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -319,7 +319,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIterdirNonexistentDirThrowsFileNotFoundError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (183, 5) - (189, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (183, 5) - (186, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
@@ -329,7 +329,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                     {
                     };
-#line (185, 9) - (189, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (185, 9) - (186, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                     foreach (var __loopVar_4 in new global::Sharpy.Path(tmpPath + "/no_such_dir").Iterdir())
 #line hidden
                     {
@@ -361,7 +361,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (194, 5) - (196, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (194, 5) - (195, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 foreach (var __loopVar_6 in new global::Sharpy.Path(d).Iterdir())
 #line hidden
                 {
@@ -384,7 +384,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var d = tmpPath + "/glob_empty";
 #line (204, 5) - (204, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 os.Makedirs(d, existOk: true);
-#line (205, 5) - (207, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (205, 5) - (206, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(d + "/file.txt", "w"))
 #line hidden
                 {
@@ -398,7 +398,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (208, 5) - (210, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (208, 5) - (209, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 foreach (var __loopVar_7 in new global::Sharpy.Path(d).Glob("*.py"))
 #line hidden
                 {
@@ -417,7 +417,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGlobNonexistentDirThrowsFileNotFoundError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (215, 5) - (223, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (215, 5) - (218, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 bool __raised_9 = false;
 #line hidden
                 try
@@ -427,7 +427,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                     {
                     };
-#line (217, 9) - (223, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (217, 9) - (218, 33) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                     foreach (var __loopVar_8 in new global::Sharpy.Path(tmpPath + "/no_such_glob_dir").Glob("*"))
 #line hidden
                     {
@@ -488,7 +488,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (249, 5) - (251, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
+#line (249, 5) - (250, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_additional_tests.spy"
                 foreach (var __loopVar_10 in new global::Sharpy.Path(d).Rglob("*.txt"))
 #line hidden
                 {

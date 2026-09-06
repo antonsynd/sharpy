@@ -65,7 +65,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (25, 5) - (28, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
+#line (25, 5) - (26, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/functools/functools_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try

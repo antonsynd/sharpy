@@ -121,7 +121,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestZerosNegativeDimensionThrows()
             {
-#line (69, 5) - (74, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (69, 5) - (70, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -214,7 +214,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestEyeNegativeThrows()
             {
-#line (116, 5) - (121, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (116, 5) - (117, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -327,7 +327,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestArangeZeroStepThrows()
             {
-#line (177, 5) - (180, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (177, 5) - (178, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -414,7 +414,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLinspaceNegativeNumThrows()
             {
-#line (217, 5) - (222, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
+#line (217, 5) - (218, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_creation_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try

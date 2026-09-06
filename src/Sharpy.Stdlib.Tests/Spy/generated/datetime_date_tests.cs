@@ -270,7 +270,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDateNonLeapYearFeb29ThrowsArgumentOutOfRange()
             {
-#line (142, 5) - (144, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_date_tests.spy"
+#line (142, 5) - (143, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/datetime/datetime_date_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try

@@ -202,7 +202,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (129, 5) - (129, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_additional_tests.spy"
                 var path = tmpPath + "/empty.txt";
-#line (130, 5) - (132, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_additional_tests.spy"
+#line (130, 5) - (131, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -222,7 +222,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (137, 5) - (137, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_additional_tests.spy"
                 var path = tmpPath + "/sized.txt";
-#line (138, 5) - (140, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_additional_tests.spy"
+#line (138, 5) - (139, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_path_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {

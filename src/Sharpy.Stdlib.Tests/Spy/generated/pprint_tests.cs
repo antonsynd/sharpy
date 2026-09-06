@@ -425,7 +425,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestConstructorNegativeIndentThrows()
             {
-#line (180, 5) - (183, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
+#line (180, 5) - (181, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -446,7 +446,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestConstructorZeroWidthThrows()
             {
-#line (185, 5) - (188, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
+#line (185, 5) - (186, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/pprint/pprint_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try

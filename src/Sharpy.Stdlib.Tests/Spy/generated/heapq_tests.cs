@@ -77,7 +77,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (26, 5) - (29, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
+#line (26, 5) - (27, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -114,7 +114,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Equal(1, h.GetItemUnchecked(0));
 #line (36, 5) - (36, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 int i = 0;
-#line (37, 5) - (46, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
+#line (37, 5) - (44, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 while (i < global::Sharpy.Builtins.Len(h))
 #line hidden
                 {
@@ -122,7 +122,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     int left = 2 * i + 1;
 #line (39, 9) - (39, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                     int right = 2 * i + 2;
-#line (40, 9) - (42, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
+#line (40, 9) - (41, 36) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                     if (left < global::Sharpy.Builtins.Len(h))
 #line hidden
                     {
@@ -131,7 +131,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                     }
 
-#line (42, 9) - (44, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
+#line (42, 9) - (43, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                     if (right < global::Sharpy.Builtins.Len(h))
 #line hidden
                     {
@@ -194,7 +194,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (64, 5) - (67, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
+#line (64, 5) - (65, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -420,7 +420,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     4,
                     6
                 };
-#line (134, 5) - (136, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
+#line (134, 5) - (135, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 foreach (var __loopVar_2 in inputs)
 #line hidden
                 {
@@ -435,7 +435,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (137, 5) - (139, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
+#line (137, 5) - (138, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 while (global::Sharpy.Builtins.Len(h) > 0)
 #line hidden
                 {
@@ -696,7 +696,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (212, 5) - (214, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
+#line (212, 5) - (213, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 foreach (var __loopVar_3 in a)
 #line hidden
                 {
@@ -706,7 +706,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (214, 5) - (216, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
+#line (214, 5) - (215, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 foreach (var __loopVar_4 in b)
 #line hidden
                 {
@@ -747,7 +747,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (225, 5) - (227, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
+#line (225, 5) - (226, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 foreach (var __loopVar_5 in a)
 #line hidden
                 {
@@ -757,7 +757,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (227, 5) - (229, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
+#line (227, 5) - (228, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_tests.spy"
                 foreach (var __loopVar_6 in b)
 #line hidden
                 {

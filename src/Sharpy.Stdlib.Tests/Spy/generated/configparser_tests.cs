@@ -261,7 +261,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser();
 #line (131, 5) - (131, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.AddSection("section");
-#line (132, 5) - (135, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (132, 5) - (133, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -284,7 +284,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (137, 5) - (137, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (138, 5) - (141, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (138, 5) - (139, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -307,7 +307,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (143, 5) - (143, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (144, 5) - (147, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (144, 5) - (145, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -332,7 +332,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser();
 #line (150, 5) - (150, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.AddSection("section");
-#line (151, 5) - (154, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (151, 5) - (152, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -367,7 +367,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (162, 5) - (162, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (163, 5) - (166, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (163, 5) - (164, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
@@ -458,7 +458,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (202, 5) - (202, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (203, 5) - (208, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (203, 5) - (204, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
@@ -507,7 +507,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (223, 5) - (223, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 var config = new global::Sharpy.ConfigParser();
-#line (224, 5) - (227, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (224, 5) - (225, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_6 = false;
 #line hidden
                 try
@@ -598,7 +598,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
 #line (265, 5) - (265, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %(b)s\nb = %(a)s");
-#line (268, 5) - (271, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (268, 5) - (269, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_7 = false;
 #line hidden
                 try
@@ -671,7 +671,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser();
 #line (300, 5) - (300, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nval = notint");
-#line (301, 5) - (304, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (301, 5) - (302, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_8 = false;
 #line hidden
                 try
@@ -734,7 +734,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser();
 #line (326, 5) - (326, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\nval = maybe");
-#line (327, 5) - (332, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (327, 5) - (328, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_9 = false;
 #line hidden
                 try
@@ -899,7 +899,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser();
 #line (411, 5) - (411, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\npath = %(missing)s");
-#line (414, 5) - (417, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (414, 5) - (415, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_10 = false;
 #line hidden
                 try
@@ -944,7 +944,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
 #line (433, 5) - (433, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %(b)s\nb = %(a)s");
-#line (434, 5) - (437, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (434, 5) - (435, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_11 = false;
 #line hidden
                 try
@@ -969,7 +969,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
 #line (440, 5) - (440, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\npath = %(missing)s");
-#line (441, 5) - (444, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (441, 5) - (442, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_12 = false;
 #line hidden
                 try
@@ -994,7 +994,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
 #line (447, 5) - (447, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %(b");
-#line (448, 5) - (451, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (448, 5) - (449, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_13 = false;
 #line hidden
                 try
@@ -1019,7 +1019,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.BasicInterpolation());
 #line (454, 5) - (454, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = %z");
-#line (455, 5) - (458, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (455, 5) - (456, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_14 = false;
 #line hidden
                 try
@@ -1044,7 +1044,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.ExtendedInterpolation());
 #line (461, 5) - (461, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = ${b");
-#line (462, 5) - (465, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (462, 5) - (463, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_15 = false;
 #line hidden
                 try
@@ -1069,7 +1069,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var config = new global::Sharpy.ConfigParser(new global::Sharpy.ExtendedInterpolation());
 #line (468, 5) - (468, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 config.ReadString("[section]\na = ${x:y:z}");
-#line (469, 5) - (472, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
+#line (469, 5) - (470, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/configparser/configparser_tests.spy"
                 bool __raised_16 = false;
 #line hidden
                 try

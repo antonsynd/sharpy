@@ -298,7 +298,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestGethostbynameInvalidHostRaisesGaierror()
             {
-#line (202, 5) - (207, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (202, 5) - (203, 65) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -343,7 +343,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var t = s.Gettimeout();
 #line (222, 5) - (222, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.NotNull(t);
-#line (223, 5) - (226, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (223, 5) - (224, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 if (t != null)
 #line hidden
                 {
@@ -380,7 +380,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var d = socket.Getdefaulttimeout();
 #line (241, 5) - (241, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.NotNull(d);
-#line (242, 5) - (244, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (242, 5) - (243, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 if (d != null)
 #line hidden
                 {
@@ -405,7 +405,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var t = s.Gettimeout();
 #line (251, 5) - (251, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 Xunit.Assert.NotNull(t);
-#line (252, 5) - (254, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (252, 5) - (253, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 if (t != null)
 #line hidden
                 {
@@ -516,7 +516,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 s.Settimeout(1.0d);
 #line (317, 5) - (317, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 bool caught = false;
-#line (318, 5) - (322, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (318, 5) - (321, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 try
 #line hidden
                 {
@@ -543,7 +543,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (331, 5) - (331, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 bool timeoutCaught = false;
-#line (332, 5) - (336, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (332, 5) - (335, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 try
 #line hidden
                 {
@@ -562,7 +562,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.True(timeoutCaught);
 #line (338, 5) - (338, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 bool gaierrorCaught = false;
-#line (339, 5) - (343, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (339, 5) - (342, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 try
 #line hidden
                 {
@@ -581,7 +581,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.True(gaierrorCaught);
 #line (345, 5) - (345, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 bool herrorCaught = false;
-#line (346, 5) - (350, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (346, 5) - (349, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 try
 #line hidden
                 {
@@ -638,7 +638,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (378, 5) - (378, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 bool caught = false;
-#line (379, 5) - (383, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
+#line (379, 5) - (382, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/socket/socket_module_tests.spy"
                 try
 #line hidden
                 {

@@ -36,7 +36,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (14, 5) - (16, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
+#line (14, 5) - (15, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
                 foreach (var __loopVar_0 in reader)
 #line hidden
                 {
@@ -65,7 +65,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (24, 5) - (26, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
+#line (24, 5) - (25, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
                 foreach (var __loopVar_1 in reader)
 #line hidden
                 {
@@ -98,7 +98,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (37, 5) - (39, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
+#line (37, 5) - (38, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
                 foreach (var __loopVar_2 in reader)
 #line hidden
                 {
@@ -141,7 +141,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (56, 5) - (58, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
+#line (56, 5) - (57, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
                 foreach (var __loopVar_3 in reader)
 #line hidden
                 {
@@ -172,7 +172,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (68, 5) - (70, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
+#line (68, 5) - (69, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
                 foreach (var __loopVar_4 in reader)
 #line hidden
                 {
@@ -203,7 +203,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (79, 5) - (81, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
+#line (79, 5) - (80, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
                 foreach (var __loopVar_5 in reader)
 #line hidden
                 {
@@ -228,7 +228,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (87, 5) - (89, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
+#line (87, 5) - (88, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
                 foreach (var __loopVar_6 in reader)
 #line hidden
                 {
@@ -471,7 +471,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (161, 5) - (163, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
+#line (161, 5) - (162, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_dict_tests.spy"
                 foreach (var __loopVar_10 in reader)
 #line hidden
                 {

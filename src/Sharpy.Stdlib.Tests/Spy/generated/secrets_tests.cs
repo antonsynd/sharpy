@@ -60,7 +60,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestTokenBytesNegativeThrows()
             {
-#line (22, 5) - (25, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
+#line (22, 5) - (23, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -95,12 +95,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string result = secrets.TokenHex(32);
 #line (34, 5) - (34, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 bool valid = true;
-#line (35, 5) - (38, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
+#line (35, 5) - (37, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 foreach (var __loopVar_1 in global::Sharpy.StringHelpers.Iterate(result))
 #line hidden
                 {
                     var c = __loopVar_1;
-#line (36, 9) - (38, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
+#line (36, 9) - (37, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                     if (!"0123456789abcdef".Contains(c))
 #line hidden
                     {
@@ -132,12 +132,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string result = secrets.TokenUrlsafe(32);
 #line (49, 5) - (49, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 bool valid = true;
-#line (50, 5) - (53, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
+#line (50, 5) - (52, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 foreach (var __loopVar_2 in global::Sharpy.StringHelpers.Iterate(result))
 #line hidden
                 {
                     var c = __loopVar_2;
-#line (51, 9) - (53, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
+#line (51, 9) - (52, 26) 20 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                     if (!"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-".Contains(c))
 #line hidden
                     {
@@ -167,7 +167,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (62, 5) - (62, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 int i = 0;
-#line (63, 5) - (69, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
+#line (63, 5) - (67, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 while (i < 100)
 #line hidden
                 {
@@ -188,7 +188,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (71, 5) - (71, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 int i = 0;
-#line (72, 5) - (76, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
+#line (72, 5) - (74, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 while (i < 10)
 #line hidden
                 {
@@ -203,7 +203,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRandbelowZeroThrows()
             {
-#line (78, 5) - (81, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
+#line (78, 5) - (79, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -224,7 +224,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRandbelowNegativeThrows()
             {
-#line (83, 5) - (86, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
+#line (83, 5) - (84, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
@@ -268,7 +268,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (95, 5) - (98, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
+#line (95, 5) - (96, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/secrets/secrets_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try

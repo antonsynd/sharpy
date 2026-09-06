@@ -154,7 +154,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestIscloseNegativeToleranceThrows()
             {
-#line (73, 5) - (75, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
+#line (73, 5) - (74, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -170,7 +170,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
                 if (!__raised_0)
                     throw new global::Sharpy.AssertionError("Expected ValueError to be raised, but no exception was raised");
-#line (75, 5) - (80, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
+#line (75, 5) - (76, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -213,7 +213,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestCombNegativeNThrows()
             {
-#line (93, 5) - (96, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
+#line (93, 5) - (94, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -234,7 +234,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestCombNegativeKThrows()
             {
-#line (98, 5) - (101, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
+#line (98, 5) - (99, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -285,7 +285,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPermNegativeNThrows()
             {
-#line (120, 5) - (123, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
+#line (120, 5) - (121, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
@@ -306,7 +306,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestPermNegativeKThrows()
             {
-#line (125, 5) - (128, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
+#line (125, 5) - (126, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
@@ -523,7 +523,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLog1pNegativeOneThrows()
             {
-#line (227, 5) - (230, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
+#line (227, 5) - (228, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                 bool __raised_6 = false;
 #line hidden
                 try
@@ -544,7 +544,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLog1pBelowNegativeOneThrows()
             {
-#line (232, 5) - (237, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
+#line (232, 5) - (233, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                 bool __raised_7 = false;
 #line hidden
                 try
@@ -581,7 +581,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRemainderZeroDivisorThrows()
             {
-#line (247, 5) - (250, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
+#line (247, 5) - (248, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/math/math_additional_tests.spy"
                 bool __raised_8 = false;
 #line hidden
                 try

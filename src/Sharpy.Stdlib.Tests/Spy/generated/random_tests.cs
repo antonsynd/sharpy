@@ -50,7 +50,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(123);
 #line (41, 5) - (41, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 int i = 0;
-#line (42, 5) - (50, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
+#line (42, 5) - (46, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 while (i < 50)
 #line hidden
                 {
@@ -73,7 +73,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(99);
 #line (53, 5) - (53, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 int i = 0;
-#line (54, 5) - (60, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
+#line (54, 5) - (58, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 while (i < 50)
 #line hidden
                 {
@@ -96,7 +96,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(99);
 #line (63, 5) - (63, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 int i = 0;
-#line (64, 5) - (70, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
+#line (64, 5) - (68, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 while (i < 50)
 #line hidden
                 {
@@ -119,7 +119,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(99);
 #line (73, 5) - (73, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 int i = 0;
-#line (74, 5) - (82, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
+#line (74, 5) - (78, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 while (i < 50)
 #line hidden
                 {
@@ -142,7 +142,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(77);
 #line (85, 5) - (85, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 int i = 0;
-#line (86, 5) - (94, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
+#line (86, 5) - (90, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 while (i < 50)
 #line hidden
                 {
@@ -226,7 +226,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Sharpy.List<int> sample = random.Sample(population, 3);
 #line (112, 5) - (112, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 Xunit.Assert.Equal(3, global::Sharpy.Builtins.Len(sample));
-#line (113, 5) - (116, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
+#line (113, 5) - (114, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 foreach (var __loopVar_0 in sample)
 #line hidden
                 {
@@ -247,7 +247,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     1,
                     2
                 };
-#line (119, 5) - (122, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
+#line (119, 5) - (120, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -274,7 +274,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     1
                 };
-#line (125, 5) - (128, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
+#line (125, 5) - (126, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try

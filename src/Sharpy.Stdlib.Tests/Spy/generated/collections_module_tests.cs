@@ -92,7 +92,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (39, 5) - (39, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>();
-#line (40, 5) - (43, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+#line (40, 5) - (41, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -115,7 +115,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (45, 5) - (45, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 global::Sharpy.Deque<int> d = new global::Sharpy.Deque<int>();
-#line (46, 5) - (49, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+#line (46, 5) - (47, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -229,7 +229,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (97, 5) - (99, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+#line (97, 5) - (98, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 foreach (var __loopVar_2 in d)
 #line hidden
                 {
@@ -313,12 +313,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Contains("b", elements);
 #line (138, 5) - (138, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 int aCount = 0;
-#line (139, 5) - (142, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+#line (139, 5) - (141, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 foreach (var __loopVar_3 in elements)
 #line hidden
                 {
                     var e = __loopVar_3;
-#line (140, 9) - (142, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+#line (140, 9) - (141, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                     if (e == "a")
 #line hidden
                     {
@@ -332,12 +332,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Equal(2, aCount);
 #line (143, 5) - (143, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 int bCount = 0;
-#line (144, 5) - (147, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+#line (144, 5) - (146, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 foreach (var __loopVar_4 in elements)
 #line hidden
                 {
                     var e_1 = __loopVar_4;
-#line (145, 9) - (147, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+#line (145, 9) - (146, 34) 20 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                     if (e_1 == "b")
 #line hidden
                     {
@@ -587,7 +587,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDefaultDictNullFactoryThrowsTypeError()
             {
-#line (269, 5) - (272, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+#line (269, 5) - (270, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
@@ -718,7 +718,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (328, 5) - (328, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
-#line (329, 5) - (332, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+#line (329, 5) - (330, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 bool __raised_6 = false;
 #line hidden
                 try
@@ -894,7 +894,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (405, 5) - (405, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
-#line (406, 5) - (409, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+#line (406, 5) - (407, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 bool __raised_7 = false;
 #line hidden
                 try
@@ -935,7 +935,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (420, 5) - (420, 90) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
-#line (421, 5) - (424, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
+#line (421, 5) - (422, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
                 bool __raised_8 = false;
 #line hidden
                 try

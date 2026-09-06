@@ -102,7 +102,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (54, 5) - (54, 43) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("arr = [1, 2, 3]");
-#line (55, 5) - (64, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (55, 5) - (62, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 switch (result["arr"])
 #line hidden
                 {
@@ -130,7 +130,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (66, 5) - (66, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("[server]\nhost = \"localhost\"\nport = 8080");
-#line (67, 5) - (74, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (67, 5) - (72, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 switch (result["server"])
 #line hidden
                 {
@@ -154,17 +154,17 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (76, 5) - (76, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("[a]\n[a.b]\n[a.b.c]\nval = 1");
-#line (77, 5) - (91, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (77, 5) - (89, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 switch (result["a"])
 #line hidden
                 {
                     case global::Sharpy.IDict a:
-#line (79, 13) - (88, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (79, 13) - (87, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         switch (a["b"])
 #line hidden
                         {
                             case global::Sharpy.IDict b:
-#line (81, 21) - (86, 1) 32 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (81, 21) - (85, 42) 32 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                                 switch (b["c"])
 #line hidden
                                 {
@@ -202,12 +202,12 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (93, 5) - (93, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("a.b.c = 42");
-#line (94, 5) - (104, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (94, 5) - (102, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 switch (result["a"])
 #line hidden
                 {
                     case global::Sharpy.IDict a:
-#line (96, 13) - (101, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (96, 13) - (100, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         switch (a["b"])
 #line hidden
                         {
@@ -237,7 +237,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (106, 5) - (106, 50) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("point = {x = 1, y = 2}");
-#line (107, 5) - (114, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (107, 5) - (112, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 switch (result["point"])
 #line hidden
                 {
@@ -261,14 +261,14 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (116, 5) - (116, 92) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("[[products]]\nname = \"Hammer\"\n\n[[products]]\nname = \"Nail\"");
-#line (117, 5) - (135, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (117, 5) - (131, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 switch (result["products"])
 #line hidden
                 {
                     case global::Sharpy.IList products:
 #line (119, 13) - (119, 39) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(products));
-#line (120, 13) - (125, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (120, 13) - (124, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         switch (products[0])
 #line hidden
                         {
@@ -284,7 +284,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                                 break;
                         }
 
-#line (125, 13) - (130, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (125, 13) - (129, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                         switch (products[1])
 #line hidden
                         {
@@ -314,7 +314,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (137, 5) - (137, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads("s = \"\"\"\nhello\nworld\"\"\"");
-#line (138, 5) - (145, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (138, 5) - (143, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 switch (result["s"])
 #line hidden
                 {
@@ -442,7 +442,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var value = result["dt"];
 #line (208, 5) - (208, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<global::Sharpy.DateTime>(value);
-#line (209, 5) - (216, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (209, 5) - (214, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 if (value is global::Sharpy.DateTime)
 #line hidden
                 {
@@ -481,7 +481,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var value = result["d"];
 #line (226, 5) - (226, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<global::Sharpy.Date>(value);
-#line (227, 5) - (232, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (227, 5) - (230, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 if (value is global::Sharpy.Date)
 #line hidden
                 {
@@ -504,7 +504,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var value = result["t"];
 #line (236, 5) - (236, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 Xunit.Assert.IsAssignableFrom<global::Sharpy.Time>(value);
-#line (237, 5) - (243, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (237, 5) - (239, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 if (value is global::Sharpy.Time)
 #line hidden
                 {
@@ -615,7 +615,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsNonDictThrowsTypeError()
             {
-#line (284, 5) - (287, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (284, 5) - (285, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -636,7 +636,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDumpsNullThrowsTypeError()
             {
-#line (289, 5) - (294, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (289, 5) - (290, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -704,7 +704,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 d["server"] = inner;
 #line (314, 5) - (314, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var result = toml.Loads(toml.Dumps(d));
-#line (315, 5) - (324, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (315, 5) - (320, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 switch (result["server"])
 #line hidden
                 {
@@ -726,7 +726,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsMalformedTomlThrowsTomlDecodeError()
             {
-#line (326, 5) - (329, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (326, 5) - (327, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -747,7 +747,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsMalformedTomlErrorIsValueError()
             {
-#line (331, 5) - (333, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (331, 5) - (332, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 global::Sharpy.TOMLDecodeError ex = null!;
 #line hidden
                 bool __raised_3 = false;
@@ -773,7 +773,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsMalformedTomlErrorMessageContainsLineColumn()
             {
-#line (337, 5) - (339, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (337, 5) - (338, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 global::Sharpy.TOMLDecodeError ex = null!;
 #line hidden
                 bool __raised_5 = false;
@@ -808,7 +808,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (348, 5) - (348, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 var path = tmpPath + "/config.toml";
-#line (349, 5) - (351, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (349, 5) - (350, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 using (var fp = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -855,7 +855,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadFileNonexistentThrowsFileNotFoundError()
             {
-#line (368, 5) - (374, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
+#line (368, 5) - (369, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/toml/toml_module_tests.spy"
                 bool __raised_7 = false;
 #line hidden
                 try

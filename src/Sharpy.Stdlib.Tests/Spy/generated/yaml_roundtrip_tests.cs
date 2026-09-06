@@ -33,7 +33,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (24, 5) - (24, 69) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 object result = yaml.RoundtripLoad("name: test\ncount: 42\n");
-#line (25, 5) - (32, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (25, 5) - (30, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -57,7 +57,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (34, 5) - (34, 61) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 object result = yaml.RoundtripLoad("- 1\n- 2\n- 3\n");
-#line (35, 5) - (43, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (35, 5) - (41, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -83,7 +83,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (45, 5) - (45, 88) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 object result = yaml.RoundtripLoad("i: 5\nf: 2.5\nb: true\nn: null\ns: hello\n");
-#line (46, 5) - (56, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (46, 5) - (54, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -113,7 +113,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (58, 5) - (58, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 object result = yaml.RoundtripLoad("version: \"3\"\n");
-#line (59, 5) - (66, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (59, 5) - (64, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -137,7 +137,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (68, 5) - (68, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 object result = yaml.RoundtripLoad("zebra: 1\napple: 2\nmango: 3\n");
-#line (69, 5) - (80, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (69, 5) - (76, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -165,7 +165,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (82, 5) - (82, 79) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 object result = yaml.RoundtripLoad("# this is a comment\nkey: value\n");
-#line (83, 5) - (93, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (83, 5) - (91, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -195,7 +195,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (95, 5) - (95, 74) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 object result = yaml.RoundtripLoad("key: value # trailing note\n");
-#line (96, 5) - (106, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (96, 5) - (104, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -243,7 +243,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 object loaded = yaml.RoundtripLoad("# config header\nhost: localhost # the host\nport: 8080\n");
 #line (117, 5) - (117, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 string dumped = yaml.RoundtripDump(loaded);
-#line (118, 5) - (132, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (118, 5) - (128, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 switch (yaml.RoundtripLoad(dumped))
 #line hidden
                 {
@@ -286,7 +286,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 data["b"] = "two";
 #line (137, 5) - (137, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 string dumped = yaml.RoundtripDump(data);
-#line (138, 5) - (145, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (138, 5) - (143, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 switch (yaml.RoundtripLoad(dumped))
 #line hidden
                 {
@@ -321,7 +321,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 data.Append(3);
 #line (151, 5) - (151, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 string dumped = yaml.RoundtripDump(data);
-#line (152, 5) - (159, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (152, 5) - (157, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 switch (yaml.RoundtripLoad(dumped))
 #line hidden
                 {
@@ -347,12 +347,12 @@ namespace Sharpy.Stdlib.Tests.Spy
                 object loaded = yaml.RoundtripLoad("server:\n  host: localhost\n  port: 9000\ndebug: true\n");
 #line (162, 5) - (162, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 string dumped = yaml.RoundtripDump(loaded);
-#line (163, 5) - (177, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (163, 5) - (173, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                 switch (yaml.RoundtripLoad(dumped))
 #line hidden
                 {
                     case global::Sharpy.CommentedMap reloaded:
-#line (165, 13) - (171, 1) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
+#line (165, 13) - (170, 34) 24 "src/Sharpy.Stdlib.Tests/Spy/yaml/yaml_roundtrip_tests.spy"
                         switch (reloaded["server"])
 #line hidden
                         {

@@ -117,7 +117,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Equal(1, h.GetItemUnchecked(0));
 #line (39, 5) - (39, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                 int i = 0;
-#line (40, 5) - (49, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
+#line (40, 5) - (47, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                 while (i < global::Sharpy.Builtins.Len(h))
 #line hidden
                 {
@@ -125,7 +125,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     int left = 2 * i + 1;
 #line (42, 9) - (42, 32) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                     int right = 2 * i + 2;
-#line (43, 9) - (45, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
+#line (43, 9) - (44, 36) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                     if (left < global::Sharpy.Builtins.Len(h))
 #line hidden
                     {
@@ -134,7 +134,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                     }
 
-#line (45, 9) - (47, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
+#line (45, 9) - (46, 37) 20 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                     if (right < global::Sharpy.Builtins.Len(h))
 #line hidden
                     {
@@ -272,7 +272,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 };
 #line (88, 5) - (88, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                 heapq.Heappop(h);
-#line (89, 5) - (91, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
+#line (89, 5) - (90, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/heapq/heapq_additional_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try

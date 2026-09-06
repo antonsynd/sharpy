@@ -346,7 +346,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var m = re.Match("(\\d+)", "123");
 #line (185, 5) - (185, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
-#line (186, 5) - (189, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
+#line (186, 5) - (187, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -371,7 +371,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var m = re.Match("(\\d+)", "123");
 #line (192, 5) - (192, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
-#line (193, 5) - (196, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
+#line (193, 5) - (194, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -692,7 +692,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var m = re.Search("(?P<word>\\w+)", "hello");
 #line (367, 5) - (367, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 Xunit.Assert.NotNull(m);
-#line (368, 5) - (373, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
+#line (368, 5) - (369, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/re/re_pattern_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try

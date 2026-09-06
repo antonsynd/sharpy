@@ -34,7 +34,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(42);
 #line (26, 5) - (26, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 int i = 0;
-#line (27, 5) - (33, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (27, 5) - (31, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 while (i < 100)
 #line hidden
                 {
@@ -57,7 +57,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(42);
 #line (36, 5) - (36, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 int i = 0;
-#line (37, 5) - (43, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (37, 5) - (41, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 while (i < 100)
 #line hidden
                 {
@@ -80,7 +80,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(42);
 #line (46, 5) - (46, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 int i = 0;
-#line (47, 5) - (54, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (47, 5) - (52, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 while (i < 100)
 #line hidden
                 {
@@ -105,7 +105,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(42);
 #line (57, 5) - (57, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 int i = 0;
-#line (58, 5) - (65, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (58, 5) - (63, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 while (i < 100)
 #line hidden
                 {
@@ -126,7 +126,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRandrangeEmptyRangeThrowsValueError()
             {
-#line (67, 5) - (70, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (67, 5) - (68, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -147,7 +147,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRandrangeZeroStepThrowsValueError()
             {
-#line (72, 5) - (77, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (72, 5) - (73, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -182,7 +182,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 double sumSq = 0.0d;
 #line (85, 5) - (85, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 int i = 0;
-#line (86, 5) - (91, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (86, 5) - (90, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 while (i < n)
 #line hidden
                 {
@@ -217,7 +217,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(42);
 #line (101, 5) - (101, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 int i = 0;
-#line (102, 5) - (108, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (102, 5) - (104, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 while (i < 10)
 #line hidden
                 {
@@ -236,7 +236,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(42);
 #line (111, 5) - (111, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 int i = 0;
-#line (112, 5) - (118, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (112, 5) - (116, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 while (i < 100)
 #line hidden
                 {
@@ -267,7 +267,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 random.Seed(42);
 #line (125, 5) - (125, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 int i = 0;
-#line (126, 5) - (132, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (126, 5) - (130, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 while (i < 50)
 #line hidden
                 {
@@ -286,7 +286,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestGetrandbitsNegativeBitsThrowsValueError()
             {
-#line (134, 5) - (137, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (134, 5) - (135, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -307,7 +307,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestGetrandbitsTooManyBitsThrowsValueError()
             {
-#line (139, 5) - (144, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (139, 5) - (140, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -342,7 +342,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Sharpy.List<string> result = random.Choices(pop, k: 10);
 #line (149, 5) - (149, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 Xunit.Assert.Equal(10, global::Sharpy.Builtins.Len(result));
-#line (150, 5) - (153, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (150, 5) - (151, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 foreach (var __loopVar_4 in result)
 #line hidden
                 {
@@ -361,7 +361,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (156, 5) - (159, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
+#line (156, 5) - (157, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try

@@ -138,7 +138,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (55, 5) - (55, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 var encoder = new global::Sharpy.JSONEncoder();
-#line (56, 5) - (61, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
+#line (56, 5) - (57, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -179,7 +179,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var decoder = new global::Sharpy.JSONDecoder();
 #line (72, 5) - (72, 51) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 object result = decoder.Decode("{\"a\": 1}");
-#line (73, 5) - (81, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
+#line (73, 5) - (77, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -203,7 +203,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var decoder = new global::Sharpy.JSONDecoder();
 #line (84, 5) - (84, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 var (value, endIdx) = decoder.RawDecode("{\"a\": 1}");
-#line (85, 5) - (90, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
+#line (85, 5) - (89, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 switch (value)
 #line hidden
                 {
@@ -231,7 +231,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var decoder = new global::Sharpy.JSONDecoder(objectHook: _TagHook!);
 #line (102, 5) - (102, 56) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 object result = decoder.Decode("{\"a\": {\"b\": 1}}");
-#line (103, 5) - (109, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
+#line (103, 5) - (107, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -251,7 +251,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestDecoderClsParameterOnLoadsDispatches()
             {
-#line (111, 5) - (114, 5) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
+#line (111, 5) - (113, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 Sharpy.Dict<string, object> InjectHook(Sharpy.Dict<string, object> d)
 #line 111 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 {
@@ -266,7 +266,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var decoder = new global::Sharpy.JSONDecoder(objectHook: InjectHook!);
 #line (115, 5) - (115, 58) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 object result = json.Loads("{\"a\": 1}", cls: decoder);
-#line (116, 5) - (122, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
+#line (116, 5) - (120, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -288,7 +288,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (124, 5) - (124, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 object result = json.Loads("{\"x\": 1}", objectHook: _TagHook!);
-#line (125, 5) - (131, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
+#line (125, 5) - (129, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 switch (result)
 #line hidden
                 {
@@ -314,7 +314,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     0
                 };
-#line (134, 5) - (137, 5) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
+#line (134, 5) - (136, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 Sharpy.Dict<string, object> CountingHook(Sharpy.Dict<string, object> d)
 #line 134 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 {
@@ -341,7 +341,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     0
                 };
-#line (143, 5) - (146, 5) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
+#line (143, 5) - (145, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 Sharpy.Dict<string, object> CountingHook(Sharpy.Dict<string, object> d)
 #line 143 "src/Sharpy.Stdlib.Tests/Spy/json/json_encoder_decoder_tests.spy"
                 {

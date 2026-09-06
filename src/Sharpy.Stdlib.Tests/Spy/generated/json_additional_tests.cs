@@ -61,7 +61,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 object r = json.Loads("-3.14");
 #line (31, 5) - (31, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 Xunit.Assert.IsAssignableFrom<double>(r);
-#line (32, 5) - (38, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
+#line (32, 5) - (36, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 switch (r)
 #line hidden
                 {
@@ -93,7 +93,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestLoadsWhitespaceOnlyThrowsJsonDecodeError()
             {
-#line (48, 5) - (51, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
+#line (48, 5) - (49, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -116,7 +116,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (53, 5) - (53, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 object r = json.Loads("  {\"key\": 1}  ");
-#line (54, 5) - (62, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
+#line (54, 5) - (58, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_additional_tests.spy"
                 switch (r)
 #line hidden
                 {

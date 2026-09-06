@@ -36,7 +36,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (21, 5) - (21, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var src = tmpPath + "/src.txt";
-#line (22, 5) - (24, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (22, 5) - (23, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -47,7 +47,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
 #line (24, 5) - (24, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var dst = tmpPath + "/dst.txt";
-#line (25, 5) - (27, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (25, 5) - (26, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(dst, "w"))
 #line hidden
                 {
@@ -60,7 +60,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 shutil.Copy(src, dst);
 #line (28, 5) - (28, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var content = "";
-#line (29, 5) - (31, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (29, 5) - (30, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fc = global::Sharpy.Builtins.Open(dst, "r"))
 #line hidden
                 {
@@ -82,7 +82,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var text = "hello from source";
 #line (37, 5) - (37, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var src = tmpPath + "/content_src.txt";
-#line (38, 5) - (40, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (38, 5) - (39, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -97,7 +97,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 shutil.Copy(src, dst);
 #line (42, 5) - (42, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var content = "";
-#line (43, 5) - (45, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (43, 5) - (44, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(dst, "r"))
 #line hidden
                 {
@@ -117,7 +117,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (52, 5) - (52, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var src = tmpPath + "/src2.txt";
-#line (53, 5) - (55, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (53, 5) - (54, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -136,7 +136,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.True(Isfile(result));
 #line (59, 5) - (59, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var content = "";
-#line (60, 5) - (62, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (60, 5) - (61, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(result, "r"))
 #line hidden
                 {
@@ -154,7 +154,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestCopy2NonexistentSourceThrowsOsError()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (67, 5) - (73, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (67, 5) - (68, 68) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -184,7 +184,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var l2 = l1 + "/l2";
 #line (78, 5) - (78, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 os.Makedirs(l2, existOk: true);
-#line (79, 5) - (81, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (79, 5) - (80, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src + "/root.txt", "w"))
 #line hidden
                 {
@@ -193,7 +193,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (81, 5) - (83, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (81, 5) - (82, 24) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(l1 + "/mid.txt", "w"))
 #line hidden
                 {
@@ -202,7 +202,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (83, 5) - (85, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (83, 5) - (84, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fc = global::Sharpy.Builtins.Open(l2 + "/deep.txt", "w"))
 #line hidden
                 {
@@ -223,7 +223,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.True(Isfile(dst + "/l1/l2/deep.txt"));
 #line (90, 5) - (90, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var content = "";
-#line (91, 5) - (93, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (91, 5) - (92, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fd = global::Sharpy.Builtins.Open(dst + "/l1/l2/deep.txt", "r"))
 #line hidden
                 {
@@ -262,7 +262,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var sub = d + "/sub";
 #line (110, 5) - (110, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 os.Makedirs(sub, existOk: true);
-#line (111, 5) - (113, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (111, 5) - (112, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(sub + "/f.txt", "w"))
 #line hidden
                 {
@@ -284,7 +284,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (121, 5) - (121, 45) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var src = tmpPath + "/move_content_src.txt";
-#line (122, 5) - (124, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (122, 5) - (123, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -299,7 +299,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 shutil.Move(src, dst);
 #line (126, 5) - (126, 17) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var content = "";
-#line (127, 5) - (129, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (127, 5) - (128, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(dst, "r"))
 #line hidden
                 {
@@ -319,7 +319,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (134, 5) - (134, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var src = tmpPath + "/move_into_src.txt";
-#line (135, 5) - (137, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (135, 5) - (136, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -348,7 +348,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var result = shutil.Which("ls");
 #line (151, 5) - (151, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 Xunit.Assert.NotNull(result);
-#line (152, 5) - (156, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (152, 5) - (153, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 if (result != null)
 #line hidden
                 {
@@ -363,7 +363,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (159, 5) - (159, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var lsPath = shutil.Which("ls");
-#line (160, 5) - (165, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (160, 5) - (162, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 if (lsPath != null)
 #line hidden
                 {
@@ -389,7 +389,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (174, 5) - (174, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 var f = tmpPath + "/diskusage.txt";
-#line (175, 5) - (177, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
+#line (175, 5) - (176, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/shutil/shutil_additional_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(f, "w"))
 #line hidden
                 {

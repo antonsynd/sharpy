@@ -38,7 +38,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestVarianceAllIdenticalThrowsWhenSingleElement()
             {
-#line (16, 5) - (19, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_additional_tests.spy"
+#line (16, 5) - (17, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_additional_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -164,7 +164,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (76, 5) - (79, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_additional_tests.spy"
+#line (76, 5) - (77, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/statistics/statistics_additional_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try

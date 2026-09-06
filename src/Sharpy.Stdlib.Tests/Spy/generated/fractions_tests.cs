@@ -78,7 +78,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFractionZeroDenominatorThrows()
             {
-#line (34, 5) - (37, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+#line (34, 5) - (35, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -135,7 +135,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFractionFromNanThrows()
             {
-#line (58, 5) - (61, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+#line (58, 5) - (59, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -156,7 +156,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFractionFromInfinityThrows()
             {
-#line (63, 5) - (66, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+#line (63, 5) - (64, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -251,7 +251,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFractionFromStringEmptyThrows()
             {
-#line (107, 5) - (110, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+#line (107, 5) - (108, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -344,7 +344,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFractionDivisionByZeroThrows()
             {
-#line (150, 5) - (153, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+#line (150, 5) - (151, 57) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
@@ -417,7 +417,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFractionFloorDivByZeroThrows()
             {
-#line (184, 5) - (189, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+#line (184, 5) - (185, 66) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
@@ -448,7 +448,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFractionModByZeroThrows()
             {
-#line (196, 5) - (201, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+#line (196, 5) - (197, 77) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                 bool __raised_6 = false;
 #line hidden
                 try
@@ -739,7 +739,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (350, 5) - (350, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                 var f = new global::Sharpy.Fraction(1, 3);
-#line (351, 5) - (354, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
+#line (351, 5) - (352, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/fractions/fractions_tests.spy"
                 bool __raised_7 = false;
 #line hidden
                 try

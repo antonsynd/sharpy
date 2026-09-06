@@ -36,7 +36,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (10, 5) - (12, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
+#line (10, 5) - (11, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
                 foreach (var __loopVar_0 in reader)
 #line hidden
                 {
@@ -67,7 +67,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (21, 5) - (23, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
+#line (21, 5) - (22, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
                 foreach (var __loopVar_1 in reader)
 #line hidden
                 {
@@ -96,7 +96,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (32, 5) - (34, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
+#line (32, 5) - (33, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
                 foreach (var __loopVar_2 in reader)
 #line hidden
                 {
@@ -118,7 +118,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var reader = csv.Reader(new Sharpy.List<string>() { "a,b", "c,d", "e,f" });
 #line (39, 5) - (39, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
                 int count = 0;
-#line (40, 5) - (42, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
+#line (40, 5) - (41, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
                 foreach (var __loopVar_3 in reader)
 #line hidden
                 {
@@ -213,7 +213,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Equal(0, reader.LineNum);
 #line (83, 5) - (83, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
                 int count = 0;
-#line (84, 5) - (87, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
+#line (84, 5) - (86, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/csv/csv_module_tests.spy"
                 foreach (var __loopVar_4 in reader)
 #line hidden
                 {

@@ -23,12 +23,12 @@ namespace Sharpy.Stdlib.Tests.Spy
         {
             public static bool Contains(Sharpy.List<string> items, string value)
             {
-#line (23, 5) - (26, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (23, 5) - (25, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 foreach (var __loopVar_0 in items)
 #line hidden
                 {
                     var item = __loopVar_0;
-#line (24, 9) - (26, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (24, 9) - (25, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                     if (item == value)
 #line hidden
                     {
@@ -80,7 +80,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (50, 5) - (50, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 var path = tmpPath + "/removeme.txt";
-#line (51, 5) - (53, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (51, 5) - (52, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -100,7 +100,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRemoveThrowsOnNonexistent()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (59, 5) - (63, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (59, 5) - (60, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -124,7 +124,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (65, 5) - (65, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 var src = tmpPath + "/old.txt";
-#line (66, 5) - (68, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (66, 5) - (67, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -148,7 +148,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRenameThrowsOnNonexistent()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (76, 5) - (82, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (76, 5) - (77, 71) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -187,7 +187,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var path = tmpPath + "/existdir";
 #line (92, 5) - (92, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 os.Mkdir(path);
-#line (93, 5) - (97, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (93, 5) - (94, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -241,7 +241,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var path = tmpPath + "/existing2";
 #line (115, 5) - (115, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 os.Makedirs(path);
-#line (116, 5) - (120, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (116, 5) - (117, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
@@ -282,7 +282,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var path = tmpPath + "/notempty";
 #line (131, 5) - (131, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 os.Mkdir(path);
-#line (132, 5) - (134, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (132, 5) - (133, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path + "/file.txt", "w"))
 #line hidden
                 {
@@ -291,7 +291,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (134, 5) - (138, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (134, 5) - (135, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
@@ -313,7 +313,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRmdirThrowsOnNonexistent()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (140, 5) - (144, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (140, 5) - (141, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 bool __raised_6 = false;
 #line hidden
                 try
@@ -339,7 +339,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var d = tmpPath + "/listdir";
 #line (147, 5) - (147, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 os.Mkdir(d);
-#line (148, 5) - (150, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (148, 5) - (149, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(d + "/a.txt", "w"))
 #line hidden
                 {
@@ -348,7 +348,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (150, 5) - (152, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (150, 5) - (151, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(d + "/b.txt", "w"))
 #line hidden
                 {
@@ -374,7 +374,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestListdirThrowsOnNonexistent()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (161, 5) - (165, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (161, 5) - (162, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 bool __raised_7 = false;
 #line hidden
                 try
@@ -427,7 +427,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestChdirThrowsOnNonexistent()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (185, 5) - (191, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (185, 5) - (186, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 bool __raised_8 = false;
 #line hidden
                 try
@@ -487,7 +487,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (217, 5) - (217, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 var path = tmpPath + "/exists_file.txt";
-#line (218, 5) - (220, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (218, 5) - (219, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -529,7 +529,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (239, 5) - (239, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 var path = tmpPath + "/stat_file.txt";
-#line (240, 5) - (242, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (240, 5) - (241, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -551,7 +551,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (248, 5) - (248, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 var path = tmpPath + "/stat_time.txt";
-#line (249, 5) - (251, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (249, 5) - (250, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -592,7 +592,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestStatThrowsOnNonexistent()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (269, 5) - (275, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (269, 5) - (270, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 bool __raised_9 = false;
 #line hidden
                 try
@@ -618,7 +618,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var root = tmpPath + "/walktest";
 #line (278, 5) - (278, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 os.Mkdir(root);
-#line (279, 5) - (281, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (279, 5) - (280, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(root + "/file1.txt", "w"))
 #line hidden
                 {
@@ -631,7 +631,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var sub = root + "/sub";
 #line (282, 5) - (282, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 os.Mkdir(sub);
-#line (283, 5) - (285, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (283, 5) - (284, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(sub + "/file2.txt", "w"))
 #line hidden
                 {
@@ -645,7 +645,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (286, 5) - (288, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (286, 5) - (287, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 foreach (var (dirpath, dirnames, filenames) in os.Walk(root))
 #line hidden
                 {
@@ -669,7 +669,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (295, 5) - (295, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 int count = 0;
-#line (296, 5) - (298, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
+#line (296, 5) - (297, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_tests.spy"
                 foreach (var (dirpath, dirnames, filenames) in os.Walk(tmpPath + "/nonexistent"))
 #line hidden
                 {

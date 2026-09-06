@@ -22,12 +22,12 @@ namespace Sharpy.Stdlib.Tests.Spy
         {
             public static bool Contains(Sharpy.List<string> items, string value)
             {
-#line (26, 5) - (29, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (26, 5) - (28, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 foreach (var __loopVar_0 in items)
 #line hidden
                 {
                     var item = __loopVar_0;
-#line (27, 9) - (29, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (27, 9) - (28, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                     if (item == value)
 #line hidden
                     {
@@ -195,7 +195,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (125, 5) - (125, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 var path = tmpPath + "/exists.txt";
-#line (126, 5) - (128, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (126, 5) - (127, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -224,7 +224,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (138, 5) - (138, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 var path = tmpPath + "/file.txt";
-#line (139, 5) - (141, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (139, 5) - (140, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -305,7 +305,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestIterdirListsEntries()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (184, 5) - (186, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (184, 5) - (185, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(tmpPath + "/a.txt", "w"))
 #line hidden
                 {
@@ -314,7 +314,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (186, 5) - (188, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (186, 5) - (187, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(tmpPath + "/b.txt", "w"))
 #line hidden
                 {
@@ -328,7 +328,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (189, 5) - (191, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (189, 5) - (190, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 foreach (var __loopVar_1 in new global::Sharpy.Path(tmpPath).Iterdir())
 #line hidden
                 {
@@ -349,7 +349,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestGlobMatchesPattern()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (197, 5) - (199, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (197, 5) - (198, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(tmpPath + "/test1.txt", "w"))
 #line hidden
                 {
@@ -358,7 +358,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (199, 5) - (201, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (199, 5) - (200, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(tmpPath + "/test2.txt", "w"))
 #line hidden
                 {
@@ -367,7 +367,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (201, 5) - (203, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (201, 5) - (202, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fc = global::Sharpy.Builtins.Open(tmpPath + "/other.md", "w"))
 #line hidden
                 {
@@ -381,7 +381,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (204, 5) - (206, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (204, 5) - (205, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 foreach (var __loopVar_2 in new global::Sharpy.Path(tmpPath).Glob("*.txt"))
 #line hidden
                 {
@@ -402,7 +402,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (213, 5) - (213, 38) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 var path = tmpPath + "/todelete.txt";
-#line (214, 5) - (216, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (214, 5) - (215, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -435,7 +435,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestUnlinkThrowsOnNonexistent()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (229, 5) - (235, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (229, 5) - (230, 54) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -499,7 +499,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (263, 5) - (263, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 var src = tmpPath + "/rename_src.txt";
-#line (264, 5) - (266, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (264, 5) - (265, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -527,7 +527,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestRenameThrowsOnNonexistent()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (276, 5) - (282, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (276, 5) - (277, 82) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
@@ -553,7 +553,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var src = tmpPath + "/replace_src.txt";
 #line (285, 5) - (285, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 var dst = tmpPath + "/replace_dst.txt";
-#line (286, 5) - (288, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (286, 5) - (287, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -562,7 +562,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (288, 5) - (290, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (288, 5) - (289, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(dst, "w"))
 #line hidden
                 {
@@ -592,7 +592,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var src = tmpPath + "/replace_src2.txt";
 #line (300, 5) - (300, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 var dst = tmpPath + "/replace_dst2.txt";
-#line (301, 5) - (303, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (301, 5) - (302, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(src, "w"))
 #line hidden
                 {
@@ -628,7 +628,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestRelativeToThrowsWhenNotRelative()
             {
-#line (320, 5) - (324, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (320, 5) - (321, 73) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
@@ -782,7 +782,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (411, 5) - (411, 44) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 var path = tmpPath + "/touch_existing.txt";
-#line (412, 5) - (414, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (412, 5) - (413, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -808,7 +808,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (422, 5) - (422, 42) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 var path = tmpPath + "/touch_exists.txt";
-#line (423, 5) - (425, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (423, 5) - (424, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -817,7 +817,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (425, 5) - (431, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (425, 5) - (426, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 bool __raised_6 = false;
 #line hidden
                 try
@@ -841,7 +841,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (433, 5) - (433, 39) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 var path = tmpPath + "/stat_file.txt";
-#line (434, 5) - (436, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (434, 5) - (435, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -876,7 +876,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             public void TestStatThrowsOnNonexistent()
             {
                 string tmpPath = _tmpPathFixture.Value;
-#line (450, 5) - (456, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (450, 5) - (451, 55) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 bool __raised_7 = false;
 #line hidden
                 try
@@ -900,7 +900,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (458, 5) - (458, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 var path = tmpPath + "/regular.txt";
-#line (459, 5) - (461, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (459, 5) - (460, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -931,7 +931,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var subDir = tmpPath + "/rglob_sub";
 #line (474, 5) - (474, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 os.Makedirs(subDir, existOk: true);
-#line (475, 5) - (477, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (475, 5) - (476, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fa = global::Sharpy.Builtins.Open(tmpPath + "/top.txt", "w"))
 #line hidden
                 {
@@ -940,7 +940,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (477, 5) - (479, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (477, 5) - (478, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 using (var fb = global::Sharpy.Builtins.Open(subDir + "/nested.txt", "w"))
 #line hidden
                 {
@@ -954,7 +954,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (480, 5) - (482, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
+#line (480, 5) - (481, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/pathlib/pathlib_tests.spy"
                 foreach (var __loopVar_8 in new global::Sharpy.Path(tmpPath).Rglob("*.txt"))
 #line hidden
                 {

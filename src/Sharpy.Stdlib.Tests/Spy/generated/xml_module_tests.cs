@@ -78,7 +78,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestFromstringInvalidXmlThrowsParseError()
             {
-#line (60, 5) - (63, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
+#line (60, 5) - (61, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -106,7 +106,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (67, 5) - (69, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
+#line (67, 5) - (68, 31) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 foreach (var __loopVar_1 in root)
 #line hidden
                 {
@@ -223,7 +223,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (120, 5) - (120, 47) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 var root = xml.Fromstring("<root><a/></root>");
-#line (121, 5) - (124, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
+#line (121, 5) - (122, 16) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -450,7 +450,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var root = new global::Sharpy.Element("root");
 #line (234, 5) - (234, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 var other = new global::Sharpy.Element("other");
-#line (235, 5) - (238, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
+#line (235, 5) - (236, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -573,7 +573,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (291, 5) - (294, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
+#line (291, 5) - (292, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 foreach (var __loopVar_4 in root.Iter())
 #line hidden
                 {
@@ -606,7 +606,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (304, 5) - (306, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
+#line (304, 5) - (305, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 foreach (var __loopVar_5 in root.Iter("a"))
 #line hidden
                 {
@@ -631,7 +631,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (312, 5) - (314, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
+#line (312, 5) - (313, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 foreach (var __loopVar_6 in root.IterText())
 #line hidden
                 {
@@ -943,7 +943,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 f.Write("<broken>");
 #line (472, 5) - (472, 14) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 f.Close();
-#line (473, 5) - (475, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
+#line (473, 5) - (474, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 bool __raised_7 = false;
 #line hidden
                 try
@@ -1002,7 +1002,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (495, 5) - (497, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
+#line (495, 5) - (496, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 foreach (var __loopVar_8 in tree.Iter())
 #line hidden
                 {
@@ -1284,7 +1284,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestElementTreeParseStringInvalidXmlThrowsParseError()
             {
-#line (639, 5) - (644, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
+#line (639, 5) - (640, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 bool __raised_9 = false;
 #line hidden
                 try
@@ -1315,7 +1315,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (654, 5) - (654, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 var el = new global::Sharpy.Element("root");
-#line (655, 5) - (657, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
+#line (655, 5) - (656, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/xml/xml_module_tests.spy"
                 bool __raised_10 = false;
 #line hidden
                 try

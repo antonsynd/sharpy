@@ -90,7 +90,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestThreadJoinWithTimeout()
             {
-#line (60, 5) - (63, 5) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (60, 5) - (61, 62) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 void Sleeper()
 #line 60 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
@@ -139,7 +139,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 {
                     0
                 };
-#line (85, 5) - (88, 5) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (85, 5) - (86, 52) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 void Capture()
 #line 85 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
@@ -196,7 +196,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (116, 5) - (116, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var lk = new global::Sharpy.Lock();
-#line (117, 5) - (119, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (117, 5) - (118, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
 #line hidden
                     var __ctx_0 = lk;
@@ -237,7 +237,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (132, 5) - (132, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var lk = new global::Sharpy.Lock();
-#line (133, 5) - (139, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (133, 5) - (134, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -276,7 +276,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (150, 5) - (150, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var rl = new global::Sharpy.RLock();
-#line (151, 5) - (155, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (151, 5) - (152, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -299,7 +299,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (157, 5) - (157, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var rl = new global::Sharpy.RLock();
-#line (158, 5) - (165, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (158, 5) - (160, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
 #line hidden
                     var __ctx_3 = rl;
@@ -366,7 +366,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 ReceivedFlag[0] = false;
 #line (191, 5) - (191, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var evt = new global::Sharpy.Event();
-#line (193, 5) - (197, 5) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (193, 5) - (195, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 void Waiter()
 #line 193 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
@@ -411,7 +411,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSemaphoreNegativeValueThrowsValueError()
             {
-#line (218, 5) - (222, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (218, 5) - (219, 32) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
@@ -434,7 +434,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (224, 5) - (224, 33) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var sem = new global::Sharpy.Semaphore(1);
-#line (225, 5) - (227, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (225, 5) - (226, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
 #line hidden
                     var __ctx_5 = sem;
@@ -467,7 +467,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 sem.Acquire();
 #line (237, 5) - (237, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 sem.Release();
-#line (238, 5) - (242, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (238, 5) - (239, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 bool __raised_6 = false;
 #line hidden
                 try
@@ -508,7 +508,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (254, 5) - (254, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var sem = new global::Sharpy.BoundedSemaphore(1);
-#line (255, 5) - (257, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (255, 5) - (256, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
 #line hidden
                     var __ctx_7 = sem;
@@ -541,7 +541,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var barrier = new global::Sharpy.Barrier(3);
 #line (267, 5) - (267, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 var @lock = new global::Sharpy.Lock();
-#line (269, 5) - (275, 5) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (269, 5) - (273, 23) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 void Worker()
 #line 269 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 {
@@ -561,7 +561,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (276, 5) - (278, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (276, 5) - (277, 49) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 foreach (var __loopVar_8 in global::Sharpy.Builtins.Range(3))
 #line hidden
                 {
@@ -571,7 +571,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (278, 5) - (280, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (278, 5) - (279, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 foreach (var __loopVar_9 in threads)
 #line hidden
                 {
@@ -581,7 +581,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 }
 
-#line (280, 5) - (282, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (280, 5) - (281, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 foreach (var __loopVar_10 in threads)
 #line hidden
                 {
@@ -703,7 +703,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var timer = new global::Sharpy.Timer(1.0d, SetFired);
 #line (347, 5) - (347, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 timer.Start();
-#line (348, 5) - (350, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
+#line (348, 5) - (349, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
                 bool __raised_11 = false;
 #line hidden
                 try

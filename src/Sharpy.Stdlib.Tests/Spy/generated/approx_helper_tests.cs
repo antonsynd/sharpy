@@ -50,7 +50,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (24, 5) - (24, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
                 bool raised = false;
-#line (25, 5) - (29, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
+#line (25, 5) - (28, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/unittest/approx_helper_tests.spy"
                 try
 #line hidden
                 {

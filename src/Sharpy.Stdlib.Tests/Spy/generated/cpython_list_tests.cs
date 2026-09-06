@@ -20,7 +20,7 @@ namespace Sharpy.Stdlib.Tests.Spy
         {
             internal static bool _PopRaises(Sharpy.List<int> a, int i)
             {
-#line (70, 5) - (75, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
+#line (70, 5) - (73, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                 try
 #line hidden
                 {
@@ -38,7 +38,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
             internal static bool _PopEmptyRaises(Sharpy.List<int> a)
             {
-#line (76, 5) - (81, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
+#line (76, 5) - (79, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                 try
 #line hidden
                 {
@@ -56,7 +56,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
             internal static bool _RemoveRaises(Sharpy.List<int> a, int v)
             {
-#line (96, 5) - (102, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
+#line (96, 5) - (100, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                 try
 #line hidden
                 {
@@ -76,7 +76,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
             internal static bool _IndexRaises(Sharpy.List<int> a, int v)
             {
-#line (117, 5) - (122, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
+#line (117, 5) - (120, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                 try
 #line hidden
                 {
@@ -94,7 +94,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
             internal static bool _GetitemRaises(Sharpy.List<int> a, int i)
             {
-#line (236, 5) - (241, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
+#line (236, 5) - (239, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                 try
 #line hidden
                 {
@@ -112,7 +112,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
             internal static bool _SetitemRaises(Sharpy.List<int> a, int i)
             {
-#line (266, 5) - (272, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
+#line (266, 5) - (270, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_list_tests.spy"
                 try
 #line hidden
                 {

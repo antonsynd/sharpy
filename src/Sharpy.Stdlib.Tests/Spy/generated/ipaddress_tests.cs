@@ -52,7 +52,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestIpv4AddressInvalid()
             {
-#line (24, 5) - (27, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
+#line (24, 5) - (25, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -219,7 +219,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (101, 5) - (101, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 global::Sharpy.IPv4Address addr = new global::Sharpy.IPv4Address("255.255.255.255");
-#line (102, 5) - (109, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
+#line (102, 5) - (103, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -470,7 +470,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestIpv4NetworkStrictHostBitsSet()
             {
-#line (232, 5) - (235, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
+#line (232, 5) - (233, 48) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -619,7 +619,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestIpAddressInvalid()
             {
-#line (315, 5) - (318, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
+#line (315, 5) - (316, 40) 16 "src/Sharpy.Stdlib.Tests/Spy/ipaddress/ipaddress_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try

@@ -278,7 +278,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 string tmpPath = _tmpPathFixture.Value;
 #line (158, 5) - (158, 36) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 var path = tmpPath + "/typed.json";
-#line (159, 5) - (161, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
+#line (159, 5) - (160, 76) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 using (var fp = global::Sharpy.Builtins.Open(path, "w"))
 #line hidden
                 {
@@ -293,7 +293,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 int age = 0;
 #line (163, 5) - (163, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 bool ok = false;
-#line (164, 5) - (171, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
+#line (164, 5) - (170, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                 using (var fp2 = global::Sharpy.Builtins.Open(path, "r"))
 #line hidden
                 {
@@ -301,7 +301,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                     var result = json.Load<SimpleRecord>(fp2);
 #line (166, 9) - (166, 25) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                     ok = result.IsOk;
-#line (167, 9) - (171, 1) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
+#line (167, 9) - (170, 29) 20 "src/Sharpy.Stdlib.Tests/Spy/json/json_typed_deserialization_tests.spy"
                     if (ok)
 #line hidden
                     {

@@ -118,7 +118,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d });
 #line (62, 5) - (62, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
-#line (63, 5) - (66, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (63, 5) - (64, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -143,7 +143,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d }).Reshape(2, 3);
 #line (69, 5) - (69, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d }).Reshape(2, 2);
-#line (70, 5) - (73, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (70, 5) - (71, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -168,7 +168,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var a = np.Zeros(8).Reshape(2, 2, 2);
 #line (76, 5) - (76, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Zeros(8).Reshape(2, 2, 2);
-#line (77, 5) - (80, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (77, 5) - (78, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -297,7 +297,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (137, 5) - (137, 53) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 2.0d, 4.0d }).Reshape(2, 2);
-#line (138, 5) - (141, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (138, 5) - (139, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try
@@ -320,7 +320,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (143, 5) - (143, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d }).Reshape(2, 3);
-#line (144, 5) - (147, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (144, 5) - (145, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_4 = false;
 #line hidden
                 try
@@ -343,7 +343,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (149, 5) - (149, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
-#line (150, 5) - (155, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (150, 5) - (151, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_5 = false;
 #line hidden
                 try
@@ -396,7 +396,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (172, 5) - (172, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d }).Reshape(2, 3);
-#line (173, 5) - (178, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (173, 5) - (174, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_6 = false;
 #line hidden
                 try
@@ -457,7 +457,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (199, 5) - (199, 63) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d }).Reshape(2, 3);
-#line (200, 5) - (205, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (200, 5) - (201, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_7 = false;
 #line hidden
                 try
@@ -520,7 +520,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 2.0d, 4.0d }).Reshape(2, 2);
 #line (229, 5) - (229, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d });
-#line (230, 5) - (233, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (230, 5) - (231, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_8 = false;
 #line hidden
                 try
@@ -545,7 +545,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d, 6.0d }).Reshape(2, 3);
 #line (236, 5) - (236, 29) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d });
-#line (237, 5) - (240, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (237, 5) - (238, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_9 = false;
 #line hidden
                 try
@@ -570,7 +570,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 var a = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d }).Reshape(2, 2);
 #line (243, 5) - (243, 34) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var b = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d });
-#line (244, 5) - (249, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (244, 5) - (245, 30) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_10 = false;
 #line hidden
                 try
@@ -633,7 +633,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (271, 5) - (271, 37) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 var a = np.Zeros(8).Reshape(2, 2, 2);
-#line (272, 5) - (274, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
+#line (272, 5) - (273, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_linalg_tests.spy"
                 bool __raised_11 = false;
 #line hidden
                 try

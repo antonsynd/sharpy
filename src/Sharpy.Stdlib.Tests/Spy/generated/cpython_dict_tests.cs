@@ -20,7 +20,7 @@ namespace Sharpy.Stdlib.Tests.Spy
         {
             internal static bool _GetitemRaises(Sharpy.Dict<string, int> d, string k)
             {
-#line (153, 5) - (158, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (153, 5) - (156, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 try
 #line hidden
                 {
@@ -38,7 +38,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 
             internal static bool _PopRaises(Sharpy.Dict<string, int> d, string k)
             {
-#line (181, 5) - (186, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (181, 5) - (184, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 try
 #line hidden
                 {
@@ -193,7 +193,7 @@ namespace Sharpy.Stdlib.Tests.Spy
 #line hidden
                 {
                 };
-#line (77, 5) - (79, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (77, 5) - (78, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 foreach (var __loopVar_0 in d.Values())
 #line hidden
                 {
@@ -218,7 +218,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 };
 #line (86, 5) - (86, 20) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 int count = 0;
-#line (87, 5) - (89, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (87, 5) - (88, 19) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 foreach (var __loopVar_1 in empty.Items())
 #line hidden
                 {
@@ -250,7 +250,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 };
 #line (92, 5) - (92, 21) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 int valsum = 0;
-#line (93, 5) - (96, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (93, 5) - (95, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 foreach (var __loopVar_2 in d.Items())
 #line hidden
                 {
@@ -605,7 +605,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                 Xunit.Assert.Equal("x", d[(1, 2)]);
 #line (238, 5) - (238, 22) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 bool ke = false;
-#line (239, 5) - (243, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (239, 5) - (242, 18) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 try
 #line hidden
                 {
@@ -645,7 +645,7 @@ namespace Sharpy.Stdlib.Tests.Spy
                         3
                     }
                 };
-#line (250, 5) - (252, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
+#line (250, 5) - (251, 25) 16 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_dict_tests.spy"
                 foreach (var __loopVar_3 in global::Sharpy.Builtins.Sorted<int>(d.Keys()))
 #line hidden
                 {

@@ -166,7 +166,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSplitUnclosedSingleQuoteThrows()
             {
-#line (77, 5) - (80, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
+#line (77, 5) - (78, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -187,7 +187,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSplitUnclosedDoubleQuoteThrows()
             {
-#line (82, 5) - (85, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
+#line (82, 5) - (83, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -208,7 +208,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSplitTrailingBackslashThrows()
             {
-#line (87, 5) - (90, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
+#line (87, 5) - (88, 35) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
@@ -229,7 +229,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             [Xunit.FactAttribute]
             public void TestSplitNonPosixModeThrows()
             {
-#line (92, 5) - (95, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
+#line (92, 5) - (93, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/shlex/shlex_module_tests.spy"
                 bool __raised_3 = false;
 #line hidden
                 try

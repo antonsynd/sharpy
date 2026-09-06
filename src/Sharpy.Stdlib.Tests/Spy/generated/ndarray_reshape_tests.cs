@@ -100,7 +100,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (64, 5) - (64, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d });
-#line (65, 5) - (68, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
+#line (65, 5) - (66, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 bool __raised_0 = false;
 #line hidden
                 try
@@ -123,7 +123,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (70, 5) - (70, 41) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d });
-#line (71, 5) - (74, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
+#line (71, 5) - (72, 28) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 bool __raised_1 = false;
 #line hidden
                 try
@@ -146,7 +146,7 @@ namespace Sharpy.Stdlib.Tests.Spy
             {
 #line (76, 5) - (76, 46) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 var arr = np.Array(new Sharpy.List<double>() { 1.0d, 2.0d, 3.0d, 4.0d, 5.0d });
-#line (77, 5) - (82, 1) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
+#line (77, 5) - (78, 27) 16 "src/Sharpy.Stdlib.Tests/Spy/numpy/ndarray_reshape_tests.spy"
                 bool __raised_2 = false;
 #line hidden
                 try
