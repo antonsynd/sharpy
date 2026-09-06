@@ -335,12 +335,60 @@ conversions) that the Sharpy-side checker would have to re-derive. The trade-off
 constructor-overload ambiguity surfaces as a C# diagnostic rather than a `SPY03xx` code; the
 pipeline no-CS-leaks invariant (CLAUDE.md, #1035) constrains where that is acceptable.
 
+## Refusal shape: the argument, not the overload set
+
+When **every** arity-surviving candidate rejects the **same argument** for a **type** reason, the
+call is refused as that argument's type mismatch (`SPY0220`) rather than as an overload failure
+(`SPY0354`). There is nothing to choose between the candidates at that point, and the concrete
+mismatch is what the caller has to fix:
+
+```python
+def main() -> None:
+    xs: list[uint64] = [1, 2, 3]
+    n: int32 = 2
+    print(xs.index(n))
+```
+
+```
+error[SPY0220]: Cannot pass argument of type 'int32' to parameter of type 'uint64'
+```
+
+The refusal is the same one the single-signature member gives for the same needle — `xs.count(n)`
+reports that message too — so how many signatures a member happens to have is not observable in the
+message.
+
+Candidates that accept **different** types at that index are all named:
+
+```python
+class C:
+    def __init__(self):
+        pass
+
+    def f(self, x: int) -> int:
+        return x
+
+    def f(self, x: float) -> int:
+        return 1
+
+
+def main() -> None:
+    c: C = C()
+    print(c.f("a"))
+```
+
+```
+error[SPY0220]: Cannot pass argument of type 'str' to parameter of type 'int32' or 'float64'
+```
+
+`SPY0354` remains for the cases where the candidates genuinely disagree: an **arity** mismatch, and
+candidates that fail at **different** argument indices.
+
 ## Diagnostics
 
 | Code | Level | Meaning |
 |------|-------|---------|
 | `SPY0353` | Error | Ambiguous overload — more than one candidate is applicable and none is strictly better |
-| `SPY0354` | Error | No matching overload — no candidate is applicable to the call |
+| `SPY0354` | Error | No matching overload — the candidates disagree: an arity mismatch, or candidates that fail at different arguments (a call every candidate rejects at the SAME argument reports `SPY0220` — see above) |
 | `SPY0355` | Error | Duplicate method signature — two overloads have identical parameter signatures (overloads may not differ only by return type) |
 
 Constructor-overload failures on a class with multiple `__init__` methods are reported by the C#

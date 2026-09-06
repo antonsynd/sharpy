@@ -514,7 +514,25 @@ public sealed record ResultType : SemanticType
     /// </summary>
     public SemanticType ErrorType { get; init; } = SemanticType.Unknown;
 
-    public override string GetDisplayName() => $"{OkType.GetDisplayName()} !{ErrorType.GetDisplayName()}";
+    /// <summary>
+    /// <c>int32 !str</c> — the ANNOTATION spelling — but only when BOTH sides are known. A bare
+    /// <c>Ok(1)</c> knows one side and leaves the other <see cref="UnknownType"/>, and printing
+    /// <c>int32 !&lt;?&gt;</c> leaks a placeholder into a message the reader cannot act on: it is not
+    /// a type they can write. The partially-known form names the family and marks the open side
+    /// with <c>_</c> instead (plan-ebd58b Decision 3).
+    /// </summary>
+    public override string GetDisplayName()
+    {
+        var okKnown = OkType is not UnknownType;
+        var errorKnown = ErrorType is not UnknownType;
+
+        if (okKnown && errorKnown)
+            return $"{OkType.GetDisplayName()} !{ErrorType.GetDisplayName()}";
+
+        var ok = okKnown ? OkType.GetDisplayName() : "_";
+        var error = errorKnown ? ErrorType.GetDisplayName() : "_";
+        return $"Result[{ok}, {error}]";
+    }
 
     public override bool IsValueType => true; // Result<T, E> is a struct
 

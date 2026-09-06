@@ -984,9 +984,14 @@ public static partial class DiagnosticExplanations
             "Add an explicit type annotation or cast to disambiguate the call.");
 
         Add(dict, DiagnosticCodes.Semantic.NoMatchingOverload, "No matching method overload", "Semantic",
-            "A method call does not match any of the available overloads for the method.",
-            "class Foo:\n    def bar(self, x: int): ...\nfoo.bar(\"hello\")",
-            "Check the argument types and ensure they match one of the declared overloads.");
+            "A method call matches no overload, and the candidates disagree about why: either the "
+            + "argument COUNT fits none of them, or they reject different arguments. When every "
+            + "candidate rejects the SAME argument for a type reason there is nothing to choose "
+            + "between them, and the call reports that argument's own type mismatch (SPY0220) "
+            + "instead.",
+            "class Foo:\n    def bar(self, x: int, y: str): ...\n    def bar(self, x: str, y: int): ...\nfoo.bar(\"a\", \"b\")",
+            "Check the argument count first, then the types: the example's first overload rejects "
+            + "argument 1 and the second rejects argument 2, so neither is the one you meant.");
 
         Add(dict, DiagnosticCodes.Semantic.DuplicateMethodSignature, "Duplicate method signature", "Semantic",
             "Two method overloads have identical parameter signatures. Overloads must differ in parameter count or types.",

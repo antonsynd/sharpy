@@ -172,7 +172,7 @@ class Vector:
 | Code | Level | Description |
 |------|-------|-------------|
 | SPY0353 | Error | Ambiguous overload — multiple overloads match equally well |
-| SPY0354 | Error | No matching overload — no overload matches the argument types |
+| SPY0354 | Error | No matching overload — the candidates disagree (arity, or different failing arguments). A call every candidate rejects at the SAME argument reports SPY0220 instead; see [Overload Resolution](overload_resolution.md#refusal-shape-the-argument-not-the-overload-set) |
 | SPY0355 | Error | Duplicate method signature — two overloads have identical parameter signatures |
 
 ## See Also

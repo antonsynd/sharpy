@@ -14,15 +14,25 @@ internal partial class TypeChecker
 {
     /// <summary>
     /// The context an <see cref="EnterStore"/> push records — position, slot, and (for arguments)
-    /// the callee display name, ordinal, and keyword name. No consumer yet; Phase 2 will read it
-    /// for diagnostic context (#1793).
+    /// the callee display name, ordinal, and keyword name.
+    ///
+    /// <para>Read by <see cref="FormatStoreError"/>: a refusal inside an argument knows where it
+    /// sits because the push that put it there said so. There is deliberately no second ambient
+    /// mechanism beside this one — two of them diverge, and the one that carried only an ordinal
+    /// dropped the keyword NAME the message is supposed to print (#1789).</para>
     /// </summary>
     internal sealed record StoreContext(
         StorePosition Position,
         SemanticType? Slot,
         string? CalleeDisplay,
         int? ArgumentOrdinal,
-        string? KeywordName);
+        string? KeywordName)
+    {
+        /// <summary>Whether this push is a call argument, the only context that names a callee.</summary>
+        public bool IsArgument
+            => Position is StorePosition.ArgumentPositional or StorePosition.ArgumentKeyword
+                && CalleeDisplay != null;
+    }
 
     internal enum StorePosition
     {
@@ -368,7 +378,10 @@ internal partial class TypeChecker
         {
             case StoreVerdict.RefusedNoneIntoNonNullable:
                 AddError(
-                    $"Cannot assign 'None' to non-nullable type '{targetType.GetDisplayName()}'",
+                    $"Cannot assign 'None' to non-nullable type '{targetType.GetDisplayName()}'"
+                        + (position == StorePosition.LambdaBody
+                            ? FormatArgumentContextSuffix(_storeContext) ?? string.Empty
+                            : string.Empty),
                     reportLine, reportColumn,
                     code: DiagnosticCodes.Semantic.NullabilityViolation,
                     span: value?.Span ?? span);
@@ -392,13 +405,19 @@ internal partial class TypeChecker
                 var refusalCode = position == StorePosition.Return
                     ? DiagnosticCodes.Semantic.MissingReturnValue
                     : DiagnosticCodes.Semantic.TypeMismatch;
+
+                // A cross-family Result value names the CALL that built it rather than the target
+                // (Decision 3): `x: int = Ok(1)` is a mistake about the constructor, not about `x`.
+                // Same predicate as the steer, so the anchor and the advice never disagree.
+                var anchor = DescribeResultStoreSteer(valueType, targetType) != null ? value : null;
                 AddError(
-                    FormatStoreError(position, valueType, targetType, slotName)
+                    FormatStoreError(position, valueType, targetType, slotName, _storeContext)
                         + DescribeStoreRefusalSteer(position, valueType, targetType)
                         + (extraSteer ?? string.Empty),
-                    reportLine, reportColumn,
+                    anchor?.LineStart ?? reportLine,
+                    anchor?.ColumnStart ?? reportColumn,
                     code: refusalCode,
-                    span: span);
+                    span: anchor?.Span ?? span);
                 return false;
         }
     }
@@ -445,16 +464,39 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The steer a refused store carries, at EVERY position (Decision 1). Three shapes, in the
+    /// A <c>Result</c> value at a slot of another family — <c>x: int = Ok(1)</c>. The value carries
+    /// an error case the slot has nowhere to put, so the two ways out are widening the slot or
+    /// consuming the Result (Decision 3). Null when this is not that store.
+    ///
+    /// <para>Also decides where the refusal is REPORTED: the slot is fine and the constructor is the
+    /// thing to change, so the diagnostic anchors at the call that built the value rather than at
+    /// the target. Both answers come from this one predicate so they cannot disagree.</para>
+    /// </summary>
+    private static string? DescribeResultStoreSteer(SemanticType valueType, SemanticType targetType)
+    {
+        if (valueType is not ResultType || targetType is ResultType)
+            return null;
+
+        // The slot spelling stays GENERIC. Substituting the target's display produces spellings a
+        // user cannot write once the slot is compound — `int32 | None!E` is not a type.
+        return " — the value is a Result; declare the slot as 'T !E' or match on the Result";
+    }
+
+    /// <summary>
+    /// The steer a refused store carries, at EVERY position (Decision 1). Four shapes, in the
     /// order they can apply: an <c>Optional[T]</c> value at a non-Optional slot (narrow or unwrap),
-    /// a <c>T | None</c> value at a <c>T?</c> slot (cross with <c>maybe</c>), and a CLR collection
-    /// at a Sharpy-collection slot (convert inward). Owned here rather than at the sites so a new
-    /// position gets the advice by construction — an <c>Optional</c> refused at <c>return</c> or
-    /// <c>yield</c> had none before this.
+    /// a <c>T | None</c> value at a <c>T?</c> slot (cross with <c>maybe</c>), a <c>Result</c> value
+    /// at a slot of another family, and a CLR collection at a Sharpy-collection slot (convert
+    /// inward). Owned here rather than at the sites so a new position gets the advice by
+    /// construction — an <c>Optional</c> refused at <c>return</c> or <c>yield</c> had none before
+    /// this, and <c>Ok(1)</c> refused at any of them had none until Decision 3.
     /// </summary>
     private static string DescribeStoreRefusalSteer(
         StorePosition position, SemanticType valueType, SemanticType targetType)
     {
+        if (DescribeResultStoreSteer(valueType, targetType) is { } resultSteer)
+            return resultSteer;
+
         if (valueType is NullableType nullableValue && targetType is OptionalType optionalSlot)
         {
             return $" — the value is '{nullableValue.UnderlyingType.GetDisplayName()} | None' (C# nullability)"
@@ -470,11 +512,18 @@ internal partial class TypeChecker
             + DescribeClrCollectionConversionSteer(valueType, targetType);
     }
 
+    /// <param name="context">
+    /// The push that created this store, or null when the refusal has none (the overload-refusal
+    /// route reports an argument the seam never pushed). The <see cref="StorePosition.LambdaBody"/>
+    /// arm is the one that reads it: a lambda body refused at an argument position names the callee
+    /// and the argument, which is the whole of #1789.
+    /// </param>
     private static string FormatStoreError(
         StorePosition position,
         SemanticType valueType,
         SemanticType targetType,
-        string? slotName)
+        string? slotName,
+        StoreContext? context)
     {
         var value = valueType.GetDisplayName();
         var target = targetType.GetDisplayName();
@@ -500,7 +549,8 @@ internal partial class TypeChecker
                 => $"Default value of type '{value}' is not assignable to parameter type '{target}'",
 
             StorePosition.LambdaBody
-                => $"Arrow lambda body type '{value}' is not assignable to expected return type '{target}'",
+                => $"Arrow lambda body type '{value}' is not assignable to expected return type '{target}'"
+                    + (FormatArgumentContextSuffix(context) ?? string.Empty),
 
             StorePosition.PropertyDefault
                 => $"Cannot assign type '{value}' to property of type '{target}'",
@@ -530,22 +580,24 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Builds the context suffix for a lambda body refusal when the lambda sits at an argument
-    /// position (#1789). Returns null when no enclosing argument context is available (the lambda
-    /// is at a variable slot, return, or list element). The suffix looks like:
-    /// <c> — argument 1 of 'select' expects '(int32) -> str'</c>.
+    /// Where an argument push sits, as a suffix: <c> — argument 1 of 'select' expects
+    /// '(int32) -> str'</c>, or <c> — argument 'f' of 'apply' expects '(int32) -> str'</c> for a
+    /// keyword. Null when the context is not an argument (a variable slot, a return, a list
+    /// element) or has no function-typed slot to name.
+    ///
+    /// <para>The keyword arm names the KEYWORD, not "keyword argument": the ordinal a keyword push
+    /// has is meaningless, and the name is the thing the user wrote (#1789).</para>
     /// </summary>
-    private static string? FormatLambdaBodyContextSuffix(
-        string? calleeName, int argumentOrdinal, FunctionType? expectedFnType)
+    private static string? FormatArgumentContextSuffix(StoreContext? context)
     {
-        if (calleeName == null || expectedFnType == null)
+        if (context is not { IsArgument: true } argument || argument.Slot is not FunctionType slot)
             return null;
 
-        var positionText = argumentOrdinal > 0
-            ? $"argument {argumentOrdinal}"
-            : "keyword argument";
+        var positionText = argument.KeywordName is { } keyword
+            ? $"argument '{keyword}'"
+            : $"argument {argument.ArgumentOrdinal ?? 1}";
 
-        return $" — {positionText} of '{calleeName}' expects '{expectedFnType.GetDisplayName()}'";
+        return $" — {positionText} of '{argument.CalleeDisplay}' expects '{slot.GetDisplayName()}'";
     }
 
     private IDisposable EnterStore(StorePosition position, SemanticType targetType, Expression? valueNode,
@@ -566,6 +618,29 @@ internal partial class TypeChecker
         _storeContext = new StoreContext(position, targetType, calleeDisplay, argumentOrdinal, keywordName);
 
         return new StoreScope(this, savedExpectedType, savedParameterTypedArgument, savedStoreContext);
+    }
+
+    /// <summary>
+    /// The ambient scope every call ARGUMENT is checked inside. It records where the argument sits
+    /// (callee display, ordinal or keyword name) so a refusal nested inside it — a lambda body,
+    /// whose own store is against the expected function type — can name that position, and it
+    /// CLEARS <c>_parameterTypedArgument</c>: an argument is parameter-typed only when the arm
+    /// below pushes its parameter slot through <see cref="EnterStore"/>.
+    ///
+    /// <para><c>_expectedType</c> is deliberately untouched. Whether this argument has a slot at all
+    /// is the arms' decision; the arm with none leaves the enclosing expectation exactly as it found
+    /// it, which is the behaviour the overload-set and no-candidate routes rely on.</para>
+    /// </summary>
+    private IDisposable EnterArgumentContext(
+        StorePosition position, string? calleeDisplay,
+        int? argumentOrdinal = null, string? keywordName = null)
+    {
+        var scope = new StoreScope(this, _expectedType, _parameterTypedArgument, _storeContext);
+
+        _parameterTypedArgument = null;
+        _storeContext = new StoreContext(position, Slot: null, calleeDisplay, argumentOrdinal, keywordName);
+
+        return scope;
     }
 
     /// <summary>

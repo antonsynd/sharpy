@@ -3009,7 +3009,14 @@ internal partial class TypeChecker
             if (_expectedType is ResultType result)
             {
                 var argType = CheckExpression(call.Arguments[0]);
-                if (!IsAssignable(argType, result.OkType))
+                // Ok(v)'s argument is a store into the Result's Ok slot, so the SEAM decides it —
+                // an in-range constant, an unsuffixed float literal and a literal-derived string are
+                // admitted here exactly as they are at a declaration, and the accepted verdict's
+                // facts reach the emitter. This is the symmetry Decision 3 is about: Some's payload
+                // went through the seam and Ok's did not, so `x: int8? = Some(1)` ran while
+                // `x: int8!str = Ok(1)` was refused. The refusal message stays this site's own.
+                if (!CheckStoreQuietly(
+                        StorePosition.ArgumentPositional, call.Arguments[0], argType, result.OkType))
                 {
                     AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Result Ok type '{result.OkType.GetDisplayName()}'",
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -3043,7 +3050,10 @@ internal partial class TypeChecker
             if (_expectedType is ResultType result)
             {
                 var argType = CheckExpression(call.Arguments[0]);
-                if (!IsAssignable(argType, result.ErrorType))
+                // Err(e)'s argument is a store into the Result's Error slot — the Ok arm's twin, and
+                // the same seam (Decision 3).
+                if (!CheckStoreQuietly(
+                        StorePosition.ArgumentPositional, call.Arguments[0], argType, result.ErrorType))
                 {
                     AddError($"Argument type '{argType.GetDisplayName()}' is not compatible with Result Error type '{result.ErrorType.GetDisplayName()}'",
                         call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,

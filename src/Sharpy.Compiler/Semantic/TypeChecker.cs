@@ -163,15 +163,6 @@ internal partial class TypeChecker
     // miss, never a false hit.
     private Expression? _parameterTypedArgument;
 
-    // The display name of the callee and the 1-based argument ordinal of the argument currently being
-    // checked inside CheckCallArguments. A lambda checked AT that position uses these to build the
-    // "— argument N of '<callee>' expects '<fn type>'" suffix when its body is refused (#1789). Set
-    // by CheckCallArguments before each argument's CheckExpression, restored after; null outside any
-    // argument-checking loop. The field is saved before EnterStore(LambdaBody, ...) in CheckLambda,
-    // because that call overwrites _expectedType.
-    private string? _currentCalleeDisplayName;
-    private int _currentArgumentOrdinal;
-
     // The iterator expression of the for statement or comprehension for-clause currently being
     // checked (`for c in Color`, `[c.name for c in Color]`). An ENUM name is a legitimate iterable
     // there — it denotes the member set, and both sites rescue it into a UserDefinedType right after

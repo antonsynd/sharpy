@@ -11,6 +11,62 @@ namespace Sharpy.Compiler.Semantic;
 internal partial class TypeChecker
 {
     /// <summary>
+    /// Why a candidate rejected an argument, recorded by the pass that rejected it
+    /// (plan-ebd58b Decision 7).
+    /// </summary>
+    internal enum OverloadFailureKind
+    {
+        /// <summary>The argument's type is not assignable to the parameter's type.</summary>
+        Type,
+
+        /// <summary>The argument does not match a parameterized generic parameter's shape.</summary>
+        GenericShape,
+
+        /// <summary>
+        /// The candidate has no parameter at this index and no variadic parameter to absorb it —
+        /// an arity failure discovered on the type pass rather than the arity pass.
+        /// </summary>
+        Variadic,
+    }
+
+    /// <summary>
+    /// A candidate's FIRST rejected argument — the index, the (substituted) parameter type it was
+    /// measured against, and the reason.
+    ///
+    /// <para>Recorded inside <see cref="ResolveOverloadCore"/>, at the point the candidate is
+    /// rejected, so the refusal a caller reports and the decision that produced it are the SAME
+    /// judgement. Re-deriving it afterwards by re-running <see cref="IsArgumentAssignable"/> over
+    /// every candidate is a second assignability path that can disagree with the one that
+    /// rejected them (#1775).</para>
+    /// </summary>
+    internal readonly record struct OverloadCandidateFailure(
+        int ArgIndex, SemanticType Expected, OverloadFailureKind Kind);
+
+    /// <summary>
+    /// The outcome of one overload resolution: the chosen candidate (or null), the arity-surviving
+    /// candidates, whether the failure was an ambiguity, and each rejected candidate's
+    /// <see cref="OverloadCandidateFailure"/>.
+    /// </summary>
+    /// <remarks>
+    /// The three-member <c>Deconstruct</c> keeps the call sites that need only the verdict
+    /// unchanged; the reporting sites read <see cref="CandidateFailures"/>.
+    /// </remarks>
+    internal sealed record OverloadResolution(
+        FunctionSymbol? Match,
+        List<FunctionSymbol> ArityCandidates,
+        bool IsAmbiguous,
+        IReadOnlyList<OverloadCandidateFailure> CandidateFailures)
+    {
+        public void Deconstruct(
+            out FunctionSymbol? match, out List<FunctionSymbol> arityCandidates, out bool isAmbiguous)
+        {
+            match = Match;
+            arityCandidates = ArityCandidates;
+            isAmbiguous = IsAmbiguous;
+        }
+    }
+
+    /// <summary>
     /// Captures all inputs for overload resolution, reducing parameter count on <see cref="ResolveOverloadCore"/>.
     /// </summary>
     /// <param name="Candidates">The list of overload candidates.</param>
@@ -167,8 +223,11 @@ internal partial class TypeChecker
     /// Core overload resolution algorithm shared by all overload resolution methods.
     /// Performs two-pass matching: first filters by argument count, then checks type compatibility.
     /// </summary>
-    /// <returns>A tuple of (matched overload, arity-filtered candidates, whether resolution was ambiguous).</returns>
-    private (FunctionSymbol? Match, List<FunctionSymbol> ArityCandidates, bool IsAmbiguous) ResolveOverloadCore(
+    /// <returns>
+    /// The matched overload, the arity-filtered candidates, whether resolution was ambiguous, and
+    /// each rejected candidate's first failing argument (<see cref="OverloadCandidateFailure"/>).
+    /// </returns>
+    private OverloadResolution ResolveOverloadCore(
         OverloadResolutionContext context)
     {
         int GetSelfOffset(FunctionSymbol o) => ReceiverOffsetOf(o, context);
@@ -239,10 +298,12 @@ internal partial class TypeChecker
 
         // Second pass: check type compatibility
         var matchingOverloads = new List<FunctionSymbol>();
+        var candidateFailures = new List<OverloadCandidateFailure>();
         foreach (var overload in arityCandidates)
         {
             var selfOffset = GetSelfOffset(overload);
             bool typesMatch = true;
+            OverloadCandidateFailure? firstFailure = null;
             var variadicParam = overload.Parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
 
             for (int i = 0; i < context.ArgTypes.Count; i++)
@@ -261,6 +322,8 @@ internal partial class TypeChecker
                 else
                 {
                     typesMatch = false;
+                    firstFailure = new OverloadCandidateFailure(
+                        i, SemanticType.Unknown, OverloadFailureKind.Variadic);
                     break;
                 }
 
@@ -291,6 +354,8 @@ internal partial class TypeChecker
                              && ArgMatchesGenericShape(projectedArg, expectedType)))
                     {
                         typesMatch = false;
+                        firstFailure = new OverloadCandidateFailure(
+                            i, expectedType, OverloadFailureKind.GenericShape);
                         break;
                     }
                     continue;
@@ -309,12 +374,18 @@ internal partial class TypeChecker
                         continue;
                     }
                     typesMatch = false;
+                    firstFailure = new OverloadCandidateFailure(
+                        i, expectedType, OverloadFailureKind.Type);
                     break;
                 }
             }
             if (typesMatch)
             {
                 matchingOverloads.Add(overload);
+            }
+            else if (firstFailure is { } failure)
+            {
+                candidateFailures.Add(failure);
             }
         }
 
@@ -326,7 +397,7 @@ internal partial class TypeChecker
             ).ToList();
 
             if (exactArityMatches.Count == 1)
-                return (exactArityMatches[0], arityCandidates, false);
+                return new OverloadResolution(exactArityMatches[0], arityCandidates, false, candidateFailures);
 
             // When multiple exact-arity overloads remain, prefer the one with fewer
             // type parameters. This breaks ties between e.g. Merge<T>(a, b, reverse)
@@ -335,19 +406,21 @@ internal partial class TypeChecker
             var minTypeParams = candidates.Min(o => o.TypeParameters.Count);
             var fewerTypeParamMatches = candidates.Where(o => o.TypeParameters.Count == minTypeParams).ToList();
             if (fewerTypeParamMatches.Count == 1)
-                return (fewerTypeParamMatches[0], arityCandidates, false);
+                return new OverloadResolution(fewerTypeParamMatches[0], arityCandidates, false, candidateFailures);
 
             // Specificity tiebreaker: prefer the overload whose parameter types are
             // strictly more specific (e.g., list[int] beats IEnumerable<int>).
             // Follows C#'s "better function member" rule (§12.6.4.3).
             var specificityWinner = FindMostSpecificOverload(fewerTypeParamMatches, context);
             if (specificityWinner != null)
-                return (specificityWinner, arityCandidates, false);
+                return new OverloadResolution(specificityWinner, arityCandidates, false, candidateFailures);
 
-            return (null, arityCandidates, true);
+            return new OverloadResolution(null, arityCandidates, true, candidateFailures);
         }
 
-        return (matchingOverloads.Count == 1 ? matchingOverloads[0] : null, arityCandidates, false);
+        return new OverloadResolution(
+            matchingOverloads.Count == 1 ? matchingOverloads[0] : null,
+            arityCandidates, false, candidateFailures);
     }
 
     /// <summary>
