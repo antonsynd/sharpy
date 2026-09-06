@@ -82,9 +82,11 @@ if "timeout" not in settings:
 
 ## Statement Only
 
-`??=` is a statement — it cannot appear inside a parenthesized expression or any other
-expression context. Using it as an expression produces `SPY0146` with a steer toward `:=`
-(walrus operator) for inline assignment:
+`??=` is a statement — it cannot appear inside a parenthesized expression, a call argument, a
+collection element, a subscript, a condition, or any other expression context. The refusal is
+keyed on the operator class, so every augmented assignment (`+=`, `*=`, `<<=`, …) is refused the
+same way, in every one of those positions, with `SPY0146` and a steer toward `:=` (the walrus
+operator) for inline assignment:
 
 ```python
 # ✅ Valid — statement form
@@ -93,7 +95,25 @@ name ??= "Default"
 
 # ❌ Invalid — augmented assignments are not expressions (SPY0146)
 # result = (name ??= "Default")
+
+# ❌ Invalid — the same SPY0146 in a call argument, a list element and a condition
+# print(name ??= "Default")
+# xs = [name ??= "Default"]
+# if name ??= "Default":
+#     pass
 ```
+
+To assign inside an expression, write the walrus form of the same store — `x := x ?? value`:
+
+```python
+name: str | None = None
+result = (name := name ?? "Default")
+print(result)  # Default
+print(name)    # Default
+```
+
+Unlike `??=`, the walrus form assigns unconditionally: `x := x ?? v` stores back into `x` even
+when `x` already holds a value (it stores the value it already had).
 
 ## Type Requirements
 
