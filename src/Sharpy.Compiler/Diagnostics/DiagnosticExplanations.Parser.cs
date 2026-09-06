@@ -238,5 +238,10 @@ public static partial class DiagnosticExplanations
             "A 'try' statement must have at least one 'except' handler or a 'finally' clause. An 'else' clause alone is not enough: 'else' runs only when the try body completes without raising, which is meaningless without a handler. CPython raises \"SyntaxError: expected 'except' or 'finally' block\" for both shapes, and Sharpy refuses them in the parser for the same reason.",
             "try:\n    load()\nelse:\n    print(\"ok\")",
             "Add an 'except' handler (or a 'finally' clause):\n  try:\n      load()\n  except ValueError:\n      print(\"failed\")\n  else:\n      print(\"ok\")");
+
+        Add(dict, DiagnosticCodes.Parser.AugmentedAssignmentInExpression, "Augmented assignment in expression context", "Parser",
+            "An augmented assignment operator (+=, -=, ??=, etc.) was used inside an expression. Augmented assignments are statements and cannot appear inside parenthesized expressions, function arguments, or other expression contexts. Use the walrus operator ':=' if you need an inline assignment expression.",
+            "result = (name ??= \"Default\")",
+            "Use ':=' for inline assignment:\n  result = (name := \"Default\")\n\nOr split into separate statements:\n  name ??= \"Default\"\n  result = name");
     }
 }

@@ -340,10 +340,10 @@ public class StorePositionReachTests : IntegrationTestBase
 
     private const int CoalesceLeftCount = 7;
     private const int CoalesceRightCount = 11;
-    private const int CoalesceTargetCount = 4;
-    private const int CoalesceAcceptedCellCount = 128;
-    private const int CoalesceRefusedCellCount = 180;
-    private const int CoalesceNotApplicableCellCount = 0;
+    private const int CoalesceTargetCount = 7;
+    private const int CoalesceAcceptedCellCount = 224;
+    private const int CoalesceRefusedCellCount = 294;
+    private const int CoalesceNotApplicableCellCount = 21;
 
     private enum SlotFamily { Plain, Optional, Nullable }
 
@@ -422,10 +422,12 @@ public class StorePositionReachTests : IntegrationTestBase
 
     /// <param name="Compose">(left, setup lines, RHS) → the whole program.</param>
     /// <param name="Narrowed">The slot is seeded PRESENT under `is not None`, so an accepted store is a no-op that prints the seed.</param>
+    /// <param name="StorePrefix">Extra stdout the target emits when the setter fires (e.g. "set\n").</param>
     private sealed record CoalesceTarget(
         string Name,
         Func<CoalesceLeft, string[], string, string> Compose,
-        bool Narrowed);
+        bool Narrowed,
+        string StorePrefix = "");
 
     private static string IndentLines(string[] lines, int spaces)
         => string.Concat(lines.Select(l => new string(' ', spaces) + l + "\n"));
@@ -452,6 +454,29 @@ public class StorePositionReachTests : IntegrationTestBase
             (l, setup, rhs) =>
                 $"def main():\n    x: {l.Slot} = {l.Present}\n    if x is not None:\n{IndentLines(setup, 8)}        x ??= {rhs}\n        print(x)\n",
             Narrowed: true),
+
+        new("PropertySetter",
+            (l, setup, rhs) =>
+                $"class Holder:\n    _v: {l.Slot} = {l.Empty}\n\n"
+                + $"    property get v(self) -> {l.Slot}:\n        return self._v\n\n"
+                + $"    property set v(self, val: {l.Slot}):\n        print(\"set\")\n        self._v = val\n\n\n"
+                + $"def main():\n    obj: Holder = Holder()\n{IndentLines(setup, 4)}    obj.v ??= {rhs}\n    print(obj.v)\n",
+            Narrowed: false,
+            StorePrefix: "set\n"),
+
+        new("ListIndex",
+            (l, setup, rhs) =>
+                $"def main():\n    xs: list[{l.Slot}] = [{l.Empty}]\n{IndentLines(setup, 4)}    xs[0] ??= {rhs}\n    print(xs[0])\n",
+            Narrowed: false),
+
+        new("UserGetSetItem",
+            (l, setup, rhs) =>
+                $"class Container:\n    _v: {l.Slot} = {l.Empty}\n\n"
+                + $"    def __getitem__(self, key: str) -> {l.Slot}:\n        return self._v\n\n"
+                + $"    def __setitem__(self, key: str, value: {l.Slot}) -> None:\n        print(\"set\")\n        self._v = value\n\n\n"
+                + $"def main():\n    obj: Container = Container()\n{IndentLines(setup, 4)}    obj[\"k\"] ??= {rhs}\n    print(obj[\"k\"])\n",
+            Narrowed: false,
+            StorePrefix: "set\n"),
     };
 
     // ── The contract, cell by cell ───────────────────────────────────────────────────────────
@@ -481,7 +506,7 @@ public class StorePositionReachTests : IntegrationTestBase
 
         var payload = PayloadDisplay(l.Payload);
         var accepted = new CoalesceExpectation(CoalesceVerdict.Accepted,
-            Output: t.Narrowed ? l.PresentPrint : r.Print(l.Payload));
+            Output: t.Narrowed ? l.PresentPrint : t.StorePrefix + r.Print(l.Payload));
 
         switch (r.Name)
         {
@@ -714,6 +739,127 @@ public class StorePositionReachTests : IntegrationTestBase
     [InlineData("survival", "d: int? = Some(10)\n    if d is not None:\n        d ??= 7\n        e: int = d\n        print(e)", "10\n")]
     public void CoalesceAssign_OnANarrowedName_IsANoOpThatKeepsTheNarrowing(string cell, string body, string expected)
         => AssertPrints(cell, body, expected);
+
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+    // Presence axis for the receiver targets (#1790, R-X): {present-None, present-value,
+    // missing/out-of-range}. The setter-skipping lowering means a present value does NOT call
+    // the setter, a None value DOES call it, and a missing key/out-of-range index raises.
+    // ═══════════════════════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// PropertySetter × present-value: the property already holds a value, so ??= is a no-op and
+    /// the setter is NOT called — the output has NO "set" line (#1790).
+    /// </summary>
+    [Theory]
+    [InlineData("nullable", "int | None", "42", "42\n")]
+    [InlineData("optional", "int?", "Some(42)", "42\n")]
+    public void PropertySetter_PresentValue_SetterNotCalled(string cell, string slot, string init, string expected)
+    {
+        var source =
+            $"class Holder:\n    _v: {slot} = {init}\n\n"
+            + $"    property get v(self) -> {slot}:\n        return self._v\n\n"
+            + $"    property set v(self, val: {slot}):\n        print(\"set\")\n        self._v = val\n\n\n"
+            + "def main():\n    obj: Holder = Holder()\n    obj.v ??= 99\n    print(obj.v)\n";
+
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue($"cell '{cell}' must compile. Diagnostics: "
+            + string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be(expected, $"cell '{cell}': present value → NO set line");
+    }
+
+    /// <summary>
+    /// PropertySetter × present-None: the property holds None, so ??= fires, the setter IS
+    /// called (prints "set"), then the new value is printed.
+    /// </summary>
+    [Theory]
+    [InlineData("nullable", "int | None", "None", "set\n99\n")]
+    [InlineData("optional", "int?", "None()", "set\n99\n")]
+    public void PropertySetter_PresentNone_SetterCalled(string cell, string slot, string init, string expected)
+    {
+        var source =
+            $"class Holder:\n    _v: {slot} = {init}\n\n"
+            + $"    property get v(self) -> {slot}:\n        return self._v\n\n"
+            + $"    property set v(self, val: {slot}):\n        print(\"set\")\n        self._v = val\n\n\n"
+            + "def main():\n    obj: Holder = Holder()\n    obj.v ??= 99\n    print(obj.v)\n";
+
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue($"cell '{cell}' must compile. Diagnostics: "
+            + string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be(expected, $"cell '{cell}': None → set IS called");
+    }
+
+    /// <summary>
+    /// ListIndex × present-value: the element is not None, so ??= is a no-op.
+    /// </summary>
+    [Theory]
+    [InlineData("nullable", "int | None", "42", "42\n")]
+    [InlineData("optional", "int?", "Some(42)", "42\n")]
+    public void ListIndex_PresentValue_NoStore(string cell, string slot, string init, string expected)
+    {
+        var source = $"def main():\n    xs: list[{slot}] = [{init}]\n    xs[0] ??= 99\n    print(xs[0])\n";
+
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue($"cell '{cell}' must compile. Diagnostics: "
+            + string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be(expected, $"cell '{cell}': present value → no store");
+    }
+
+    /// <summary>
+    /// ListIndex × out-of-range: raises IndexError at runtime.
+    /// </summary>
+    [Theory]
+    [InlineData("nullable", "int | None")]
+    [InlineData("optional", "int?")]
+    public void ListIndex_OutOfRange_RaisesIndexError(string cell, string slot)
+    {
+        var source = $"def main():\n    xs: list[{slot}] = []\n    xs[0] ??= 99\n    print(xs[0])\n";
+
+        var result = CompileAndExecute(source);
+        result.RawDiagnostics.Should().BeEmpty($"cell '{cell}' must compile without diagnostics");
+        result.Success.Should().BeFalse($"cell '{cell}': out-of-range index causes runtime failure");
+        (result.StandardError + string.Join(" ", result.CompilationErrors)).Should().Contain("IndexError",
+            $"cell '{cell}': out-of-range index raises IndexError");
+    }
+
+    /// <summary>
+    /// UserGetSetItem × present-value: __setitem__ is NOT called when the value is present.
+    /// </summary>
+    [Theory]
+    [InlineData("nullable", "int | None", "42", "42\n")]
+    [InlineData("optional", "int?", "Some(42)", "42\n")]
+    public void UserGetSetItem_PresentValue_SetterNotCalled(string cell, string slot, string init, string expected)
+    {
+        var source =
+            $"class Container:\n    _v: {slot} = {init}\n\n"
+            + $"    def __getitem__(self, key: str) -> {slot}:\n        return self._v\n\n"
+            + $"    def __setitem__(self, key: str, value: {slot}) -> None:\n        print(\"set\")\n        self._v = value\n\n\n"
+            + "def main():\n    obj: Container = Container()\n    obj[\"k\"] ??= 99\n    print(obj[\"k\"])\n";
+
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue($"cell '{cell}' must compile. Diagnostics: "
+            + string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be(expected, $"cell '{cell}': present value → NO set line");
+    }
+
+    /// <summary>
+    /// UserGetSetItem × present-None: __setitem__ IS called (prints "set").
+    /// </summary>
+    [Theory]
+    [InlineData("nullable", "int | None", "None", "set\n99\n")]
+    [InlineData("optional", "int?", "None()", "set\n99\n")]
+    public void UserGetSetItem_PresentNone_SetterCalled(string cell, string slot, string init, string expected)
+    {
+        var source =
+            $"class Container:\n    _v: {slot} = {init}\n\n"
+            + $"    def __getitem__(self, key: str) -> {slot}:\n        return self._v\n\n"
+            + $"    def __setitem__(self, key: str, value: {slot}) -> None:\n        print(\"set\")\n        self._v = value\n\n\n"
+            + "def main():\n    obj: Container = Container()\n    obj[\"k\"] ??= 99\n    print(obj[\"k\"])\n";
+
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue($"cell '{cell}' must compile. Diagnostics: "
+            + string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be(expected, $"cell '{cell}': None → set IS called");
+    }
 
     private void AssertPrints(string cell, string body, string expected, string prelude = "")
     {

@@ -174,6 +174,12 @@ internal partial class RoslynEmitter
                 // Augmented assignment: x += value — references the current version and rebinds it.
                 var target = EscapedIdentifierName(varName);
 
+                // ??= setter-skipping lowering (#1790, R-X): for Optional, emit
+                // `if (!x.IsSome) { x = value; }` which skips the store when present;
+                // for nullable, emit native C# `x ??= value`.
+                if (assign.Operator == AssignmentOperator.NullCoalesceAssign)
+                    return GenerateNullCoalesceAssignStatement(assign, target, value);
+
                 // For the read side of augmented assignment, apply the narrowed-read accessor the
                 // TypeChecker recorded for the target identifier so x += 1 with a narrowed
                 // Optional<int> reads as x.Unwrap() + 1 (or .Value / ! for nullables). The write side
@@ -276,6 +282,10 @@ internal partial class RoslynEmitter
                 .WithArgumentList(BracketedArgumentList(
                     SingletonSeparatedList(Argument(index))));
 
+            // ??= setter-skipping lowering (#1790, R-X)
+            if (assign.Operator == AssignmentOperator.NullCoalesceAssign)
+                return GenerateNullCoalesceAssignStatement(assign, elementAccess, value);
+
             var augmentedValue = assign.Operator == AssignmentOperator.Assign
                 ? value
                 : GenerateAugmentedValue(assign.Operator, elementAccess, value, assign.Target, assign.Value, assign);
@@ -342,6 +352,10 @@ internal partial class RoslynEmitter
                 if (receiver != memberTarget.Expression)
                     target = memberTarget.WithExpression(receiver);
             }
+
+            // ??= setter-skipping lowering (#1790, R-X)
+            if (assign.Operator == AssignmentOperator.NullCoalesceAssign)
+                return GenerateNullCoalesceAssignStatement(assign, target, value);
 
             // Method group → Optional<delegate> field needs an explicit delegate cast.
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
@@ -919,6 +933,56 @@ internal partial class RoslynEmitter
         // literal prints `0.5f`; an admitted conditional prints `c ? (sbyte)7 : (sbyte)8`), so C#
         // types `x ?? right` as the slot's payload.
         return Binary(SyntaxKind.CoalesceExpression, left, right);
+    }
+
+    /// <summary>
+    /// Generates a setter-skipping <c>??=</c> statement (#1790, R-X).
+    ///
+    /// <para>For <c>T?</c> (Optional): <c>if (!target.IsSome) target = wrappedValue;</c> — the
+    /// setter/indexer write is skipped when the slot is already present, matching the short-circuit
+    /// promise in the spec and avoiding the previous <c>target = target.IsSome ? target : v</c>
+    /// lowering that always called the setter.</para>
+    ///
+    /// <para>For <c>T | None</c> (nullable): <c>target ??= value;</c> — C#'s native coalescing
+    /// assignment already skips the setter when not null.</para>
+    ///
+    /// <para>Called from each target path (identifier, index, member) AFTER hoisting and BEFORE
+    /// the general <c>GenerateAugmentedValue</c> path, so it is one decision for all targets.
+    /// Rule 2: the lowering kind is a recorded fact; the emitter decides nothing.</para>
+    /// </summary>
+    private StatementSyntax GenerateNullCoalesceAssignStatement(
+        Assignment assign,
+        ExpressionSyntax target,
+        ExpressionSyntax value)
+    {
+        if (_context.SemanticInfo?.GetOperatorLowering(assign)?.Kind
+            == OperatorLoweringKind.OptionalCoalesceBothOptional)
+        {
+            // A payload RHS into an Optional slot wraps: x ??= 42 → Some(42).
+            if (_context.SemanticInfo?.GetOptionalStoreWrap(assign) is { } wrapOpt)
+                value = WrapInOptionalSome(value, wrapOpt);
+
+            // if (!target.IsSome) { target = value; }
+            return IfStatement(
+                PrefixUnaryExpression(
+                    SyntaxKind.LogicalNotExpression,
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        target,
+                        IdentifierName("IsSome"))),
+                ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        target,
+                        value)));
+        }
+
+        // Nullable: native C# ??=, which skips the setter when not null.
+        return ExpressionStatement(
+            AssignmentExpression(
+                SyntaxKind.CoalesceAssignmentExpression,
+                target,
+                value));
     }
 
     /// <summary>

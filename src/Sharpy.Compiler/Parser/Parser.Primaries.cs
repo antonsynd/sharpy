@@ -408,6 +408,19 @@ public partial class Parser
                         };
                     }
 
+                    // An augmented assignment inside a parenthesized expression is not valid —
+                    // augmented assignments (+=, -=, ??=, …) are statements, not expressions.
+                    // Steer toward := (walrus) for inline assignment (#1790).
+                    if (Current.Type > TokenType.ColonAssign && Current.Type <= TokenType.AtAssign)
+                    {
+                        throw ReportError(
+                            $"'{Current.Value}' is an augmented assignment and cannot appear inside an expression; "
+                            + "use ':=' for inline assignment",
+                            Current.Line, Current.Column,
+                            DiagnosticCodes.Parser.AugmentedAssignmentInExpression,
+                            span: CurrentSpan);
+                    }
+
                     Expect(TokenType.RightParen);
 
                     // Check for operator section: (_ * 2) or (_ > 0)

@@ -57,36 +57,42 @@ class DataManager:
 
 ## Dictionary Operations
 
-> **Status (#1790):** the element type must be nullable or Optional (see [Type Requirements](#type-requirements)), and today a subscript store on a *missing* key raises `KeyError` before the coalesce — the missing-key behaviour below is the intended semantics, not yet the implemented one.
+The dictionary value type must be nullable or Optional (see [Type Requirements](#type-requirements)).
+A subscript `??=` on a *missing* key raises `KeyError` — the dictionary subscript operator reads the
+current value first, and a missing key is an error, not an absent value:
 
 ```python
 cache: dict[str, Data | None] = {}
+cache["timeout"] = None
+cache["timeout"] ??= compute_default()  # OK — key exists, value is None
 
-def get_or_create(key: str) -> Data:
-    # Compute only if key is missing or maps to None
-    cache[key] ??= compute_expensive_data(key)
-    return cache[key]
-
-# Works with dictionary subscript
-settings: dict[str, int | None] = {}
-settings["timeout"] ??= 30  # Set default if not present
+try:
+    cache["missing"] ??= compute_default()  # KeyError — the key does not exist
+except KeyError:
+    print("missing key")
 ```
 
-## Return Value
-
-> **Status (#1790):** `??=` is a statement today — the expression forms below are `SPY0104` until the expression form is ruled and implemented.
-
-The `??=` operator returns the final value (either existing or newly assigned):
+To set a default for a missing key, use `dict.setdefault()` or guard with `in`:
 
 ```python
-# Can be used in expressions
-name: str | None = None
-result = (name ??= "Default")  # result is "Default", name is "Default"
+settings: dict[str, int | None] = {}
+if "timeout" not in settings:
+    settings["timeout"] = 30
+```
 
-# Chaining assignments
-a: int | None = None
-b: int | None = None
-c = (a ??= (b ??= 42))  # c, a, and b are all 42
+## Statement Only
+
+`??=` is a statement — it cannot appear inside a parenthesized expression or any other
+expression context. Using it as an expression produces `SPY0146` with a steer toward `:=`
+(walrus operator) for inline assignment:
+
+```python
+# ✅ Valid — statement form
+name: str | None = None
+name ??= "Default"
+
+# ❌ Invalid — augmented assignments are not expressions (SPY0146)
+# result = (name ??= "Default")
 ```
 
 ## Type Requirements
@@ -142,12 +148,13 @@ class Config:
         self.port ??= 8080
 ```
 
-**Caching:**
+**Caching (key known to exist):**
 ```python
 class Repository:
-    _data_cache: dict[int, Data] = {}
+    _data_cache: dict[int, Data | None] = {}
 
     def get(self, id: int) -> Data:
+        # Key must already exist; ??= fills a None value, not a missing key
         self._data_cache[id] ??= fetch_from_db(id)
         return self._data_cache[id]
 ```
@@ -172,14 +179,15 @@ def process(data: list[str] | None, options: Options | None) -> None:
 
 ## Short-Circuit Evaluation
 
-The right-hand side is only evaluated if the left-hand side is absent:
+The right-hand side is only evaluated if the left-hand side is absent.
+When the value is already present, the store (setter, indexer write) is skipped entirely:
 
 ```python
 x: int | None = 42
-x ??= expensive_computation()  # expensive_computation() NOT called
+x ??= expensive_computation()  # expensive_computation() NOT called, setter NOT called
 
 y: int | None = None
-y ??= expensive_computation()  # expensive_computation() IS called
+y ??= expensive_computation()  # expensive_computation() IS called, setter IS called
 ```
 
 ## Chaining
@@ -291,5 +299,5 @@ value ??= 10
 ```
 
 *Implementation*
-- *✅ Native - For `T | None` (C# nullable), maps directly to C# `??=` operator.*
-- *🔄 Lowered - For `T?` (`Optional[T]`), compiler generates `if`/`else` assignment.*
+- *✅ Native — For `T | None` (C# nullable): `target ??= value;` (C# native, setter skipped when not null).*
+- *✅ Lowered — For `T?` (`Optional[T]`): `if (!target.IsSome) target = value;` (setter skipped when present).*

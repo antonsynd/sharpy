@@ -1,0 +1,7 @@
+# ??= and += inside a parenthesized expression are refused with the walrus steer (#1790).
+# Augmented assignments are statements, not expressions.
+def main():
+    name: str | None = None
+    result: str | None = (name ??= "Default")
+    x: int = 0
+    y: int = (x += 1)

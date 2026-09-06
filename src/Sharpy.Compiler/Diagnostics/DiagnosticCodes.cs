@@ -112,8 +112,8 @@ public static class DiagnosticCodes
 
     /// <summary>
     /// Parser diagnostic codes (SPY0100-SPY0199).
-    /// Active: SPY0100-SPY0145
-    /// Reserved: SPY0146-SPY0199
+    /// Active: SPY0100-SPY0146
+    /// Reserved: SPY0147-SPY0199
     /// </summary>
     public static class Parser
     {
@@ -218,7 +218,13 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0146-SPY0199: Reserved for future parser diagnostics
+        #region Augmented assignment in expression context (SPY0146)
+
+        public const string AugmentedAssignmentInExpression = "SPY0146"; // Active (#1790)
+
+        #endregion
+
+        // SPY0147-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>
