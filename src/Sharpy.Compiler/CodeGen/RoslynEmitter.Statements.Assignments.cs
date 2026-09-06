@@ -126,7 +126,7 @@ internal partial class RoslynEmitter
                     return ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
-                            EscapedIdentifierName(currentName),
+                            StoreTargetName(name, currentName),
                             value));
                 }
                 else
@@ -165,14 +165,16 @@ internal partial class RoslynEmitter
                         InvocationExpression(
                             MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
-                                ApplyNarrowedReadLowering(name, EscapedIdentifierName(varName)),
+                                ApplyNarrowedReadLowering(name, StoreTargetName(name, varName)),
                                 IdentifierName(mutationMethod)))
                         .WithArgumentList(
                             ArgumentList(SingletonSeparatedList(GenerateMutationArgument(assign, value)))));
                 }
 
                 // Augmented assignment: x += value — references the current version and rebinds it.
-                var target = EscapedIdentifierName(varName);
+                // A module variable shadowed by a class member is written through, so the target
+                // (and the read above) take the module-qualified spelling (#1786).
+                var target = StoreTargetName(name, varName);
 
                 // ??= setter-skipping lowering (#1790, R-X): for Optional, emit
                 // `if (!x.IsSome) { x = value; }` which skips the store when present;
@@ -189,7 +191,7 @@ internal partial class RoslynEmitter
                 // the read and write forms are two spellings of the same name and evaluating
                 // both is free. The index and member paths below are where the double splice
                 // becomes a double evaluation.
-                var readExpr = ApplyNarrowedReadLowering(name, EscapedIdentifierName(varName));
+                var readExpr = ApplyNarrowedReadLowering(name, StoreTargetName(name, varName));
 
                 var augmentedValue = GenerateAugmentedValue(assign.Operator, readExpr, value, assign.Target, assign.Value, assign);
 
@@ -457,7 +459,7 @@ internal partial class RoslynEmitter
                         .Select(id =>
                         {
                             var currentName = GetMangledVariableName(id, isNewDeclaration: false);
-                            return Argument(EscapedIdentifierName(currentName));
+                            return Argument(StoreTargetName(id, currentName));
                         })
                         .ToList();
 
@@ -504,7 +506,7 @@ internal partial class RoslynEmitter
                                 stmts.Add(ExpressionStatement(
                                     AssignmentExpression(
                                         SyntaxKind.SimpleAssignmentExpression,
-                                        EscapedIdentifierName(currentName),
+                                        StoreTargetName(id, currentName),
                                         itemAccess)));
                             }
                             else

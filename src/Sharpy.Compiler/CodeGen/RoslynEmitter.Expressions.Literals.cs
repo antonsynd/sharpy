@@ -1119,7 +1119,7 @@ internal partial class RoslynEmitter
                 var assignExpr = ParenthesizedExpression(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
-                        EscapedIdentifierName(varName),
+                        StoreTargetName(walrus, varName),
                         value));
                 return ApplyNarrowedReadLowering(walrus, assignExpr);
             }

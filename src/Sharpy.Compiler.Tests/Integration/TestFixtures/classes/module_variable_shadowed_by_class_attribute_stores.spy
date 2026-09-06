@@ -1,0 +1,59 @@
+# The STORE half of the module/class-member shadow (#1786, R-Y). Semantic analysis binds the bare
+# name to the MODULE variable — the class body is invisible to a method — and a bare store to a
+# name that exists in an enclosing scope writes THROUGH to it (variable_scoping.md,
+# Write-Through Assignment). The emitter must therefore qualify the store target: an unqualified
+# name in the generated C# binds the class member, so every form below wrote the field's storage
+# and left the module variable untouched.
+#
+# Python differs here and deliberately: a bare store in a method is a fresh LOCAL, so python3
+# prints 99 for the module and 1 for the member. Sharpy's write-through rule is what makes the
+# module variable the target.
+v: int = 99
+
+
+class Plain:
+    v: int = 1
+
+    def store(self) -> None:
+        v = 5
+
+
+class Augmented:
+    v: int = 1
+
+    def store(self) -> None:
+        v += 1
+
+
+class Walrus:
+    v: int = 1
+
+    def store(self) -> None:
+        w: int = (v := 7)
+        print(w)
+
+
+class TupleElement:
+    v: int = 1
+
+    def store(self) -> None:
+        v, n = 5, 1
+        print(n)
+
+
+def main() -> None:
+    p: Plain = Plain()
+    p.store()
+    print(v, p.v)
+
+    a: Augmented = Augmented()
+    a.store()
+    print(v, a.v)
+
+    wl: Walrus = Walrus()
+    wl.store()
+    print(v, wl.v)
+
+    t: TupleElement = TupleElement()
+    t.store()
+    print(v, t.v)

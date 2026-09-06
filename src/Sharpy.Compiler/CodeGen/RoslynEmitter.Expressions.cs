@@ -401,6 +401,22 @@ internal partial class RoslynEmitter
             EscapedIdentifierName(csharpName));
 
     /// <summary>
+    /// The store-target twin of the read arm above: the C# spelling of a bare-name STORE target
+    /// (plain, augmented, <c>??=</c>, walrus, tuple element). Module-qualified iff semantic
+    /// analysis recorded <c>SetModuleAccessCrossesClassMember</c> on <paramref name="node"/> — the
+    /// assignment's target identifier, the walrus expression, or the tuple element's identifier,
+    /// the same node the checker keyed — so a write-through store to a module variable shadowed by
+    /// a same-named class member lands on the module variable, as the read already does. One
+    /// helper for every store form: a sixth form cannot skip it by construction, which is why the
+    /// recording side has one point too. Unqualified, every store form wrote the class field
+    /// (`V = 5;` inside the method) and left the module variable at 99 (#1786).
+    /// </summary>
+    private ExpressionSyntax StoreTargetName(Expression node, string mangledName)
+        => _context.SemanticInfo?.ModuleAccessCrossesClassMember(node) == true
+            ? ModuleQualified(mangledName)
+            : EscapedIdentifierName(mangledName);
+
+    /// <summary>
     /// Emits a builtin constructor reference that semantic analysis pinned to a concrete signature
     /// (#1182). A pure application of the recorded fact: the family selects the shape, the pinned
     /// signature supplies the types.
