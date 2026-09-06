@@ -147,12 +147,22 @@ internal sealed class LocalNameAllocator
                 claims[spelling] = holders = new List<Claim>();
             holders.Add(new Claim(row.Binding.ScopeId, row.Ledger));
 
+            // For local consts, the compile-time constant fact is type-based: any const whose
+            // type C# admits for const (primitive except object/void, or enum) is compile-time.
+            // The full initializer analysis (ConstEligibility) runs for module-level and field
+            // consts; for locals it would need AST access this allocator doesn't have, and the
+            // old code (IsConstEligibleType → PredefinedTypeSyntax) was type-only (#1791).
+            var isCompileTime = varSym.IsConstant
+                && ConstEligibility.IsConstEligibleSemanticType(
+                    _binding.GetVariableType(varSym) is UnknownType ? varSym.Type : _binding.GetVariableType(varSym));
+
             _binding.SetCodeGenInfo(varSym, new CodeGenInfo
             {
                 CSharpName = baseSpelling,
                 Version = version,
                 OriginalName = varSym.Name,
                 IsConstant = varSym.IsConstant,
+                IsCompileTimeConstant = isCompileTime,
                 IsModuleLevel = false
             });
         }

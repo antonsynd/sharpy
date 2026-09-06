@@ -73,7 +73,10 @@ internal partial class RoslynEmitter
 
         var modifiers = TokenList(accessToken);
 
-        if (varDecl.IsConst && IsConstEligibleType(fieldType))
+        // Read the compile-time constant fact from CodeGenInfo (#1791).
+        var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == varDecl.Name);
+        var fieldCodeGenInfo = fieldSymbol != null ? GetCodeGenInfo(fieldSymbol) : null;
+        if (varDecl.IsConst && fieldCodeGenInfo?.IsCompileTimeConstant == true)
         {
             modifiers = modifiers.Add(Token(SyntaxKind.ConstKeyword));
         }

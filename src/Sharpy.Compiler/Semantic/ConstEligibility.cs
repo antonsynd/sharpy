@@ -53,7 +53,7 @@ internal sealed class ConstEligibility
                 _moduleConstDecls[constDecl.Name] = constDecl;
         }
 
-        // Compute and store the fact for every const.
+        // Compute and store the fact for every module-level const.
         foreach (var (name, _) in _moduleConstDecls)
         {
             var isCompileTime = IsModuleConstCompileTime(name);
@@ -62,6 +62,76 @@ internal sealed class ConstEligibility
                 _semanticBinding.SetCompileTimeConstant(varSymbol, isCompileTime);
             }
         }
+
+        // Walk into type bodies (class/struct) to cover field consts.
+        // Local consts are handled by LocalNameAllocator using a type-only check (#1791).
+        foreach (var stmt in module.Body)
+        {
+            switch (stmt)
+            {
+                case ClassDef classDef:
+                    AnalyzeTypeBody(classDef.Name, classDef.Body);
+                    break;
+                case StructDef structDef:
+                    AnalyzeTypeBody(structDef.Name, structDef.Body);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Analyze const fields inside a class or struct body.
+    /// </summary>
+    private void AnalyzeTypeBody(string typeName, IEnumerable<Statement> body)
+    {
+        var typeSymbol = _symbolTable.Lookup(typeName) as TypeSymbol;
+        if (typeSymbol == null)
+            return;
+
+        foreach (var stmt in body)
+        {
+            if (stmt is VariableDeclaration { IsConst: true } fieldDecl)
+            {
+                var fieldSymbol = typeSymbol.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
+                if (fieldSymbol != null)
+                {
+                    var isCompileTime = ComputeFieldConstIsCompileTime(fieldSymbol, fieldDecl);
+                    _semanticBinding.SetCompileTimeConstant(fieldSymbol, isCompileTime);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Compute whether a field const is compile-time. Uses the same rules as module consts
+    /// but operates on the symbol directly rather than through the module-const declaration index.
+    /// </summary>
+    private bool ComputeFieldConstIsCompileTime(VariableSymbol varSymbol, VariableDeclaration decl)
+    {
+        if (decl.InitialValue == null)
+            return false;
+
+        var type = GetVariableType(varSymbol);
+        if (!IsConstEligibleSemanticType(type))
+            return false;
+
+        // Use the classifier with the module-const hooks so a field const referencing a
+        // module-level const resolves correctly.
+        var kind = Validation.ConstantDefaultClassifier.Classify(
+            decl.InitialValue, ResolvesToCompileTimeConst, LowersToConstantExpression);
+        if (!Validation.ConstantDefaultClassifier.IsAdmitted(kind, Validation.AdmissionTable.ModuleConst))
+            return false;
+
+        // Integer kinds require a folded value.
+        var primitiveInfo = Registry.PrimitiveCatalog.GetPrimitiveInfo(type);
+        if (primitiveInfo != null)
+        {
+            var isInteger = primitiveInfo.Kind is Registry.PrimitiveCatalog.NumericKind.SignedInteger
+                or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger;
+            return !isInteger || varSymbol.ConstantValue != null;
+        }
+
+        return true;
     }
 
     /// <summary>

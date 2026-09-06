@@ -366,12 +366,16 @@ internal class CodeGenInfoComputer
         var fieldSymbol = typeSymbol.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
         if (fieldSymbol != null)
         {
+            // The compile-time constant fact is computed by ConstEligibility (#1791).
+            var isCompileTime = fieldDecl.IsConst && _semanticBinding.GetCompileTimeConstant(fieldSymbol);
+
             SetCodeGenInfo(fieldSymbol, new CodeGenInfo
             {
                 CSharpName = NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped),
                 OriginalName = fieldDecl.Name,
                 IsModuleLevel = false,
-                IsConstant = fieldDecl.IsConst
+                IsConstant = fieldDecl.IsConst,
+                IsCompileTimeConstant = isCompileTime,
             });
         }
     }

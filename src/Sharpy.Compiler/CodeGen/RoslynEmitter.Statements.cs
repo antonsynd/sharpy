@@ -853,17 +853,6 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Checks if the resolved C# type is eligible for the 'const' modifier.
-    /// C# only allows const for built-in primitive types (int, long, double, float, bool,
-    /// string, etc.) which are all represented as PredefinedTypeSyntax in Roslyn.
-    /// Non-primitive types must use 'static readonly' instead.
-    /// </summary>
-    private static bool IsConstEligibleType(TypeSyntax typeSyntax)
-    {
-        return typeSyntax is PredefinedTypeSyntax;
-    }
-
-    /// <summary>
     /// Builds a narrowing key from a MemberAccess chain (e.g., self.value -> "self.value").
     /// Delegates to <see cref="AstHelper.ExtractNarrowingKey"/>.
     /// </summary>

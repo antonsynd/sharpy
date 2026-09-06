@@ -1110,8 +1110,12 @@ internal partial class RoslynEmitter
         var declaration = VariableDeclaration(typeSyntax)
             .WithVariables(SingletonSeparatedList(declarator));
 
-        // C# const only works with predefined types (int, string, bool, etc.)
-        var modifiers = varDecl.IsConst && IsConstEligibleType(typeSyntax)
+        // Read the compile-time constant fact from CodeGenInfo (#1791).
+        // Use GetDeclarationSymbol for local consts (LookupSymbol only finds module-level).
+        var localSymbol = _context.SemanticInfo?.GetDeclarationSymbol(varDecl)
+            ?? _context.LookupSymbol(varDecl.Name);
+        var localCodeGenInfo = localSymbol != null ? GetCodeGenInfo(localSymbol) : null;
+        var modifiers = varDecl.IsConst && localCodeGenInfo?.IsCompileTimeConstant == true
             ? TokenList(Token(SyntaxKind.ConstKeyword))
             : TokenList();
 
