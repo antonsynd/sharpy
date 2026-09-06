@@ -1,0 +1,10 @@
+# The property-accessor host. This ICEd (SPY0909, "No CodeGenInfo for local 'v'") until the rule
+# became a property of the scope chain -- the mode flag was never set on this route.
+class Box:
+    v: int = 3
+
+    property get w(self) -> int:
+        return v
+
+def main():
+    print(Box().w)

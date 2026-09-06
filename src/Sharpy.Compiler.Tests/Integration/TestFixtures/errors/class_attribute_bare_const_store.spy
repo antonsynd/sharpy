@@ -1,0 +1,10 @@
+# A bare store to a class CONST keeps the assign-to-a-constant meaning: no member steer is offered,
+# because 'C.K = ...' is illegal for a constant too.
+class C:
+    const K: int = 1
+
+    def m(self) -> None:
+        K = 2
+
+def main():
+    C().m()

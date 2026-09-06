@@ -1,0 +1,10 @@
+# The walrus store form. This COMPILED before the rule lived in the walk: the walrus arm found no
+# binding and declared a fresh local, so the program ran and wrote nothing the reader meant.
+class Counter:
+    count: int = 0
+
+    def increment(self) -> None:
+        print(count := 7)
+
+def main():
+    Counter().increment()

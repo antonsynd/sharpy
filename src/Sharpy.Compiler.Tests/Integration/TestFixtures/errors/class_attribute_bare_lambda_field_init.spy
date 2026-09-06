@@ -1,0 +1,8 @@
+# A lambda in a class-field initializer reading a sibling field. Also an ICE until the rule became
+# a property of the chain. There is no 'self' in a field initializer, so no steer is offered.
+class Box:
+    v: int = 3
+    f: () -> int = lambda: v
+
+def main():
+    print(Box().f())

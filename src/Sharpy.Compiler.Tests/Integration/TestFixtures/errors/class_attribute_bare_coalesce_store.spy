@@ -1,0 +1,9 @@
+# The '??=' store form, which reported the READ code before the refusal moved to the assignment seam.
+class Counter:
+    count: int? = Some(0)
+
+    def increment(self) -> None:
+        count ??= 1
+
+def main():
+    Counter().increment()

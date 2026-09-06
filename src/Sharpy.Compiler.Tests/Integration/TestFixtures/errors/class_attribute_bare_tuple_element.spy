@@ -1,0 +1,10 @@
+# The tuple-unpacking element store form. This COMPILED before the rule lived in the walk.
+class Counter:
+    count: int = 0
+
+    def increment(self) -> None:
+        count, n = 7, 1
+        print(n)
+
+def main():
+    Counter().increment()

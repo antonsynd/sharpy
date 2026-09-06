@@ -1,0 +1,12 @@
+# A @static field named bare. The steer must be the class name: 'self.total' does not compile for a
+# static member, and this method has no self at all.
+class C:
+    @static
+    total: int = 5
+
+    @static
+    def m() -> None:
+        print(total)
+
+def main():
+    C.m()
