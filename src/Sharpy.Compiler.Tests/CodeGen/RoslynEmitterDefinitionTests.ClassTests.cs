@@ -640,8 +640,8 @@ public partial class RoslynEmitterDefinitionTests
         // Assert - verify field without type annotation falls back to object
         Assert.Contains("public object DefaultData = 42;", code);
 
-        // Assert - verify const field
-        Assert.Contains("public const int MaxUsers = 100;", code);
+        // Assert - verify const field (without IsCompileTimeConstant fact, emits as static readonly)
+        Assert.Contains("public static readonly int MaxUsers = 100;", code);
     }
 
     [Fact]

@@ -66,6 +66,7 @@ public class DispatchSiteInventoryTests
         ["Semantic/ExecutionOrderAnalyzer.cs::ExecutionOrderAnalyzer.CollectDeclarationNames"] = "guarded-by:ExecutionOrderAnalyzerTotalityTests",
 
         // CodeGenInfoComputer — code generation info over module/type members
+        ["Semantic/ConstEligibility.cs::ConstEligibility.AnalyzeModule"] = "refusal-net:ParameterDefaultConstantMatrixTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.ComputeForModule"] = "guarded-by:CodeGenInfoComputerTotalityTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.DetectModuleLevelCollisions"] = "guarded-by:CodeGenInfoComputerTotalityTests",
         ["Semantic/CodeGenInfoComputer.cs::CodeGenInfoComputer.ProcessTypeMembers"] = "guarded-by:CodeGenInfoComputerTotalityTests",

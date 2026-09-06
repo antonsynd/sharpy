@@ -206,7 +206,9 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Contains("const int MAX_VALUE", result);
+        // Without IsCompileTimeConstant fact, a const local emits as a plain local
+        Assert.Contains("int MAX_VALUE", result);
+        Assert.DoesNotContain("const int MAX_VALUE", result);
         Assert.Contains("= 100;", result);
     }
 
