@@ -1,0 +1,9 @@
+class Counter:
+    count: int = 0
+
+    def increment(self) -> None:
+        count = 1
+
+def main():
+    c = Counter()
+    c.increment()

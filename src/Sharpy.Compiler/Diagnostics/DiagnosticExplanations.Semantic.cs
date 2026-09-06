@@ -1273,5 +1273,21 @@ public static partial class DiagnosticExplanations
             "const FM: float = max(4.0, 1.0)\n\ndef main():\n    v: float = 4.0\n    match v:\n        case FM:  # SPY0605\n            print(\"hit\")",
             "Compare in a guard clause:\n    match v:\n        case _ if v == FM:\n            print(\"hit\")");
 
+        Add(dict, DiagnosticCodes.SemanticOverflow.ClassAttributeBareStore,
+            "Cannot assign to class attribute by bare name",
+            "Semantic",
+            "A bare assignment 'x = value' inside a method body where 'x' is a class attribute " +
+            "is refused. Class-body names are not visible by bare name inside methods — this is " +
+            "Python's class-scope rule (the class body is not a closure scope for methods). " +
+            "Use 'self.x' for instance attribute access, 'ClassName.x' for the class attribute, " +
+            "or declare a shadowing local with a type annotation.",
+            "class Counter:\n    count: int = 0\n    def increment(self) -> None:\n" +
+            "        count = count + 1  # SPY0606 — bare name 'count' is a class attribute",
+            "Access through self or the class name:\n" +
+            "    self.count = self.count + 1  # instance attribute\n" +
+            "    Counter.count = Counter.count + 1  # class attribute\n\n" +
+            "Or shadow with a typed local:\n" +
+            "    count: int = self.count + 1  # new local variable");
+
     }
 }

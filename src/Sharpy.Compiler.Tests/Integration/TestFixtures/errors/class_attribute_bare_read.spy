@@ -1,0 +1,9 @@
+class Counter:
+    count: int = 0
+
+    def get_count(self) -> int:
+        return count
+
+def main():
+    c = Counter()
+    print(c.get_count())

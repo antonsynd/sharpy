@@ -50,4 +50,11 @@ public interface IGlobalSymbolTable
     /// Sharpy's block-scoping rules for Python developers.
     /// </summary>
     bool TryGetExitedVariable(string name, out string blockType, out int line);
+
+    /// <summary>
+    /// Checks whether a name exists in a class/struct scope that was skipped by the
+    /// class-scope rule (#1786, R-Y). Returns the enclosing class name and the bound symbol,
+    /// or null if the name is not in any skipped class scope.
+    /// </summary>
+    (string ClassName, Symbol Symbol)? LookupInSkippedClassScope(string name);
 }

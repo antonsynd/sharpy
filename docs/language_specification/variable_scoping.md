@@ -112,6 +112,51 @@ def main():
     print(x)              # 1 — outer 'x' unchanged
 ```
 
+## Class-Body Names Are Not Visible by Bare Name Inside Methods
+
+Class and struct bodies define their own scope, but this scope is **not** a closure scope for methods. Methods cannot read or write class-body names by bare name — they must use `self.name` or `ClassName.name`. This matches Python's class-scope semantics.
+
+```python
+class Counter:
+    count: int = 0
+
+    def increment(self) -> None:
+        count = count + 1    # ERROR (SPY0606) — bare store to class attribute
+        print(count)          # ERROR (SPY0200) — bare read of class attribute
+
+    def correct(self) -> None:
+        self.count += 1       # OK — instance attribute via self
+        Counter.count += 1    # OK — class attribute via class name
+        count: int = 99       # OK — annotated declaration creates a new local
+```
+
+The rule applies to all function-like bodies inside a class or struct — methods, property accessors, event accessors, observers, and lambdas defined inside methods:
+
+```python
+class Config:
+    name: str = "default"
+
+    @property
+    def label(self) -> str:
+        return self.name      # OK
+        # return name         # Would be SPY0200
+
+    def make_greeter(self) -> Callable[[], str]:
+        return lambda: self.name   # OK — lambda accesses via self
+```
+
+**Parameter defaults** can still reference class-body names, because they are evaluated at class-definition time (before the method body):
+
+```python
+class Grid:
+    const SIZE: int = 8
+
+    def resize(self, n: int = SIZE) -> None:   # OK — default sees class scope
+        print(n)
+```
+
+**Nested types and module names** remain visible inside methods — the skip applies only to variable and constant bindings in the class body, not to type declarations or names from enclosing module/global scope.
+
 ## Assignment Statement
 
 ```python

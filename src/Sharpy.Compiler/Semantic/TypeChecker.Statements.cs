@@ -149,6 +149,27 @@ internal partial class TypeChecker
                 return;
             }
 
+            // Python class-scope rule (#1786, R-Y): if the bare name matches a class attribute
+            // that was skipped in the scope walk, refuse the store with steers.
+            if (existingSymbol == null && parentSymbol == null)
+            {
+                var classHit = _symbolTable.LookupInSkippedClassScope(targetId.Name);
+                if (classHit != null)
+                {
+                    var (className, _) = classHit.Value;
+                    AddError(
+                        $"Cannot assign to class attribute '{targetId.Name}' by bare name — "
+                        + $"class-body names are not visible inside methods. Use "
+                        + $"'self.{targetId.Name} = ...' for the instance attribute, "
+                        + $"'{className}.{targetId.Name} = ...' for the class attribute, "
+                        + $"or '{targetId.Name}: <type> = ...' to declare a shadowing local",
+                        assignment.LineStart, assignment.ColumnStart,
+                        code: DiagnosticCodes.SemanticOverflow.ClassAttributeBareStore,
+                        span: assignment.Span);
+                    return;
+                }
+            }
+
             var storePredecessor = (existingSymbol ?? parentSymbol) as VariableSymbol;
             var storeTarget = storePredecessor != null ? DeclaredBindingType(storePredecessor) : SemanticType.Unknown;
             SemanticType inferredType;

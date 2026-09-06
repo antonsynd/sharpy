@@ -314,6 +314,13 @@ internal partial class TypeChecker
         // into xUnit assertions by the emitter, so the type-test classifier steps aside inside them
         // (see _testAssertTest). Nested functions inherit the flag, mirroring how the emitter's
         // _isInTestFunction propagates through nested generation.
+        //
+        // Python class-scope rule (#1786, R-Y): class-body names are invisible by bare name inside
+        // function bodies. Set the skip flag AFTER parameter defaults (which must see class members)
+        // and restore on exit. Nested functions inherit the flag, so their own parameter defaults also
+        // skip class scopes (matching Python: a nested def's defaults can't see the class body either).
+        var previousSkipClassScopes = _symbolTable.SkipClassScopesInLookup;
+        _symbolTable.SkipClassScopesInLookup = true;
         using (ScopedValue.Push(ref _inTestFunction,
                    _inTestFunction || functionDef.Decorators.Any(DecoratorNames.IsTestDecorator)))
         {
@@ -322,6 +329,7 @@ internal partial class TypeChecker
                 CheckStatement(statement);
             }
         }
+        _symbolTable.SkipClassScopesInLookup = previousSkipClassScopes;
 
         _narrowingFlow = previousFlow;
         _currentFacts = previousFacts;
@@ -2005,11 +2013,15 @@ internal partial class TypeChecker
         var previousFunctionReturnType = _currentFunctionReturnType;
         _currentFunctionReturnType = SemanticType.Void;
 
-        // Type-check the accessor body
+        // Type-check the accessor body.
+        // Python class-scope rule (#1786, R-Y): event accessor bodies skip class scopes.
+        var previousSkipClassScopes = _symbolTable.SkipClassScopesInLookup;
+        _symbolTable.SkipClassScopesInLookup = true;
         foreach (var stmt in eventDef.Body)
         {
             CheckStatement(stmt);
         }
+        _symbolTable.SkipClassScopesInLookup = previousSkipClassScopes;
 
         _currentFunctionReturnType = previousFunctionReturnType;
 
@@ -2167,10 +2179,14 @@ internal partial class TypeChecker
         _narrowingFlow = ComputeNarrowingFlow(propDef.Body);
         _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
 
+        // Python class-scope rule (#1786, R-Y): property accessor bodies skip class scopes.
+        var previousSkipClassScopes = _symbolTable.SkipClassScopesInLookup;
+        _symbolTable.SkipClassScopesInLookup = true;
         foreach (var stmt in propDef.Body)
         {
             CheckStatement(stmt);
         }
+        _symbolTable.SkipClassScopesInLookup = previousSkipClassScopes;
 
         _narrowingFlow = previousFlow;
         _currentFacts = previousFacts;
@@ -2404,10 +2420,14 @@ internal partial class TypeChecker
             _narrowingFlow = ComputeNarrowingFlow(observer.Body);
             _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
 
+            // Python class-scope rule (#1786, R-Y): observer bodies skip class scopes.
+            var previousSkipClassScopes = _symbolTable.SkipClassScopesInLookup;
+            _symbolTable.SkipClassScopesInLookup = true;
             foreach (var stmt in observer.Body)
             {
                 CheckStatement(stmt);
             }
+            _symbolTable.SkipClassScopesInLookup = previousSkipClassScopes;
 
             _narrowingFlow = previousFlow;
             _currentFacts = previousFacts;

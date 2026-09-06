@@ -477,6 +477,23 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
 
+            // Python class-scope rule (#1786, R-Y): if the name exists in a class/struct
+            // scope that was skipped by the function-body walk, steer toward self. or ClassName.
+            var classHit = _symbolTable.LookupInSkippedClassScope(id.Name);
+            if (classHit != null)
+            {
+                var (className, _) = classHit.Value;
+                AddError(
+                    $"Undefined identifier '{id.Name}'. "
+                    + $"'{id.Name}' is a class attribute of '{className}' — class-body names are "
+                    + $"not visible by bare name inside methods. Use 'self.{id.Name}' or "
+                    + $"'{className}.{id.Name}' to access it",
+                    id.LineStart, id.ColumnStart,
+                    code: DiagnosticCodes.Semantic.UndefinedVariable,
+                    span: id.Span);
+                return SemanticType.Unknown;
+            }
+
             var message = $"Undefined identifier '{id.Name}'";
             string? suggestedName = null;
 

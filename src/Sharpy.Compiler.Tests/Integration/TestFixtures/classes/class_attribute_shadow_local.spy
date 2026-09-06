@@ -1,0 +1,10 @@
+class Counter:
+    count: int = 0
+
+    def local_shadow(self) -> None:
+        count: int = 99
+        print(count)
+
+def main():
+    c = Counter()
+    c.local_shadow()
