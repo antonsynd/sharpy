@@ -104,6 +104,12 @@ public class UnusedVariableMatrixTests : IntegrationTestBase
     [Theory]
     [InlineData("plain", "read")]
     [InlineData("plain", "never_read")]
+    [InlineData("augmented", "read")]
+    [InlineData("augmented", "never_read")]
+    [InlineData("walrus", "read")]
+    [InlineData("walrus", "never_read")]
+    [InlineData("tuple", "read")]
+    [InlineData("tuple", "never_read")]
     public void ModuleProperty_WriteThroughStore_NoSPY0451OnStore(string store, string afterwards)
     {
         var source = BuildWriteThroughSource("module_prop", store, afterwards);
@@ -279,6 +285,41 @@ public class UnusedVariableMatrixTests : IntegrationTestBase
     // Part 3: Totality anchors
     // ====================================================================================
 
+    /// <summary>
+    /// The axis VALUES, spelled as literals. The theory rows are read back off the
+    /// <c>InlineData</c> attributes below and compared against the product of these lists, so the
+    /// axis sizes are tied to the rows that actually run: dropping a row, or adding an axis value
+    /// no row covers, fails here. Comparing a <c>const int</c> to its own literal cannot.
+    /// </summary>
+    private static readonly string[] NameKinds = { "module_var", "enclosing_func", "module_prop" };
+    private static readonly string[] StoreKinds = { "plain", "augmented", "walrus", "tuple" };
+    private static readonly string[] AfterwardsKinds = { "read", "never_read" };
+
+    /// <summary>
+    /// The use-position cells, one <c>[Fact]</c> each, named so the roster is checked against the
+    /// methods that exist rather than against a bare count.
+    /// </summary>
+    private static readonly string[] UsePositionCells =
+    {
+        nameof(UsePosition_PatternConstant_NoSPY0451),
+        nameof(UsePosition_FStringHole_NoSPY0451),
+        nameof(UsePosition_DecoratorArgument_NoSPY0451),
+        nameof(UsePosition_ParameterDefault_NoSPY0451),
+        nameof(UsePosition_MatchGuard_NoSPY0451),
+    };
+
+    /// <summary>
+    /// The theory method that owns each name-kind's rows. The name kind is not an InlineData
+    /// argument -- each host needs its own source builder and its own assertion -- so the mapping
+    /// is declared here and the rows are read from the attributes.
+    /// </summary>
+    private static readonly (string NameKind, string Method)[] RowSources =
+    {
+        ("module_var", nameof(ModuleVariable_WriteThroughStore_NoSPY0451OnStore)),
+        ("enclosing_func", nameof(EnclosingFunctionVariable_WriteThroughStore_NoSPY0451OnStore)),
+        ("module_prop", nameof(ModuleProperty_WriteThroughStore_NoSPY0451OnStore)),
+    };
+
     [Fact]
     public void TotalityAnchors_AxisSizes()
     {
@@ -292,6 +333,87 @@ public class UnusedVariableMatrixTests : IntegrationTestBase
         UsePositionCount.Should().Be(5,
             "use-position axis: pattern constant, f-string hole, "
             + "decorator argument, parameter default, match guard");
+
+        // ... and the literals are the sizes of the value lists the rows are checked against,
+        // so neither can drift alone.
+        NameKinds.Should().HaveCount(NameKindCount);
+        StoreKinds.Should().HaveCount(StoreKindCount);
+        AfterwardsKinds.Should().HaveCount(AfterwardsCount);
+        UsePositionCells.Should().HaveCount(UsePositionCount);
+    }
+
+    /// <summary>
+    /// Totality: the theory rows that actually run, read off the <c>InlineData</c> attributes,
+    /// are exactly the product of the three axes. No cell is silently missing and no row exists
+    /// outside the declared axes.
+    /// </summary>
+    [Fact]
+    public void TotalityAnchors_TheoryRowsAreTheAxisProduct()
+    {
+        var declaredRows = DeclaredRows();
+
+        declaredRows.Should().HaveCount(NameKindCount * StoreKindCount * AfterwardsCount,
+            "name ({0}) x store ({1}) x afterwards ({2}) is the matrix, and every cell is a row",
+            NameKindCount, StoreKindCount, AfterwardsCount);
+
+        var product =
+            from name in NameKinds
+            from store in StoreKinds
+            from afterwards in AfterwardsKinds
+            select (name, store, afterwards);
+
+        declaredRows.Should().BeEquivalentTo(product,
+            "every axis combination is covered by exactly one row, and no row names a value "
+            + "outside the axes");
+    }
+
+    /// <summary>
+    /// Positive control for the totality guard: the reflection actually sees rows. Without it a
+    /// rename of a theory method would empty the row set and the equality above would be compared
+    /// against nothing -- the same vacuity this guard replaced.
+    /// </summary>
+    [Fact]
+    public void TotalityAnchors_RowSourcesResolve_PositiveControl()
+    {
+        foreach (var (nameKind, method) in RowSources)
+        {
+            InlineDataRows(method).Should().NotBeEmpty(
+                "the theory method '{0}' backing the '{1}' rows must be found by reflection "
+                + "and carry InlineData", method, nameKind);
+        }
+
+        foreach (var cell in UsePositionCells)
+        {
+            typeof(UnusedVariableMatrixTests).GetMethod(cell).Should().NotBeNull(
+                "the use-position cell '{0}' must exist", cell);
+        }
+    }
+
+    private static HashSet<(string Name, string Store, string Afterwards)> DeclaredRows()
+    {
+        var rows = new HashSet<(string, string, string)>();
+
+        foreach (var (nameKind, method) in RowSources)
+        {
+            foreach (var row in InlineDataRows(method))
+            {
+                row.Should().HaveCount(2, "each row is (store, afterwards)");
+                rows.Add((nameKind, (string)row[0]!, (string)row[1]!));
+            }
+        }
+
+        return rows;
+    }
+
+    private static IReadOnlyList<object?[]> InlineDataRows(string methodName)
+    {
+        var method = typeof(UnusedVariableMatrixTests).GetMethod(methodName);
+        method.Should().NotBeNull("the theory method '{0}' must exist", methodName);
+
+        return method!.GetCustomAttributes(typeof(InlineDataAttribute), inherit: false)
+            .Cast<InlineDataAttribute>()
+            .SelectMany(attr => attr.GetData(method!))
+            .ToList();
     }
 
     // ====================================================================================
@@ -354,8 +476,22 @@ public class UnusedVariableMatrixTests : IntegrationTestBase
     private static string BuildModulePropSource(string store, string afterwards)
     {
         var readLine = afterwards == "read" ? "    print(read_level())\n" : "";
+        var storeStmt = store switch
+        {
+            "plain" => "    level = 6",
+            "augmented" => "    level += 5",
+            "walrus" => "    print((level := 6))",
+            "tuple" => "    level, _ = 6, 0",
+            _ => throw new ArgumentException($"Unknown store: {store}")
+        };
 
+        // The getter is what makes the augmented store a read as well as a write; the plain
+        // store needs only the setter, but every row shares one program shape so the only
+        // difference between cells is the store form.
         return "_backing: int = 0\n"
+             + "\n"
+             + "property get level() -> int:\n"
+             + "    return _backing\n"
              + "\n"
              + "property set level(v: int):\n"
              + "    _backing = v + 1\n"
@@ -364,7 +500,7 @@ public class UnusedVariableMatrixTests : IntegrationTestBase
              + "    return _backing\n"
              + "\n"
              + "def main() -> None:\n"
-             + "    level = 6\n"
+             + storeStmt + "\n"
              + readLine
              + "    print(\"done\")\n";
     }
