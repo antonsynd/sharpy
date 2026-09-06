@@ -869,11 +869,12 @@ def main() -> None:
     //   target  {Local, SelfField, ObjField, TupleElementAttribute, Walrus, Index}         — 6
     //   scope   {Same, NestedIf, NarrowingBlock, WhileBody, ForBody, TryBody, WithBody,
     //            ElseBody, NestedDef (closure store to the enclosing function's name),
-    //            ModuleLevel (a module-level name stored from inside a def)}               — 10
+    //            ModuleLevel (a module-level name stored from inside a def),
+    //            ClassBodyName (a class-body name stored BARE from inside a method)}       — 11
     //   family  {Optional `T?`, Nullable `T | None`, Plain `T`}                            — 3
     //   value   {PayloadConstant 5, Mistyped "s", NoneLiteral, NoneCall None(), SomeCall
     //            Some(5), NarrowedRead (a RemoveNone-narrowed `a` of the slot's own type)}  — 6
-    // 6 × 10 × 3 × 6 = 1080 = live + N/A + known-red.
+    // 6 × 11 × 3 × 6 = 1188 = live + N/A + known-red.
     //
     // Expected verdict — ONE function (MistypedStoreExpectationOf), so a cell cannot be hand-tuned:
     //   PayloadConstant  T?: SPY0604 (R-G — construct with Some), EXCEPT an identifier store (Local,
@@ -892,10 +893,17 @@ def main() -> None:
     //   NarrowedRead     T?, T | None: prints 1 — the wrapper passes through (R-T pass-through,
     //                        StoreVerdict.AcceptedNarrowedPassThrough); T: prints 1 (no wrapper to
     //                        narrow; a plain store — live, because "trivial" is not an N/A reason)
+    //   ClassBodyName    every family, every value: SPY0606. The scope rule (#1786, R-Y) refuses a
+    //                        bare store to a class-body name before the value is ever weighed, so
+    //                        the seam is NEVER reached in this scope — which is the property: no
+    //                        value shape may slip past the refusal into the seam's verdict.
     //
     // N/A cells (declared with reasons): the scope axis names the scope that declared the TARGET
     // NAME. A field or element slot is declared by its class or container, so it has no
-    // module-level cell: ModuleLevel × {SelfField, ObjField, TupleElementAttribute, Index} = 72.
+    // module-level cell: ModuleLevel × {SelfField, ObjField, TupleElementAttribute, Index} = 72,
+    // and no bare-class-body-name cell either — `self.v` and `b.v` name their receiver, so the
+    // spelling the rule is about does not exist for them:
+    // ClassBodyName × {SelfField, ObjField, TupleElementAttribute, Index} = 72.
     //
     // Binder forms are NOT cells: `for d in …`, `except … as d`, `match … case d` declare a fresh
     // block-scoped name (variable_scoping.md §Block Scoping) — the outer value prints after the
@@ -928,6 +936,7 @@ def main() -> None:
         ElseBody,
         NestedDef,
         ModuleLevel,
+        ClassBodyName,
     }
 
     private enum SlotFamily { Optional, Nullable, Plain }
@@ -959,7 +968,7 @@ def main() -> None:
         public string Id => $"{Target}/{Scope}/{Family}/{Value}";
     }
 
-    private const int MistypedStoreNaCount = 72;
+    private const int MistypedStoreNaCount = 144;
     private const int MistypedStoreKnownRedCount = 0; // #1784: DRAINED (Phase 2), #1785: DRAINED, #1707: DRAINED (Phase 3)
 
     private static string SlotTypeOf(SlotFamily family) => family switch
@@ -991,6 +1000,11 @@ def main() -> None:
         // augmented, ??=): member and index stores write the declared slot under a narrowing.
         var identifierStore = target is StoreTargetKind.Local or StoreTargetKind.Walrus;
         var payloadRuleApplies = scope == MistypedStoreScope.NarrowingBlock && identifierStore;
+
+        // A bare store to a class-body name is refused by NAME before its value is weighed
+        // (#1786, R-Y), so the seam is never reached and the value axis cannot change the verdict.
+        if (scope == MistypedStoreScope.ClassBodyName)
+            return MistypedStoreExpectation.Refused(DiagnosticCodes.SemanticOverflow.ClassAttributeBareStore);
 
         return (value, family) switch
         {
@@ -1032,6 +1046,15 @@ def main() -> None:
                 + "def' has no cell for this target — the receiver's own scope does not enter the seam";
         }
 
+        if (scope == MistypedStoreScope.ClassBodyName
+            && target is StoreTargetKind.SelfField or StoreTargetKind.ObjField
+                or StoreTargetKind.TupleElementAttribute or StoreTargetKind.Index)
+        {
+            return "the class-body-name scope is about the BARE spelling of a class member inside a "
+                + "method; a self.field, obj.field, tuple-element attribute or index target names "
+                + "its receiver, so the spelling the rule refuses does not exist for this target";
+        }
+
         return null;
     }
 
@@ -1065,6 +1088,7 @@ def main() -> None:
         {
             case MistypedStoreScope.Same:
             case MistypedStoreScope.ModuleLevel:
+            case MistypedStoreScope.ClassBodyName:
                 Body(indent);
                 break;
             case MistypedStoreScope.NestedIf:
@@ -1138,7 +1162,20 @@ def main() -> None:
             case StoreTargetKind.Walrus:
                 {
                     var storeLine = target == StoreTargetKind.Local ? $"x = {v}" : $"print((x := {v}))";
-                    if (scope == MistypedStoreScope.ModuleLevel)
+                    if (scope == MistypedStoreScope.ClassBodyName)
+                    {
+                        // The name is declared in the CLASS BODY and stored BARE inside a method.
+                        lines.Add("class Holder:");
+                        lines.Add($"    x: {slot} = {seed}");
+                        lines.Add("");
+                        lines.Add("    def store(self) -> None:");
+                        DeclareNarrowedRead("        ");
+                        lines.Add($"        {storeLine}");
+                        lines.Add("");
+                        lines.Add("def main() -> None:");
+                        lines.Add("    Holder().store()");
+                    }
+                    else if (scope == MistypedStoreScope.ModuleLevel)
                     {
                         lines.Add($"x: {slot} = {seed}");
                         if (needsNarrowedRead)
@@ -1316,18 +1353,20 @@ def main() -> None:
         // Literals ON PURPOSE (see DeclaredTypeStore_MatrixIsTotalOverItsAxes): deriving the count
         // from the enums would let a deleted axis member shrink both sides and stay green.
         targets.Should().Be(6, "targets = local, self.field, obj.field, tuple-element attribute, walrus, index");
-        scopes.Should().Be(10,
-            "scopes = same, nested if, narrowing block, while, for, try, with, else, nested def, module level");
+        scopes.Should().Be(11,
+            "scopes = same, nested if, narrowing block, while, for, try, with, else, nested def, "
+            + "module level, class-body name");
         families.Should().Be(3, "families = T?, T | None, T");
         values.Should().Be(6, "values = payload constant, mistyped, None, None(), Some(v), narrowed read");
-        (targets * scopes * families * values).Should().Be(1080, "the axes and the cell count agree");
+        (targets * scopes * families * values).Should().Be(1188, "the axes and the cell count agree");
 
         var live = cells.Count(c => c.Kind == MistypedStoreCellKind.Live);
         var na = cells.Count(c => c.Kind == MistypedStoreCellKind.NotApplicable);
         var red = cells.Count(c => c.Kind == MistypedStoreCellKind.KnownRed);
-        na.Should().Be(MistypedStoreNaCount, "N/A = ModuleLevel × the four field/element targets × 3 × 6");
+        na.Should().Be(MistypedStoreNaCount,
+            "N/A = (ModuleLevel + ClassBodyName) × the four field/element targets × 3 × 6");
         red.Should().Be(MistypedStoreKnownRedCount, "all KnownRed rows drained: #1784 (Phase 2), #1785 + #1707 (Phase 3)");
-        (live + na + red).Should().Be(1080,
+        (live + na + red).Should().Be(1188,
             "live + N/A + known-red covers the declared axes; a dropped arm must fail here");
 
         foreach (var target in Enum.GetValues<StoreTargetKind>())
@@ -1634,6 +1673,136 @@ def main() -> None:
         result.Success.Should().BeFalse($"[{shape}] the narrowing ends\n{source}");
         result.RawDiagnostics.Should().Contain(d => d.Code == DiagnosticCodes.Semantic.TypeMismatch,
             $"[{shape}] the read after the store is the declared int?\n" + string.Join("\n", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
+    }
+
+    // ── Tuple-element stores under a narrowing: each element carries its OWN value ──
+
+    /// <summary>
+    /// A tuple target paired with a tuple-literal value kills narrowings ELEMENT BY ELEMENT.
+    /// </summary>
+    /// <remarks>
+    /// The kill used to ask <c>ValueIsDefinitelyNotNone</c> of the whole right-hand side. A tuple
+    /// literal is a literal, so the answer was "not None" and it was applied to EVERY element key:
+    /// <c>d, n = None(), 2</c> under <c>if d is not None:</c> kept the RemoveNone fact on <c>d</c>
+    /// and the next read emitted <c>d.Unwrap()</c> on an empty Optional — a program that compiles
+    /// and crashes (exit 134), where the plain twin <c>d = None()</c> prints None. Executing on
+    /// purpose: the defect is invisible at the diagnostic level.
+    /// </remarks>
+    public static IEnumerable<object[]> TupleElementNarrowingKills() => new[]
+    {
+        new object[]
+        {
+            "None() into the narrowed element",
+            "        d, n = None(), 2\n        print(d, n)",
+            "None 2",
+        },
+        new object[]
+        {
+            "None() in the SECOND position",
+            "        n, d = 2, None()\n        print(n, d)",
+            "2 None",
+        },
+        new object[]
+        {
+            "None() in the middle of three",
+            "        m: int = 0\n        m, d, n = 1, None(), 2\n        print(m, d, n)",
+            "1 None 2",
+        },
+        new object[]
+        {
+            "a call in the narrowed element",
+            "        d, n = g(), 2\n        print(d, n)",
+            "None 2",
+        },
+    };
+
+    [Theory]
+    [MemberData(nameof(TupleElementNarrowingKills))]
+    public void TupleElementStore_KillsTheNarrowingOfItsOwnElement(string shape, string body, string expected)
+    {
+        var source = @"
+def g() -> int?:
+    return None()
+
+def main() -> None:
+    d: int? = Some(10)
+    n: int = 0
+    if d is not None:
+" + body + @"
+";
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeTrue($"[{shape}]\n{source}\n" + string.Join("\n", result.CompilationErrors));
+        result.StandardError.Should().NotContain("Unwrap on empty Optional",
+            $"[{shape}] the narrowing died with the element that received the None\n{source}");
+        LastOutputLine(result).Should().Be(expected, $"[{shape}]\n{source}");
+    }
+
+    /// <summary>
+    /// The positive control for the pairing: an element whose OWN value is definitely not None
+    /// keeps its narrowing, so the payload read after the store still compiles. Without this cell,
+    /// killing every element unconditionally would pass the theory above.
+    /// </summary>
+    [Fact]
+    public void TupleElementStore_OfANonNoneValue_KeepsTheNarrowing()
+    {
+        var result = CompileAndExecute(@"
+def main() -> None:
+    d: int? = Some(10)
+    n: int = 0
+    if d is not None:
+        d, n = 5, 2
+        print(d + 1, n)
+");
+        result.Success.Should().BeTrue(
+            "5 is definitely not None, so d stays narrowed and `d + 1` is a payload read\n"
+            + string.Join("\n", result.CompilationErrors));
+        LastOutputLine(result).Should().Be("6 2");
+    }
+
+    /// <summary>
+    /// A tuple RHS that is not a matching-arity tuple literal cannot be paired, so every element
+    /// key is killed WITHOUT keeping — the conservative direction. The payload read after it is
+    /// then SPY0220, not a runtime crash.
+    /// </summary>
+    [Fact]
+    public void TupleElementStore_FromANonLiteralRhs_KillsEveryNarrowing()
+    {
+        var result = CompileAndExecute(@"
+def pair() -> tuple[int?, int]:
+    return (None(), 2)
+
+def main() -> None:
+    d: int? = Some(10)
+    n: int = 0
+    if d is not None:
+        d, n = pair()
+        e: int = d
+        print(e, n)
+");
+        result.Success.Should().BeFalse("the narrowing did not survive an unpairable RHS");
+        result.RawDiagnostics.Should().Contain(x => x.Code == DiagnosticCodes.Semantic.TypeMismatch,
+            "the read after the store is the declared int?\n"
+            + string.Join("\n", result.RawDiagnostics.Select(x => $"{x.Code}: {x.Message}")));
+    }
+
+    /// <summary>The attribute-target twin: the same pairing applies to a member key.</summary>
+    [Fact]
+    public void TupleElementStore_AttributeTarget_KillsTheNarrowingOfItsOwnElement()
+    {
+        var result = CompileAndExecute(@"
+class NBox:
+    v: int? = Some(10)
+
+def main() -> None:
+    b: NBox = NBox()
+    n: int = 0
+    if b.v is not None:
+        b.v, n = None(), 2
+        print(b.v, n)
+");
+        result.Success.Should().BeTrue(string.Join("\n", result.CompilationErrors));
+        result.StandardError.Should().NotContain("Unwrap on empty Optional");
+        LastOutputLine(result).Should().Be("None 2");
     }
 
     // ── Nested-block value shapes: run or refuse exactly as the same-scope twin does ──
