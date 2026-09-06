@@ -112,12 +112,15 @@ internal class UnusedVariableValidator : ValidatingAstWalker
     }
 
     /// <summary>
-    /// True when <paramref name="name"/> resolves to a module-level property
-    /// (<c>VariableSymbol { IsModuleProperty = true }</c>). A bare <c>name = value</c> onto such a
-    /// name is a store through the property setter, not a local declaration (#1459).
+    /// True when the type-checker classified <paramref name="node"/> as a rebinding of an
+    /// existing variable (<c>TargetBinding.Rebinds</c>). A rebinding store updates a name owned
+    /// by an enclosing scope (module variable, enclosing-function variable, or module property);
+    /// it is not a local declaration and must never fire SPY0451 (#1787). Returns false when no
+    /// <c>TargetBinding</c> was recorded (e.g. the type-checker did not run), which falls back to
+    /// the syntactic default of treating the assignment as a definition.
     /// </summary>
-    private bool IsModulePropertyStore(string name)
-        => Context.SymbolTable.LookupVariable(name) is { IsModuleProperty: true };
+    private bool IsRebindingStore(Node node)
+        => Context.SemanticInfo?.GetTargetBinding(node)?.Kind == TargetBindingKind.Rebinds;
 
     private void CollectFromStatement(Statement stmt, Dictionary<string, VariableInfo> defined,
         HashSet<string> read, HashSet<string> parameters, ReadCollector readCollector)
@@ -142,14 +145,13 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                 {
                     if (assign.Operator == AssignmentOperator.Assign)
                     {
-                        // Simple assignment defines a variable — UNLESS the bare name resolves to a
-                        // module-level property, in which case it is a store through the property
-                        // setter, not a local declaration. The setter runs (the program observes its
-                        // effect), so the assignment is not "unused" (#1459). Key on RESOLUTION, not a
-                        // name match, so a genuine local in a scope with no such property is still
-                        // analyzed. A class-level property store is `self.x = ...` (a member access,
-                        // not a bare name) and never reaches this path.
-                        if (!parameters.Contains(targetId.Name) && !IsModulePropertyStore(targetId.Name))
+                        // Simple assignment defines a variable — UNLESS the type-checker classified
+                        // it as a rebinding (TargetBinding.Rebinds), meaning it stores into a name
+                        // owned by an enclosing scope (module variable, enclosing-function variable,
+                        // or module property). The store runs — the program observes its effect — so
+                        // the assignment is not "unused" (#1787). This subsumes the earlier
+                        // IsModulePropertyStore check (#1459): a property store IS a rebinding.
+                        if (!parameters.Contains(targetId.Name) && !IsRebindingStore(targetId))
                         {
                             defined[targetId.Name] = new VariableInfo(
                                 assign.LineStart, assign.ColumnStart, assign.Span, false);
@@ -163,10 +165,13 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                 }
                 else if (assign.Target is TupleLiteral tuple)
                 {
-                    // Tuple unpacking - each element is a definition
+                    // Tuple unpacking — each element is a definition, unless it rebinds an
+                    // enclosing scope's name (TargetBinding.Rebinds, #1787).
                     foreach (var elem in tuple.Elements)
                     {
-                        if (elem is Identifier tupleId && !parameters.Contains(tupleId.Name))
+                        if (elem is Identifier tupleId
+                            && !parameters.Contains(tupleId.Name)
+                            && !IsRebindingStore(tupleId))
                         {
                             defined[tupleId.Name] = new VariableInfo(
                                 assign.LineStart, assign.ColumnStart, elem.Span, false);
@@ -277,7 +282,7 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                 readCollector.Visit(matchStmt.Scrutinee);
                 foreach (var matchCase in matchStmt.Cases)
                 {
-                    CollectDefinitionsFromPattern(matchCase.Pattern, defined, parameters);
+                    CollectDefinitionsFromPattern(matchCase.Pattern, defined, parameters, read);
                     if (matchCase.Guard != null)
                         readCollector.Visit(matchCase.Guard);
                     foreach (var s in matchCase.Body)
@@ -328,14 +333,20 @@ internal class UnusedVariableValidator : ValidatingAstWalker
     }
 
     private void CollectDefinitionsFromPattern(Pattern pattern,
-        Dictionary<string, VariableInfo> defined, HashSet<string> parameters)
+        Dictionary<string, VariableInfo> defined, HashSet<string> parameters,
+        HashSet<string> read)
     {
         switch (pattern)
         {
             case BindingPattern binding:
-                // Skip constant patterns (RFC 3535) and union-resolved patterns (#1562)
+                // Constant patterns (RFC 3535) and union-resolved patterns (#1562) are READS
+                // of the referenced constant/case, not captures — add the name to `read` so
+                // the enclosing declaration is not warned as unused (#1787 sibling).
                 if (Context.SemanticInfo?.GetPatternConstantSymbol(binding) != null)
+                {
+                    read.Add(binding.Name.Name);
                     break;
+                }
                 if (Context.SemanticInfo?.GetPatternUnionCase(binding) != null)
                     break;
                 if (!parameters.Contains(binding.Name.Name))
@@ -347,37 +358,37 @@ internal class UnusedVariableValidator : ValidatingAstWalker
 
             case OrPattern orPattern:
                 foreach (var alt in orPattern.Alternatives)
-                    CollectDefinitionsFromPattern(alt, defined, parameters);
+                    CollectDefinitionsFromPattern(alt, defined, parameters, read);
                 break;
 
             case TuplePattern tuplePattern:
                 foreach (var elem in tuplePattern.Elements)
-                    CollectDefinitionsFromPattern(elem, defined, parameters);
+                    CollectDefinitionsFromPattern(elem, defined, parameters, read);
                 break;
 
             case PropertyPattern propertyPattern:
                 foreach (var field in propertyPattern.Fields)
-                    CollectDefinitionsFromPattern(field.Pattern, defined, parameters);
+                    CollectDefinitionsFromPattern(field.Pattern, defined, parameters, read);
                 break;
 
             case PositionalPattern positionalPattern:
                 foreach (var elem in positionalPattern.Elements)
-                    CollectDefinitionsFromPattern(elem, defined, parameters);
+                    CollectDefinitionsFromPattern(elem, defined, parameters, read);
                 break;
 
             case ListPattern listPattern:
                 foreach (var elem in listPattern.Elements)
-                    CollectDefinitionsFromPattern(elem, defined, parameters);
+                    CollectDefinitionsFromPattern(elem, defined, parameters, read);
                 break;
 
             case StarPattern starPattern:
                 if (starPattern.Capture != null)
-                    CollectDefinitionsFromPattern(starPattern.Capture, defined, parameters);
+                    CollectDefinitionsFromPattern(starPattern.Capture, defined, parameters, read);
                 break;
 
             case AndPattern andPattern:
-                CollectDefinitionsFromPattern(andPattern.Left, defined, parameters);
-                CollectDefinitionsFromPattern(andPattern.Right, defined, parameters);
+                CollectDefinitionsFromPattern(andPattern.Left, defined, parameters, read);
+                CollectDefinitionsFromPattern(andPattern.Right, defined, parameters, read);
                 break;
 
             case AsPattern asPattern:
@@ -386,11 +397,11 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                     defined[asPattern.Name.Name] = new VariableInfo(
                         asPattern.Name.LineStart, asPattern.Name.ColumnStart, asPattern.Name.Span, false);
                 }
-                CollectDefinitionsFromPattern(asPattern.Inner, defined, parameters);
+                CollectDefinitionsFromPattern(asPattern.Inner, defined, parameters, read);
                 break;
 
             case GuardPattern guardPattern:
-                CollectDefinitionsFromPattern(guardPattern.Inner, defined, parameters);
+                CollectDefinitionsFromPattern(guardPattern.Inner, defined, parameters, read);
                 break;
             default:
                 // walker-default-contract: any kind not listed above is deliberately ignored by
@@ -431,9 +442,18 @@ internal class UnusedVariableValidator : ValidatingAstWalker
                 collector.Visit(param.DefaultValue);
         }
 
-        // Decorator names may reference enclosing scope variables
+        // Decorator names and arguments may reference enclosing scope variables (#1787).
+        // The name itself (e.g. `@my_decorator`) is a read of that name; the arguments
+        // (e.g. `@lru_cache(maxsize=cache_size)`) are expressions evaluated in the
+        // enclosing scope and must be visited for reads.
         foreach (var decorator in func.Decorators)
+        {
             outerRead.Add(decorator.Name);
+            foreach (var arg in decorator.Arguments)
+                collector.Visit(arg);
+            foreach (var kwarg in decorator.KeywordArguments)
+                collector.Visit(kwarg.Value);
+        }
 
         // Walk the entire nested function body for identifier reads
         foreach (var stmt in func.Body)
@@ -468,8 +488,12 @@ internal class UnusedVariableValidator : ValidatingAstWalker
 
         public override void VisitWalrusExpression(WalrusExpression node)
         {
-            // Walrus (name := value) defines the target variable
-            if (_validator != null && !_validator._currentParameters.Contains(node.Target))
+            // Walrus (name := value) defines the target variable — unless the type-checker
+            // classified it as a rebinding (TargetBinding.Rebinds), meaning the walrus
+            // stores into a name owned by an enclosing scope (#1787).
+            if (_validator != null
+                && !_validator._currentParameters.Contains(node.Target)
+                && !_validator.IsRebindingStore(node))
             {
                 _validator._currentDefined[node.Target] = new VariableInfo(
                     node.LineStart, node.ColumnStart, node.Span, false);
