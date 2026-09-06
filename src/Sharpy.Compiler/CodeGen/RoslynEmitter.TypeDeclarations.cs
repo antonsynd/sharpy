@@ -1805,6 +1805,19 @@ internal partial class RoslynEmitter
                 SyntaxKind.SimpleMemberAccessExpression,
                 IdentifierName(NameCasing.ResolveType(objId.Name, objId.IsNameBacktickEscaped)),
                 IdentifierName(NameCasing.ResolveField(memberAccess.Member, false))),
+            // A const reference by bare name. Whether the const is admissible HERE was decided by
+            // ConstantPositionValidator (AdmissionTable.DecoratorArgument), so the emitter only has
+            // to spell the name — and it spells it through the ordinary identifier route, which
+            // reads the C# name off the symbol's CodeGenInfo, so an attribute argument cannot name
+            // a const differently from every other read of it.
+            Parser.Ast.Identifier => GenerateExpression(expr),
+            // Constant-valued compositions of admitted arguments: `("a")`, `"Use " + "bar()"`,
+            // `-COUNT`, `"a" if DEBUG else "b"`. C# accepts a constant expression wherever it
+            // accepts a literal, so these need no attribute-specific shape — the ordinary
+            // expression emission already prints them, and the negative-literal arm above stays
+            // ahead of the general UnaryOp arm because it prints the same C# more directly.
+            Parenthesized or BinaryOp or UnaryOp or Parser.Ast.ConditionalExpression
+                => GenerateExpression(expr),
             _ => throw new InvalidOperationException(
                 $"Unsupported decorator argument expression: {expr.GetType().Name}. " +
                 "DecoratorValidator should have rejected this."),

@@ -1,6 +1,6 @@
 # A declared tuple type wider than seven elements. ValueTuple takes at most eight type parameters,
 # the eighth being the REST — itself a ValueTuple — so the elements past the seventh nest. Emitted
-# flat this is CS0305 "requires 7 type arguments" behind SPY0908 (measured at 646b9cf08).
+# flat this is CS0305 "requires 7 type arguments" behind SPY0908 (measured at 646b9cf08). #1800.
 def main() -> None:
     t: tuple[int, int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8, 9)
     print(t)
