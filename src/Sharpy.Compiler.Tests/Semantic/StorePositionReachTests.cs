@@ -889,20 +889,245 @@ public class StorePositionReachTests : IntegrationTestBase
             + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
     }
 
-    // ── Membership needle push (#1777) ──────────────────────────────────────────────────────
+    // ── Result constructors at every store position (#1784 residue, Decision 3) ─────────────
 
     /// <summary>
-    /// The needle of <c>in</c>/<c>not in</c> is an argument into the container's element slot.
-    /// The container is checked first so its element type can be pushed as the expectation for the
-    /// needle, allowing <c>Some(v)</c>/<c>None()</c> in the needle to infer from the container.
-    /// Mistyped needles are refused with <c>SPY0220</c>.
+    /// <c>Ok(v)</c>/<c>Err(e)</c> under a slot of another family are refused BY THE SEAM, with the
+    /// Result steer, at the CALL that built the value — not at the target, which is not the mistake.
+    /// The value displays as <c>Result[int32, _]</c>: the open side is marked, never printed as the
+    /// <c>&lt;?&gt;</c> placeholder, which is not a type anyone can write.
+    ///
+    /// <para><b>Axes.</b> the 8 store positions a Result value can reach x 2 constructors. The
+    /// Optional slot is the one that does NOT take the seam's plain refusal: an Optional slot has
+    /// its own construction rule (SPY0604, "construct it with Some(...)"), and Decision 3 leaves it
+    /// alone.</para>
+    ///
+    /// <para><b>Mutation.</b> Delete the <c>DescribeResultStoreSteer</c> arm -> every cell here goes
+    /// RED twice over, on the steer and on the report column.</para>
     /// </summary>
     [Theory]
-    [InlineData("some-in-optional-list", "xs: list[int?] = [Some(1)]\n    print(Some(1) in xs)", "True\n")]
-    [InlineData("none-in-optional-list", "xs: list[int?] = [None()]\n    print(None() in xs)", "True\n")]
-    [InlineData("some-notin-optional-list", "xs: list[int?] = [Some(2)]\n    print(Some(1) not in xs)", "True\n")]
-    [InlineData("none-notin-optional-list", "xs: list[int?] = [Some(1)]\n    print(None() not in xs)", "True\n")]
-    public void MembershipNeedle_IsAnArgumentIntoTheElementSlot(string cell, string body, string expected)
+    [InlineData("declaration", "def main() -> None:\n    r: int = Ok(1)\n    print(r)\n", "SPY0220", 2, 14)]
+    [InlineData("declaration-err", "def main() -> None:\n    r: str = Err(\"e\")\n    print(r)\n", "SPY0220", 2, 14)]
+    [InlineData("argument", "def take(x: int) -> None:\n    print(x)\n\ndef main() -> None:\n    take(Ok(1))\n", "SPY0220", 5, 10)]
+    [InlineData("return", "def make() -> int:\n    return Ok(1)\n\ndef main() -> None:\n    print(make())\n", "SPY0260", 2, 12)]
+    [InlineData("list-element", "def main() -> None:\n    xs: list[int] = [Ok(1)]\n    print(xs)\n", "SPY0220", 2, 22)]
+    [InlineData("coalesce-assign", "def main() -> None:\n    x: int | None = None\n    x ??= Ok(1)\n    print(x)\n", "SPY0220", 3, 11)]
+    [InlineData("tuple-element", "def main() -> None:\n    a: int = 0\n    a, n = Ok(1), 2\n    print(a, n)\n", "SPY0220", 3, 12)]
+    public void ResultConstructor_UnderAnotherFamilysSlot_RefusesAtTheCallWithTheSteer(
+        string cell, string source, string code, int line, int column)
+    {
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse($"cell '{cell}' must be refused");
+
+        var refusal = result.RawDiagnostics.SingleOrDefault(d => d.Code == code);
+        refusal.Should().NotBeNull($"cell '{cell}' reports {code}. Diagnostics: "
+            + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
+
+        refusal!.Message.Should().Contain("Result[",
+            $"cell '{cell}' names the value's family; the open side is '_', never a placeholder");
+        refusal.Message.Should().NotContain("<?>",
+            $"cell '{cell}' must not leak the unknown-type placeholder into a message");
+        refusal.Message.Should().Contain("declare the slot as 'T !E' or match on the Result",
+            $"cell '{cell}' carries the Result steer");
+
+        refusal.Line.Should().Be(line, $"cell '{cell}' reports at the constructor call, not the target");
+        refusal.Column.Should().Be(column, $"cell '{cell}' reports at the constructor call's column");
+    }
+
+    /// <summary>
+    /// The eighth position: an Optional slot keeps its own construction refusal (SPY0604). Without
+    /// this cell the theory above would read as "every slot gets the Result steer", which is not the
+    /// rule.
+    /// </summary>
+    [Fact]
+    public void ResultConstructor_UnderAnOptionalSlot_KeepsTheOptionalConstructionRefusal()
+    {
+        var result = CompileAndExecute("def main() -> None:\n    x: int? = Ok(1)\n    print(x)\n");
+        result.Success.Should().BeFalse();
+        result.RawDiagnostics.Should().Contain(
+            d => d.Code == DiagnosticCodes.SemanticOverflow.StrictOptionalConstruction
+                && d.Message.Contains("construct it with Some(...)", StringComparison.Ordinal),
+            "an Optional slot answers with its own rule, not the Result steer");
+    }
+
+    /// <summary>
+    /// The Ok/Err PAYLOAD is a store into the Result's own slot, decided by the same seam that
+    /// decides Some's payload — so the value shapes a declaration admits are admitted here too.
+    /// Every cell RUNS and prints, because the defect these replace was a refusal
+    /// (<c>x: int8!str = Ok(1)</c> reported int32-vs-int8 while the Some twin ran).
+    /// </summary>
+    [Theory]
+    [InlineData("ok-int8", "x: int8 !str = Ok(1)\n    print(x)", "Ok(1)\n")]
+    [InlineData("ok-uint64", "x: uint64 !str = Ok(1)\n    print(x)", "Ok(1)\n")]
+    [InlineData("ok-float32", "x: float32 !str = Ok(1.5)\n    print(x)", "Ok(1.5)\n")]
+    [InlineData("err-int8", "x: str !int8 = Err(1)\n    print(x)", "Err(1)\n")]
+    [InlineData("some-int8-twin", "x: int8? = Some(1)\n    print(x)", "1\n")]
+    [InlineData("some-float32-twin", "x: float32? = Some(1.5)\n    print(x)", "1.5\n")]
+    public void ResultPayload_IsAStoreIntoTheOkOrErrorSlot(string cell, string body, string expected)
+        => AssertPrints(cell, body, expected);
+
+    /// <summary>
+    /// A payload the slot genuinely cannot hold is still refused, in this site's own words — the
+    /// positive control for the theory above, which would otherwise pass with the payload check
+    /// removed entirely.
+    /// </summary>
+    [Theory]
+    [InlineData("ok-out-of-range", "x: int8 !str = Ok(300)\n    print(x)", "Result Ok type 'int8'")]
+    [InlineData("ok-wrong-family", "x: int !str = Ok(\"a\")\n    print(x)", "Result Ok type 'int32'")]
+    [InlineData("err-wrong-family", "x: int !str = Err(1)\n    print(x)", "Result Error type 'str'")]
+    public void ResultPayload_MistypedIsStillRefused(string cell, string body, string message)
+        => AssertRefused(cell, body, DiagnosticCodes.Semantic.TypeMismatch, message);
+
+    // ── Membership needle push (#1777, R-U) ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// The needle of <c>in</c>/<c>not in</c> IS an argument into the container's element slot
+    /// (R-U). The container is checked first so its element type can be pushed as the needle's
+    /// expectation, which is what lets <c>Some(v)</c>/<c>None()</c>/<c>Ok(v)</c>/<c>Err(e)</c> infer
+    /// there at all; a needle of another family is refused by the same seam, with its steer.
+    ///
+    /// <para><b>Axes.</b> needle (6) x container (5) x operator (2) = 60 cells. Every cell either
+    /// PRINTS the membership answer — the python3 twin's answer, so a needle that silently stopped
+    /// being pushed would print the wrong bool rather than merely compile — or names its refusal
+    /// code.</para>
+    ///
+    /// <para><b>Mutation.</b> Drop the needle's <c>EnterStore</c> push in the <c>In</c>/<c>NotIn</c>
+    /// arm -> the constructor needles lose their slot and the running cells go RED with SPY0227
+    /// ("cannot infer type for Some()"). The <c>list[T]</c> x narrowed-read cell is the positive
+    /// control: it needs no push and stays green.</para>
+    /// </summary>
+    public static IEnumerable<object[]> MembershipNeedleCells()
+    {
+        foreach (var (container, _) in MembershipContainers)
+            foreach (var (needle, _, _) in MembershipNeedles)
+                foreach (var op in MembershipOperators)
+                    yield return new object[] { container, needle, op };
+    }
+
+    /// <summary>The five element-slot families a needle can be pushed into.</summary>
+    private static readonly (string Name, string Declaration)[] MembershipContainers =
+    {
+        ("list[T?]", "xs: list[int?] = [Some(1)]"),
+        ("set[T?]", "xs: set[int?] = {Some(1)}"),
+        ("dict[T?, V]", "xs: dict[int?, str] = {Some(1): \"a\"}"),
+        ("list[T]", "xs: list[int] = [1]"),
+        ("list[T!E]", "xs: list[int !str] = [Ok(1)]"),
+    };
+
+    /// <summary>
+    /// The six needle shapes. <c>narrowed</c> is written inside <c>if o is not None:</c>, so its
+    /// read has the payload type; <c>unnarrowed</c> is the same variable outside the guard.
+    /// </summary>
+    private static readonly (string Name, string Extra, string Expression)[] MembershipNeedles =
+    {
+        ("Some(v)", "", "Some(1)"),
+        ("None()", "", "None()"),
+        ("Ok(v)", "", "Ok(1)"),
+        ("Err(e)", "", "Err(\"e\")"),
+        ("narrowed T?", "o: int? = Some(1)", "@narrowed"),
+        ("unnarrowed T?", "o: int? = Some(1)", "o"),
+    };
+
+    private static readonly string[] MembershipOperators = { "in", "not in" };
+
+    /// <summary>
+    /// Per (container, needle): the answer <c>in</c> gives when the store is admitted, or the code
+    /// the seam refuses with. <c>not in</c> is the negation, asserted from the same entry, so a cell
+    /// cannot be green under both spellings of a wrong answer.
+    /// </summary>
+    private static (bool? InAnswer, string? RefusalCode) MembershipVerdict(string container, string needle)
+    {
+        var elementIsOptional = container is "list[T?]" or "set[T?]" or "dict[T?, V]";
+
+        // `None()` constructs the Optional union case and nothing else — the Row-1 contract, which
+        // the needle position inherits exactly as a declaration has it (plan-757fbb).
+        if (needle == "None()")
+            return elementIsOptional ? (false, null) : (null, DiagnosticCodes.Semantic.InvalidNoneConstructor);
+
+        if (elementIsOptional)
+        {
+            return needle switch
+            {
+                "Some(v)" or "narrowed T?" or "unnarrowed T?" => (true, null),
+                _ => (null, DiagnosticCodes.Semantic.InvalidBinaryOperation),
+            };
+        }
+
+        if (container == "list[T!E]")
+        {
+            return needle switch
+            {
+                "Ok(v)" => (true, null),
+                "Err(e)" => (false, null),
+                _ => (null, DiagnosticCodes.Semantic.InvalidBinaryOperation),
+            };
+        }
+
+        // list[T]: only a needle whose type IS the element type goes in.
+        return needle == "narrowed T?"
+            ? (true, null)
+            : (null, DiagnosticCodes.Semantic.InvalidBinaryOperation);
+    }
+
+    [Theory]
+    [MemberData(nameof(MembershipNeedleCells))]
+    public void MembershipNeedle_IsAnArgumentIntoTheElementSlot(string container, string needle, string op)
+    {
+        var declaration = MembershipContainers.Single(c => c.Name == container).Declaration;
+        var (_, extra, expression) = MembershipNeedles.Single(n => n.Name == needle);
+        var (inAnswer, refusalCode) = MembershipVerdict(container, needle);
+        var cell = $"{needle} {op} {container}";
+
+        var body = "def main() -> None:\n    " + declaration + "\n"
+            + (extra.Length > 0 ? "    " + extra + "\n" : "");
+        body += expression == "@narrowed"
+            ? $"    if o is not None:\n        print(o {op} xs)\n"
+            : $"    print({expression} {op} xs)\n";
+
+        var result = CompileAndExecute(body);
+
+        if (refusalCode != null)
+        {
+            result.Success.Should().BeFalse($"cell '{cell}' is a cross-family needle and must be refused");
+            result.RawDiagnostics.Should().Contain(d => d.Code == refusalCode,
+                $"cell '{cell}' refuses with {refusalCode}. Diagnostics: "
+                + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
+            return;
+        }
+
+        var expected = (op == "in" ? inAnswer!.Value : !inAnswer!.Value) ? "True\n" : "False\n";
+        result.Success.Should().BeTrue($"cell '{cell}' must compile and run. Diagnostics: "
+            + string.Join(" | ", result.CompilationErrors));
+        result.StandardOutput.Should().Be(expected,
+            $"cell '{cell}' prints the membership answer python3 gives for the same values");
+    }
+
+    /// <summary>
+    /// Totality, anchored to literals rather than to the arrays that generate the cells.
+    /// </summary>
+    [Fact]
+    public void MembershipNeedle_TotalityAnchors()
+    {
+        MembershipNeedles.Length.Should().Be(6, "needle shapes");
+        MembershipContainers.Length.Should().Be(5, "container element-slot families");
+        MembershipOperators.Length.Should().Be(2, "in, not in");
+        MembershipNeedleCells().Count().Should().Be(60, "6 x 5 x 2");
+
+        var running = MembershipContainers
+            .SelectMany(c => MembershipNeedles.Select(n => MembershipVerdict(c.Name, n.Name)))
+            .Count(v => v.RefusalCode == null) * MembershipOperators.Length;
+        running.Should().Be(30, "half the cells admit their needle and print an answer");
+    }
+
+    /// <summary>
+    /// The positive controls the plan names: the SAME constructor needles at an ordinary argument
+    /// position. If these stopped working the needle cells above would be measuring the argument
+    /// seam's absence rather than the needle push.
+    /// </summary>
+    [Theory]
+    [InlineData("append-some", "xs: list[int?] = []\n    xs.append(Some(1))\n    print(len(xs))", "1\n")]
+    [InlineData("count-none", "xs: list[int?] = [Some(1)]\n    print(xs.count(None()))", "0\n")]
+    public void MembershipNeedle_ArgumentPositionControls(string cell, string body, string expected)
         => AssertPrints(cell, body, expected);
 
     [Theory]

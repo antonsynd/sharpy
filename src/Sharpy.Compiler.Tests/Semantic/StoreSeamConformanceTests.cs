@@ -178,10 +178,10 @@ public class StoreSeamConformanceTests
     }
 
     /// <summary>
-    /// Every <c>_expectedType =</c> write in the checker must go through <c>EnterStore</c> or
-    /// <c>ClearExpectation</c> (plan-ebd58b Phase 1). A raw write bypasses the save/restore seam
-    /// and the <c>StoreContext</c> record, which is the defect class Phase 2 reads to compose
-    /// diagnostic context.
+    /// Every <c>_expectedType =</c> AND <c>_parameterTypedArgument =</c> write in the checker must go
+    /// through <c>EnterStore</c>, <c>EnterArgumentContext</c> or <c>ClearExpectation</c>
+    /// (plan-ebd58b Decision 1, which names both fields in one sentence). A raw write bypasses the
+    /// save/restore seam and the <c>StoreContext</c> record the diagnostics read for context.
     /// </summary>
     [Fact]
     public void ExpectationIsPushedOnlyThroughEnterStore()
@@ -217,32 +217,45 @@ public class StoreSeamConformanceTests
                 if (trimmed.StartsWith("//") || trimmed.StartsWith("*") || trimmed.StartsWith("///"))
                     continue;
 
-                // Field declaration is allowed: `private SemanticType? _expectedType = null;`
+                // Field declarations are allowed: `private SemanticType? _expectedType = null;`
                 if (trimmed.Contains("private") && trimmed.Contains("SemanticType?") && trimmed.Contains("_expectedType"))
                     continue;
+                if (trimmed.Contains("private") && trimmed.Contains("Expression?") && trimmed.Contains("_parameterTypedArgument"))
+                    continue;
 
-                // Check for raw `_expectedType =` writes (assignment, not comparison)
-                if (System.Text.RegularExpressions.Regex.IsMatch(line, @"_expectedType\s*=[^=]"))
-                    violations.Add($"{fileName}:{i + 1}: {trimmed.TrimEnd()}");
+                // Check for raw `_expectedType =` / `_parameterTypedArgument =` writes
+                // (assignment, not comparison)
+                foreach (var field in SeamOwnedFields)
+                {
+                    if (System.Text.RegularExpressions.Regex.IsMatch(line, field + @"\s*=[^=]"))
+                        violations.Add($"{fileName}:{i + 1}: {trimmed.TrimEnd()}");
 
-                // Check for `ref _expectedType` (ScopedValue.Push)
-                if (line.Contains("ref _expectedType"))
-                    violations.Add($"{fileName}:{i + 1}: {trimmed.TrimEnd()}");
+                    // `ref _expectedType` (ScopedValue.Push)
+                    if (line.Contains("ref " + field))
+                        violations.Add($"{fileName}:{i + 1}: {trimmed.TrimEnd()}");
+                }
+
+                // Count the seam's push forms — on CODE lines only. The comment skip above is what
+                // makes this a call-site count rather than a text-occurrence count that drifts every
+                // time a comment names the method.
+                enterStoreCount += CountCalls(line, "EnterStore") + CountCalls(line, "EnterArgumentContext");
+                clearExpectationCount += CountCalls(line, "ClearExpectation");
             }
-
-            // Count EnterStore and ClearExpectation call sites in this file
-            enterStoreCount += System.Text.RegularExpressions.Regex.Matches(text, @"EnterStore\(").Count;
-            clearExpectationCount += System.Text.RegularExpressions.Regex.Matches(text, @"ClearExpectation\(").Count;
         }
 
         // Also count EnterStore/ClearExpectation in StoreConversion.cs (only the definition,
         // not call sites — but the definition includes the method name)
-        var storeConversionText = File.ReadAllText(Path.Combine(semanticDir, "TypeChecker.StoreConversion.cs"));
-        enterStoreCount += System.Text.RegularExpressions.Regex.Matches(storeConversionText, @"EnterStore\(").Count;
-        // Subtract 1 for the definition itself
-        enterStoreCount -= 1;
-        clearExpectationCount += System.Text.RegularExpressions.Regex.Matches(storeConversionText, @"ClearExpectation\(").Count;
-        // Subtract 1 for the definition itself
+        foreach (var line in File.ReadAllLines(Path.Combine(semanticDir, "TypeChecker.StoreConversion.cs")))
+        {
+            var trimmed = line.TrimStart();
+            if (trimmed.StartsWith("//") || trimmed.StartsWith("*") || trimmed.StartsWith("///"))
+                continue;
+            enterStoreCount += CountCalls(line, "EnterStore") + CountCalls(line, "EnterArgumentContext");
+            clearExpectationCount += CountCalls(line, "ClearExpectation");
+        }
+
+        // Subtract the three DEFINITIONS, which the same scan counts
+        enterStoreCount -= 2;
         clearExpectationCount -= 1;
 
         violations.Should().BeEmpty(
@@ -254,10 +267,28 @@ public class StoreSeamConformanceTests
             "positive control: the scan must examine at least one TypeChecker file");
 
         var totalCallSites = enterStoreCount + clearExpectationCount;
-        totalCallSites.Should().Be(47,
-            "the literal anchor for EnterStore + ClearExpectation call sites "
-            + $"(got {enterStoreCount} EnterStore + {clearExpectationCount} ClearExpectation = {totalCallSites})");
+        totalCallSites.Should().Be(ExpectedSeamCallSiteCount,
+            "the literal anchor for EnterStore/EnterArgumentContext + ClearExpectation call sites "
+            + $"(got {enterStoreCount} pushes + {clearExpectationCount} ClearExpectation = {totalCallSites})");
     }
+
+    /// <summary>
+    /// The fields the seam owns outright. Both are named by plan-ebd58b Decision 1 in one sentence:
+    /// "<c>EnterStore</c> becomes the ONLY writer of <c>_expectedType</c> (and of
+    /// <c>_parameterTypedArgument</c>)". The second one was the half that shipped unscanned, and
+    /// five raw writes survived in the call-argument loops because nothing looked for the name.
+    /// </summary>
+    private static readonly string[] SeamOwnedFields = { "_expectedType", "_parameterTypedArgument" };
+
+    private static int CountCalls(string line, string method)
+        => System.Text.RegularExpressions.Regex.Matches(line, method + @"\(").Count;
+
+    /// <summary>
+    /// Measured at the implementer's sha, over CODE lines only. An empty scan cannot pass it, and a
+    /// comment that happens to name <c>EnterStore()</c> no longer moves it (the anchor it replaced
+    /// was bumped 45 -> 47 for two comment mentions).
+    /// </summary>
+    private const int ExpectedSeamCallSiteCount = 47;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {
