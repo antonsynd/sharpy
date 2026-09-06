@@ -531,13 +531,7 @@ internal partial class TypeChecker
         // same name. The binding is right — Python resolves the module variable too — and the
         // EMISSION is not: a bare name in a C# method body binds the field. Record the crossing so
         // the emitter qualifies the access (Rule 2 node-keyed fact; see SemanticInfo.MergeFrom).
-        if (symbol is VariableSymbol
-            && _symbolTable.Resolve(id.Name) is
-                { CrossedMember: not null, DeclaringScope: { } declaringScope }
-            && SymbolTable.ClassifyScope(declaringScope.Name) == SymbolTable.ScopeKind.Module)
-        {
-            _semanticInfo.SetModuleAccessCrossesClassMember(id);
-        }
+        RecordModuleAccessCrossingClassMember(id.Name, id);
 
         // Check if this is an error recovery symbol — a name whose DECLARATION was already refused,
         // so a reference to it must not cascade. Two shapes reach here: a failed import (SPY0300)
@@ -740,6 +734,8 @@ internal partial class TypeChecker
         {
             return SemanticType.Unknown;
         }
+
+        RecordModuleAccessCrossingClassMember(walrus.Target, walrus);
 
         var candidate = _symbolTable.Lookup(walrus.Target, searchParents: false)
             ?? _symbolTable.Lookup(walrus.Target, searchParents: true);

@@ -1392,6 +1392,8 @@ internal partial class TypeChecker
                     continue;
                 }
 
+                RecordModuleAccessCrossingClassMember(tupleTargetId.Name, tupleTargetId);
+
                 var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: false)
                     ?? _symbolTable.Lookup(tupleTargetId.Name, searchParents: true);
 

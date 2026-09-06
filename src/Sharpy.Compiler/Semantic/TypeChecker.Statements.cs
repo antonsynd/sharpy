@@ -66,6 +66,11 @@ internal partial class TypeChecker
             return;
         }
 
+        // The store REACHES a module variable a class body shadows: the write-through goes to the
+        // module slot, and a bare name in the emitted C# would write the field instead (#1786).
+        if (assignment.Target is Identifier shadowedStoreTarget)
+            RecordModuleAccessCrossingClassMember(shadowedStoreTarget.Name, shadowedStoreTarget);
+
         // Handle tuple unpacking: x, y = expr  or  first, *rest = items
         if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is TupleLiteral targetTuple)
         {

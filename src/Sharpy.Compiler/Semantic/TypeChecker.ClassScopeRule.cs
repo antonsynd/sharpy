@@ -169,6 +169,30 @@ internal partial class TypeChecker
         => _symbolTable.Lookup(PythonNames.Self, searchParents: true) is VariableSymbol;
 
     /// <summary>
+    /// Records the module-shadow crossing for <paramref name="node"/> when the bare
+    /// <paramref name="name"/> reaches a MODULE-level variable past a class or struct body that
+    /// declares the same name (#1786, R-Y).
+    /// </summary>
+    /// <remarks>
+    /// The binding is correct — Python resolves the module variable too, and Sharpy's
+    /// write-through rule (variable_scoping.md, Write-Through Assignment) makes a bare store reach
+    /// that same module slot. The EMISSION is not: a bare name in the generated C# method body
+    /// binds the field, so a read printed the field's value and a store wrote the field's storage.
+    /// ONE recording point for every position — the read, all four store forms — because the
+    /// emitter needs the same qualification at each of them and a position that forgets to record
+    /// is silently wrong rather than loud.
+    /// </remarks>
+    private void RecordModuleAccessCrossingClassMember(string name, Expression node)
+    {
+        if (_symbolTable.Resolve(name) is
+                { Bound: VariableSymbol, CrossedMember: not null, DeclaringScope: { } declaringScope }
+            && SymbolTable.ClassifyScope(declaringScope.Name) == SymbolTable.ScopeKind.Module)
+        {
+            _semanticInfo.SetModuleAccessCrossesClassMember(node);
+        }
+    }
+
+    /// <summary>
     /// The tail of the SPY0200 message for a bare READ that names an enclosing type's member, or
     /// null when the name names none. Never offers a spelling that does not compile: a nested
     /// class's method reading the OUTER class's instance field gets the explanation and no steer,

@@ -388,6 +388,37 @@ def main() -> None:
     }
 
     /// <summary>Every identifier the checker marked as a module access that crosses a class member.</summary>
+    /// <summary>
+    /// How many nodes of any kind the checker marked as a module access crossing a class member.
+    /// Counted over every node, not only identifiers: a walrus has no target identifier node, so
+    /// its store keys on the WalrusExpression itself.
+    /// </summary>
+    private static int MarkedNodeCount(CompilationResult result)
+    {
+        var info = result.SemanticInfo!;
+        int count = 0;
+        foreach (var node in AllNodes(result.Module!))
+        {
+            if (node is Sharpy.Compiler.Parser.Ast.Expression expression
+                && info.ModuleAccessCrossesClassMember(expression))
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static System.Collections.Generic.IEnumerable<Sharpy.Compiler.Parser.Ast.Node> AllNodes(
+        Sharpy.Compiler.Parser.Ast.Node node)
+    {
+        yield return node;
+        foreach (var child in node.GetChildNodes())
+        {
+            foreach (var nested in AllNodes(child))
+                yield return nested;
+        }
+    }
+
     private static System.Collections.Generic.List<string> CrossingIdentifiers(CompilationResult result)
     {
         var info = result.SemanticInfo!;
@@ -497,6 +528,157 @@ def main() -> None:
         Errors(result).Should().Contain(e => e.Contains("class attribute of 'Outer'"), Report(result));
         Errors(result).Should().NotContain(e => e.Contains("self.v") || e.Contains("Outer.v"),
             $"neither spelling compiles from a nested class, so neither is offered.\n{Report(result)}");
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════
+    // Part 4b — the signature-position axis: the two default kinds resolve in DIFFERENT scopes
+    // ════════════════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// An EAGER default (<c>=</c>) is resolved in the scope that declares the function, so it sees
+    /// the class body and NOT the signature's own earlier parameters. A LATE-BOUND default
+    /// (<c>=&gt;</c>, PEP 671) is evaluated at call time inside the body, so it sees the earlier
+    /// parameters and the class body is invisible to it exactly as it is to any other body position.
+    /// </summary>
+    /// <remarks>
+    /// Collapsing the two kinds breaks one column or the other, which is why both are rows here.
+    /// Measured by direction against BASE (646b9cf08): the eager sibling cell was SPY0401 and is
+    /// SPY0200, a refusal either way; the late-bound sibling cell printed 7 and still does; the two
+    /// late-bound class-member cells were SPY0909 internal errors and are now named refusals.
+    /// </remarks>
+    [Theory]
+    [InlineData("eager, sibling parameter", "def f(x: int = 1, y: int = x) -> int:\n    return y", UnresolvedCode)]
+    [InlineData("late-bound, class const", "CLASS_CONST", UnresolvedCode)]
+    [InlineData("late-bound, class field", "CLASS_FIELD", UnresolvedCode)]
+    public void SignaturePosition_DefaultKind_ResolvesInItsOwnScope(
+        string cell, string shape, string expectedCode)
+    {
+        var source = shape switch
+        {
+            "CLASS_CONST" => @"
+class C:
+    const K: int = 3
+
+    def m(self, n: int => K) -> None:
+        print(n)
+
+def main() -> None:
+    C().m()
+",
+            "CLASS_FIELD" => @"
+class C:
+    v: int = 3
+
+    def m(self, n: int => v) -> None:
+        print(n)
+
+def main() -> None:
+    C().m()
+",
+            _ => "\n" + shape.Replace("\\n", "\n") + @"
+
+def main() -> None:
+    print(f())
+",
+        };
+
+        var result = CompileAndExecute(source);
+        result.Success.Should().BeFalse($"[{cell}]\n{source}\n{Report(result)}");
+        Codes(result).Should().Contain(expectedCode, $"[{cell}]\n{Report(result)}");
+        Codes(result).Should().NotContain("SPY0909",
+            $"[{cell}] a name in a default is refused by name, never by the emitter\n{Report(result)}");
+    }
+
+    /// <summary>
+    /// The late-bound default's positive control, and the cell that fails if the two default kinds
+    /// are collapsed onto the declaring scope: <c>y</c>'s default names the earlier parameter
+    /// <c>x</c>, which is the entire point of the form.
+    /// </summary>
+    [Fact]
+    public void SignaturePosition_LateBoundDefault_SeesTheEarlierParameter()
+    {
+        var result = CompileAndExecute(@"
+def f(x: int, y: int => x + 1) -> int:
+    return x + y
+
+def main() -> None:
+    print(f(3))
+");
+        result.Success.Should().BeTrue(
+            $"a late-bound default is evaluated at call time, in the body's scope\n{Report(result)}");
+        result.StandardOutput.Should().Contain("7");
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════
+    // Part 4c — the module-shadow crossing is recorded at every position, not only the read
+    // ════════════════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// A bare STORE to a name a class body shadows writes through to the MODULE variable
+    /// (variable_scoping.md, Write-Through Assignment), and a bare name in the emitted C# would
+    /// write the field's storage instead. Every store form records the crossing, so codegen can
+    /// qualify each of them.
+    /// </summary>
+    [Theory]
+    [InlineData("plain", "        v = 5")]
+    [InlineData("augmented", "        v += 1")]
+    [InlineData("walrus", "        w: int = (v := 7)\n        print(w)")]
+    [InlineData("tuple element", "        v, k = 5, 1\n        print(k)")]
+    public void ModuleShadowCrossing_IsRecordedAtEveryStoreForm(string form, string body)
+    {
+        var source = @"
+v: int = 99
+
+class C:
+    v: int = 1
+
+    def store(self) -> None:
+" + body.Replace("\\n", "\n") + @"
+
+def main() -> None:
+    C().store()
+";
+        var compiler = new Compiler(new CompilerOptions { OutputType = "library" });
+        var result = compiler.Analyze(source, "test.spy");
+
+        result.Success.Should().BeTrue(
+            $"[{form}] the store writes through to the module variable\n"
+            + string.Join("\n", result.Diagnostics.GetAll().Select(d => $"{d.Code}: {d.Message}")));
+
+        MarkedNodeCount(result).Should().BeGreaterThan(0,
+            $"[{form}] the crossing must be recorded on the store's own node; the emitter has no "
+            + "other way to know the bare name means the module variable (#1786)");
+    }
+
+    /// <summary>
+    /// Positive control for the store recording: with no class attribute of that name, no store
+    /// form records anything, so the fact cannot be a constant true.
+    /// </summary>
+    [Theory]
+    [InlineData("plain", "        v = 5")]
+    [InlineData("augmented", "        v += 1")]
+    [InlineData("walrus", "        w: int = (v := 7)\n        print(w)")]
+    [InlineData("tuple element", "        v, k = 5, 1\n        print(k)")]
+    public void ModuleStoreWithNoClassAttribute_RecordsNoCrossing(string form, string body)
+    {
+        var source = @"
+v: int = 99
+
+class C:
+    other: int = 1
+
+    def store(self) -> None:
+" + body.Replace("\\n", "\n") + @"
+
+def main() -> None:
+    C().store()
+";
+        var compiler = new Compiler(new CompilerOptions { OutputType = "library" });
+        var result = compiler.Analyze(source, "test.spy");
+
+        result.Success.Should().BeTrue();
+        MarkedNodeCount(result).Should().Be(0,
+            $"[{form}] nothing shadows 'v', so codegen must not qualify the access");
     }
 
     // ════════════════════════════════════════════════════════════════════════════════════
