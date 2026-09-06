@@ -283,6 +283,34 @@ internal partial class TypeChecker
         if (operandSymbol is not TypeSymbol typeSymbol)
             return null;
 
+        var decided = DecideBoundTypeTest(annotation, lodgeOn, subjectType, siteNoun, typeSymbol,
+            erasure, openGenericRemedyOverride);
+
+        // The spelling is a type POSITION and it named `typeSymbol`, so it is a reference to it
+        // (#1737). Recorded ONCE, here, rather than at each arm below — a per-arm recording is how
+        // one position ends up counted twice and another not at all. The arms that resolve through
+        // TypeResolver (a spelled type-argument vector, any modifier) recorded it themselves and are
+        // above this point; a primitive binds no symbol and has nothing to record.
+        if (decided != null && _semanticInfo.GetTypeAnnotation(annotation) == null)
+            _semanticInfo.SetTypeAnnotation(annotation, decided, typeSymbol);
+
+        return decided;
+    }
+
+    /// <summary>
+    /// The type a BOUND bare type-test name decides on: the erased protocol interface for a bare
+    /// builtin collection at a boolean site, the closed type for a non-generic name, the subject-
+    /// filled vector for a generic one, or null with SPY0345 when nothing closes it.
+    /// </summary>
+    private SemanticType? DecideBoundTypeTest(
+        TypeAnnotation annotation,
+        Node lodgeOn,
+        SemanticType? subjectType,
+        string siteNoun,
+        TypeSymbol typeSymbol,
+        CollectionErasure erasure,
+        string? openGenericRemedyOverride)
+    {
         // list/set/dict written without type arguments: the test cannot know the element types, so a
         // boolean site erases to the non-generic protocol interface, which every closed instantiation
         // implements. BuildIsInstanceNarrowedType supplies the same default-argument type narrowing

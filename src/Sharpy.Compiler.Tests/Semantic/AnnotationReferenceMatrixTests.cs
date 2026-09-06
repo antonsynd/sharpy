@@ -34,11 +34,12 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// seam -- so those cells guard the type-position contract without guarding this seam. Every other
 /// live cell is on the annotation seam.</para>
 ///
-/// <para><b>A third measured gap, with no cell here.</b> A generic alias BODY is resolved under
-/// <c>_suppressAnnotationCache</c>, so the annotation in it records nothing:
-/// <c>class D: pass</c> + <c>type Box[T] = dict[T, D]</c> records 0 references to D, while the
-/// non-generic <c>type Box = list[D]</c> records 1 (both measured @ fb728b9be). It is not a
-/// kind x position cell, so it is reported rather than rostered.</para>
+/// <para><b>The alias-body position</b> is not a kind x position cell -- the spelling sits inside a
+/// declaration rather than at a use site -- so it has its own facts below. A generic alias body is
+/// resolved under <c>_suppressAnnotationCache</c>, which used to suppress the REFERENCE along with
+/// the cache: <c>type Box[T] = dict[T, D]</c> recorded 0 references to D while the non-generic
+/// <c>type Box = list[D]</c> recorded 1. The suppression is about which TYPE a shared body resolves
+/// to, which is instantiation-dependent; which symbol its spelling NAMES is not.</para>
 /// </summary>
 public class AnnotationReferenceMatrixTests
 {
@@ -84,32 +85,23 @@ public class AnnotationReferenceMatrixTests
                 + "resolved through the annotation seam yet.";
         }
 
-        // Base-class list. `ClassDef.BaseClasses` IS an ImmutableArray<TypeAnnotation>, so the
-        // position exists in the AST, but NameResolver.ResolveClassInheritance resolves it through
-        // ResolveBaseReference -- never through TypeResolver.ResolveTypeAnnotation -- so the seam
-        // never sees it. Measured @ fb728b9be: `class C: pass` + `class Sub(C)` records 0
-        // references to C; same for an interface base. REPORTED as a seam gap, not encoded here.
-        roster[Key("class", "base_class_list")] = "MEASURED GAP: base types resolve through "
-            + "NameResolver.ResolveBaseReference, not the annotation seam -- 0 references "
-            + "recorded @ fb728b9be. Reported; this cell goes live when the base list joins the seam.";
-        roster[Key("interface", "base_class_list")] = "MEASURED GAP: same route as the class base "
-            + "-- 0 references recorded @ fb728b9be. Reported.";
+        // Base-class list: LIVE. Inheritance is resolved in name resolution, a pass before any
+        // SemanticInfo exists, so the base annotation used to miss the seam entirely and
+        // `class Sub(C)` recorded 0 references to C. The checker now resolves the annotation the
+        // reference record carries (BaseTypeReference.SourceAnnotation), so the spelling reaches the
+        // one seam and counts once. Only the kinds that cannot BE a base stay rostered.
         foreach (var kind in new[] { "struct", "enum", "union", "delegate", "alias", "generic_alias", "type_parameter", "clr_import" })
         {
             roster[Key(kind, "base_class_list")] =
                 "not a base type: Sharpy inherits from a class and implements an interface only.";
         }
 
-        // `as?` target. TypeCoercion.TargetType is a TypeAnnotation, but CheckTypeCoercion
-        // classifies it through ClassifyTypeTestAnnotation rather than the recording seam.
-        // Measured @ fb728b9be: `o as? C` records 0 references to C (class and struct alike).
-        foreach (var kind in SymbolKinds)
-        {
-            roster[Key(kind, "as_target")] = kind == "type_parameter"
-                ? "a bare type parameter is not a runtime type-test target."
-                : "MEASURED GAP: the cast target resolves through ClassifyTypeTestAnnotation, not "
-                  + "the annotation seam -- 0 references recorded @ fb728b9be. Reported.";
-        }
+        // `as?` target: LIVE. ClassifyTypeTestAnnotation binds the target's symbol and decided a
+        // type without ever recording the spelling, so `o as? C` recorded 0 references to C. The
+        // classifier now records at the ONE point it binds, which covers every position that shares
+        // it (`as?`/`as!`, `is`, `except`, match heads) rather than the cast alone.
+        roster[Key("type_parameter", "as_target")] =
+            "a bare type parameter is not a runtime type-test target.";
 
         // isinstance's second argument is a type position, and a generic alias is not a type there.
         roster[Key("generic_alias", "isinstance_argument")] =
@@ -155,6 +147,80 @@ public class AnnotationReferenceMatrixTests
     }
 
     // -- Controls ------------------------------------------------------------------
+
+    /// <summary>
+    /// A GENERIC alias body's spelling is a reference, exactly as a non-generic one's is. The body's
+    /// annotation objects are shared across use sites, so its resolved TYPE is not cached; that must
+    /// not take the reference with it.
+    /// </summary>
+    [Fact]
+    public void GenericAliasBody_RecordsItsSpellingOnce()
+    {
+        var source = "class D:\n    pass\n\ntype Box[T] = dict[T, D]\n\n"
+            + "def use(b: Box[str]) -> None:\n    print(len(b))\n\ndef main() -> None:\n    pass\n";
+        var analysis = _api.Analyze(source);
+        analysis.Success.Should().BeTrue(
+            "Errors: {0}",
+            string.Join(" | ", analysis.Diagnostics.Where(d => d.IsError).Select(d => d.Code + ": " + d.Message)));
+
+        var symbol = analysis.SymbolTable!.LookupType("D");
+        symbol.Should().NotBeNull();
+        analysis.SemanticInfo!.GetReferences(symbol!).Should().HaveCount(1,
+            "the alias body spells D once, and a suppressed CACHE must not suppress the reference");
+    }
+
+    /// <summary>
+    /// The non-generic twin: the control that shows the count above is the body's own contribution
+    /// and not something the generic machinery adds.
+    /// </summary>
+    [Fact]
+    public void NonGenericAliasBody_RecordsItsSpellingOnce()
+    {
+        var source = "class D:\n    pass\n\ntype Box = list[D]\n\n"
+            + "def use(b: Box) -> None:\n    print(len(b))\n\ndef main() -> None:\n    pass\n";
+        var analysis = _api.Analyze(source);
+        analysis.Success.Should().BeTrue();
+
+        var symbol = analysis.SymbolTable!.LookupType("D");
+        analysis.SemanticInfo!.GetReferences(symbol!).Should().HaveCount(1);
+    }
+
+    /// <summary>
+    /// ONE spelling stays ONE reference however many times the alias is applied. The cache is what
+    /// keeps a re-resolved annotation from counting twice, and a shared body has no cache, so this
+    /// is the cell that would catch the reference being recorded per USE SITE.
+    /// </summary>
+    [Fact]
+    public void GenericAliasBody_AppliedTwice_StillRecordsOneReference()
+    {
+        var source = "class D:\n    pass\n\ntype Box[T] = dict[T, D]\n\n"
+            + "def use(b: Box[str]) -> None:\n    print(len(b))\n\n"
+            + "def use2(b: Box[int]) -> None:\n    print(len(b))\n\ndef main() -> None:\n    pass\n";
+        var analysis = _api.Analyze(source);
+        analysis.Success.Should().BeTrue();
+
+        var symbol = analysis.SymbolTable!.LookupType("D");
+        analysis.SemanticInfo!.GetReferences(symbol!).Should().HaveCount(1,
+            "two applications of one alias are two uses of ONE spelling of D");
+    }
+
+    /// <summary>
+    /// The location-dedupe that makes the cell above hold is a property of the reference SET, not of
+    /// the alias path: `o as? C` resolves a modifier-stripped copy of the target annotation and then
+    /// the target itself, two resolutions of one spelling at one span.
+    /// </summary>
+    [Fact]
+    public void OneSpelling_ResolvedTwice_IsOneReference()
+    {
+        var source = "class C:\n    pass\n\ndef use(o: object) -> None:\n    v = o as? C\n"
+            + "    print(v is not None)\n\ndef main() -> None:\n    pass\n";
+        var analysis = _api.Analyze(source);
+        analysis.Success.Should().BeTrue();
+
+        var symbol = analysis.SymbolTable!.LookupType("C");
+        analysis.SemanticInfo!.GetReferences(symbol!).Should().HaveCount(1,
+            "one spelling at one span is one reference, however many times it is resolved");
+    }
 
     [Fact]
     public void IdentifierUse_AlwaysCounted_PositiveControl()
@@ -313,6 +379,10 @@ public class AnnotationReferenceMatrixTests
         "optional" => $"def use(a: {spelling}?) -> None:\n    pass\n",
         "result" => $"def use(a: {spelling}!str) -> None:\n    pass\n",
         "isinstance_argument" => $"def use(o: object) -> None:\n    if isinstance(o, {spelling}):\n        print(1)\n",
+        // The derived class implements `tick` so the same host serves a CLASS base and an INTERFACE
+        // base; neither spelling names C a second time.
+        "base_class_list" => $"class Sub({spelling}):\n    def tick(self) -> None:\n        pass\n",
+        "as_target" => $"def use(o: object) -> None:\n    v = o as? {spelling}\n    print(v is not None)\n",
         _ => throw new ArgumentException(
             $"Position '{position}' has no host: it is rostered N/A and must not be built.")
     };

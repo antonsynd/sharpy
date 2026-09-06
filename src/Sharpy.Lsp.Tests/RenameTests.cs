@@ -47,6 +47,28 @@ public class RenameTests
         }
     }
 
+    /// <summary>
+    /// Renaming a class has to rewrite its BASE-LIST spellings, and a rename edit is applied per
+    /// recorded reference — so a base list that records nothing silently renames the declaration and
+    /// leaves `class Sub(C)` naming a type that no longer exists. Inheritance is resolved a pass
+    /// before SemanticInfo exists, which is how that position missed the annotation seam (#1737).
+    /// </summary>
+    [Fact]
+    public void BaseClassSpelling_IsARenameableReference()
+    {
+        var source = "class C:\n    pass\n\nclass Sub(C):\n    pass\n\ndef main():\n    s: Sub = Sub()\n    print(s)";
+        var analysis = _api.Analyze(source);
+        analysis.Success.Should().BeTrue();
+
+        var symbol = analysis.SymbolTable!.LookupType("C");
+        symbol.Should().NotBeNull();
+
+        var references = analysis.SemanticInfo!.GetReferences(symbol!);
+        references.Should().ContainSingle(
+            "the base list spells C once, and rename needs that location to rewrite it");
+        references[0].Line.Should().Be(4, "the base list is on line 4");
+    }
+
     [Fact]
     public void FunctionSymbol_CanBeLocated_ForRename()
     {

@@ -178,7 +178,7 @@ public class SemanticInfo : ISemanticQuery
     // `v = 99` at module level with `class C: v = 1` printed 1 where Python prints 99, and the
     // typed twin was CS0029 behind SPY0908. Which name shadows which is a resolution fact the
     // emitter must not re-derive (Rule 2), so it is recorded here and codegen qualifies the access.
-    private readonly ConcurrentDictionary<Identifier, byte> _moduleAccessCrossingClassMembers =
+    private readonly ConcurrentDictionary<Expression, byte> _moduleAccessCrossingClassMembers =
         new(ReferenceEqualityComparer.Instance);
 
     // Track expressions that denote a type rather than a value (e.g., a module-qualified
@@ -655,9 +655,23 @@ public class SemanticInfo : ISemanticQuery
     /// <c>LiteralString</c>, <c>Template</c> and <c>auto</c> pass <c>null</c>; user-defined types,
     /// type aliases, type parameters and CLR imports pass the resolved symbol (#1737).
     /// </summary>
-    public void SetTypeAnnotation(TypeAnnotation annotation, SemanticType type, Symbol? boundSymbol)
+    /// <param name="cacheType">
+    /// False while a SHARED annotation body is resolved — a generic type-alias body (<c>T</c> and
+    /// <c>D</c> in <c>type Box[T] = dict[T, D]</c>) or a type-parameter default — where the resolved
+    /// type belongs to ONE instantiation and caching it would hand that answer to the next.
+    ///
+    /// <para>The REFERENCE is recorded either way. Which type the body resolves to is
+    /// instantiation-dependent; which symbol the spelling NAMES is not, and #1737's contract is
+    /// about the spelling. Suppressing the cache used to suppress the reference with it, so
+    /// <c>type Box[T] = dict[T, D]</c> recorded zero references to <c>D</c> while the non-generic
+    /// <c>type Box = list[D]</c> recorded one.</para>
+    /// </param>
+    public void SetTypeAnnotation(
+        TypeAnnotation annotation, SemanticType type, Symbol? boundSymbol, bool cacheType = true)
     {
-        _typeAnnotations[annotation] = type;
+        if (cacheType)
+            _typeAnnotations[annotation] = type;
+
         if (boundSymbol != null)
             RecordReference(boundSymbol, annotation);
     }
@@ -1062,19 +1076,25 @@ public class SemanticInfo : ISemanticQuery
     public bool IsEventAccess(Expression expr) => _eventAccessNodes.ContainsKey(expr);
 
     /// <summary>
-    /// Records that <paramref name="identifier"/> binds a module-level variable that a class or
-    /// struct body shadows with a same-named member (#1786, R-Y). Codegen must spell the access
+    /// Records that <paramref name="node"/> reaches a module-level variable that a class or struct
+    /// body shadows with a same-named member (#1786, R-Y). Codegen must spell the access
     /// module-qualified: a bare name in the emitted method body binds the FIELD in C#.
     /// </summary>
-    public void SetModuleAccessCrossesClassMember(Identifier identifier)
-        => _moduleAccessCrossingClassMembers.TryAdd(identifier, 0);
+    /// <param name="node">
+    /// The identifier at a READ, the target identifier of a plain, augmented, <c>??=</c> or
+    /// tuple-element STORE, or the <c>WalrusExpression</c> itself — a walrus has no target
+    /// identifier node, so the store form that has no name node keys on the expression. Keyed by
+    /// reference, so a read and a store of the same name are separate entries.
+    /// </param>
+    public void SetModuleAccessCrossesClassMember(Expression node)
+        => _moduleAccessCrossingClassMembers.TryAdd(node, 0);
 
     /// <summary>
-    /// Whether <paramref name="identifier"/> binds a module-level variable shadowed by a same-named
+    /// Whether <paramref name="node"/> reaches a module-level variable shadowed by a same-named
     /// class or struct member, so the emitted access must be module-qualified (#1786, R-Y).
     /// </summary>
-    public bool ModuleAccessCrossesClassMember(Identifier identifier)
-        => _moduleAccessCrossingClassMembers.ContainsKey(identifier);
+    public bool ModuleAccessCrossesClassMember(Expression node)
+        => _moduleAccessCrossingClassMembers.ContainsKey(node);
 
     /// <summary>
     /// Marks an expression as a compile-time literal-derived string (PEP 675 #1731).
@@ -1888,6 +1908,20 @@ public class SemanticInfo : ISemanticQuery
 
         var reference = new SymbolReference(CurrentFilePath, node.Span.Value, node.LineStart, node.ColumnStart);
         var bag = _symbolReferences.GetOrAdd(symbol, static _ => new ConcurrentBag<SymbolReference>());
+
+        // A symbol's reference set holds each LOCATION once. Two distinct spellings never share a
+        // span, so this can only drop a re-record of the SAME spelling — which the annotation cache
+        // used to prevent by accident (a cached annotation returns before it reaches here) and which
+        // therefore reappeared wherever the cache is off or the resolution runs on a derived copy of
+        // the node: `o as? C` resolves both a modifier-stripped copy and the target itself, and
+        // counted the one spelling twice. Rename applies an edit per reference, so a duplicate is a
+        // duplicate edit (#1263).
+        foreach (var existing in bag)
+        {
+            if (existing == reference)
+                return;
+        }
+
         bag.Add(reference);
     }
 

@@ -1019,6 +1019,46 @@ internal partial class TypeChecker
             RecordCompletedBaseAnnotation(iface.SourceAnnotation, iface.TypeArgAnnotations);
     }
 
+    /// <summary>
+    /// The base list is a type POSITION, and #1737's contract is that every type position records
+    /// its spelling as a reference to the symbol it names — that is what "find all references" and
+    /// rename read.
+    ///
+    /// <para>Inheritance is resolved in NAME RESOLUTION, one pass before any
+    /// <see cref="SemanticInfo"/> exists, so the base annotation never reached the annotation seam:
+    /// <c>class Sub(C)</c> recorded ZERO references to <c>C</c> while every other position recorded
+    /// one. The annotation node survives on the reference record
+    /// (<see cref="BaseTypeReference.SourceAnnotation"/>), so the seam can be reached from here,
+    /// where it exists.</para>
+    ///
+    /// <para>Only a base the resolver already BOUND is resolved. An unbound one carries name
+    /// resolution's own "Base type 'X' not found" already, and resolving it again would say the same
+    /// thing twice, in two wordings, at two columns — the reference records exist only for bases
+    /// that bound, so that gate is structural rather than a name comparison.</para>
+    /// </summary>
+    private void RecordBaseListReferences(TypeSymbol typeSymbol)
+    {
+        var baseRef = SemanticBinding.GetBaseTypeReference(typeSymbol) ?? typeSymbol.BaseTypeRef;
+        if (baseRef?.SourceAnnotation is { } baseAnnotation)
+            RecordBaseListReference(baseAnnotation);
+
+        foreach (var iface in SemanticBinding.GetInterfaces(typeSymbol) ?? (IReadOnlyList<InterfaceReference>)typeSymbol.Interfaces)
+        {
+            if (iface.SourceAnnotation is { } interfaceAnnotation)
+                RecordBaseListReference(interfaceAnnotation);
+        }
+    }
+
+    private void RecordBaseListReference(TypeAnnotation annotation)
+    {
+        // Already through the seam — the PEP-696 fill above resolves the COMPLETED spelling first,
+        // and that resolve recorded the reference. Resolving again would count one spelling twice.
+        if (_semanticInfo.GetTypeAnnotation(annotation) != null)
+            return;
+
+        _typeResolver.ResolveTypeAnnotation(annotation);
+    }
+
     private void RecordCompletedBaseAnnotation(TypeAnnotation? source, ImmutableArray<TypeAnnotation> completed)
     {
         // A reference whose arguments are exactly what the source spells needs nothing recorded —
@@ -1097,6 +1137,7 @@ internal partial class TypeChecker
         _typeResolver.SetCurrentTypeContext(classSymbol);
 
         RecordCompletedBaseAnnotations(classSymbol);
+        RecordBaseListReferences(classSymbol);
 
         // Resolve field types first (before checking methods that might reference them)
         for (int i = 0; i < classSymbol.Fields.Count; i++)
@@ -1389,6 +1430,7 @@ internal partial class TypeChecker
         _typeResolver.SetCurrentTypeContext(structSymbol);
 
         RecordCompletedBaseAnnotations(structSymbol);
+        RecordBaseListReferences(structSymbol);
 
         // Detect bracket attributes that are source generators
         DetectGeneratorAttributes(structDef);
@@ -1488,6 +1530,7 @@ internal partial class TypeChecker
         _typeResolver.SetCurrentTypeContext(interfaceSymbol);
 
         RecordCompletedBaseAnnotations(interfaceSymbol);
+        RecordBaseListReferences(interfaceSymbol);
 
         // Resolve method parameter types and return types
         // Interface methods are registered in NameResolver but with Unknown types

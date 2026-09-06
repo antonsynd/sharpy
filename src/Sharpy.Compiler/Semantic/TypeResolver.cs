@@ -361,11 +361,10 @@ internal class TypeResolver
 
         result = ApplyAnnotationModifiers(annotation, result);
 
-        // Cache the result (skip when resolving inside generic alias body)
-        if (!_suppressAnnotationCache)
-        {
-            _semanticInfo.SetTypeAnnotation(annotation, result, boundSymbol);
-        }
+        // The seam is reached either way: `_suppressAnnotationCache` suppresses the CACHE, because a
+        // shared body's resolved type belongs to one instantiation, and it must not suppress the
+        // REFERENCE, because the spelling names the same symbol at every instantiation (#1737).
+        _semanticInfo.SetTypeAnnotation(annotation, result, boundSymbol, cacheType: !_suppressAnnotationCache);
         return result;
     }
 
