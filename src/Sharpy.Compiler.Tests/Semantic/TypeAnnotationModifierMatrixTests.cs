@@ -129,7 +129,9 @@ public class TypeAnnotationModifierMatrixTests
     /// <summary>
     /// Each cell asserts the resolved <see cref="SemanticType"/> wrapper shape: bare for <c>none</c>,
     /// <see cref="OptionalType"/> for <c>?</c>, <see cref="NullableType"/> for <c>| None</c>,
-    /// <see cref="ResultType"/> for <c>!E</c>. Self x !E is a known gap (inline handler skips ErrorType).
+    /// <see cref="ResultType"/> for <c>!E</c>. No kind is exempt: <c>Self</c> x <c>!E</c> was the
+    /// cell an early-returning arm with its own partial modifier copy got wrong, and asserting the
+    /// defective shape there would have made this matrix pin the defect it exists to catch.
     /// </summary>
     [Theory]
     [MemberData(nameof(MatrixCells))]
@@ -138,15 +140,6 @@ public class TypeAnnotationModifierMatrixTests
         var (resolver, _, semanticInfo) = CreateResolver();
         var annotation = MakeAnnotation(kind, modifier);
         var type = resolver.ResolveTypeAnnotation(annotation);
-
-        // Self x !E: the Self arm returns early with inline modifier handling that covers
-        // IsOptional and IsCSharpNullable but not ErrorType. Known gap, not part of #1781.
-        if (kind == "Self" && modifier == "!E")
-        {
-            type.Should().BeOfType<SelfType>(
-                "Self x !E: inline handler does not check ErrorType");
-            return;
-        }
 
         switch (modifier)
         {

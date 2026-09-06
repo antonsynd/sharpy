@@ -101,7 +101,11 @@ internal class TypeResolver
         // Handle 'auto' keyword for type inference
         if (!escaped && annotation.Name == "auto")
         {
-            result = SemanticType.Unknown;
+            // `auto` is a request to infer, not a type, so there is nothing for `?` / `| None` /
+            // `!E` to wrap — and the tail is a no-op on Unknown by construction. It goes through the
+            // tail anyway, because "every returning arm applies the modifiers" is the property that
+            // keeps a new arm from silently dropping one (#1781).
+            result = ApplyAnnotationModifiers(annotation, SemanticType.Unknown);
             _semanticInfo.SetTypeAnnotation(annotation, result, boundSymbol: null); // keyword
             return result;
         }
@@ -126,15 +130,13 @@ internal class TypeResolver
             else
             {
                 result = new SelfType { DeclaringType = _currentTypeContext };
-
-                // This arm returns early, so it must apply the `T?` / `T | None` modifiers the
-                // shared tail below would have applied — otherwise `Self?` silently resolved to a
-                // non-optional Self and the annotation's `?` did nothing (#1285).
-                if (annotation.IsOptional)
-                    result = new OptionalType { UnderlyingType = result };
-                if (annotation.IsCSharpNullable)
-                    result = new NullableType { UnderlyingType = result };
             }
+
+            // This arm returns early, so it applies the modifiers through the SHARED tail. Its own
+            // inline copy handled `?` and `| None` and never `!E`, so `Self !str` resolved to a bare
+            // `Self` and the annotation's error type did nothing (#1285 fixed one modifier, #1781
+            // the class).
+            result = ApplyAnnotationModifiers(annotation, result);
             _semanticInfo.SetTypeAnnotation(annotation, result, boundSymbol: null); // keyword
             return result;
         }
@@ -152,8 +154,17 @@ internal class TypeResolver
         // SemanticInfo is keyed by reference and downstream reads hold the node the parser made.
         if (TryStripBuiltinsQualifier(annotation.Name, out var bareTypeName))
         {
-            var bareAnnotation = annotation with { Name = bareTypeName };
-            var bareResult = ResolveTypeAnnotation(bareAnnotation);
+            // The recursion resolves the bare NAME only: the modifiers are stripped from the copy and
+            // applied here, through the same tail every other arm uses, so the qualified spelling
+            // cannot end up with a different wrapper than the bare one.
+            var bareAnnotation = annotation with
+            {
+                Name = bareTypeName,
+                IsOptional = false,
+                IsCSharpNullable = false,
+                ErrorType = null,
+            };
+            var bareResult = ApplyAnnotationModifiers(annotation, ResolveTypeAnnotation(bareAnnotation));
             // The recursive call recorded the reference on bareAnnotation; pass null to
             // avoid double-recording on the original node at the same span (#1737).
             _semanticInfo.SetTypeAnnotation(annotation, bareResult, boundSymbol: null);
@@ -348,6 +359,34 @@ internal class TypeResolver
             }
         }
 
+        result = ApplyAnnotationModifiers(annotation, result);
+
+        // Cache the result (skip when resolving inside generic alias body)
+        if (!_suppressAnnotationCache)
+        {
+            _semanticInfo.SetTypeAnnotation(annotation, result, boundSymbol);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// The annotation's modifier tail: <c>!E</c>, then <c>?</c>, then <c>| None</c>, applied to the
+    /// type the name resolved to. EVERY returning arm of <see cref="ResolveTypeAnnotation"/> calls
+    /// this — that is the whole point of it being a method (#1781).
+    ///
+    /// <para>Arms that returned early with an inline copy of part of it are how the class recurs:
+    /// the <c>Self</c> arm applied <c>?</c> and <c>| None</c> and never <c>!E</c>, so
+    /// <c>Self !str</c> resolved to a bare <c>Self</c>; the <c>LiteralString</c> and
+    /// <c>Template</c> arms applied none at all.</para>
+    ///
+    /// <para>Order matters: <c>!E</c> binds tightest, so <c>T !E ?</c> is an optional Result and not
+    /// a Result of an optional. The alias guard on <c>?</c> is preserved: an alias wraps inside
+    /// <see cref="ExpandTypeAlias"/> already, and wrapping again would give a double Optional.
+    /// Unknown passes through untouched — there is nothing to wrap, and an error recovery must not
+    /// grow a wrapper.</para>
+    /// </summary>
+    private SemanticType ApplyAnnotationModifiers(TypeAnnotation annotation, SemanticType result)
+    {
         // Handle T !E (Result type) — must come before T? and | None
         if (annotation.ErrorType != null && result != SemanticType.Unknown)
         {
@@ -373,11 +412,6 @@ internal class TypeResolver
             result = new NullableType { UnderlyingType = result };
         }
 
-        // Cache the result (skip when resolving inside generic alias body)
-        if (!_suppressAnnotationCache)
-        {
-            _semanticInfo.SetTypeAnnotation(annotation, result, boundSymbol);
-        }
         return result;
     }
 
