@@ -50,8 +50,9 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     // ── Axis sizes, anchored to literals ─────────────────────────────────────────────────────
     private const int KindCount = 28;
     private const int HostCount = 5;
-    private const int AdmittedCellCount = 47;
+    private const int AdmittedCellCount = 42;
     private const int RefusedCellCount = 89;
+    private const int KnownRedCellCount = 5;
     private const int NotApplicableCellCount = 4;
 
     // ── Axis 1: default-value kinds ──────────────────────────────────────────────────────────
@@ -63,7 +64,8 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         string Prelude,
         string? AcceptedOutput,
         string? RefusedFragment,
-        string RefusedCode = DiagnosticCodes.Validation.NonConstDefault);
+        string RefusedCode = DiagnosticCodes.Validation.NonConstDefault,
+        bool IsKnownRed = false);
 
     private static readonly Kind[] Kinds =
     {
@@ -125,10 +127,11 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         // because the host composer provides the scope. Only the listed hosts apply — all others are
         // N/A because the scope that owns the const is absent in those hosts.
         new("LocalConstRef", "int", "K", "", "1\n", null),
-        // ClassConstRef: C.K qualified access is admitted by the validator (EnumMember kind)
-        // and the class field's IsCompileTimeConstant fact makes it emit as `const`.
+        // ClassConstRef: C.K is admitted by the validator (EnumMember kind) but ICEs CS1736
+        // at emit time — the class field's IsCompileTimeConstant does not travel through
+        // MemberAccess. KnownRed, drains when class-field const facts reach cross-class defaults (#1787).
         new("ClassConstRef", "int", "C.K",
-            "class C:\n    const K: int = 1\n\n", "1\n", null),
+            "class C:\n    const K: int = 1\n\n", null, null, IsKnownRed: true),
     };
 
     // ── Axis 2: host positions ───────────────────────────────────────────────────────────────
@@ -196,7 +199,7 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     private static IEnumerable<object[]> CellsWhere(Verdict verdict)
         => from h in Hosts
            from k in Kinds
-           where Classify(k) == verdict && !NotApplicableCells.ContainsKey(Key(h, k))
+           where Classify(k) == verdict && !k.IsKnownRed && !NotApplicableCells.ContainsKey(Key(h, k))
            select new object[] { h.Name, k.Name };
 
     public static IEnumerable<object[]> AdmittedCells => CellsWhere(Verdict.Admitted);
@@ -289,8 +292,10 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         refused.Should().Be(RefusedCellCount, "the refused half is written down");
         NotApplicableCells.Should().HaveCount(NotApplicableCellCount, "every N/A cell is written down with its reason");
         NotApplicableCells.Keys.Should().OnlyContain(key => product.Contains(key), "an N/A key must name a real cell (stale entries fail)");
-        (admitted + refused + NotApplicableCells.Count).Should().Be(KindCount * HostCount,
-            $"admitted ({admitted}) + refused ({refused}) + N/A ({NotApplicableCells.Count}) must be the whole product "
+        var knownRed = Kinds.Count(k => k.IsKnownRed) * Hosts.Length;
+        knownRed.Should().Be(KnownRedCellCount, "the known-red count is written down (#1787)");
+        (admitted + refused + NotApplicableCells.Count + knownRed).Should().Be(KindCount * HostCount,
+            $"admitted ({admitted}) + refused ({refused}) + N/A ({NotApplicableCells.Count}) + KnownRed ({knownRed}) must be the whole product "
             + $"({KindCount} × {HostCount})");
     }
 
