@@ -25,6 +25,7 @@ class Person:
 
 **Rules:**
 - All instance fields must be declared at class level with type annotations or an assignment of a default value where the type can be inferred
+- Class-body names are **not** visible by their bare name inside methods — a field is reached through `self.name`, a `const` or `@static` member through `ClassName.name`. See [Class-Body Names Are Not Visible by Bare Name Inside Methods](variable_scoping.md#class-body-names-are-not-visible-by-bare-name-inside-methods) in `variable_scoping.md`
 - The `self` parameter is required for instance methods
 - The `self` parameter is not type-annotated and cannot be annotated
 - Sharpy supports the `Self` type (inspired by PEP 673) for methods that return the enclosing class type:

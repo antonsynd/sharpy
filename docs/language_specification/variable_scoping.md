@@ -114,48 +114,125 @@ def main():
 
 ## Class-Body Names Are Not Visible by Bare Name Inside Methods
 
-Class and struct bodies define their own scope, but this scope is **not** a closure scope for methods. Methods cannot read or write class-body names by bare name — they must use `self.name` or `ClassName.name`. This matches Python's class-scope semantics.
+Class and struct bodies define their own scope, but this scope is **not** a closure scope for methods. Methods cannot read or write class-body names by bare name — they must use `self.name`, or `ClassName.name` for a `const` or `@static` member. This matches Python's class-scope semantics.
 
 ```python
 class Counter:
     count: int = 0
 
     def increment(self) -> None:
-        count = count + 1    # ERROR (SPY0606) — bare store to class attribute
+        count = count + 1     # ERROR (SPY0606) — bare store to class attribute
         print(count)          # ERROR (SPY0200) — bare read of class attribute
 
     def correct(self) -> None:
         self.count += 1       # OK — instance attribute via self
-        Counter.count += 1    # OK — class attribute via class name
         count: int = 99       # OK — annotated declaration creates a new local
+        print(count)          # 99
 ```
 
-The rule applies to all function-like bodies inside a class or struct — methods, property accessors, event accessors, observers, and lambdas defined inside methods:
+`ClassName.name` is the spelling for a **type-level** member — a `const` or an `@static` field. An
+instance field reached through the type name is a different error (SPY0290), so the diagnostic
+offers `ClassName.name` only when it compiles:
+
+```python
+class Registry:
+    @static
+    total: int = 0
+
+    @static
+    def bump() -> None:
+        total += 1            # ERROR (SPY0606) — "Use 'Registry.total = ...'"
+        Registry.total += 1   # OK — @static field via the class name
+```
+
+### Every store form is refused, not only the plain one
+
+A bare name in a class body is a member in every write position, so each is refused by name rather
+than silently declaring a local:
+
+```python
+class Counter:
+    count: int = 0
+
+    def forms(self) -> None:
+        count = 1             # SPY0606 — plain store
+        count += 1            # SPY0606 — augmented store
+        print(count := 1)     # SPY0606 — walrus
+        count, n = 1, 2       # SPY0606 — tuple-unpacking element
+        count ??= 1           # SPY0606 — null-coalescing store
+```
+
+A bare store to a class `const` says so, and offers only the shadowing local — a constant cannot be
+assigned through any spelling:
+
+```python
+class C:
+    const K: int = 1
+
+    def m(self) -> None:
+        K = 2    # SPY0606 — "'C.K' is a constant and cannot be assigned"
+```
+
+### Which bodies the rule applies to
+
+Every function-like body: methods, property accessors, event accessors, property observers, nested
+`def`s, and lambdas — including a lambda in a class-field initializer, which has no `self` at all.
 
 ```python
 class Config:
     name: str = "default"
 
-    @property
-    def label(self) -> str:
+    property get label(self) -> str:
         return self.name      # OK
-        # return name         # Would be SPY0200
+        # return name         # SPY0200 — bare read of a class attribute
 
-    def make_greeter(self) -> Callable[[], str]:
-        return lambda: self.name   # OK — lambda accesses via self
+    def make_greeter(self) -> () -> str:
+        return lambda: self.name   # OK — the lambda reaches the field through self
 ```
 
-**Parameter defaults** can still reference class-body names, because they are evaluated at class-definition time (before the method body):
+Inherited fields obey the same rule and get the same steer: `self.name` reaches a base class's
+instance field, and a bare name does not.
+
+### Parameter defaults still see the class body
+
+A parameter default belongs to the **signature**, which is resolved in the scope that declares the
+method — the class body — not in the method body:
 
 ```python
 class Grid:
     const SIZE: int = 8
 
-    def resize(self, n: int = SIZE) -> None:   # OK — default sees class scope
+    def resize(self, n: int = SIZE) -> None:   # OK — the default is resolved in class scope
         print(n)
 ```
 
-**Nested types and module names** remain visible inside methods — the skip applies only to variable and constant bindings in the class body, not to type declarations or names from enclosing module/global scope.
+The same holds for decorator arguments and type annotations. Names in the method's **body** are
+resolved by the rule above.
+
+> **Status:** name resolution follows this rule — the default binds the class constant. Emitting
+> the bare spelling, and emitting an integer class `const` as a C# `const`, are both still landing,
+> so this example reports SPY0909 today and its `Grid.SIZE` twin reports SPY0908 (CS1736).
+
+### Pattern heads are not reads
+
+A `case` head naming a class `const` matches that constant; it does not degrade into a capture:
+
+```python
+class C:
+    const A: str = "x"
+
+    def m(self, v: str) -> None:
+        match v:
+            case A:           # matches C.A, with SPY0468 noting the constant
+                print("hit")
+            case _:
+                print("miss")
+```
+
+**Nested types and module names** remain visible inside methods — the rule applies only to variable
+and constant bindings in a class or struct body, not to type declarations or to names from the
+enclosing module or global scope. When a module-level variable and a class attribute share a name,
+a bare use inside a method binds the **module** variable, exactly as Python does.
 
 ## Assignment Statement
 
