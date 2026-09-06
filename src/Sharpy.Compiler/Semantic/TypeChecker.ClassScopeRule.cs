@@ -44,12 +44,22 @@ internal partial class TypeChecker
     /// <c>@static</c> method, in a class-field-initializer lambda, and when the member belongs to
     /// an OUTER class of a nested one — the cases where the old steer named something illegal.
     /// </param>
+    /// <param name="DeclaredInACrossedScope">
+    /// Whether the scope WALK passed this member's declaration, as opposed to the member being
+    /// found on the enclosing type symbol. R-Y refuses a bare store to a name declared in the
+    /// enclosing class BODY, which is what a crossing means. An inherited field and a property are
+    /// declared elsewhere — another type's body, or on the type symbol only — and a bare store to
+    /// one of those names declared a fresh local at BASE and ran; refusing it would turn a working
+    /// program red for a rule that was never about it. They still shape the READ diagnostic, which
+    /// was already an unresolved name and only gains a steer.
+    /// </param>
     private sealed record CrossedClassMember(
         string Name,
         string OwnerName,
         bool IsConstant,
         bool IsStatic,
-        bool ReachableThroughSelf)
+        bool ReachableThroughSelf,
+        bool DeclaredInACrossedScope)
     {
         /// <summary>
         /// <c>Owner.Name</c>, but only for a member C# can reach through the type name. An instance
@@ -92,15 +102,17 @@ internal partial class TypeChecker
         if (resolution.Bound != null)
             return null;
 
+        bool crossed = resolution.CrossedMember != null;
+
         for (var type = _currentClass; type != null; type = type.BaseType)
         {
-            if (DescribeMemberOf(type, name, reachableThroughSelf: SelfIsInScope()) is { } own)
+            if (DescribeMemberOf(type, name, SelfIsInScope(), crossed) is { } own)
                 return own;
         }
 
         if (resolution.CrossedMemberOwner is { } ownerName
             && _symbolTable.LookupType(ownerName) is { } ownerType
-            && DescribeMemberOf(ownerType, name, reachableThroughSelf: false) is { } outer)
+            && DescribeMemberOf(ownerType, name, reachableThroughSelf: false, crossed) is { } outer)
         {
             return outer;
         }
@@ -112,7 +124,8 @@ internal partial class TypeChecker
             ? null
             : new CrossedClassMember(
                 name, resolution.CrossedMemberOwner ?? "the enclosing type",
-                IsConstant: false, IsStatic: false, ReachableThroughSelf: false);
+                IsConstant: false, IsStatic: false, ReachableThroughSelf: false,
+                DeclaredInACrossedScope: true);
     }
 
     /// <summary>
@@ -120,7 +133,7 @@ internal partial class TypeChecker
     /// null when that type declares no such member.
     /// </summary>
     private static CrossedClassMember? DescribeMemberOf(
-        TypeSymbol type, string name, bool reachableThroughSelf)
+        TypeSymbol type, string name, bool reachableThroughSelf, bool declaredInACrossedScope)
     {
         foreach (var field in type.Fields)
         {
@@ -129,7 +142,8 @@ internal partial class TypeChecker
             bool typeLevel = field.IsStatic || field.IsConstant;
             return new CrossedClassMember(
                 name, type.Name, field.IsConstant, typeLevel,
-                ReachableThroughSelf: !typeLevel && reachableThroughSelf);
+                ReachableThroughSelf: !typeLevel && reachableThroughSelf,
+                DeclaredInACrossedScope: declaredInACrossedScope);
         }
 
         foreach (var property in type.Properties)
@@ -138,7 +152,9 @@ internal partial class TypeChecker
                 continue;
             return new CrossedClassMember(
                 name, type.Name, IsConstant: false, property.IsStatic,
-                ReachableThroughSelf: !property.IsStatic && reachableThroughSelf);
+                ReachableThroughSelf: !property.IsStatic && reachableThroughSelf,
+                // A property is never IN a scope, so the walk cannot have crossed it.
+                DeclaredInACrossedScope: false);
         }
 
         return null;
@@ -189,6 +205,12 @@ internal partial class TypeChecker
         string targetName, BareStoreForm form, int line, int column, TextSpan? span)
     {
         if (DescribeCrossedClassMember(targetName) is not { } member)
+            return false;
+
+        // Only a name the walk crossed is a store R-Y refuses: an inherited field or a property
+        // name declared a fresh local at BASE and ran, and this rule does not turn a working
+        // program red. The read arm keeps the improved message for both.
+        if (!member.DeclaredInACrossedScope)
             return false;
 
         var write = form switch
