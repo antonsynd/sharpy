@@ -139,22 +139,6 @@ internal class TypeResolver
             return result;
         }
 
-        // Handle LiteralString compile-time type (PEP 675)
-        if (!escaped && annotation.Name == "LiteralString")
-        {
-            result = LiteralStringType.Instance;
-            _semanticInfo.SetTypeAnnotation(annotation, result);
-            return result;
-        }
-
-        // Handle Template type annotation (PEP 750)
-        if (!escaped && annotation.Name == BuiltinNames.Template)
-        {
-            result = TemplateType.Instance;
-            _semanticInfo.SetTypeAnnotation(annotation, result);
-            return result;
-        }
-
         // `x: builtins.int` must resolve exactly as `x: int` does (#1321). Builtin types live in
         // the BuiltinRegistry rather than in any module's Exports, so the module-qualified walk
         // below cannot see them and every builtins-qualified annotation was SPY0202 — which left
@@ -174,8 +158,20 @@ internal class TypeResolver
             return bareResult;
         }
 
+        // Handle LiteralString compile-time type (PEP 675) — falls through to the shared
+        // modifier tail so LiteralString?, LiteralString | None, and LiteralString !E all
+        // resolve correctly (#1781).
+        if (!escaped && annotation.Name == "LiteralString")
+        {
+            result = LiteralStringType.Instance;
+        }
+        // Handle Template type annotation (PEP 750) — same shared-tail routing (#1781).
+        else if (!escaped && annotation.Name == BuiltinNames.Template)
+        {
+            result = TemplateType.Instance;
+        }
         // Try builtin types first
-        if (!escaped && TryResolveBuiltinType(annotation.Name, out var builtinType))
+        else if (!escaped && TryResolveBuiltinType(annotation.Name, out var builtinType))
         {
             result = builtinType;
         }

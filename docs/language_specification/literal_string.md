@@ -120,7 +120,14 @@ non-literal `str` expression. See #1741 for the full forms table.
 LiteralString <: str
 ```
 
-This ensures that functions accepting `str` work with literal strings, but functions requiring `LiteralString` reject runtime-constructed strings.
+This ensures that functions accepting `str` work with literal strings, but functions requiring `LiteralString` reject runtime-constructed strings. `LiteralString` can appear as the payload of `T?` and `T | None`:
+
+```python
+def main() -> None:
+    x: LiteralString? = Some("a")
+    if x is not None:
+        print(x.upper())  # A
+```
 
 ### Use Surface
 

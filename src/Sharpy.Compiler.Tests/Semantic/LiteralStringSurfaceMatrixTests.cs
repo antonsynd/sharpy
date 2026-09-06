@@ -229,4 +229,107 @@ public class LiteralStringSurfaceMatrixTests : IntegrationTestBase
             d => d.Code == "SPY0220",
             "the refusal must be SPY0220 (type mismatch at the store seam)");
     }
+
+    #region Wrapper axis — LiteralString?, LiteralString | None, Template?, Template | None (#1781)
+
+    /// <summary>
+    /// Execution evidence for #1781: <c>x: LiteralString? = Some("a"); print(x)</c> prints <c>a</c>.
+    /// Before the fix, the LiteralString arm in <see cref="Sharpy.Compiler.Semantic.TypeResolver"/>
+    /// returned early, skipping the modifier tail that wraps with <see cref="Sharpy.Compiler.Semantic.OptionalType"/>.
+    /// </summary>
+    [Fact]
+    public void LiteralStringOptional_SomeValue_Prints()
+    {
+        var result = CompileAndExecuteWithGC(
+            "def main() -> None:\n" +
+            "    x: LiteralString? = Some(\"a\")\n" +
+            "    print(x)\n");
+        result.Success.Should().BeTrue(
+            "LiteralString? = Some(\"a\") must compile. Errors:\n"
+            + string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Be("a\n");
+    }
+
+    /// <summary>
+    /// Narrowed read on <c>LiteralString?</c>: after <c>if x is not None:</c>, the narrowed type
+    /// is <c>LiteralStringType</c> (subtype of str), so <c>x.upper()</c> must resolve and print <c>A</c>.
+    /// </summary>
+    [Fact]
+    public void LiteralStringOptional_NarrowedRead_PrintsUppercase()
+    {
+        var result = CompileAndExecuteWithGC(
+            "def main() -> None:\n" +
+            "    x: LiteralString? = Some(\"a\")\n" +
+            "    if x is not None:\n" +
+            "        print(x.upper())\n");
+        result.Success.Should().BeTrue(
+            "narrowed LiteralString? read must compile. Errors:\n"
+            + string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Be("A\n");
+    }
+
+    /// <summary>
+    /// <c>LiteralString | None</c> with a literal value prints the value.
+    /// </summary>
+    [Fact]
+    public void LiteralStringNullable_Value_Prints()
+    {
+        var result = CompileAndExecuteWithGC(
+            "def main() -> None:\n" +
+            "    x: LiteralString | None = \"a\"\n" +
+            "    print(x)\n");
+        result.Success.Should().BeTrue(
+            "LiteralString | None = \"a\" must compile. Errors:\n"
+            + string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Be("a\n");
+    }
+
+    /// <summary>
+    /// Narrowed read on <c>LiteralString | None</c>: <c>if x is not None: print(x.upper())</c>.
+    /// </summary>
+    [Fact]
+    public void LiteralStringNullable_NarrowedRead_PrintsUppercase()
+    {
+        var result = CompileAndExecuteWithGC(
+            "def main() -> None:\n" +
+            "    x: LiteralString | None = \"a\"\n" +
+            "    if x is not None:\n" +
+            "        print(x.upper())\n");
+        result.Success.Should().BeTrue(
+            "narrowed LiteralString | None read must compile. Errors:\n"
+            + string.Join("\n", result.CompilationErrors));
+        result.StandardOutput.Should().Be("A\n");
+    }
+
+    /// <summary>
+    /// <c>Template? = None()</c> compiles and runs (the Template arm now goes through the modifier tail).
+    /// </summary>
+    [Fact]
+    public void TemplateOptional_None_Runs()
+    {
+        var result = CompileAndExecuteWithGC(
+            "def main() -> None:\n" +
+            "    x: Template? = None()\n" +
+            "    print(x)\n");
+        result.Success.Should().BeTrue(
+            "Template? = None() must compile. Errors:\n"
+            + string.Join("\n", result.CompilationErrors));
+    }
+
+    /// <summary>
+    /// <c>Template | None = None</c> compiles and runs.
+    /// </summary>
+    [Fact]
+    public void TemplateNullable_None_Runs()
+    {
+        var result = CompileAndExecuteWithGC(
+            "def main() -> None:\n" +
+            "    x: Template | None = None\n" +
+            "    print(x)\n");
+        result.Success.Should().BeTrue(
+            "Template | None = None must compile. Errors:\n"
+            + string.Join("\n", result.CompilationErrors));
+    }
+
+    #endregion
 }
