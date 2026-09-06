@@ -64,6 +64,10 @@ public class StoreSeamConformanceTests
         // R-U (#1750): the needle of `in`/`not in` is an ARGUMENT into the container's element slot,
         // so the membership arm calls IsArgumentAssignable exactly as a call site does (plan-757fbb).
         "TypeChecker.Expressions.Operators.cs::ClassifyMembership",
+        // #1775: the same-argument overload rule probes each candidate's parameter at the failing
+        // index — it is a read-only assignability check, not a binding decision, and no conversion
+        // is applied; the only consumer is the SPY0220/SPY0354 decision in ReportOverloadError.
+        "TypeChecker.Expressions.Access.Calls.cs::TrySameArgumentOverloadRefusal",
     };
 
     [Fact]
@@ -250,7 +254,7 @@ public class StoreSeamConformanceTests
             "positive control: the scan must examine at least one TypeChecker file");
 
         var totalCallSites = enterStoreCount + clearExpectationCount;
-        totalCallSites.Should().Be(45,
+        totalCallSites.Should().Be(47,
             "the literal anchor for EnterStore + ClearExpectation call sites "
             + $"(got {enterStoreCount} EnterStore + {clearExpectationCount} ClearExpectation = {totalCallSites})");
     }

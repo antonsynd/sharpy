@@ -223,7 +223,7 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         new("LambdaBody",
             s => $"def main():\n    f: () -> {s.Slot} = lambda: {s.Value}\n    print(f())\n",
             2, DiagnosticCodes.Semantic.TypeMismatch,
-            (v, t) => $"Arrow lambda body type '{v}' is not assignable to declared return type '{t}'"),
+            (v, t) => $"Arrow lambda body type '{v}' is not assignable to expected return type '{t}'"),
 
         new("Augmented",
             s => $"def main():\n    x: {s.Slot} = {s.Seed}\n    x += {s.Value}\n    print(x)\n",

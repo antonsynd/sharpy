@@ -109,6 +109,15 @@ internal partial class TypeChecker
 
         SemanticType bodyType;
         SemanticType returnType;
+
+        // #1789: save the enclosing argument context BEFORE EnterStore(LambdaBody, ...) overwrites
+        // _expectedType. When this lambda sits at an argument position, the saved context lets the
+        // body refusal name the callee, argument ordinal, and expected function type.
+        var enclosingCallee = _currentCalleeDisplayName;
+        var enclosingArgOrdinal = _currentArgumentOrdinal;
+        var enclosingExpectedFnType = _expectedType as FunctionType;
+        var lambdaBodySteer = FormatLambdaBodyContextSuffix(enclosingCallee, enclosingArgOrdinal, enclosingExpectedFnType);
+
         if (lambda.ReturnType != null)
         {
             var declaredReturnType = _typeResolver.ResolveTypeAnnotation(lambda.ReturnType);
@@ -117,7 +126,7 @@ internal partial class TypeChecker
             if (declaredReturnType is not UnknownType && bodyType is not UnknownType)
             {
                 CheckStore(StorePosition.LambdaBody, lambda.Body, bodyType, declaredReturnType,
-                    lambda.Body, lambda.Body.Span);
+                    lambda.Body, lambda.Body.Span, extraSteer: lambdaBodySteer);
             }
             returnType = declaredReturnType;
         }
@@ -140,7 +149,7 @@ internal partial class TypeChecker
             {
                 if (!CheckStoreQuietly(StorePosition.LambdaBody, lambda.Body, bodyType, expectedReturn))
                     CheckStore(StorePosition.LambdaBody, lambda.Body, bodyType, expectedReturn,
-                        lambda.Body, lambda.Body.Span);
+                        lambda.Body, lambda.Body.Span, extraSteer: lambdaBodySteer);
                 returnType = expectedReturn;
             }
             else

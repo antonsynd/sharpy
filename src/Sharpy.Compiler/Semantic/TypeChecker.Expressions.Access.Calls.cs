@@ -1402,7 +1402,7 @@ internal partial class TypeChecker
         if (match != null || isAmbiguous)
             return;
 
-        ReportOverloadError(calleeName, call, isAmbiguous: false, arityCandidates, totalArgCount);
+        ReportOverloadError(calleeName, call, isAmbiguous: false, arityCandidates, totalArgCount, argTypes);
     }
 
     /// <summary>
@@ -2198,7 +2198,8 @@ internal partial class TypeChecker
 
         if (isAmbiguous || matchingOverload == null)
         {
-            ReportOverloadError(memberAccess.Member, call, isAmbiguous, arityCandidates, totalArgCount);
+            ReportOverloadError(memberAccess.Member, call, isAmbiguous, arityCandidates, totalArgCount,
+                argTypes, skipSelfParam: true);
             return SemanticType.Unknown;
         }
 
@@ -2277,29 +2278,156 @@ internal partial class TypeChecker
     /// Reports an overload resolution error (ambiguous or no matching overload).
     /// Shared by all overload resolution methods to avoid duplicating diagnostic logic.
     /// </summary>
+    /// <remarks>
+    /// #1775: when every arity-surviving candidate rejects the SAME positional argument at the SAME
+    /// index for a TYPE reason (not arity), the error is SPY0220 (type mismatch with the seam's
+    /// steer) rather than SPY0354 (no matching overload). The user sees the concrete type mismatch
+    /// — "Cannot pass argument of type 'str' to parameter of type 'int32'" — instead of the
+    /// opaque overload failure. SPY0354 stays for arity mismatches, genuinely divergent candidates,
+    /// and ambiguity.
+    /// </remarks>
     private void ReportOverloadError(
         string calleeName, FunctionCall call, bool isAmbiguous,
-        List<FunctionSymbol> arityCandidates, int totalArgCount)
+        List<FunctionSymbol> arityCandidates, int totalArgCount,
+        List<SemanticType>? argTypes = null, bool skipSelfParam = false)
     {
         if (isAmbiguous)
         {
             AddError($"Ambiguous call to overloaded method '{calleeName}' — multiple overloads match the argument types",
                 call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.AmbiguousOverload,
                 span: call.Span);
+            return;
         }
-        else if (arityCandidates.Count == 0)
+
+        if (arityCandidates.Count == 0)
         {
             AddError($"No matching overload for '{calleeName}' with {totalArgCount} argument(s)",
                 call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
                 span: call.Span);
+            return;
         }
-        else
+
+        // #1775: same-argument rule — if every arity candidate fails at the same argument index
+        // for a type reason, report the concrete type mismatch instead of the generic overload error.
+        if (argTypes is { Count: > 0 }
+            && TrySameArgumentOverloadRefusal(calleeName, call, arityCandidates, argTypes, skipSelfParam))
         {
-            AddError($"No matching overload for '{calleeName}' with the given argument types",
-                call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
-                span: call.Span);
+            return;
         }
+
+        AddError($"No matching overload for '{calleeName}' with the given argument types",
+            call.LineStart, call.ColumnStart, code: DiagnosticCodes.Semantic.NoMatchingOverload,
+            span: call.Span);
     }
+
+    /// <summary>
+    /// #1775: checks whether every arity candidate rejects the SAME positional argument at the SAME
+    /// index for a TYPE mismatch. If so, reports SPY0220 (type mismatch) at the argument's span and
+    /// returns true. Returns false to let the caller report SPY0354.
+    /// </summary>
+    private bool TrySameArgumentOverloadRefusal(
+        string calleeName, FunctionCall call,
+        List<FunctionSymbol> arityCandidates, List<SemanticType> argTypes, bool skipSelfParam)
+    {
+        // Only fire when there are at least 2 arity candidates: for a single candidate the existing
+        // "No matching overload" wording is already informative, and changing it would break fixtures
+        // that test the single-candidate generic path (e.g., iter_open_take_no_provenance_1518).
+        if (arityCandidates.Count < 2)
+            return false;
+
+        int? unanimousFailIndex = null;
+        SemanticType? unanimousExpectedType = null;
+
+        foreach (var candidate in arityCandidates)
+        {
+            var selfOffset = skipSelfParam && candidate.Parameters.Count > 0
+                && candidate.Parameters[0].Name == PythonNames.Self ? 1 : 0;
+            var variadicParam = candidate.Parameters.Skip(selfOffset).FirstOrDefault(p => p.IsVariadic);
+
+            int? firstFailIndex = null;
+            SemanticType? failExpectedType = null;
+
+            for (int i = 0; i < argTypes.Count; i++)
+            {
+                var paramIdx = i + selfOffset;
+                SemanticType expectedType;
+                if (paramIdx < candidate.Parameters.Count && !candidate.Parameters[paramIdx].IsVariadic)
+                {
+                    expectedType = candidate.Parameters[paramIdx].Type;
+                }
+                else if (variadicParam != null)
+                {
+                    expectedType = variadicParam.Type;
+                }
+                else
+                {
+                    // Arity mismatch at this position — not a type failure; bail.
+                    firstFailIndex = null;
+                    break;
+                }
+
+                // Type parameters are wildcards during overload resolution.
+                if (expectedType is TypeParameterType or UnknownType)
+                    continue;
+                if (argTypes[i] is UnknownType)
+                    continue;
+
+                var argNode = ArgumentNodeAt(call, i);
+                if (!IsArgumentAssignable(argTypes[i], expectedType, argNode, allowConstantConversion: true))
+                {
+                    firstFailIndex = i;
+                    failExpectedType = expectedType;
+                    break;
+                }
+            }
+
+            if (firstFailIndex == null)
+                return false; // This candidate failed for arity, not type — divergent.
+
+            if (unanimousFailIndex == null)
+            {
+                unanimousFailIndex = firstFailIndex;
+                unanimousExpectedType = failExpectedType;
+            }
+            else if (unanimousFailIndex != firstFailIndex)
+            {
+                return false; // Candidates fail at different indices — divergent.
+            }
+        }
+
+        if (unanimousFailIndex == null || unanimousExpectedType == null)
+            return false;
+
+        var failedArgType = argTypes[unanimousFailIndex.Value];
+        var argNode2 = unanimousFailIndex.Value < call.Arguments.Length
+            ? call.Arguments[unanimousFailIndex.Value]
+            : null;
+
+        // Report SPY0220 at the argument with the store seam's steer.
+        var position = StorePosition.ArgumentPositional;
+        var message = FormatStoreError(position, failedArgType, unanimousExpectedType, slotName: null)
+            + DescribeStoreRefusalSteer(position, failedArgType, unanimousExpectedType);
+        AddError(message,
+            argNode2?.LineStart ?? call.LineStart,
+            argNode2?.ColumnStart ?? call.ColumnStart,
+            code: DiagnosticCodes.Semantic.TypeMismatch,
+            span: argNode2?.Span ?? call.Span);
+        return true;
+    }
+
+    /// <summary>
+    /// The display name of a callee expression, for the lambda body refusal suffix (#1789).
+    /// An Identifier yields its name; a MemberAccess yields its member name; an IndexAccess
+    /// recurses into its object (for <c>lst.select[str](...)</c> the display name is "select");
+    /// anything else yields null (no suffix is added).
+    /// </summary>
+    private static string? CalleeDisplayName(Expression callee) => callee switch
+    {
+        Identifier id => id.Name,
+        MemberAccess ma => ma.Member,
+        IndexAccess ia => CalleeDisplayName(ia.Object),
+        _ => null,
+    };
 
     /// <summary>
     /// Unwraps nullable/optional types for null-conditional method calls.
@@ -2487,7 +2615,7 @@ internal partial class TypeChecker
 
         if (isAmbiguous || matchingOverload == null)
         {
-            ReportOverloadError(memberAccess.Member, call, isAmbiguous, arityCandidates, totalArgCount);
+            ReportOverloadError(memberAccess.Member, call, isAmbiguous, arityCandidates, totalArgCount, argTypes);
             return SemanticType.Unknown;
         }
 
@@ -2535,7 +2663,7 @@ internal partial class TypeChecker
 
         if (isAmbiguous || matchingOverload == null)
         {
-            ReportOverloadError(id.Name, call, isAmbiguous, arityCandidates, totalArgCount);
+            ReportOverloadError(id.Name, call, isAmbiguous, arityCandidates, totalArgCount, argTypes);
             return SemanticType.Unknown;
         }
 
@@ -2579,7 +2707,7 @@ internal partial class TypeChecker
 
         if (isAmbiguous || matchingOverload == null)
         {
-            ReportOverloadError(id.Name, call, isAmbiguous, arityCandidates, totalArgCount);
+            ReportOverloadError(id.Name, call, isAmbiguous, arityCandidates, totalArgCount, argTypes);
             return SemanticType.Unknown;
         }
 
@@ -4076,15 +4204,25 @@ internal partial class TypeChecker
         }
         else
         {
+            // #1789: derive the callee display name so a lambda body refusal can name its host.
+            var calleeDisplayName = CalleeDisplayName(callee);
+
             for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
             {
                 var previousParameterTypedArgument = _parameterTypedArgument;
+                var previousCalleeDisplayName = _currentCalleeDisplayName;
+                var previousArgumentOrdinal = _currentArgumentOrdinal;
 
                 // Cleared up front, so the arms below can only ever set it TOGETHER with the
                 // parameter type they push. The `else` of those arms leaves `_expectedType` holding
                 // the ENCLOSING context's expectation, which is not this argument's parameter type
                 // — see the field's own comment.
                 _parameterTypedArgument = null;
+
+                // #1789: track which argument position is being checked, so a lambda nested inside
+                // can report "argument N of '<callee>'" when its body is refused.
+                _currentCalleeDisplayName = calleeDisplayName;
+                _currentArgumentOrdinal = argIdx + 1;
 
                 // Handle spread arguments: *expr
                 if (call.Arguments[argIdx] is SpreadElement spreadArg)
@@ -4106,6 +4244,8 @@ internal partial class TypeChecker
                             argTypes.Add(SemanticType.Unknown);
                     }
                     _parameterTypedArgument = previousParameterTypedArgument;
+                    _currentCalleeDisplayName = previousCalleeDisplayName;
+                    _currentArgumentOrdinal = previousArgumentOrdinal;
                     continue;
                 }
 
@@ -4138,11 +4278,15 @@ internal partial class TypeChecker
                     argTypes.Add(CheckExpression(call.Arguments[argIdx]));
                 }
                 _parameterTypedArgument = previousParameterTypedArgument;
+                _currentCalleeDisplayName = previousCalleeDisplayName;
+                _currentArgumentOrdinal = previousArgumentOrdinal;
             }
         }
 
         // Check keyword arguments and collect their types
         var kwargTypes = new Dictionary<string, SemanticType>();
+        // #1789: keyword callee name (same as positional)
+        var kwCalleeDisplayName = CalleeDisplayName(callee);
         foreach (var kwarg in call.KeywordArguments)
         {
             // Python refuses a repeated keyword outright (`f(x=1, x=2)` is "SyntaxError: keyword
@@ -4159,7 +4303,11 @@ internal partial class TypeChecker
             }
 
             var previousParameterTypedArgument = _parameterTypedArgument;
+            var previousCalleeDisplayName = _currentCalleeDisplayName;
+            var previousArgumentOrdinal = _currentArgumentOrdinal;
             _parameterTypedArgument = null;
+            _currentCalleeDisplayName = kwCalleeDisplayName;
+            _currentArgumentOrdinal = 0;
             IDisposable? kwScope = null;
             try
             {
@@ -4180,6 +4328,8 @@ internal partial class TypeChecker
                 kwScope?.Dispose();
             }
             _parameterTypedArgument = previousParameterTypedArgument;
+            _currentCalleeDisplayName = previousCalleeDisplayName;
+            _currentArgumentOrdinal = previousArgumentOrdinal;
         }
 
         return (argTypes, kwargTypes);
@@ -5177,7 +5327,8 @@ internal partial class TypeChecker
 
             if (isAmbiguous || matchingOverload == null)
             {
-                ReportOverloadError(DunderNames.Call, call, isAmbiguous, arityCandidates, totalArgCount);
+                ReportOverloadError(DunderNames.Call, call, isAmbiguous, arityCandidates, totalArgCount,
+                    argTypes, skipSelfParam: true);
                 return SemanticType.Unknown;
             }
 

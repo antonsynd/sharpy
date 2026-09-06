@@ -500,7 +500,7 @@ internal partial class TypeChecker
                 => $"Default value of type '{value}' is not assignable to parameter type '{target}'",
 
             StorePosition.LambdaBody
-                => $"Arrow lambda body type '{value}' is not assignable to declared return type '{target}'",
+                => $"Arrow lambda body type '{value}' is not assignable to expected return type '{target}'",
 
             StorePosition.PropertyDefault
                 => $"Cannot assign type '{value}' to property of type '{target}'",
@@ -527,6 +527,25 @@ internal partial class TypeChecker
 
             _ => $"Cannot assign type '{value}' to '{target}'",
         };
+    }
+
+    /// <summary>
+    /// Builds the context suffix for a lambda body refusal when the lambda sits at an argument
+    /// position (#1789). Returns null when no enclosing argument context is available (the lambda
+    /// is at a variable slot, return, or list element). The suffix looks like:
+    /// <c> — argument 1 of 'select' expects '(int32) -> str'</c>.
+    /// </summary>
+    private static string? FormatLambdaBodyContextSuffix(
+        string? calleeName, int argumentOrdinal, FunctionType? expectedFnType)
+    {
+        if (calleeName == null || expectedFnType == null)
+            return null;
+
+        var positionText = argumentOrdinal > 0
+            ? $"argument {argumentOrdinal}"
+            : "keyword argument";
+
+        return $" — {positionText} of '{calleeName}' expects '{expectedFnType.GetDisplayName()}'";
     }
 
     private IDisposable EnterStore(StorePosition position, SemanticType targetType, Expression? valueNode,
