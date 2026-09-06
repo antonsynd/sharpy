@@ -51,10 +51,40 @@ internal partial class TypeChecker
         // Handle tuple unpacking: x, y = expr  or  first, *rest = items
         if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is TupleLiteral targetTuple)
         {
-            var tupleValueType = CheckExpression(assignment.Value);
-
-            // Check for star expression (rest pattern)
+            // Check for star expression (rest pattern) — always needs the whole-expression check.
             bool hasStar = targetTuple.Elements.Any(e => e is StarExpression);
+
+            // Tuple-literal RHS with matching arity: DON'T check the whole tuple first.
+            // Each element is checked under its target's declared slot in
+            // CheckTupleUnpackingElements, so Some(5)/None() see the expected type and
+            // don't produce premature SPY0227 (#1785, #1707).
+            var elemNodes = hasStar ? null : TupleLiteralElements(assignment.Value);
+            if (elemNodes != null && elemNodes.Count == targetTuple.Elements.Length)
+            {
+                // Provide placeholder types — each element is checked from its source node.
+                // The placeholders are only reached when both source node AND declared slot
+                // are absent (new variable with no literal), so Unknown is safe.
+                var placeholderTypes = Enumerable
+                    .Repeat(SemanticType.Unknown, elemNodes.Count).ToList();
+                CheckTupleUnpackingElements(
+                    targetTuple.Elements, placeholderTypes, elemNodes);
+
+                // Build the tuple's recorded type from the individually-checked elements.
+                if (AstHelper.UnwrapParenthesized(assignment.Value) is TupleLiteral rhsTupleLit)
+                {
+                    var checkedTypes = new List<SemanticType>(elemNodes.Count);
+                    foreach (var node in elemNodes)
+                        checkedTypes.Add(
+                            _semanticInfo.GetExpressionType(node) ?? SemanticType.Unknown);
+                    var tupleType = new TupleType { ElementTypes = checkedTypes };
+                    _semanticInfo.SetExpressionType(rhsTupleLit, tupleType);
+                }
+
+                return;
+            }
+
+            // Non-literal RHS (or star pattern): check the whole expression first.
+            var tupleValueType = CheckExpression(assignment.Value);
 
             if (hasStar)
             {
@@ -63,7 +93,7 @@ internal partial class TypeChecker
             }
 
             // Value must be a tuple type
-            if (tupleValueType is not TupleType tupleType)
+            if (tupleValueType is not TupleType tupleType2)
             {
                 AddError($"Cannot unpack non-tuple type '{tupleValueType.GetDisplayName()}' into tuple",
                     assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
@@ -72,9 +102,9 @@ internal partial class TypeChecker
             }
 
             // Check element count matches
-            if (targetTuple.Elements.Length != tupleType.ElementTypes.Count)
+            if (targetTuple.Elements.Length != tupleType2.ElementTypes.Count)
             {
-                AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Length} variables",
+                AddError($"Cannot unpack {tupleType2.ElementTypes.Count} values into {targetTuple.Elements.Length} variables",
                     assignment.LineStart, assignment.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                     span: assignment.Span);
                 return;
@@ -83,8 +113,8 @@ internal partial class TypeChecker
             // Type-check each unpacking element (supports nested tuple targets). The RHS element
             // NODES travel with the types so each element is a store the seam can classify by
             // value shape, not a bare type comparison (#1698, #1701).
-            CheckTupleUnpackingElements(targetTuple.Elements, tupleType.ElementTypes,
-                TupleLiteralElements(assignment.Value));
+            CheckTupleUnpackingElements(
+                targetTuple.Elements, tupleType2.ElementTypes, elemNodes);
 
             return;
         }

@@ -519,7 +519,10 @@ internal partial class TypeChecker
             StorePosition.CoalesceAssign
                 => $"Cannot assign type '{value}' to '??=' target of type '{target}'",
 
-            StorePosition.TupleElement or StorePosition.CollectionElement
+            StorePosition.TupleElement
+                => $"Cannot assign type '{value}' to '{target}' in tuple unpacking",
+
+            StorePosition.CollectionElement
                 => $"Cannot assign type '{value}' to '{target}'",
 
             _ => $"Cannot assign type '{value}' to '{target}'",

@@ -219,6 +219,48 @@ explicitly parameterized construction, and every unpacking form above are unaffe
 > Sharpy treats the written annotation as the type authority, so the element widens
 > exactly as `x: float = 1` does (#1200; pinned in `ParameterizedTupleConversionTests`).
 
+## Element Stores Use the Target's Declared Type
+
+When unpacking a tuple literal into targets that already have a declared type, each
+element is a **store** into the target's declared slot. The element expression sees the
+declared type as its expected type, so constructor shorthands like `Some(v)` and `None()`
+can infer their type parameter from it:
+
+```python
+class Box:
+    v: int? = None()
+
+def main() -> None:
+    b: Box = Box()
+    n: int = 0
+    b.v, n = Some(5), 1   # Some(5) infers int? from b.v's declared type
+    print(b.v, n)          # 5 1
+```
+
+Similarly, bare `None` into a nullable target adopts the target's type:
+
+```python
+def main() -> None:
+    x: str | None = "hello"
+    x, n = None, 1    # None stores into str | None
+    print(x is None)   # True
+```
+
+The **R-T payload rule** applies to identifier targets that are narrowed: inside a
+narrowing block (`if x is not None:`), storing a payload value into a narrowed `T?`
+variable wraps it — mirroring the behavior of plain assignments:
+
+```python
+def main() -> None:
+    d: int? = Some(10)
+    if d is not None:
+        d, n = 5, 2    # 5 wraps to Some(5) — d stays int?
+        print(d, n)     # 5 2
+```
+
+Refusals use the store seam's diagnostic codes: `SPY0604` (strict Optional construction),
+`SPY0229` (None into non-nullable), not a generic type-mismatch.
+
 ## Error Cases
 
 | Scenario | Diagnostic |

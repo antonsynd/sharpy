@@ -257,7 +257,16 @@ internal partial class RoslynEmitter
             return TupleExpression(SeparatedList(expandedArgs));
         }
 
-        var elements = tuple.Elements.Select(GenerateExpression).ToArray();
+        var elements = tuple.Elements.Select(elem =>
+        {
+            var expr = GenerateExpression(elem);
+            // R-T: a per-element OptionalStoreWrap fact means the element is a payload value
+            // stored into a narrowed Optional slot — wrap it, mirroring the plain-store wrap
+            // at RoslynEmitter.Statements.Assignments.cs:123 (#1785).
+            if (_context.SemanticInfo?.GetOptionalStoreWrap(elem) is { } wrapOpt)
+                expr = WrapInOptionalSome(expr, wrapOpt);
+            return expr;
+        }).ToArray();
 
         // Named tuple: (x: 1.0, y: 2.0)
         if (!tuple.ElementNames.IsEmpty)

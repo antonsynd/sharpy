@@ -1,0 +1,4 @@
+def main() -> None:
+    x: str | None = "a"
+    x, m = None, 1
+    print(x is None, m)

@@ -1,0 +1,8 @@
+class Box:
+    v: int? = None()
+
+def main() -> None:
+    b: Box = Box()
+    n: int = 0
+    b.v, n = Some(5), 1
+    print(b.v, n)

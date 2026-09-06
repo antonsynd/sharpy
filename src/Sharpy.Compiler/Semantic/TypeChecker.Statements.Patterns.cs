@@ -1358,34 +1358,90 @@ internal partial class TypeChecker
                 // A target that already has a declared binding is a STORE into it: the emitted C#
                 // local keeps its declared type and the deconstruction assigns INTO that local, so
                 // the slot is the declared type (#1706) and the element's value shape decides
-                // (#1698, #1688). Without this, `a: int8; b: float32; a, b = 1, 2.5` was admitted
-                // type-wise and the emitter printed an unsuffixed 2.5 (CS0029 behind SPY0908), and
-                // a genuinely mistyped element (`a: int; a, b = "x", 3`) was the same ICE.
-                var elementType = valueElemType;
-                if (existingSymbol is VariableSymbol storePredecessor
-                    && DeclaredBindingType(storePredecessor) is var declaredSlot
-                    && declaredSlot is not UnknownType
+                // (#1698, #1688, #1785). Without this, `a: int8; b: float32; a, b = 1, 2.5` was
+                // admitted type-wise and the emitter printed an unsuffixed 2.5 (CS0029 behind
+                // SPY0908), and a genuinely mistyped element (`a: int; a, b = "x", 3`) was the
+                // same ICE.
+                var storePredecessor = existingSymbol as VariableSymbol;
+                var declaredSlot = storePredecessor != null
+                    ? DeclaredBindingType(storePredecessor)
+                    : (SemanticType?)null;
+
+                // Check the element from its source node when available — the caller may have
+                // skipped the whole-tuple check for a tuple-literal RHS (#1785, #1707). When a
+                // declared slot exists, push it via EnterStore so Some(5)/None() self-type and
+                // value-shape arms (constant narrowing, float32) classify against it.
+                SemanticType elementType;
+                if (valueElemNode != null && declaredSlot is not null and not UnknownType)
+                {
+                    using (EnterStore(StorePosition.TupleElement, declaredSlot, valueElemNode))
+                        elementType = CheckExpression(valueElemNode);
+                }
+                else if (valueElemNode != null && valueElemType is UnknownType)
+                {
+                    // New variable (no declared slot) and the caller provided placeholder types:
+                    // check the source node without a slot push.
+                    elementType = CheckExpression(valueElemNode);
+                }
+                else
+                {
+                    elementType = valueElemType;
+                }
+
+                if (storePredecessor != null && declaredSlot is not null and not UnknownType
                     && elementType is not UnknownType
                     && !IsAssignable(elementType, declaredSlot))
                 {
-                    var verdict = ClassifyStore(
-                        StorePosition.TupleElement, valueElemNode, elementType, declaredSlot);
-                    if (!IsAcceptedVerdict(verdict))
-                    {
-                        AddError($"Cannot assign type '{elementType.GetDisplayName()}' to '{declaredSlot.GetDisplayName()}' in tuple unpacking",
-                            targetElem.LineStart, targetElem.ColumnStart,
-                            code: DiagnosticCodes.Semantic.TypeMismatch, span: targetElem.Span);
-                        continue;
-                    }
+                    // R-T: when the target is narrowed and the declared type is a wrapper,
+                    // classify against the payload first — a payload-accepted value re-wraps
+                    // (mirroring CheckAssignment's R-T arm at Statements.cs:170-201).
+                    var payloadType = declaredSlot is OptionalType opt ? opt.UnderlyingType
+                        : declaredSlot is NullableType { IsValueType: true } nt ? nt.UnderlyingType
+                        : (SemanticType?)null;
 
-                    ApplyAcceptedVerdict(
-                        StorePosition.TupleElement, verdict, valueElemNode, elementType, declaredSlot);
-                    elementType = verdict switch
+                    if (payloadType != null
+                        && HasRemoveNoneFact(tupleTargetId.Name)
+                        && (IsAssignable(elementType, payloadType)
+                            || IsAcceptedVerdict(ClassifyStore(
+                                StorePosition.TupleElement, valueElemNode, elementType, payloadType))))
                     {
-                        StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
-                        StoreVerdict.AcceptedDecimalNarrowing => SemanticType.Decimal,
-                        _ => declaredSlot,
-                    };
+                        if (declaredSlot is OptionalType wrapOpt)
+                            _semanticInfo.SetOptionalStoreWrap(valueElemNode!, wrapOpt);
+                        elementType = ClassifyStore(
+                            StorePosition.TupleElement, valueElemNode, elementType, payloadType) switch
+                        {
+                            StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
+                            StoreVerdict.AcceptedDecimalNarrowing => SemanticType.Decimal,
+                            _ => payloadType,
+                        };
+                    }
+                    else
+                    {
+                        // Seam-coded refusal: the seam's CheckStore produces the correct
+                        // diagnostic (SPY0604 for strict Optional, SPY0229 for None into
+                        // non-nullable) instead of a generic SPY0220 (#1785).
+                        if (!CheckStore(StorePosition.TupleElement, valueElemNode, elementType,
+                                declaredSlot, targetElem, targetElem.Span))
+                        {
+                            continue;
+                        }
+                        elementType = ClassifyStore(
+                            StorePosition.TupleElement, valueElemNode, elementType, declaredSlot) switch
+                        {
+                            StoreVerdict.AcceptedFloat32Narrowing => SemanticType.Float32,
+                            StoreVerdict.AcceptedDecimalNarrowing => SemanticType.Decimal,
+                            _ => declaredSlot,
+                        };
+                    }
+                }
+
+                // When None stores into a nullable slot, the TUPLE's recorded type must carry the
+                // slot type (not Void) so the emitter's temp uses an explicit type instead of var —
+                // `var __t = (null, 1)` is CS0815 (#1707).
+                if (valueElemNode != null && elementType is VoidType
+                    && declaredSlot is NullableType)
+                {
+                    _semanticInfo.SetExpressionType(valueElemNode, declaredSlot);
                 }
 
                 // In Sharpy, tuple unpacking creates new variable versions
@@ -1426,9 +1482,15 @@ internal partial class TypeChecker
             else if (targetElem is TupleLiteral nestedTuple)
             {
                 // Nested tuple unpacking: (a, b), c = expr
-                if (valueElemType is not TupleType nestedTupleType)
+                // When the caller skipped the whole-tuple check (placeholder types), derive
+                // the element type from the source node.
+                var nestedType = valueElemType;
+                if (nestedType is UnknownType && valueElemNode != null)
+                    nestedType = CheckExpression(valueElemNode);
+
+                if (nestedType is not TupleType nestedTupleType)
                 {
-                    AddError($"Cannot unpack non-tuple type '{valueElemType.GetDisplayName()}' into nested tuple",
+                    AddError($"Cannot unpack non-tuple type '{nestedType.GetDisplayName()}' into nested tuple",
                         targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.InvalidTupleUnpacking,
                         span: targetElem.Span);
                     continue;
@@ -1455,12 +1517,45 @@ internal partial class TypeChecker
                 using (ScopedValue.Push(ref _indexStoreTarget, IndexStoreTarget.Of(targetElem)))
                 using (ScopedValue.Push(ref _plainStoreTarget, targetElem))
                     targetElemType = CheckExpression(targetElem);
-                if (!CheckStoreQuietly(
-                        StorePosition.TupleElement, valueElemNode, valueElemType, targetElemType))
+
+                // Push the target's type and re-check so value-shape arms classify correctly
+                // (#1785). Same slot push the identifier arm does for its declared type.
+                SemanticType sourceElemType;
+                if (valueElemNode != null && targetElemType is not UnknownType)
                 {
-                    AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
-                        targetElem.LineStart, targetElem.ColumnStart, code: DiagnosticCodes.Semantic.TypeMismatch,
-                        span: targetElem.Span);
+                    using (EnterStore(StorePosition.TupleElement, targetElemType, valueElemNode))
+                        sourceElemType = CheckExpression(valueElemNode);
+                }
+                else if (valueElemNode != null && valueElemType is UnknownType)
+                {
+                    sourceElemType = CheckExpression(valueElemNode);
+                }
+                else
+                {
+                    sourceElemType = valueElemType;
+                }
+
+                // Seam-coded refusal: CheckStore produces the correct diagnostic (SPY0604,
+                // SPY0229, etc.) instead of a generic SPY0220 (#1785).
+                if (sourceElemType is not UnknownType && targetElemType is not UnknownType
+                    && !IsAssignable(sourceElemType, targetElemType))
+                {
+                    CheckStore(StorePosition.TupleElement, valueElemNode, sourceElemType,
+                        targetElemType, targetElem, targetElem.Span);
+                }
+                else if (sourceElemType is not UnknownType && targetElemType is not UnknownType)
+                {
+                    // Assignable — still apply verdict side effects (constant narrowing etc.)
+                    CheckStoreQuietly(
+                        StorePosition.TupleElement, valueElemNode, sourceElemType, targetElemType);
+                }
+
+                // When None stores into a nullable slot, update for the tuple's recorded type
+                // (#1707, same as identifier arm).
+                if (valueElemNode != null && sourceElemType is VoidType
+                    && targetElemType is NullableType)
+                {
+                    _semanticInfo.SetExpressionType(valueElemNode, targetElemType);
                 }
             }
         }

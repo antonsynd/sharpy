@@ -960,7 +960,7 @@ def main() -> None:
     }
 
     private const int MistypedStoreNaCount = 72;
-    private const int MistypedStoreKnownRedCount = 99; // #1785: 90, #1707: 9
+    private const int MistypedStoreKnownRedCount = 0; // #1784: DRAINED (Phase 2), #1785: DRAINED, #1707: DRAINED (Phase 3)
 
     private static string SlotTypeOf(SlotFamily family) => family switch
     {
@@ -1038,47 +1038,8 @@ def main() -> None:
     private static KnownRedStoreCell? MistypedStoreKnownRedOf(
         StoreTargetKind target, MistypedStoreScope scope, SlotFamily family, StoredValueKind value)
     {
-        if (target == StoreTargetKind.TupleElementAttribute)
-        {
-            // The tuple-UNPACKING element position (#1785): the slot is not pushed, and the
-            // refusal is the position's own SPY0220 "… in tuple unpacking", not the seam's verdict.
-            if (value is StoredValueKind.NoneCall or StoredValueKind.SomeCall)
-            {
-                return new KnownRedStoreCell(
-                    Issue: "#1785",
-                    ObservedCode: DiagnosticCodes.Semantic.CannotInferType,
-                    Contract: family == SlotFamily.Optional
-                        ? "runs — the element slot is int? and Some(5)/None() infer from it"
-                        : "SPY0220 — an Optional into a non-Optional element slot");
-            }
-
-            if (value == StoredValueKind.NoneLiteral && family == SlotFamily.Nullable)
-            {
-                return new KnownRedStoreCell(
-                    Issue: "#1707",
-                    ObservedCode: DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
-                    Contract: "runs and prints None — `var __t = (null, 1)` is CS0815 today");
-            }
-
-            if (family == SlotFamily.Optional
-                && value is StoredValueKind.PayloadConstant or StoredValueKind.Mistyped or StoredValueKind.NoneLiteral)
-            {
-                return new KnownRedStoreCell(
-                    Issue: "#1785",
-                    ObservedCode: DiagnosticCodes.Semantic.TypeMismatch,
-                    Contract: "SPY0604 — the seam's strict-Optional verdict with the Some(...) steer, not a generic SPY0220");
-            }
-
-            if (family == SlotFamily.Plain && value == StoredValueKind.NoneLiteral)
-            {
-                return new KnownRedStoreCell(
-                    Issue: "#1785",
-                    ObservedCode: DiagnosticCodes.Semantic.TypeMismatch,
-                    Contract: "SPY0229 — None into a non-nullable slot is the nullability refusal, not a generic SPY0220");
-            }
-
-            return null;
-        }
+        // TupleElementAttribute cells (#1785, #1707) are DRAINED: the slot is now pushed per
+        // element, the seam's verdict applies, and the typed temp avoids CS0815.
 
         return null;
     }
@@ -1329,26 +1290,16 @@ def main() -> None:
     }
 
     /// <summary>
-    /// The ratchet. A known-red row must still fail the way it was observed; when its issue is
-    /// fixed this goes red, the row is deleted and MistypedStoreKnownRedCount is decremented.
+    /// The ratchet's terminal state: all KnownRed rows are drained (#1784 Phase 2, #1785 + #1707
+    /// Phase 3). MistypedStoreKnownRedOf returns null unconditionally. The matrix totality test
+    /// asserts KnownRedCount == 0; a new defect re-introduces the ratchet.
     /// </summary>
-    [Theory]
-    [MemberData(nameof(KnownRedMistypedStoreCells))]
-    public void MistypedStore_KnownRedCell_IsStillRedAsObserved(string id)
+    [Fact]
+    public void MistypedStore_KnownRedRatchet_IsDrained()
     {
-        var cell = MistypedStoreCellById(id);
-        var red = cell.KnownRed!;
-        var result = CompileAndExecute(cell.Program);
-
-        var observed = red.ObservedCode == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError
-            ? IsIce(result)
-            : result.RawDiagnostics.Any(d => d.Code == red.ObservedCode);
-
-        observed.Should().BeTrue(
-            $"{id} is known red under {red.Issue} with {red.ObservedCode} (contract: {red.Contract}). "
-            + "If this fails the issue is fixed: delete the row from MistypedStoreKnownRedOf and "
-            + $"decrement MistypedStoreKnownRedCount\n{cell.Program}\n"
-            + string.Join("\n", result.CompilationErrors));
+        var cells = BuildMistypedStoreProduct();
+        cells.Count(c => c.Kind == MistypedStoreCellKind.KnownRed).Should().Be(0,
+            "all known-red rows are drained — every cell is now live or N/A");
     }
 
     [Fact]
@@ -1375,9 +1326,7 @@ def main() -> None:
         var na = cells.Count(c => c.Kind == MistypedStoreCellKind.NotApplicable);
         var red = cells.Count(c => c.Kind == MistypedStoreCellKind.KnownRed);
         na.Should().Be(MistypedStoreNaCount, "N/A = ModuleLevel × the four field/element targets × 3 × 6");
-        red.Should().Be(MistypedStoreKnownRedCount, "known-red rows drain on fix (#1785: 90, #1707: 9)");
-        cells.Count(c => c.Kind == MistypedStoreCellKind.KnownRed && c.KnownRed!.Issue == "#1785").Should().Be(90);
-        cells.Count(c => c.Kind == MistypedStoreCellKind.KnownRed && c.KnownRed!.Issue == "#1707").Should().Be(9);
+        red.Should().Be(MistypedStoreKnownRedCount, "all KnownRed rows drained: #1784 (Phase 2), #1785 + #1707 (Phase 3)");
         (live + na + red).Should().Be(1080,
             "live + N/A + known-red covers the declared axes; a dropped arm must fail here");
 
@@ -1410,12 +1359,12 @@ def main() -> None:
     }
 
     /// <summary>
-    /// Positive control for the ICE probe: <see cref="IsIce"/> must fire on a program that DOES ICE
-    /// today (#1707), or the "SPY0908 in no cell" assertion is vacuous. When #1707 is fixed this
-    /// control needs a new known ICE or is retired with the row.
+    /// Regression test for #1707: the program that used to ICE with CS0815 (<c>var __t = (null, 1)</c>)
+    /// now compiles and runs because the tuple-element slot pushes the declared NullableType and the
+    /// emitter uses an explicit tuple type for the temp.
     /// </summary>
     [Fact]
-    public void MistypedStore_Control_IceProbeFiresOnAKnownIce_1707()
+    public void MistypedStore_Regression_1707_NoneElementInTupleNowRuns()
     {
         var result = CompileAndExecute(@"
 class NBox:
@@ -1427,9 +1376,11 @@ def main() -> None:
     b.v, n = None, 1
     print(b.v)
 ");
-        IsIce(result).Should().BeTrue(
-            "#1707: `var __t = (null, 1)` is CS0815 behind SPY0908 — the probe must see it\n"
+        result.Success.Should().BeTrue(
+            "#1707 is fixed: the tuple temp uses an explicit type, not var\n"
             + string.Join("\n", result.CompilationErrors));
+        LastOutputLine(result).Should().Be("None",
+            "#1707: b.v reads as None after the tuple store");
     }
 
     // ── Survival cells (R-T): the narrowing outlives a payload store ──
