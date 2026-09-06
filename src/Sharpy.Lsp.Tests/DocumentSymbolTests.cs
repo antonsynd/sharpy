@@ -213,4 +213,98 @@ def main():
         children.Should().Contain(c => c.Name == "x"
             && c.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Field);
     }
+
+    // ── Plain assignment outline entries (#1734 — BindingScopeWalker) ──
+
+    [Fact]
+    public async Task ModuleLevelPlainAssignment_AppearsAsVariable()
+    {
+        var symbols = await GetOutlineAsync("x = 42\ndef main():\n    pass");
+
+        symbols.Should().Contain(s => s.Name == "x"
+            && s.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Variable);
+        symbols.Should().Contain(s => s.Name == "main"
+            && s.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Function,
+            "positive control: the sibling function is still listed");
+    }
+
+    [Fact]
+    public async Task ClassLevelPlainAssignment_AppearsAsField()
+    {
+        var symbols = await GetOutlineAsync("class C:\n    n = 0\n");
+
+        var cls = symbols.Should().ContainSingle(s => s.Name == "C").Which;
+        cls.Children!.Should().Contain(c => c.Name == "n"
+            && c.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Field);
+    }
+
+    [Fact]
+    public async Task Rebinding_ProducesNoSecondEntry()
+    {
+        var symbols = await GetOutlineAsync("x = 42\nx = 43\ndef main():\n    pass");
+
+        symbols.Where(s => s.Name == "x").Should().ContainSingle(
+            "the first binding declares; the second is a rebinding and must not duplicate the entry");
+    }
+
+    [Fact]
+    public async Task IfElseBothBranchBinding_ProducesOneEntry()
+    {
+        var symbols = await GetOutlineAsync(
+            "if True:\n    x = 1\nelse:\n    x = 2\ndef main():\n    pass");
+
+        symbols.Where(s => s.Name == "x").Should().ContainSingle(
+            "assigned in both branches but the outline should show only one entry");
+        symbols.First(s => s.Name == "x").Kind.Should()
+            .Be(OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Variable);
+    }
+
+    [Fact]
+    public async Task DecoratedAssignment_AppearsInOutline()
+    {
+        // @suppress wraps the assignment in a DecoratedStatement; the outline must unwrap it.
+        var symbols = await GetOutlineAsync(
+            "@suppress(\"SPY0451\")\nx = 42\ndef main():\n    pass");
+
+        symbols.Should().Contain(s => s.Name == "x"
+            && s.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Variable);
+    }
+
+    [Fact]
+    public async Task TupleTarget_IsARosteredNonGoal()
+    {
+        // Tuple unpacking targets are not shown in the outline (non-goal for #1734).
+        // The `ok` function proves the document parsed.
+        var symbols = await GetOutlineAsync("a, b = 1, 2\ndef main():\n    pass");
+
+        symbols.Should().NotContain(s => s.Name == "a" || s.Name == "b",
+            "tuple targets are a rostered non-goal for plain-assignment outline entries");
+        symbols.Should().ContainSingle(s => s.Name == "main",
+            "positive control: the sibling function is listed");
+    }
+
+    [Fact]
+    public async Task AnnotatedDeclaration_AndPlainAssignment_BothAppear()
+    {
+        // An annotated VariableDeclaration (already handled) and a plain assignment (new)
+        // should both appear, and the annotated twin should not be duplicated by the new arm.
+        var symbols = await GetOutlineAsync("x: int = 42\ny = 10\ndef main():\n    pass");
+
+        symbols.Should().ContainSingle(s => s.Name == "x"
+            && s.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Variable,
+            "the annotated VariableDeclaration is listed once by the existing arm");
+        symbols.Should().ContainSingle(s => s.Name == "y"
+            && s.Kind == OmniSharp.Extensions.LanguageServer.Protocol.Models.SymbolKind.Variable,
+            "the plain assignment is listed once by the new arm");
+    }
+
+    [Fact]
+    public async Task AnnotatedDeclaration_ThenSameNamePlainAssignment_IsRebinding()
+    {
+        // x: int = 42 declares x; x = 43 is a rebinding.
+        var symbols = await GetOutlineAsync("x: int = 42\nx = 43\ndef main():\n    pass");
+
+        symbols.Where(s => s.Name == "x").Should().ContainSingle(
+            "the VariableDeclaration binds the name; the later assignment is a rebinding");
+    }
 }

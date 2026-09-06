@@ -31,16 +31,132 @@ internal sealed class SharpyDocumentSymbolHandler : DocumentSymbolHandlerBase
         if (parseResult?.Ast == null)
             return null;
 
-        var symbols = new System.Collections.Generic.List<SymbolInformationOrDocumentSymbol>();
+        var symbols = new System.Collections.Generic.List<DocumentSymbol>();
+        CollectOutlineSymbols(parseResult.Ast.Body, new BindingScope(), SymbolKind.Variable, symbols);
 
-        foreach (var stmt in parseResult.Ast.Body)
+        return new SymbolInformationOrDocumentSymbolContainer(
+            symbols.Select(s => new SymbolInformationOrDocumentSymbol(s)));
+    }
+
+    /// <summary>
+    /// Walks <paramref name="statements"/> with a <see cref="BindingScope"/>, converting named
+    /// declarations via the existing <see cref="ConvertStatement"/> / <see cref="ConvertClassMember"/>
+    /// arms AND producing outline entries for declaring plain assignments (<c>x = 42</c>). Recurses
+    /// into compound control-flow statements (if/else, while, for, try, with, match) so that an
+    /// assignment inside a conditional still appears in the outline; does NOT recurse into
+    /// scope-creating bodies (function, class, struct, etc.) because those are their own outline
+    /// subtrees.
+    /// </summary>
+    /// <param name="assignmentKind">
+    /// <see cref="SymbolKind.Variable"/> at module level; <see cref="SymbolKind.Field"/> inside a
+    /// type body.
+    /// </param>
+    private static void CollectOutlineSymbols(
+        IEnumerable<Statement> statements,
+        BindingScope scope,
+        SymbolKind assignmentKind,
+        System.Collections.Generic.List<DocumentSymbol> symbols)
+    {
+        var isClassLevel = assignmentKind == SymbolKind.Field;
+
+        foreach (var rawStmt in statements)
         {
-            var symbol = ConvertStatement(stmt);
-            if (symbol != null)
-                symbols.Add(new SymbolInformationOrDocumentSymbol(symbol));
-        }
+            var stmt = rawStmt is DecoratedStatement decorated ? decorated.Statement : rawStmt;
 
-        return new SymbolInformationOrDocumentSymbolContainer(symbols);
+            // Mark named declarations as bound so later assignments to the same name are
+            // correctly treated as rebindings.
+            MarkNamedDeclaration(stmt, scope);
+
+            // Existing named-declaration conversion (unchanged behavior).
+            var converted = isClassLevel ? ConvertClassMember(rawStmt) : ConvertStatement(rawStmt);
+            if (converted != null)
+                symbols.Add(converted);
+
+            // Plain assignment declarations: only `=` introduces a new binding.
+            if (stmt is Assignment { Target: Identifier id } assignment
+                && assignment.Operator == AssignmentOperator.Assign
+                && scope.TryDeclare(id.Name))
+            {
+                symbols.Add(MakeSymbol(id.Name, assignmentKind, rawStmt));
+            }
+
+            // Recurse into compound control-flow statements.
+            switch (stmt)
+            {
+                case IfStatement ifStmt:
+                    CollectOutlineSymbols(ifStmt.ThenBody, scope, assignmentKind, symbols);
+                    foreach (var elif in ifStmt.ElifClauses)
+                        CollectOutlineSymbols(elif.Body, scope, assignmentKind, symbols);
+                    if (ifStmt.ElseBody.Length > 0)
+                        CollectOutlineSymbols(ifStmt.ElseBody, scope, assignmentKind, symbols);
+                    break;
+                case WhileStatement whileStmt:
+                    CollectOutlineSymbols(whileStmt.Body, scope, assignmentKind, symbols);
+                    break;
+                case ForStatement forStmt:
+                    BindingScopeWalker.MarkTargetBound(forStmt.Target, scope);
+                    CollectOutlineSymbols(forStmt.Body, scope, assignmentKind, symbols);
+                    if (forStmt.ElseBody.Length > 0)
+                        CollectOutlineSymbols(forStmt.ElseBody, scope, assignmentKind, symbols);
+                    break;
+                case TryStatement tryStmt:
+                    CollectOutlineSymbols(tryStmt.Body, scope, assignmentKind, symbols);
+                    foreach (var handler in tryStmt.Handlers)
+                    {
+                        if (handler.Name != null)
+                            scope.MarkBound(handler.Name);
+                        CollectOutlineSymbols(handler.Body, scope, assignmentKind, symbols);
+                    }
+                    if (tryStmt.ElseBody.Length > 0)
+                        CollectOutlineSymbols(tryStmt.ElseBody, scope, assignmentKind, symbols);
+                    if (tryStmt.FinallyBody.Length > 0)
+                        CollectOutlineSymbols(tryStmt.FinallyBody, scope, assignmentKind, symbols);
+                    break;
+                case WithStatement withStmt:
+                    foreach (var item in withStmt.Items)
+                    {
+                        if (item.Target is Identifier iId)
+                            scope.MarkBound(iId.Name);
+                    }
+                    CollectOutlineSymbols(withStmt.Body, scope, assignmentKind, symbols);
+                    break;
+                case MatchStatement matchStmt:
+                    foreach (var matchCase in matchStmt.Cases)
+                    {
+                        BindingScopeWalker.MarkPatternBound(matchCase.Pattern, scope);
+                        CollectOutlineSymbols(matchCase.Body, scope, assignmentKind, symbols);
+                    }
+                    break;
+                case DeferStatement deferStmt:
+                    CollectOutlineSymbols(deferStmt.Body, scope, assignmentKind, symbols);
+                    break;
+                    // FunctionDef, ClassDef, StructDef, etc. are scope-creating bodies —
+                    // they appear in the outline as their own subtrees and are NOT recursed
+                    // for assignment discovery.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Marks names introduced by named declarations as bound in <paramref name="scope"/>, so
+    /// a later assignment to the same name is treated as a rebinding rather than a declaration.
+    /// </summary>
+    private static void MarkNamedDeclaration(Statement stmt, BindingScope scope)
+    {
+        switch (stmt)
+        {
+            case FunctionDef f: scope.MarkBound(f.Name); break;
+            case ClassDef c: scope.MarkBound(c.Name); break;
+            case StructDef s: scope.MarkBound(s.Name); break;
+            case InterfaceDef i: scope.MarkBound(i.Name); break;
+            case EnumDef e: scope.MarkBound(e.Name); break;
+            case VariableDeclaration v: scope.MarkBound(v.Name); break;
+            case TypeAlias t: scope.MarkBound(t.Name); break;
+            case UnionDef u: scope.MarkBound(u.Name); break;
+            case DelegateDef d: scope.MarkBound(d.Name); break;
+            case PropertyDef p: scope.MarkBound(p.Name); break;
+            case EventDef e: scope.MarkBound(e.Name); break;
+        }
     }
 
     private static DocumentSymbol? ConvertStatement(Statement stmt)
@@ -83,12 +199,7 @@ internal sealed class SharpyDocumentSymbolHandler : DocumentSymbolHandlerBase
             });
         }
 
-        foreach (var member in u.Body)
-        {
-            var child = ConvertClassMember(member);
-            if (child != null)
-                children.Add(child);
-        }
+        CollectOutlineSymbols(u.Body, new BindingScope(), SymbolKind.Field, children);
 
         var range = NodeToRange(u);
         return new DocumentSymbol
@@ -125,12 +236,7 @@ internal sealed class SharpyDocumentSymbolHandler : DocumentSymbolHandlerBase
         Node node)
     {
         var children = new System.Collections.Generic.List<DocumentSymbol>();
-        foreach (var member in body)
-        {
-            var child = ConvertClassMember(member);
-            if (child != null)
-                children.Add(child);
-        }
+        CollectOutlineSymbols(body, new BindingScope(), SymbolKind.Field, children);
 
         var range = NodeToRange(node);
         return new DocumentSymbol
