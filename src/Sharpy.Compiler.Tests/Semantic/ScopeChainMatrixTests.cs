@@ -107,9 +107,8 @@ def main() -> None:
     }
 
     /// <summary>
-    /// The same head with an int-typed constant. Asserted on the BINDING rather than on execution:
-    /// whether an integer class const emits as a C# <c>const</c> is the const-eligibility fact
-    /// (plan-202526), not this rule's.
+    /// The same head with an int-typed constant, which needs the const-eligibility fact as well as
+    /// the binding: a C# case label must be a compile-time constant.
     /// </summary>
     [Fact]
     public void UseForm_PatternHead_IntConstant_IsAConstantPatternNotACapture()
@@ -133,6 +132,32 @@ def main() -> None:
         Errors(result).Should().NotContain(e => e.Contains("makes remaining patterns unreachable"),
             $"a class const in a pattern head is a constant pattern, never a capture: as a capture "
             + $"it would swallow the wildcard arm (SPY0700).\n{Report(result)}");
+        result.Success.Should().BeTrue(
+            $"the head names the OWNING TYPE's const symbol, which is the one carrying the "
+            + $"compile-time-constant fact a C# case label needs.\n{Report(result)}");
+        result.StandardOutput.Should().Contain("hit");
+    }
+
+    /// <summary>
+    /// The two controls that localize the pattern head's symbol identity: a module-level const in a
+    /// bare head, and a class const reached through a QUALIFIED head. Both bind the declaration's
+    /// own symbol without crossing anything, so both worked before the crossed head did.
+    /// </summary>
+    [Theory]
+    [InlineData("module const, bare head",
+        "const A: str = \"x\"\n\ndef m(v: str) -> None:\n    match v:\n        case A:\n"
+        + "            print(\"hit\")\n        case _:\n            print(\"miss\")\n\n"
+        + "def main() -> None:\n    m(\"x\")")]
+    [InlineData("class const, qualified head",
+        "class C:\n    const A: str = \"x\"\n\n    def m(self, v: str) -> None:\n"
+        + "        match v:\n            case C.A:\n                print(\"hit\")\n"
+        + "            case _:\n                print(\"miss\")\n\n"
+        + "def main() -> None:\n    C().m(\"x\")")]
+    public void PatternHead_Control_BindsWithoutCrossing(string cell, string source)
+    {
+        var result = CompileAndExecute("\n" + source.Replace("\\n", "\n") + "\n");
+        result.Success.Should().BeTrue($"[{cell}]\n{Report(result)}");
+        result.StandardOutput.Should().Contain("hit", $"[{cell}]");
     }
 
     // ════════════════════════════════════════════════════════════════════════════════════
