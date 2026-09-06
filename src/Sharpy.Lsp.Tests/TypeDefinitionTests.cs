@@ -226,6 +226,177 @@ def main():
         Assert.Null(result);
     }
 
+    // ── Declaration-name cursors (the shared DeclarationCursorResolver route) ──
+    //
+    // Each cell puts the cursor on a declared NAME — the position FindNodeAtPosition answers with
+    // a declaration statement, not an Identifier — and asserts the navigation lands on the class's
+    // own name extent. Before the route existed these returned null for every host except the
+    // module one, which answered by accident from the ClassDef arm while `class Foo:`'s extent
+    // still swallowed the following line (#1736).
+
+    [Fact]
+    public async Task Handle_ModuleVariableDeclarationName_NavigatesToClassAsync()
+    {
+        var source = @"
+class Foo:
+    x: int = 0
+
+f: Foo = Foo()
+
+def main():
+    pass
+";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // cursor on `f` of `f: Foo = Foo()` (0-based line 4, col 0)
+        var location = await SingleLocationAsync("file:///test.spy", 4, 0);
+
+        AssertPointsAt(location, expectedLine: 1, expectedCharacter: 6, name: "Foo");
+    }
+
+    [Fact]
+    public async Task Handle_LocalVariableDeclarationName_NavigatesToClassAsync()
+    {
+        var source = @"
+class Foo:
+    x: int = 0
+
+def main():
+    local: Foo = Foo()
+    print(local)
+";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // cursor on `local` inside main (0-based line 5, col 4)
+        var location = await SingleLocationAsync("file:///test.spy", 5, 4);
+
+        AssertPointsAt(location, expectedLine: 1, expectedCharacter: 6, name: "Foo");
+    }
+
+    [Fact]
+    public async Task Handle_ParameterName_NavigatesToClassAsync()
+    {
+        var source = @"
+class Bar:
+    y: int = 0
+
+def process(b: Bar) -> int:
+    return b.y
+
+def main():
+    pass
+";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // cursor on the parameter name `b` (0-based line 4, col 12)
+        var location = await SingleLocationAsync("file:///test.spy", 4, 12);
+
+        AssertPointsAt(location, expectedLine: 1, expectedCharacter: 6, name: "Bar");
+    }
+
+    [Fact]
+    public async Task Handle_ClassFieldDeclarationName_NavigatesToClassAsync()
+    {
+        var source = @"
+class Foo:
+    x: int = 0
+
+class Holder:
+    held: Foo = Foo()
+
+def main():
+    pass
+";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // cursor on the field name `held` (0-based line 5, col 4)
+        var location = await SingleLocationAsync("file:///test.spy", 5, 4);
+
+        AssertPointsAt(location, expectedLine: 1, expectedCharacter: 6, name: "Foo");
+    }
+
+    [Fact]
+    public async Task Handle_CursorOnAnnotation_NavigatesToClassAsync()
+    {
+        var source = @"
+class Foo:
+    x: int = 0
+
+f: Foo = Foo()
+
+def main():
+    pass
+";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // cursor on the ANNOTATION `Foo` of `f: Foo = Foo()` (0-based line 4, col 3)
+        var location = await SingleLocationAsync("file:///test.spy", 4, 3);
+
+        AssertPointsAt(location, expectedLine: 1, expectedCharacter: 6, name: "Foo");
+    }
+
+    [Fact]
+    public async Task Handle_CursorOnGenericArgumentAnnotation_NavigatesToTheArgumentAsync()
+    {
+        var source = @"
+class Item:
+    name: str = """"
+
+items: list[Item] = []
+
+def main():
+    pass
+";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        // cursor inside the type ARGUMENT `Item` of `list[Item]` (0-based line 4, col 12)
+        var location = await SingleLocationAsync("file:///test.spy", 4, 12);
+
+        AssertPointsAt(location, expectedLine: 1, expectedCharacter: 6, name: "Item");
+    }
+
+    [Fact]
+    public async Task Handle_BuiltinTypedDeclarationName_ReturnsNullAsync()
+    {
+        // Negative control for the declaration route: it resolves the symbol and its type either
+        // way; `int` simply has no navigable declaration, so nothing is returned. Without this the
+        // "navigates" cells could pass on a route that answers for every declaration alike.
+        var source = @"
+n: int = 0
+
+def main():
+    pass
+";
+        _workspace.OpenDocument("file:///test.spy", source, 1);
+
+        var result = await HandleAsync("file:///test.spy", 1, 0);
+
+        Assert.Null(result);
+    }
+
+    private async Task<Location> SingleLocationAsync(string uri, int line, int character)
+    {
+        var result = await HandleAsync(uri, line, character);
+
+        result.Should().NotBeNull(
+            "the cursor sits on a declaration or annotation the handler must resolve");
+        var locations = result!.ToArray();
+        locations.Should().HaveCount(1);
+        var location = locations[0].Location;
+        location.Should().NotBeNull("the handler answers with a Location, not a LocationLink");
+        return location!;
+    }
+
+    private static void AssertPointsAt(Location location, int expectedLine, int expectedCharacter, string name)
+    {
+        location.Range.Start.Line.Should().Be(expectedLine,
+            $"navigation must land on the declaration line of '{name}'");
+        location.Range.Start.Character.Should().Be(expectedCharacter,
+            $"navigation must land on the name extent of '{name}'");
+        location.Range.End.Character.Should().Be(expectedCharacter + name.Length,
+            $"the range covers the name '{name}'");
+    }
+
     private async Task<LocationOrLocationLinks?> HandleAsync(string uri, int line, int character)
     {
         var request = new TypeDefinitionParams
