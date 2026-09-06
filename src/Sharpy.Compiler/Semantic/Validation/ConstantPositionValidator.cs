@@ -629,15 +629,8 @@ internal class ConstantPositionValidator : ValidatingAstWalker
         if (arg is Identifier id)
         {
             var sym = ResolveConstSymbol(id, semanticInfo);
-            if (sym == null)
-                return $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access";
-
-            // A const that IS compile-time still cannot be printed here: code generation has no arm
-            // for a name in an attribute argument (#1801). Say that rather than claiming the const
-            // is not constant, which the analysis would flatly contradict.
-            return ConstEligibility.IsCompileTimeConstant(Context.SemanticBinding, sym)
-                ? $"'{id.Name}' is a compile-time constant, but a const reference is not yet "
-                  + "supported in an attribute argument; write the literal value"
+            return sym == null
+                ? $"Variable reference '{id.Name}' is not a compile-time constant; use a literal or enum member access"
                 : DescribeConstReason(sym, "argument")!;
         }
 

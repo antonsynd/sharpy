@@ -1,4 +1,10 @@
-@[custom(1 + 2)]
+# A call is not a compile-time constant, at any position. `1 + 2` used to sit here, but a folded
+# constant expression IS one and is admitted now (#1782, #1801) — the acceptance is measured by
+# ParameterDefaultConstantMatrixTests' decorator matrix, and this fixture keeps the refusal.
+def g() -> int:
+    return 3
+
+@[custom(g())]
 def greet() -> str:
     return "hello"
 

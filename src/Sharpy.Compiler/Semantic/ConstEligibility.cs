@@ -565,6 +565,13 @@ internal sealed class ConstEligibility
             if (semanticInfo.GetBinaryOpLoweringForIr(binary) != BinaryOpLowering.NativeOperator)
                 return false;
 
+            // A position the checker never type-checked — a bracket-attribute argument is one —
+            // records no operand types, and the type-DEPENDENT operators cannot be judged without
+            // them. Answer from the roster that is native whatever the operands are, the same one
+            // the cross-module route uses, rather than guessing either way.
+            if (!HasRecordedType(binary.Left, semanticInfo) || !HasRecordedType(binary.Right, semanticInfo))
+                return IsOperandTypeIndependentNativeOperator(node);
+
             if (!IsConstantOperand(binary.Left, semanticInfo) || !IsConstantOperand(binary.Right, semanticInfo))
                 return false;
 
@@ -574,11 +581,15 @@ internal sealed class ConstEligibility
         }
         else if (node is UnaryOp { Operator: UnaryOperator.Not } logicalNot)
         {
+            if (!HasRecordedType(logicalNot.Operand, semanticInfo))
+                return IsOperandTypeIndependentNativeOperator(node);
             if (!IsBoolTyped(logicalNot.Operand, semanticInfo))
                 return false;
         }
         else if (node is ConditionalExpression cond)
         {
+            if (!HasRecordedType(cond.Test, semanticInfo))
+                return IsOperandTypeIndependentNativeOperator(node);
             if (!IsBoolTyped(cond.Test, semanticInfo))
                 return false;
         }
@@ -678,6 +689,13 @@ internal sealed class ConstEligibility
     };
 
     // ── Helpers ──────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Whether the checker recorded a type for this expression at all. Absence is not "not a
+    /// constant" — it means nothing typed the position.
+    /// </summary>
+    private static bool HasRecordedType(Expression expr, SemanticInfo? semanticInfo) =>
+        semanticInfo?.GetExpressionType(AstHelper.UnwrapParenthesized(expr)) != null;
 
     private static bool IsBoolTyped(Expression expr, SemanticInfo? semanticInfo) =>
         semanticInfo?.GetExpressionType(AstHelper.UnwrapParenthesized(expr)) is { } type

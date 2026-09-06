@@ -182,11 +182,12 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.Validation.NonConstantDecoratorArgument, "Decorator argument must be a compile-time constant", "Validation",
             "Custom decorator arguments must be compile-time constant expressions because they map to C# attribute " +
             "arguments. Allowed: string, int, float, bool literals, None, enum member access (e.g., MyEnum.value), " +
-            "and type(X). A reference to a 'const' is refused today even when the const IS a compile-time constant, " +
-            "because code generation has no arm that prints a name or a folded expression in this position (#1801); " +
-            "the message still names why a const would not qualify, using the same reason a parameter default reports.",
-            "const NAME: str = \"x\"\n@custom(NAME)  # error: a const reference is not printable here yet (#1801)\ndef foo():\n    pass",
-            "Use the literal directly:\n@custom(\"x\")\ndef foo():\n    pass");
+            "type(X), a reference to a 'const' that is itself a compile-time constant, and folds or conditionals over " +
+            "those — the same list a parameter default reads, decided by the same fact. The message names the reason " +
+            "a const was refused. An attribute argument is not type-checked, so operators whose lowering depends on " +
+            "operand types ('*' on str, '//', '%', '**', ordering comparisons) are refused here even over literals.",
+            "const NAME: str = \"x\".upper()  # initializer is a call\n@custom(NAME)  # error\ndef foo():\n    pass",
+            "Reference a const whose own initializer is constant:\nconst NAME: str = \"X\"\n@custom(NAME)\ndef foo():\n    pass");
 
         Add(dict, DiagnosticCodes.Validation.InitPropertyNotAssigned, "Init property not assigned in constructor", "Validation",
             "A 'property init' field without a default value must be assigned in every constructor (__init__). Init properties are set-once, so they must be initialized during construction.",

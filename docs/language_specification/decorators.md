@@ -246,31 +246,37 @@ Bracket attribute arguments must be **compile-time constants**, matching C# attr
 - Enum member access (e.g., `StringComparison.ordinal`)
 - `type(X)` (maps to `typeof(X)` in C#)
 - Negative numeric literals (e.g., `-42`, `-3.14`)
+- Constant references — a `const` declaration that is itself a compile-time constant, at any host
+- Folded constant expressions (`"a" + "b"`, `1 + 2`) and conditionals of constants
 
-Everything else is rejected at compile time with SPY0425: variable references, function calls other
-than `type()`, operators that lower to runtime calls, and — for now — a reference to a `const` and a
-folded constant expression. A C# attribute argument *is* a constant expression, so those last two
-belong here; code generation has no arm that prints a name or an operator node in this position yet,
-so they stay refused until it does (#1801). The refusal names the reason a const would not qualify,
-the same reason a parameter default reports.
+A C# attribute argument *is* a constant expression, so this list is the same one a parameter default
+reads, decided by the same fact (see
+[Function Default Parameters](function_default_parameters.md)). Everything else is rejected at
+compile time with SPY0425: variable references, function calls other than `type()`, and operators
+that lower to runtime calls. Because an attribute argument is not type-checked, the operators whose
+lowering depends on operand types — `*` (string repetition), `//`, `%`, `**`, and ordering
+comparisons — are refused here even when their operands are literals; write the folded value.
 
 ```python
 const MSG: str = "Use bar() instead"
+const LOUD: bool = True
 
-# ❌ A const reference is not printable in this position yet (#1801)
-# @[obsolete(MSG)]                     # ERROR SPY0425: 'MSG' is a compile-time constant, but a
-#                                      #                const reference is not yet supported in an
-#                                      #                attribute argument; write the literal value
-
-# ✅ Write the literal directly
-@[obsolete("Use bar() instead")]
+# ✅ A const reference, a fold, and a conditional of constants
+@[obsolete(MSG)]
 def foo() -> None:
+    pass
+
+@[some_attr("a" + "b", flag="x" if LOUD else "y")]
+def bar() -> None:
     pass
 
 # ❌ A const whose initializer is a call is not compile-time at any position
 const DYNAMIC: float = max(4.0, 1.0)   # emits 'static readonly', not 'const'
 # @[some_attr(DYNAMIC)]                # ERROR SPY0425: 'DYNAMIC' is not a compile-time constant:
 #                                      #                its initializer is a call
+
+# ❌ str repetition lowers to a call
+# @[some_attr("ab" * 2)]               # ERROR SPY0425
 ```
 
 ### Known Decorators vs. Bracket Attributes

@@ -188,21 +188,22 @@ internal static class ConstantDefaultClassifier
                 EmittableConstantKind.TypeOf or
                 EmittableConstantKind.ConditionalOfAdmitted,
 
-            // A C# attribute argument IS a constant expression, so this table should admit exactly
-            // what a const initializer does — a ConstReference whose own fact is true, a
-            // FoldedOfAdmitted and a ConditionalOfAdmitted (#1782, and decorators.md already
-            // documents all three). It does not yet, because the emitter's
-            // GenerateAttributeArgumentExpression has no arm for an Identifier or an operator node
-            // and throws SPY0909 (#1801). Admitting here without that arm would turn today's clean
-            // SPY0425 into an internal compiler error — a refusal regressing into an ICE. The three
-            // rows land together with the emitter arms; ParameterDefaultConstantMatrixTests carries
-            // the draining N/A entries that cite #1801.
+            // A C# attribute argument IS a constant expression, so this table admits exactly what a
+            // const initializer does: a ConstReference whose own fact is true, a fold over admitted
+            // operands, and a conditional over them (#1782). The emitter's
+            // GenerateAttributeArgumentExpression prints an identifier through the ordinary read
+            // route and a composition through ordinary expression emission (#1801); the two land
+            // together, because admitting a shape the emitter cannot print turns a clean SPY0425
+            // into an SPY0909.
             AdmissionTable.DecoratorArgument => kind is
                 EmittableConstantKind.Literal or
                 EmittableConstantKind.NegatedLiteral or
                 EmittableConstantKind.NoneLiteral or
                 EmittableConstantKind.EnumMember or
-                EmittableConstantKind.TypeOf,
+                EmittableConstantKind.TypeOf or
+                EmittableConstantKind.ConstReference or
+                EmittableConstantKind.FoldedOfAdmitted or
+                EmittableConstantKind.ConditionalOfAdmitted,
 
             AdmissionTable.ConstInitializer => kind is
                 EmittableConstantKind.Literal or

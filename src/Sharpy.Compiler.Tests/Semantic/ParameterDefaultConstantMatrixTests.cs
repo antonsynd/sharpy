@@ -960,14 +960,13 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         new("IntLiteral", "int", "1", "", "3", "3", null),
         new("EnumMember", "Color", "Color.GREEN",
             "enum Color:\n    RED = 1\n    GREEN = 2\n\n", "Color.RED", "Color.RED", null),
-        // StrConst/IntConst: the const IS compile-time — the refusal is the emitter's missing arm
-        // (#1801), and the message says so rather than contradicting the analysis.
-        new("StrConst", "str", "\"d\"", "const MSG: str = \"gone\"\n\n", "MSG", null,
-            "not yet supported in an attribute argument"),
-        new("IntConst", "int", "1", "const N: int = 3\n\n", "N", null,
-            "not yet supported in an attribute argument"),
-        new("Folded", "str", "\"d\"", "", "\"a\" + \"b\"", null,
-            "must be a compile-time constant"),
+        // A const reference and a constant composition are C# constant expressions, so they read
+        // here exactly as they read in a parameter default (#1782, #1801).
+        new("StrConst", "str", "\"d\"", "const MSG: str = \"gone\"\n\n", "MSG", "MSG", null),
+        new("IntConst", "int", "1", "const N: int = 3\n\n", "N", "N", null),
+        new("Folded", "str", "\"d\"", "", "\"a\" + \"b\"", "\"a\" + \"b\"", null),
+        new("ConditionalOfConsts", "str", "\"d\"", "const ON: bool = True\n\n",
+            "\"a\" if ON else \"b\"", "ON ? \"a\" : \"b\"", null),
         new("OptionalConst", "int", "1", "const O: int? = Some(1)\n\n", "O", null,
             "is not a compile-time constant"),
         new("CallInitializedConst", "str", "\"d\"", "const CI: str = \"a\".upper()\n\n", "CI", null,
@@ -984,28 +983,11 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         new("Keyword", a => $"tag_attribute({a.ParamDefault}, b={a.Expr})"),
     };
 
-    /// <summary>
-    /// Argument kinds a C# attribute argument SHOULD admit — <c>decorators.md</c> documents all
-    /// three — but which the emitter cannot print yet: <c>GenerateAttributeArgumentExpression</c>
-    /// has no arm for an identifier or an operator node and throws SPY0909 (#1801). Admitting them
-    /// in <c>AdmissionTable.DecoratorArgument</c> without those arms would turn today's clean
-    /// SPY0425 into an internal compiler error, so the two land together. These rows assert the
-    /// refusal and DRAIN when the emitter arms do.
-    /// </summary>
-    private static readonly Dictionary<string, string> DecoratorArgumentPendingEmitterArm =
-        new(StringComparer.Ordinal)
-        {
-            ["StrConst"] = "#1801 — GenerateAttributeArgumentExpression has no Identifier arm",
-            ["IntConst"] = "#1801 — GenerateAttributeArgumentExpression has no Identifier arm",
-            ["Folded"] = "#1801 — GenerateAttributeArgumentExpression has no BinaryOp arm",
-        };
-
     // Anchored to literals, not to the arrays under test.
-    private const int DecoratorArgumentCount = 9;
+    private const int DecoratorArgumentCount = 10;
     private const int DecoratorPositionCount = 2;
-    private const int DecoratorAdmittedCount = 3;
-    private const int DecoratorRefusedCount = 6;
-    private const int DecoratorPendingCount = 3;
+    private const int DecoratorAdmittedCount = 7;
+    private const int DecoratorRefusedCount = 3;
 
     private static DecoratorArgument DA(string name) => DecoratorArguments.Single(a => a.Name == name);
 
@@ -1043,14 +1025,6 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
             "the refused half is written down");
         (DecoratorAdmittedCount + DecoratorRefusedCount).Should().Be(DecoratorArgumentCount);
 
-        DecoratorArgumentPendingEmitterArm.Should().HaveCount(DecoratorPendingCount,
-            "the pending count is written down and shrinks to zero when #1801 lands");
-        DecoratorArgumentPendingEmitterArm.Keys.Should()
-            .OnlyContain(k => DecoratorArguments.Any(a => a.Name == k && a.EmittedText == null),
-                "a pending entry must name a real argument kind that is currently refused "
-                + "(stale entries fail)");
-        DecoratorArgumentPendingEmitterArm.Values.Should().OnlyContain(v => v.Contains("#1801"),
-            "every pending entry cites its issue");
     }
 
     /// <summary>
