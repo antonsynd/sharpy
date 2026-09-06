@@ -522,6 +522,114 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         }
     }
 
+    // ── Comprehension element hosts (#1776) ────────────────────────────────────────────────
+    // Comprehension elements route through AdmitCollectionElements so the ELEMENT reports
+    // the refusal at its own span — matching the literal twin ([v]).
+    // The matrix is 4 hosts × 5 values = 20 cells (12 accepted, 8 refused).
+    //
+    // Mutation: drop the AdmitCollectionElements call in CheckListComprehension → the None
+    // cell regresses to the container's SPY0220 ("Cannot assign type 'list[None]' to variable
+    // of type 'list[int32]'" at the declaration), because ContextualElementType returns the
+    // produced type on refusal.
+
+    private sealed record CompHost(string Name, Func<string, string, string> Compose);
+
+    private sealed record CompValue(
+        string Name, string Slot, string Value, bool Accepted,
+        string? RefusedCode = null, string? MessageFragment = null);
+
+    private static readonly CompHost[] CompHosts =
+    {
+        new("ListComp",
+            (slot, value) => $"def main():\n    xs: list[{slot}] = [{value} for _ in range(1)]\n    print(len(xs))\n"),
+        new("SetComp",
+            (slot, value) => $"def main():\n    xs: set[{slot}] = {{{value} for _ in range(1)}}\n    print(len(xs))\n"),
+        new("DictKeyComp",
+            (slot, value) => $"def main():\n    d: dict[{slot}, str] = {{{value}: \"v\" for _ in range(1)}}\n    print(len(d))\n"),
+        new("DictValueComp",
+            (slot, value) => $"def main():\n    d: dict[str, {slot}] = {{\"k\": {value} for _ in range(1)}}\n    print(len(d))\n"),
+    };
+
+    private static readonly CompValue[] CompValues =
+    {
+        new("None", "int", "None", false,
+            DiagnosticCodes.Semantic.NullabilityViolation,
+            "Cannot assign 'None' to non-nullable type 'int32'"),
+        new("NoneCall", "int?", "None()", true),
+        new("Some", "int?", "Some(1)", true),
+        new("Mistyped", "int", "\"x\"", false,
+            DiagnosticCodes.Semantic.TypeMismatch,
+            "Cannot assign type 'str' to 'int32'"),
+        new("PayloadConstant", "int8", "7", true),
+    };
+
+    public static IEnumerable<object[]> CompAcceptedCells
+        => from h in CompHosts
+           from v in CompValues
+           where v.Accepted
+           select new object[] { h.Name, v.Name };
+
+    public static IEnumerable<object[]> CompRefusedCells
+        => from h in CompHosts
+           from v in CompValues
+           where !v.Accepted
+           select new object[] { h.Name, v.Name };
+
+    [Theory]
+    [MemberData(nameof(CompAcceptedCells))]
+    public void ComprehensionElement_Accepted_CompilesAndRuns(string host, string value)
+    {
+        var h = CompHosts.Single(x => x.Name == host);
+        var v = CompValues.Single(x => x.Name == value);
+        var source = h.Compose(v.Slot, v.Value);
+
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeTrue(
+            $"[{host} × {value}] must compile — the seam admits this shape. "
+            + $"Diagnostics: {string.Join(" | ", result.CompilationErrors)}\n{source}");
+    }
+
+    [Theory]
+    [MemberData(nameof(CompRefusedCells))]
+    public void ComprehensionElement_Refused_ReportsAtElement(string host, string value)
+    {
+        var h = CompHosts.Single(x => x.Name == host);
+        var v = CompValues.Single(x => x.Name == value);
+        var source = h.Compose(v.Slot, v.Value);
+
+        var result = CompileAndExecute(source);
+
+        result.Success.Should().BeFalse(
+            $"[{host} × {value}] must be refused\n{source}");
+
+        var matching = result.RawDiagnostics.Where(d => d.Code == v.RefusedCode).ToList();
+        matching.Should().HaveCount(1,
+            $"[{host} × {value}] must report {v.RefusedCode} exactly once. Got: "
+            + $"{string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}@{d.Line}: {d.Message}"))}\n{source}");
+
+        matching[0].Line.Should().Be(2,
+            $"[{host} × {value}] must report at the element (line 2), not at the container\n{source}");
+
+        matching[0].Message.Should().Contain(v.MessageFragment!,
+            $"[{host} × {value}] must phrase the refusal at the element level\n{source}");
+    }
+
+    [Fact]
+    public void ComprehensionElementMatrix_IsTotalOverItsAxes()
+    {
+        CompHosts.Length.Should().Be(4, "4 comprehension hosts");
+        CompValues.Length.Should().Be(5, "5 value shapes");
+        CompHosts.Select(h => h.Name).Should().OnlyHaveUniqueItems();
+        CompValues.Select(v => v.Name).Should().OnlyHaveUniqueItems();
+
+        var accepted = CompAcceptedCells.Count();
+        var refused = CompRefusedCells.Count();
+        accepted.Should().Be(12, "3 accepted values × 4 hosts");
+        refused.Should().Be(8, "2 refused values × 4 hosts");
+        (accepted + refused).Should().Be(4 * 5, "the whole product");
+    }
+
     // ── Totality ─────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
