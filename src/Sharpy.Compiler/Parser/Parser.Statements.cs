@@ -366,6 +366,11 @@ public partial class Parser
                     Expect(TokenType.In);
                     var iterator = ParseLogicalOr(); // Use lower precedence to avoid consuming too much
 
+                    // A comprehension's iterable is an expression context, but it is parsed at a
+                    // precedence level rather than through ParseExpression, so the refusal that
+                    // seam carries has to be asked for here too (#1790).
+                    RefuseAugmentedAssignmentInExpression();
+
                     clauses.Add(new ForClause
                     {
                         Target = target,
@@ -386,6 +391,10 @@ public partial class Parser
                     Advance();
 
                     var condition = ParseLogicalOr(); // Use lower precedence to avoid consuming too much
+
+                    // Same as the iterable above: a precedence-level call, so it asks for the
+                    // refusal explicitly (#1790).
+                    RefuseAugmentedAssignmentInExpression();
 
                     clauses.Add(new IfClause
                     {

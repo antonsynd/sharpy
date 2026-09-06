@@ -1,0 +1,38 @@
+# The same refusal at the hosts whose generic error used to be SPY0103 "Expected end of statement"
+# or SPY0104 "Expected Colon" rather than a bracket mismatch: statement operands, block-header
+# conditions, and signature positions (#1790, plan D Decision 9(c)). One distinct operator per row
+# so the expectations bind one-to-one. Every local is used by a statement that survives recovery,
+# so the file's only diagnostics are its parse errors.
+def gen():
+    n: int = 1
+    print(n)
+    yield n += 1
+
+def main():
+    name: str | None = None
+    n: int = 1
+    xs: list[int] = [1, 2]
+    print(name, n, xs)
+    return name ??= "Default"
+    assert n -= 1
+    y = n *= 1
+    if n /= 1:
+        print("never")
+    if True:
+        print("if-branch")
+    elif n @= 1:
+        print("never")
+    while n //= 1:
+        print("never")
+    match n %= 1:
+        case _:
+            print("never")
+    f = lambda: n **= 1
+    z = 0 if True else n &= 1
+    def inner(a: int = n |= 1) -> int:
+        return a
+    print(*(xs ^= [1]))
+    for v in xs <<= 1:
+        print(v)
+    with open(n >>= 1) as fh:
+        print(fh)

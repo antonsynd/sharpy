@@ -89,7 +89,59 @@ public partial class Parser
     /// </summary>
     private bool CanContinueExpressionHere() => Previous.Type != TokenType.Dedent;
 
+    /// <summary>
+    /// Parses one expression and then refuses a trailing augmented assignment operator (#1790).
+    ///
+    /// <para>This is the ONE seam that check lives on. Every expression in the grammar — a
+    /// parenthesized group, a tuple/list/set/dict element, a comprehension element, iterable or
+    /// condition, a call argument (positional, keyword value or spread), a subscript or slice
+    /// bound, an f-string interpolation, a lambda body, an assignment's right-hand side, a
+    /// <c>return</c>/<c>yield</c>/<c>assert</c> operand, an <c>if</c>/<c>while</c> condition, a
+    /// <c>match</c> subject, a parameter default — is parsed through here, so the refusal reaches
+    /// every one of them and a position added later inherits it. Before #1790's remediation the
+    /// arm sat in the parenthesized-primary tail alone, so <c>(name ??= "x")</c> reported SPY0146
+    /// while <c>f(name ??= "x")</c> reported the generic "Expected RightParen, got
+    /// NullCoalesceAssign".</para>
+    ///
+    /// <para>The single position where an augmented assignment may legally follow an expression is
+    /// a statement's own target, which parses through
+    /// <see cref="ParseStatementTargetExpression"/>.</para>
+    /// </summary>
     private Expression ParseExpression()
+    {
+        var expr = ParseExpressionCore();
+        RefuseAugmentedAssignmentInExpression();
+        return expr;
+    }
+
+    /// <summary>
+    /// Parses the target expression of a simple statement — <c>x</c> in <c>x += 1</c>, and each
+    /// element of <c>a, b = …</c>. Identical to <see cref="ParseExpression"/> except that it does
+    /// not refuse a trailing augmented assignment operator, because here the operator is the
+    /// statement's own and <see cref="ParseSimpleStatement"/> consumes it next.
+    /// </summary>
+    private Expression ParseStatementTargetExpression() => ParseExpressionCore();
+
+    /// <summary>
+    /// Reports SPY0146 when an augmented assignment operator stands where the expression just
+    /// parsed has ended. Keyed on the token CLASS
+    /// (<see cref="IsAugmentedAssignmentToken"/> — one arm for <c>??=</c>, <c>+=</c>, <c>**=</c>,
+    /// <c>&gt;&gt;=</c> and the rest), never one arm per operator.
+    /// </summary>
+    private void RefuseAugmentedAssignmentInExpression()
+    {
+        if (!IsAugmentedAssignmentToken(Current.Type))
+            return;
+
+        throw ReportError(
+            $"'{Current.Value}' is an augmented assignment and cannot appear inside an expression; "
+            + "use ':=' for inline assignment",
+            Current.Line, Current.Column,
+            DiagnosticCodes.Parser.AugmentedAssignmentInExpression,
+            span: CurrentSpan);
+    }
+
+    private Expression ParseExpressionCore()
     {
         if (++_recursionDepth > MaxRecursionDepth)
         {

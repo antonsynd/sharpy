@@ -1,7 +1,25 @@
-# ??= and += inside a parenthesized expression are refused with the walrus steer (#1790).
-# Augmented assignments are statements, not expressions.
+# An augmented assignment is a statement, never an expression (#1790). The refusal is keyed on
+# the token CLASS and lives on the one seam every expression is parsed through, so it reaches
+# every expression host below — each one written with a different operator so the rows are
+# distinguishable. Before the fix only the paren-headed hosts reported SPY0146; the rest fell
+# through to the generic "Expected RightParen/RightBracket/RightBrace, got ...".
+# The locals are used by the print below so this file's only diagnostics are the parse errors.
 def main():
     name: str | None = None
-    result: str | None = (name ??= "Default")
-    x: int = 0
-    y: int = (x += 1)
+    n: int = 1
+    xs: list[int] = [1, 2]
+    print(name, n, xs)
+    result = (name ??= "Default")
+    t = (1, n += 1)
+    print(n -= 1)
+    print(sep=n *= 1)
+    print(xs[n /= 1])
+    print(xs[n //= 1:2])
+    print([n %= 1])
+    print({n **= 1})
+    print({n &= 1: 2})
+    print({"k": n |= 1})
+    print([n ^= 1 for _ in range(1)])
+    print([y for y in range(2) if n <<= 1])
+    print([y for y in range(2) >>= 1])
+    print(f"{n @= 1}")

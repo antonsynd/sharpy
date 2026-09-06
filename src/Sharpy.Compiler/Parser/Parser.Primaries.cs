@@ -408,19 +408,11 @@ public partial class Parser
                         };
                     }
 
-                    // An augmented assignment inside a parenthesized expression is not valid —
-                    // augmented assignments (+=, -=, ??=, …) are statements, not expressions.
-                    // Steer toward := (walrus) for inline assignment (#1790).
-                    if (Current.Type > TokenType.ColonAssign && Current.Type <= TokenType.AtAssign)
-                    {
-                        throw ReportError(
-                            $"'{Current.Value}' is an augmented assignment and cannot appear inside an expression; "
-                            + "use ':=' for inline assignment",
-                            Current.Line, Current.Column,
-                            DiagnosticCodes.Parser.AugmentedAssignmentInExpression,
-                            span: CurrentSpan);
-                    }
-
+                    // An augmented assignment inside a parenthesized expression — `(name ??= "x")`
+                    // — is refused before control reaches here: the ParseExpression call above
+                    // ends by refusing a trailing augmented assignment operator in EVERY
+                    // expression context, this one included (#1790). This tail used to carry that
+                    // arm on its own, which is why only the paren-headed hosts reported SPY0146.
                     Expect(TokenType.RightParen);
 
                     // Check for operator section: (_ * 2) or (_ > 0)

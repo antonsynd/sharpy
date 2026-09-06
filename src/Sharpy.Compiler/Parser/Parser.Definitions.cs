@@ -41,7 +41,10 @@ public partial class Parser
         }
         else
         {
-            expr = ParseExpression();
+            // A statement's own target position — the ONE place an augmented assignment operator
+            // may legally follow an expression, so it parses through the entry that does not
+            // refuse one (#1790). Every other position in the grammar reaches ParseExpression.
+            expr = ParseStatementTargetExpression();
         }
 
         // Check for tuple unpacking: x, y = ...
@@ -75,7 +78,8 @@ public partial class Parser
                 }
                 else
                 {
-                    elements.Add(ParseExpression());
+                    // Still the statement's target position (`a, b += 1`) — see the note above.
+                    elements.Add(ParseStatementTargetExpression());
                 }
             }
 
@@ -192,25 +196,49 @@ public partial class Parser
         };
     }
 
-    private AssignmentOperator TokenTypeToAssignmentOperator(TokenType type) => type switch
+    /// <summary>
+    /// The assignment-token table: the ONE place a token type is classified as an assignment
+    /// operator. Two consumers read it — the statement form takes the operator it maps to, and
+    /// every expression context refuses the augmented members of the class
+    /// (<see cref="IsAugmentedAssignmentToken"/> → <see cref="RefuseAugmentedAssignmentInExpression"/>,
+    /// #1790) — so the two cannot drift apart the way a second hand-written roster would.
+    /// </summary>
+    private static bool TryGetAssignmentOperator(TokenType type, out AssignmentOperator op)
     {
-        TokenType.Assign => AssignmentOperator.Assign,
-        TokenType.PlusAssign => AssignmentOperator.PlusAssign,
-        TokenType.MinusAssign => AssignmentOperator.MinusAssign,
-        TokenType.StarAssign => AssignmentOperator.StarAssign,
-        TokenType.SlashAssign => AssignmentOperator.SlashAssign,
-        TokenType.DoubleSlashAssign => AssignmentOperator.DoubleSlashAssign,
-        TokenType.PercentAssign => AssignmentOperator.PercentAssign,
-        TokenType.DoubleStarAssign => AssignmentOperator.PowerAssign,
-        TokenType.AmpersandAssign => AssignmentOperator.AndAssign,
-        TokenType.PipeAssign => AssignmentOperator.OrAssign,
-        TokenType.CaretAssign => AssignmentOperator.XorAssign,
-        TokenType.LeftShiftAssign => AssignmentOperator.LeftShiftAssign,
-        TokenType.RightShiftAssign => AssignmentOperator.RightShiftAssign,
-        TokenType.NullCoalesceAssign => AssignmentOperator.NullCoalesceAssign,
-        TokenType.AtAssign => AssignmentOperator.MatMulAssign,
-        _ => throw ReportError($"Not an assignment operator: {type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan)
-    };
+        switch (type)
+        {
+            case TokenType.Assign: op = AssignmentOperator.Assign; return true;
+            case TokenType.PlusAssign: op = AssignmentOperator.PlusAssign; return true;
+            case TokenType.MinusAssign: op = AssignmentOperator.MinusAssign; return true;
+            case TokenType.StarAssign: op = AssignmentOperator.StarAssign; return true;
+            case TokenType.SlashAssign: op = AssignmentOperator.SlashAssign; return true;
+            case TokenType.DoubleSlashAssign: op = AssignmentOperator.DoubleSlashAssign; return true;
+            case TokenType.PercentAssign: op = AssignmentOperator.PercentAssign; return true;
+            case TokenType.DoubleStarAssign: op = AssignmentOperator.PowerAssign; return true;
+            case TokenType.AmpersandAssign: op = AssignmentOperator.AndAssign; return true;
+            case TokenType.PipeAssign: op = AssignmentOperator.OrAssign; return true;
+            case TokenType.CaretAssign: op = AssignmentOperator.XorAssign; return true;
+            case TokenType.LeftShiftAssign: op = AssignmentOperator.LeftShiftAssign; return true;
+            case TokenType.RightShiftAssign: op = AssignmentOperator.RightShiftAssign; return true;
+            case TokenType.NullCoalesceAssign: op = AssignmentOperator.NullCoalesceAssign; return true;
+            case TokenType.AtAssign: op = AssignmentOperator.MatMulAssign; return true;
+            default: op = default; return false;
+        }
+    }
+
+    /// <summary>
+    /// True for every augmented assignment operator (<c>+=</c>, <c>??=</c>, <c>&lt;&lt;=</c>, …) —
+    /// the assignment class minus plain <c>=</c>. Derived from
+    /// <see cref="TryGetAssignmentOperator"/> rather than restated, and not from the token enum's
+    /// ordinal order, so adding an operator to the table extends both consumers at once.
+    /// </summary>
+    private static bool IsAugmentedAssignmentToken(TokenType type)
+        => TryGetAssignmentOperator(type, out var op) && op != AssignmentOperator.Assign;
+
+    private AssignmentOperator TokenTypeToAssignmentOperator(TokenType type)
+        => TryGetAssignmentOperator(type, out var op)
+            ? op
+            : throw ReportError($"Not an assignment operator: {type}", Current.Line, Current.Column, DiagnosticCodes.Parser.UnexpectedToken, span: CurrentSpan);
 
     /// <summary>
     /// A parsed inline stub body: the single-statement body and the token the body ended on

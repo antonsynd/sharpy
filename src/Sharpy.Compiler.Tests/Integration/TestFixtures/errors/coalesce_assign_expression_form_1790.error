@@ -1,2 +1,27 @@
-'??=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment
-'+=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment
+# One row per expression host, one distinct operator each so no two rows carry the same message
+# (the .error matcher binds a pattern to the FIRST diagnostic containing it). Hosts, in order:
+# parenthesized tail, tuple element, call argument, keyword-argument value, subscript, slice bound,
+# list element, set element, dict key, dict value, comprehension element, comprehension condition,
+# comprehension iterable, f-string interpolation. Every one of them reported the generic SPY0104
+# before #1790's remediation except the paren tail (#1790, plan D Decision 9(c)).
+'??=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @12:20
+'+=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @13:15
+'-=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @14:13
+'*=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @15:17
+'/=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @16:16
+'//=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @17:16
+'%=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @18:14
+'**=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @19:14
+'&=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @20:14
+'|=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @21:19
+'^=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @22:14
+'<<=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @23:37
+'>>=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @24:32
+'@=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @25:16
+# The generic bracket-mismatch errors these hosts produced before the fix must be gone. The one
+# residual SPY0104 is "Expected Colon, got RightBracket" at 22:36 — recovery re-reading the tail of
+# the comprehension after its element was refused — which is why the count is 15, not 14.
+!Expected RightParen, got
+!Expected RightBracket, got
+!Expected RightBrace, got
+!count 15

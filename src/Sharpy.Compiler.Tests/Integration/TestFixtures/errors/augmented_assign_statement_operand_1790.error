@@ -1,0 +1,24 @@
+# Hosts, in row order: yield operand, return operand, assert operand, assignment right-hand side,
+# if condition, elif condition, while condition, match subject, lambda body, ternary alternative,
+# parameter default, star-argument, for-statement iterable, with expression. One distinct operator
+# per row so each expectation binds to its own diagnostic (#1790, plan D Decision 9(c)).
+'+=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @9:13
+'??=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @16:17
+'-=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @17:14
+'*=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @18:11
+'/=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @19:10
+'@=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @23:12
+'//=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @25:13
+'%=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @27:13
+'**=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @30:19
+'&=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @31:26
+'|=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @32:26
+'^=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @34:16
+'<<=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @35:17
+'>>=' is an augmented assignment and cannot appear inside an expression; use ':=' for inline assignment @37:17
+# The generic errors these hosts produced before the fix must be gone, and there must be no
+# recovery cascade beyond the fourteen rows above.
+!Expected end of statement, got
+!Expected Colon, got
+!Expected RightParen, got
+!count 14
