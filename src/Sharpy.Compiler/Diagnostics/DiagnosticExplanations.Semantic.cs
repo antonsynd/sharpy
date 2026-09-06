@@ -1274,7 +1274,11 @@ public static partial class DiagnosticExplanations
             "A match-case pattern resolved to a const variable, but the const is not a compile-time " +
             "constant (its initializer is a function call, a tagged-union constructor, or its type is " +
             "not C#-const-eligible). C# requires constant patterns to be compile-time constants; a " +
-            "static readonly field cannot appear in a case label (CS9135). Use a guard instead.",
+            "static readonly field cannot appear in a case label (CS9135). Use a guard instead. " +
+            "This is the same fact a parameter default reads, so the message names the same reason, " +
+            "and a const declared in a function body is judged exactly as a module const is. A " +
+            "QUALIFIED head ('case Holder.A:') lowers to a guarded comparison instead and is never " +
+            "refused here.",
             "const FM: float = max(4.0, 1.0)\n\ndef main():\n    v: float = 4.0\n    match v:\n        case FM:  # SPY0605\n            print(\"hit\")",
             "Compare in a guard clause:\n    match v:\n        case _ if v == FM:\n            print(\"hit\")");
 

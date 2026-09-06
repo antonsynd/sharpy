@@ -177,10 +177,12 @@ if condition:
 
 A constant pattern (`case C:` where `C` is a `const` name) matches when the scrutinee equals the
 constant's value. The referenced `const` must be a **compile-time constant** — that is, its declared
-type must be C#-const-eligible (a numeric primitive, `str`, `bool`, or an enum) and its initializer
-must fold to a constant expression without runtime calls. A `const` that is not compile-time (e.g.,
-its initializer is a function call, or its type is `T?`) cannot appear as a constant pattern; compare
-in a guard instead:
+type must be C#-const-eligible (a numeric primitive, `char`, `str`, `bool`, or an enum) and its
+initializer must fold to a constant expression without runtime calls. It is the same fact a parameter
+default reads (see [Function Default Parameters](function_default_parameters.md)), so a `const`
+declared in a function body reads here too. A `const` that is not compile-time (e.g., its initializer
+is a function call, or its type is `T?`) cannot appear as a constant pattern; compare in a guard
+instead:
 
 ```python
 const THRESHOLD: int = 100
@@ -203,12 +205,36 @@ const FM: float = max(4.0, 1.0)   # not a compile-time constant
 
 def check(v: float) -> str:
     match v:
-        # case FM:                 # ERROR SPY0605: 'FM' is not a compile-time constant
+        # case FM:                 # ERROR SPY0605: 'FM' is not a compile-time constant:
+        #                          #                its initializer is a call
         case _ if v == FM:         # OK: compare in a guard
             return "hit"
         case _:
             return "miss"
 ```
+
+An **enum** `const` is a compile-time constant, so it matches directly:
+
+```python
+enum Color:
+    RED = 1
+    GREEN = 2
+
+const PRIMARY: Color = Color.RED
+
+def name(c: Color) -> str:
+    match c:
+        case PRIMARY:
+            return "primary"
+        case _:
+            return "other"
+```
+
+A **qualified** pattern head (`case Holder.A:`) is a different shape: it lowers to a guarded
+comparison rather than a C# constant pattern, so it matches whatever the const's fact is.
+
+Every constant pattern also emits `SPY0468`, a warning that the bare name matched a constant rather
+than capturing the scrutinee. Rename the pattern variable if a capture was what you meant.
 
 ## Tuple Patterns
 

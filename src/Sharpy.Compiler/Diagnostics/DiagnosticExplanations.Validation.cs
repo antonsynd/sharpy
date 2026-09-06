@@ -15,9 +15,15 @@ public static partial class DiagnosticExplanations
             "Use None as the default and create the mutable object inside the function:\ndef append_to(item: int, lst: Optional[list[int]] = None) -> list[int]:\n    if lst is None:\n        lst = []\n    lst.append(item)\n    return lst");
 
         Add(dict, DiagnosticCodes.Validation.NonConstDefault, "Non-constant default parameter value", "Validation",
-            "A function parameter has a default value that is not a compile-time constant. Default values must be literals or constants.",
-            "x: int = 10\ndef foo(n: int = x):  # x is not a constant\n    pass",
-            "Use a literal or constant default:\ndef foo(n: int = 10):\n    pass");
+            "A function parameter has a default value that is not a compile-time constant. Default values must be " +
+            "literals, enum members, or references to a 'const' that is itself a compile-time constant. " +
+            "The message names the reason: an operator whose lowering is a call ('//', '%', float '**', str '*', " +
+            "ordinal str comparison), a const whose initializer is a call, a const of an Optional or nullable type, " +
+            "or a plain field rather than a const. The const's declaration host does not matter — a module const, a " +
+            "local const, a class or struct field const and a nested-type field const all read the same fact.",
+            "x: int = 10\ndef foo(n: int = x):  # x is a variable, not a constant\n    pass",
+            "Use a literal, an enum member, or a const whose own initializer is constant:\n" +
+            "const LIMIT: int = 10\ndef foo(n: int = LIMIT):\n    pass");
 
         Add(dict, DiagnosticCodes.Validation.UnsupportedOperator, "Unsupported operator for type", "Validation",
             "An operator was used with types that don't support it. The validation pipeline checks operator compatibility beyond basic type checking.",
@@ -174,9 +180,13 @@ public static partial class DiagnosticExplanations
         // ── Decorator argument validation (SPY0425) ─────────────────────
 
         Add(dict, DiagnosticCodes.Validation.NonConstantDecoratorArgument, "Decorator argument must be a compile-time constant", "Validation",
-            "Custom decorator arguments must be compile-time constant expressions because they map to C# attribute arguments. Allowed: string, int, float, bool literals, None, enum member access (e.g., MyEnum.value), and type(X).",
-            "@custom(1 + 2)  # error: arithmetic expression is not a compile-time constant\ndef foo():\n    pass",
-            "Use a literal value instead:\n@custom(3)\ndef foo():\n    pass");
+            "Custom decorator arguments must be compile-time constant expressions because they map to C# attribute " +
+            "arguments. Allowed: string, int, float, bool literals, None, enum member access (e.g., MyEnum.value), " +
+            "and type(X). A reference to a 'const' is refused today even when the const IS a compile-time constant, " +
+            "because code generation has no arm that prints a name or a folded expression in this position (#1801); " +
+            "the message still names why a const would not qualify, using the same reason a parameter default reports.",
+            "const NAME: str = \"x\"\n@custom(NAME)  # error: a const reference is not printable here yet (#1801)\ndef foo():\n    pass",
+            "Use the literal directly:\n@custom(\"x\")\ndef foo():\n    pass");
 
         Add(dict, DiagnosticCodes.Validation.InitPropertyNotAssigned, "Init property not assigned in constructor", "Validation",
             "A 'property init' field without a default value must be assigned in every constructor (__init__). Init properties are set-once, so they must be initialized during construction.",

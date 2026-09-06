@@ -24,15 +24,22 @@ Default parameter values must be compile-time constants, matching C# semantics. 
 | `None` | `None` | Only for nullable parameter types (`T \| None`) |
 | `None()` | `None()` | Only for Optional parameter types (`T?`) |
 | Enum values | `Color.RED`, `HttpMethod.GET` | |
-| Constant references | `MAX_SIZE`, `DEFAULT_NAME` | Must reference a `const` declaration that is itself a compile-time constant |
+| Constant references | `MAX_SIZE`, `DEFAULT_NAME`, `Holder.A` | Must reference a `const` declaration that is itself a compile-time constant, at any host |
 | Negated literals | `-1`, `-3.14` | |
 | Conditional of constants | `1 if DEBUG else 0` | Both branches must be constants |
 
 ## What is not a compile-time constant
 
 A `const` declaration is a compile-time constant only when its **declared type** is C#-const-eligible
-(a numeric primitive, `str`, `bool`, or an enum) **and** its **initializer** folds to a constant
-expression without runtime calls. The following are not compile-time constants:
+(a numeric primitive, `char`, `str`, `bool`, or an enum) **and** its **initializer** folds to a
+constant expression without runtime calls.
+
+The answer does not depend on where the `const` is declared. One analysis decides it for every host —
+the module body, a function body or nested block, a class field, a struct field, and the body of a
+nested type — so `A`, `Holder.A` and `Outer.Holder.A` all read the same fact, and the declaration
+emits C# `const` exactly when the fact is true.
+
+The following are not compile-time constants:
 
 **Call-lowered operators.** The floor-division (`//`), floor-modulo (`%`), float exponentiation
 (`**`), and string repetition (`*`) operators lower to runtime helper calls (`FloorDiv`, `FloorMod`,
@@ -57,7 +64,23 @@ compile-time constant. Referencing it from a default is refused:
 ```python
 const FM: float = max(4.0, 1.0)   # legal declaration, but emits 'static readonly'
 
-def f(t: float = FM) -> None: ... # ERROR SPY0401: 'FM' is not a compile-time constant
+def f(t: float = FM) -> None: ... # ERROR SPY0401: 'FM' is not a compile-time constant:
+                                  #                its initializer is a call
+```
+
+The same holds through a qualified spelling, and a plain (non-`const`) field is never a constant:
+
+```python
+class Holder:
+    const A: int = max(1, 4)      # legal declaration, emits 'static readonly'
+
+    @static
+    v: int = 1                    # a field, not a const
+
+def f(x: int = Holder.A) -> None: ... # ERROR SPY0401: 'A' is not a compile-time constant:
+                                      #                its initializer is a call
+def g(x: int = Holder.v) -> None: ... # ERROR SPY0401: 'v' is a field, not a const, so it is
+                                      #                not a compile-time constant
 ```
 
 **Optional (`T?`) types.** An `Optional` is a struct with case constructors (`Some`/`None()`), not a
@@ -66,7 +89,10 @@ C# primitive. A `const` of type `T?` is never a compile-time constant:
 ```python
 const O: int? = Some(1)
 
-def g(o: int? = O) -> None: ...   # ERROR SPY0401: an Optional cannot be a compile-time constant
+def g(o: int? = O) -> None: ...   # ERROR SPY0401: 'O' is not a compile-time constant: an Optional
+                                  #                ('int?') cannot be a compile-time constant;
+                                  #                declare the parameter 'int? = None()' and
+                                  #                coalesce in the body
 ```
 
 The pattern for `T?` defaults is `None()` with a coalesce in the body (see
