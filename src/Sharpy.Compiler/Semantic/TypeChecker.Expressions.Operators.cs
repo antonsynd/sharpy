@@ -29,6 +29,39 @@ internal partial class TypeChecker
             return CheckBooleanOrOp(binOp);
         }
 
+        // #1750 (R-U), #1777: for in/not in the container (right) is checked FIRST so its
+        // element type can be pushed as the expectation for the needle (left). This lets
+        // Some(v)/None()/Ok(v)/Err(e) in the needle position infer from the container.
+        if (binOp.Operator is BinaryOperator.In or BinaryOperator.NotIn)
+        {
+            var containerType = OperandView(CheckExpression(binOp.Right));
+            if (containerType is UnknownType)
+            {
+                CheckExpression(binOp.Left);
+                return SemanticType.Unknown;
+            }
+
+            var elementType = ResolveMembershipElementType(containerType);
+            SemanticType needleType;
+            if (elementType != null)
+            {
+                using (EnterStore(StorePosition.ArgumentPositional, elementType, binOp.Left))
+                {
+                    needleType = OperandView(CheckExpression(binOp.Left));
+                }
+            }
+            else
+            {
+                needleType = OperandView(CheckExpression(binOp.Left));
+            }
+
+            if (needleType is UnknownType)
+                return SemanticType.Unknown;
+
+            ClassifyMembership(binOp, binOp.Left, needleType, containerType);
+            return SemanticType.Bool;
+        }
+
         // The operand of an `is (not) None` test reads the honest, un-narrowed value: mark it so
         // the read sites skip narrowing for that node (see _typeTestOperand). The scope ends right
         // after the operand checks — the suppression must not leak into sibling expressions.
@@ -59,15 +92,6 @@ internal partial class TypeChecker
         // #1766: a LiteralString is a str at every value-use route.
         leftType = OperandView(leftType);
         rightType = OperandView(rightType);
-
-        // #1750 (R-U): the needle of in/not in is an argument into the container's element
-        // slot. The container-presence check (SPY0320) stays in ProtocolValidator; this arm
-        // runs only when an element type resolves, so the two stages never overlap.
-        if (binOp.Operator is BinaryOperator.In or BinaryOperator.NotIn)
-        {
-            ClassifyMembership(binOp, binOp.Left, leftType, rightType);
-            return SemanticType.Bool;
-        }
 
         // Reject void-returning call operands in equality comparisons (#911). A `None`-typed
         // (VoidType) operand that is NOT the literal `None` is a void-returning call used as a
@@ -1112,11 +1136,49 @@ internal partial class TypeChecker
             return SemanticType.Bool;
         }
 
-        // Check all operands and build their types
-        var operandTypes = new List<SemanticType>();
+        // #1777: check operands with special handling for in/not in links. Needles (left
+        // operand of an in/not in link) are deferred so their container's element type can be
+        // pushed as the expectation, mirroring CheckBinaryOp's reorder.
+        var needleIndices = new HashSet<int>();
+        for (int i = 0; i < chain.Operators.Length; i++)
+        {
+            var op = TypeUtils.ComparisonOperatorToBinaryOperator(chain.Operators[i]);
+            if (op is BinaryOperator.In or BinaryOperator.NotIn)
+                needleIndices.Add(i);
+        }
+
+        var operandTypes = new SemanticType?[chain.Operands.Length];
+
+        // Pass 1: check all non-needle operands in source order.
         for (int i = 0; i < chain.Operands.Length; i++)
         {
-            operandTypes.Add(CheckExpression(chain.Operands[i]));
+            if (!needleIndices.Contains(i))
+                operandTypes[i] = CheckExpression(chain.Operands[i]);
+        }
+
+        // Pass 2: check needle operands under the container's element type expectation.
+        for (int ni = 0; ni < chain.Operands.Length; ni++)
+        {
+            if (!needleIndices.Contains(ni) || operandTypes[ni] != null) continue;
+
+            // Ensure the container (ni + 1) is checked — it might itself be a needle for a
+            // later link and was deferred in pass 1.
+            operandTypes[ni + 1] ??= CheckExpression(chain.Operands[ni + 1]);
+
+            var containerView = OperandView(operandTypes[ni + 1]!);
+            if (containerView is not UnknownType)
+            {
+                var elementType = ResolveMembershipElementType(containerView);
+                if (elementType != null)
+                {
+                    using (EnterStore(StorePosition.ArgumentPositional, elementType, chain.Operands[ni]))
+                    {
+                        operandTypes[ni] = CheckExpression(chain.Operands[ni]);
+                    }
+                    continue;
+                }
+            }
+            operandTypes[ni] = CheckExpression(chain.Operands[ni]);
         }
 
         // Validate each comparison pair and record its lowering. Every link gets a record — an
@@ -1125,8 +1187,8 @@ internal partial class TypeChecker
         var links = ImmutableArray.CreateBuilder<ComparisonLinkLowering>(chain.Operators.Length);
         for (int i = 0; i < chain.Operators.Length; i++)
         {
-            var leftType = OperandView(operandTypes[i]);
-            var rightType = OperandView(operandTypes[i + 1]);
+            var leftType = OperandView(operandTypes[i]!);
+            var rightType = OperandView(operandTypes[i + 1]!);
 
             // Skip validation if either operand is Unknown to avoid cascading errors
             if (leftType is UnknownType || rightType is UnknownType)

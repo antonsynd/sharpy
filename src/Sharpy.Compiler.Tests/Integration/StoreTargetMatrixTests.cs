@@ -904,9 +904,8 @@ def main() -> None:
     // Known-red cells (ratchet: each row cites its issue and is deleted when the issue is fixed —
     // MistypedStore_KnownRedCell_IsStillRedAsObserved goes red first, then the row goes and
     // MistypedStoreKnownRedCount is decremented). Measured @ 852bf488b + this change:
-    //   #1784 (94): SomeCall × {T | None, T} × every target but the tuple element × every scope —
-    //     `Some(5)` under a non-Optional expected type is refused SPY0230 "'Some' must be called
-    //     as a function" by CheckIdentifier's bare-constructor arm, not by the seam (contract SPY0220).
+    //   #1784 (94): DRAINED — Some(v) now infers Optional[typeof v] under a non-Optional
+    //     expectation and the store seam refuses cross-family with SPY0220 + unwrap steer.
     //   #1785 (90): the tuple-UNPACKING element position — (a) 54: × {NoneCall, SomeCall} × every
     //     family: the element slot is not pushed as the expected type, so Some(5)/None() cannot
     //     infer (SPY0227); (b) 27: × T? × {PayloadConstant, Mistyped, NoneLiteral} and (c) 9:
@@ -961,7 +960,7 @@ def main() -> None:
     }
 
     private const int MistypedStoreNaCount = 72;
-    private const int MistypedStoreKnownRedCount = 193; // #1784: 94, #1785: 90, #1707: 9
+    private const int MistypedStoreKnownRedCount = 99; // #1785: 90, #1707: 9
 
     private static string SlotTypeOf(SlotFamily family) => family switch
     {
@@ -1079,15 +1078,6 @@ def main() -> None:
             }
 
             return null;
-        }
-
-        if (value == StoredValueKind.SomeCall && family != SlotFamily.Optional)
-        {
-            return new KnownRedStoreCell(
-                Issue: "#1784",
-                ObservedCode: DiagnosticCodes.Semantic.NotCallable,
-                Contract: "SPY0220 — the seam refuses an Optional into a non-Optional slot; "
-                    + "'Some' must be called as a function is the wrong arm");
         }
 
         return null;
@@ -1385,8 +1375,7 @@ def main() -> None:
         var na = cells.Count(c => c.Kind == MistypedStoreCellKind.NotApplicable);
         var red = cells.Count(c => c.Kind == MistypedStoreCellKind.KnownRed);
         na.Should().Be(MistypedStoreNaCount, "N/A = ModuleLevel × the four field/element targets × 3 × 6");
-        red.Should().Be(MistypedStoreKnownRedCount, "known-red rows drain on fix (#1784: 94, #1785: 90, #1707: 9)");
-        cells.Count(c => c.Kind == MistypedStoreCellKind.KnownRed && c.KnownRed!.Issue == "#1784").Should().Be(94);
+        red.Should().Be(MistypedStoreKnownRedCount, "known-red rows drain on fix (#1785: 90, #1707: 9)");
         cells.Count(c => c.Kind == MistypedStoreCellKind.KnownRed && c.KnownRed!.Issue == "#1785").Should().Be(90);
         cells.Count(c => c.Kind == MistypedStoreCellKind.KnownRed && c.KnownRed!.Issue == "#1707").Should().Be(9);
         (live + na + red).Should().Be(1080,

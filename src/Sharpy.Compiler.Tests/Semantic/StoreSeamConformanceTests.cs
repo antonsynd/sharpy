@@ -250,7 +250,7 @@ public class StoreSeamConformanceTests
             "positive control: the scan must examine at least one TypeChecker file");
 
         var totalCallSites = enterStoreCount + clearExpectationCount;
-        totalCallSites.Should().Be(38,
+        totalCallSites.Should().Be(43,
             "the literal anchor for EnterStore + ClearExpectation call sites "
             + $"(got {enterStoreCount} EnterStore + {clearExpectationCount} ClearExpectation = {totalCallSites})");
     }

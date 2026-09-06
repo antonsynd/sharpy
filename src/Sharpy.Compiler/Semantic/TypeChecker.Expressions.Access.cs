@@ -2980,6 +2980,17 @@ internal partial class TypeChecker
                 }
                 return _expectedType;
             }
+            else if (_expectedType != null && _symbolTable.Lookup("Some") == null)
+            {
+                // Non-Optional expectation: infer the natural type Optional[typeof v] and let the
+                // ENCLOSING store seam refuse it with SPY0220 + the unwrap steer (#1784).
+                SemanticType argType;
+                using (ClearExpectation(null))
+                {
+                    argType = CheckExpression(call.Arguments[0]);
+                }
+                return new OptionalType { UnderlyingType = argType };
+            }
             else if (_expectedType == null && _symbolTable.Lookup("Some") == null)
             {
                 // No expected type and no user-defined 'Some' — error
@@ -2990,7 +3001,7 @@ internal partial class TypeChecker
                 CheckExpression(call.Arguments[0]);
                 return SemanticType.Unknown;
             }
-            // Fall through to normal function call if there's a user-defined 'Some' or expectedType is not OptionalType
+            // Fall through to normal function call if there's a user-defined 'Some'
         }
 
         if (name == "Ok")
@@ -3005,6 +3016,17 @@ internal partial class TypeChecker
                         span: call.Arguments[0].Span);
                 }
                 return _expectedType;
+            }
+            else if (_expectedType != null && _symbolTable.Lookup("Ok") == null)
+            {
+                // Non-Result expectation: infer the natural type Result[typeof v, ?] and let the
+                // ENCLOSING store seam refuse it with SPY0220 (#1784).
+                SemanticType argType;
+                using (ClearExpectation(null))
+                {
+                    argType = CheckExpression(call.Arguments[0]);
+                }
+                return new ResultType { OkType = argType };
             }
             else if (_expectedType == null && _symbolTable.Lookup("Ok") == null)
             {
@@ -3028,6 +3050,17 @@ internal partial class TypeChecker
                         span: call.Arguments[0].Span);
                 }
                 return _expectedType;
+            }
+            else if (_expectedType != null && _symbolTable.Lookup("Err") == null)
+            {
+                // Non-Result expectation: infer the natural type Result[?, typeof e] and let the
+                // ENCLOSING store seam refuse it with SPY0220 (#1784).
+                SemanticType argType;
+                using (ClearExpectation(null))
+                {
+                    argType = CheckExpression(call.Arguments[0]);
+                }
+                return new ResultType { ErrorType = argType };
             }
             else if (_expectedType == null && _symbolTable.Lookup("Err") == null)
             {

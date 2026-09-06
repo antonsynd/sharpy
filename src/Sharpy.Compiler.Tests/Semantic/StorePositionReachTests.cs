@@ -342,8 +342,8 @@ public class StorePositionReachTests : IntegrationTestBase
     private const int CoalesceRightCount = 11;
     private const int CoalesceTargetCount = 4;
     private const int CoalesceAcceptedCellCount = 128;
-    private const int CoalesceRefusedCellCount = 168;
-    private const int CoalesceNotApplicableCellCount = 12;
+    private const int CoalesceRefusedCellCount = 180;
+    private const int CoalesceNotApplicableCellCount = 0;
 
     private enum SlotFamily { Plain, Optional, Nullable }
 
@@ -512,12 +512,16 @@ public class StorePositionReachTests : IntegrationTestBase
                     : accepted;
 
             case "SomeLiteral":
-                return l.Family == SlotFamily.Nullable
-                    ? new CoalesceExpectation(CoalesceVerdict.NotApplicable,
-                        Reason: "`Some(v)` under a `T | None` expectation falls through to a call of the bare "
-                        + "identifier and reports SPY0230 — at a declaration `y: int | None = Some(5)` too, "
-                        + "so it is the Some route's own defect (#1784), not this seam's cell")
-                    : accepted;
+                if (l.Family == SlotFamily.Nullable)
+                {
+                    // Some(v) infers Optional[typeof v] under a non-Optional expectation (#1784).
+                    // The argument is checked with no expectation, so 5 → int32, 0.5 → float64.
+                    var inferredPayload = l.Payload == PayloadKind.Float32 ? "float64" : "int32";
+                    return CoalesceRefusal(DiagnosticCodes.Semantic.TypeMismatch,
+                        $"Cannot assign type '{inferredPayload}?' to '??=' target of type '{l.Display}' — the value is "
+                        + $"Optional[{inferredPayload}]; narrow it ('if x is not None:') or unwrap it first");
+                }
+                return accepted;
 
             case "Float32Literal":
                 return l.Payload == PayloadKind.Float32
@@ -609,14 +613,18 @@ public class StorePositionReachTests : IntegrationTestBase
 
     /// <summary>
     /// Every N/A cell names a real cell and carries a reason; the count is written down so a cell
-    /// cannot slip into N/A unnoticed.
+    /// cannot slip into N/A unnoticed. When the N/A count is zero (all cells are live or refused),
+    /// this test is vacuously true — the totality fact already asserts the count.
     /// </summary>
-    [Theory]
-    [MemberData(nameof(CoalesceNotApplicableCells))]
-    public void CoalesceAssign_NotApplicableCell_HasAReason(string left, string right, string target)
+    [Fact]
+    public void CoalesceAssign_NotApplicableCell_HasAReason()
     {
-        var expected = ExpectationOf(CL(left), CR(right), CT(target));
-        expected.Reason.Should().NotBeNullOrWhiteSpace($"[{left} ??= {right} @ {target}]");
+        foreach (var cell in CoalesceNotApplicableCells)
+        {
+            var (left, right, target) = ((string)cell[0], (string)cell[1], (string)cell[2]);
+            var expected = ExpectationOf(CL(left), CR(right), CT(target));
+            expected.Reason.Should().NotBeNullOrWhiteSpace($"[{left} ??= {right} @ {target}]");
+        }
     }
 
     [Fact]
@@ -734,4 +742,25 @@ public class StorePositionReachTests : IntegrationTestBase
             $"cell '{cell}' reports exactly one refusal naming \"{message}\". Diagnostics: "
             + string.Join(" | ", result.RawDiagnostics.Select(d => $"{d.Code}: {d.Message}")));
     }
+
+    // ── Membership needle push (#1777) ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The needle of <c>in</c>/<c>not in</c> is an argument into the container's element slot.
+    /// The container is checked first so its element type can be pushed as the expectation for the
+    /// needle, allowing <c>Some(v)</c>/<c>None()</c> in the needle to infer from the container.
+    /// Mistyped needles are refused with <c>SPY0220</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("some-in-optional-list", "xs: list[int?] = [Some(1)]\n    print(Some(1) in xs)", "True\n")]
+    [InlineData("none-in-optional-list", "xs: list[int?] = [None()]\n    print(None() in xs)", "True\n")]
+    [InlineData("some-notin-optional-list", "xs: list[int?] = [Some(2)]\n    print(Some(1) not in xs)", "True\n")]
+    [InlineData("none-notin-optional-list", "xs: list[int?] = [Some(1)]\n    print(None() not in xs)", "True\n")]
+    public void MembershipNeedle_IsAnArgumentIntoTheElementSlot(string cell, string body, string expected)
+        => AssertPrints(cell, body, expected);
+
+    [Theory]
+    [InlineData("mistyped-in", "xs: list[int] = [1]\n    print(\"a\" in xs)", "SPY0222", "'str' does not support operator 'in'")]
+    public void MembershipNeedle_MistypedNeedle_IsRefused(string cell, string body, string code, string message)
+        => AssertRefused(cell, body, code, message);
 }
