@@ -84,10 +84,8 @@ internal partial class TypeChecker
             }
             else
             {
-                var previousExpected = _expectedType;
-                _expectedType = elementExpectation;
-                elements.Add((elem, CheckExpression(elem)));
-                _expectedType = previousExpected;
+                using (EnterStore(StorePosition.CollectionElement, elementExpectation ?? SemanticType.Unknown, elem))
+                    elements.Add((elem, CheckExpression(elem)));
             }
         }
 
@@ -146,12 +144,10 @@ internal partial class TypeChecker
             }
             else
             {
-                var previousExpected = _expectedType;
-                _expectedType = keyExpectation;
-                keys.Add((entry.Key, CheckExpression(entry.Key)));
-                _expectedType = valueExpectation;
-                values.Add((entry.Value, CheckExpression(entry.Value)));
-                _expectedType = previousExpected;
+                using (EnterStore(StorePosition.CollectionElement, keyExpectation ?? SemanticType.Unknown, entry.Key))
+                    keys.Add((entry.Key, CheckExpression(entry.Key)));
+                using (EnterStore(StorePosition.CollectionElement, valueExpectation ?? SemanticType.Unknown, entry.Value))
+                    values.Add((entry.Value, CheckExpression(entry.Value)));
             }
         }
 
@@ -207,10 +203,8 @@ internal partial class TypeChecker
             }
             else
             {
-                var previousExpected = _expectedType;
-                _expectedType = elementExpectation;
-                elements.Add((elem, CheckExpression(elem)));
-                _expectedType = previousExpected;
+                using (EnterStore(StorePosition.CollectionElement, elementExpectation ?? SemanticType.Unknown, elem))
+                    elements.Add((elem, CheckExpression(elem)));
             }
         }
 
@@ -276,10 +270,8 @@ internal partial class TypeChecker
         var directElements = new List<(Expression? Node, SemanticType Type)>(tuple.Elements.Length);
         for (int i = 0; i < tuple.Elements.Length; i++)
         {
-            var previousExpected = _expectedType;
-            _expectedType = indexExpectations?[i];
-            directElements.Add((tuple.Elements[i], CheckExpression(tuple.Elements[i])));
-            _expectedType = previousExpected;
+            using (EnterStore(StorePosition.TupleElement, indexExpectations?[i] ?? SemanticType.Unknown, tuple.Elements[i]))
+                directElements.Add((tuple.Elements[i], CheckExpression(tuple.Elements[i])));
         }
 
         var directElementTypes = directElements.Select(e => e.Type).ToList();
@@ -356,24 +348,25 @@ internal partial class TypeChecker
     {
         var expectations = ComprehensionElementExpectations(BuiltinNames.List, 1);
 
-        var savedExpected = _expectedType;
         _symbolTable.EnterScope("list-comprehension");
-        _expectedType = null;
-        CheckComprehensionClauses(listComp.Clauses);
 
         SemanticType elementType;
-        if (listComp.Element is SpreadElement spread)
+        using (ClearExpectation(null))
         {
-            // [*it for it in its] — result type is the inner element type of the spread value
-            var spreadType = CheckExpression(spread);  // caches type for spread node
-            elementType = _typeInference.InferIterableElementType(spreadType) ?? SemanticType.Unknown;
+            CheckComprehensionClauses(listComp.Clauses);
+
+            if (listComp.Element is SpreadElement spread)
+            {
+                // [*it for it in its] — result type is the inner element type of the spread value
+                var spreadType = CheckExpression(spread);  // caches type for spread node
+                elementType = _typeInference.InferIterableElementType(spreadType) ?? SemanticType.Unknown;
+            }
+            else
+            {
+                using (EnterStore(StorePosition.CollectionElement, expectations?[0] ?? SemanticType.Unknown, listComp.Element))
+                    elementType = CheckExpression(listComp.Element);
+            }
         }
-        else
-        {
-            _expectedType = expectations?[0];
-            elementType = CheckExpression(listComp.Element);
-        }
-        _expectedType = savedExpected;
 
         _symbolTable.ExitScope();
 
@@ -392,24 +385,25 @@ internal partial class TypeChecker
     {
         var expectations = ComprehensionElementExpectations(BuiltinNames.Set, 1);
 
-        var savedExpected = _expectedType;
         _symbolTable.EnterScope("set-comprehension");
-        _expectedType = null;
-        CheckComprehensionClauses(setComp.Clauses);
 
         SemanticType elementType;
-        if (setComp.Element is SpreadElement spread)
+        using (ClearExpectation(null))
         {
-            // {*it for it in its} — result type is the inner element type of the spread value
-            var spreadType = CheckExpression(spread);  // caches type for spread node
-            elementType = _typeInference.InferIterableElementType(spreadType) ?? SemanticType.Unknown;
+            CheckComprehensionClauses(setComp.Clauses);
+
+            if (setComp.Element is SpreadElement spread)
+            {
+                // {*it for it in its} — result type is the inner element type of the spread value
+                var spreadType = CheckExpression(spread);  // caches type for spread node
+                elementType = _typeInference.InferIterableElementType(spreadType) ?? SemanticType.Unknown;
+            }
+            else
+            {
+                using (EnterStore(StorePosition.CollectionElement, expectations?[0] ?? SemanticType.Unknown, setComp.Element))
+                    elementType = CheckExpression(setComp.Element);
+            }
         }
-        else
-        {
-            _expectedType = expectations?[0];
-            elementType = CheckExpression(setComp.Element);
-        }
-        _expectedType = savedExpected;
 
         _symbolTable.ExitScope();
 
@@ -428,16 +422,19 @@ internal partial class TypeChecker
     {
         var expectations = ComprehensionElementExpectations(BuiltinNames.Dict, 2);
 
-        var savedExpected = _expectedType;
         _symbolTable.EnterScope("dict-comprehension");
-        _expectedType = null;
-        CheckComprehensionClauses(dictComp.Clauses);
 
-        _expectedType = expectations?[0];
-        var keyType = CheckExpression(dictComp.Key);
-        _expectedType = expectations?[1];
-        var valueType = CheckExpression(dictComp.Value);
-        _expectedType = savedExpected;
+        SemanticType keyType;
+        SemanticType valueType;
+        using (ClearExpectation(null))
+        {
+            CheckComprehensionClauses(dictComp.Clauses);
+
+            using (EnterStore(StorePosition.CollectionElement, expectations?[0] ?? SemanticType.Unknown, dictComp.Key))
+                keyType = CheckExpression(dictComp.Key);
+            using (EnterStore(StorePosition.CollectionElement, expectations?[1] ?? SemanticType.Unknown, dictComp.Value))
+                valueType = CheckExpression(dictComp.Value);
+        }
 
         _symbolTable.ExitScope();
 
@@ -455,11 +452,10 @@ internal partial class TypeChecker
     private SemanticType CheckDictSpreadComprehension(DictSpreadComprehension dictSpreadComp)
     {
         // {**d for d in dicts} — result type is dict[K, V] from the spread value type
-        var savedExpected = _expectedType;
         _symbolTable.EnterScope("dict-spread-comprehension");
-        _expectedType = null;
-        CheckComprehensionClauses(dictSpreadComp.Clauses);
-        _expectedType = savedExpected;
+
+        using (ClearExpectation(null))
+            CheckComprehensionClauses(dictSpreadComp.Clauses);
 
         var spreadType = CheckExpression(dictSpreadComp.Spread);
 

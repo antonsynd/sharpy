@@ -173,6 +173,88 @@ public class StoreSeamConformanceTests
                 "IsAssignable is the one place a data-level call belongs");
     }
 
+    /// <summary>
+    /// Every <c>_expectedType =</c> write in the checker must go through <c>EnterStore</c> or
+    /// <c>ClearExpectation</c> (plan-ebd58b Phase 1). A raw write bypasses the save/restore seam
+    /// and the <c>StoreContext</c> record, which is the defect class Phase 2 reads to compose
+    /// diagnostic context.
+    /// </summary>
+    [Fact]
+    public void ExpectationIsPushedOnlyThroughEnterStore()
+    {
+        var semanticDir = FindCompilerSemanticDirectory();
+        var files = Directory.GetFiles(semanticDir, "TypeChecker*.cs", SearchOption.TopDirectoryOnly);
+
+        files.Should().NotBeEmpty("positive control: the scan must find TypeChecker files");
+
+        var violations = new List<string>();
+        var enterStoreCount = 0;
+        var clearExpectationCount = 0;
+        var scannedFileCount = 0;
+
+        foreach (var file in files)
+        {
+            var fileName = Path.GetFileName(file);
+
+            // The seam itself is the ONE file allowed to write _expectedType
+            if (fileName == "TypeChecker.StoreConversion.cs")
+                continue;
+
+            scannedFileCount++;
+            var text = File.ReadAllText(file);
+            var lines = text.Split('\n');
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                var trimmed = line.TrimStart();
+
+                // Skip comments
+                if (trimmed.StartsWith("//") || trimmed.StartsWith("*") || trimmed.StartsWith("///"))
+                    continue;
+
+                // Field declaration is allowed: `private SemanticType? _expectedType = null;`
+                if (trimmed.Contains("private") && trimmed.Contains("SemanticType?") && trimmed.Contains("_expectedType"))
+                    continue;
+
+                // Check for raw `_expectedType =` writes (assignment, not comparison)
+                if (System.Text.RegularExpressions.Regex.IsMatch(line, @"_expectedType\s*=[^=]"))
+                    violations.Add($"{fileName}:{i + 1}: {trimmed.TrimEnd()}");
+
+                // Check for `ref _expectedType` (ScopedValue.Push)
+                if (line.Contains("ref _expectedType"))
+                    violations.Add($"{fileName}:{i + 1}: {trimmed.TrimEnd()}");
+            }
+
+            // Count EnterStore and ClearExpectation call sites in this file
+            enterStoreCount += System.Text.RegularExpressions.Regex.Matches(text, @"EnterStore\(").Count;
+            clearExpectationCount += System.Text.RegularExpressions.Regex.Matches(text, @"ClearExpectation\(").Count;
+        }
+
+        // Also count EnterStore/ClearExpectation in StoreConversion.cs (only the definition,
+        // not call sites — but the definition includes the method name)
+        var storeConversionText = File.ReadAllText(Path.Combine(semanticDir, "TypeChecker.StoreConversion.cs"));
+        enterStoreCount += System.Text.RegularExpressions.Regex.Matches(storeConversionText, @"EnterStore\(").Count;
+        // Subtract 1 for the definition itself
+        enterStoreCount -= 1;
+        clearExpectationCount += System.Text.RegularExpressions.Regex.Matches(storeConversionText, @"ClearExpectation\(").Count;
+        // Subtract 1 for the definition itself
+        clearExpectationCount -= 1;
+
+        violations.Should().BeEmpty(
+            "every _expectedType write must go through EnterStore or ClearExpectation — "
+            + "a raw write bypasses the save/restore seam and the StoreContext record. Found: "
+            + string.Join("; ", violations));
+
+        scannedFileCount.Should().BeGreaterThan(0,
+            "positive control: the scan must examine at least one TypeChecker file");
+
+        var totalCallSites = enterStoreCount + clearExpectationCount;
+        totalCallSites.Should().Be(38,
+            "the literal anchor for EnterStore + ClearExpectation call sites "
+            + $"(got {enterStoreCount} EnterStore + {clearExpectationCount} ClearExpectation = {totalCallSites})");
+    }
+
     private record CallSite(string File, string Method, int Line, string Text)
     {
         public string Key => $"{File}::{Method}";

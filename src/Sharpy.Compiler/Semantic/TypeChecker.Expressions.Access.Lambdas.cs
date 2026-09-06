@@ -282,10 +282,16 @@ internal partial class TypeChecker
         {
             if (deferredPositions.Contains(position))
                 continue;
+            SemanticType actual;
             if (providesExpectedTypes && formalByPosition[position] is { } positionalFormal)
-                _expectedType = positionalFormal is UnknownType ? null : positionalFormal;
-            var actual = CheckExpression(call.Arguments[position]);
-            _expectedType = previousExpectedType;
+            {
+                using (EnterStore(StorePosition.LambdaParameterDefault, positionalFormal, call.Arguments[position]))
+                    actual = CheckExpression(call.Arguments[position]);
+            }
+            else
+            {
+                actual = CheckExpression(call.Arguments[position]);
+            }
             positionTypes[position] = actual;
             if (formalByPosition[position] is { } formal)
             {
@@ -298,10 +304,16 @@ internal partial class TypeChecker
         {
             if (deferredKeywords.Contains(kwarg.Name))
                 continue;
+            SemanticType actual;
             if (providesExpectedTypes && formalByKeyword.TryGetValue(kwarg.Name, out var keywordFormal))
-                _expectedType = keywordFormal is UnknownType ? null : keywordFormal;
-            var actual = CheckExpression(kwarg.Value);
-            _expectedType = previousExpectedType;
+            {
+                using (EnterStore(StorePosition.LambdaParameterDefault, keywordFormal, kwarg.Value))
+                    actual = CheckExpression(kwarg.Value);
+            }
+            else
+            {
+                actual = CheckExpression(kwarg.Value);
+            }
             kwargTypes[kwarg.Name] = actual;
             if (formalByKeyword.TryGetValue(kwarg.Name, out var boundFormal))
             {
@@ -344,8 +356,9 @@ internal partial class TypeChecker
         {
             var formal = formalByPosition[position]!;
             SemanticType checkedType;
-            using (ScopedValue.Push(ref _expectedType,
-                       SubstituteExpectedLambdaType(formal, substitutions) ?? previousExpectedType))
+            using (EnterStore(StorePosition.LambdaBody,
+                       SubstituteExpectedLambdaType(formal, substitutions) ?? previousExpectedType ?? SemanticType.Unknown,
+                       call.Arguments[position]))
             {
                 checkedType = CheckExpression(call.Arguments[position]);
             }
@@ -359,8 +372,9 @@ internal partial class TypeChecker
 
             var keywordFormal = formalByKeyword[kwarg.Name];
             SemanticType checkedType;
-            using (ScopedValue.Push(ref _expectedType,
-                       SubstituteExpectedLambdaType(keywordFormal, substitutions) ?? previousExpectedType))
+            using (EnterStore(StorePosition.LambdaBody,
+                       SubstituteExpectedLambdaType(keywordFormal, substitutions) ?? previousExpectedType ?? SemanticType.Unknown,
+                       kwarg.Value))
             {
                 checkedType = CheckExpression(kwarg.Value);
             }

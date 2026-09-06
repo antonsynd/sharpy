@@ -12,6 +12,18 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 internal partial class TypeChecker
 {
+    /// <summary>
+    /// The context an <see cref="EnterStore"/> push records — position, slot, and (for arguments)
+    /// the callee display name, ordinal, and keyword name. No consumer yet; Phase 2 will read it
+    /// for diagnostic context (#1793).
+    /// </summary>
+    internal sealed record StoreContext(
+        StorePosition Position,
+        SemanticType? Slot,
+        string? CalleeDisplay,
+        int? ArgumentOrdinal,
+        string? KeywordName);
+
     internal enum StorePosition
     {
         Declaration,
@@ -514,10 +526,12 @@ internal partial class TypeChecker
         };
     }
 
-    private IDisposable EnterStore(StorePosition position, SemanticType targetType, Expression? valueNode)
+    private IDisposable EnterStore(StorePosition position, SemanticType targetType, Expression? valueNode,
+        string? calleeDisplay = null, int? argumentOrdinal = null, string? keywordName = null)
     {
         var savedExpectedType = _expectedType;
         var savedParameterTypedArgument = _parameterTypedArgument;
+        var savedStoreContext = _storeContext;
 
         _expectedType = targetType is UnknownType ? null : targetType;
         _parameterTypedArgument = position switch
@@ -527,8 +541,26 @@ internal partial class TypeChecker
                 => ParameterTypedArgumentOf(targetType, valueNode),
             _ => _parameterTypedArgument,
         };
+        _storeContext = new StoreContext(position, targetType, calleeDisplay, argumentOrdinal, keywordName);
 
-        return new StoreScope(this, savedExpectedType, savedParameterTypedArgument);
+        return new StoreScope(this, savedExpectedType, savedParameterTypedArgument, savedStoreContext);
+    }
+
+    /// <summary>
+    /// Saves <c>_expectedType</c> and sets it to <c>null</c> — for the sites that clear the
+    /// expectation before checking sub-expressions (comprehension clause walks, overload-set
+    /// arguments). Does not modify <c>_parameterTypedArgument</c> or <c>_storeContext</c>.
+    /// </summary>
+    private IDisposable ClearExpectation(Expression? valueNode)
+    {
+        var savedExpectedType = _expectedType;
+        var savedParameterTypedArgument = _parameterTypedArgument;
+        var savedStoreContext = _storeContext;
+
+        _expectedType = null;
+        // Don't change _parameterTypedArgument or _storeContext for clears
+
+        return new StoreScope(this, savedExpectedType, savedParameterTypedArgument, savedStoreContext);
     }
 
     private sealed class StoreScope : IDisposable
@@ -536,21 +568,25 @@ internal partial class TypeChecker
         private readonly TypeChecker _checker;
         private readonly SemanticType? _savedExpectedType;
         private readonly Expression? _savedParameterTypedArgument;
+        private readonly StoreContext? _savedStoreContext;
 
         public StoreScope(
             TypeChecker checker,
             SemanticType? savedExpectedType,
-            Expression? savedParameterTypedArgument)
+            Expression? savedParameterTypedArgument,
+            StoreContext? savedStoreContext)
         {
             _checker = checker;
             _savedExpectedType = savedExpectedType;
             _savedParameterTypedArgument = savedParameterTypedArgument;
+            _savedStoreContext = savedStoreContext;
         }
 
         public void Dispose()
         {
             _checker._expectedType = _savedExpectedType;
             _checker._parameterTypedArgument = _savedParameterTypedArgument;
+            _checker._storeContext = _savedStoreContext;
         }
     }
 }

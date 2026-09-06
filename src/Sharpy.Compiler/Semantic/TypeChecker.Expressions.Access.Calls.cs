@@ -3800,10 +3800,9 @@ internal partial class TypeChecker
         };
 
         // 4. Check lambda with expected type context
-        var saved = _expectedType;
-        _expectedType = expectedFuncType;
-        var lambdaType = CheckExpression(call.Function);
-        _expectedType = saved;
+        SemanticType lambdaType;
+        using (EnterStore(StorePosition.ArgumentPositional, expectedFuncType, call.Function))
+            lambdaType = CheckExpression(call.Function);
 
         // 5. Return the inferred return type
         return lambdaType is FunctionType ft ? ft.ReturnType : SemanticType.Unknown;
@@ -4079,7 +4078,6 @@ internal partial class TypeChecker
         {
             for (int argIdx = 0; argIdx < call.Arguments.Length; argIdx++)
             {
-                var previousExpectedType = _expectedType;
                 var previousParameterTypedArgument = _parameterTypedArgument;
 
                 // Cleared up front, so the arms below can only ever set it TOGETHER with the
@@ -4107,7 +4105,6 @@ internal partial class TypeChecker
                         else
                             argTypes.Add(SemanticType.Unknown);
                     }
-                    _expectedType = previousExpectedType;
                     _parameterTypedArgument = previousParameterTypedArgument;
                     continue;
                 }
@@ -4119,24 +4116,27 @@ internal partial class TypeChecker
                     && earlyFuncSymbol != null && argIdx + earlyParamOffset < earlyFuncSymbol.Parameters.Count)
                 {
                     var paramType = earlyFuncSymbol.Parameters[argIdx + earlyParamOffset].Type;
-                    _expectedType = paramType is UnknownType ? null : paramType;
-                    _parameterTypedArgument = ParameterTypedArgumentOf(paramType, call.Arguments[argIdx]);
+                    using (EnterStore(StorePosition.ArgumentPositional, paramType, call.Arguments[argIdx]))
+                        argTypes.Add(CheckExpression(call.Arguments[argIdx]));
                 }
                 else if (!noCandidateExpectation
                     && calleeFunctionType != null && argIdx < calleeFunctionType.ParameterTypes.Count)
                 {
                     var paramType = calleeFunctionType.ParameterTypes[argIdx];
-                    _expectedType = paramType is UnknownType ? null : paramType;
-                    _parameterTypedArgument = ParameterTypedArgumentOf(paramType, call.Arguments[argIdx]);
+                    using (EnterStore(StorePosition.ArgumentPositional, paramType, call.Arguments[argIdx]))
+                        argTypes.Add(CheckExpression(call.Arguments[argIdx]));
                 }
                 else if (noCandidateExpectation)
                 {
                     // The ENCLOSING context's expectation is not this argument's parameter type
                     // either, and leaving it in place would type the literal from it.
-                    _expectedType = null;
+                    using (ClearExpectation(call.Arguments[argIdx]))
+                        argTypes.Add(CheckExpression(call.Arguments[argIdx]));
                 }
-                argTypes.Add(CheckExpression(call.Arguments[argIdx]));
-                _expectedType = previousExpectedType;
+                else
+                {
+                    argTypes.Add(CheckExpression(call.Arguments[argIdx]));
+                }
                 _parameterTypedArgument = previousParameterTypedArgument;
             }
         }
@@ -4158,24 +4158,27 @@ internal partial class TypeChecker
                     span: kwarg.Span ?? kwarg.Value.Span);
             }
 
-            var previousExpectedType = _expectedType;
             var previousParameterTypedArgument = _parameterTypedArgument;
             _parameterTypedArgument = null;
-            if (calleeDenotesOverloadSet && TakesContextualCollectionType(kwarg.Value))
+            IDisposable? kwScope = null;
+            try
             {
-                _expectedType = null;
-            }
-            else if (earlyFuncSymbol != null)
-            {
-                var param = FindKeywordParameter(earlyFuncSymbol.Parameters, kwarg.Name);
-                if (param != null)
+                if (calleeDenotesOverloadSet && TakesContextualCollectionType(kwarg.Value))
                 {
-                    _expectedType = param.Type is UnknownType ? null : param.Type;
-                    _parameterTypedArgument = ParameterTypedArgumentOf(param.Type, kwarg.Value);
+                    kwScope = ClearExpectation(kwarg.Value);
                 }
+                else if (earlyFuncSymbol != null)
+                {
+                    var param = FindKeywordParameter(earlyFuncSymbol.Parameters, kwarg.Name);
+                    if (param != null)
+                        kwScope = EnterStore(StorePosition.ArgumentKeyword, param.Type, kwarg.Value, keywordName: kwarg.Name);
+                }
+                kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
             }
-            kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
-            _expectedType = previousExpectedType;
+            finally
+            {
+                kwScope?.Dispose();
+            }
             _parameterTypedArgument = previousParameterTypedArgument;
         }
 
@@ -4229,26 +4232,28 @@ internal partial class TypeChecker
         // that CheckLambda ignores (it maps only up to the lambda's own arity).
         var elementTypes = new List<SemanticType>();
         var iterableTypes = new List<SemanticType>();
-        var previousExpectedType = _expectedType;
-        _expectedType = null;
-        for (int i = 1; i < call.Arguments.Length; i++)
+        using (ClearExpectation(null))
         {
-            var argType = CheckExpression(call.Arguments[i]);
-            iterableTypes.Add(argType);
-            var elem = _typeInference.InferIterableElementType(argType);
-            elementTypes.Add(elem ?? SemanticType.Unknown);
+            for (int i = 1; i < call.Arguments.Length; i++)
+            {
+                var argType = CheckExpression(call.Arguments[i]);
+                iterableTypes.Add(argType);
+                var elem = _typeInference.InferIterableElementType(argType);
+                elementTypes.Add(elem ?? SemanticType.Unknown);
+            }
         }
 
         // Feed the synthesized expected function type into the lambda so CheckLambda types its
         // parameters from the element types (lambdas/CheckLambda already consume a FunctionType
         // _expectedType). The return type is left Unknown; the body determines it.
-        _expectedType = new FunctionType
+        var expectedMapFuncType = new FunctionType
         {
             ParameterTypes = elementTypes,
             ReturnType = SemanticType.Unknown
         };
-        var lambdaType = CheckExpression(call.Arguments[0]);
-        _expectedType = previousExpectedType;
+        SemanticType lambdaType;
+        using (EnterStore(StorePosition.ArgumentPositional, expectedMapFuncType, call.Arguments[0]))
+            lambdaType = CheckExpression(call.Arguments[0]);
 
         // Reassemble positional argTypes in source order: [lambda, iter1, iter2, ...].
         argTypes.Add(lambdaType);

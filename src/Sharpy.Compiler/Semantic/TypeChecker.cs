@@ -141,6 +141,11 @@ internal partial class TypeChecker
     // argument path is covered and nested calls restore the enclosing set.
     private HashSet<Expression>? _currentCallArguments;
 
+    // The current store context — position, slot, callee display, ordinal, keyword name — pushed
+    // by EnterStore and restored by StoreScope. No consumer yet; Phase 2 will read it for
+    // diagnostic context.
+    private StoreContext? _storeContext;
+
     // The one call argument whose PARAMETER type `_expectedType` currently holds — null whenever
     // `_expectedType` came from somewhere else.
     //

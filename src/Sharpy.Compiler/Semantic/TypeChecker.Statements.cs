@@ -318,10 +318,9 @@ internal partial class TypeChecker
             targetType = CheckExpression(assignment.Target);
         var assignmentTargetType = targetType;
         // Set expected type for constructor inference (Some/None()/Ok/Err)
-        var previousExpectedType = _expectedType;
-        _expectedType = assignmentTargetType is UnknownType ? null : assignmentTargetType;
-        var valueType = CheckExpression(assignment.Value);
-        _expectedType = previousExpectedType;
+        SemanticType valueType;
+        using (EnterStore(StorePosition.PlainStore, assignmentTargetType, assignment.Value))
+            valueType = CheckExpression(assignment.Value);
 
         // Handle augmented assignment operators (+=, -=, *=, /=, //=, %=, **=, &=, |=, ^=, <<=, >>=)
         if (assignment.Operator != AssignmentOperator.Assign)
