@@ -1,0 +1,10 @@
+def f[T](x: T?) -> T?:
+    return x
+
+def main():
+    a: int? = f[int](Some(5))
+    print(a)
+    b: int? = f[int](x=Some(5))
+    print(b)
+    c: int? = f[int](None())
+    print(c)

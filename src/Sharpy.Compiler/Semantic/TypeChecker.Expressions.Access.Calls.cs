@@ -156,6 +156,21 @@ internal partial class TypeChecker
         // reads the honest, un-narrowed value (see _typeTestOperand): a narrowing cast on the
         // operand would presuppose the very fact the test is checking.
         var calleeFunctionType = calleeType as FunctionType ?? ClosedExtensionSignature(callee);
+
+        // Phase 3 (#1797): for explicitly-instantiated generic callees, build the substitution
+        // so CheckCallArguments pushes the CLOSED formal (T? → int?) at every position.
+        IReadOnlyDictionary<string, SemanticType>? genericSubstitution = null;
+        if (calleeType is GenericFunctionType gft && gft.TypeArguments.Count > 0)
+        {
+            var typeParams = gft.FunctionSymbol.TypeParameters;
+            if (typeParams != null && typeParams.Count == gft.TypeArguments.Count)
+            {
+                var sub = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
+                for (int i = 0; i < typeParams.Count; i++)
+                    sub[typeParams[i].Name] = gft.TypeArguments[i];
+                genericSubstitution = sub;
+            }
+        }
         // Not a type test: each scope pushes the field's CURRENT value, so an enclosing type test's
         // operand and type argument survive rather than being cleared for this call's arguments. The
         // type-argument scope carries the conjunction — the second argument only names a type when
@@ -177,7 +192,7 @@ internal partial class TypeChecker
                        : _typeTestTypeArgument))
         using (ScopedValue.Push(ref _currentCallArguments, DirectArgumentSetOf(call)))
         {
-            (argTypes, kwargTypes) = CheckCallArguments(call, callee, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
+            (argTypes, kwargTypes) = CheckCallArguments(call, callee, earlyFuncSymbol, earlyParamOffset, calleeFunctionType, genericSubstitution);
         }
 
         // The arguments are checked, so the type parameters the receiver left open are now knowable:
@@ -4185,7 +4200,7 @@ internal partial class TypeChecker
     /// <see cref="AstHelper.UnwrapParenthesized"/>.</param>
     private (List<SemanticType> ArgTypes, Dictionary<string, SemanticType> KwargTypes) CheckCallArguments(
         FunctionCall call, Expression callee, FunctionSymbol? earlyFuncSymbol, int earlyParamOffset,
-        FunctionType? calleeFunctionType)
+        FunctionType? calleeFunctionType, IReadOnlyDictionary<string, SemanticType>? genericSubstitution = null)
     {
         // #1671: a COLLECTION LITERAL (or comprehension) written as an argument may take its
         // contextual type only from a RESOLVED callee. `earlyFuncSymbol` and `calleeFunctionType`
@@ -4271,6 +4286,8 @@ internal partial class TypeChecker
                     && earlyFuncSymbol != null && argIdx + earlyParamOffset < earlyFuncSymbol.Parameters.Count)
                 {
                     var paramType = earlyFuncSymbol.Parameters[argIdx + earlyParamOffset].Type;
+                    if (genericSubstitution != null)
+                        paramType = TypeSubstitution.Apply(paramType, genericSubstitution);
                     using (EnterStore(StorePosition.ArgumentPositional, paramType, call.Arguments[argIdx],
                                calleeDisplay: calleeDisplayName, argumentOrdinal: argIdx + 1))
                         argTypes.Add(CheckExpression(call.Arguments[argIdx]));
@@ -4330,7 +4347,10 @@ internal partial class TypeChecker
                     var param = FindKeywordParameter(earlyFuncSymbol.Parameters, kwarg.Name);
                     if (param != null)
                     {
-                        kwScope = EnterStore(StorePosition.ArgumentKeyword, param.Type, kwarg.Value,
+                        var kwParamType = param.Type;
+                        if (genericSubstitution != null)
+                            kwParamType = TypeSubstitution.Apply(kwParamType, genericSubstitution);
+                        kwScope = EnterStore(StorePosition.ArgumentKeyword, kwParamType, kwarg.Value,
                             calleeDisplay: kwCalleeDisplayName, keywordName: kwarg.Name);
                     }
                 }

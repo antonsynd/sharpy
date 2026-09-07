@@ -1367,7 +1367,7 @@ class Person:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Duplicate constructor signature");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Duplicate CLR-mapped signature for '__init__'");
     }
 
     [Fact]
@@ -1435,7 +1435,7 @@ class Box:
         typeChecker.CheckModule(module, isEntryPoint: false);
 
         typeChecker.Diagnostics.GetErrors().Should().NotBeEmpty();
-        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Duplicate constructor signature");
+        typeChecker.Diagnostics.GetErrors()[0].Message.Should().Contain("Duplicate CLR-mapped signature for '__init__'");
     }
 
     [Fact]
