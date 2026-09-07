@@ -965,6 +965,10 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
         new("StrConst", "str", "\"d\"", "const MSG: str = \"gone\"\n\n", "MSG", "MSG", null),
         new("IntConst", "int", "1", "const N: int = 3\n\n", "N", "N", null),
         new("Folded", "str", "\"d\"", "", "\"a\" + \"b\"", "\"a\" + \"b\"", null),
+        // The emitter's composition arm is ONE pattern — Parenthesized or BinaryOp or UnaryOp or
+        // ConditionalExpression — so each alternative needs a row or deleting it is caught by
+        // nothing. The parentheses survive into the emitted argument verbatim.
+        new("Parenthesized", "str", "\"d\"", "", "(\"a\")", "(\"a\")", null),
         new("ConditionalOfConsts", "str", "\"d\"", "const ON: bool = True\n\n",
             "\"a\" if ON else \"b\"", "ON ? \"a\" : \"b\"", null),
         // The UNARY arm of the same rule: `not` is native for the only operand type it takes.
@@ -986,9 +990,9 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     };
 
     // Anchored to literals, not to the arrays under test.
-    private const int DecoratorArgumentCount = 11;
+    private const int DecoratorArgumentCount = 12;
     private const int DecoratorPositionCount = 2;
-    private const int DecoratorAdmittedCount = 8;
+    private const int DecoratorAdmittedCount = 9;
     private const int DecoratorRefusedCount = 3;
 
     private static DecoratorArgument DA(string name) => DecoratorArguments.Single(a => a.Name == name);
