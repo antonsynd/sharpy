@@ -115,7 +115,7 @@ internal class IncrementalCompilationCache
     //          Code/Line/Column/Span) and carries RelatedLocations — the first cut coerced nulls
     //          to defaults, and the warm-fidelity sweep measured the 0-vs-null divergence on three
     //          fixtures before the entries ever shipped in a release.
-    internal const int CurrentSchemaVersion = 30;
+    internal const int CurrentSchemaVersion = 31;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;

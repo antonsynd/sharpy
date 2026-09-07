@@ -324,7 +324,7 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
             {
                 AddHint(
                     $"Sharpy variadic parameters (*args) are homogeneous — all arguments must match "
-                        + $"the declared type '{FormatTypeAnnotation(param.Type)}', unlike Python's "
+                        + $"the declared type '{TypeAnnotationKey.Of(param.Type)}', unlike Python's "
                         + "heterogeneous *args. The parameter is lowered to C# 'params T[]'.",
                     param.LineStart, param.ColumnStart,
                     code: DiagnosticCodes.Validation.HomogeneousVariadicHint,
@@ -378,20 +378,5 @@ internal sealed class TransitionWarningValidator : ValidatingAstWalker
             node.LineStart, node.ColumnStart,
             code: DiagnosticCodes.Validation.NegativeTupleIndexHint,
             span: node.Span);
-    }
-
-    /// <summary>
-    /// Best-effort textual rendering of a parser <see cref="TypeAnnotation"/> for
-    /// inclusion in diagnostic messages. Mirrors the conservative formatter used
-    /// in <c>NameResolver.Members.cs</c> so the two surfaces stay aligned.
-    /// </summary>
-    private static string FormatTypeAnnotation(TypeAnnotation? type)
-    {
-        if (type == null)
-            return "_";
-        if (type.TypeArguments.Length == 0)
-            return type.Name;
-        var args = string.Join(", ", type.TypeArguments.Select(FormatTypeAnnotation));
-        return $"{type.Name}[{args}]";
     }
 }

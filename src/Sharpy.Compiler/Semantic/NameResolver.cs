@@ -711,9 +711,8 @@ internal partial class NameResolver
     /// </summary>
     private void PropagateInterfaceMethods(TypeSymbol interfaceSymbol)
     {
-        // Build a set of method signatures we already have
         var seenMethods = new HashSet<string>(
-            interfaceSymbol.Methods.Select(m => GetMethodSignature(m)));
+            interfaceSymbol.Methods.Select(m => $"{m.Name}({m.SignatureKey})"));
 
         var visited = new HashSet<string> { interfaceSymbol.Name };
         var queue = new Queue<TypeSymbol>(TypeHierarchyService.GetDirectInterfaces(interfaceSymbol, _semanticBinding));
@@ -727,7 +726,7 @@ internal partial class NameResolver
             // Copy methods from base interface that we don't already have
             foreach (var method in baseInterface.Methods)
             {
-                var signature = GetMethodSignature(method);
+                var signature = $"{method.Name}({method.SignatureKey})";
                 if (seenMethods.Add(signature))
                 {
                     // Add a reference to the inherited method (don't clone, just add reference)
@@ -744,17 +743,6 @@ internal partial class NameResolver
         }
     }
 
-    /// <summary>
-    /// Get a unique signature string for method deduplication.
-    /// Includes method name and parameter types (excluding 'self').
-    /// </summary>
-    private string GetMethodSignature(FunctionSymbol method)
-    {
-        var paramTypes = method.Parameters
-            .Where(p => p.Name != PythonNames.Self)
-            .Select(p => p.Type?.CanonicalKey ?? "unknown");
-        return $"{method.Name}({string.Join(",", paramTypes)})";
-    }
 
     internal static string? GetDeprecationMessage(IEnumerable<Decorator> decorators)
     {

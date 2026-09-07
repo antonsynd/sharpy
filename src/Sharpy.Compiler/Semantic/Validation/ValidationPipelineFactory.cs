@@ -25,7 +25,6 @@ internal static class ValidationPipelineFactory
             .AddValidator(new DecoratorValidator())         // Order: 60 (validates decorator usage)
             .AddValidator(new BodylessSyntaxValidator())    // Order: 62 (deprecation warnings for body-less methods)
             .AddValidator(new SourceGeneratorValidator())   // Order: 65 (validates @[Generator] usage and signatures)
-            .AddValidator(new ConstructorOverloadValidator()) // Order: 140 (constructor overload validation)
             .AddValidator(new StructRulesValidator())       // Order: 145 (struct-specific rules)
             .AddValidator(new AbstractMemberValidator())    // Order: 146 (abstract member in non-abstract class — SPY0493)
             .AddValidator(new EnumRulesValidator())         // Order: 147 (enum-specific rules)

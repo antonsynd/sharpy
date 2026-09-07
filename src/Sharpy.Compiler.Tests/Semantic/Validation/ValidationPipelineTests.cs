@@ -155,7 +155,7 @@ public class ValidationPipelineTests
         var pipeline = ValidationPipelineFactory.CreateDefault();
         var validators = pipeline.Validators.ToList();
 
-        Assert.Equal(36, validators.Count);
+        Assert.Equal(35, validators.Count);
         Assert.Contains(validators, v => v is AbstractMemberValidator);
         Assert.Contains(validators, v => v is DefiniteAssignmentValidator);
         Assert.Contains(validators, v => v is MustUseValidator);
@@ -168,7 +168,6 @@ public class ValidationPipelineTests
         Assert.Contains(validators, v => v is LocalNameCollisionValidator);
         Assert.Contains(validators, v => v is DecoratorValidator);
         Assert.Contains(validators, v => v is SourceGeneratorValidator);
-        Assert.Contains(validators, v => v is ConstructorOverloadValidator);
         Assert.Contains(validators, v => v is StructRulesValidator);
         Assert.Contains(validators, v => v is EnumRulesValidator);
         Assert.Contains(validators, v => v is SignatureValidator);
