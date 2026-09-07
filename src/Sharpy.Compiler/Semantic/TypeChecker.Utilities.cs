@@ -2249,16 +2249,7 @@ internal partial class TypeChecker
     /// </summary>
     private static string GetTypeKey(SemanticType type)
     {
-        return type switch
-        {
-            UserDefinedType udt => udt.Name,
-            BuiltinType bt => bt.Name,
-            GenericType gt => $"{gt.Name}<{string.Join(",", gt.TypeArguments.Select(GetTypeKey))}>",
-            NullableType nt => $"{GetTypeKey(nt.UnderlyingType)}|None",
-            OptionalType ot => $"{GetTypeKey(ot.UnderlyingType)}?",
-            ResultType rt => $"{GetTypeKey(rt.OkType)}!{GetTypeKey(rt.ErrorType)}",
-            _ => type.GetDisplayName()
-        };
+        return type.CanonicalKey;
     }
 
     /// <summary>

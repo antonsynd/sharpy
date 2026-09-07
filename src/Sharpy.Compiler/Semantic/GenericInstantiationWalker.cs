@@ -482,7 +482,7 @@ internal static class GenericInstantiationWalker
         if (typeArguments.Count == 0)
             return $"{identity:X}|{definition.Name}";
 
-        var args = string.Join(",", typeArguments.Select(arg => arg.GetDisplayName()));
+        var args = string.Join(",", typeArguments.Select(arg => arg.CanonicalKey));
         return $"{identity:X}|{definition.Name}[{args}]";
     }
 }

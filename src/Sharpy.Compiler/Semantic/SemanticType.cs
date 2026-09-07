@@ -102,6 +102,52 @@ public abstract record SemanticType : ITypeInfo
     }
 
     /// <summary>
+    /// One canonical identity for this type — total over the 20 leaves, no display-string fallback.
+    /// <see cref="Equals(object?)"/> agrees with it on every leaf: two types are equal iff their
+    /// canonical keys are equal. Dictionary/set/cache lookups on <see cref="SemanticType"/> are
+    /// correct by construction when this property is (#1718).
+    /// </summary>
+    public abstract string CanonicalKey { get; }
+
+    /// <summary>
+    /// True for the two shapes that represent <c>object</c> at the semantic level:
+    /// <see cref="UserDefinedType"/> with <c>Name == "object"</c> and <see cref="UnmappedClrType"/>.
+    /// Replaces the emitter's <c>IsObjectType</c> string comparison (#1718).
+    /// </summary>
+    public virtual bool IsObjectLike => false;
+
+    /// <summary>
+    /// Build a qualified key for a <see cref="TypeSymbol"/>: module prefix + declaring-type chain + name.
+    /// Shared by <see cref="UserDefinedType"/>, <see cref="UnionType"/>, <see cref="SelfType"/>,
+    /// and <see cref="GenericFunctionType"/>.
+    /// </summary>
+    internal static string BuildQualifiedTypeKey(TypeSymbol symbol)
+    {
+        var module = symbol.DefiningModule ?? "";
+        var sb = new System.Text.StringBuilder();
+        if (module.Length > 0)
+        {
+            sb.Append(module);
+            sb.Append('.');
+        }
+        var chain = new List<string>();
+        var current = symbol.DeclaringType;
+        while (current != null)
+        {
+            chain.Add(current.Name);
+            current = current.DeclaringType;
+        }
+        chain.Reverse();
+        foreach (var part in chain)
+        {
+            sb.Append(part);
+            sb.Append('.');
+        }
+        sb.Append(symbol.Name);
+        return sb.ToString();
+    }
+
+    /// <summary>
     /// Get a human-readable name for this type
     /// </summary>
     public abstract string GetDisplayName();
@@ -165,6 +211,7 @@ public abstract record SemanticType : ITypeInfo
 /// </summary>
 public sealed record UnknownType : SemanticType
 {
+    public override string CanonicalKey => "<unknown>";
     public override string GetDisplayName() => "<?>";
 
     public override bool IsAssignableTo(SemanticType other) => true; // Allow anything to avoid cascading errors
@@ -175,6 +222,7 @@ public sealed record UnknownType : SemanticType
 /// </summary>
 public sealed record VoidType : SemanticType
 {
+    public override string CanonicalKey => "void";
     public override string GetDisplayName() => "None";
 
     public override bool IsAssignableTo(SemanticType other)
@@ -194,6 +242,7 @@ public sealed record BuiltinType : SemanticType
     public string Name { get; init; } = string.Empty;
     public new Type? ClrType { get; init; }
 
+    public override string CanonicalKey => Name;
     public override string GetDisplayName() => Name;
 
     public override bool IsValueType => ClrType?.IsValueType ?? false;
@@ -251,6 +300,15 @@ public sealed record GenericType : SemanticType
     /// </para>
     /// </summary>
     public string? ClrOriginTypeName { get; init; }
+
+    public override string CanonicalKey
+    {
+        get
+        {
+            var args = string.Join(",", TypeArguments.Select(t => t.CanonicalKey));
+            return $"{Name}[{args}]";
+        }
+    }
 
     public override string GetDisplayName()
     {
@@ -341,7 +399,30 @@ public sealed record UserDefinedType : SemanticType
     public string Name { get; init; } = string.Empty;
     public TypeSymbol? Symbol { get; init; }
 
+    public override string CanonicalKey
+    {
+        get
+        {
+            if (Name == "object")
+                return "object";
+            if (Symbol == null)
+                return Name;
+            return BuildQualifiedTypeKey(Symbol);
+        }
+    }
+
+    public override bool IsObjectLike => Name == "object";
+
     public override string GetDisplayName() => Name;
+
+    public bool Equals(UserDefinedType? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return CanonicalKey == other.CanonicalKey;
+    }
+
+    public override int GetHashCode() => CanonicalKey.GetHashCode(StringComparison.Ordinal);
 
     public override bool IsValueType => Symbol?.TypeKind == TypeKind.Struct;
 
@@ -456,6 +537,7 @@ public sealed record OptionalType : SemanticType
     /// </summary>
     public SemanticType UnderlyingType { get; init; } = SemanticType.Unknown;
 
+    public override string CanonicalKey => $"{UnderlyingType.CanonicalKey}?";
     public override string GetDisplayName() => $"{UnderlyingType.GetDisplayName()}?";
 
     /// <summary>
@@ -515,6 +597,8 @@ public sealed record ResultType : SemanticType
     public SemanticType ErrorType { get; init; } = SemanticType.Unknown;
 
     /// <summary>
+    public override string CanonicalKey => $"{OkType.CanonicalKey}!{ErrorType.CanonicalKey}";
+
     /// <c>int32 !str</c> — the ANNOTATION spelling — but only when BOTH sides are known. A bare
     /// <c>Ok(1)</c> knows one side and leaves the other <see cref="UnknownType"/>, and printing
     /// <c>int32 !&lt;?&gt;</c> leaks a placeholder into a message the reader cannot act on: it is not
@@ -574,6 +658,7 @@ public sealed record NullableType : SemanticType
 {
     public SemanticType UnderlyingType { get; init; } = SemanticType.Unknown;
 
+    public override string CanonicalKey => $"{UnderlyingType.CanonicalKey}|None";
     public override string GetDisplayName() => $"{UnderlyingType.GetDisplayName()} | None";
 
     public override bool IsNullable => true;
@@ -683,6 +768,33 @@ public sealed record FunctionType : SemanticType
         };
     }
 
+    public override string CanonicalKey
+    {
+        get
+        {
+            var paramKeys = string.Join(",", ParameterTypes.Select(t => t.CanonicalKey));
+            var sb = new System.Text.StringBuilder();
+            sb.Append('(');
+            sb.Append(paramKeys);
+            sb.Append(")->");
+            sb.Append(ReturnType.CanonicalKey);
+            if (SkipArgumentValidation)
+                sb.Append("/skip");
+            if (OptionalParameterCount > 0)
+            {
+                sb.Append('/');
+                sb.Append(OptionalParameterCount);
+                sb.Append("opt");
+            }
+            if (VariadicParameterIndex != null)
+            {
+                sb.Append("/*");
+                sb.Append(VariadicParameterIndex.Value);
+            }
+            return sb.ToString();
+        }
+    }
+
     public override string GetDisplayName()
     {
         var parts = new List<string>(ParameterTypes.Count);
@@ -788,6 +900,20 @@ public sealed record TupleType : SemanticType
     /// </summary>
     public bool IsNamed => ElementNames != null && ElementNames.Value.Length > 0;
 
+    public override string CanonicalKey
+    {
+        get
+        {
+            if (IsNamed)
+            {
+                var elements = ElementTypes.Select((e, i) =>
+                    $"{ElementNames!.Value[i]}:{e.CanonicalKey}");
+                return $"tuple[{string.Join(",", elements)}]";
+            }
+            return $"tuple[{string.Join(",", ElementTypes.Select(e => e.CanonicalKey))}]";
+        }
+    }
+
     public override string GetDisplayName()
     {
         if (IsNamed)
@@ -871,6 +997,7 @@ public sealed record ModuleType : SemanticType
 {
     public ModuleSymbol Symbol { get; init; } = null!;
 
+    public override string CanonicalKey => $"module:{Symbol.Name}";
     public override string GetDisplayName() => $"module '{Symbol.Name}'";
 }
 
@@ -894,7 +1021,46 @@ public sealed record TypeParameterType : SemanticType
     /// </summary>
     public TypeParameterVariance Variance { get; init; } = TypeParameterVariance.None;
 
+    public override string CanonicalKey
+    {
+        get
+        {
+            if (Constraints.IsDefaultOrEmpty && Variance == TypeParameterVariance.None)
+                return Name;
+
+            var sb = new System.Text.StringBuilder(Name);
+            if (!Constraints.IsDefaultOrEmpty)
+            {
+                sb.Append('{');
+                sb.Append(string.Join(",", Constraints.Select(c => c switch
+                {
+                    TypeConstraint tc => tc.Type.Name,
+                    ClassConstraint => "class",
+                    StructConstraint => "struct",
+                    NewConstraint => "new",
+                    NotnullConstraint => "notnull",
+                    _ => c.GetType().Name
+                })));
+                sb.Append('}');
+            }
+            if (Variance == TypeParameterVariance.Covariant)
+                sb.Append('+');
+            else if (Variance == TypeParameterVariance.Contravariant)
+                sb.Append('-');
+            return sb.ToString();
+        }
+    }
+
     public override string GetDisplayName() => Name;
+
+    public bool Equals(TypeParameterType? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return CanonicalKey == other.CanonicalKey;
+    }
+
+    public override int GetHashCode() => CanonicalKey.GetHashCode(StringComparison.Ordinal);
 
     public override bool IsAssignableTo(SemanticType other)
     {
@@ -919,6 +1085,8 @@ public sealed record SelfType : SemanticType
     /// </summary>
     public TypeSymbol? DeclaringType { get; init; }
 
+    public override string CanonicalKey =>
+        DeclaringType != null ? $"Self:{BuildQualifiedTypeKey(DeclaringType)}" : "Self";
     public override string GetDisplayName() => "Self";
 
     public override bool IsAssignableTo(SemanticType other)
@@ -945,6 +1113,24 @@ public sealed record GenericFunctionType : SemanticType
 {
     public FunctionSymbol FunctionSymbol { get; init; } = null!;
     public List<SemanticType> TypeArguments { get; init; } = new();
+
+    public override string CanonicalKey
+    {
+        get
+        {
+            var args = string.Join(",", TypeArguments.Select(t => t.CanonicalKey));
+            return $"{FunctionSymbol.Name}[{args}]";
+        }
+    }
+
+    public bool Equals(GenericFunctionType? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return CanonicalKey == other.CanonicalKey;
+    }
+
+    public override int GetHashCode() => CanonicalKey.GetHashCode(StringComparison.Ordinal);
 
     public override string GetDisplayName()
     {
@@ -1006,6 +1192,7 @@ public sealed record ConstructorReferenceType : SemanticType
     /// <summary>Which C# shape a pinned reference emits as.</summary>
     public ConstructorReferenceFamily Family { get; init; }
 
+    public override string CanonicalKey => $"ctor:{Name}";
     public override string GetDisplayName() => $"constructor reference to '{Name}'";
 
     public override TypeSymbol? DeclaringSymbol => Symbol;
@@ -1039,7 +1226,26 @@ public sealed record UnionType : SemanticType
     /// </summary>
     public List<SemanticType> CaseTypes { get; init; } = new();
 
+    public override string CanonicalKey
+    {
+        get
+        {
+            var symbolKey = Symbol != null ? BuildQualifiedTypeKey(Symbol) : Name;
+            var cases = string.Join(",", CaseTypes.Select(c => c.CanonicalKey));
+            return CaseTypes.Count > 0 ? $"{symbolKey}{{{cases}}}" : symbolKey;
+        }
+    }
+
     public override string GetDisplayName() => Name;
+
+    public bool Equals(UnionType? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return CanonicalKey == other.CanonicalKey;
+    }
+
+    public override int GetHashCode() => CanonicalKey.GetHashCode(StringComparison.Ordinal);
 
     public override TypeSymbol? DeclaringSymbol => Symbol;
 
@@ -1070,6 +1276,9 @@ public sealed record TaskType : SemanticType
     /// The result type (T in Task&lt;T&gt;). Null for Task (void return).
     /// </summary>
     public SemanticType? ResultType { get; init; }
+
+    public override string CanonicalKey =>
+        ResultType != null ? $"Task[{ResultType.CanonicalKey}]" : "Task";
 
     public override string GetDisplayName()
     {
@@ -1109,6 +1318,7 @@ public sealed record TemplateType : SemanticType
 {
     public static readonly TemplateType Instance = new();
 
+    public override string CanonicalKey => "Template";
     public override string GetDisplayName() => "Template";
 }
 
@@ -1121,6 +1331,7 @@ public sealed record LiteralStringType : SemanticType
 {
     public static readonly LiteralStringType Instance = new();
 
+    public override string CanonicalKey => "LiteralString";
     public override string GetDisplayName() => "LiteralString";
 
     public override bool IsAssignableTo(SemanticType other)
@@ -1152,6 +1363,8 @@ public sealed record UnmappedClrType : SemanticType
     public required string ClrTypeName { get; init; }
     public new Type? ClrType { get; init; }
 
+    public override string CanonicalKey => "object";
+    public override bool IsObjectLike => true;
     public override string GetDisplayName() => "object";
 
     public override bool IsValueType => false;

@@ -170,7 +170,7 @@ internal class InterfaceConflictValidator : SemanticValidatorBase
             return false;
         for (int i = 0; i < a.Length; i++)
         {
-            if (a[i].GetDisplayName() != b[i].GetDisplayName())
+            if (a[i].CanonicalKey != b[i].CanonicalKey)
                 return false;
         }
         return true;

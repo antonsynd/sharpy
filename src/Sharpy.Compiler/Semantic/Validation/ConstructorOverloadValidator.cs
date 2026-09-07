@@ -46,7 +46,7 @@ internal class ConstructorOverloadValidator : ValidatingAstWalker
         {
             var paramTypes = ctor.Parameters
                 .Where(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase))
-                .Select(p => p.Type.GetDisplayName())
+                .Select(p => p.Type.CanonicalKey)
                 .ToList();
             var signature = string.Join(",", paramTypes);
 

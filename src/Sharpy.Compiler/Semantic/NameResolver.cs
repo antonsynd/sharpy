@@ -752,7 +752,7 @@ internal partial class NameResolver
     {
         var paramTypes = method.Parameters
             .Where(p => p.Name != PythonNames.Self)
-            .Select(p => p.Type?.GetDisplayName() ?? "unknown");
+            .Select(p => p.Type?.CanonicalKey ?? "unknown");
         return $"{method.Name}({string.Join(",", paramTypes)})";
     }
 

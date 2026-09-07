@@ -938,7 +938,7 @@ internal partial class RoslynEmitter
     /// and may not be reference-equal to discovery-loaded instances.
     /// </summary>
     private static bool IsObjectType(SemanticType? type) =>
-        type != null && type.GetDisplayName() == "object";
+        type != null && type.IsObjectLike;
 
     /// <summary>
     /// Extracts the element type from an iterable semantic type.
