@@ -381,8 +381,11 @@ class Target:
         // Sanity check: when the bracket attribute is NOT a source generator,
         // the constant-argument check must still apply.
         // Constant-argument validation moved to ConstantPositionValidator (#1788).
+        // The argument is a CALL: a folded constant expression such as `1 + 2` is admitted in an
+        // attribute argument since plan-202526 Decision 3 (#1782, #1801 — C# accepts a constant
+        // expression wherever it accepts a literal), so it no longer exemplifies "not a constant".
         var code = @"
-@[custom(1 + 2)]
+@[custom(compute())]
 class Target:
     pass
 ";

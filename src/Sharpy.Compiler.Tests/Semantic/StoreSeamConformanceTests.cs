@@ -286,9 +286,11 @@ public class StoreSeamConformanceTests
     /// <summary>
     /// Measured at the implementer's sha, over CODE lines only. An empty scan cannot pass it, and a
     /// comment that happens to name <c>EnterStore()</c> no longer moves it (the anchor it replaced
-    /// was bumped 45 -> 47 for two comment mentions).
+    /// was bumped 45 -> 47 for two comment mentions). 47 -> 48 @ 80d759f8c: the starred-unpacking
+    /// arm pushes each non-star target's declared slot through <c>EnterStore(TupleElement, …)</c>
+    /// (38 pushes + 10 clears, measured by this scan at 9785f8a91).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 47;
+    private const int ExpectedSeamCallSiteCount = 48;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {

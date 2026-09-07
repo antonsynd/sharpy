@@ -190,13 +190,16 @@ class Foo:
 class CustomAttribute:
     pass
 
-@[custom(1 + 2)]
+@[custom(compute())]
 def foo():
     pass
 ";
         var (module, context) = Parse(code);
 
         // Constant-argument validation moved to ConstantPositionValidator (#1788).
+        // The argument is a CALL: a folded constant expression such as `1 + 2` is admitted in an
+        // attribute argument since plan-202526 Decision 3 (#1782, #1801 — C# accepts a constant
+        // expression wherever it accepts a literal), so it no longer exemplifies "not a constant".
         var validator = new ConstantPositionValidator();
         validator.Validate(module, context);
 
@@ -314,13 +317,16 @@ def foo():
 class AttrAttribute:
     pass
 
-@[attr(name=1 + 2)]
+@[attr(name=compute())]
 def foo():
     pass
 ";
         var (module, context) = Parse(code);
 
         // Constant-argument validation moved to ConstantPositionValidator (#1788).
+        // A keyword argument that is a CALL: `name=1 + 2` is a folded constant, admitted since
+        // plan-202526 Decision 3 (#1782, #1801) — the keyword position must refuse a non-constant
+        // exactly as the positional one does.
         var validator = new ConstantPositionValidator();
         validator.Validate(module, context);
 
