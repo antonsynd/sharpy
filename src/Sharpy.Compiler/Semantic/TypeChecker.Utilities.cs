@@ -1848,6 +1848,8 @@ internal partial class TypeChecker
             GenericType gt => gt.TypeArguments.Any(t => ReferencesTypeParameterNamed(t, name)),
             FunctionType ft => ft.ParameterTypes.Any(t => ReferencesTypeParameterNamed(t, name)) || ReferencesTypeParameterNamed(ft.ReturnType, name),
             TupleType tt => tt.ElementTypes.Any(t => ReferencesTypeParameterNamed(t, name)),
+            UnionType ut => ut.CaseTypes.Any(t => ReferencesTypeParameterNamed(t, name)),
+            TaskType { ResultType: not null } taskT => ReferencesTypeParameterNamed(taskT.ResultType, name),
             _ => false
         };
     }
@@ -1867,6 +1869,8 @@ internal partial class TypeChecker
             GenericType gt => gt.TypeArguments.Any(ContainsTypeParameterType),
             FunctionType ft => ft.ParameterTypes.Any(ContainsTypeParameterType) || ContainsTypeParameterType(ft.ReturnType),
             TupleType tt => tt.ElementTypes.Any(ContainsTypeParameterType),
+            UnionType ut => ut.CaseTypes.Any(ContainsTypeParameterType),
+            TaskType { ResultType: not null } taskT => ContainsTypeParameterType(taskT.ResultType),
             _ => false
         };
     }

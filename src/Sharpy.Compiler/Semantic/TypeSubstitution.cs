@@ -63,7 +63,17 @@ internal static class TypeSubstitution
             {
                 ElementTypes = tt.ElementTypes.Select(t => Apply(t, substitutions, substituteNamedUserTypes)).ToList()
             },
-            _ => type // For types that don't contain type parameters, return as-is
+            UnionType ut => new UnionType
+            {
+                Name = ut.Name,
+                Symbol = ut.Symbol,
+                CaseTypes = ut.CaseTypes.Select(t => Apply(t, substitutions, substituteNamedUserTypes)).ToList()
+            },
+            TaskType { ResultType: not null } taskT => new TaskType
+            {
+                ResultType = Apply(taskT.ResultType, substitutions, substituteNamedUserTypes)
+            },
+            _ => type
         };
     }
 }

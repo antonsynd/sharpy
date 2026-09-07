@@ -1760,6 +1760,32 @@ internal partial class TypeChecker
                     ElementTypes = t.ElementTypes.Select(SubstituteTypeParametersWithObject).ToList(),
                     ElementNames = t.ElementNames
                 };
+            case ResultType rt:
+                return new ResultType
+                {
+                    OkType = SubstituteTypeParametersWithObject(rt.OkType),
+                    ErrorType = SubstituteTypeParametersWithObject(rt.ErrorType)
+                };
+            case FunctionType ft:
+                return new FunctionType
+                {
+                    ParameterTypes = ft.ParameterTypes.Select(SubstituteTypeParametersWithObject).ToList(),
+                    ReturnType = SubstituteTypeParametersWithObject(ft.ReturnType),
+                    OptionalParameterCount = ft.OptionalParameterCount,
+                    VariadicParameterIndex = ft.VariadicParameterIndex
+                };
+            case UnionType ut:
+                return new UnionType
+                {
+                    Name = ut.Name,
+                    Symbol = ut.Symbol,
+                    CaseTypes = ut.CaseTypes.Select(SubstituteTypeParametersWithObject).ToList()
+                };
+            case TaskType { ResultType: not null } taskT:
+                return new TaskType
+                {
+                    ResultType = SubstituteTypeParametersWithObject(taskT.ResultType)
+                };
             default:
                 return type;
         }
@@ -2875,6 +2901,8 @@ internal partial class TypeChecker
         GenericType gt => gt.TypeArguments.Any(ContainsUnboundTypeParameter),
         FunctionType ft => ft.ParameterTypes.Any(ContainsUnboundTypeParameter) || ContainsUnboundTypeParameter(ft.ReturnType),
         TupleType tt => tt.ElementTypes.Any(ContainsUnboundTypeParameter),
+        UnionType ut => ut.CaseTypes.Any(ContainsUnboundTypeParameter),
+        TaskType { ResultType: not null } taskT => ContainsUnboundTypeParameter(taskT.ResultType),
         _ => false
     };
 
