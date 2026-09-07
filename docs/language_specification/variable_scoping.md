@@ -209,7 +209,6 @@ class Grid:
 The same holds for decorator arguments and type annotations. Names in the method's **body** are
 resolved by the rule above.
 
-
 ### Pattern heads are not reads
 
 A `case` head naming a class `const` matches that constant; it does not degrade into a capture:
