@@ -1386,7 +1386,7 @@ internal partial class TypeChecker
                 // by name like the plain form. Without this the element declared a fresh local and
                 // the program compiled silently.
                 if (TryRefuseBareClassAttributeStore(
-                        tupleTargetId.Name, BareStoreForm.TupleElement,
+                        tupleTargetId.Name, tupleTargetId, BareStoreForm.TupleElement,
                         tupleTargetId.LineStart, tupleTargetId.ColumnStart, tupleTargetId.Span))
                 {
                     continue;

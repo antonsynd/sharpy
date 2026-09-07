@@ -1,0 +1,12 @@
+# R-AA (#1803): an INHERITED field is a member of the class, so a bare store to its name is refused
+# exactly as a body-declared field's is. At fa0c9e39a this declared a silent local and printed 5.
+class Base:
+    v: int = 5
+
+class Derived(Base):
+    def m(self) -> int:
+        v = 7
+        return self.v
+
+def main():
+    print(Derived().m())

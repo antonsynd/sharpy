@@ -1,0 +1,13 @@
+# The escape hatch R-AA leaves open (#1803): a TYPED declaration is a new local, for an inherited
+# field exactly as for a body-declared one, and the member keeps its value.
+class Base:
+    v: int = 5
+
+class Derived(Base):
+    def m(self) -> int:
+        v: int = 7
+        print(v)
+        return self.v
+
+def main():
+    print(Derived().m())

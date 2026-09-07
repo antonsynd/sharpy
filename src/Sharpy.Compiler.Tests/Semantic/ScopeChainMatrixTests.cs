@@ -16,12 +16,16 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// it names, with a steer that COMPILES. A bare STORE is refused by name (SPY0606) in every store
 /// form — plain, augmented, walrus, tuple element, <c>??=</c> — never silently declaring a local.
 /// The rule is variable-only: nested types, method names and module names are unaffected, and a
-/// signature position (a parameter default) still resolves in the declaring scope.</para>
+/// signature position (a parameter default) still resolves in the declaring scope. R-AA (#1803,
+/// 2026-09-06): a member is a member whether the enclosing body declares it or a base's body does,
+/// and whether it is a field or a property — the store refusal and the read steer share ONE
+/// membership predicate, so the two sides cannot disagree about which names are members.</para>
 ///
-/// <para><b>Axes.</b> Use (9) x member (6) x host (8) x typing (2). The full product is not
-/// enumerated; the plan's rule is to vary one axis at a time so agreement on one axis is not read
-/// as evidence for another: use x typing at one host and member, member x use at one host, host x
-/// use at one member. Every cell executes.</para>
+/// <para><b>Axes.</b> Use (9) x member (10) x host (8) x typing (2), plus the R-AA product
+/// origin (5) x store form (5). The full product is not enumerated; the plan's rule is to vary one
+/// axis at a time so agreement on one axis is not read as evidence for another: use x typing at
+/// one host and member, member x use at one host, host x use at one member, origin x store form
+/// at one host. Every cell executes.</para>
 ///
 /// <para><b>Controls.</b> A module read from a method, the shadow idiom, a module variable shadowed
 /// by a class attribute, a parameter default naming a class member, a nested type in a return
@@ -37,9 +41,11 @@ public class ScopeChainMatrixTests : IntegrationTestBase
 
     // ── Axis sizes, anchored to the InlineData row counts they describe ──────────────────
     private const int UseFormCount = 9;
-    private const int MemberKindCount = 6;
+    private const int MemberKindCount = 10;
     private const int HostCount = 8;
     private const int TypingCount = 2;
+    private const int MemberOriginCount = 5;
+    private const int StoreFormCount = 5;
 
     // ════════════════════════════════════════════════════════════════════════════════════
     // Part 1 — use x typing, at host = class method, member = instance field
@@ -74,6 +80,13 @@ public class ScopeChainMatrixTests : IntegrationTestBase
         var expected = IsStore(use) ? BareStoreCode : UnresolvedCode;
         Codes(result).Should().Contain(expected,
             $"a bare {use} reports {expected}.\n{Report(result)}");
+
+        // A refused store names a MEMBER, so no local was declared and nothing is "assigned but
+        // never used". Measured red at fa0c9e39a for the plain, walrus and tuple-element forms: the
+        // refusal returned before any TargetBinding was recorded, and the validator's syntactic
+        // fallback then counted the target as a definition (#1803, the own-field twin).
+        Codes(result).Should().NotContain("SPY0451",
+            $"a refused {use} declares no local, so SPY0451 must not fire under SPY0606.\n{Report(result)}");
     }
 
     /// <summary>
@@ -172,6 +185,15 @@ def main() -> None:
     [InlineData("static_field", "read", UnresolvedCode, "C.v")]
     [InlineData("static_field", "plain_store", BareStoreCode, "C.v = ...")]
     [InlineData("property_name", "read", UnresolvedCode, "self.v")]
+    [InlineData("property_name", "plain_store", BareStoreCode, "self.v = ...")]
+    [InlineData("inherited_field", "read", UnresolvedCode, "self.v")]
+    [InlineData("inherited_field", "plain_store", BareStoreCode, "self.v = ...")]
+    [InlineData("inherited_property", "read", UnresolvedCode, "self.v")]
+    [InlineData("inherited_property", "plain_store", BareStoreCode, "self.v = ...")]
+    [InlineData("inherited_const", "read", UnresolvedCode, "Base.v")]
+    [InlineData("inherited_const", "plain_store", BareStoreCode, "is a constant and cannot be assigned")]
+    [InlineData("inherited_static_field", "read", UnresolvedCode, "Base.v")]
+    [InlineData("inherited_static_field", "plain_store", BareStoreCode, "Base.v = ...")]
     public void MemberKind_IsRefused_WithASteerThatCompiles(
         string member, string use, string expectedCode, string expectedSteer)
     {
@@ -186,50 +208,77 @@ def main() -> None:
     }
 
     /// <summary>
-    /// A bare STORE to a property's name declares a local, as it did before the rule.
+    /// R-AA (#1803): a member the enclosing body does NOT declare — a property, an inherited field
+    /// or property at any depth, a struct's property — is refused by name in every store form,
+    /// exactly as a body-declared field is.
     /// </summary>
     /// <remarks>
-    /// R-Y refuses a store to a name declared in the class BODY, and a property is not in that
-    /// scope — it lives on the type symbol. The program below printed 7 at BASE (646b9cf08) and
-    /// still does: refusing it would turn a working program red for a rule that was never about
-    /// it. The READ arm still names the property, because a bare read was already unresolved and
-    /// only the message improves. The inherited-field store is the same shape, one row down.
+    /// Direction, measured with the fa0c9e39a binary: every origin below compiled and printed the
+    /// fresh local (the member untouched), so each cell is wrong-output-before → SPY0606-now, and
+    /// no working program is turned red: the local never wrote the member, and the typed
+    /// shadowing local (<see cref="Control_TypedShadowingLocal_OnAnInheritedField_Compiles"/>)
+    /// still compiles. The product is generated from two arrays so a dropped origin or store form
+    /// fails the totality anchor instead of leaving the survivors green.
     /// </remarks>
     [Theory]
-    [InlineData("property")]
-    [InlineData("inherited field")]
-    public void MemberNotInTheClassBody_BareStore_StillDeclaresALocal(string kind)
+    [MemberData(nameof(MemberOriginByStoreForm))]
+    public void MemberNotInTheClassBody_BareStore_IsRefusedInEveryForm(string origin, string form)
     {
-        var source = kind == "property"
-            ? @"
-class C:
-    property get v(self) -> int:
-        return 1
+        var source = MemberOriginStore(origin, form);
+        var result = CompileAndExecute(source);
 
-    def m(self) -> None:
-        v = 7
-        print(v)
+        result.Success.Should().BeFalse(
+            $"[{origin} x {form}] a bare store to a member the body does not declare is refused "
+            + $"(R-AA, #1803); at fa0c9e39a it declared a silent local.\n{source}\n{Report(result)}");
+        Codes(result).Should().Contain(BareStoreCode,
+            $"[{origin} x {form}] the refusal is SPY0606, the same code as a body-declared field.\n{Report(result)}");
+        Codes(result).Should().NotContain("SPY0451",
+            $"[{origin} x {form}] no local was declared, so nothing is 'assigned but never used'.\n{Report(result)}");
 
-def main() -> None:
-    C().m()
-"
-            : @"
+        if (origin.StartsWith("inherited", StringComparison.Ordinal))
+        {
+            Errors(result).Should().Contain(e => e.Contains("inherited class attribute 'v'"),
+                $"[{origin} x {form}] the wording says the member is inherited, so the reader is "
+                + $"not sent looking for a declaration in the body in front of them.\n{Report(result)}");
+        }
+    }
+
+    /// <summary>The escape hatch R-AA leaves open: a typed declaration is a new local, and the member is untouched.</summary>
+    [Fact]
+    public void Control_TypedShadowingLocal_OnAnInheritedField_Compiles()
+    {
+        var source = @"
 class Base:
     v: int = 5
 
 class Derived(Base):
-    def m(self) -> None:
-        v = 7
+    def m(self) -> int:
+        v: int = 7
         print(v)
+        return self.v
 
 def main() -> None:
-    Derived().m()
+    print(Derived().m())
 ";
         var result = CompileAndExecute(source);
         result.Success.Should().BeTrue(
-            $"[{kind}] this printed 7 at BASE and must keep doing so\n{Report(result)}");
+            $"the steer's shadowing local must compile for an inherited field too\n{Report(result)}");
         result.StandardOutput.Should().Contain("7");
+        result.StandardOutput.Should().Contain("5", "the inherited field keeps its value");
     }
+
+    private static readonly string[] MemberOrigins =
+    {
+        "property", "inherited_field", "inherited_property", "inherited_field_two_levels", "struct_property",
+    };
+
+    private static readonly string[] StoreForms =
+    {
+        "plain_store", "augmented_store", "walrus", "tuple_element", "coalesce_store",
+    };
+
+    public static IEnumerable<object[]> MemberOriginByStoreForm()
+        => MemberOrigins.SelectMany(origin => StoreForms.Select(form => new object[] { origin, form }));
 
     /// <summary>Control member kind: a bare METHOD name is an ordinary unresolved name, as before the rule.</summary>
     [Fact]
@@ -729,15 +778,26 @@ def main() -> None:
         useRows.Should().Be((UseFormCount - 1) * TypingCount,
             "the use theory is a full use x typing product");
 
-        // Three member kinds are refused in BOTH directions (instance field, class const, @static
-        // field) plus the property name's read; the remaining two are controls with their own facts.
-        memberRows.Should().Be(7,
-            "three member kinds x {read, store} plus the property name's read");
-        (3 + 1 + 2).Should().Be(MemberKindCount,
-            "every member kind is covered: three refused in both directions, the property name "
-            + "(read refused, store declares a local), the method name and the nested type");
+        // Eight member kinds are refused in BOTH directions (instance field, class const, @static
+        // field, property name, inherited field, inherited property, inherited const, inherited
+        // @static field — R-AA, #1803); the remaining two are controls with their own facts.
+        memberRows.Should().Be(16, "eight member kinds x {read, store}");
+        (8 + 2).Should().Be(MemberKindCount,
+            "every member kind is covered: eight refused in both directions, the method name and "
+            + "the nested type");
 
         (hostRows / 2).Should().Be(HostCount, "every host has a read row and a store row");
+
+        // The R-AA product: its two arrays are anchored to literals so that deleting an origin or
+        // a store form fails here rather than shrinking the product silently.
+        MemberOrigins.Length.Should().Be(MemberOriginCount,
+            "origins = property, inherited field, inherited property, inherited field two levels up, struct property");
+        StoreForms.Length.Should().Be(StoreFormCount,
+            "store forms = plain, augmented, walrus, tuple element, ??= — the five R-Y refuses");
+        StoreForms.Should().OnlyContain(form => IsStore(form),
+            "every store form of the product is one the use axis knows as a store");
+        MemberOriginByStoreForm().Count().Should().Be(MemberOriginCount * StoreFormCount,
+            "the product is total over its two axes");
     }
 
     private static int InlineDataCount(string testMethodName)
@@ -849,7 +909,128 @@ class C:
 def main() -> None:
     C().m()
 ",
+            // R-AA (#1803): the four inherited kinds mirror the four own kinds above, one class down.
+            "inherited_field" => $@"
+class Base:
+    v: int = 0
+
+class C(Base):
+    def m(self) -> None:
+{statement}
+
+def main() -> None:
+    C().m()
+",
+            "inherited_property" => $@"
+class Base:
+    property get v(self) -> int:
+        return 1
+
+class C(Base):
+    def m(self) -> None:
+{statement}
+
+def main() -> None:
+    C().m()
+",
+            "inherited_const" => $@"
+class Base:
+    const v: int = 3
+
+class C(Base):
+    def m(self) -> None:
+{statement}
+
+def main() -> None:
+    C().m()
+",
+            "inherited_static_field" => $@"
+class Base:
+    @static
+    v: int = 3
+
+class C(Base):
+    def m(self) -> None:
+{statement}
+
+def main() -> None:
+    C().m()
+",
             _ => string.Empty,
+        };
+    }
+
+    /// <summary>
+    /// One program per (origin, store form) cell of the R-AA product. The member is <c>int?</c> so
+    /// the <c>??=</c> form is admissible, and every store form is the spelling the use axis uses.
+    /// </summary>
+    private static string MemberOriginStore(string origin, string form)
+    {
+        string store = form switch
+        {
+            "plain_store" => "v = Some(1)",
+            "augmented_store" => "v += 1",
+            "walrus" => "print(v := Some(1))",
+            "tuple_element" => "v, n = Some(1), 2\n        print(n)",
+            "coalesce_store" => "v ??= Some(1)",
+            _ => throw new ArgumentOutOfRangeException(nameof(form)),
+        };
+
+        string method = $@"
+    def m(self) -> None:
+        {store}
+";
+        return origin switch
+        {
+            "property" => $@"
+class C:
+    property get v(self) -> int?:
+        return Some(0)
+{method}
+def main() -> None:
+    C().m()
+",
+            "inherited_field" => $@"
+class Base:
+    v: int? = Some(0)
+
+class C(Base):
+{method}
+def main() -> None:
+    C().m()
+",
+            "inherited_property" => $@"
+class Base:
+    property get v(self) -> int?:
+        return Some(0)
+
+class C(Base):
+{method}
+def main() -> None:
+    C().m()
+",
+            "inherited_field_two_levels" => $@"
+class Root:
+    v: int? = Some(0)
+
+class Mid(Root):
+    pass
+
+class C(Mid):
+{method}
+def main() -> None:
+    C().m()
+",
+            "struct_property" => $@"
+struct S:
+    property get v(self) -> int?:
+        return Some(0)
+{method}
+def main() -> None:
+    s: S = S()
+    s.m()
+",
+            _ => throw new ArgumentOutOfRangeException(nameof(origin)),
         };
     }
 

@@ -54,7 +54,7 @@ internal partial class TypeChecker
         // the READ code (SPY0200) for a write.
         if (assignment.Target is Identifier bareStoreTarget
             && TryRefuseBareClassAttributeStore(
-                bareStoreTarget.Name,
+                bareStoreTarget.Name, bareStoreTarget,
                 assignment.Operator switch
                 {
                     AssignmentOperator.Assign => BareStoreForm.Plain,

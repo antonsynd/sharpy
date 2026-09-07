@@ -1,0 +1,17 @@
+# R-AA (#1803): a property is a member of the class even though no class-body line declares a
+# variable for it, so a bare store to its name is refused. At fa0c9e39a this declared a silent local.
+class Holder:
+    _v: int = 3
+
+    property get v(self) -> int:
+        return self._v
+
+    property set v(self, value: int) -> None:
+        self._v = value
+
+    def m(self) -> int:
+        v = 7
+        return self._v
+
+def main():
+    print(Holder().m())

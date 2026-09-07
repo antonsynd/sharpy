@@ -729,7 +729,7 @@ internal partial class TypeChecker
         // enclosing class body declares is refused like every other store form. Without this it
         // declared a fresh local and the program compiled, writing nothing the reader meant.
         if (TryRefuseBareClassAttributeStore(
-                walrus.Target, BareStoreForm.Walrus,
+                walrus.Target, walrus, BareStoreForm.Walrus,
                 walrus.LineStart, walrus.ColumnStart, walrus.Span))
         {
             return SemanticType.Unknown;

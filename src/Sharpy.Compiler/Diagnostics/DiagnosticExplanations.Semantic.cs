@@ -1285,15 +1285,19 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.SemanticOverflow.ClassAttributeBareStore,
             "Cannot assign to class attribute by bare name",
             "Semantic",
-            "A bare store inside a method body, where the name is declared in the enclosing class " +
-            "or struct body, is refused — in every store form: plain, augmented, walrus, " +
-            "tuple-unpacking element and '??='. Class-body names are not visible by bare name " +
-            "inside methods; this is Python's class-scope rule (the class body is not a closure " +
-            "scope for its methods). Write 'self.x' for an instance attribute, 'ClassName.x' for a " +
-            "'@static' field, or declare a shadowing local with a type annotation. An instance " +
-            "field reached through the type name is a different error (SPY0290), so the diagnostic " +
-            "offers 'ClassName.x' only for a type-level member; a 'const' cannot be assigned " +
-            "through any spelling, so only the shadowing local is offered for one.",
+            "A bare store inside a method body, where the name is a member of the enclosing class " +
+            "or struct — declared in its body or inherited from a base, a field or a property — is " +
+            "refused, in every store form: plain, augmented, walrus, tuple-unpacking element and " +
+            "'??='. Class-body names are not visible by bare name inside methods; this is Python's " +
+            "class-scope rule (the class body is not a closure scope for its methods), and a bare " +
+            "store to such a name would otherwise declare a fresh local that never writes the " +
+            "member. Write 'self.x' for an instance attribute, 'ClassName.x' for a '@static' " +
+            "field (the DECLARING class's name for an inherited one), or declare a shadowing local " +
+            "with a type annotation. An instance field reached through the type name is a " +
+            "different error (SPY0290), so the diagnostic offers 'ClassName.x' only for a " +
+            "type-level member; a 'const' cannot be assigned through any spelling, so only the " +
+            "shadowing local is offered for one. An inherited member's refusal says 'inherited " +
+            "class attribute' so the reader is not sent looking for a declaration in the body.",
             "class Counter:\n    count: int = 0\n    def increment(self) -> None:\n" +
             "        count = count + 1  # SPY0606 — bare name 'count' is a class attribute",
             "Access through self, or through the class name for a '@static' field:\n" +

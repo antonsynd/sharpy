@@ -6,7 +6,7 @@ using Sharpy.Compiler.Text;
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// TypeChecker partial class: the consumers of Python's class-scope rule (#1786, R-Y).
+/// TypeChecker partial class: the consumers of Python's class-scope rule (#1786, R-Y; #1803, R-AA).
 /// </summary>
 /// <remarks>
 /// The rule itself lives in <see cref="Scope.ResolveName"/>: a variable declared in a class or
@@ -14,7 +14,10 @@ namespace Sharpy.Compiler.Semantic;
 /// This file holds what the type checker does with the crossing the walk reports — one description
 /// of the member, one refusal for every STORE form, one steer for the READ — so a sixth store form
 /// cannot arrive with its own wording or, as the walrus and tuple-element forms did, with no
-/// refusal at all.
+/// refusal at all. R-AA (#1803) made the description the ONE membership predicate for both sides:
+/// a name is a member of the enclosing type whether its body declares it or a base's does, and
+/// whether it is a field or a property, so the store refusal and the read steer cannot disagree
+/// about which names are members.
 /// </remarks>
 internal partial class TypeChecker
 {
@@ -44,14 +47,14 @@ internal partial class TypeChecker
     /// <c>@static</c> method, in a class-field-initializer lambda, and when the member belongs to
     /// an OUTER class of a nested one — the cases where the old steer named something illegal.
     /// </param>
-    /// <param name="DeclaredInACrossedScope">
-    /// Whether the scope WALK passed this member's declaration, as opposed to the member being
-    /// found on the enclosing type symbol. R-Y refuses a bare store to a name declared in the
-    /// enclosing class BODY, which is what a crossing means. An inherited field and a property are
-    /// declared elsewhere — another type's body, or on the type symbol only — and a bare store to
-    /// one of those names declared a fresh local at BASE and ran; refusing it would turn a working
-    /// program red for a rule that was never about it. They still shape the READ diagnostic, which
-    /// was already an unresolved name and only gains a steer.
+    /// <param name="IsInherited">
+    /// Whether <see cref="OwnerName"/> is a BASE of the enclosing type rather than the enclosing
+    /// type itself. Only the wording reads it: the refusal says "inherited class attribute" so the
+    /// reader is not sent looking for a declaration in the body in front of them. R-AA (#1803):
+    /// an inherited member and a property get the same treatment as a member the body declares —
+    /// at BASE a bare store to either declared a fresh local, which is neither what C# does (it
+    /// writes the inherited field) nor what the reader meant, and the typed shadowing local is
+    /// still one annotation away.
     /// </param>
     private sealed record CrossedClassMember(
         string Name,
@@ -59,7 +62,7 @@ internal partial class TypeChecker
         bool IsConstant,
         bool IsStatic,
         bool ReachableThroughSelf,
-        bool DeclaredInACrossedScope)
+        bool IsInherited)
     {
         /// <summary>
         /// <c>Owner.Name</c>, but only for a member C# can reach through the type name. An instance
@@ -73,7 +76,9 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Describes the enclosing-type member a bare name denotes, or null when it denotes none.
+    /// Describes the enclosing-type member a bare name denotes, or null when it denotes none. This
+    /// is the ONE membership predicate: the store refusal and the read steer both ask it, so the
+    /// set of names one side treats as members is the set the other side does (R-AA, #1803).
     /// </summary>
     /// <remarks>
     /// <para>
@@ -102,17 +107,19 @@ internal partial class TypeChecker
         if (resolution.Bound != null)
             return null;
 
-        bool crossed = resolution.CrossedMember != null;
-
         for (var type = _currentClass; type != null; type = type.BaseType)
         {
-            if (DescribeMemberOf(type, name, SelfIsInScope(), crossed) is { } own)
+            if (DescribeMemberOf(type, name, SelfIsInScope(),
+                    isInherited: !ReferenceEquals(type, _currentClass)) is { } own)
+            {
                 return own;
+            }
         }
 
         if (resolution.CrossedMemberOwner is { } ownerName
             && _symbolTable.LookupType(ownerName) is { } ownerType
-            && DescribeMemberOf(ownerType, name, reachableThroughSelf: false, crossed) is { } outer)
+            && DescribeMemberOf(ownerType, name, reachableThroughSelf: false, isInherited: false)
+                is { } outer)
         {
             return outer;
         }
@@ -125,7 +132,7 @@ internal partial class TypeChecker
             : new CrossedClassMember(
                 name, resolution.CrossedMemberOwner ?? "the enclosing type",
                 IsConstant: false, IsStatic: false, ReachableThroughSelf: false,
-                DeclaredInACrossedScope: true);
+                IsInherited: false);
     }
 
     /// <summary>
@@ -133,7 +140,7 @@ internal partial class TypeChecker
     /// null when that type declares no such member.
     /// </summary>
     private static CrossedClassMember? DescribeMemberOf(
-        TypeSymbol type, string name, bool reachableThroughSelf, bool declaredInACrossedScope)
+        TypeSymbol type, string name, bool reachableThroughSelf, bool isInherited)
     {
         foreach (var field in type.Fields)
         {
@@ -143,7 +150,7 @@ internal partial class TypeChecker
             return new CrossedClassMember(
                 name, type.Name, field.IsConstant, typeLevel,
                 ReachableThroughSelf: !typeLevel && reachableThroughSelf,
-                DeclaredInACrossedScope: declaredInACrossedScope);
+                IsInherited: isInherited);
         }
 
         foreach (var property in type.Properties)
@@ -153,8 +160,7 @@ internal partial class TypeChecker
             return new CrossedClassMember(
                 name, type.Name, IsConstant: false, property.IsStatic,
                 ReachableThroughSelf: !property.IsStatic && reachableThroughSelf,
-                // A property is never IN a scope, so the walk cannot have crossed it.
-                DeclaredInACrossedScope: false);
+                IsInherited: isInherited);
         }
 
         return null;
@@ -219,23 +225,28 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Refuses a bare STORE whose target names an enclosing type's member (R-Y), and reports true
-    /// when it did. Called from every store form — plain, augmented, <c>??=</c>, walrus and tuple
-    /// element — before the target is otherwise resolved, so the write is refused by name rather
-    /// than being reported as an unresolved READ (augmented, <c>??=</c>) or silently declaring a
-    /// fresh local (walrus, tuple element).
+    /// Refuses a bare STORE whose target names an enclosing type's member (R-Y, R-AA), and reports
+    /// true when it did. Called from every store form — plain, augmented, <c>??=</c>, walrus and
+    /// tuple element — before the target is otherwise resolved, so the write is refused by name
+    /// rather than being reported as an unresolved READ (augmented, <c>??=</c>) or silently
+    /// declaring a fresh local (walrus, tuple element). Every member the description names is
+    /// refused: own or inherited, field or property (#1803).
     /// </summary>
+    /// <param name="bindingNode">
+    /// The node consumers ask "did this store declare a local?" of — the target identifier for
+    /// the plain and tuple-element forms, the walrus expression itself. The refused store is
+    /// recorded there as <see cref="TargetBindingKind.Rebinds"/>: it names a MEMBER, never a fresh
+    /// local, so the unused-variable validator must not add "'v' is assigned but never used" under
+    /// the refusal (it did, at fa0c9e39a, for every store form that would have declared one), the
+    /// outline must not list it as a declaration, and no consumer has to know the rule exists.
+    /// </param>
     private bool TryRefuseBareClassAttributeStore(
-        string targetName, BareStoreForm form, int line, int column, TextSpan? span)
+        string targetName, Node bindingNode, BareStoreForm form, int line, int column, TextSpan? span)
     {
         if (DescribeCrossedClassMember(targetName) is not { } member)
             return false;
 
-        // Only a name the walk crossed is a store R-Y refuses: an inherited field or a property
-        // name declared a fresh local at BASE and ran, and this rule does not turn a working
-        // program red. The read arm keeps the improved message for both.
-        if (!member.DeclaredInACrossedScope)
-            return false;
+        _semanticInfo.SetTargetBinding(bindingNode, new TargetBinding(TargetBindingKind.Rebinds));
 
         var write = form switch
         {
@@ -247,7 +258,8 @@ internal partial class TypeChecker
             _ => "Cannot assign to",
         };
 
-        var kind = member.IsConstant ? "class constant" : "class attribute";
+        var kind = (member.IsInherited ? "inherited " : string.Empty)
+            + (member.IsConstant ? "class constant" : "class attribute");
         var message =
             $"{write} {kind} '{targetName}' by bare name — class-body names are not visible "
             + "inside methods";

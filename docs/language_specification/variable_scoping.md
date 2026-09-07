@@ -114,7 +114,7 @@ def main():
 
 ## Class-Body Names Are Not Visible by Bare Name Inside Methods
 
-Class and struct bodies define their own scope, but this scope is **not** a closure scope for methods. Methods cannot read or write class-body names by bare name — they must use `self.name`, or `ClassName.name` for a `const` or `@static` member. This matches Python's class-scope semantics.
+Class and struct bodies define their own scope, but this scope is **not** a closure scope for methods. Methods cannot read or write class-body names by bare name — they must use `self.name`, or `ClassName.name` for a `const` or `@static` member. This matches Python's class-scope semantics. The rule is about **members**, not about the lines of the body in front of you: a field or property the class inherits, and a property the body declares, are members too and get the same treatment (see [Inherited members and properties](#inherited-members-and-properties-are-members-too)).
 
 ```python
 class Counter:
@@ -190,8 +190,37 @@ class Config:
         return lambda: self.name   # OK — the lambda reaches the field through self
 ```
 
-Inherited fields obey the same rule and get the same steer: `self.name` reaches a base class's
-instance field, and a bare name does not.
+### Inherited members and properties are members too
+
+A member is a member whether the enclosing body declares it or a base class's body does, and
+whether it is a field or a property. The bare read is SPY0200 with the same `self.` steer, and the
+bare store is SPY0606 in every store form — the refusal names the inheritance so the reader is not
+sent looking for a declaration in the body in front of them. In C# a bare `v = 7` in a method
+writes the inherited field; in Python it declares a local; a Sharpy program that spells it is a
+mistake either way, and the typed shadowing local is still one annotation away:
+
+```python
+class Base:
+    v: int = 5
+
+    property get label(self) -> str:
+        return "base"
+
+class Derived(Base):
+    def m(self) -> int:
+        v = 7                 # SPY0606 — "Cannot assign to inherited class attribute 'v' by bare name"
+        label = "x"           # SPY0606 — a property is a member too
+        print(v, label)       # SPY0200 — bare reads, steered to 'self.v' and 'self.label'
+        return self.v         # OK
+
+    def shadow(self) -> int:
+        v: int = 7            # OK — a typed declaration is a new local
+        print(v)              # 7
+        return self.v         # 5 — the inherited field is untouched
+```
+
+An inherited `const` or `@static` field is steered to the **declaring** class's name, which is the
+spelling that compiles: `Base.K`, not `Derived.K`.
 
 ### Parameter defaults still see the class body
 

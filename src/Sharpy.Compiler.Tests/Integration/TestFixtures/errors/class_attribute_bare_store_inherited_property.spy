@@ -1,0 +1,17 @@
+# R-AA (#1803): an inherited property, in the augmented form — the wording names the inheritance.
+class Base:
+    _v: int = 3
+
+    property get v(self) -> int:
+        return self._v
+
+    property set v(self, value: int) -> None:
+        self._v = value
+
+class Derived(Base):
+    def m(self) -> int:
+        v += 1
+        return self._v
+
+def main():
+    print(Derived().m())

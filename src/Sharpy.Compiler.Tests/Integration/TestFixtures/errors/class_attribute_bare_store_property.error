@@ -1,0 +1,2 @@
+Cannot assign to class attribute 'v' by bare name @13:9
+Use 'self.v = ...' for the instance attribute
