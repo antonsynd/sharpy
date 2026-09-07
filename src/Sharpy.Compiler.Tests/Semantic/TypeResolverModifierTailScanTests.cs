@@ -72,7 +72,8 @@ public class TypeResolverModifierTailScanTests
         var depth = 0;
         for (var i = open; i < text.Length; i++)
         {
-            if (text[i] == '{') depth++;
+            if (text[i] == '{')
+                depth++;
             else if (text[i] == '}' && --depth == 0)
                 return text[open..(i + 1)];
         }

@@ -207,22 +207,54 @@ public partial class Parser
     {
         switch (type)
         {
-            case TokenType.Assign: op = AssignmentOperator.Assign; return true;
-            case TokenType.PlusAssign: op = AssignmentOperator.PlusAssign; return true;
-            case TokenType.MinusAssign: op = AssignmentOperator.MinusAssign; return true;
-            case TokenType.StarAssign: op = AssignmentOperator.StarAssign; return true;
-            case TokenType.SlashAssign: op = AssignmentOperator.SlashAssign; return true;
-            case TokenType.DoubleSlashAssign: op = AssignmentOperator.DoubleSlashAssign; return true;
-            case TokenType.PercentAssign: op = AssignmentOperator.PercentAssign; return true;
-            case TokenType.DoubleStarAssign: op = AssignmentOperator.PowerAssign; return true;
-            case TokenType.AmpersandAssign: op = AssignmentOperator.AndAssign; return true;
-            case TokenType.PipeAssign: op = AssignmentOperator.OrAssign; return true;
-            case TokenType.CaretAssign: op = AssignmentOperator.XorAssign; return true;
-            case TokenType.LeftShiftAssign: op = AssignmentOperator.LeftShiftAssign; return true;
-            case TokenType.RightShiftAssign: op = AssignmentOperator.RightShiftAssign; return true;
-            case TokenType.NullCoalesceAssign: op = AssignmentOperator.NullCoalesceAssign; return true;
-            case TokenType.AtAssign: op = AssignmentOperator.MatMulAssign; return true;
-            default: op = default; return false;
+            case TokenType.Assign:
+                op = AssignmentOperator.Assign;
+                return true;
+            case TokenType.PlusAssign:
+                op = AssignmentOperator.PlusAssign;
+                return true;
+            case TokenType.MinusAssign:
+                op = AssignmentOperator.MinusAssign;
+                return true;
+            case TokenType.StarAssign:
+                op = AssignmentOperator.StarAssign;
+                return true;
+            case TokenType.SlashAssign:
+                op = AssignmentOperator.SlashAssign;
+                return true;
+            case TokenType.DoubleSlashAssign:
+                op = AssignmentOperator.DoubleSlashAssign;
+                return true;
+            case TokenType.PercentAssign:
+                op = AssignmentOperator.PercentAssign;
+                return true;
+            case TokenType.DoubleStarAssign:
+                op = AssignmentOperator.PowerAssign;
+                return true;
+            case TokenType.AmpersandAssign:
+                op = AssignmentOperator.AndAssign;
+                return true;
+            case TokenType.PipeAssign:
+                op = AssignmentOperator.OrAssign;
+                return true;
+            case TokenType.CaretAssign:
+                op = AssignmentOperator.XorAssign;
+                return true;
+            case TokenType.LeftShiftAssign:
+                op = AssignmentOperator.LeftShiftAssign;
+                return true;
+            case TokenType.RightShiftAssign:
+                op = AssignmentOperator.RightShiftAssign;
+                return true;
+            case TokenType.NullCoalesceAssign:
+                op = AssignmentOperator.NullCoalesceAssign;
+                return true;
+            case TokenType.AtAssign:
+                op = AssignmentOperator.MatMulAssign;
+                return true;
+            default:
+                op = default;
+                return false;
         }
     }
 

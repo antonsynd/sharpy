@@ -185,7 +185,7 @@ internal partial class TypeChecker
     private void RecordModuleAccessCrossingClassMember(string name, Expression node)
     {
         if (_symbolTable.Resolve(name) is
-                { Bound: VariableSymbol, CrossedMember: not null, DeclaringScope: { } declaringScope }
+            { Bound: VariableSymbol, CrossedMember: not null, DeclaringScope: { } declaringScope }
             && SymbolTable.ClassifyScope(declaringScope.Name) == SymbolTable.ScopeKind.Module)
         {
             _semanticInfo.SetModuleAccessCrossesClassMember(node);

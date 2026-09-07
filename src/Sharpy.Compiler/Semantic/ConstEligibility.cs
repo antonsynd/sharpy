@@ -498,7 +498,7 @@ internal sealed class ConstEligibility
     /// </summary>
     internal static VariableSymbol? MemberConstSymbol(MemberAccess member, SemanticInfo? semanticInfo)
         => ResolveQualifiedField(member, semanticInfo) is
-            { Owner.TypeKind: not TypeKind.Enum, Field: { IsConstant: true } sym }
+        { Owner.TypeKind: not TypeKind.Enum, Field: { IsConstant: true } sym }
             ? sym
             : null;
 
