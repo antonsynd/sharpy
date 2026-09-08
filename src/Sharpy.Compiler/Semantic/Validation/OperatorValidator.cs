@@ -147,6 +147,13 @@ internal class OperatorValidator : ValidatingAstWalker
             if (IsEnumType(leftType) && IsComparisonOperator(binOp.Operator))
                 return;
 
+            // A reflected user comparison (#1719): the dunder is on the RIGHT operand's type and
+            // inference selected it — supported by python3's reflected rule.
+            if (IsComparisonOperator(binOp.Operator)
+                && Context.TypeInference != null
+                && Context.TypeInference.IsReflectedUserComparison(binOp.Operator, leftType, rightType))
+                return;
+
             // Tuple equality and CLR Equals-based equality (==/!= on types that implement
             // Equals/IEquatable but define no op_Equality) are resolved by the inference service
             // to an EqualsCall lowering. Reference-type ==/!= None is resolved to a NoneCheck
@@ -231,6 +238,19 @@ internal class OperatorValidator : ValidatingAstWalker
         }
     }
 
+    /// <summary>
+    /// Own and inherited declarations of an operator dunder, or of its equality complement (the
+    /// emitter synthesizes <c>!=</c> from <c>__eq__</c> and vice versa) — the ONE operator-dunder
+    /// lookup, shared with inference and the operand seam (#1719).
+    /// </summary>
+    private static bool DeclaresOperator(TypeSymbol symbol, string dunderName)
+    {
+        if (TypeInferenceService.CollectOperatorOverloads(symbol, dunderName).Count > 0)
+            return true;
+        return TypeInferenceService.EqualityComplementDunder(dunderName) is { } complement
+            && TypeInferenceService.CollectOperatorOverloads(symbol, complement).Count > 0;
+    }
+
     private bool SupportsOperator(SemanticType type, string dunderName)
     {
         type = TypeChecker.OperandView(type);
@@ -285,21 +305,12 @@ internal class OperatorValidator : ValidatingAstWalker
             var typeSymbol = Context.Builtins.GetType(generic.Name);
             if (typeSymbol != null)
             {
-                if (typeSymbol.OperatorMethods.ContainsKey(dunderName))
-                    return true;
-                // __ne__ auto-synthesized from __eq__ (and vice versa)
-                if (dunderName == DunderNames.Ne && typeSymbol.OperatorMethods.ContainsKey(DunderNames.Eq))
-                    return true;
-                if (dunderName == DunderNames.Eq && typeSymbol.OperatorMethods.ContainsKey(DunderNames.Ne))
-                    return true;
-                return false;
+                return DeclaresOperator(typeSymbol, dunderName);
             }
             // Fallback for user-defined generic types with GenericDefinition
             if (generic.GenericDefinition != null)
             {
-                return generic.GenericDefinition.OperatorMethods.ContainsKey(dunderName) ||
-                    (dunderName == DunderNames.Ne && generic.GenericDefinition.OperatorMethods.ContainsKey(DunderNames.Eq)) ||
-                    (dunderName == DunderNames.Eq && generic.GenericDefinition.OperatorMethods.ContainsKey(DunderNames.Ne));
+                return DeclaresOperator(generic.GenericDefinition, dunderName);
             }
             return false;
         }
@@ -307,14 +318,8 @@ internal class OperatorValidator : ValidatingAstWalker
         // User-defined types
         if (type is UserDefinedType udt && udt.Symbol != null)
         {
-            // Check operator methods (e.g., __eq__, __ne__, __lt__, __add__, etc.)
-            if (udt.Symbol.OperatorMethods.ContainsKey(dunderName))
-                return true;
-
-            // __ne__ is auto-synthesized from __eq__ (and vice versa) in codegen
-            if (dunderName == DunderNames.Ne && udt.Symbol.OperatorMethods.ContainsKey(DunderNames.Eq))
-                return true;
-            if (dunderName == DunderNames.Eq && udt.Symbol.OperatorMethods.ContainsKey(DunderNames.Ne))
+            // Operator methods (own AND inherited, #1719) and the equality complement.
+            if (DeclaresOperator(udt.Symbol, dunderName))
                 return true;
 
             // Check protocol methods

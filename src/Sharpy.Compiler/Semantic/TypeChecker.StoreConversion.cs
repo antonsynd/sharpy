@@ -26,7 +26,9 @@ internal partial class TypeChecker
         SemanticType? Slot,
         string? CalleeDisplay,
         int? ArgumentOrdinal,
-        string? KeywordName)
+        string? KeywordName,
+        string? OperatorSymbol = null,
+        string? OperatorDunder = null)
     {
         /// <summary>Whether this push is a call argument, the only context that names a callee.</summary>
         public bool IsArgument
@@ -64,6 +66,18 @@ internal partial class TypeChecker
         /// <see cref="SemanticInfo.SetOptionalStoreWrap"/> fact.
         /// </summary>
         CoalesceAssign,
+
+        /// <summary>
+        /// The RIGHT operand of a binary operator whose LEFT operand's type declares (or inherits)
+        /// a dunder for it — the operand is a store into the SELECTED overload's parameter slot
+        /// (#1719, plan-499995 Design Decision 6). The slot is chosen by the operand's natural type
+        /// when it has one; an operand with none (<c>None()</c>) selects the unique overload whose
+        /// parameter is an <c>Optional</c>, else is refused by name. A bare <c>None</c> operand is
+        /// never a store here: <c>x == None</c> on a reference type is the #1079 null check, and on
+        /// a dunder admitting None (<c>T | None</c>, <c>object</c>) the dispatch is inference's
+        /// decision. Also the key of a <c>dict</c> index READ, whose slot is the key type (#1807).
+        /// </summary>
+        OperatorOperand,
     }
 
     internal enum StoreVerdict
@@ -402,9 +416,12 @@ internal partial class TypeChecker
                 }
 
             default:
-                var refusalCode = position == StorePosition.Return
-                    ? DiagnosticCodes.Semantic.MissingReturnValue
-                    : DiagnosticCodes.Semantic.TypeMismatch;
+                var refusalCode = position switch
+                {
+                    StorePosition.Return => DiagnosticCodes.Semantic.MissingReturnValue,
+                    StorePosition.OperatorOperand => DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                    _ => DiagnosticCodes.Semantic.TypeMismatch,
+                };
 
                 // A cross-family Result value names the CALL that built it rather than the target
                 // (Decision 3): `x: int = Ok(1)` is a mistake about the constructor, not about `x`.
@@ -569,6 +586,12 @@ internal partial class TypeChecker
             StorePosition.CoalesceAssign
                 => $"Cannot assign type '{value}' to '??=' target of type '{target}'",
 
+            // The operator's own phrasing (SPY0222) — the seam's verdict IS the operator refusal —
+            // with the selected dunder's slot named; receiver and operator spelling ride the push.
+            StorePosition.OperatorOperand
+                => $"Type '{context?.CalleeDisplay ?? "?"}' does not support operator '{context?.OperatorSymbol ?? "?"}' with operand of type '{value}'"
+                    + (context?.OperatorDunder is { } dunder ? $"; '{dunder}' takes '{target}'" : string.Empty),
+
             StorePosition.TupleElement
                 => $"Cannot assign type '{value}' to '{target}' in tuple unpacking",
 
@@ -601,7 +624,8 @@ internal partial class TypeChecker
     }
 
     private IDisposable EnterStore(StorePosition position, SemanticType targetType, Expression? valueNode,
-        string? calleeDisplay = null, int? argumentOrdinal = null, string? keywordName = null)
+        string? calleeDisplay = null, int? argumentOrdinal = null, string? keywordName = null,
+        string? operatorSymbol = null, string? operatorDunder = null)
     {
         var savedExpectedType = _expectedType;
         var savedParameterTypedArgument = _parameterTypedArgument;
@@ -615,7 +639,8 @@ internal partial class TypeChecker
                 => ParameterTypedArgumentOf(targetType, valueNode),
             _ => _parameterTypedArgument,
         };
-        _storeContext = new StoreContext(position, targetType, calleeDisplay, argumentOrdinal, keywordName);
+        _storeContext = new StoreContext(
+            position, targetType, calleeDisplay, argumentOrdinal, keywordName, operatorSymbol, operatorDunder);
 
         return new StoreScope(this, savedExpectedType, savedParameterTypedArgument, savedStoreContext);
     }

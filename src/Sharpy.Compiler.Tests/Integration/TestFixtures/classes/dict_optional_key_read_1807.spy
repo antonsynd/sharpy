@@ -1,0 +1,8 @@
+# #1807: the key of a dict READ is an operand of the index operator and the key type is its slot,
+# so `None()` and a narrowed constant are typed exactly as at the write `d[k] = v`.
+def main():
+    d: dict[int?, str] = {Some(1): "a", None(): "b"}
+    print(d[Some(1)])
+    print(d[None()])
+    e: dict[int8, str] = {7: "x"}
+    print(e[7])

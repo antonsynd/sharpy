@@ -1,0 +1,1 @@
+Type 'D' does not support operator '==' with operand 'None()' — no '__eq__' overload takes an Optional; declare 'other: T?' or compare with Some(v) @9:11

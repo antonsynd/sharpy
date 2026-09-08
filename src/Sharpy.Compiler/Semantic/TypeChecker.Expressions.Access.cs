@@ -2250,6 +2250,16 @@ internal partial class TypeChecker
         return elementType;
     }
 
+    /// <summary>The key type of a <c>dict[K, V]</c> receiver (through <c>T | None</c>), or null for any other.</summary>
+    private static SemanticType? DictKeySlot(SemanticType objectType)
+    {
+        var unwrapped = objectType is NullableType nullable ? nullable.UnderlyingType : objectType;
+        return unwrapped is GenericType { Name: BuiltinNames.Dict, TypeArguments.Count: >= 2 } dict
+            && !ContainsTypeParameterType(dict.TypeArguments[0])
+            ? dict.TypeArguments[0]
+            : null;
+    }
+
     private SemanticType CheckIndexAccessCore(IndexAccess indexAccess)
     {
         // A generic reference (callee[T, ...]) resolves, arity-checks, and lowers uniformly
@@ -2261,8 +2271,14 @@ internal partial class TypeChecker
             return genericReferenceType;
 
         var objectType = CheckExpression(indexAccess.Object);
+
+        // A dict READ's key is the operand of the index operator and the key type is its slot
+        // (#1807, StorePosition.OperatorOperand): `d[None()]` on a `dict[int?, str]` types the key
+        // exactly as the write `d[k] = v` does, instead of refusing None() for want of a type.
+        var keySlot = DictKeySlot(objectType);
         SemanticType indexType;
         using (ScopedValue.Push(ref _currentIndexArguments, IndexArgumentSetOf(indexAccess.Index)))
+        using (keySlot != null ? EnterStore(StorePosition.OperatorOperand, keySlot, indexAccess.Index) : null)
             indexType = CheckExpression(indexAccess.Index);
 
         // Materialize the codegen lowering strategy for this access so the emitter switches on the

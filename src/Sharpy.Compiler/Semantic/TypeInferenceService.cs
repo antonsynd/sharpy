@@ -534,23 +534,73 @@ internal class TypeInferenceService
         return false;
     }
 
+    /// <summary>
+    /// The type symbol an operator dunder is looked up ON, for an operand type. Null when the
+    /// operand is not a user-declared type (a builtin, an Optional, a tuple — those resolve on
+    /// their own paths).
+    /// </summary>
+    internal static TypeSymbol? OperatorReceiverSymbol(SemanticType type) => type switch
+    {
+        UserDefinedType udt => udt.Symbol,
+        GenericType gt => gt.GenericDefinition,
+        _ => null
+    };
+
+    /// <summary>
+    /// Every overload of <paramref name="dunderName"/> visible on <paramref name="typeSymbol"/> —
+    /// its own and its base chain's, most-derived first. The ONE operator-dunder lookup: selection,
+    /// the operand slot (<see cref="ResolveOperatorOperandSlot"/>), the equality complement and the
+    /// reflected arm all range over the same set, so an inherited dunder cannot be visible to one
+    /// and invisible to another.
+    /// <para>
+    /// <c>TypeSymbol.OperatorMethods</c> holds the type's OWN declarations only, so before this the
+    /// operator seam saw nothing on a derived class: <c>class B</c> with <c>__eq__(self, other: str)</c>
+    /// and <c>class D(B)</c> refused <c>d == "a"</c> with SPY0222 while python3 dispatched and the
+    /// synthesized C# <c>operator ==(B, string)</c> already bound for a <c>D</c> receiver (#1719,
+    /// RULED 2026-09-07 "walk the base chain"). Overloads are keyed by their operand type's
+    /// <see cref="SemanticType.CanonicalKey"/> so a derived override shadows the base declaration it
+    /// re-declares instead of joining it as a rival candidate.
+    /// </para>
+    /// </summary>
+    internal static List<FunctionSymbol> CollectOperatorOverloads(TypeSymbol typeSymbol, string dunderName)
+    {
+        var result = new List<FunctionSymbol>();
+        var seenOperandKeys = new HashSet<string>(StringComparer.Ordinal);
+
+        void AddFrom(TypeSymbol source)
+        {
+            if (!source.OperatorMethods.TryGetValue(dunderName, out var methods))
+                return;
+
+            foreach (var method in methods)
+            {
+                var operandType = method.Parameters.Count >= 2 ? method.Parameters[^1].Type : null;
+                var key = operandType?.CanonicalKey ?? $"<arity:{method.Parameters.Count}>";
+                if (seenOperandKeys.Add(key))
+                    result.Add(method);
+            }
+        }
+
+        AddFrom(typeSymbol);
+        foreach (var baseType in TypeHierarchyService.GetAllBaseTypes(typeSymbol))
+            AddFrom(baseType);
+
+        return result;
+    }
+
     private SemanticType? TryInferUserDefinedBinaryOp(BinaryOperator op, SemanticType left, SemanticType right)
     {
         var dunderName = BinaryOperatorToDunder(op);
         if (dunderName == null)
             return null;
 
-        TypeSymbol? typeSymbol = left switch
-        {
-            UserDefinedType udt => udt.Symbol,
-            GenericType gt => gt.GenericDefinition,
-            _ => null
-        };
+        TypeSymbol? typeSymbol = OperatorReceiverSymbol(left);
 
         if (typeSymbol != null)
         {
-            // Try direct operator
-            if (typeSymbol.OperatorMethods.TryGetValue(dunderName, out var methods))
+            // Try direct operator — own declarations AND the base chain (#1719).
+            var methods = CollectOperatorOverloads(typeSymbol, dunderName);
+            if (methods.Count > 0)
             {
                 var bestOverload = FindBestOverload(methods, right, left);
                 if (bestOverload != null)
@@ -578,6 +628,12 @@ internal class TypeInferenceService
                 return complementResult;
         }
 
+        // Reflected (#1719): no dunder on the left operand's type applies, but the right operand's
+        // type declares (or inherits) the reflected one — python3's `1 == d` is `d.__eq__(1)` and
+        // `1 < d` is `d.__gt__(1)`. The emitter swaps the operands from the ReflectedOperands tag.
+        if (SelectReflectedComparison(op, left, right) != null)
+            return SemanticType.Bool;
+
         return null;
     }
 
@@ -589,26 +645,106 @@ internal class TypeInferenceService
     private SemanticType? TryInferEqualityComplement(
         BinaryOperator op, TypeSymbol typeSymbol, SemanticType right, SemanticType left)
     {
-        bool hasEq = typeSymbol.OperatorMethods.ContainsKey(DunderNames.Eq);
-        bool hasNe = typeSymbol.OperatorMethods.ContainsKey(DunderNames.Ne);
+        // Own AND inherited declarations (#1719): the complement of an inherited __eq__ is as real
+        // as the complement of an own one — the emitted operator != binds for a derived receiver.
+        var eqMethods = CollectOperatorOverloads(typeSymbol, DunderNames.Eq);
+        var neMethods = CollectOperatorOverloads(typeSymbol, DunderNames.Ne);
 
-        if (op == BinaryOperator.Equal && hasNe && !hasEq)
+        if (op == BinaryOperator.Equal && neMethods.Count > 0 && eqMethods.Count == 0)
         {
-            var neMethods = typeSymbol.OperatorMethods[DunderNames.Ne];
-            var bestOverload = FindBestOverload(neMethods, right, left);
-            if (bestOverload != null)
+            if (FindBestOverload(neMethods, right, left) != null)
                 return SemanticType.Bool;
         }
-        else if (op == BinaryOperator.NotEqual && hasEq && !hasNe)
+        else if (op == BinaryOperator.NotEqual && eqMethods.Count > 0 && neMethods.Count == 0)
         {
-            var eqMethods = typeSymbol.OperatorMethods[DunderNames.Eq];
-            var bestOverload = FindBestOverload(eqMethods, right, left);
-            if (bestOverload != null)
+            if (FindBestOverload(eqMethods, right, left) != null)
                 return SemanticType.Bool;
         }
 
         return null;
     }
+
+    /// <summary>The dunder that answers <c>==</c> when only <c>__ne__</c> is declared, and vice versa; null otherwise.</summary>
+    internal static string? EqualityComplementDunder(string dunderName) => dunderName switch
+    {
+        DunderNames.Eq => DunderNames.Ne,
+        DunderNames.Ne => DunderNames.Eq,
+        _ => null
+    };
+
+    /// <summary>The operator form of <see cref="EqualityComplementDunder(string)"/>.</summary>
+    internal static string? EqualityComplementDunder(BinaryOperator op)
+        => BinaryOperatorToDunder(op) is { } dunder ? EqualityComplementDunder(dunder) : null;
+
+    /// <summary>
+    /// The dunder python3 tries on the RIGHT operand when the left has none for a comparison: the
+    /// same dunder for <c>==</c>/<c>!=</c>, the mirror for the ordering pairs. Null for every other
+    /// operator — arithmetic reflection (<c>__radd__</c>) is not a Sharpy feature.
+    /// </summary>
+    internal static string? ReflectedComparisonDunder(BinaryOperator op) => op switch
+    {
+        BinaryOperator.Equal => DunderNames.Eq,
+        BinaryOperator.NotEqual => DunderNames.Ne,
+        BinaryOperator.LessThan => DunderNames.Gt,
+        BinaryOperator.GreaterThan => DunderNames.Lt,
+        BinaryOperator.LessThanOrEqual => DunderNames.Ge,
+        BinaryOperator.GreaterThanOrEqual => DunderNames.Le,
+        _ => null
+    };
+
+    /// <summary>
+    /// Whether <paramref name="op"/> on these operands resolves through the RIGHT operand's
+    /// reflected dunder (#1719) — the one arbiter for inference, the lowering tag the emitter reads
+    /// and the operator validator, so the three cannot disagree about which operand dispatches.
+    /// </summary>
+    internal bool IsReflectedUserComparison(BinaryOperator op, SemanticType left, SemanticType right)
+        => SelectReflectedComparison(op, left, right) != null;
+
+    /// <summary>
+    /// The reflected overload on the RIGHT operand's type that answers <paramref name="op"/> for a
+    /// left operand of type <paramref name="left"/>, or null. Non-null only when the LEFT operand's
+    /// own type declares no applicable dunder (own, inherited, or equality complement) — python3
+    /// tries the left first and reflects only on NotImplemented.
+    /// </summary>
+    private FunctionSymbol? SelectReflectedComparison(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        var reflected = ReflectedComparisonDunder(op);
+        if (reflected == null || OperatorReceiverSymbol(right) is not { } rightSymbol)
+            return null;
+
+        if (LeftDunderApplies(op, left, right))
+            return null;
+
+        var methods = CollectOperatorOverloads(rightSymbol, reflected);
+        if (methods.Count == 0 && EqualityComplementDunder(op) is { } complement)
+            methods = CollectOperatorOverloads(rightSymbol, complement);
+
+        return methods.Count == 0 ? null : FindBestOverload(methods, left, right);
+    }
+
+    private bool LeftDunderApplies(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        var dunder = BinaryOperatorToDunder(op);
+        if (dunder == null || OperatorReceiverSymbol(left) is not { } leftSymbol)
+            return false;
+
+        var methods = CollectOperatorOverloads(leftSymbol, dunder);
+        if (methods.Count > 0 && FindBestOverload(methods, right, left) != null)
+            return true;
+
+        return TryInferEqualityComplement(op, leftSymbol, right, left) != null;
+    }
+
+    /// <summary>
+    /// Whether an <c>__eq__</c>/<c>__ne__</c> overload (own or inherited) takes a parameter that
+    /// ADMITS a bare <c>None</c> — <c>T | None</c> or <c>object</c>. <c>T?</c> (Optional) does not:
+    /// its absence is <c>None()</c>, and a bare None into it is refused everywhere (R-G).
+    /// </summary>
+    private static bool HasEqualityDunderAdmittingNone(TypeSymbol symbol)
+        => CollectOperatorOverloads(symbol, DunderNames.Eq)
+            .Concat(CollectOperatorOverloads(symbol, DunderNames.Ne))
+            .Any(m => m.Parameters.Count >= 2
+                && m.Parameters[^1].Type is NullableType or { IsObjectLike: true });
 
     /// <summary>
     /// Selects the best operator-dunder / <c>__getitem__</c> overload for a single (non-self)
@@ -685,7 +821,7 @@ internal class TypeInferenceService
     /// checked as the <c>list[int]</c>-taking operator it actually is. Left open, the parameter
     /// matches every element type, which is how <c>list[int] + list[str]</c> reached codegen.
     /// </summary>
-    private static SemanticType CloseOverReceiver(SemanticType parameterType, SemanticType? receiver)
+    internal static SemanticType CloseOverReceiver(SemanticType parameterType, SemanticType? receiver)
     {
         if (receiver is not GenericType { GenericDefinition: { } definition } instantiation)
             return parameterType;
@@ -937,6 +1073,15 @@ internal class TypeInferenceService
             return false;
 
         var other = leftIsNone ? right : left;
+
+        // A user __eq__/__ne__ (own or inherited) whose parameter ADMITS a bare None — `T | None`,
+        // `object` — is python3's dispatch, and the #1079 null check yields to it (#1719, plan-499995
+        // Design Decision 6). `T?` (Optional) does not admit a bare None and neither does a
+        // class-typed parameter, so those keep the null check.
+        if (OperatorReceiverSymbol(TypeChecker.OperandView(other)) is { } receiver
+            && HasEqualityDunderAdmittingNone(receiver))
+            return false;
+
         return IsNoneCheckReferenceType(other);
     }
 
@@ -1712,7 +1857,7 @@ internal class TypeInferenceService
     }
 
 
-    private static string? BinaryOperatorToDunder(BinaryOperator op)
+    internal static string? BinaryOperatorToDunder(BinaryOperator op)
     {
         return op switch
         {

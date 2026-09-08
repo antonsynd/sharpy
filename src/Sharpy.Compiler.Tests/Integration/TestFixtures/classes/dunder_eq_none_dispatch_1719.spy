@@ -1,0 +1,27 @@
+# #1719: a bare `None` operand dispatches to a user __eq__ whose parameter ADMITS None
+# (`T | None`, `object`) — python3 parity — on class hosts too; the #1079 null check yields.
+# `__eq__(int)` does not admit None, so `d == None` keeps the null check (False, no dispatch).
+class N:
+    def __eq__(self, other: int | None) -> bool:
+        print("n", other)
+        return other is None
+
+class O:
+    def __eq__(self, other: object) -> bool:
+        print("o")
+        return True
+    def __hash__(self) -> int:
+        return 0
+
+class I:
+    def __eq__(self, other: int) -> bool:
+        print("never")
+        return True
+
+def main():
+    n = N()
+    print(n == None)
+    print(n != None)
+    print(None == n)
+    print(O() == None)
+    print(I() == None)

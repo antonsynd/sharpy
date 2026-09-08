@@ -335,10 +335,14 @@ internal partial class RoslynEmitter
                 members.Add(GenerateComplementaryNotEqualsOperator(eqMethod, className));
             }
         }
-        // If __ne__ is defined but not __eq__, generate operator ==
+        // If __ne__ is defined but not __eq__, generate operator == for each __ne__ overload — the
+        // same parameter shape as the != it complements, or C# refuses the pair (CS0216).
         if (dunders.Contains(DunderNames.Ne) && !dunders.Contains(DunderNames.Eq))
         {
-            members.Add(GenerateComplementaryEqualsOperator(className));
+            foreach (var neMethod in body.OfType<FunctionDef>().Where(f => f.Name == DunderNames.Ne))
+            {
+                members.Add(GenerateComplementaryEqualsOperator(neMethod, className));
+            }
         }
 
         // Ordering operators: C# requires < with >, and <= with >=.

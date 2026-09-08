@@ -1,0 +1,8 @@
+# #1806: the emitted C# mirror of an ordering dunder throws; its USE is refused by name.
+class D:
+    def __lt__(self, other: int) -> bool:
+        return True
+
+def main():
+    d = D()
+    print(d > 1)

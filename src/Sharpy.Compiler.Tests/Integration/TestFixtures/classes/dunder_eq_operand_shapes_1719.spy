@@ -1,0 +1,35 @@
+# #1719: every value shape the store seam admits is admitted at the operand position too — an
+# in-range constant into int8, an unsuffixed literal into float32, a literal into LiteralString,
+# a constant into `int8 | None`, Some(7) into `int8?`, a bare None into `int8 | None`.
+class D8:
+    def __eq__(self, other: int8) -> bool:
+        print("d8", other)
+        return True
+
+class DF:
+    def __eq__(self, other: float32) -> bool:
+        print("df", other)
+        return True
+
+class DL:
+    def __eq__(self, other: LiteralString) -> bool:
+        print("dl", other)
+        return True
+
+class DN:
+    def __eq__(self, other: int8 | None) -> bool:
+        print("dn", other)
+        return True
+
+class DO:
+    def __eq__(self, other: int8?) -> bool:
+        print("do", other)
+        return True
+
+def main():
+    print(D8() == 7)
+    print(DF() == 0.5)
+    print(DL() == "a")
+    print(DN() == 7)
+    print(DO() == Some(7))
+    print(DN() == None)

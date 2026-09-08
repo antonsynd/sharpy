@@ -1,0 +1,8 @@
+# #1719 + R-G: a bare value into an Optional-taking dunder is the strict-Optional refusal every
+# store position gives (was SPY0222 without the Some(...) steer).
+class D:
+    def __eq__(self, other: int?) -> bool:
+        return True
+
+def main():
+    r: bool = D() == 1

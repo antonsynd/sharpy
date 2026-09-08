@@ -1,0 +1,22 @@
+# #1719 (plan-499995 Design Decision 6): the right operand of a user dunder is a store into the
+# selected overload's slot. `None()` has no natural type, so it selects the UNIQUE __eq__ overload
+# whose parameter is an Optional; `!=` is answered by the same overload through the complement.
+class D:
+    def __eq__(self, other: int?) -> bool:
+        print("called", other)
+        return True
+
+struct S:
+    v: int
+    def __eq__(self, other: int?) -> bool:
+        print("s", other)
+        return other is None
+
+def main():
+    d = D()
+    print(d == None())
+    print(d != None())
+    print(d == Some(1))
+    s = S(1)
+    print(s == None())
+    print(s != Some(2))

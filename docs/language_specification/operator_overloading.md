@@ -166,6 +166,12 @@ class Point:
 | `>` | `__gt__` | `operator >` |
 | `>=` | `__ge__` | `operator >=` |
 
+The right operand is typed against the selected overload's parameter (a constant into `int8`,
+`Some(v)` or `None()` into `T?`), a bare `None` dispatches only to a `T | None` or `object`
+overload, and a comparison whose left operand has no dunder reflects to the right operand's
+(`1 < p` is `p.__gt__(1)`) — the rules are in
+[Dunder Methods › Operand typing and dispatch](dunder_methods.md#operand-typing-and-dispatch).
+
 ## Special Methods
 
 | Method | Purpose | C# Mapping | Invoked Via |

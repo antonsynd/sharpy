@@ -13,7 +13,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 ///
 /// <para><b>Contract.</b> A value entering a typed slot is admitted or refused by ONE seam
 /// (<c>TypeChecker.ClassifyStore</c>) consulted at every store position, against the DECLARED slot.
-/// The matrix is the product of that contract's two axes: the 18 members of the seam's
+/// The matrix is the product of that contract's two axes: the 19 members of the seam's
 /// <c>StorePosition</c> enum and the 24 value shapes the seam distinguishes.</para>
 ///
 /// <para><b>Every cell executes.</b> An accepted cell compiles, runs, and prints the stored value —
@@ -41,12 +41,12 @@ public class StoreConversionMatrixTests : IntegrationTestBase
     // with itself. These are written down, and Positions_AreExactlyTheStorePositionEnum compares
     // the roster to the enum, so ADDING a StorePosition member fails here until its row is added.
 
-    private const int PositionCount = 18;
+    private const int PositionCount = 19;
     private const int ShapeCount = 24;
-    private const int AcceptedCellCount = 234;
-    private const int RefusedCellCount = 194;
+    private const int AcceptedCellCount = 248;
+    private const int RefusedCellCount = 202;
     private const int KnownRedCellCount = 0;
-    private const int NotApplicableCellCount = 4;
+    private const int NotApplicableCellCount = 6;
 
     // ── Axis 1: value shapes ─────────────────────────────────────────────────────────────────
 
@@ -237,6 +237,16 @@ public class StoreConversionMatrixTests : IntegrationTestBase
             s => $"def main():\n    x: {s.Slot} = {s.Seed}\n    x ??= {s.Value}\n    print(x)\n",
             3, DiagnosticCodes.Semantic.TypeMismatch,
             (v, t) => $"Cannot assign type '{v}' to '??=' target of type '{t}'"),
+
+        // The RIGHT operand of a user dunder is a store into the selected overload's slot (#1719,
+        // plan-499995 Design Decision 6). The refusal keeps the operator's code (SPY0222) and names
+        // the dunder's slot; a bare-None operand never reaches the seam (the two N/A cells). No
+        // `__hash__`: a typed `__eq__` is not the .NET `Equals(object)` override, and declaring the
+        // hash alone is refused (SPY0456) before any operand is stored.
+        new("OperatorOperand",
+            s => $"class D:\n    def __eq__(self, other: {s.Slot}) -> bool:\n        print(other)\n        return True\n\ndef main():\n    d = D()\n    r: bool = d == {s.Value}\n",
+            8, DiagnosticCodes.Semantic.InvalidBinaryOperation,
+            (v, t) => $"Type 'D' does not support operator '==' with operand of type '{v}'; '__eq__' takes '{t}'"),
     };
 
     // ── Cells whose refusal is decided BEFORE any store ───────────────────────────────────────
@@ -297,6 +307,8 @@ public class StoreConversionMatrixTests : IntegrationTestBase
         ["ParameterDefault×SomeConstantIntoNarrowOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
         ["LambdaParameterDefault×SomeIntoOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
         ["LambdaParameterDefault×SomeConstantIntoNarrowOptional"] = "refused by DefaultParameterValidator (SPY0401), not the store seam — tested in ParameterDefaultConstantMatrixTests",
+        ["OperatorOperand×BareNoneIntoOptional"] = "a bare None operand is the #1079 null check (NoneCheck) on a class receiver, never a store — `d == None` prints False; the None-admitting dispatch is tested in DunderEqualitySynthesisMatrixTests",
+        ["OperatorOperand×NoneIntoNonNullable"] = "a bare None operand is the #1079 null check (NoneCheck) on a class receiver, never a store — `d == None` prints False; the None-admitting dispatch is tested in DunderEqualitySynthesisMatrixTests",
     };
 
     // ── Known-red cells ──────────────────────────────────────────────────────────────────────

@@ -1,0 +1,28 @@
+# #1719: a comparison whose LEFT operand has no dunder dispatches to the RIGHT operand's
+# reflected dunder (python3: `1 == d` is `d.__eq__(1)`, `3 > d` is `d.__lt__(3)`), in the binary
+# form and in a chain; a non-trivial left operand is still evaluated first.
+class D:
+    def __eq__(self, other: int) -> bool:
+        print("eq", other)
+        return True
+    def __lt__(self, other: int) -> bool:
+        print("lt", other)
+        return True
+
+class S:
+    def __eq__(self, other: int?) -> bool:
+        print("seq", other)
+        return True
+
+def f() -> int:
+    print("f")
+    return 7
+
+def main():
+    d = D()
+    print(1 == d)
+    print(2 != d)
+    print(3 > d)
+    print(f() == d)
+    print(1 == d == 5)
+    print(Some(1) == S())

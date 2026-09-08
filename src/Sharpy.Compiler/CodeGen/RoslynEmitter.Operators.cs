@@ -713,26 +713,37 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Generate complementary operator == when only __ne__ is defined
+    /// Generate complementary operator == when only __ne__ is defined: <c>!(left != right)</c>,
+    /// PARENTHESIZED — the unparenthesized tree printed as <c>!left != right</c>, a precedence
+    /// inversion SPY0524 refused for every __ne__-only type — and typed on the __ne__ overload's own
+    /// operand so the pair C# requires matches (#1719).
     /// </summary>
-    private OperatorDeclarationSyntax GenerateComplementaryEqualsOperator(string className)
+    private OperatorDeclarationSyntax GenerateComplementaryEqualsOperator(FunctionDef neMethod, string className)
     {
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
 
+        var otherParam = neMethod.Parameters
+            .FirstOrDefault(p => !string.Equals(p.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase));
+
         var classTypeSyntax = GetCurrentClassTypeSyntax(className);
+        var param2Type = otherParam?.Type != null
+            ? _typeMapper.MapType(otherParam.Type)
+            : classTypeSyntax;
+
         var param1 = Parameter(EscapedIdentifier("left"))
             .WithType(classTypeSyntax);
         var param2 = Parameter(EscapedIdentifier("right"))
-            .WithType(classTypeSyntax);
+            .WithType(param2Type);
 
         // operator == returns !(left != right)
         var body = Block(ReturnStatement(
             PrefixUnaryExpression(
                 SyntaxKind.LogicalNotExpression,
-                BinaryExpression(
-                    SyntaxKind.NotEqualsExpression,
-                    IdentifierName("left"),
-                    IdentifierName("right")))));
+                ParenthesizedExpression(
+                    BinaryExpression(
+                        SyntaxKind.NotEqualsExpression,
+                        IdentifierName("left"),
+                        IdentifierName("right"))))));
 
         return OperatorDeclaration(returnType, Token(SyntaxKind.EqualsEqualsToken))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))

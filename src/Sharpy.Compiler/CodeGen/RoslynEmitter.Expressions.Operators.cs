@@ -468,6 +468,16 @@ internal partial class RoslynEmitter
         return Prefix(kind, operand);
     }
 
+    /// <summary>The token a swapped ordering comparison prints: <c>&lt;</c> ↔ <c>&gt;</c>, <c>&lt;=</c> ↔ <c>&gt;=</c>; equality is its own mirror.</summary>
+    private static SyntaxKind MirrorComparisonKind(SyntaxKind kind) => kind switch
+    {
+        SyntaxKind.LessThanExpression => SyntaxKind.GreaterThanExpression,
+        SyntaxKind.GreaterThanExpression => SyntaxKind.LessThanExpression,
+        SyntaxKind.LessThanOrEqualExpression => SyntaxKind.GreaterThanOrEqualExpression,
+        SyntaxKind.GreaterThanOrEqualExpression => SyntaxKind.LessThanOrEqualExpression,
+        _ => kind,
+    };
+
     private static bool IsComparisonSyntaxKind(SyntaxKind kind)
         => kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression
             or SyntaxKind.LessThanExpression or SyntaxKind.LessThanOrEqualExpression
@@ -503,6 +513,23 @@ internal partial class RoslynEmitter
         OperatorLoweringKind orderingLowering,
         BinaryOpLowering equalityLowering)
     {
+        // Reflected user comparison (#1719): the dunder is on the RIGHT operand's type, so the C#
+        // operator binds with the operands swapped and an ordering token mirrored. Python evaluates
+        // the left operand first, so a non-trivial left is bound to a pattern variable before the
+        // swapped comparison reads it: `f() is var __refl_0 && d == __refl_0`.
+        if (orderingLowering == OperatorLoweringKind.ReflectedOperands)
+        {
+            var mirrored = MirrorComparisonKind(kind);
+            if (IsTrivialExpression(leftAst))
+                return Binary(mirrored, right, left);
+
+            var temp = GenerateTempVarName("refl");
+            return Binary(
+                SyntaxKind.LogicalAndExpression,
+                IsPattern(left, VarPattern(SingleVariableDesignation(Identifier(temp)))),
+                Binary(mirrored, right, IdentifierName(temp)));
+        }
+
         if (kind is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression)
         {
             if (equalityLowering == BinaryOpLowering.NoneCheck

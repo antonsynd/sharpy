@@ -1,0 +1,1 @@
+Type 'D8' does not support operator '==' with operand of type 'int32'; '__eq__' takes 'int8' @7:15

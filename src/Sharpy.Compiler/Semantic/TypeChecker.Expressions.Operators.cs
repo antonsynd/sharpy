@@ -77,10 +77,13 @@ internal partial class TypeChecker
         }
 
         SemanticType leftType, rightType;
+        SemanticType? operandSlot;
         using (ScopedValue.Push(ref _typeTestOperand, typeTestOperand))
         {
             leftType = CheckExpression(binOp.Left);
-            rightType = CheckExpression(binOp.Right);
+            // The right operand of a user dunder is a store into the selected overload's slot
+            // (#1719, StorePosition.OperatorOperand); every other operand is checked plainly.
+            (rightType, operandSlot) = CheckOperatorOperand(binOp.Operator, leftType, binOp.Right, binOp);
         }
 
         // If either operand is Unknown, return Unknown to avoid cascading errors
@@ -142,8 +145,10 @@ internal partial class TypeChecker
         }
 
         // §10.2.11: a constant operand converts to the other operand's type before promotion
+        // A seam-admitted operand converts to its slot before the operator resolves — §10.2.11's
+        // constant rule generalized to every value shape the store seam admits.
         var (effectiveLeftType, effectiveRightType) = EffectiveOperandTypes(
-            binOp.Operator, binOp.Left, leftType, binOp.Right, rightType);
+            binOp.Operator, binOp.Left, leftType, binOp.Right, operandSlot ?? rightType);
 
         // Use TypeInferenceService for type inference
         var resultType = _typeInference.InferBinaryOpType(binOp.Operator, effectiveLeftType, effectiveRightType);
@@ -318,6 +323,141 @@ internal partial class TypeChecker
         }
 
         return resultType;
+    }
+
+    /// <summary>
+    /// Checks the RIGHT operand of a binary operator through the store seam when the LEFT operand's
+    /// type declares (or inherits) a dunder for the operator (#1719, plan-499995 Design Decision 6):
+    /// the operand is a store into the selected overload's parameter. Returns the operand's recorded
+    /// type and the slot it was admitted into — null when no user dunder decides the operand (no
+    /// receiver, no overloads, an open slot), or when the operand is a bare <c>None</c> (the #1079
+    /// null check and the None-admitting dispatch are inference's decisions). A refusal is reported
+    /// here in the operator's phrasing and yields <see cref="UnknownType"/>, so the caller reports
+    /// nothing further — at <paramref name="reportAt"/>, the position the operator's own refusal
+    /// uses (the binary expression; a chain link's left operand). Shared by the binary form and
+    /// every comparison-chain link.
+    /// </summary>
+    private (SemanticType Type, SemanticType? Slot) CheckOperatorOperand(
+        BinaryOperator op, SemanticType leftType, Expression right, Node reportAt)
+    {
+        var receiver = OperandView(leftType);
+        var (candidates, dunder) = OperatorOperandCandidates(op, receiver, right);
+        if (candidates.Count == 0)
+            return (CheckExpression(right), null);
+
+        var symbol = GetOperatorSymbol(op);
+
+        SemanticType SlotOf(FunctionSymbol candidate)
+            => TypeInferenceService.CloseOverReceiver(candidate.Parameters[^1].Type, receiver);
+
+        // An operand with no natural type — `None()` — selects the unique overload whose slot is an
+        // Optional; any other count is a refusal by name, with the steer the spelling needs.
+        if (NoBindingInferenceType(right) is OptionalType)
+        {
+            var optional = candidates.Where(c => SlotOf(c) is OptionalType).ToList();
+            if (optional.Count != 1)
+            {
+                var steer = optional.Count == 0
+                    ? $"no '{dunder}' overload takes an Optional; declare 'other: T?' or compare with Some(v)"
+                    : $"'{dunder}' is ambiguous for None() between "
+                        + string.Join(" and ", optional.Select(c => $"'{SlotOf(c).GetDisplayName()}'"))
+                        + "; bind it first ('x: T? = None()')";
+                AddError(
+                    $"Type '{receiver.GetDisplayName()}' does not support operator '{symbol}' with operand 'None()' — {steer}",
+                    reportAt.LineStart, reportAt.ColumnStart,
+                    code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                    span: reportAt.Span);
+                return (SemanticType.Unknown, null);
+            }
+            return CheckOperandInSlot(receiver, right, SlotOf(optional[0]), dunder, symbol, reportAt);
+        }
+
+        // One overload: its slot is the expectation and the seam's verdict is the answer.
+        if (candidates.Count == 1)
+        {
+            var slot = SlotOf(candidates[0]);
+            return ContainsTypeParameterType(slot)
+                ? (CheckExpression(right), null)
+                : CheckOperandInSlot(receiver, right, slot, dunder, symbol, reportAt);
+        }
+
+        // Several overloads: the natural type first, then the seam's classification per candidate
+        // (side-effect free) and the deterministic betterness core among the applicable ones. A
+        // selected slot's accepted verdict is APPLIED here (the float32 re-typing, the narrowed
+        // pass-through) so the operand converts to its slot before the operator resolves.
+        var natural = CheckExpression(right);
+        if (natural is UnknownType)
+            return (natural, null);
+        var view = OperandView(natural);
+        var applicable = candidates
+            .Where(c => !ContainsTypeParameterType(SlotOf(c))
+                && IsAcceptedVerdict(ClassifyStore(StorePosition.OperatorOperand, right, view, SlotOf(c))))
+            .ToList();
+        var selected = applicable.Count switch
+        {
+            0 => null,
+            1 => applicable[0],
+            _ => ResolveDunderOverload(applicable, view, receiver),
+        };
+        if (selected == null)
+            return (natural, null);
+
+        var selectedSlot = SlotOf(selected);
+        CheckStoreQuietly(StorePosition.OperatorOperand, right, view, selectedSlot);
+        return (natural, selectedSlot);
+    }
+
+    /// <summary>
+    /// Checks <paramref name="right"/> under <paramref name="slot"/> as the expectation and takes
+    /// the seam's verdict on it; a refusal is reported at the operand in the operator's phrasing.
+    /// </summary>
+    private (SemanticType Type, SemanticType? Slot) CheckOperandInSlot(
+        SemanticType receiver, Expression right, SemanticType slot, string dunder, string symbol, Node reportAt)
+    {
+        using (EnterStore(StorePosition.OperatorOperand, slot, right,
+                   calleeDisplay: receiver.GetDisplayName(), operatorSymbol: symbol, operatorDunder: dunder))
+        {
+            var operandType = CheckExpression(right);
+            if (operandType is UnknownType)
+                return (operandType, null);
+
+            return CheckStore(StorePosition.OperatorOperand, right, OperandView(operandType), slot, reportAt, reportAt.Span)
+                ? (operandType, slot)
+                : (SemanticType.Unknown, null);
+        }
+    }
+
+    /// <summary>
+    /// The dunder overloads (own and inherited) that decide the RIGHT operand of <paramref name="op"/>
+    /// on a receiver of type <paramref name="leftType"/> — the equality complement's when the
+    /// operator's own dunder is absent (<c>!=</c> answered by <c>__eq__</c>) — with the dunder they
+    /// were found under. Empty when no user dunder decides the operand: no receiver, no overloads,
+    /// or a bare <c>None</c> operand.
+    /// </summary>
+    private static (List<FunctionSymbol> Candidates, string Dunder) OperatorOperandCandidates(
+        BinaryOperator op, SemanticType leftType, Expression right)
+    {
+        var none = (new List<FunctionSymbol>(), string.Empty);
+        if (UnwrapParenthesized(right) is NoneLiteral)
+            return none;
+
+        // Source-declared dunders only: a CLR-discovered operator table (Sharpy.Bytes, List<T>,
+        // a stdlib type) spells its parameters in CLR names (`Bytes`), which the store relation does
+        // not identify with the builtin alias (`bytes`); those receivers keep the resolver's
+        // natural-type path, which the builtin operator table answers first anyway.
+        var dunder = TypeInferenceService.BinaryOperatorToDunder(op);
+        if (dunder == null
+            || TypeInferenceService.OperatorReceiverSymbol(leftType) is not { ClrType: null } receiver)
+            return none;
+
+        var candidates = TypeInferenceService.CollectOperatorOverloads(receiver, dunder);
+        if (candidates.Count == 0 && TypeInferenceService.EqualityComplementDunder(op) is { } complement)
+        {
+            candidates = TypeInferenceService.CollectOperatorOverloads(receiver, complement);
+            dunder = complement;
+        }
+
+        return (candidates.Where(c => c.Parameters.Count >= 2).ToList(), dunder);
     }
 
     /// <summary>
@@ -1148,12 +1288,26 @@ internal partial class TypeChecker
         }
 
         var operandTypes = new SemanticType?[chain.Operands.Length];
+        var operandSlots = new SemanticType?[chain.Operands.Length];
 
-        // Pass 1: check all non-needle operands in source order.
+        // Pass 1: check all non-needle operands in source order. The RIGHT operand of a link whose
+        // left operand's type has a user dunder goes through the operand seam exactly as the binary
+        // form does (#1719) — one decision for `d == v` and for `a == d == v`.
         for (int i = 0; i < chain.Operands.Length; i++)
         {
-            if (!needleIndices.Contains(i))
-                operandTypes[i] = CheckExpression(chain.Operands[i]);
+            if (needleIndices.Contains(i))
+                continue;
+
+            if (i > 0 && !needleIndices.Contains(i - 1)
+                && operandTypes[i - 1] is { } previous && previous is not UnknownType)
+            {
+                var linkOperator = TypeUtils.ComparisonOperatorToBinaryOperator(chain.Operators[i - 1]);
+                (operandTypes[i], operandSlots[i]) = CheckOperatorOperand(
+                    linkOperator, previous, chain.Operands[i], chain.Operands[i - 1]);
+                continue;
+            }
+
+            operandTypes[i] = CheckExpression(chain.Operands[i]);
         }
 
         // Pass 2: check needle operands under the container's element type expectation.
@@ -1209,7 +1363,8 @@ internal partial class TypeChecker
                 continue;
             }
 
-            var resultType = _typeInference.InferBinaryOpType(binaryOp, leftType, rightType);
+            var resultType = _typeInference.InferBinaryOpType(
+                binaryOp, leftType, operandSlots[i + 1] ?? rightType);
 
             // If type inference fails, report the error directly
             if (resultType == null)
@@ -1251,6 +1406,11 @@ internal partial class TypeChecker
     private ComparisonLinkLowering ClassifyComparisonLowering(
         BinaryOperator op, SemanticType leftType, SemanticType rightType)
     {
+        // The dunder lives on the RIGHT operand's type (#1719): the emitter swaps the operands and
+        // mirrors an ordering token, so the equality strategy is moot for this link.
+        if (_typeInference.IsReflectedUserComparison(op, leftType, rightType))
+            return new ComparisonLinkLowering(OperatorLoweringKind.ReflectedOperands, null);
+
         if (op is BinaryOperator.Equal or BinaryOperator.NotEqual)
         {
             return new ComparisonLinkLowering(

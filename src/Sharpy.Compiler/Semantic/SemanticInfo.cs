@@ -2484,6 +2484,13 @@ public enum OperatorLoweringKind
     StringRepeatStrRight,
     StringOrdinalCompare,
     TypeParameterCompareTo,
+
+    /// <summary>
+    /// A comparison answered by the RIGHT operand's reflected dunder (#1719): the emitter prints the
+    /// operands swapped and mirrors an ordering token (<c>1 &lt; d</c> → <c>d &gt; 1</c>), binding a
+    /// non-trivial left operand first so evaluation order holds.
+    /// </summary>
+    ReflectedOperands,
     DecimalPow,
     FloatPow,
     IntegerPowInt,

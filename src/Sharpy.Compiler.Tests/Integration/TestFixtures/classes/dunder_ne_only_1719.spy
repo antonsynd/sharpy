@@ -1,0 +1,20 @@
+# #1719: a type declaring only __ne__ gets its complementary operator == typed on the __ne__
+# overload's own operand, as `!(left != right)` parenthesized (was SPY0524 for every such type).
+class D:
+    def __ne__(self, other: int) -> bool:
+        print("ne", other)
+        return other != 1
+
+struct S:
+    v: int
+    def __ne__(self, other: int?) -> bool:
+        return other is not None
+
+def main():
+    d = D()
+    print(d != 1)
+    print(d == 1)
+    print(d != 2)
+    s = S(1)
+    print(s != Some(1))
+    print(s == None())

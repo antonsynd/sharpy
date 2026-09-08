@@ -1,0 +1,14 @@
+eq 1
+True
+eq 2
+False
+lt 3
+True
+f
+eq 7
+True
+eq 1
+eq 5
+True
+seq 1
+True

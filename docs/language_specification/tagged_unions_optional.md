@@ -258,6 +258,25 @@ print(s.unwrap_or("default"))
 The only members callable directly on a `T?` are `Optional`'s own API
 (`unwrap`, `unwrap_or`, `unwrap_or_else`, `map`, `is_some`, `is_none`).
 
+### `==` and `!=` are native on `T?`
+
+Two `T?` values compare with `==`/`!=` (`Optional` defines both); ordering (`<`, `>`, …) is
+refused. Membership in a `list[int?]` or `set[int?]` and a `dict[int?, V]` key — written or
+read — use the same equality, so `d[None()]` reads the entry stored under `None()`:
+
+```python
+def main():
+    a: int? = Some(1)
+    b: int? = Some(1)
+    c: int? = None()
+    print(a == b, a != c, c == c)   # True True True
+    d: dict[int?, str] = {Some(1): "a", None(): "b"}
+    print(d[None()])                # b
+```
+
+Against a user type, `x == None()` selects the `__eq__` overload whose parameter is an Optional
+(see [Dunder Methods › Operand typing and dispatch](dunder_methods.md#operand-typing-and-dispatch)).
+
 ### Passing a `T?` is the same rule
 
 Handing a `T?` to something that expects a `T` is a use of the underlying value,

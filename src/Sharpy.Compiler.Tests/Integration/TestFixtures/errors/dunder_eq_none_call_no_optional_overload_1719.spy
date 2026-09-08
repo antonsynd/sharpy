@@ -1,0 +1,9 @@
+# #1719: `None()` as an operand selects the unique Optional-taking overload; with none, the
+# comparison is refused by name with the spelling that would work.
+class D:
+    def __eq__(self, other: int) -> bool:
+        return True
+
+def main():
+    d = D()
+    print(d == None())

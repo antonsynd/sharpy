@@ -151,7 +151,7 @@ to the arithmetic ones.
 | Dunder | C# Output | Notes |
 |--------|-----------|-------|
 | `__eq__(self, other: U) -> bool` | `public static bool operator ==(T lhs, U rhs)` and `public bool Equals(U rhs)` | 1:1 mapping. `override` only when `U` is `object`. |
-| `__ne__(self, other: U) -> bool` | `public static bool operator !=(T lhs, U rhs)` | If not defined, is synthesized by the compiler as `!(lhs == rhs)` |
+| `__ne__(self, other: U) -> bool` | `public static bool operator !=(T lhs, U rhs)` | If not defined, is synthesized by the compiler as `!(lhs == rhs)`; conversely a type declaring only `__ne__` gets `operator ==` synthesized as `!(lhs != rhs)` on the same `U` |
 | `__lt__(self, other: U) -> bool` | `public static bool operator <(T lhs, U rhs)` | |
 | `__le__(self, other: U) -> bool` | `public static bool operator <=(T lhs, U rhs)` | |
 | `__gt__(self, other: U) -> bool` | `public static bool operator >(T lhs, U rhs)` | |
@@ -172,6 +172,46 @@ an override `__hash__(self)` is a compile-time error. C# warns when types overri
 
 Similarly, the opposite case of overriding `__hash__(self)` without an override
 of `__eq__(self, other: object)` is also a compile-time error.
+
+### Operand typing and dispatch
+
+The right operand of a comparison against a user type is checked against the **selected
+overload's parameter** under the same store rules as a call argument: an in-range constant
+converts into an `int8` parameter, `Some(7)` into `int8?`, a literal into `LiteralString`, and a
+mismatch is refused as the operator's own error (SPY0222), naming the parameter the overload
+takes. An operand with no type of its own — `None()` — selects the unique `__eq__` overload
+whose parameter is an Optional; with none (or several) the comparison is refused by name with
+the spelling that would work:
+
+```python
+class D:
+    def __eq__(self, other: int?) -> bool:
+        return other is None
+
+def main():
+    print(D() == None())   # True — selects __eq__(int?)
+    print(D() == Some(1))  # False
+    # D() == 1             # SPY0604: 'int32' is not an Optional[int32]; construct it with Some(...)
+```
+
+A **bare `None`** operand dispatches to an `__eq__` whose parameter admits `None` — `T | None`
+or `object` — exactly as CPython calls `__eq__(None)`. Any other `__eq__` keeps the reference
+null check of `x == None` (`False`, no call; on a struct SPY0222 — write `is None`):
+
+```python
+class N:
+    def __eq__(self, other: int | None) -> bool:
+        return other is None
+
+def main():
+    print(N() == None)   # True — __eq__ is called with None
+    print(None == N())   # True
+```
+
+A comparison whose **left** operand has no dunder for it dispatches to the right operand's
+reflected dunder, as CPython does: `1 == d` is `d.__eq__(1)`, `1 < d` is `d.__gt__(1)` (refused
+by name when the mirror is not declared). An **inherited** dunder decides exactly as an own one:
+with `__eq__(self, other: str)` declared on `B`, `D(B)() == "a"` calls it.
 
 ## Conversion Methods
 

@@ -1,0 +1,19 @@
+# #1719 (RULED 2026-09-07: walk the base chain): an inherited dunder decides the operand exactly as
+# an own one — selection, the complement, the reflected arm and the validator all range over the
+# base chain. python3 control: `D().__eq__` is `B.__eq__`.
+class B:
+    def __eq__(self, other: str) -> bool:
+        print("called", other)
+        return True
+    def __lt__(self, other: int) -> bool:
+        return True
+
+class D(B):
+    pass
+
+def main():
+    d = D()
+    print(d == "a")
+    print(d != "a")
+    print(d < 1)
+    print("b" == d)

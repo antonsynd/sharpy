@@ -1,0 +1,7 @@
+# #1719: the operand seam refuses in the operator's phrasing, naming the dunder's slot.
+class D8:
+    def __eq__(self, other: int8) -> bool:
+        return True
+
+def main():
+    r: bool = D8() == 300

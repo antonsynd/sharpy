@@ -294,9 +294,13 @@ public class StoreSeamConformanceTests
     /// three <c>ClearExpectation</c> sites; the post-inference re-check pushes the CLOSED formal
     /// through <c>EnterStore(ArgumentPositional, …)</c> and the argument loops' two channels
     /// collapsed into the one <c>FormalSlots</c> push, so the push count stays 38
-    /// (38 pushes + 13 clears, measured by this scan).
+    /// (38 pushes + 13 clears, measured by this scan). 51 -> 53 (plan-499995, #1719/#1807): the
+    /// operand seam pushes the selected dunder overload's slot through
+    /// <c>EnterStore(OperatorOperand, …)</c> for the right operand of a user operator, and the
+    /// dict index READ pushes the key type the same way (40 pushes + 13 clears, measured by this
+    /// scan).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 51;
+    private const int ExpectedSeamCallSiteCount = 53;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {
